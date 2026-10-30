@@ -6,10 +6,13 @@ The user's current instructions take precedence over repository conventions.
 
 ## Repository reality and decisions
 
-This repository currently contains product/architecture proposals and agent skills. No app,
-Cargo workspace, Discourse plugin, executable behavior model or build/test runner exists yet.
-Inspect actual files before claiming a capability or running a documented candidate command.
-Update this paragraph when implementation establishes those capabilities.
+The repository holds product/architecture proposals, agent skills and a bootstrap skeleton:
+a Cargo workspace with the Leptos SSR + Axum app and its hydration bundle (`apps/vink-web`,
+`services/vink-app`), PostgreSQL migrations, a draft/reader slice, a lifecycle-only worker,
+`cargo xtask` lanes and CI. [docs/development](docs/development/README.md) owns its layout,
+commands, evidence and limits. No production auth, publish/moderation workflow, Discourse
+plugin, AI provider, job or executable behavior model exists. Inspect actual files before
+claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
 - [Tech stack](docs/architecture/tech-stack.md) recommends Hybrid B: Vink owns literary content
@@ -48,9 +51,9 @@ Check status first and preserve existing edits. Stage explicit paths belonging t
 Use authorization already granted in the conversation; a skill adds no requirement to ask again.
 Do not infer permission to push, post messages or publish from a local editing task.
 
-Discover manifests, scripts and CI before selecting checks. `cargo xtask` and `specs/behavior`
-in the foundation are proposals, not commands or registries to assume already exist. Do not add
-an application or a runner merely to validate documentation or skills.
+Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
+quick|postgres|web` are the implemented lanes, used by CI as well; `specs/behavior` and a
+behavior lane do not exist. Do not add a runner merely to validate documentation or skills.
 
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual

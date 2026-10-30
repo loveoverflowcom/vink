@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "the draft changed since expected_version; nothing was written",
+    "current_version": 5
+  }
+}

@@ -26,8 +26,9 @@ required. Write the prompt in the user's language and retain exact paths, IDs an
 - Read requirements and D/INV/S IDs nearest the outcome. Keep user decisions, proposals,
   implemented facts and runtime evidence separate. The foundation's Cantos/Discourse source
   snapshots are research provenance, not the coder's runtime versions.
-- Treat illustrative paths in the stack as proposed until present. Discover real commands
-  before putting them in VERIFY. If source access is missing, mark the gap and make the
+- Treat illustrative paths in the stack as proposed until present. Take VERIFY commands from
+  [docs/development](../../../docs/development/README.md) (`cargo xtask verify quick|postgres|web`)
+  and name the lane each claim needs. If source access is missing, mark the gap and make the
   receiving agent's first step discovery rather than inventing an API or result.
 
 ## Choose the prompt shape

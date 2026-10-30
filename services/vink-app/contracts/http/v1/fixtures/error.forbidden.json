@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "forbidden",
+    "message": "request origin is not allowed for this action"
+  }
+}

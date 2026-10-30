@@ -1,0 +1,3 @@
+# `cargo xtask` is the repository command surface; see docs/development/README.md.
+[alias]
+xtask = "run --quiet --locked --package xtask --"

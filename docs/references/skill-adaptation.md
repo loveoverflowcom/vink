@@ -37,6 +37,21 @@ xác nhận lại điều đã giao và không biến đề xuất Hybrid/SSR/au
 Metadata UI dùng tên `vink-*`, prompt mẫu tương ứng và cơ chế khám phá mặc định; không yêu cầu
 cài plugin hay kết nối tài khoản ngoài để đọc skills trong checkout.
 
+## Cập nhật theo skeleton (30/10/2026)
+
+Khi skeleton được triển khai, skills được đối chiếu lại với code và lệnh thật:
+
+- [README skills](../../.agents/skills/README.md) có bảng định tuyến nhanh (prompt, review,
+  skeleton, copy/layout, lưu nháp/xung đột, thiếu dependency, publication).
+- `vink-engineering` và `vink-leptos-web` có bảng owner → đường dẫn của code đã tồn tại;
+  [verification](../../.agents/skills/vink-engineering/references/verification.md) chọn lane
+  `cargo xtask verify` theo loại thay đổi.
+- Lệnh chỉ được định nghĩa ở [docs/development](../development/README.md); skills, README, AGENTS
+  và CI dẫn tới đó. `verify quick` kiểm frontmatter, `agents/openai.yaml`, danh sách skills,
+  link Markdown và ranh giới import.
+- `vink-publication`, `vink-behavior`, `vink-ui-design`, `vink-code-review` và `vink-prompt` ghi
+  rõ phần đã có (revision bất biến, con trỏ publication, token CSS, lane thật) và phần chưa có.
+
 Khi Vink có implementation, cập nhật mô tả repository reality trong AGENTS, hướng dẫn của
 owner liên quan và lệnh kiểm thực sự có sẵn. Chỉ bổ sung references khi có nhu cầu cụ thể;
 không đồng bộ tự động các ràng buộc mới của Cantos sang Vink.

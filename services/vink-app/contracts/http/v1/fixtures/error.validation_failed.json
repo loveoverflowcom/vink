@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "validation_failed",
+    "message": "document: block 0 line 1 is blank; blank lines separate blocks",
+    "field": "document"
+  }
+}

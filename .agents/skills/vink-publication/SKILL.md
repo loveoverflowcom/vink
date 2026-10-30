@@ -14,6 +14,12 @@ defines proposed guards, INV-01–INV-08 and the unresolved withdrawal policy D-
 Use [vink-engineering](../vink-engineering/SKILL.md) for boundaries and verification.
 This skill describes how to implement a selected scope; it does not accept open product decisions.
 
+Implemented so far: `revisions` are immutable rows (a trigger rejects UPDATE) with a
+`content_hash`, and `publications` is a per-work pointer constrained to a revision of the same
+work. Public reads go only through that pointer. No command creates revisions or moves the
+pointer yet; only the local development seed does. Moderation, publish intent, withdrawal,
+curation, outbox and Discourse are not implemented.
+
 ## Keep independent facts independent
 
 Identify the actual owners of working draft/version, immutable revision/hash, moderation

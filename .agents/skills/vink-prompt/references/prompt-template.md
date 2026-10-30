@@ -21,7 +21,7 @@ DECISIONS:
 ACCEPTANCE:
   - [observable result, failure case and its authoritative requirement]
 VERIFY:
-  - [implemented check/command, exact claim and pure/fake/real boundary]
+  - [cargo xtask verify quick|postgres|web (docs/development), exact claim and boundary]
 BLOCKERS:
   if a runtime dependency is unavailable:
     complete independent work; preserve explicit unavailable/pending runtime behavior

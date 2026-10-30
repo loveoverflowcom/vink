@@ -9,9 +9,27 @@ description: >-
 # Vink engineering
 
 Read [AGENTS.md](../../../AGENTS.md), the [documentation map](../../../docs/README.md),
-the task's requirement IDs and actual code before editing. The repository starts with documents;
-the [tech stack](../../../docs/architecture/tech-stack.md) is a conditional recommendation.
+the task's requirement IDs and actual code before editing. The skeleton's layout, commands and
+limits are in [docs/development](../../../docs/development/README.md); the
+[tech stack](../../../docs/architecture/tech-stack.md) remains a conditional recommendation.
 Do not copy Cantos runtime assumptions or create infrastructure to satisfy this skill.
+
+## Where code lives
+
+| Responsibility | Owner today |
+| --- | --- |
+| Pure rules (document v1, title, draft version, revision hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
+| Use cases, actor checks, storage ports | `services/vink-app/src/application/` |
+| SQL, transactions, constraint classification | `services/vink-app/src/persistence/` and `migrations/` |
+| HTTP API v1, health, Origin check, SSR host | `services/vink-app/src/http/` |
+| Canonical API contract and fixtures | `services/vink-app/contracts/http/v1/` |
+| Principal resolution seam | `services/vink-app/src/identity.rs` |
+| Shared config, logging, shutdown; worker | `config.rs`, `runtime.rs`, `src/bin/vink-worker.rs` |
+| PostgreSQL tests (`#[sqlx::test]`, HTTP through the router) | `services/vink-app/tests/postgres.rs` |
+| Browser-side views and DTOs | `apps/vink-web/` (see [vink-leptos-web](../vink-leptos-web/SKILL.md)) |
+
+`verify quick` enforces the import boundaries for `domain/` and `application/` and that
+`vink-web` does not depend on the service or SQLx. Add a crate only for a real consumer.
 
 ## Find the owner and the claim
 
@@ -37,6 +55,8 @@ For a small change, a sentence is enough. For several durable claims, use a shor
   saves; a correction creates a new snapshot or decision rather than rewriting its evidence.
 - Use closed error/outcome variants. Preserve conflict, unavailable, rejected and unknown-result
   distinctions through HTTP and UI; avoid panics and unchecked assumptions on request paths.
+  An API change updates the provider contract and fixtures first, then each consumer's own
+  representation; both sides' fixture tests must pass.
 - Add a crate, service, dependency or reusable abstraction for a concrete consumer. Domain code
   imports neither HTTP/UI frameworks nor database/provider clients. Avoid a global Vink–Cantos
   contracts package; each API provider owns its schema and consumers own their representations.
@@ -47,6 +67,9 @@ Use the ownership and transaction rules in
 [tech stack](../../../docs/architecture/tech-stack.md), especially content, jobs and Discourse.
 For a persistent change, identify the constraint or conditional write that enforces it under
 concurrency; a read-then-write check outside a transaction does not provide that guarantee.
+`PgStore::save_draft` is the reference pattern: owner and version sit in the UPDATE predicate,
+and the follow-up read only classifies an unwritten save. Add a new migration file for schema
+changes; never edit an applied one. Seed data stays in `dev_seed.rs`, not in migrations.
 
 Publication, audit and outbox changes commit together. Re-read authority, revision/hash,
 decision version and expected generation at the write boundary. Use optimistic concurrency

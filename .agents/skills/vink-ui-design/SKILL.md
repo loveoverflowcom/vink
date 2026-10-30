@@ -29,9 +29,11 @@ The three spaces are experience scopes, not a mandate for three apps or fixed ta
 
 Apply M3 Expressive through hierarchy, shape, color, size, containment and purposeful motion.
 Keep text areas quiet; concentrate emphasis on the action or content that matters. Reuse or
-extend actual components and semantic tokens. If the repo has no token source, establish only
-what the requested slice needs with an explicit owner. Vink's palette and identity need their
-own design choice; Cantos's lavender branding and player patterns are not defaults.
+extend actual components and semantic tokens. The token owner is
+`apps/vink-web/style/vink.css`: warm paper surfaces, ink-indigo primary, seal-vermilion
+accent, light/dark schemes, radius/space/motion scales and `vk-*` components. Add a token
+there before adding a one-off color. Fonts are local stacks with Vietnamese coverage; adding a
+web font needs an asset decision. Cantos's lavender branding and player patterns are not defaults.
 
 ## Vietnamese text and states
 
@@ -62,7 +64,8 @@ color; measure contrast for actual themes. Allow text enlargement and reduced mo
 losing information or waiting for animation to complete an action.
 
 For a visual claim, capture and open the relevant state at a specified viewport, theme,
-locale and text scale. Compare before/after under the same scenario when available. Check
+locale and text scale (run the app with `cargo xtask dev`; seed sample data first). Recompute
+contrast for any changed color pair in both schemes. Compare before/after under the same scenario when available. Check
 loading, empty, error, pending and success states only where they apply. Interactive behavior,
 keyboard operation, a named screen reader and motion each require their own observation;
 an image cannot establish them.

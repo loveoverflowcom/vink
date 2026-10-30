@@ -48,6 +48,7 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
 | Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; chưa phải ADR Accepted |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
+| Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
 | Hướng dẫn agent | [AGENTS.md](../AGENTS.md), [Skills](../.agents/skills/README.md) | Cách làm việc với repo và chọn skill theo nhiệm vụ |
 | Nguồn skills | [Skill adaptation](references/skill-adaptation.md) | Nguồn Cantos được pin riêng và các thay đổi cho Vink |
 | Bản ban đầu | [README](archive/initial/README.md), [Vision](archive/initial/prd/vision.md) | Giữ nguyên nội dung có sẵn trước lần nhập foundation; chỉ là tư liệu lịch sử |
@@ -64,5 +65,7 @@ Các file gốc từ thư mục `vink-foundation` được giữ nguyên nội d
 | `Vink-03-Requirements.md` | [prd/requirements.md](../prd/requirements.md) |
 | `Vink-04-Architecture-Decisions.md` | [docs/architecture/decisions.md](architecture/decisions.md) |
 | `Vink-05-Sources.md` | [docs/references/sources.md](references/sources.md) |
+
+Skeleton ngày 30/10/2026 hiện thực một phần luồng trên: soạn và lưu nháp tiếng Việt có kiểm phiên bản, đọc snapshot công khai từ seed. Gửi duyệt, xuất bản và Discourse chưa có; trạng thái từng phần nằm ở [docs/development](development/README.md).
 
 Khi bổ sung implementation, cập nhật trạng thái ở tài liệu sở hữu và dẫn bằng chứng tương ứng. Không suy ra một module, API, command hay gate đã tồn tại từ ví dụ trong tài liệu; kiểm tra mã nguồn và manifest hiện hành. Bản archive không được dùng để ghi đè hướng hiện tại.

@@ -1,0 +1,6 @@
+# Vink's own pin: newest stable at bootstrap (2026-10-30). Dependencies need >= 1.94 (sqlx 0.9).
+[toolchain]
+channel = "1.99.1"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+targets = ["wasm32-unknown-unknown"]

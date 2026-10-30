@@ -1,0 +1,22 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "title": "[Mẫu] Mưa trên phố cũ",
+  "version": 3,
+  "updated_at": "2026-10-30T08:00:00Z",
+  "document": {
+    "schema_version": 1,
+    "blocks": [
+      {
+        "lines": [
+          "Phố cũ mưa giăng sợi mỏng,",
+          "mái ngói rêu xanh lặng thầm."
+        ]
+      },
+      {
+        "lines": [
+          "    đã theo mưa về rất lâu."
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,4 @@
+/target/
+# Local configuration; .env.example is the committed template.
+.env
+node_modules/

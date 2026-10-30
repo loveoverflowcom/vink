@@ -9,8 +9,9 @@ description: >-
 # Vink work item
 
 Start from [AGENTS.md](../../../AGENTS.md), the user's task, linked issue when relevant,
-and the nearest sources in [docs/README.md](../../../docs/README.md). A formal work queue,
-GitHub Project and full application stack are not prerequisites for doing useful work.
+the nearest sources in [docs/README.md](../../../docs/README.md) and the implemented layout,
+commands and limits in [docs/development](../../../docs/development/README.md). A formal work
+queue or GitHub Project is not a prerequisite for doing useful work.
 
 ## Resolve scope and baseline
 
@@ -18,8 +19,10 @@ GitHub Project and full application stack are not prerequisites for doing useful
    constraint the user supplied. A prompt-only request belongs to
    [vink-prompt](../vink-prompt/SKILL.md), not implementation.
 2. Read current code/manifests and decision status. Determine what exists, what is proposed
-   and what prerequisite actually affects this slice. A merged PR is not proof of runtime
-   acceptance; an absent database is not a reason to stop independent pure-code work.
+   and what prerequisite actually affects this slice. Extend the existing skeleton
+   (`apps/vink-web`, `services/vink-app`, `xtask`) rather than scaffolding a competing one.
+   A merged PR is not proof of runtime acceptance; an absent database is not a reason to stop
+   independent pure-code work.
 3. Inspect Git status and pin the starting branch/SHA and requested base. Use the explicit
    user base, otherwise the task's integration base, otherwise `develop`. When creating a new
    branch, use `codex/<outcome>` by default. If the user requests a commit directly on develop,
@@ -50,9 +53,10 @@ status and provenance while updating links and placement.
 
 ## Verify and finish the authorized work
 
-Use [the verification guide](../vink-engineering/references/verification.md). Discover actual
-commands; do not run hypothetical xtask gates or install the Cantos toolchain. Finish focused
-checks and review the final diff. Keep pure, fake, PostgreSQL, Discourse, model and browser
+Use [the verification guide](../vink-engineering/references/verification.md) to pick the
+`cargo xtask verify` lanes the change needs; the commands are defined in
+[docs/development](../../../docs/development/README.md), not in this skill. Do not install the
+Cantos toolchain or invent gates. Finish focused checks and review the final diff. Keep pure, fake, PostgreSQL, Discourse, model and browser
 evidence distinct. If a dependency is unavailable, deliver the independently verified portion
 and record exactly what remains unverified; keep runtime failures explicit rather than fake.
 

@@ -14,14 +14,33 @@ Read [AGENTS.md](../../../AGENTS.md), the relevant
 Use [vink-ui-design](../vink-ui-design/SKILL.md) for visual criteria and
 [vink-engineering](../vink-engineering/SKILL.md) for durable decisions.
 The target is Leptos SSR with a bounded JavaScript editor integration, subject to S-01;
-do not inherit Cantos's CSR/Trunk setup or assume these packages already exist.
+do not inherit Cantos's CSR/Trunk setup.
 
-## Discover and place the change
+## The implemented web app
 
-Find actual manifests, Leptos version/features, route and component owners, server/browser
-build targets, CSS tokens and supported commands. Library APIs depend on the pinned version;
-check that version's official docs when uncertain. Example directories in the foundation are
-not instructions to scaffold a workspace for a small edit.
+| Concern | Owner |
+| --- | --- |
+| Shell, routes, hydration entry (`hydrate()`) | `apps/vink-web/src/lib.rs` |
+| Pages: home, reader, not-found; Bàn viết | `src/pages/mod.rs`, `src/pages/desk.rs` |
+| The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
+| Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
+| Save-state machine (pure, unit-tested) | `src/desk_state.rs` |
+| Textarea ↔ document v1, reading view | `src/document.rs` |
+| Design tokens and components | `style/vink.css` |
+| Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
+
+Leptos is pinned at 0.8 (see `Cargo.lock`); check that version's docs when unsure of an API.
+`ssr` and `hydrate` are separate builds of one crate: never enable both, gate server-only code
+with `#[cfg(feature = "ssr")]` and DOM/fetch code with `#[cfg(feature = "hydrate")]`, and keep
+the build without either feature compiling. `vink-app` provides `PublicReads` and `SiteOrigin`
+through context; this crate never imports the service. Public pages use `Resource` with
+`SsrMode::Async` so status and metadata are final before streaming; account-scoped pages use
+`LocalResource`, which stays pending on the server, so private data never enters HTML or the
+hydration payload. `Resource` needs `Send` futures: wrap browser fetches in `SendWrapper`. Build
+commands (`cargo xtask build`, wasm-bindgen version pin) are in
+[docs/development](../../../docs/development/README.md).
+
+## Place the change
 
 Keep presentation separate from application and transport: components render typed states
 and dispatch intents; resources/actions coordinate requests; adapters own URLs, DTOs and
@@ -46,8 +65,11 @@ real consumer and no private data crosses into the browser build.
 
 ## Editor and async state
 
-Treat WR-01–WR-03 and S-01 as the acceptance boundary. Choose the canonical document/schema
-version through the scoped design; derived HTML/text must not become competing sources.
+Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk is a textarea smoke over
+document v1 with manual save; it does not complete S-01. Reuse `EditorSession` for autosave or
+a JavaScript editor instead of adding a second save-state model. Choose the canonical
+document/schema version through the scoped design; derived HTML/text must not become competing
+sources.
 The JS editor bridge owns mount, subscriptions, selection and teardown. Preserve the editor
 instance across ordinary reactive updates; dispose listeners and timers when its owner ends.
 Use stable domain IDs for dynamic rows instead of array positions.
@@ -70,7 +92,9 @@ an unkeyed write with an unknown remote result requires reconciliation, not blin
 
 ## Verification and handoff
 
-Use the [verification guide](../vink-engineering/references/verification.md). Select relevant
+Use the [verification guide](../vink-engineering/references/verification.md). `verify web`
+covers server HTML/privacy, hydration, client navigation, save/reload/conflict and restart
+with programmatic input; extend `e2e/browser-smoke.mjs` for new interactions. Select relevant
 checks for server HTML/privacy, real browser hydration/navigation, resource races and editor
 save/reload/conflicts. Test representative Vietnamese poetry/prose, Word/Docs paste, undo and
 mobile text scaling. Distinguish simulated input from a real named OS IME run.

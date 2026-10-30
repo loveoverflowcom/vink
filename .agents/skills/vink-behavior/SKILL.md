@@ -10,8 +10,10 @@ description: >-
 
 Use [requirements](../../../prd/requirements.md) and
 [the decision log](../../../docs/architecture/decisions.md) to locate the relevant rule,
-INV ID and decision status. Inspect the real implementation separately. This repository's
-foundation proposes Quint; it does not ship a catalog, model or command runner.
+INV ID and decision status. Inspect the real implementation separately. The foundation
+proposes Quint, but the repository ships no catalog, model or behavior lane. Current stateful
+code is small and tested at its own boundary: draft CAS in `tests/postgres.rs`, the desk save
+state machine in `apps/vink-web/src/desk_state.rs`.
 
 ## Classify before choosing a change
 

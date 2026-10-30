@@ -1,8 +1,19 @@
 # Verification scope and evidence
 
-Use actual manifests, commands and CI from the current checkout. At foundation import there
-are no application runners. Proposed `cargo xtask verify` or Quint paths are design examples;
-never report them as available commands until implemented.
+Use actual manifests, commands and CI from the current checkout. The implemented lanes are
+`cargo xtask verify quick|postgres|web|all`; what each covers, its prerequisites and its limits
+are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
+lanes. There is no Quint model or behavior lane; do not report one as available.
+
+## Pick lanes by change
+
+| Change | Lanes | Notes |
+| --- | --- | --- |
+| Docs, skills, metadata only | `quick` (repository checks) or a diff/link review | No app run needed |
+| Domain, application, contract, config, `desk_state` | `quick` | Add a focused unit or fixture test |
+| SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
+| Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
+| Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |
 
 ## Select evidence by the claim
 
@@ -38,7 +49,9 @@ failure from a regression, and test one supported hypothesis before rerunning.
 ## Results
 
 Use `PASS` for an executed successful check, `FAIL` for an executed failure, `NOT_RUN` for a
-check not executed, and `UNSUPPORTED` when the target/tool cannot perform it. Preserve the
+check not executed, and `UNSUPPORTED` when the target/tool cannot perform it. `xtask` prints
+the same words; a missing prerequisite is a `FAIL`, and steps after a failure are `NOT_RUN`.
+A workflow file is not evidence that GitHub Actions ran; cite the run when claiming CI. Preserve the
 runner's own output and clarify any mapping. For each material result, name the exact command,
 source inputs and boundary: pure core, fake adapter, real PostgreSQL, pinned Discourse, browser
 or deployed environment. Record model seed/bounds or browser/device details when relevant.

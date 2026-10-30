@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "dependency_unavailable",
+    "message": "a required dependency is unavailable; retry later"
+  }
+}

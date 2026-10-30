@@ -1,0 +1,24 @@
+# Local PostgreSQL for Vink development only. Works with `docker compose` or `podman compose`.
+# The password below is a throwaway local credential, not a secret; never reuse it elsewhere.
+name: vink-dev
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17.11-alpine
+    environment:
+      POSTGRES_USER: vink
+      POSTGRES_PASSWORD: vink-local-only
+      POSTGRES_DB: vink
+    ports:
+      # Loopback only; 55432 avoids clashing with another local PostgreSQL on 5432.
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - vink-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vink -d vink"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  vink-postgres:
