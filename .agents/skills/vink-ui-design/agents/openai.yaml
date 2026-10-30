@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink UI Design"
+  short_description: "M3 Expressive cho trải nghiệm viết và đọc tiếng Việt"
+  default_prompt: "Dùng $vink-ui-design để thiết kế hoặc review trải nghiệm Vink theo M3 Expressive và typography tiếng Việt."

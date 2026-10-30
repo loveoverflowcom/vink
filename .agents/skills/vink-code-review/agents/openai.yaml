@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Code Review"
+  short_description: "Review diff Vink theo lỗi thực và bằng chứng"
+  default_prompt: "Dùng $vink-code-review để review thay đổi Vink, báo findings có bằng chứng và phạm vi chưa kiểm chứng."

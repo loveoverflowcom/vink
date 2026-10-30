@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Behavior"
+  short_description: "Phân tích state, race và model Quint có phạm vi"
+  default_prompt: "Dùng $vink-behavior để phân tích thay đổi trạng thái Vink và chọn bằng chứng phù hợp cho các race quan trọng."

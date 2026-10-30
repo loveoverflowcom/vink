@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Work Item"
+  short_description: "Triển khai feature, issue hoặc sửa lỗi Vink"
+  default_prompt: "Dùng $vink-work-item để hoàn thành công việc Vink theo scope, nhánh và quyền hành động đã được giao."

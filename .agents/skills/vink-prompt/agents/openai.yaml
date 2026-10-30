@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Prompt"
+  short_description: "Viết prompt triển khai và tiếp tục công việc Vink"
+  default_prompt: "Dùng $vink-prompt để viết prompt Vink tự đủ ngữ cảnh, pin nguồn và giữ rõ acceptance cùng blocker."

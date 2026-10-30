@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Leptos Web"
+  short_description: "Leptos SSR, editor tiếng Việt và autosave"
+  default_prompt: "Dùng $vink-leptos-web để triển khai giao diện Vink, giữ đúng SSR, quyền riêng tư và dữ liệu đang soạn."

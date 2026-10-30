@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Engineering"
+  short_description: "Domain, API, PostgreSQL và tích hợp Vink"
+  default_prompt: "Dùng $vink-engineering để triển khai thay đổi Vink theo đúng owner, bất biến và phạm vi kiểm chứng."

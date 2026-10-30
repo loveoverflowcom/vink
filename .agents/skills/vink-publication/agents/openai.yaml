@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Publication"
+  short_description: "Revision, kiểm duyệt và xuất bản đúng phiên bản"
+  default_prompt: "Dùng $vink-publication để sửa luồng revision, kiểm duyệt hoặc xuất bản Vink theo requirements hiện hành."
