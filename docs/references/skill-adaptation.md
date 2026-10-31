@@ -111,5 +111,5 @@ khỏi đề xuất. Mẫu handoff giữ spec/revision hoặc yêu cầu hoàn t
 [Năm ca kiểm workflow](../../.agents/skills/vink-layout-spec/references/examples.md)
 bao phủ màn mới, chỉ phác thảo, hướng đã chọn, sửa nhỏ và audit. Đây là kỳ vọng
 kiểm hành vi agent; link/metadata hay một lượt mô phỏng không chứng minh UI đã
-render, không bảo đảm mọi lần gọi model sẽ tuân thủ. Thay đổi này chỉ ở skills
-và tài liệu, không hoàn tất UX-01/UX-03 hay bất kỳ spike/decision sản phẩm nào.
+render, không bảo đảm mọi lần gọi model sẽ tuân thủ. Quy ước và ví dụ trong skills
+không hoàn tất UX-01/UX-03 hay bất kỳ spike/decision sản phẩm nào.

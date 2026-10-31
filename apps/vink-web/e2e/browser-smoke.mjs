@@ -264,8 +264,14 @@ async function mainPhase(page) {
   ]), 'server stored stanzas, lines, indentation and diacritics');
 
   console.log('reload keeps the confirmed draft:');
+  // Page.reload can return while the old, hydrated editor is still present.
+  // Wait for its window to be replaced before accepting the new editor as ready.
+  await page.eval(`window.__vinkBeforeReload = true`);
   await page.send('Page.reload');
-  await page.waitFor(`document.querySelector('textarea') && document.documentElement.dataset.hydrated === 'true'`, 'editor after reload');
+  await page.waitFor(
+    `window.__vinkBeforeReload === undefined && document.readyState === 'complete' && document.querySelector('textarea') && document.querySelector('input[name=title]') && document.documentElement.dataset.hydrated === 'true'`,
+    'new editor after reload',
+  );
   check((await page.eval(`document.querySelector('textarea').value`)) === BODY, 'text restored after reload');
   check((await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'title restored after reload');
 
