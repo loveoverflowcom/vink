@@ -4,6 +4,14 @@ Dùng checkout hiện hành, tài liệu repo và công cụ được cấp quy�
 
 ## Chọn đường thực hiện
 
+Dùng [LayoutSpec](../../vink-layout-spec/SKILL.md) trước lần đầu sửa/tạo mã UI,
+script sinh UI hoặc gọi preview: brief → hướng bố cục khi cần → khuyến nghị/spec
+được chọn → sinh UI đã được giao → đối chiếu. Spec phải được xuất cho người dùng
+đọc trước thao tác tạo UI; đọc nguồn/mở ảnh/quan sát app hiện có được làm trước.
+Sửa nhỏ dùng bản rút gọn; hướng đã chọn được giữ; audit chỉ ghi/đối chiếu bố cục.
+Không thêm bước xin duyệt mặc định; yêu cầu “chưa viết mã/chờ tôi chọn” vẫn là
+điểm dừng. Quy tắc này chỉ cho công việc UI, không áp lên mọi yêu cầu ảnh nói chung.
+
 | Đầu vào / yêu cầu | Công việc hữu ích ngay | Điều không được suy ra |
 | --- | --- | --- |
 | Ý tưởng hoặc mục tiêu | Brief, bố cục, states, copy, responsive, so sánh hướng | Tính năng đã tồn tại hoặc nghiên cứu người dùng đã được tiến hành |
@@ -55,7 +63,8 @@ thêm test hành vi khi có rủi ro thực như state, keyboard hoặc async ra
 
 ## Hình thức trả kết quả
 
-Ưu tiên ảnh hoặc kết luận chính trước. Nêu quyết định và lý do, trạng thái được
+Trong câu trả lời cuối, ưu tiên ảnh hoặc kết luận chính trước; spec đã được trình
+bày trước thao tác sinh UI không bị dời xuống cuối để hợp thức hóa. Nêu quyết định và lý do, trạng thái được
 thiết kế/kiểm tra, nguồn quan trọng và giới hạn vật chất. Không dùng mẫu báo cáo
 dài khi một đoạn và vài bullet đủ. Nếu cung cấp file/ảnh, theo quy tắc lưu và link
 của host hiện hành; không coi một đường dẫn cục bộ là đã lưu bền vững.

@@ -1,9 +1,9 @@
 ---
 name: vink-ui-design
 description: >-
-  Design or inspect Vink reading, writing, workshop and magazine experiences using
-  Material 3 Expressive, Vietnamese typography, accessible states and focused visual
-  evidence. Use for layout, tokens, copy, motion and accessibility; not backend policy.
+  Design Vink reading, writing, workshop and magazine experiences with layout
+  alternatives and a visible spec before UI generation. Use for Material 3
+  Expressive, tokens, Vietnamese typography, copy and accessibility; not backend policy.
 ---
 
 # Vink UI design
@@ -17,6 +17,18 @@ For an audit-only request, inspect and report; fixing requires scope already gra
 ## Design for the literary task
 
 Before styling, name the reader/writer's goal, primary content, primary action and state.
+Use [vink-layout-spec](../vink-layout-spec/SKILL.md) as the shared layout convention:
+brief → alternatives when needed → recommendation → selected spec → authorized UI
+generation → comparison against that spec. Publish the spec in a progress message or
+linked document before the first UI code edit, generation script or preview call.
+For a new screen or substantial redesign without a chosen direction, compare 2–3
+different structures with the same inputs, then recommend and detail one. Respect the
+user's requested count and an already selected direction. For a small fix, use the
+short regional spec; audit-only work observes and reports without creating a new design.
+This adds no approval gate: continue when prototype/implementation is authorized;
+stop at sketches or wait for selection only when requested. The spec owns any later
+structural/CTA changes as well; explain and update it before changing the UI again.
+
 The three spaces are experience scopes, not a mandate for three apps or fixed tabs.
 
 | Surface | Expression | Main concern |
@@ -80,10 +92,10 @@ For a component-by-component audit use [vink-ui-inspector](../vink-ui-inspector/
 for a scoped UI repair or implementation handoff use [vink-ui-fix](../vink-ui-fix/SKILL.md).
 These workflows complement, rather than replace, the existing Leptos and publication owners.
 
-For several proposed directions, compare three distinct hierarchies or layouts using the same
-role, content, viewport and state. Include responsive behavior, a difficult state and tradeoffs;
-label examples as fictional and recommend the direction that best serves the literary task.
-For a chosen direction or small fix, keep the requested scope.
+Use the [layout template](../vink-layout-spec/references/layout-spec.md) for the selected
+direction and [examples](../vink-layout-spec/references/examples.md) when useful. LayoutSpec
+owns the notation; this skill owns design choices. Reuse the existing spec instead of
+maintaining a second tree in a preview or handoff.
 
 Read the applicable references: [product context](references/product-context.md),
 [design system](references/design-system.md), [surfaces and states](references/surfaces-and-states.md),

@@ -52,6 +52,10 @@ có giá trị nhất và nêu phần chưa quan sát; không khai “đầy đ�
 5. Đối chiếu với reference khi user yêu cầu hoặc đã cung cấp nó làm mục tiêu so
    sánh. Ghi approved/candidate/unknown và revision nếu biết. Ảnh ý tưởng chưa chốt
    chỉ là mốc tham khảo, không tự thành tiêu chuẩn nghiệm thu bắt buộc.
+   Nếu có LayoutSpec, đối chiếu theo ID vùng, cha–con, thứ tự, CTA, responsive và
+   state bằng [quy ước chung](../vink-layout-spec/references/layout-spec.md).
+   Nếu chưa có, ghi cây bố cục quan sát được (vài dòng cho vùng nhỏ) và giới hạn
+   viewport/state; không coi nó là spec đã duyệt, không đòi spec hồi tố để audit.
 6. Phân biệt quan sát, suy luận, giả thuyết root cause và đề xuất thẩm mỹ. Chỉ kết
    luận vi phạm khi có nguồn quy tắc hoặc tác hại cụ thể, không từ sở thích cá nhân.
 

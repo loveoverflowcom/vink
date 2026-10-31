@@ -18,6 +18,9 @@ SOURCES_AND_OWNERS:
   - [only the relevant vink-* skills]
 DECISIONS:
   - [what the user selected; what remains proposed or needs a decision]
+LAYOUT_SPEC: [UI only: selected spec/content or accessible path + revision; if missing,
+  present the full/short vink-layout-spec before UI code/scripts/previews; retain the
+  user's chosen direction and any explicit request to wait; no default approval gate]
 ACCEPTANCE:
   - [observable result, failure case and its authoritative requirement]
 VERIFY:
@@ -41,3 +44,7 @@ If the user authorized execution and a commit, retain that grant without inventi
 For split prompts, include each slice's owned/shared files, contract dependency and integration
 order inside each prompt. For continuation, include completed work and valid evidence plus the
 concrete next step; do not label deferred integration as PASS.
+
+For UI, use the [shared layout convention](../../vink-layout-spec/references/layout-spec.md)
+and include comparison against the chosen spec in ACCEPTANCE/VERIFY. Omit LAYOUT_SPEC for
+tasks that do not change UI; do not invent a layout stage for a backend or documentation edit.

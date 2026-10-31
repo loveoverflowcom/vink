@@ -50,6 +50,14 @@ chứng; một task UI không tự chốt chúng.
 
 ## 3. Sửa ở ranh giới nhỏ nhất
 
+Trước patch UI/script sinh UI/preview, xuất
+[LayoutSpec rút gọn](../vink-layout-spec/references/layout-spec.md): cây vùng bị
+tác động, trước/sau, màn hẹp/theme/state liên quan và cách kiểm. Dùng
+[quy trình LayoutSpec](../vink-layout-spec/SKILL.md) cho thời điểm trình bày;
+sửa padding/copy không cần ba phương án toàn màn. Nếu đã có spec được chọn, kế
+thừa và chỉ bổ sung phần thiếu hoặc thay đổi có lý do trước patch. Được giao sửa
+thì tiếp tục, không thêm bước chờ duyệt mô tả.
+
 Giữ component hiện có, semantic tokens, chữ tiếng Việt, states và accessibility.
 Không thêm renderer/native stack, dependency hoặc rewrite toàn màn để sửa một
 spacing. Không biến “gọn hơn” thành giấu blocker, lỗi hoặc chưa lưu trong tooltip.
@@ -69,10 +77,13 @@ Với render thật, giữ fixture, state, viewport, theme, locale, text scale v
 sequence giữa before/after; mở ảnh mới. Không dùng mockup tạo sinh thay screenshot
 để báo fix đã đạt. Nếu không có baseline, nêu đó là kiểm sau sửa, không gọi so sánh
 before/after. Giữ reference/comparison policy đã chọn cho các lần recheck.
+Đối chiếu đúng vùng/CTA/thứ tự đọc với spec; nêu lệch có chủ ý và gap chưa kiểm.
 
 Lệnh lấy từ `docs/development/README.md` hiện hành. Không bịa command hoặc áp gate
-Cantos; không chạy Cargo chỉ để kiểm tài liệu. Ghi riêng PASS, FAIL, BLOCKED,
-NOT_RUN theo từng check; test đã fail không đổi thành “chưa kiểm” để hoàn tất.
+Cantos; tài liệu chỉ cần metadata/link/diff hoặc repository checks trong
+`cargo xtask verify quick`, không cần chạy app. Ghi riêng PASS, FAIL, NOT_RUN, UNSUPPORTED theo
+[verification guide](../vink-engineering/references/verification.md); giữ nguyên
+FAIL của runner, ghi blocker bằng lời thay vì đổi test đã fail thành “chưa kiểm”.
 
 ## 5. Trả kết quả hoặc bàn giao
 

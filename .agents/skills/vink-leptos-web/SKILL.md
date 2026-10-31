@@ -42,6 +42,14 @@ commands (`cargo xtask build`, wasm-bindgen version pin) are in
 
 ## Place the change
 
+For UI changes, consume the selected [LayoutSpec](../vink-layout-spec/SKILL.md).
+If absent, complete the appropriate full/short spec and show it before editing
+components/CSS/JS or generating a preview. Reuse a still-current spec already shown;
+do not reopen the user's selected direction. Map regions to actual Leptos/component
+owners and tokens. Explain structural/CTA changes in the spec before implementation,
+then compare the result against it. Pure transport/state changes with no UI change
+do not need a layout exercise. Continue within existing implementation authorization.
+
 Keep presentation separate from application and transport: components render typed states
 and dispatch intents; resources/actions coordinate requests; adapters own URLs, DTOs and
 error classification. SSR can call application services directly through the composition root.
