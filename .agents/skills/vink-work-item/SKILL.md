@@ -13,6 +13,11 @@ the nearest sources in [docs/README.md](../../../docs/README.md) and the impleme
 commands and limits in [docs/development](../../../docs/development/README.md). A formal work
 queue or GitHub Project is not a prerequisite for doing useful work.
 
+Use the [feature map](../../../docs/development/feature-map.md) to find a journey's entrypoints
+and existing assertions, then confirm them in source. For an unclear mechanism, rationale or
+prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
+[skill index](../README.md); a small implementation does not need all three.
+
 ## Resolve scope and baseline
 
 1. State one reviewable outcome, affected requirement IDs and acceptance. Retain a PR/chat/count
@@ -61,7 +66,8 @@ evidence distinct. If a dependency is unavailable, deliver the independently ver
 and record exactly what remains unverified; keep runtime failures explicit rather than fake.
 
 Update the owning documentation if the change implements a proposed module, command or
-behavior. Keep acceptance claims tied to evidence. Do not create a second status board or
+behavior, including the affected feature-map entry when the journey or coverage changes.
+Keep acceptance claims tied to evidence. Do not create a second status board or
 require GitHub-only tracking when the project has not selected it.
 
 Use permission already granted in the conversation. When committing is requested, inspect the

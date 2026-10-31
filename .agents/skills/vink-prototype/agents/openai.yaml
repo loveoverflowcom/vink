@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Prototype"
+  short_description: "Thử giả thuyết Vink bằng prototype có giới hạn"
+  default_prompt: "Dùng $vink-prototype để thử một lát cắt S-01 trong app hiện có và ghi rõ kết quả cùng giới hạn kiểm chứng."

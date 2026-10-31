@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Architect"
+  short_description: "Thiết kế thay đổi Vink dựa trên bằng chứng"
+  default_prompt: "Dùng $vink-architect để so sánh phương án autosave cho Bàn viết và chia lát cắt có thể kiểm chứng."

@@ -55,3 +55,33 @@ Khi skeleton được triển khai, skills được đối chiếu lại với c
 Khi Vink có implementation, cập nhật mô tả repository reality trong AGENTS, hướng dẫn của
 owner liên quan và lệnh kiểm thực sự có sẵn. Chỉ bổ sung references khi có nhu cầu cụ thể;
 không đồng bộ tự động các ràng buộc mới của Cantos sang Vink.
+
+## Bổ sung từ draft workflow coding agent (31/10/2026)
+
+Nguồn đầu vào là bản người dùng cung cấp trong chat, tiêu đề **“Cách kỹ sư Grok & Cursor dùng
+AI Agent để đưa hàng nghìn PR vào production”**, có dòng ghi người chia sẻ Jack Vĩ và mô tả
+các workflow pstack. Lần này chỉ dùng draft làm gợi ý phương pháp rồi đối chiếu repository
+Vink tại `20635b45c856990638c06eaab011b9940da852dc`; không đọc hay nhập mã nguồn pstack.
+Các thông tin về nhân sự, số PR, mức tăng năng suất và phiên bản pstack trong draft chưa được
+xác minh và không được dùng làm bằng chứng hay cam kết hiệu quả của bộ skills này.
+
+| Ý tưởng từ draft | Phần áp dụng cho Vink | Điều chỉnh theo phạm vi thực tế |
+| --- | --- | --- |
+| `/how` | [vink-how](../../.agents/skills/vink-how/SKILL.md) | Lần từ route qua SSR/hydration, application và PostgreSQL; tách code, assertion và kết quả chạy |
+| `/why` | [vink-why](../../.agents/skills/vink-why/SKILL.md) | D/INV/S, Git history và PR liên quan; không coi foundation hay merge là quyết định Accepted |
+| `/recall` | [vink-recall](../../.agents/skills/vink-recall/SKILL.md) | Tool lịch sử là tùy môi trường; đối chiếu chat cũ với checkout mới, không chuyển quyền từ task cũ |
+| `/architect`, thiết kế từ trải nghiệm/API usage | [vink-architect](../../.agents/skills/vink-architect/SKILL.md) | So phương án theo owner, quyền dữ liệu và bằng chứng; chia lát cắt, tiếp tục triển khai nếu đã được giao |
+| Prototype để giải quyết bất định | [vink-prototype](../../.agents/skills/vink-prototype/SKILL.md) | Thử ngay tại seam của skeleton, câu hỏi và điều kiện dừng rõ; một demo không hoàn tất S-01–S-05 |
+| Feature Map, bảo trì verification, “Build the Lever” | [vink-maintain-verification](../../.agents/skills/vink-maintain-verification/SKILL.md) và [feature map](../development/feature-map.md) | Dùng `xtask`/browser smoke hiện có, ghi rõ assertion và khoảng trống; chỉ thêm tool cho nhu cầu lặp lại có thật |
+| `/teach` | Tích hợp vào `vink-how`, `vink-why`, `vink-architect` | Giải thích bằng ví dụ, nguồn và đánh đổi; chưa cần một skill riêng trùng chức năng |
+
+Không biến đề xuất chạy nhiều agent/model, cloud workspace, bảo trì mỗi ngày hoặc tổ chức lại
+toàn bộ tài liệu thành yêu cầu mặc định. Cách viết từ trải nghiệm người dùng được giữ trong
+kiến trúc/prototype; chưa cần thêm package hay bộ tài liệu Diátaxis cho skeleton hiện tại.
+Triển khai, review và chọn lớp kiểm vẫn do `vink-work-item`, `vink-code-review` và
+`vink-engineering` sở hữu, tránh tạo bản sao của các workflow này.
+
+Bản đồ đầu tiên được lập bằng việc đọc route, component, contract, fixture và assertion.
+Không bổ sung CLI, không chạy lại PostgreSQL/browser, không nâng mức hoàn thiện sản phẩm.
+Khi cần kiểm chứng runtime hoặc sửa công cụ, thực hiện theo lớp bằng chứng được ghi trong
+hướng dẫn phát triển và verification guide.

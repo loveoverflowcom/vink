@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Maintain Verification"
+  short_description: "Cập nhật bản đồ tính năng và cách kiểm chứng"
+  default_prompt: "Dùng $vink-maintain-verification để đối chiếu feature map, kiểm thử và lệnh kiểm chứng với code Vink hiện tại."
