@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vink UI Inspector"
+  short_description: "Rà soát UI Vink theo từng thành phần và bằng chứng"
+  default_prompt: "Dùng $vink-ui-inspector để review ảnh Vink này theo từng thành phần, nêu lỗi, độ chắc chắn và thứ tự sửa."
+policy:
+  allow_implicit_invocation: true
