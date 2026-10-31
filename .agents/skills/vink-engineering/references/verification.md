@@ -5,6 +5,12 @@ Use actual manifests, commands and CI from the current checkout. The implemented
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. There is no Quint model or behavior lane; do not report one as available.
 
+Find route-level scenarios and existing assertions in the
+[feature map](../../../../docs/development/feature-map.md), then confirm the relevant source.
+The map records coverage, not current PASS results. For requested maintenance of stale maps,
+instructions or repeated checking workflows, use
+[vink-maintain-verification](../../vink-maintain-verification/SKILL.md).
+
 ## Pick lanes by change
 
 | Change | Lanes | Notes |

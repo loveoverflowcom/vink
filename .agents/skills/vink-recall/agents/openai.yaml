@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Recall"
+  short_description: "Khôi phục ngữ cảnh Vink và đối chiếu hiện trạng"
+  default_prompt: "Dùng $vink-recall để tìm lại ngữ cảnh công việc Vink này, đối chiếu checkout hiện tại và nêu bước tiếp theo."

@@ -49,8 +49,9 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; chưa phải ADR Accepted |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
 | Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
+| Bản đồ tính năng | [Feature map](development/feature-map.md) | Điểm vào, thao tác, trạng thái, source và assertion hiện có; tách coverage khỏi kết quả đã chạy |
 | Hướng dẫn agent | [AGENTS.md](../AGENTS.md), [Skills](../.agents/skills/README.md) | Cách làm việc với repo và chọn skill theo nhiệm vụ |
-| Nguồn skills | [Skill adaptation](references/skill-adaptation.md) | Nguồn Cantos được pin riêng và các thay đổi cho Vink |
+| Nguồn skills | [Skill adaptation](references/skill-adaptation.md) | Nguồn Cantos được pin riêng, draft workflow coding agent và cách chọn lọc cho Vink |
 | Bản ban đầu | [README](archive/initial/README.md), [Vision](archive/initial/prd/vision.md) | Giữ nguyên nội dung có sẵn trước lần nhập foundation; chỉ là tư liệu lịch sử |
 
 ## Ánh xạ bộ foundation

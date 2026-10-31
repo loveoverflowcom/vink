@@ -7,6 +7,9 @@ phát triển, không phải pilot hay production. Các lựa chọn dưới đ�
 Trang này là **nguồn duy nhất cho lệnh**. Skills, README và CI dẫn tới đây; định nghĩa thật của
 lệnh nằm trong [`xtask/src/main.rs`](../../xtask/src/main.rs).
 
+[Bản đồ tính năng và đường kiểm chứng](feature-map.md) dẫn từ route, thao tác và trạng thái
+người dùng tới source/assertion hiện có; đây không phải bảng kết quả chạy hay nghiệm thu.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Why"
+  short_description: "Tìm lý do thiết kế từ lịch sử và quyết định"
+  default_prompt: "Dùng $vink-why để tìm vì sao Vink tách bản nháp khỏi snapshot công khai và điều gì còn là đề xuất."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink How"
+  short_description: "Lần theo luồng xử lý và owner trong Vink"
+  default_prompt: "Dùng $vink-how để giải thích luồng lưu nháp từ Bàn viết tới PostgreSQL, kể cả xung đột phiên bản."
