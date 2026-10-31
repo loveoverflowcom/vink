@@ -73,3 +73,19 @@ an image cannot establish them.
 Report the changed flow/components, inspected artifacts and target conditions, concrete
 findings and material coverage gaps. For an audit, tie each finding to an observed problem
 and its user impact. A documentation/skill change alone needs link/metadata review, not screenshots.
+
+## Design workflows and references
+
+For a component-by-component audit use [vink-ui-inspector](../vink-ui-inspector/SKILL.md);
+for a scoped UI repair or implementation handoff use [vink-ui-fix](../vink-ui-fix/SKILL.md).
+These workflows complement, rather than replace, the existing Leptos and publication owners.
+
+For several proposed directions, compare three distinct hierarchies or layouts using the same
+role, content, viewport and state. Include responsive behavior, a difficult state and tradeoffs;
+label examples as fictional and recommend the direction that best serves the literary task.
+For a chosen direction or small fix, keep the requested scope.
+
+Read the applicable references: [product context](references/product-context.md),
+[design system](references/design-system.md), [surfaces and states](references/surfaces-and-states.md),
+[workflow and evidence](references/chat-workflow.md), and [source map](references/source-map.md).
+The bundled context is a dated snapshot; current repository files and explicit decisions take precedence.
