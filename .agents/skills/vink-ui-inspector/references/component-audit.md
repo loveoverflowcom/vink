@@ -43,6 +43,12 @@ Ghi nguồn, revision, trạng thái user đã chọn/duyệt nếu có, phần 
 viewport/theme/state. Kết quả từng vùng: `MATCH`, `DEVIATION`,
 `INTENTIONAL_DIFFERENCE`, `INCONCLUSIVE`, `NOT_COMPARED`.
 
+Với [LayoutSpec](../../vink-layout-spec/references/layout-spec.md), giữ ID vùng
+và so cha–con/thứ tự đọc/CTA cùng responsive, theme, state được yêu cầu. Nêu revision
+của spec và chỗ lệch có lý do; không chỉ so pixel. Nếu thiếu spec, inventory kèm
+cây quan sát là bằng chứng về ảnh/source đang đọc, không là thiết kế được duyệt.
+Không thể suy ra layout ở viewport khác hoặc DOM/focus từ một cây quan sát ảnh.
+
 Không tự phóng/cắt/mask/đổi baseline để làm metric tốt hơn. Nếu user đã đưa policy
 pixel comparison, giữ nguyên cho recheck hoặc ghi rõ tại sao cần đổi và giới hạn.
 Pixel diff chỉ đo khác biệt pixel; không tự định mức UX hoặc bắt layout responsive

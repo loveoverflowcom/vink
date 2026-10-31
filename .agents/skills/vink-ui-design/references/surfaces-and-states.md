@@ -18,6 +18,9 @@ Nếu user muốn vài dashboard, hỏi ít nhất có thể: suy ra vai trò t�
 Không tự nhân ba app vì Vink có ba không gian. Có thể thử ba cách bố cục cho cùng
 dashboard tác giả: **tiếp tục bản thảo**, **bàn làm việc gọn với phản hồi bên cạnh**,
 **hành trình từ viết đến chia sẻ**. Giữ cùng dữ liệu/trạng thái giữa các phương án.
+Dùng [LayoutSpec và ví dụ](../../vink-layout-spec/references/examples.md) để trình
+bày cấu trúc trước khi sinh UI; đây là hướng đề xuất, không phải mặc định bắt có
+ba phương án nếu người dùng đã chọn hướng hoặc chỉ giao sửa nhỏ.
 
 ## Trang đọc và nội dung mẫu
 

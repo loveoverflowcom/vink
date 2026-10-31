@@ -1,6 +1,6 @@
 interface:
   display_name: "Vink UI Fix"
   short_description: "Sửa lỗi UI Vink hoặc soạn bàn giao triển khai"
-  default_prompt: "Dùng $vink-ui-fix để xử lý lỗi UI Vink này với owner, acceptance và kiểm tra cùng kịch bản."
+  default_prompt: "Dùng $vink-ui-fix để mô tả ngắn vùng sửa trước patch, sửa lỗi UI Vink đúng owner và kiểm lại cùng kịch bản."
 policy:
   allow_implicit_invocation: true

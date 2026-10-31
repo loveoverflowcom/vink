@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink Layout Spec"
+  short_description: "Mô tả bố cục Vink trước khi sinh giao diện"
+  default_prompt: "Dùng $vink-layout-spec để mô tả bố cục Vink phù hợp phạm vi trước khi sinh UI, rồi tiếp tục phần đã được giao."

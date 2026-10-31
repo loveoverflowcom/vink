@@ -37,6 +37,12 @@ For implementation, specify one reviewable outcome and observable acceptance. Li
 skills instead of copying their policy. Use SudoLang-style constraints and if/else branches
 where they make execution clearer; plain structured instructions are also acceptable.
 
+For UI work, include the selected [LayoutSpec](../vink-layout-spec/SKILL.md) or an
+accessible source/revision and the user's choice. If absent, require the receiving
+agent to complete and present a scope-appropriate spec before UI code/scripts/previews.
+Preserve sketch-only or wait-for-selection scope; otherwise this adds no approval gate.
+Carry responsive/state/theme acceptance and compare the implementation to that spec.
+
 For split work, preserve the user's number of prompts/PRs/chats. Assign one owner for each
 shared file/contract, explicit dependencies and integration order. Make each prompt self-contained.
 Writing split prompts does not launch agents or create chats.

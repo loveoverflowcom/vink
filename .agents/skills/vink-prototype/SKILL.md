@@ -28,6 +28,13 @@ already owned by the requirement, or clearly declared as provisional experiment 
 
 ## Implement at the existing seam
 
+For an experiment that creates or changes UI, present the appropriate
+[LayoutSpec](../vink-layout-spec/SKILL.md) before UI code, a generation script or
+preview. A new screen/redesign without a selected direction uses the Design workflow's
+2–3 structural alternatives; an already chosen variant or small repair uses its
+selected/short spec. This does not force alternatives for a backend experiment or
+reopen a choice already made. Continue the authorized prototype without a new approval.
+
 Extend the current app/module instead of scaffolding a competing Vink. Isolate an alternative
 behind a small local switch only if comparison needs it; do not add a permanent flag platform.
 For a library/API experiment, start from a small usage example and the provider's owned contract.

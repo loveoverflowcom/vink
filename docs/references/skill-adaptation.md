@@ -85,3 +85,31 @@ Bản đồ đầu tiên được lập bằng việc đọc route, component, c
 Không bổ sung CLI, không chạy lại PostgreSQL/browser, không nâng mức hoàn thiện sản phẩm.
 Khi cần kiểm chứng runtime hoặc sửa công cụ, thực hiện theo lớp bằng chứng được ghi trong
 hướng dẫn phát triển và verification guide.
+
+## Mô tả bố cục trước khi sinh UI (31/10/2026)
+
+Đầu vào là đề xuất người dùng cung cấp trong chat, mở đầu **“Tôi khuyến nghị tạo một
+skill chuyên mô tả bố cục”**. Đã đối chiếu với `develop` tại
+`65bd6008692bbece8387c75f0c8efb9c644dbb51`, các skill Design/Fix/Inspector,
+frontend/prototype/prompt và token/component thực trong
+[vink.css](../../apps/vink-web/style/vink.css). Bản góp ý là đề xuất quy trình,
+không phải bằng chứng các tính năng hoặc hiệu quả thiết kế đã được kiểm chứng.
+
+Thêm [vink-layout-spec](../../.agents/skills/vink-layout-spec/SKILL.md) làm một chủ
+quy ước: cây vùng → responsive/theme/state → đối chiếu. Design giữ lựa chọn thiết
+kế, Fix dùng bản rút gọn, Inspector so spec hoặc ghi bố cục quan sát; frontend,
+prototype và prompt bàn giao tham chiếu cùng quy ước. LayoutSpec không gọi ngược
+các workflow. Mô tả phải xuất cho người dùng trước patch/script/preview UI nhưng
+không tạo bước chờ duyệt mặc định, không áp quy trình toàn màn lên sửa padding.
+
+Màn mới chưa chọn hướng dùng 2–3 cấu trúc để so; số lượng người dùng yêu cầu và
+hướng đã chọn được giữ. Audit-only không tự sửa. Cây là pseudo-markup, Grid Areas
+và wireframe là tùy chọn; không thêm parser, renderer hay runner. Ví dụ dashboard
+ghi rõ phản hồi là mẫu do Discourse chưa tồn tại, token/component hiện có tách
+khỏi đề xuất. Mẫu handoff giữ spec/revision hoặc yêu cầu hoàn tất spec trước UI.
+
+[Năm ca kiểm workflow](../../.agents/skills/vink-layout-spec/references/examples.md)
+bao phủ màn mới, chỉ phác thảo, hướng đã chọn, sửa nhỏ và audit. Đây là kỳ vọng
+kiểm hành vi agent; link/metadata hay một lượt mô phỏng không chứng minh UI đã
+render, không bảo đảm mọi lần gọi model sẽ tuân thủ. Quy ước và ví dụ trong skills
+không hoàn tất UX-01/UX-03 hay bất kỳ spike/decision sản phẩm nào.
