@@ -149,7 +149,7 @@ không tìm được qua nguồn đã có, hỏi đúng nội dung B; không t�
 | Yêu cầu | Hành vi cần quan sát |
 | --- | --- |
 | Thiết kế dashboard mới và làm prototype | 2–3 hướng cấu trúc → khuyến nghị/spec → sinh UI, tiếp tục không chờ duyệt mặc định |
-| Chỉ phác thảo 3 hướng, chưa viết mã | Đúng ba hướng, so cùng input; dừng ở phác thảo |
+| Chỉ phác thảo 3 hướng, chưa viết mã | Đúng ba hướng, cùng input và trạng thái khó để so; dừng ở phác thảo |
 | Triển khai phương án B đã chọn | Giữ B, spec trước sinh UI; không mở lại lựa chọn |
 | Sửa padding của nút Lưu | Spec rút gọn trước patch, đúng owner; không redesign toàn màn |
 | Review ảnh này, chưa sửa | Mở ảnh, quan sát/đối chiếu; thiếu spec không là lỗi; không patch |

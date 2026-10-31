@@ -32,8 +32,10 @@ Skill này không gọi ngược lại các workflow để thực hiện cùng b
 ## Trình bày trước khi tạo giao diện
 
 1. Nêu người dùng, tác vụ, nội dung/hành động chính và trạng thái. Với nhiều hướng,
-   giữ cùng vai trò, nội dung mẫu, viewport và state; mỗi hướng có cây ngắn, màn hẹp,
-   một trạng thái khó và đánh đổi. Chỉ đổi màu/font/radius không thành hướng bố cục mới.
+   giữ cùng vai trò, nội dung mẫu, viewport và state; chọn **cùng một trạng thái
+   khó** để so tất cả các hướng, không thay bằng empty ở A, error ở B, conflict ở C.
+   Mỗi hướng có cây ngắn, màn hẹp, cách xử lý state chung và đánh đổi. Các state
+   bổ sung thuộc spec hướng được chọn. Chỉ đổi màu/font/radius không thành hướng mới.
 2. **Xuất mô tả cho người dùng đọc được trước lần đầu tạo/sửa mã UI, script sinh UI
    hoặc gọi công cụ tạo preview của phương án.** Có thể dùng progress message hoặc
    tài liệu được liên kết trước thao tác đó. Bao gồm CSS, HTML, JS/TS, `.mjs`,

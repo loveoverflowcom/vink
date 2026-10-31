@@ -20,7 +20,9 @@ snapshot trong đó không thay thế việc đọc source ở revision đang l�
 ## Các hướng để so sánh
 
 Mỗi hướng gồm tên/mục tiêu, cây vùng ngắn, nội dung và CTA chính, cách xuống màn
-hẹp, một trạng thái khó và đánh đổi. So cùng input; thay phân bổ không gian, thứ
+hẹp, cùng một trạng thái khó để so và đánh đổi. Chọn state chung trong brief;
+không lấy lỗi tải ở một hướng so với rỗng hoặc conflict ở hướng khác. Sau khi
+chọn hướng, bổ sung các state còn liên quan vào spec. So cùng input; thay phân bổ không gian, thứ
 tự đọc, vị trí action, mật độ hoặc cách mở nội dung phụ. Khuyến nghị theo tác vụ,
 không chọn chỉ vì hình đẹp. Số lượng theo yêu cầu người dùng, mặc định 2–3 cho màn
 mới/redesign chưa chọn hướng; sửa nhỏ không cần nhiều hướng toàn màn.
