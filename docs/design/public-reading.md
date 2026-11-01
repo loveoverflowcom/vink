@@ -82,3 +82,57 @@ bởi CDP trong browser test và đều có nhãn mẫu; không nhập chúng v�
 
 Kết quả chạy và giới hạn được bổ sung sau khi kiểm tra diff cuối; không suy ra PASS từ source
 hoặc prototype.
+
+## Bằng chứng local và review — 01/11/2026
+
+[PR #16](https://github.com/loveoverflowcom/vink/pull/16), base/merge-base `c6a8a29`;
+UI, Rust và CSS tại head ban đầu `4fea625`. Lượt tiếp theo chỉ sửa browser smoke và tài liệu.
+macOS ARM64, Rust 1.99.1, Node 22.15.0, Chrome 156.0.8078.76 headless, DPR 1;
+PostgreSQL 17.11 thật, UTF-8/locale C, loopback, database tạm của lane. Build và PostgreSQL
+chạy trên ổ RAM tạm do ổ hệ thống thiếu chỗ; không dùng CI hoặc dữ liệu production.
+
+- `PASS` — `cargo xtask verify quick`: fmt, clippy SSR/WASM, 54 unit/contract tests và
+  repository checks; phần Rust/CSS không đổi sau lượt này.
+- `PASS` — `cargo xtask verify postgres`: 12 tests với migrations thật; API/SSR sau save riêng
+  vẫn trả đúng revision đã công khai, không lộ draft hoặc revision chưa được trỏ tới; rỗng 200
+  tách khỏi outage 503. Config rejection và worker SIGTERM cùng qua.
+- `PASS` — `cargo xtask verify web`, cả main và after-restart: public HTML/body/title/description/
+  canonical trước JS; sửa nháp thật không đổi public DTO/SSR; missing/unpublished/invalid ID 404;
+  hydration, link đọc/quay về, loading/rỗng/unavailable, reader 404/503; không N+1 ở danh sách.
+  Giữ cả editor/save/conflict/leave/export/restart assertions và không có console errors.
+- `PASS` — 40 tổ hợp Explore/reader × 1440/1024/834/390/320px × light/dark × root text 100/200%
+  không tràn ngang; khổ/dòng/thụt lề giữ qua DOM, markup manuscript được render thành text.
+  Tab đi từ link đọc sang action viết, rồi Shift+Tab trở lại với focus-visible.
+- `SCREENSHOT_INSPECTED` — đã mở mẫu seed thật (một bài) ở Explore/reader 1440 sáng và 390 tối;
+  mẫu nhiều bài/title dài ở 1440, 1024, 834, 390, 320; reader 320/chữ 200% và thân thơ 320/200%;
+  empty/unavailable 320. Các ảnh mở là mẫu đại diện, không phải đã mở toàn bộ 40 tổ hợp.
+  PNG và viewport/theme/font/scroll/user agent nằm trong `target/verify-web/screenshots/contexts.json`.
+- Contrast từ `getComputedStyle`: 11 cặp Explore tối thiểu **6.28:1 sáng / 7.47:1 tối**;
+  5 cặp reader **6.72:1 / 10.83:1**. JSON ở `target/verify-web/{explore,reader}-contrast-{light,dark}.json`.
+  Chưa đo mọi hover/disabled hoặc mọi glyph của manuscript.
+
+Đối chiếu vùng: heading/luồng hữu hạn/reader/đường về khớp spec r1. Bỏ spotlight, bộ lọc và
+vùng tương tác là delta capability đã ghi trước code, không phải đã nghiệm thu B/C của #14.
+Context xuống sau danh sách ở tablet/mobile; không chừa cột rỗng. Không thấy tràn/cắt dấu ở
+các ảnh đã mở; độ tràn toàn trang còn có assertions riêng.
+
+**Review:** đọc diff base/head, owner/caller của `PublicReads`, API, publication query,
+`DocumentView`, shell và regression tests. Không tìm thấy lỗi production mới cần sửa trong
+phạm vi này; không đổi authority, query, transport hay document schema. Đã sửa các giả định
+có sẵn của smoke khi chạy trên macOS: giữ headless target visible/focused qua CDP (tab cập nhật
+Chrome có thể giành active); chọn Cmd/Ctrl và phím đi cuối tài liệu theo platform; đợi focus
+sau animation frame ở xác nhận bỏ chữ; đối chiếu tên tệp tương đương NFC trên HFS+, vẫn so
+nguyên văn nội dung file. DevTools request có deadline 30s và download có sự kiện trạng thái;
+không thay outcome mong đợi hoặc bỏ assertion để làm xanh. Đây là tự review cùng tác vụ,
+không phải một GitHub approval độc lập.
+
+Các lần chuẩn bị đầu bị lỗi dung lượng, cache npm có quyền sai và `RUST_LOG=warn` làm runner
+không thấy worker ready; đã dùng build/cache tạm và filter log local rồi chạy lại. Các lỗi đầu
+không được tính là PASS. Không thay cấu hình credential toàn máy; upload PR dùng GitHub connector
+vì tài khoản Git CLI hiện tại không có quyền push repo này.
+
+`NOT_RUN`: CI (không chờ theo yêu cầu), Safari/Firefox, screen reader có tên, browser zoom thật,
+điện thoại/tablet và IME hệ điều hành thật. CDP viewport/root text/focus/key/composition không thay
+các bằng chứng đó. Chưa có production auth, author publish/withdraw, moderation, curation,
+full public search, bookmark, feedback hoặc Discourse; giữ quyết định D/S và yêu cầu ở trạng thái
+đã ghi. B/C của #14 cần owner/contracts và authority thật trước khi nối tương tác.

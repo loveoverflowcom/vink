@@ -31,12 +31,16 @@ const LAST_LINE = 'lời cuối ở đây.';
 const BODY_TEXT = `[...document.querySelectorAll('[data-testid=editor-body] .cm-line')].map((l) => l.textContent).join('\\n')`;
 const EDITOR_READY = `document.querySelector('[data-testid=editor-body] .cm-content[contenteditable=true]')`;
 const CTRL = 2;
+const META = 4;
 const SHIFT = 8;
 const KEYS = {
   Escape: { code: 'Escape', keyCode: 27 },
   Tab: { code: 'Tab', keyCode: 9 },
   End: { code: 'End', keyCode: 35 },
   Home: { code: 'Home', keyCode: 36 },
+  ArrowDown: { code: 'ArrowDown', keyCode: 40 },
+  ArrowLeft: { code: 'ArrowLeft', keyCode: 37 },
+  ArrowRight: { code: 'ArrowRight', keyCode: 39 },
   s: { code: 'KeyS', keyCode: 83 },
   z: { code: 'KeyZ', keyCode: 90 },
   Z: { code: 'KeyZ', keyCode: 90 },
@@ -93,7 +97,17 @@ class Cdp {
   send(method, params = {}, sessionId) {
     const id = ++this.nextId;
     this.ws.send(JSON.stringify({ id, method, params, sessionId }));
-    return new Promise((resolve, reject) => this.pending.set(id, { resolve, reject, method }));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`${method}: no DevTools response within 30s`));
+      }, 30000);
+      this.pending.set(id, {
+        resolve: result => { clearTimeout(timer); resolve(result); },
+        reject: error => { clearTimeout(timer); reject(error); },
+        method,
+      });
+    });
   }
 }
 
@@ -102,6 +116,8 @@ class Page {
     this.cdp = cdp;
     this.sessionId = sessionId;
     this.errors = [];
+    this.mac = false;
+    this.mod = CTRL;
     cdp.listeners.push((message) => {
       if (message.sessionId !== sessionId) return;
       if (message.method === 'Runtime.exceptionThrown') {
@@ -205,10 +221,19 @@ class Page {
     await this.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   }
 
-  /** Focuses the CodeMirror body, moves to the end with Ctrl+End and inserts committed text. */
+  /** Native document/line movement differs on macOS; don't edit a selection through the DOM. */
+  lineStart(modifiers = 0) {
+    return this.key(this.mac ? 'ArrowLeft' : 'Home', (this.mac ? META : 0) | modifiers);
+  }
+
+  lineEnd() {
+    return this.key(this.mac ? 'ArrowRight' : 'End', this.mac ? META : 0);
+  }
+
+  /** Focuses CodeMirror, uses the platform document-end shortcut and inserts committed text. */
   async typeInBody(text) {
     await this.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
-    await this.key('End', CTRL);
+    await this.key(this.mac ? 'ArrowDown' : 'End', this.mod);
     if (text) await this.send('Input.insertText', { text });
   }
 
@@ -372,7 +397,7 @@ async function downloaded(dir, before = []) {
     }
     await sleep(100);
   }
-  throw new Error('no finished download');
+  throw new Error(`no finished download; directory entries: ${JSON.stringify(readdirSync(dir))}`);
 }
 
 async function launchChrome() {
@@ -423,6 +448,8 @@ async function openPage(cdp) {
   // headless target visible/focused so keyboard events and animation frames can run.
   await page.send('Page.bringToFront');
   await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+  page.mac = await page.eval(`/Mac/.test(navigator.platform)`);
+  page.mod = page.mac ? META : CTRL;
   return page;
 }
 
@@ -1151,9 +1178,9 @@ async function mainPhase(page) {
   await page.typeInBody(STANZA);
   const written = BODY + TAIL + STANZA;
   check((await page.body()) === written, 'new stanza typed with an indented line');
-  await page.key('Home', SHIFT);
+  await page.lineStart(SHIFT);
   const selected = `getSelection().toString()`;
-  check((await page.eval(selected)) === LAST_LINE, 'last line selected with Shift+Home');
+  check((await page.eval(selected)) === LAST_LINE, 'platform line-start shortcut selects the last line');
   await shellWithDirtyEditor(page, editorPath, written, view, selected);
   const surface = `getComputedStyle(document.querySelector('[data-testid=editor-body]')).backgroundColor`;
   const lightSurface = await page.eval(surface);
@@ -1188,13 +1215,13 @@ async function mainPhase(page) {
   check((await page.eval(selected)) === LAST_LINE && (await page.body()) === written, 'Escape keeps the text and selection');
   check(await page.eval(view), 'dialog kept the same EditorView');
 
-  await page.key('End');
+  await page.lineEnd();
   await page.send('Input.insertText', { text: ' Thêm' });
   check((await page.body()) === `${written} Thêm`, 'typed after the dialog');
-  await page.key('z', CTRL);
-  check((await page.body()) === written, 'Ctrl+Z undoes the last insertion');
-  await page.key('Z', CTRL | SHIFT);
-  check((await page.body()) === `${written} Thêm`, 'Ctrl+Shift+Z redoes it');
+  await page.key('z', page.mod);
+  check((await page.body()) === written, 'Ctrl/Cmd+Z undoes the last insertion');
+  await page.key('Z', page.mod | SHIFT);
+  check((await page.body()) === `${written} Thêm`, 'Ctrl/Cmd+Shift+Z redoes it');
   check(await page.eval(view), 'undo and redo in the same EditorView');
   await page.eval(`delete document.documentElement.dataset.theme`);
 
@@ -1202,13 +1229,13 @@ async function mainPhase(page) {
   // downloads once (the recovery export); the toolbar export runs in the after-restart phase.
   const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));
   try {
-    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
+    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
 
     console.log('shortcut save, then back/forward with unsaved text:');
-    await page.key('s', CTRL);
-    await page.waitStatus('saved', 'Ctrl+S save');
+    await page.key('s', page.mod);
+    await page.waitStatus('saved', 'Ctrl/Cmd+S save');
     const afterShortcut = await page.draft(workId);
-    check(afterShortcut.version === 5, 'Ctrl+S saved version 5');
+    check(afterShortcut.version === 5, 'Ctrl/Cmd+S saved version 5');
     await page.typeInBody(' Lui lại.');
     await page.eval(`history.back()`);
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from history back');
@@ -1258,6 +1285,7 @@ async function mainPhase(page) {
     const late = await gate.next();
     await page.click('[data-testid=leave-discard]');
     await page.waitFor(`document.querySelector('[data-testid=discard-confirm]')`, 'discard confirmation');
+    await page.waitFor(`document.activeElement?.dataset.testid === 'discard-back'`, 'confirmation focus after its animation frame');
     check(await page.eval(`document.activeElement?.dataset.testid === 'discard-back'`), 'confirmation focuses “Quay lại”, not the loss');
     await page.click('[data-testid=discard-confirm]');
     await page.waitFor(`location.pathname === '/'`, 'left without saving');
@@ -1292,13 +1320,14 @@ async function afterRestartPhase(page) {
   console.log('export keeps the text being written:');
   const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));
   try {
-    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads });
+    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
     await page.typeInBody(STANZA);
     const current = await page.body();
     check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
     await page.click('[data-testid=export]');
     const file = await downloaded(downloads);
-    check(file.name === EXPORT_NAME, `export file uses the capped title name (${file.name})`);
+    // HFS+ returns decomposed file names; only the name comparison is canonicalized.
+    check(file.name.normalize('NFC') === EXPORT_NAME, `export file uses the capped title name (${file.name})`);
     check(file.text === `${state.title}\n\n${current}\n`, 'export holds the title and the unsaved text with lines and stanzas');
     check((await page.status()) === 'unsaved', 'export is not a save');
   } finally {
@@ -1312,6 +1341,12 @@ let activePage;
 try {
   const cdp = new Cdp(chrome.url);
   await cdp.open();
+  cdp.listeners.push(message => {
+    if (message.method === 'Browser.downloadProgress' && message.params.state !== 'inProgress') {
+      const { state, receivedBytes, totalBytes } = message.params;
+      console.log(`  ..  browser download: ${state}, ${receivedBytes}/${totalBytes} bytes`);
+    }
+  });
   const page = await openPage(cdp);
   activePage = page;
   if (args.phase === 'main') await mainPhase(page);
