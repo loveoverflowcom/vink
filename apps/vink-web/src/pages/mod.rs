@@ -1,4 +1,5 @@
 mod desk;
+pub(crate) mod me;
 
 pub use desk::{DeskIndex, DraftEditor};
 

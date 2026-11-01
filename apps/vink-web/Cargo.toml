@@ -15,6 +15,7 @@ leptos.workspace = true
 leptos_meta.workspace = true
 leptos_router.workspace = true
 serde.workspace = true
+unicode-normalization = "0.1.26"
 # Server-only: response status for SSR pages. Never part of the browser build.
 leptos_axum = { workspace = true, optional = true }
 # Browser-only.
@@ -25,7 +26,8 @@ web-sys = { version = "0.3.106", optional = true, features = [
     "Window", "Location", "Document", "Element", "HtmlElement", "HtmlAnchorElement",
     "HtmlDialogElement", "HtmlInputElement", "BeforeUnloadEvent", "Event", "EventTarget",
     "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url", "Blob",
-    "BlobPropertyBag", "FocusOptions",
+    "BlobPropertyBag", "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
+    "ResizeObserver", "NodeList",
 ] }
 js-sys = { version = "0.3.106", optional = true }
 wasm-bindgen-futures = { version = "0.4.79", optional = true }

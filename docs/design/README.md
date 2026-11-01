@@ -28,9 +28,9 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
 - **Khám phá đứng trước Bàn viết.** Rail desktop/tablet: Khám phá → Bàn viết, Tôi ở chân rail.
   Bottom bar mobile: Khám phá → Bàn viết → Tôi. Quyết định 31/10 ghi đè thứ tự Bàn viết-trước
   trong ảnh chụp và ZIP v2.3. Thứ tự tab không tự đổi màn khởi động; `/` vẫn là trang công khai.
-- Topbar hiện có “Đọc” (`/`) rồi “Bàn viết”, tức đã giữ thứ tự này. Rail, bottom bar, Tôi, đổi
-  nhãn và bộ chọn giao diện thuộc [#7](https://github.com/loveoverflowcom/vink/issues/7).
-- **Logo chưa có bản production.** Mark chữ “V” trong topbar là tạm thời, chỉ đổi sang
+- [#7](https://github.com/loveoverflowcom/vink/issues/7) triển khai rail/bar, nhãn Khám phá,
+  Tôi và preference Sáng/Tối/Hệ thống; spec và owner ở dưới.
+- **Logo chưa có bản production.** Mark chữ “V” trong shell là tạm thời, chỉ đổi sang
   `primary`/`on-primary`. Logo vết mực v2 (PNG 1254 px) là preview và đã bị thay hướng bởi logo
   Enso lông vũ + ngòi bút ngày 01/11; [#10](https://github.com/loveoverflowcom/vink/issues/10) sở
   hữu vector hóa, các kích thước và tích hợp. Không dùng PNG preview làm logo.
@@ -39,7 +39,10 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
 
 Light là mặc định. Dark theo `prefers-color-scheme` khi `<html>` không có `data-theme`;
 `data-theme="dark"` hoặc `"light"` ghi đè hệ thống ở cả hai chiều và đặt `color-scheme` tương ứng.
-Chưa có control đặt thuộc tính này; HTML từ server không phụ thuộc JavaScript để chọn theme.
+Bộ chọn trong Tôi lưu `vink.ui.theme` trên thiết bị; Hệ thống xóa override để CSS theo OS.
+Bootstrap trước stylesheet khôi phục override trước hydration; SSR không cần đọc storage và vẫn
+có CSS theo hệ thống khi JavaScript/storage bị chặn. Lựa chọn mới vẫn áp dụng trong phiên nếu ghi
+storage lỗi, nhưng không hứa giữ sau reload.
 
 | Role | Light | Dark | Dùng cho |
 | --- | --- | --- | --- |
@@ -125,3 +128,76 @@ lượng transition tính toán của thẻ, nút và nav về `1e-05s` (bình t
 Chưa kiểm: zoom trình duyệt thật, Safari/Firefox, thiết bị di động thật, IME hệ điều hành, screen
 reader có tên và cài đặt reduced-motion của hệ điều hành. Ảnh tĩnh không chứng minh tương tác hay
 độ mượt.
+
+## Shell thích ứng #7
+
+LayoutSpec r1, đã trình bày trước sửa UI ngày 01/11/2026; nền `develop@6648200`.
+Nguồn: [v2.3](https://drive.google.com/file/d/1IlLVGiPHIg9DBohATdwd-38Gdy7z4U5g/view),
+[Navigation Research](https://drive.google.com/file/d/1TDA4HoX5O-IHtQfu3RSnOks2WaYXkBaz/view),
+quyết định Khám phá-trước 31/10 ở bảng nguồn. Hai không gian là tác vụ đọc/viết; Tôi là tiện ích
+ngắn trên web để đổi giao diện trong lúc viết. Đây là lý do thiết kế được ghi nhận, chưa phải
+kết quả nghiên cứu người dùng hay quyết định auth D-05/S-03.
+
+```text
+Shell #shell
+  Region #navigation — rail desktop/tablet
+    Region #brand — mark V tạm
+    Region #nav-primary — Khám phá → Bàn viết
+    Region #account-bottom — Tôi, neo chân rail
+  Region #main — route hiện tại, editor giữ một instance
+  Region #bottom-navigation — mobile: Khám phá → Bàn viết → Tôi
+  Overlay #profile-menu — trạng thái tài khoản, appearance, Mở trang Tôi
+  Screen #me — /toi: trạng thái tài khoản và appearance
+```
+
+Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc định;
+[shell.rs](../../apps/vink-web/src/shell.rs) giữ rail/bar/dialog;
+[appearance.rs](../../apps/vink-web/src/appearance.rs) giữ preference và initials;
+[me.rs](../../apps/vink-web/src/pages/me.rs) giữ `/toi`. CSS dùng palette/role hiện có, không
+thêm palette hay logo. `initials` dùng từ đầu/cuối, NFC và uppercase tiếng Việt; không có tên
+thật thì trả dấu trung tính. An Nhiên → AN chỉ là fixture unit test.
+
+- Từ 1100px mặc định 220px; 760–1099px và editor mặc định 96px. Preference `vink.ui.rail`
+  ghi đè ngữ cảnh. Rail compact đặt icon trên/nhãn dưới; rail cuộn khi thiếu chiều cao.
+- Dưới 760px rail ẩn, header brand trong luồng trang, bottom bar ba đích. Editor ẩn bottom bar,
+  giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
+  cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
+- Nội dung/CTA chính thuộc route hiện tại. Trong Tôi, tác vụ chính là chọn giao diện; thông tin
+  tài khoản chưa có được nói rõ. Không có nút đăng nhập/đăng xuất giả hay bộ đếm thành viên.
+- Overlay native `dialog` neo cạnh chân rail, nền trong suốt và ngoài dialog inert; focus vào
+  radio đang chọn, Tab giữ bên trong, Escape/Đóng/bấm ngoài trả trigger. Resize về mobile đóng
+  overlay và focus main đang hiển thị; route, scroll và editor được giữ.
+- Đổi theme/rail, mở/đóng overlay chỉ đổi preference/DOM shell, không lưu hay gọi guard. Nút
+  Mở trang Tôi đóng overlay trước khi gọi `NavigationGuard.navigate`; link và back/forward dùng
+  guard PR 02. Lưu lỗi/xung đột/treo giữ nguyên đường xuất và xác nhận rời không lưu.
+- Loading/empty/lỗi/saved/dirty/conflict tiếp tục do route/editor hiện có trình bày. Shell không
+  suy ra trạng thái tài khoản hay bản thảo. Tooltip thu/mở rail có hover/focus/Escape, nằm ngoài
+  vùng rail cuộn để không bị cắt; thông tin thiết yếu vẫn có nhãn và trạng thái trực tiếp.
+
+[Feature map](../development/feature-map.md) dẫn tới assertions. Ảnh PNG từ browser smoke nằm
+trong `target/verify-web/screenshots/` và phải được mở trước khi kết luận thị giác. Ảnh/chữ đầu
+không chứng minh profile thật, OS IME, screen reader hay thiết bị mobile.
+
+### Bằng chứng shell ngày 01/11/2026
+
+Nền `develop@6648200`, diff `codex/adaptive-navigation` cho #7, Linux, Rust 1.99.1,
+Node 24.22.2, Chrome 156.0.8078.73 headless, DPR 1, PostgreSQL local với database thử riêng.
+
+- `PASS` — `cargo xtask verify quick`: fmt, clippy server/WASM, 51 unit/contract tests và
+  repository checks. Fixture initials gồm tên nhiều từ, một từ, dấu tổ hợp và blank.
+- `PASS` — `CARGO_BUILD_JOBS=1 cargo xtask verify web`: đầy đủ main + after-restart, không có
+  console error/exception; một job chỉ giới hạn build, không giảm assertions.
+- `SCREENSHOT_INSPECTED` — mở 16 PNG cùng manifest `contexts.json`: 1440/1024/390/320px sáng/tối,
+  320px chữ 200% (Tôi, cuối trang và Bàn viết), tooltip, overlay, editor dirty và preview tiêu đề
+  dài. Nhãn điều hướng không tách giữa từ sau khi bỏ padding ngang trong ô compact/mobile;
+  khoảng đáy theo chiều cao bar thật. Không còn finding thị giác cần sửa trong các cảnh đã mở.
+- Năm cặp chữ shell lấy từ `getComputedStyle` sau khi transition kết thúc: thấp nhất 5.79:1
+  sáng, 8.23:1 tối; JSON nằm ở `target/verify-web/shell-contrast-{light,dark}.json`.
+- Native focus của [runtime](../../apps/vink-web/editor/src/editor.ts) gọi `EditorView.focus()`
+  để giữ selection khi trở lại từ rail/overlay. Browser kiểm Tab, native blur/focus, cùng DOM,
+  chữ/tiêu đề/dirty, không có PUT/POST do utility; guard cả ba đích, save chậm/hủy, lỗi/xung đột,
+  undo/redo, restart và export. Fixture tiêu đề dài giữ giới hạn tên tệp 80 ký tự vốn có.
+
+`NOT_RUN`: IME hệ điều hành, điện thoại thật, zoom trình duyệt thật, Safari/Firefox và screen
+reader có tên. Resize CSS, root font 200% và CDP input không thay những bằng chứng đó.
+Navigation chỉ phủ một phần UX-01/UX-03; utility Tôi chưa hoàn tất UX-04 hay D-05/S-03.

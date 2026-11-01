@@ -7,19 +7,21 @@
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
-// desktop-size headless Chrome is used. Save responses are held or failed with the Fetch domain.
+// headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
 import { spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const PUBLISHED_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const INDENTED_LINE = '    đã theo mưa về rất lâu.';
 const DRAFT_ONLY_LINE = 'Khổ đang viết dở — chưa công khai.';
 
-const TITLE = 'Thử nghiệm Bàn viết';
+const TITLE = 'Thử nghiệm Bàn viết — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở';
+// The existing export policy caps file names at 80 characters; the file keeps the full title.
+const EXPORT_NAME = 'Thử nghiệm Bàn viết — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ.txt';
 const BODY = 'Sáng nay trời đổ mưa rào,\n  ngõ nhỏ ướt mềm từng viên gạch cũ.\n\nNgười về có nhớ hay sao —\nỹ ỷ ữ ợ Đ đ.';
 const TAIL = ' (sửa tiếp)';
 const STANZA = '\n\nKhổ mới chưa lưu,\n  dòng thụt vào,\nlời cuối ở đây.';
@@ -32,6 +34,7 @@ const CTRL = 2;
 const SHIFT = 8;
 const KEYS = {
   Escape: { code: 'Escape', keyCode: 27 },
+  Tab: { code: 'Tab', keyCode: 9 },
   End: { code: 'End', keyCode: 35 },
   Home: { code: 'Home', keyCode: 36 },
   s: { code: 'KeyS', keyCode: 83 },
@@ -144,6 +147,29 @@ class Page {
     await this.waitFor(`location.href === ${JSON.stringify(url)} && document.readyState === 'complete'`, `load ${url}`);
   }
 
+  async reload() {
+    await this.eval(`window.__beforeReload = true`);
+    await this.send('Page.reload');
+    await this.waitFor(`!window.__beforeReload && document.documentElement.dataset.hydrated === 'true'`, 'fresh hydrated document');
+  }
+
+  viewport(width, height = 900) {
+    return this.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+  }
+
+  async capture(name) {
+    await this.eval(`document.fonts.ready`);
+    const { data } = await this.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+    const dir = join(dirname(args.state), 'screenshots');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, `${name}.png`), Buffer.from(data, 'base64'));
+    const context = await this.eval(`({ route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent })`);
+    const manifest = join(dir, 'contexts.json');
+    const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
+    contexts[name] = context;
+    writeFileSync(manifest, JSON.stringify(contexts, null, 2));
+  }
+
   async click(selector) {
     const point = await this.eval(`(() => {
       const el = document.querySelector(${JSON.stringify(selector)});
@@ -174,6 +200,9 @@ class Page {
     for (const type of ['rawKeyDown', 'keyUp']) {
       await this.send('Input.dispatchKeyEvent', { type, key: name, code, modifiers, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
     }
+    // Give native selectionchange and CodeMirror's focus observer a rendering opportunity
+    // before the next synthetic input, as between separate human key/pointer actions.
+    await this.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   }
 
   /** Focuses the CodeMirror body, moves to the end with Ctrl+End and inserts committed text. */
@@ -181,6 +210,16 @@ class Page {
     await this.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
     await this.key('End', CTRL);
     if (text) await this.send('Input.insertText', { text });
+  }
+
+  /** Return as a keyboard user does, rather than assigning focus to contenteditable directly
+   * (which lets Chrome put its DOM caret at the start before CodeMirror restores selection). */
+  async tabToBody() {
+    for (let i = 0; i < 16; i++) {
+      if (await this.eval(`document.activeElement?.classList.contains('cm-content')`)) return;
+      await this.key('Tab');
+    }
+    throw new Error('keyboard traversal did not reach the body editor');
   }
 
   body() {
@@ -301,6 +340,7 @@ async function openPage(cdp) {
   const page = new Page(cdp, sessionId);
   await page.send('Page.enable');
   await page.send('Runtime.enable');
+  await page.send('Network.enable');
   return page;
 }
 
@@ -318,13 +358,239 @@ async function serverHtml() {
   check(anonymous.status === 200, 'loopback identity fixture is active for this local run');
 }
 
+const RAIL_WIDTH = `Math.round(document.querySelector('.vk-rail').getBoundingClientRect().width)`;
+const PROFILE_OPEN = `document.querySelector('[data-testid=profile-menu]').open`;
+
+async function openProfile(page) {
+  await page.click('[data-testid=profile-trigger]');
+  await page.waitFor(PROFILE_OPEN, 'Tôi overlay');
+}
+
+async function chooseTheme(page, value, group = 'overlay-theme') {
+  await page.click(`label:has(input[name="${group}"][value="${value}"])`);
+  await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
+  // Token colours switch at once; nav background transitions take 160ms. Contrast samples
+  // describe the settled theme, separately from those transient animation frames.
+  await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
+}
+
+async function shellContrast(page, theme) {
+  const pairs = await page.eval(`(() => {
+    const rgb = value => value.match(/[\\d.]+/g).map(Number);
+    const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const background = el => {
+      for (; el; el = el.parentElement) {
+        const color = getComputedStyle(el).backgroundColor;
+        const alpha = rgb(color)[3] ?? 1;
+        if (alpha === 1) return color;
+        if (alpha !== 0) throw new Error('contrast requires alpha composition');
+      }
+      throw new Error('missing opaque background');
+    };
+    return ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'].map(selector => {
+      const el = document.querySelector(selector);
+      const foreground = getComputedStyle(el).color;
+      const bg = background(el);
+      const [a, b] = [luminance(foreground), luminance(bg)].sort((a, b) => b - a);
+      return { selector, foreground, background: bg, ratio: (a + 0.05) / (b + 0.05) };
+    });
+  })()`);
+  writeFileSync(join(dirname(args.state), `shell-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
+  check(pairs.every(p => p.ratio >= 4.5), `${theme} shell text contrast >= 4.5 (min ${Math.min(...pairs.map(p => p.ratio)).toFixed(2)})`);
+}
+
+async function adaptiveShell(page) {
+  console.log('adaptive navigation and appearance:');
+  await page.viewport(1440);
+  await page.goto(`${args.base}/`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration');
+  check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('.vk-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
+  check((await page.eval(RAIL_WIDTH)) === 220, 'desktop defaults to a 220px rail');
+  await page.click('[data-testid=rail-toggle]');
+  check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact rail is 96px');
+  check(await page.eval(`getComputedStyle(document.querySelector('.vk-nav a')).flexDirection === 'column'`), 'compact rail places icons above labels');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape dismisses the rail tooltip');
+  await page.eval(`document.querySelector('[data-testid=rail-toggle]').blur()`);
+  await page.eval(`document.querySelector('[data-testid=rail-toggle]').focus()`);
+  check(await page.eval(`!document.querySelector('[role=tooltip]').hidden`), 'focus exposes the rail tooltip');
+  await page.key('Escape');
+  await page.eval(`document.querySelector('[data-testid=rail-toggle]').blur()`);
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 20 });
+  const hover = await page.eval(`(() => { const r = document.querySelector('[data-testid=rail-toggle]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...hover });
+  await page.waitFor(`!document.querySelector('[role=tooltip]').hidden`, 'hover tooltip');
+  check(await page.eval(`(() => { const r = document.querySelector('[role=tooltip]').getBoundingClientRect(); return r.left >= document.querySelector('.vk-rail').getBoundingClientRect().right && r.right <= innerWidth; })()`), 'hover tooltip is outside the scrolling rail and within the viewport');
+  await page.capture('1440-rail-tooltip-light');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape also dismisses a hover tooltip without trigger focus');
+  await page.reload();
+  check((await page.eval(RAIL_WIDTH)) === 96, 'rail preference survives reload');
+  await page.viewport(1024);
+  check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact preference survives resize');
+  await page.click('[data-testid=rail-toggle]');
+  check((await page.eval(RAIL_WIDTH)) === 220, 'manual expanded preference overrides tablet default');
+  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
+  await page.reload();
+  check((await page.eval(RAIL_WIDTH)) === 96, 'tablet defaults to a compact rail');
+  await page.viewport(1440);
+  await page.waitFor(`${RAIL_WIDTH} === 220`, 'desktop contextual default');
+
+  await openProfile(page);
+  check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
+  check(await page.eval(`document.querySelector('#profile-menu').textContent.includes('Chưa có thông tin tài khoản') && !document.querySelector('#profile-menu').textContent.includes('An Nhiên')`), 'account utility reports unavailable identity honestly');
+  await page.eval(`document.querySelector('[data-testid=profile-close]').focus()`);
+  await page.key('Tab', SHIFT);
+  check(await page.eval(`document.activeElement?.dataset.testid === 'open-me'`), 'Shift+Tab is contained at the beginning of the modal');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.dataset.testid === 'profile-close'`), 'Tab is contained at the end of the modal');
+  await chooseTheme(page, 'dark');
+  await shellContrast(page, 'dark');
+  await page.capture('1440-overlay-dark');
+  await page.key('Escape');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
+  await page.reload();
+  check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
+  await openProfile(page);
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1400, y: 20, button: 'left', clickCount: 1 });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1400, y: 20, button: 'left', clickCount: 1 });
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'outside click closes Tôi and restores focus');
+  await openProfile(page);
+  await page.click('[data-testid=profile-close]');
+  check(await page.eval(`!${PROFILE_OPEN}`), 'explicit close works');
+  await openProfile(page);
+  await page.click('[data-testid=open-me]');
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
+  check(await page.eval(`document.querySelector('[data-testid=profile-trigger]').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
+  await openProfile(page);
+  await page.viewport(390);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
+  check(await page.eval(`location.pathname === '/toi' && document.activeElement?.id === 'noi-dung'`), 'resize retains route and moves focus to the visible main');
+  check(await page.eval(`[...document.querySelectorAll('.vk-bottom-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
+
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+  await chooseTheme(page, 'system', 'page-theme');
+  const darkSurface = await page.eval(`getComputedStyle(document.body).backgroundColor`);
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
+  await page.waitFor(`getComputedStyle(document.body).backgroundColor !== ${JSON.stringify(darkSurface)}`, 'system appearance follows OS changes');
+  await chooseTheme(page, 'dark', 'page-theme');
+  check((await page.eval(`getComputedStyle(document.body).backgroundColor`)) === darkSurface, 'explicit dark overrides a light system');
+  await chooseTheme(page, 'light', 'page-theme');
+  await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+  check((await page.eval(`getComputedStyle(document.body).backgroundColor`)) !== darkSurface, 'explicit light overrides a dark system');
+  await page.send('Emulation.setEmulatedMedia', { features: [] });
+  await chooseTheme(page, 'system', 'page-theme');
+
+  // Bootstrap and interactive writes must both tolerate browser privacy/storage denial.
+  const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `for (const method of ['getItem','setItem','removeItem']) Storage.prototype[method] = () => { throw new DOMException('Storage denied', 'SecurityError'); };` });
+  await page.reload();
+  await chooseTheme(page, 'dark', 'page-theme');
+  await page.viewport(1440);
+  await page.click('[data-testid=rail-toggle]');
+  check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
+  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  await page.reload();
+  await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme')`);
+  await page.reload();
+
+  for (const width of [1440, 1024, 390, 320]) {
+    await page.viewport(width);
+    for (const theme of ['light', 'dark']) {
+      if (width >= 760) {
+        await openProfile(page);
+        await chooseTheme(page, theme);
+        if (width === 1440) await shellContrast(page, theme);
+        await page.key('Escape');
+      } else {
+        await chooseTheme(page, theme, 'page-theme');
+      }
+      await page.capture(`${width}-me-${theme}`);
+      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px ${theme}: no horizontal overflow`);
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize = '200%'`);
+  await page.capture('320-me-dark-text200');
+  check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
+  await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
+  await page.waitFor(`parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vk-bottom-height')) === document.querySelector('.vk-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
+  check(await page.eval(`document.querySelector('.vk-footer').getBoundingClientRect().bottom <= document.querySelector('.vk-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
+  await page.capture('320-me-dark-text200-bottom');
+  await page.click('.vk-bottom-nav a[href="/ban-viet"]');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=create-draft]')`, 'mobile desk destination');
+  await page.capture('320-desk-dark-text200');
+  await page.click('.vk-bottom-nav a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'mobile discovery destination');
+  await page.click('.vk-bottom-nav a[href="/toi"]');
+  await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
+  await chooseTheme(page, 'system', 'page-theme');
+  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
+  await page.viewport(1280);
+}
+
+async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
+  console.log('shell utilities preserve the live dirty editor:');
+  let writes = 0;
+  const listener = (event) => {
+    if (event.sessionId === page.sessionId && event.method === 'Network.requestWillBeSent' && ['PUT', 'POST'].includes(event.params.request.method)) writes++;
+  };
+  page.cdp.listeners.push(listener);
+  check((await page.eval(RAIL_WIDTH)) === 96, 'desktop editor defaults to compact');
+  await page.click('[data-testid=rail-toggle]');
+  check((await page.eval(RAIL_WIDTH)) === 220, 'manual preference can expand the editor rail');
+  await page.click('[data-testid=rail-toggle]');
+  await page.tabToBody();
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
+  await openProfile(page);
+  check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
+  await chooseTheme(page, 'dark');
+  await page.capture('1280-editor-dirty-overlay-dark');
+  await page.key('Escape');
+  await page.tabToBody();
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after appearance utility');
+  await page.eval(`(() => { const content = document.querySelector('.cm-content'); content.blur(); content.focus(); })()`);
+  check((await page.eval(selected)) === LAST_LINE, 'native content focus immediately restores the CodeMirror selection');
+  check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, overlay and theme preserve EditorView, selection, text and dirty state');
+
+  for (const destination of ['/', '/ban-viet', '/toi']) {
+    if (destination === '/toi') {
+      await openProfile(page);
+      await page.click('[data-testid=open-me]');
+    } else {
+      await page.click(`.vk-nav a[href="${destination}"]`);
+    }
+    await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, `dirty guard to ${destination}`);
+    check(await page.eval(`!${PROFILE_OPEN} && location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
+    await page.key('Escape');
+  }
+  await openProfile(page);
+  await page.viewport(390);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
+  check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
+  await page.capture('390-editor-dirty-dark');
+  await page.click('.vk-mobile-brand');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'mobile brand uses guard');
+  await page.key('Escape');
+  await page.viewport(1280);
+  await page.tabToBody();
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after mobile resize');
+  check((await page.eval(selected)) === LAST_LINE && writes === 0, 'utility changes sent no draft writes and retained the caret selection');
+  page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener), 1);
+  await openProfile(page);
+  await chooseTheme(page, 'system');
+  await page.key('Escape');
+  await page.tabToBody();
+  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after returning to system appearance');
+}
+
 async function mainPhase(page) {
   await serverHtml();
+  await adaptiveShell(page);
 
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration');
   check(true, 'page hydrated');
+  check(await page.eval(`document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader belongs to the Khám phá destination');
   const blocks = await page.eval(`[...document.querySelectorAll('.vk-block')].map((b) => b.textContent)`);
   check(blocks.length === 2, 'two stanzas render as two blocks');
   check(blocks[1].split('\n').length === 4 && blocks[1].includes(INDENTED_LINE), 'line breaks and indentation survive rendering');
@@ -430,6 +696,7 @@ async function mainPhase(page) {
   await page.key('Home', SHIFT);
   const selected = `getSelection().toString()`;
   check((await page.eval(selected)) === LAST_LINE, 'last line selected with Shift+Home');
+  await shellWithDirtyEditor(page, editorPath, written, view, selected);
   const surface = `getComputedStyle(document.querySelector('[data-testid=editor-body]')).backgroundColor`;
   const lightSurface = await page.eval(surface);
   await page.eval(`document.documentElement.dataset.theme = 'dark'`);
@@ -445,6 +712,7 @@ async function mainPhase(page) {
   check(preview.length === 3 && preview[2] === 'Khổ mới chưa lưu,\n  dòng thụt vào,\nlời cuối ở đây.', 'preview shows the unsaved stanza with its line breaks');
   check((await page.eval(`document.querySelector('[data-testid=draft-preview] .vk-reader__title').textContent`)) === TITLE, 'preview shows the current title');
   check((await page.status()) === 'unsaved' && (await page.draft(workId)).version === 4, 'preview neither saved nor marked saved');
+  await page.capture('1280-preview-long-title-dark');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=draft-preview]').open`, 'preview closed by Escape');
   check(await page.eval(view), 'preview kept the same EditorView');
@@ -502,7 +770,8 @@ async function mainPhase(page) {
     await page.click(`a[href="${editorPath}"]`);
     await page.waitFor(`location.pathname === '${editorPath}' && ${EDITOR_READY}`, 'editor reopened');
     await page.typeInBody(' Hủy.');
-    await page.click('.vk-nav a[href="/"]');
+    await openProfile(page);
+    await page.click('[data-testid=open-me]');
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog');
     check(!(await page.eval(`document.querySelector('[data-testid=leave-recovery]')`)), 'no discard offered while saving is still possible');
     await page.click('[data-testid=leave-save]');
@@ -571,7 +840,7 @@ async function afterRestartPhase(page) {
     check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
     await page.click('[data-testid=export]');
     const file = await downloaded(downloads);
-    check(file.name === `${state.title}.txt`, `export file is named after the title (${file.name})`);
+    check(file.name === EXPORT_NAME, `export file uses the capped title name (${file.name})`);
     check(file.text === `${state.title}\n\n${current}\n`, 'export holds the title and the unsaved text with lines and stanzas');
     check((await page.status()) === 'unsaved', 'export is not a save');
   } finally {
@@ -581,16 +850,24 @@ async function afterRestartPhase(page) {
 
 const chrome = await launchChrome();
 let exitCode = 0;
+let activePage;
 try {
   const cdp = new Cdp(chrome.url);
   await cdp.open();
   const page = await openPage(cdp);
+  activePage = page;
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else throw new Error(`unknown phase ${args.phase}`);
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   console.log(`browser-smoke: PASS (${args.phase})`);
 } catch (error) {
+  if (activePage) {
+    try {
+      await activePage.capture('failure');
+      console.error('browser context:', await activePage.eval(`({ path: location.pathname, preferences: { ...document.documentElement.dataset }, active: document.activeElement?.outerHTML, selection: getSelection().toString(), view: document.querySelector('.cm-editor')?.__vinkView, status: document.querySelector('[data-testid=save-status]')?.dataset.status, errors: ${JSON.stringify(activePage.errors)} })`));
+    } catch { /* Preserve the original failure if the page itself crashed. */ }
+  }
   console.error(`browser-smoke: FAIL ${error.message}`);
   exitCode = 1;
 } finally {

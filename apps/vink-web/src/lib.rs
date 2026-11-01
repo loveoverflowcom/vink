@@ -4,6 +4,7 @@
 //! the web app's own API representations and a fetch client — no service, persistence or secrets.
 
 pub mod api;
+pub mod appearance;
 pub mod contract;
 pub mod desk_state;
 pub mod document;
@@ -12,13 +13,16 @@ pub mod navigation;
 mod pages;
 #[cfg(feature = "ssr")]
 pub mod server;
+mod shell;
 
 use leptos::prelude::*;
 use leptos_meta::{MetaTags, provide_meta_context};
-use leptos_router::components::{A, Route, Router, Routes};
+use leptos_router::components::{Route, Router, Routes};
 use leptos_router::{SsrMode, path};
 
+use pages::me::Me;
 use pages::{DeskIndex, DraftEditor, Home, NotFound, Reader};
+use shell::AdaptiveShell;
 
 /// HTML document around the app, rendered on the server only.
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -29,6 +33,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
+                <script inner_html=appearance::BOOTSTRAP></script>
                 // Faces every current page renders above the fold: UI body text and the
                 // reading/heading serif. The 600 face is left to CSS discovery.
                 // `as` first: after a string value the macro would read it as a cast.
@@ -75,36 +80,22 @@ pub fn App() -> impl IntoView {
 fn Chrome() -> impl IntoView {
     navigation::use_navigation_guard().connect_router();
     view! {
-        <a class="vk-skip-link" href="#noi-dung">
-            "Bỏ qua tới nội dung"
-        </a>
-        <header class="vk-topbar">
-            <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                <span class="vk-brand__mark" aria-hidden="true">
-                    "V"
-                </span>
-                <span class="vk-brand__name">"Vink"</span>
-            </a>
-            <nav class="vk-nav" aria-label="Điều hướng chính">
-                <A href="/" exact=true>
-                    "Đọc"
-                </A>
-                <A href="/ban-viet">"Bàn viết"</A>
-            </nav>
-        </header>
-        <main id="noi-dung" class="vk-main" tabindex="-1">
-            <Routes fallback=NotFound>
-                <Route path=path!("/") view=Home ssr=SsrMode::Async />
-                <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
-                <Route path=path!("/ban-viet") view=DeskIndex />
-                <Route path=path!("/ban-viet/:id") view=DraftEditor />
-            </Routes>
-        </main>
-        <footer class="vk-footer">
-            <p>
-                "Vink · Việt Ink — bản dựng nền tảng. Chưa mở đăng ký; tác phẩm gắn nhãn [Mẫu] là dữ liệu phát triển."
-            </p>
-        </footer>
+        <AdaptiveShell>
+            <main id="noi-dung" class="vk-main" tabindex="-1">
+                <Routes fallback=NotFound>
+                    <Route path=path!("/") view=Home ssr=SsrMode::Async />
+                    <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
+                    <Route path=path!("/ban-viet") view=DeskIndex />
+                    <Route path=path!("/ban-viet/:id") view=DraftEditor />
+                    <Route path=path!("/toi") view=Me />
+                </Routes>
+            </main>
+            <footer class="vk-footer">
+                <p>
+                    "Vink · Việt Ink — bản dựng nền tảng. Chưa mở đăng ký; tác phẩm gắn nhãn [Mẫu] là dữ liệu phát triển."
+                </p>
+            </footer>
+        </AdaptiveShell>
     }
 }
 
