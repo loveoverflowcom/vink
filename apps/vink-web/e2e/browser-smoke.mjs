@@ -163,7 +163,7 @@ class Page {
     const dir = join(dirname(args.state), 'screenshots');
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, `${name}.png`), Buffer.from(data, 'base64'));
-    const context = await this.eval(`({ route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent })`);
+    const context = await this.eval(`({ route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY, theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent })`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
     contexts[name] = context;
@@ -282,6 +282,84 @@ class SaveGate {
   }
 }
 
+/** Explicit dashboard fixtures and held POSTs. Real mode lets the server commit a POST,
+ * then drops its 201 response: reconciliation must find that draft without replaying it. */
+class DraftGate {
+  constructor(page) {
+    this.page = page;
+    this.list = null;
+    this.holdGets = false;
+    this.gets = [];
+    this.posts = [];
+    this.postCount = 0;
+    this.dropAck = false;
+    this.droppedStatus = null;
+    this.finishedPosts = 0;
+    this.awaitingFinish = new Set();
+    this.listener = message => {
+      if (message.sessionId !== page.sessionId) return;
+      if (message.method === 'Network.loadingFinished' && this.awaitingFinish.delete(message.params.requestId)) this.finishedPosts++;
+      if (message.method !== 'Fetch.requestPaused') return;
+      this.handle(message.params).catch(error => { this.error = error; });
+    };
+    page.cdp.listeners.push(this.listener);
+  }
+
+  async handle(params) {
+    const { requestId, request, responseStatusCode, networkId } = params;
+    if (responseStatusCode !== undefined) {
+      if (request.method === 'POST') {
+        if (networkId) this.awaitingFinish.add(networkId);
+      }
+      if (request.method === 'POST' && this.dropAck) {
+        this.dropAck = false;
+        this.droppedStatus = responseStatusCode;
+        await this.page.send('Fetch.failRequest', { requestId, errorReason: 'ConnectionClosed' });
+      } else await this.page.send('Fetch.continueRequest', { requestId });
+    } else if (request.method === 'POST') {
+      this.postCount++;
+      this.posts.push(requestId);
+    } else if (this.holdGets) this.gets.push(requestId);
+    else await this.answerGet(requestId);
+  }
+
+  enable() {
+    return this.page.send('Fetch.enable', { patterns: [
+      { urlPattern: `${args.base}/api/v1/drafts`, requestStage: 'Request' },
+      { urlPattern: `${args.base}/api/v1/drafts`, requestStage: 'Response' },
+    ] });
+  }
+
+  async disable() {
+    await this.page.send('Fetch.disable');
+    this.page.cdp.listeners = this.page.cdp.listeners.filter(listener => listener !== this.listener);
+    if (this.error) throw this.error;
+  }
+
+  async answerGet(requestId) {
+    if (!this.list) return this.page.send('Fetch.continueRequest', { requestId });
+    return this.fulfill(requestId, this.list.status ?? 200, this.list.body);
+  }
+
+  fulfill(requestId, status, body) {
+    return this.page.send('Fetch.fulfillRequest', {
+      requestId, responseCode: status,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify(body)).toString('base64'),
+    });
+  }
+
+  async next(queue) {
+    const deadline = Date.now() + 10000;
+    while (!this[queue].length) {
+      if (this.error) throw this.error;
+      if (Date.now() > deadline) throw new Error(`timed out waiting for dashboard ${queue}`);
+      await sleep(50);
+    }
+    return this[queue].shift();
+  }
+}
+
 /** Waits for a finished download in `dir` and returns its name and UTF-8 text. Chrome reserves
  *  the final name with an empty file while `.crdownload` is still being written. */
 async function downloaded(dir, before = []) {
@@ -354,6 +432,9 @@ async function serverHtml() {
   check(!html.includes(DRAFT_ONLY_LINE), 'reader HTML and hydration payload exclude the private draft');
   const desk = await (await fetch(`${args.base}/ban-viet/${SAMPLE_WORK}`)).text();
   check(!desk.includes(DRAFT_ONLY_LINE), 'desk HTML is a shell without draft text');
+  const index = await (await fetch(`${args.base}/ban-viet`)).text();
+  const privateList = await (await fetch(`${args.base}/api/v1/drafts`)).json();
+  check(!index.includes(DRAFT_ONLY_LINE) && privateList.drafts.every(d => !d.title || !index.includes(d.title)), 'dashboard SSR contains no private title/body or list hydration payload');
   const anonymous = await fetch(`${args.base}/api/v1/drafts`);
   check(anonymous.status === 200, 'loopback identity fixture is active for this local run');
 }
@@ -374,7 +455,10 @@ async function chooseTheme(page, value, group = 'overlay-theme') {
   await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
 }
 
-async function shellContrast(page, theme) {
+async function textContrast(page, theme, surface = 'shell') {
+  const selectors = surface === 'desk'
+    ? ['.vk-resume__title', '.vk-resume .vk-draft-meta', '.vk-resume__action', '.vk-desk-heading .vk-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope']
+    : ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -387,7 +471,7 @@ async function shellContrast(page, theme) {
       }
       throw new Error('missing opaque background');
     };
-    return ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'].map(selector => {
+    return ${JSON.stringify(selectors)}.map(selector => {
       const el = document.querySelector(selector);
       const foreground = getComputedStyle(el).color;
       const bg = background(el);
@@ -395,8 +479,8 @@ async function shellContrast(page, theme) {
       return { selector, foreground, background: bg, ratio: (a + 0.05) / (b + 0.05) };
     });
   })()`);
-  writeFileSync(join(dirname(args.state), `shell-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
-  check(pairs.every(p => p.ratio >= 4.5), `${theme} shell text contrast >= 4.5 (min ${Math.min(...pairs.map(p => p.ratio)).toFixed(2)})`);
+  writeFileSync(join(dirname(args.state), `${surface}-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
+  check(pairs.every(p => p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.map(p => p.ratio)).toFixed(2)})`);
 }
 
 async function adaptiveShell(page) {
@@ -445,7 +529,7 @@ async function adaptiveShell(page) {
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.dataset.testid === 'profile-close'`), 'Tab is contained at the end of the modal');
   await chooseTheme(page, 'dark');
-  await shellContrast(page, 'dark');
+  await textContrast(page, 'dark');
   await page.capture('1440-overlay-dark');
   await page.key('Escape');
   check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
@@ -499,7 +583,7 @@ async function adaptiveShell(page) {
       if (width >= 760) {
         await openProfile(page);
         await chooseTheme(page, theme);
-        if (width === 1440) await shellContrast(page, theme);
+        if (width === 1440) await textContrast(page, theme);
         await page.key('Escape');
       } else {
         await chooseTheme(page, theme, 'page-theme');
@@ -582,9 +666,187 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after returning to system appearance');
 }
 
+async function draftDashboard(page) {
+  console.log('private dashboard: explicit list fixtures, search, states and non-idempotent creation:');
+  const gate = new DraftGate(page);
+  let manuscriptRequests = 0;
+  const countManuscripts = message => {
+    if (message.sessionId === page.sessionId && message.method === 'Network.requestWillBeSent'
+        && new URL(message.params.request.url).pathname.startsWith('/api/v1/drafts/')) manuscriptRequests++;
+  };
+  page.cdp.listeners.push(countManuscripts);
+  const longTitle = '[Fixture] Đường về — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở, dưới mái hiên của căn nhà nhỏ bên sông';
+  const cards = Array.from({ length: 100 }, (_, i) => ({
+    work_id: `88888888-8888-4888-8888-${String(i).padStart(12, '0')}`,
+    title: i === 0 ? longTitle.normalize('NFD') : i === 1 ? '[Fixture] ĐƯỜNG VỀ CÓ NẮNG' : i === 2 ? '' : `[Fixture] Bản thảo ${i}`,
+    version: i + 1, updated_at: '2026-11-01T08:30:00Z',
+  }));
+  gate.list = { body: { drafts: cards } };
+  gate.holdGets = true;
+  await gate.enable();
+  await page.viewport(1440);
+  await page.goto(`${args.base}/ban-viet`);
+  const initial = await gate.next('gets');
+  await page.waitFor(`document.querySelector('[data-testid=draft-loading]')`, 'initial dashboard loading');
+  check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && !document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=create-draft]')`), 'loading is distinct from empty and cannot create');
+  gate.holdGets = false;
+  await gate.answerGet(initial);
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, '100 loaded rows');
+  const resumeHref = `/ban-viet/${cards[0].work_id}`;
+  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('.vk-resume__title').textContent === ${JSON.stringify(cards[0].title)}`), 'resume opens exactly the first authorized card and preserves its full combining title');
+  check(await page.eval(`document.querySelector('[data-testid=draft-scope]').textContent.includes('100 bản thảo gần đây nhất') && document.querySelector('[data-testid=draft-scope]').textContent.includes('có thể còn')`), '100 loaded rows are not claimed as a global total');
+  check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && row.textContent.includes('Phiên bản ' + (i + 1)) && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row shows the provider work_id, version and update timestamp');
+  check(manuscriptRequests === 0, 'list/resume never fetch full manuscripts (no N+1)');
+  check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
+  await page.eval(`document.querySelector('[data-testid=resume-draft]').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.dataset.testid === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard order moves from Viết tiếp to search with visible focus');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.dataset.testid === 'draft-sort'`), 'sort follows search in keyboard order');
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    await page.eval(`Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})))`);
+    await textContrast(page, theme, 'desk');
+    for (const width of [1440, 1024, 390, 320]) {
+      await page.viewport(width);
+      await page.eval(`scrollTo(0, 0)`);
+      await page.capture(`desk-dashboard-${width}-${theme}`);
+      if (width === 320) {
+        await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
+        await page.capture(`desk-list-320-${theme}`);
+      }
+      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && document.querySelector('#resume').getBoundingClientRect().top < document.querySelector('#drafts').getBoundingClientRect().top`), `${theme} ${width}px dashboard reflows with resume before list`);
+    }
+    await page.eval(`document.documentElement.style.fontSize = '200%'`);
+    const wholeWords = await page.eval(`(() => {
+      const title = document.querySelector('.vk-resume__title');
+      return ['Đường', 'Những'].every(word => {
+        word = word.normalize('NFD');
+        const node = [...title.childNodes].find(node => node.nodeType === Node.TEXT_NODE && node.textContent.includes(word));
+        if (!node) return false;
+        const start = node.textContent.indexOf(word);
+        const range = document.createRange();
+        range.setStart(node, start); range.setEnd(node, start + word.length);
+        const rects = [...range.getClientRects()];
+        return rects.length > 0 && rects.every(rect => Math.abs(rect.top - rects[0].top) < 1);
+      });
+    })()`);
+    check(wholeWords, `${theme} 320px / 200% text keeps common Vietnamese title words on one line`);
+    await page.eval(`document.querySelector('.vk-resume__title').scrollIntoView({ block: 'start' })`);
+    await page.capture(`desk-dashboard-320-200-${theme}`);
+    check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${theme} dashboard keeps 320px width at 200% text`);
+    await page.eval(`document.documentElement.style.fontSize = ''`);
+  }
+  await page.viewport(1440);
+  const search = async text => {
+    await page.eval(`document.querySelector('[data-testid=draft-search]').focus(); document.querySelector('[data-testid=draft-search]').select()`);
+    await page.send('Input.insertText', { text });
+  };
+  await search('duong ve');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
+  await search('ĐƯỜNG VỀ CÓ NẮNG'.normalize('NFD'));
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, 'combining accented results');
+  await search('không có tên này');
+  await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
+  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'search never changes the most recent resume target');
+  await page.click('[data-testid=clear-draft-search]');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear query');
+  await page.eval(`const sort = document.querySelector('[data-testid=draft-sort]'); sort.value = 'title'; sort.dispatchEvent(new Event('change', { bubbles: true }))`);
+  await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
+  await search('duong ve');
+  gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
+  await page.click('[data-testid=refresh-drafts]');
+  await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'dependency failure');
+  check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-row]')`), 'load failure never becomes an empty or stale draft list');
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    for (const width of [1440, 320]) {
+      await page.viewport(width);
+      await page.eval(`scrollTo(0, 0)`);
+      await page.capture(`desk-error-${width}-${theme}`);
+    }
+  }
+  gate.list = { body: { drafts: cards } };
+  await page.click('[data-testid=retry-drafts]');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'retry with preserved query');
+  check(await page.eval(`document.querySelector('[data-testid=draft-search]').value === 'duong ve' && document.querySelector('[data-testid=draft-sort]').value === 'title'`), 'query and sort survive failed refresh and retry');
+  gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
+  await page.click('[data-testid=refresh-drafts]');
+  await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('chưa đăng nhập')`, 'unauthenticated dashboard');
+  check(await page.eval(`!document.querySelector('[data-testid=create-draft]') && document.querySelector('[data-testid=desk-error] a').getAttribute('href') === '/'`), '401 has an honest public-reading action and no fake login/create');
+  gate.list = { body: { drafts: [] } };
+  await page.click('[data-testid=retry-drafts]');
+  await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'empty dashboard');
+  check(await page.eval(`document.querySelectorAll('[data-testid=create-draft]').length === 1 && document.querySelector('[data-testid=create-draft]').textContent === 'Viết bản thảo đầu tiên' && !document.querySelector('[data-testid=draft-resume]')`), 'empty has exactly one primary create action');
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    for (const width of [1440, 320]) {
+      await page.viewport(width);
+      await page.eval(`scrollTo(0, 0)`);
+      await page.capture(`desk-empty-${width}-${theme}`);
+    }
+  }
+  check(manuscriptRequests === 0, 'search, sort and refresh never prefetch manuscripts');
+  page.cdp.listeners = page.cdp.listeners.filter(listener => listener !== countManuscripts);
+  await page.click('[data-testid=create-draft]');
+  const rejected = await gate.next('posts');
+  await gate.fulfill(rejected, 403, { error: { code: 'forbidden', message: 'test fixture' } });
+  await page.waitFor(`document.querySelector('[data-testid=create-notice]')?.textContent.includes('bị từ chối')`, 'explicit create rejection');
+  check(await page.eval(`!document.querySelector('[data-testid=create-notice]').textContent.includes('có thể đã')`), 'pre-write rejection stays distinct from an uncertain outcome');
+  check(await page.eval(`document.querySelector('[data-testid=create-draft]').disabled`), 'permission rejection requires an access recheck before another create');
+  // Return to the real store for the commit + lost response case.
+  gate.list = null;
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`document.querySelector('[data-testid=resume-draft]')`, 'real authorized list');
+  const before = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
+  await page.click('[data-testid=create-draft]');
+  const lost = await gate.next('posts');
+  const postsBefore = gate.postCount;
+  await page.eval(`for (let i = 0; i < 5; i++) document.querySelector('[data-testid=create-draft]').click()`);
+  check(await page.eval(`document.querySelector('[data-testid=create-draft]').disabled && document.querySelector('[data-testid=refresh-drafts]').disabled`), 'create and refresh are disabled during the single POST');
+  gate.dropAck = true;
+  await page.send('Fetch.continueRequest', { requestId: lost });
+  await page.waitFor(`document.querySelector('[data-testid=create-notice]')?.textContent.includes('có thể đã được tạo')`, 'uncertain create after lost 201');
+  check(gate.droppedStatus === 201 && gate.postCount === postsBefore, 'one real POST committed and its ack was dropped without duplicate submissions');
+  check(await page.eval(`document.querySelector('[data-testid=create-draft]').disabled && location.pathname === '/ban-viet'`), 'uncertain creation stays on desk and blocks another POST');
+  // Failed reconciliation must keep creation blocked.
+  gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
+  await page.click('[data-testid=reconcile-drafts]');
+  await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'failed reconciliation');
+  check(await page.eval(`document.querySelector('[data-testid=create-notice]').textContent.includes('có thể đã được tạo')`), 'failed reconciliation preserves the unknown outcome');
+  gate.list = null;
+  await page.click('[data-testid=reconcile-drafts]');
+  await page.waitFor(`document.querySelector('[data-testid=create-draft]')?.textContent === 'Tạo thêm bản thảo'`, 'successful list reconciliation');
+  const after = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
+  const created = after.filter(id => !before.includes(id));
+  check(created.length === 1 && gate.postCount === postsBefore, 'GET reconciliation found the committed draft without retrying POST');
+  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(created[0])}`), 'newly reconciled draft is the resume target');
+  await page.click('[data-testid=resume-draft]');
+  await page.waitFor(`${EDITOR_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'resume opens the real draft');
+  check((await page.status()) === 'saved', 'reconciled draft opens at its real saved version');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=resume-draft]')`, 'return to dashboard');
+  await page.viewport(1440);
+  await page.click('[data-testid=create-draft]');
+  const late = await gate.next('posts');
+  const finishedBefore = gate.finishedPosts;
+  await page.click('.vk-nav a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'leave while create is pending');
+  await page.send('Fetch.continueRequest', { requestId: late });
+  const lateDeadline = Date.now() + 10000;
+  while (gate.finishedPosts === finishedBefore && Date.now() < lateDeadline) await sleep(50);
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  await page.waitFor(`document.querySelector('.vk-hero')`, 'home after late create reply');
+  check(gate.finishedPosts === finishedBefore + 1 && await page.eval(`location.pathname === '/'`), 'late successful create response does not navigate away from another route');
+  await gate.disable();
+  await page.viewport(1440);
+  await page.eval(`document.documentElement.removeAttribute('data-theme')`);
+}
+
 async function mainPhase(page) {
   await serverHtml();
   await adaptiveShell(page);
+  await draftDashboard(page);
 
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);

@@ -11,6 +11,9 @@ use crate::desk_state::{
     EditorSession, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
 use crate::document::DocumentView;
+use crate::draft_list::{
+    CreateState, DraftSort, display_title as untitled, updated_at_label, visible_drafts,
+};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
 
@@ -18,28 +21,103 @@ const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bả
 
 #[component]
 pub fn DeskIndex() -> impl IntoView {
-    let drafts: LocalResource<Result<DraftList, ApiError>> = LocalResource::new(load_drafts);
+    let query = RwSignal::new(String::new());
+    let sort = RwSignal::new(DraftSort::Recent);
+    let creation = RwSignal::new(CreateState::Ready);
+    let loading = RwSignal::new(true);
+    let drafts: LocalResource<Result<DraftList, ApiError>> =
+        LocalResource::new(move || async move {
+            let result = load_drafts().await;
+            if result.is_ok() {
+                creation.try_update(CreateState::reconciled);
+            }
+            loading.try_update(|value| *value = false);
+            result
+        });
+    let refresh = Callback::new(move |()| {
+        if loading.get_untracked()
+            || creation.with_untracked(|state| *state == CreateState::Pending)
+        {
+            return;
+        }
+        loading.set(true);
+        drafts.refetch();
+    });
+    let refresh_disabled =
+        Signal::derive(move || loading.get() || creation.get() == CreateState::Pending);
+    let can_create = Signal::derive(move || {
+        !loading.get()
+            && drafts.get().is_some_and(|result| result.is_ok())
+            && creation.with(CreateState::can_begin)
+    });
+    #[cfg(feature = "hydrate")]
+    let navigate = leptos_router::hooks::use_navigate();
+    let create = Callback::new(move |()| {
+        #[cfg(feature = "hydrate")]
+        {
+            if !can_create.get_untracked()
+                || !creation.try_update(CreateState::begin).unwrap_or(false)
+            {
+                return;
+            }
+            let navigate = navigate.clone();
+            leptos::task::spawn_local(async move {
+                let outcome = crate::api::create_draft().await;
+                // The route owner disposes this signal. A late reply must not navigate from a
+                // different page (and an uncertain POST is never automatically repeated).
+                if creation.try_get_untracked().is_none() {
+                    return;
+                }
+                match outcome {
+                    Ok(draft) => {
+                        navigate(&format!("/ban-viet/{}", draft.work_id), Default::default())
+                    }
+                    Err(error) => {
+                        creation.update(|state| state.failed(error));
+                    }
+                }
+            });
+        }
+    });
     view! {
         <Title text="Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
-        <section class="vk-desk" aria-labelledby="desk-title">
-            <h1 id="desk-title" class="vk-page-title">
-                "Bàn viết"
-            </h1>
-            <p class="vk-muted">
-                "Bản nháp ở đây chỉ chủ sở hữu đọc được. Lưu nháp không gửi duyệt và không công khai."
+        <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
+            <header id="heading" class="vk-desk-heading">
+                <h1 id="desk-title" class="vk-page-title">"Bàn viết"</h1>
+                <Show when=move || drafts.get().is_some_and(|result| result.is_ok_and(|list| !list.drafts.is_empty()))>
+                    <CreateDraftButton creation can_create create />
+                </Show>
+            </header>
+            <noscript><p class="vk-notice">{DESK_UNAVAILABLE_SSR}</p></noscript>
+            <CreateNotice creation loading refresh />
+            <div aria-busy=move || if loading.get() { "true" } else { "false" } data-testid="draft-content">
+                <Suspense fallback=|| view! {
+                    <p class="vk-desk-loading vk-muted" role="status" data-testid="draft-loading">"Đang mở Bàn viết…"</p>
+                }>
+                    {move || Suspend::new(async move {
+                        match drafts.await {
+                            Ok(list) if list.drafts.is_empty() => view! {
+                                <div class="vk-empty vk-desk-empty" data-testid="draft-empty">
+                                    <h2 class="vk-empty__title">"Bắt đầu một bản thảo"</h2>
+                                    <p>"Một trang dành riêng cho những điều bạn muốn viết."</p>
+                                    <CreateDraftButton creation can_create create first=true />
+                                </div>
+                            }.into_any(),
+                            Ok(list) => view! { <DraftListView list query sort refresh refresh_disabled /> }.into_any(),
+                            Err(error) => view! {
+                                <DeskError error />
+                                <button class="vk-button vk-button--tonal" type="button"
+                                    data-testid="retry-drafts" on:click=move |_| refresh.run(())
+                                    disabled=move || loading.get()>"Thử mở lại"</button>
+                            }.into_any(),
+                        }
+                    })}
+                </Suspense>
+            </div>
+            <p class="vk-desk-privacy vk-muted">
+                "Bản nháp chỉ bạn đọc được. Lưu nháp không gửi duyệt hay công khai."
             </p>
-            <noscript>
-                <p class="vk-notice">{DESK_UNAVAILABLE_SSR}</p>
-            </noscript>
-            <Suspense fallback=|| view! { <p class="vk-muted">"Đang mở Bàn viết…"</p> }>
-                {move || Suspend::new(async move {
-                    match drafts.await {
-                        Ok(list) => view! { <DraftListView list /> }.into_any(),
-                        Err(error) => view! { <DeskError error /> }.into_any(),
-                    }
-                })}
-            </Suspense>
         </section>
     }
 }
@@ -56,77 +134,156 @@ async fn load_drafts() -> Result<DraftList, ApiError> {
 }
 
 #[component]
-fn DraftListView(list: DraftList) -> impl IntoView {
-    let creating = RwSignal::new(false);
-    let create_failed = RwSignal::new(false);
-    #[cfg(feature = "hydrate")]
-    let navigate = leptos_router::hooks::use_navigate();
-    let create = move |_| {
-        if creating.get_untracked() {
-            return;
-        }
-        creating.set(true);
-        create_failed.set(false);
-        #[cfg(feature = "hydrate")]
-        let navigate = navigate.clone();
-        #[cfg(feature = "hydrate")]
-        leptos::task::spawn_local(async move {
-            match crate::api::create_draft().await {
-                Ok(draft) => {
-                    navigate(&format!("/ban-viet/{}", draft.work_id), Default::default());
-                }
-                Err(_) => {
-                    creating.set(false);
-                    create_failed.set(true);
-                }
-            }
-        });
-    };
-    let items = list
-        .drafts
-        .into_iter()
-        .map(|draft| {
-            let href = format!("/ban-viet/{}", draft.work_id);
-            let title = untitled(&draft.title);
-            view! {
-                <li class="vk-card">
-                    <a class="vk-card__link" href=href>
-                        <span class="vk-card__title">{title}</span>
-                        <span class="vk-card__meta">"Phiên bản " {draft.version}</span>
-                    </a>
-                </li>
-            }
-        })
-        .collect_view();
+fn CreateDraftButton(
+    creation: RwSignal<CreateState>,
+    can_create: Signal<bool>,
+    create: Callback<()>,
+    #[prop(default = false)] first: bool,
+) -> impl IntoView {
     view! {
-        <div class="vk-actions">
-            <button
-                type="button"
-                class="vk-button vk-button--filled"
-                data-testid="create-draft"
-                on:click=create
-                disabled=move || creating.get()
-            >
-                {move || if creating.get() { "Đang tạo…" } else { "Tạo bản nháp mới" }}
-            </button>
-        </div>
-        <Show when=move || create_failed.get()>
-            <p class="vk-notice" role="alert">
-                "Chưa tạo được bản nháp. Hãy thử lại."
-            </p>
-        </Show>
-        <ul class="vk-cards" role="list" aria-label="Bản nháp của bạn">
-            {items}
-        </ul>
+        <button type="button"
+            class=if first { "vk-button vk-button--filled" } else { "vk-button vk-button--tonal" }
+            data-testid="create-draft" on:click=move |_| create.run(())
+            disabled=move || !can_create.get()
+        >
+            {move || match creation.get() {
+                CreateState::Pending => "Đang tạo…",
+                CreateState::Reconciled => "Tạo thêm bản thảo",
+                _ if first => "Viết bản thảo đầu tiên",
+                _ => "Tạo bản thảo",
+            }}
+        </button>
     }
 }
 
-fn untitled(title: &str) -> String {
-    if title.is_empty() {
-        "Chưa đặt tên".to_string()
-    } else {
-        title.to_string()
+#[component]
+fn CreateNotice(
+    creation: RwSignal<CreateState>,
+    loading: RwSignal<bool>,
+    refresh: Callback<()>,
+) -> impl IntoView {
+    move || {
+        let (title, detail) = match creation.get() {
+            CreateState::Uncertain => (
+                "Chưa xác nhận được việc tạo bản thảo.",
+                "Bản thảo có thể đã được tạo. Hãy tải lại danh sách và kiểm tra trước khi tạo thêm.",
+            ),
+            CreateState::Reconciled => (
+                "Đã tải lại danh sách bản thảo.",
+                "Hãy kiểm tra bản thảo gần đây. Nếu vẫn muốn tạo bản khác, chọn Tạo thêm bản thảo.",
+            ),
+            CreateState::Rejected(ApiError::Unauthenticated) => (
+                "Bạn chưa đăng nhập.",
+                "Cần đăng nhập để tạo bản thảo. Bạn vẫn có thể đọc các tác phẩm công khai.",
+            ),
+            CreateState::Rejected(ApiError::Forbidden) => (
+                "Yêu cầu tạo bản thảo bị từ chối.",
+                "Hãy mở lại Bàn viết để kiểm tra quyền truy cập rồi thử lại.",
+            ),
+            CreateState::Rejected(_) => (
+                "Yêu cầu tạo bản thảo chưa hợp lệ.",
+                "Hãy mở lại Bàn viết rồi thử tạo lại.",
+            ),
+            _ => return ().into_any(),
+        };
+        view! {
+            <div class="vk-notice vk-notice--warning" role="status" data-testid="create-notice">
+                <p class="vk-notice__title">{title}</p><p>{detail}</p>
+                <button class="vk-button vk-button--tonal" type="button" data-testid="reconcile-drafts"
+                    on:click=move |_| refresh.run(()) disabled=move || loading.get()>
+                    {move || if loading.get() { "Đang tải lại…" } else { "Tải lại danh sách" }}
+                </button>
+            </div>
+        }.into_any()
     }
+}
+
+#[component]
+fn DraftListView(
+    list: DraftList,
+    query: RwSignal<String>,
+    sort: RwSignal<DraftSort>,
+    refresh: Callback<()>,
+    refresh_disabled: Signal<bool>,
+) -> impl IntoView {
+    // GET /drafts already returns the newest accessible card first. Search/sort only changes
+    // the list below; resume never fetches a manuscript or changes with a title query.
+    let newest = list.drafts[0].clone();
+    let count = list.drafts.len();
+    let cards = StoredValue::new(list.drafts);
+    let visible = Memo::new(move |_| {
+        cards.with_value(|cards| visible_drafts(cards, &query.get(), sort.get()))
+    });
+    let scope = if count >= 100 {
+        "Đã tải 100 bản thảo gần đây nhất. Tìm kiếm chỉ trong danh sách này; có thể còn bản thảo khác.".to_string()
+    } else {
+        format!("Đã tải {count} bản thảo gần đây. Tìm kiếm chỉ trong danh sách này.")
+    };
+    view! {
+        <section id="resume" class="vk-resume" aria-labelledby="resume-label" data-testid="draft-resume">
+            <p id="resume-label" class="vk-resume__label">"Trở lại trang đang viết"</p>
+            <h2 class="vk-resume__title">{untitled(&newest.title)}</h2>
+            <DraftMetadata version=newest.version updated_at=newest.updated_at />
+            <a class="vk-button vk-button--filled vk-resume__action" data-testid="resume-draft"
+                href=format!("/ban-viet/{}", newest.work_id)>"Viết tiếp"</a>
+        </section>
+        <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
+            <h2 id="draft-list-title" class="vk-section__title">"Bản thảo gần đây"</h2>
+            <div id="draft-tools" class="vk-draft-tools">
+                <label class="vk-field vk-draft-search">
+                    <span class="vk-field__label">"Tìm theo tiêu đề"</span>
+                    <input type="search" data-testid="draft-search" placeholder="Có dấu hoặc không dấu"
+                        aria-describedby="draft-scope" prop:value=move || query.get()
+                        on:input=move |event| query.set(event_target_value(&event)) />
+                </label>
+                <label class="vk-field">
+                    <span class="vk-field__label">"Sắp xếp"</span>
+                    <select data-testid="draft-sort" prop:value=move || if sort.get() == DraftSort::Title { "title" } else { "recent" }
+                        on:change=move |event| sort.set(if event_target_value(&event) == "title" { DraftSort::Title } else { DraftSort::Recent })>
+                        <option value="recent">"Mới cập nhật"</option>
+                        <option value="title">"Tên A–Z (không dấu)"</option>
+                    </select>
+                </label>
+                <button class="vk-button vk-button--text" type="button" data-testid="refresh-drafts"
+                    disabled=move || refresh_disabled.get() on:click=move |_| refresh.run(())>"Tải lại"</button>
+            </div>
+            <p id="draft-scope" class="vk-muted" data-testid="draft-scope">{scope}</p>
+            <p class="vk-muted" role="status" data-testid="draft-result-count">
+                {move || format!("Hiển thị {} / {count} bản thảo đã tải", visible.with(Vec::len))}
+            </p>
+            <Show when=move || visible.with(Vec::is_empty)>
+                <div class="vk-empty" data-testid="draft-no-results">
+                    <p class="vk-empty__title">"Không có tiêu đề phù hợp"</p>
+                    <p>"Thử một từ khác hoặc xem lại các bản thảo đã tải."</p>
+                    <button class="vk-button vk-button--tonal" type="button" data-testid="clear-draft-search"
+                        on:click=move |_| query.set(String::new())>"Xem các bản thảo đã tải"</button>
+                </div>
+            </Show>
+            <ul id="draft-results" class="vk-draft-rows" aria-label="Bản thảo đã tải" role="list">
+                <For each=move || visible.get() key=|draft| draft.work_id.clone() children=move |draft| view! {
+                    <li class="vk-draft-row" data-testid="draft-row">
+                        <a class="vk-draft-row__link" href=format!("/ban-viet/{}", draft.work_id)>
+                            <span class="vk-draft-row__title">{untitled(&draft.title)}</span>
+                            <DraftMetadata version=draft.version updated_at=draft.updated_at />
+                            <span class="vk-draft-row__open">"Mở bản thảo →"</span>
+                        </a>
+                    </li>
+                } />
+            </ul>
+        </section>
+    }.into_any()
+}
+
+#[component]
+fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
+    let label = updated_at_label(&updated_at);
+    view! {
+        <span class="vk-draft-meta">
+            <span>"Phiên bản " {version}</span>
+            <span>"Cập nhật " <time datetime=updated_at>{label}</time></span>
+        </span>
+    }
+    .into_any()
 }
 
 #[component]
@@ -134,22 +291,22 @@ fn DeskError(error: ApiError) -> impl IntoView {
     let (title, detail) = match error {
         ApiError::Unauthenticated => (
             "Bạn chưa đăng nhập.",
-            "Vink chưa chọn hệ thống đăng nhập (D-05). Môi trường local có thể bật danh tính mẫu; xem docs/development.",
+            "Cần đăng nhập để mở bản thảo riêng. Bạn vẫn có thể đọc các tác phẩm công khai.",
         ),
         ApiError::NotFound => (
             "Không tìm thấy bản nháp này.",
             "Bản nháp không tồn tại hoặc không thuộc về bạn.",
         ),
         ApiError::Unavailable | ApiError::Network => (
-            "Chưa kết nối được máy chủ.",
-            "Dữ liệu chưa bị thay đổi. Hãy tải lại trang sau ít phút.",
+            "Chưa tải được bản thảo.",
+            "Chưa kết nối được máy chủ. Hãy thử mở lại sau ít phút.",
         ),
-        _ => ("Có lỗi khi mở Bàn viết.", "Hãy tải lại trang."),
+        _ => ("Có lỗi khi mở Bàn viết.", "Hãy thử mở lại."),
     };
     view! {
         <div class="vk-notice" role="alert" data-testid="desk-error">
-            <p class="vk-notice__title">{title}</p>
-            <p>{detail}</p>
+            <p class="vk-notice__title">{title}</p><p>{detail}</p>
+            <a class="vk-button vk-button--text" href="/">"Khám phá tác phẩm"</a>
         </div>
     }
 }

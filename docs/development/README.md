@@ -19,7 +19,13 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
 - Trang chủ hữu hạn và trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
   từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
-- Bàn viết `/ban-viet` và `/ban-viet/{id}`: nội dung soạn bằng CodeMirror 6
+- Dashboard `/ban-viet` ([#8](https://github.com/loveoverflowcom/vink/issues/8)): Viết tiếp mở
+  nháp mới cập nhật nhất có quyền; danh sách hiện title/version/updated_at, tìm tiêu đề có/không
+  dấu (cả Đ/đ, NFC/NFD), sort trong tối đa 100 nháp đã tải và ghi rõ phạm vi. Tách loading/rỗng/
+  không kết quả/401/lỗi; không tải toàn bộ manuscript cho thẻ. Tạo khóa một POST đang bay,
+  không tự retry kết quả chưa rõ; tải lại danh sách thành công rồi mới cho chủ động tạo thêm.
+  Phản hồi tạo muộn sau khi rời dashboard không điều hướng. Xem [spec/delta](../design/README.md#dashboard-bàn-viết-8).
+- Bàn viết `/ban-viet/{id}`: nội dung soạn bằng CodeMirror 6
   ([runtime riêng](../../apps/vink-web/editor/README.md)), tạo nháp, lưu có điều kiện theo version,
   trạng thái chưa lưu/đang lưu/đã lưu/lỗi/xung đột; chỉ báo đã lưu sau xác nhận của server;
   phản hồi cũ không đánh dấu nội dung mới hơn là đã lưu; xung đột giữ nguyên nội dung đang viết.
@@ -123,6 +129,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/contract.rs         biểu diễn API v1 của consumer, kiểm bằng fixtures của server
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp
+  src/draft_list.rs       tìm/sort nháp đã tải và trạng thái tạo/đối chiếu kết quả, thuần
   src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
   src/document.rs         chữ nguồn ↔ document v1, DocumentView, export .txt
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
@@ -157,9 +164,9 @@ riêng; không dùng `--all-features`.
 
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
-| `quick` | Luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
+| `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
 | `postgres` | Migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop | Hành vi trình duyệt, IME thật |
-| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
+| `web` | Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
 triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp để mô hình hóa ngoài CAS

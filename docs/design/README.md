@@ -201,3 +201,85 @@ Node 24.22.2, Chrome 156.0.8078.73 headless, DPR 1, PostgreSQL local với datab
 `NOT_RUN`: IME hệ điều hành, điện thoại thật, zoom trình duyệt thật, Safari/Firefox và screen
 reader có tên. Resize CSS, root font 200% và CDP input không thay những bằng chứng đó.
 Navigation chỉ phủ một phần UX-01/UX-03; utility Tôi chưa hoàn tất UX-04 hay D-05/S-03.
+
+## Dashboard Bàn viết #8
+
+LayoutSpec r1, trình bày trước sửa UI ngày 01/11/2026; nền `develop@cfad6a2`.
+Kế thừa hướng A Lavender trong [v2.3](https://drive.google.com/file/d/1IlLVGiPHIg9DBohATdwd-38Gdy7z4U5g/view)
+và [bàn giao](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view);
+quyết định Khám phá-trước ở bảng nguồn vẫn có hiệu lực. Không chọn lại logo/navigation/auth.
+
+```text
+Screen #desk — tìm lại nháp riêng để viết
+  Region #heading — Bàn viết + Tạo bản thảo (tonal, phụ)
+  Region #resume — nháp mới cập nhật nhất + Viết tiếp (filled, chính)
+  Region #drafts
+    Region #draft-tools — tìm tiêu đề, sort, phạm vi nháp đã tải
+    Region #draft-results — title đầy đủ, version, updated_at, Mở bản thảo
+```
+
+**Cơ chế:** `DeskIndex` dùng `LocalResource` chỉ tải sau hydration → `GET /api/v1/drafts`
+→ principal phía server → `Application::list_drafts` → `PgStore` lọc owner, sắp
+`updated_at DESC, work_id`, giới hạn 100. `DraftListView` lấy card đầu cho resume, không GET
+manuscript. Search/sort chỉ đổi danh sách trên client. Lỗi GET không thành empty; retry giữ query
+và sort. POST không idempotent; lỗi network, 503 hoặc phản hồi bất thường được giữ là chưa rõ,
+không tự gửi lại. GET thành công sau đó chỉ mở lại khả năng tạo có chủ ý, không tuyên bố đã
+chứng minh POST thành công/thất bại. 401/403 là từ chối rõ, cần tải lại để kiểm quyền trước
+khi tạo tiếp. Khi rời route, bỏ tác dụng điều hướng của phản hồi tạo đến muộn.
+
+**Lý do có nguồn:** LayoutSpec v2.3 chọn Viết tiếp trước danh sách, giữ nội dung tác phẩm thay
+KPI mẫu. [Decision log](../architecture/decisions.md#3-không-dùng-một-state-enum-cho-toàn-bộ-vòng-đời)
+tách working draft, revision và publication; có draft không suy ra Chưa đăng. Contract hiện có
+chỉ cung cấp title/version/updated_at, không cung cấp profile/góp ý/thể loại/trạng thái xuất bản.
+Giới hạn 100 là sự thật của query, không phải toàn bộ thư viện. Chọn bỏ excerpt để tránh thêm
+request riêng cho resume là lựa chọn triển khai của lát cắt này, không phải quyết định dài hạn.
+
+**Bố cục:** một cột dùng toàn chiều rộng khả dụng, giới hạn 64rem; không chừa cột support rỗng.
+Resume dùng `primary-container`/`on-primary-container`, bo `hero`, title Literata co theo viewport,
+CTA tối thiểu 56px. List cùng nền `surface-container-low`, row title wrap, không ellipsis;
+metadata ghi giờ UTC rõ, `<time datetime>` giữ timestamp chính xác. Padding resume co theo
+viewport với sàn 0.5rem để ở 320px/chữ 200% không ép từ ngắn như “Đường”, “Những” vỡ dòng;
+đây là hiệu chỉnh sau khi mở ảnh, không đổi cấu trúc/CTA của r1. Tools flex-wrap, input/select
+co theo màn. Mobile giữ resume → list, cuộn trang; không overlay/cuộn riêng hay sticky mới.
+Sáng/tối giữ cùng cấu trúc; focus dùng `--vk-focus` hiện có. Controls có label, list có tên,
+status/busy có semantics; thông báo không chỉ dựa vào màu.
+
+**Trạng thái:** loading riêng; empty có duy nhất CTA “Viết bản thảo đầu tiên”; không kết quả giữ
+resume/query và cho xóa query. Lỗi/401 có thử mở lại và đường đọc công khai, không nút đăng nhập
+giả hoặc chi tiết fixture/D-05 trong flow. Create pending khóa nút và không tải lại chồng POST;
+unknown yêu cầu đối chiếu, GET lỗi vẫn giữ unknown, GET thành công cho “Tạo thêm bản thảo”.
+
+**Delta với mockup:** không excerpt, genre, word count, feedback, bộ lọc Đã đăng/Chưa đăng,
+profile hay tổng thư viện. Không có support data nên bỏ cột 30%; không thêm endpoint/schema.
+Chỉ phủ discoverability của UX-03 và một phần UX-01; giữ semantics WR-01/03, không hoàn tất
+publication/moderation, auth, autosave hay S-01.
+
+Owner: [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs),
+[vink.css](../../apps/vink-web/style/vink.css). [Feature map](../development/feature-map.md) dẫn
+assertion và giới hạn; PNG/viewport/theme nằm trong `target/verify-web/screenshots/contexts.json`.
+
+### Bằng chứng dashboard ngày 01/11/2026
+
+Nền `develop@cfad6a2`, diff `codex/private-drafts-dashboard` cho #8; Linux, Rust 1.99.1,
+Node 24.22.2, Chrome 156.0.8078.73 headless, DPR 1, PostgreSQL local với database thử riêng.
+
+- `PASS` — `CARGO_BUILD_JOBS=2 cargo xtask verify quick`: fmt, clippy server/WASM,
+  54 unit/contract tests, repository checks (links, metadata, boundaries, fonts, editor packages).
+- `PASS` — `CARGO_BUILD_JOBS=2 cargo xtask verify web`: main + after-restart, không console
+  error/exception. Dashboard có fixtures 100/rỗng/401/503, không N+1; POST thật commit rồi bỏ
+  ack 201, GET lỗi vẫn khóa, GET thành công tìm lại đúng một nháp mà không replay POST;
+  POST trả về muộn sau khi rời route không điều hướng. Guard/save/conflict/preview/export và
+  dữ liệu qua restart vẫn qua. Hai job chỉ giới hạn build, không giảm assertions.
+- `SCREENSHOT_INSPECTED` — mở dashboard 1440/1024/390/320px, list 320px, title 320px/chữ 200%,
+  empty/lỗi 1440/320px, sáng/tối. Tiêu đề dài NFD giữ nguyên, các từ “Đường”, “Những” không
+  bị ép tách dòng sau hiệu chỉnh padding; có assertion hình học riêng. Không tràn ngang trong
+  các cảnh đã kiểm. Metadata viewport/theme/font/scroll ở `screenshots/contexts.json` của lane.
+- Chín cặp chữ dashboard lấy từ `getComputedStyle`: thấp nhất 6.28:1 sáng và 7.87:1 tối;
+  JSON ở `target/verify-web/desk-contrast-{light,dark}.json`. Chưa đo mọi hover/disabled.
+- Rà source/diff theo owner UI, API, application và store: không thay authority, query hay
+  contract; không còn finding cần sửa trong phạm vi đã kiểm. Đây là review cùng tác vụ,
+  không phải một GitHub approval độc lập.
+
+`NOT_RUN`: mobile/IME hệ điều hành thật, Safari/Firefox, zoom trình duyệt thật và screen reader
+có tên. Browser dùng principal fixture local; chưa chứng minh production auth, publication,
+full-library search hay hoàn tất toàn bộ UX-01/UX-03/WR-01/WR-03.
