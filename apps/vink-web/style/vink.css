@@ -1,24 +1,58 @@
 /*
- * Vink design tokens and base components — Material 3 Expressive applied through Vink's own
- * identity: warm paper surfaces, ink-indigo primary, seal-vermilion accent. Reading and writing
- * surfaces stay quiet; expression is concentrated in headings, shape and primary actions.
- * Fonts are local stacks with Vietnamese coverage; no web font is downloaded yet.
+ * Vink design tokens and base components — the single owner of the semantic colour, type,
+ * shape and motion roles (`--vk-*`) and of the `vk-*` primitives. Material 3 Expressive in
+ * Vink's Lavender palette (light/dark); docs/design/README.md records the baseline and sources.
+ * Reading and writing surfaces stay quiet; expression is concentrated in headings, shape and
+ * the primary action. Components consume roles; add a role here before a one-off colour.
+ *
+ * Theme: light by default; dark follows the system unless `<html data-theme="light|dark">`
+ * chooses. The two dark blocks below hold the same values — change them together.
+ *
+ * Fonts are self-hosted WOFF2 subsets with their OFL licenses and provenance in
+ * apps/vink-web/assets/fonts (served from /pkg/fonts/). `swap` keeps text visible in the
+ * fallback stack while a face loads or if it fails.
  */
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  src: url("fonts/be-vietnam-pro-400.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  src: url("fonts/be-vietnam-pro-600.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Literata";
+  src: url("fonts/literata-variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
 
 :root {
   color-scheme: light dark;
 
-  --vk-font-reading: "Literata", "Noto Serif", "Source Serif 4", "Source Serif Pro", "Times New Roman", serif;
-  --vk-font-ui: "Be Vietnam Pro", "Noto Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
+  /* UI text uses the shipped 400 and 600 faces; reading text any Literata weight. */
+  --vk-font-ui: "Be Vietnam Pro", "Noto Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --vk-font-reading: "Literata", "Noto Serif", "Source Serif 4", Georgia, "Times New Roman", serif;
 
-  --vk-text-reading: clamp(1.0625rem, 0.98rem + 0.35vw, 1.25rem);
-  --vk-leading-reading: 1.8;
-  --vk-measure: 36rem;
+  --vk-text-reading: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);
+  --vk-leading-reading: 1.85;
+  --vk-measure: 42rem;
 
   --vk-radius-sm: 8px;
   --vk-radius-md: 12px;
   --vk-radius-lg: 20px;
   --vk-radius-xl: 28px;
+  --vk-radius-hero: 32px;
   --vk-radius-full: 999px;
 
   --vk-space-1: 0.25rem;
@@ -30,60 +64,129 @@
   --vk-space-12: 3rem;
 
   --vk-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
-  --vk-duration-short: 150ms;
-  --vk-duration-medium: 280ms;
+  --vk-ease-spatial: cubic-bezier(0.2, 0.8, 0.2, 1.15);
+  --vk-duration-short: 160ms;
+  --vk-duration-medium: 320ms;
 
   /* Light scheme */
-  --vk-surface: #fbf8f3;
-  --vk-surface-container-low: #f6f1ea;
-  --vk-surface-container: #f0eae1;
-  --vk-surface-container-high: #e9e2d7;
-  --vk-on-surface: #1d1b19;
-  --vk-on-surface-variant: #4c463f;
-  --vk-outline: #7b736a;
-  --vk-outline-variant: #d2c9bd;
-  --vk-primary: #2f3b73;
+  --vk-surface: #fffaff;
+  --vk-surface-container-low: #f7f2fa;
+  --vk-surface-container: #efe8f6;
+  --vk-surface-container-high: #e8e0f0;
+  --vk-surface-container-highest: #e3d8ec;
+  --vk-on-surface: #241d2d;
+  --vk-on-surface-variant: #5f566b;
+  --vk-inverse-surface: #241d2d;
+  --vk-inverse-on-surface: #fffaff;
+  --vk-outline: #81768e;
+  --vk-outline-variant: #d6cadd;
+  --vk-primary: #6846a5;
   --vk-on-primary: #ffffff;
-  --vk-primary-container: #dde1ff;
-  --vk-on-primary-container: #16204f;
-  --vk-tertiary: #9c3a26;
-  --vk-tertiary-container: #ffdad2;
-  --vk-on-tertiary-container: #3d0700;
-  --vk-error: #b3261e;
-  --vk-error-container: #f9dedc;
-  --vk-on-error-container: #410e0b;
-  --vk-warning-container: #fbefc9;
-  --vk-on-warning-container: #3b2d00;
-  --vk-success: #2e6a3f;
-  --vk-state-hover: rgb(47 59 115 / 0.08);
-  --vk-shadow: 0 1px 2px rgb(29 27 25 / 0.08), 0 4px 16px rgb(29 27 25 / 0.06);
+  --vk-primary-container: #ebddff;
+  --vk-on-primary-container: #35205a;
+  --vk-primary-fixed: #dcc5ff;
+  --vk-on-primary-fixed: #2b1050;
+  --vk-secondary: #685b78;
+  --vk-secondary-container: #eadcf3;
+  --vk-on-secondary-container: #31233d;
+  --vk-tertiary: #85506a;
+  --vk-tertiary-container: #ffd9e8;
+  --vk-on-tertiary-container: #3a1227;
+  --vk-error: #ba1a1a;
+  --vk-error-container: #ffdad6;
+  --vk-on-error-container: #410002;
+  --vk-warning-container: #f7edcb;
+  --vk-on-warning-container: #514218;
+  --vk-success: #326846;
+  --vk-success-container: #d7efde;
+  --vk-on-success-container: #214b30;
+  --vk-focus: #7250b4;
+  --vk-state-hover: rgb(104 70 165 / 0.08);
+  --vk-scrim: rgb(23 18 29 / 0.44);
+  --vk-shadow: 0 12px 40px rgb(36 29 45 / 0.14);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --vk-surface: #17121d;
+  --vk-surface-container-low: #211b29;
+  --vk-surface-container: #2b2434;
+  --vk-surface-container-high: #372e42;
+  --vk-surface-container-highest: #44394f;
+  --vk-on-surface: #f0e7f8;
+  --vk-on-surface-variant: #d1c3db;
+  --vk-inverse-surface: #f0e7f8;
+  --vk-inverse-on-surface: #17121d;
+  --vk-outline: #a095ab;
+  --vk-outline-variant: #50455a;
+  --vk-primary: #d4bbff;
+  --vk-on-primary: #381c63;
+  --vk-primary-container: #4e3477;
+  --vk-on-primary-container: #f0e3ff;
+  --vk-primary-fixed: #5e4388;
+  --vk-on-primary-fixed: #f0e3ff;
+  --vk-secondary: #cec0df;
+  --vk-secondary-container: #493c56;
+  --vk-on-secondary-container: #f2daff;
+  --vk-tertiary: #f4b2ce;
+  --vk-tertiary-container: #65364d;
+  --vk-on-tertiary-container: #ffd9e8;
+  --vk-error: #ffb4ab;
+  --vk-error-container: #6d2520;
+  --vk-on-error-container: #ffdad6;
+  --vk-warning-container: #4e4223;
+  --vk-on-warning-container: #f4e5af;
+  --vk-success: #a3d5b2;
+  --vk-success-container: #244631;
+  --vk-on-success-container: #c7ebd1;
+  --vk-focus: #d4bbff;
+  --vk-state-hover: rgb(212 187 255 / 0.1);
+  --vk-scrim: rgb(0 0 0 / 0.58);
+  --vk-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --vk-surface: #141312;
-    --vk-surface-container-low: #1b1a18;
-    --vk-surface-container: #22201e;
-    --vk-surface-container-high: #2c2a27;
-    --vk-on-surface: #e9e3da;
-    --vk-on-surface-variant: #d0c7bb;
-    --vk-outline: #998f84;
-    --vk-outline-variant: #4c463f;
-    --vk-primary: #bac3ff;
-    --vk-on-primary: #1a2457;
-    --vk-primary-container: #353f78;
-    --vk-on-primary-container: #dde1ff;
-    --vk-tertiary: #ffb4a3;
-    --vk-tertiary-container: #7e2817;
-    --vk-on-tertiary-container: #ffdad2;
-    --vk-error: #f2b8b5;
-    --vk-error-container: #8c1d18;
-    --vk-on-error-container: #f9dedc;
-    --vk-warning-container: #4a3b00;
-    --vk-on-warning-container: #fbefc9;
-    --vk-success: #9bd4a6;
-    --vk-state-hover: rgb(186 195 255 / 0.1);
-    --vk-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px rgb(0 0 0 / 0.3);
+  :root:not([data-theme="light"]) {
+    --vk-surface: #17121d;
+    --vk-surface-container-low: #211b29;
+    --vk-surface-container: #2b2434;
+    --vk-surface-container-high: #372e42;
+    --vk-surface-container-highest: #44394f;
+    --vk-on-surface: #f0e7f8;
+    --vk-on-surface-variant: #d1c3db;
+    --vk-inverse-surface: #f0e7f8;
+    --vk-inverse-on-surface: #17121d;
+    --vk-outline: #a095ab;
+    --vk-outline-variant: #50455a;
+    --vk-primary: #d4bbff;
+    --vk-on-primary: #381c63;
+    --vk-primary-container: #4e3477;
+    --vk-on-primary-container: #f0e3ff;
+    --vk-primary-fixed: #5e4388;
+    --vk-on-primary-fixed: #f0e3ff;
+    --vk-secondary: #cec0df;
+    --vk-secondary-container: #493c56;
+    --vk-on-secondary-container: #f2daff;
+    --vk-tertiary: #f4b2ce;
+    --vk-tertiary-container: #65364d;
+    --vk-on-tertiary-container: #ffd9e8;
+    --vk-error: #ffb4ab;
+    --vk-error-container: #6d2520;
+    --vk-on-error-container: #ffdad6;
+    --vk-warning-container: #4e4223;
+    --vk-on-warning-container: #f4e5af;
+    --vk-success: #a3d5b2;
+    --vk-success-container: #244631;
+    --vk-on-success-container: #c7ebd1;
+    --vk-focus: #d4bbff;
+    --vk-state-hover: rgb(212 187 255 / 0.1);
+    --vk-scrim: rgb(0 0 0 / 0.58);
+    --vk-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -116,15 +219,17 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--vk-primary);
+  outline: 3px solid var(--vk-focus);
   outline-offset: 2px;
   border-radius: var(--vk-radius-sm);
 }
 
+/* Hidden by its own height, so a link wrapped by enlarged text stays off-screen until focused. */
 .vk-skip-link {
   position: absolute;
   left: var(--vk-space-4);
-  top: -4rem;
+  top: var(--vk-space-3);
+  transform: translateY(-200%);
   z-index: 10;
   padding: var(--vk-space-2) var(--vk-space-4);
   border-radius: var(--vk-radius-full);
@@ -133,13 +238,15 @@ a {
 }
 
 .vk-skip-link:focus {
-  top: var(--vk-space-3);
+  transform: none;
 }
 
 /* Chrome */
 
+/* Wraps rather than overflows at narrow widths with enlarged text. */
 .vk-topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--vk-space-4);
@@ -161,19 +268,21 @@ a {
   letter-spacing: -0.01em;
 }
 
+/* Temporary letter mark until a production logo is approved (issue #10); not brand artwork. */
 .vk-brand__mark {
   display: inline-grid;
   place-items: center;
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 12px 12px 12px 4px;
-  background: var(--vk-tertiary);
-  color: var(--vk-surface);
+  background: var(--vk-primary);
+  color: var(--vk-on-primary);
   font-size: 1.25rem;
 }
 
 .vk-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--vk-space-1);
 }
 
@@ -182,7 +291,7 @@ a {
   border-radius: var(--vk-radius-full);
   color: var(--vk-on-surface-variant);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
   transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
 }
 
@@ -222,14 +331,14 @@ a {
 
 .vk-hero {
   padding: var(--vk-space-8) var(--vk-space-6);
-  border-radius: var(--vk-radius-xl);
+  border-radius: var(--vk-radius-hero);
   background: var(--vk-surface-container);
   margin-bottom: var(--vk-space-8);
 }
 
 .vk-eyebrow {
   margin: 0 0 var(--vk-space-2);
-  color: var(--vk-tertiary);
+  color: var(--vk-primary);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -269,7 +378,7 @@ a {
 
 .vk-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));
   gap: var(--vk-space-4);
   margin: var(--vk-space-4) 0 0;
   padding: 0;
@@ -283,17 +392,16 @@ a {
   height: 100%;
   padding: var(--vk-space-6);
   border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
-  border: 1px solid var(--vk-outline-variant);
+  background: var(--vk-surface-container);
   color: var(--vk-on-surface);
   text-decoration: none;
   transition:
-    border-radius var(--vk-duration-medium) var(--vk-ease-emphasized),
+    border-radius var(--vk-duration-medium) var(--vk-ease-spatial),
     background-color var(--vk-duration-short) var(--vk-ease-emphasized);
 }
 
 .vk-card__link:hover {
-  background: var(--vk-surface-container);
+  background: var(--vk-surface-container-high);
   border-radius: var(--vk-radius-xl);
 }
 
@@ -309,24 +417,18 @@ a {
   font-size: 0.875rem;
 }
 
+/* Grouped by fill, not by a border. */
 .vk-empty,
 .vk-notice {
   max-width: 42rem;
   padding: var(--vk-space-6);
   border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
-  border: 1px dashed var(--vk-outline);
-}
-
-.vk-notice {
-  border-style: solid;
-  border-color: var(--vk-outline-variant);
+  background: var(--vk-surface-container);
 }
 
 .vk-notice--warning {
   background: var(--vk-warning-container);
   color: var(--vk-on-warning-container);
-  border-color: transparent;
 }
 
 .vk-empty__title,
@@ -372,8 +474,8 @@ a {
 }
 
 .vk-button--tonal {
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
+  background: var(--vk-secondary-container);
+  color: var(--vk-on-secondary-container);
 }
 
 .vk-button:hover:not(:disabled) {
@@ -461,7 +563,7 @@ a {
 }
 
 .vk-input:focus-visible {
-  outline: 3px solid var(--vk-primary);
+  outline: 3px solid var(--vk-focus);
   outline-offset: 0;
   border-color: transparent;
 }

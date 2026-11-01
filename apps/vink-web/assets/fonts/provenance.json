@@ -1,0 +1,74 @@
+{
+  "selected_by": "Vink Lavender M3 Expressive v2.3 design package, assets/fonts/manifest.json (https://drive.google.com/file/d/1XjSOlpBp1ZS4rgi64zmDPeXc512H1gvp/view); source SHA-256 values below equal that manifest",
+  "upstream": {
+    "repository": "https://github.com/google/fonts",
+    "commit": "6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec",
+    "fetched": "2026-11-01"
+  },
+  "transform": {
+    "tool": "fontTools 4.68.0 (pyftsubset) with brotli 1.2.1",
+    "command": "python3 -m fontTools.subset SOURCE.ttf --unicodes=UNICODES --layout-features='*' --name-IDs='*' --notdef-outline --flavor=woff2 --output-file=OUTPUT.woff2",
+    "unicodes": "U+0000-036F,U+1E00-1EFF,U+2000-22FF,U+25A0-25FF,U+2C60-2C7F,U+A720-A7FF,U+FB00-FB06,U+FEFF,U+FFFD",
+    "notes": "Subset to Latin, Vietnamese, combining marks, punctuation and common symbols; all OpenType layout features, all name records (including the license fields) and hinting are kept. Be Vietnam Pro keeps every mapped code point; Literata drops Greek, Cyrillic and one private-use glyph. Neither font declares a Reserved Font Name. Running the command again reproduces identical bytes."
+  },
+  "families": {
+    "Be Vietnam Pro": {
+      "copyright": "Copyright 2021 The Be Vietnam Pro Project Authors (https://github.com/bettergui/BeVietnamPro)",
+      "version": "1.002",
+      "license": "SIL-OFL-1.1",
+      "license_file": "OFL-BeVietnamPro.txt",
+      "license_source": "ofl/bevietnampro/OFL.txt",
+      "license_sha256": "6b7f8f73609a25ea78c891e34cf37b06f8a676b7ea986e941e43b009110f2a85"
+    },
+    "Literata": {
+      "copyright": "Copyright 2017 The Literata Project Authors (https://github.com/googlefonts/literata)",
+      "version": "3.103",
+      "license": "SIL-OFL-1.1",
+      "license_file": "OFL-Literata.txt",
+      "license_source": "ofl/literata/OFL.txt",
+      "license_sha256": "8742963604cd89dc81437811a850018fc03b2bfad686d7422c8235967c87614e"
+    }
+  },
+  "files": {
+    "be-vietnam-pro-400.woff2": {
+      "family": "Be Vietnam Pro",
+      "style": "normal",
+      "weight": "400",
+      "bytes": 36464,
+      "sha256": "9fe6cc58124208135fea9e5b74ddde1f7e1433ad7cfc8e7e22fcda8a74f30807",
+      "source": {
+        "path": "ofl/bevietnampro/BeVietnamPro-Regular.ttf",
+        "bytes": 132948,
+        "git_blob_sha": "dfa34c09fe2bae0626e00aa3265af2119345c27b",
+        "sha256": "cd1ef6e9d7db28ad5cdb88a65ccbe693870e60d340b791f349d248342b4fe4c3"
+      }
+    },
+    "be-vietnam-pro-600.woff2": {
+      "family": "Be Vietnam Pro",
+      "style": "normal",
+      "weight": "600",
+      "bytes": 38844,
+      "sha256": "c4f95d81e54f13b3472a20709c77081cea98d32183d1d773c3055e1d3b318bd3",
+      "source": {
+        "path": "ofl/bevietnampro/BeVietnamPro-SemiBold.ttf",
+        "bytes": 136736,
+        "git_blob_sha": "b25bad31fe8984d5db6cbce61a23323bbb68bc97",
+        "sha256": "bd8e27eb02720b9d91e59e4f10a90878643219f25ce6a8d9a4f06a8a88d3bb71"
+      }
+    },
+    "literata-variable.woff2": {
+      "family": "Literata",
+      "style": "normal",
+      "weight": "200 900",
+      "axes": "opsz 7-72, wght 200-900",
+      "bytes": 256620,
+      "sha256": "05217342d169211573fc597c7ecf3356bf92b8ec433d03333fd509b8c7b1515b",
+      "source": {
+        "path": "ofl/literata/Literata[opsz,wght].ttf",
+        "bytes": 955132,
+        "git_blob_sha": "0a81b4984a4a4eb101e0ddc28babc85bb137efef",
+        "sha256": "b41138c9373112f32abb589cc22e8674b06ed4048b0c513be922bdd26f274440"
+      }
+    }
+  }
+}

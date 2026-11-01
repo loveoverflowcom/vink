@@ -26,7 +26,7 @@ do not inherit Cantos's CSR/Trunk setup.
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
 | Save-state machine (pure, unit-tested) | `src/desk_state.rs` |
 | Textarea ↔ document v1, reading view | `src/document.rs` |
-| Design tokens and components | `style/vink.css` |
+| Design tokens and components; self-hosted fonts | `style/vink.css`; `assets/fonts` (copied to `/pkg/fonts/` by `cargo xtask build`) |
 | Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
 
 Leptos is pinned at 0.8 (see `Cargo.lock`); check that version's docs when unsure of an API.

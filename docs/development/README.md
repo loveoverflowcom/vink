@@ -68,11 +68,11 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
 | `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, `DATABASE_URL` (ẩn credential), kết nối PostgreSQL; Node/Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
-| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, vink.css}` | Build hoặc wasm-bindgen lỗi |
+| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, vink.css, fonts/}` | Build hoặc wasm-bindgen lỗi |
 | `cargo xtask db migrate` | Chạy migrations lên `DATABASE_URL` | Không kết nối được hoặc migration lỗi |
 | `cargo xtask db seed` | Nạp dữ liệu tổng hợp có nhãn `[Mẫu]` (chỉ `VINK_PROFILE=local`, idempotent) | Profile khác `local` hoặc chưa migrate |
 | `cargo xtask dev` | Build, migrate rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi |
-| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module | Một bước lỗi |
+| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module và font asset theo `provenance.json` | Một bước lỗi |
 | `cargo xtask verify postgres` | Test trên PostgreSQL thật, config sai thoát 2, worker start/SIGTERM | Thiếu PostgreSQL hoặc một bước lỗi |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web`, server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify all` | `quick`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
@@ -111,7 +111,8 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp
   src/desk_state.rs       máy trạng thái lưu nháp, thuần, có unit test
   src/document.rs         textarea ↔ document v1, DocumentView
-  style/vink.css          token M3 Expressive của Vink, sáng/tối
+  style/vink.css          owner token M3 Expressive Lavender: sáng/tối, `data-theme`, primitives
+  assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
 services/vink-app/        crate vink-app: composition root, bin vink-app và vink-worker
   src/domain/             luật thuần: document, title, version, revision hash
@@ -141,7 +142,7 @@ riêng; không dùng `--all-features`.
 | --- | --- | --- |
 | `quick` | Luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
 | `postgres` | Migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop | Hành vi trình duyệt, IME thật |
-| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; điều hướng client không tải lại trang; tạo, gõ, lưu, reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), mobile thật, screen reader, nhiều trình duyệt |
+| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`; điều hướng client không tải lại trang; tạo, gõ, lưu, reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), mobile thật, screen reader, nhiều trình duyệt |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
 triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp để mô hình hóa ngoài CAS
@@ -159,7 +160,7 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 | Lưu thủ công (nút, Enter ở tiêu đề, Ctrl/Cmd+S), chưa autosave | Đủ kiểm CAS và trạng thái lưu; tránh hẹn giờ trước khi chọn editor | Làm WR-01 đầy đủ trong S-01 |
 | Origin check cho PUT/POST | Seam CSRF trước khi có cookie session | Chọn mô hình session/CSRF cùng D-05 |
 | PostgreSQL 17.11, Rust 1.99.1, Leptos 0.8.22, SQLx 0.9.0, Axum 0.8.9 | Bản ổn định đã kiểm tương thích ngày 30/10/2026, khóa trong `Cargo.lock` | Nâng cấp có chủ đích, chạy lại cả ba lane |
-| Font hệ thống có hỗ trợ tiếng Việt, chưa tải web font | Tránh chính sách asset chưa chọn | Chọn bộ font và quy trình asset |
+| Font tự host: Be Vietnam Pro 400/600 và Literata variable, WOFF2 subset Latin + tiếng Việt ([assets/fonts](../../apps/vink-web/assets/fonts/README.md)) | Bộ thiết kế Lavender chọn hai family OFL này; 332 KB thay vì 1,37 MB TTF; nguồn, hash và license nằm trong repo | Cần weight/italic/script mới, hoặc chọn chính sách cache/CDN production |
 
 ## Chưa triển khai hoặc chưa kiểm chứng
 
@@ -171,6 +172,8 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 - Export (WR-05), nhiều chương (WR-04), tìm kiếm (UX-02), backup/restore (OPS-02).
 - Rời Bàn viết bằng điều hướng trong app (link "Bàn viết", "Đọc") chưa cảnh báo khi còn nội dung
   chưa lưu; cảnh báo hiện chỉ có khi đóng hoặc tải lại tab (`beforeunload`).
+- Bộ chọn giao diện sáng/tối: CSS đã nhận `data-theme="light|dark"` và mặc định theo hệ thống,
+  nhưng chưa có control hay nơi lưu lựa chọn.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.
 
 ## Việc tiếp theo

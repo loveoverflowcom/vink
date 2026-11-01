@@ -227,6 +227,12 @@ async function mainPhase(page) {
   check(blocks.length === 2, 'two stanzas render as two blocks');
   check(blocks[1].split('\n').length === 4 && blocks[1].includes(INDENTED_LINE), 'line breaks and indentation survive rendering');
 
+  console.log('self-hosted fonts:');
+  const loaded = await page.eval(`document.fonts.ready.then(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replaceAll('"', '') + ' ' + f.weight))`);
+  check(loaded.includes('Be Vietnam Pro 400') && loaded.includes('Literata 200 900'), `reader loaded the UI and reading faces (${loaded.join(', ')})`);
+  const served = await page.eval(`fetch('/pkg/fonts/literata-variable.woff2').then((r) => r.status + ' ' + r.headers.get('content-type'))`);
+  check(served === '200 font/woff2', 'font files are served as font/woff2');
+
   console.log('client navigation and draft creation:');
   await page.eval(`window.__vinkNavigation = 'kept'`);
   await page.click('.vk-nav a[href="/ban-viet"]');
