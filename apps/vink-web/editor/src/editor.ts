@@ -46,6 +46,15 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         // the writer's choice, as in a plain text field. Tab is left to focus navigation.
         keymap.of([{ key: 'Enter', run: insertNewline }, ...defaultKeymap, ...historyKeymap]),
         EditorView.lineWrapping,
+        // Native focus after a rail control or modal may place Chrome's DOM caret at the
+        // beginning. Restore the selection owned by this same view before selectionchange
+        // can adopt that transient caret. Mouse selection still chooses its intended point.
+        EditorView.domEventHandlers({
+          focus(_event, view) {
+            view.focus();
+            return false;
+          },
+        }),
         EditorView.contentAttributes.of({
           'aria-labelledby': options.labelledBy,
           'aria-describedby': options.describedBy,

@@ -22,6 +22,11 @@ Save, preview, export và guard rời trang đều đọc `BodySource::snapshot(
 
 ## Build
 
+Focus từ rail, overlay hoặc phím Tab dùng lại `EditorView.focus()` ngay trong focus handler
+của runtime để khôi phục selection từ state trước khi trình duyệt đọc lại caret tạm ở đầu
+`contenteditable`. Không tạo view mới, sửa nội dung hay ghi thêm lịch sử undo. Browser smoke
+kiểm cả Tab và native blur/focus sau đổi theme/rail; đây vẫn là input mô phỏng trên Chrome.
+
 `cargo xtask build` (và `dev`, `verify web`) chạy `npm ci --ignore-scripts` khi
 `package-lock.json` đổi so với lần cài trước, rồi `node scripts/build.mjs` để type-check bằng
 TypeScript và bundle bằng esbuild vào `target/site/pkg/vink-editor.js`. Phiên bản package được pin

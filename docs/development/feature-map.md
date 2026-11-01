@@ -3,6 +3,8 @@
 **Đối chiếu mã nguồn:** 31/10/2026, nền `20635b45c856990638c06eaab011b9940da852dc`; hàng font tự host
 thêm ngày 01/11/2026 cùng baseline Lavender; các hàng Bàn viết (CodeMirror, guard rời trang, xem
 trước, export) đối chiếu lại ngày 01/11/2026 trên nền `c9d1e74` cho [#6](https://github.com/loveoverflowcom/vink/issues/6).
+Shell/appearance và assertions liên quan được cập nhật ngày 01/11/2026 trên nền `6648200`
+cho [#7](https://github.com/loveoverflowcom/vink/issues/7).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -33,13 +35,15 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |
-| Khám phá tác phẩm công khai | `/`, chọn thẻ trong “Tác phẩm công khai”; “Đọc” trên thanh điều hướng trở về `/` | Danh sách snapshot công khai; có trạng thái rỗng và lỗi dữ liệu. Chưa phải Tạp Chí tuyển chọn | `Home`, `WorkCardView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs) |
+| Khám phá tác phẩm công khai | `/`, chọn thẻ trong “Tác phẩm công khai”; “Khám phá” trên thanh điều hướng trở về `/` | Danh sách snapshot công khai; có trạng thái rỗng và lỗi dữ liệu. Chưa phải Tạp Chí tuyển chọn | `Home`, `WorkCardView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs) |
 | Đọc tác phẩm | `/tac-pham/{id}`, thử `SAMPLE_WORK` trên fixture nguyên trạng | HTML trước JavaScript có nội dung publication, metadata và canonical; không thấy phần nháp. Thiếu/chưa công khai trả `404`, dữ liệu không tới được trả `503` | `Reader`, `PublicationView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [DocumentView](../../apps/vink-web/src/document.rs) |
+| Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết | [shell.rs](../../apps/vink-web/src/shell.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
+| Tôi và chọn giao diện | Web/tablet: Tôi mở overlay; Mở trang Tôi tới `/toi`; mobile: Tôi tới `/toi` | Sáng/Tối/Hệ thống, lưu preference local; OS đổi được theo dõi bằng CSS khi chọn Hệ thống. Storage lỗi vẫn dùng được trong phiên. Không có dữ liệu profile/auth thật. Theme/rail/overlay không lưu hay rời editor; chuyển route dùng guard | [appearance.rs](../../apps/vink-web/src/appearance.rs), [me.rs](../../apps/vink-web/src/pages/me.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs) |
 | Mở và tạo nháp | “Bàn viết” → `/ban-viet` → “Tạo bản nháp mới” → `/ban-viet/{id}` | Tải danh sách riêng sau hydration; nút tạo bị khóa khi đang gửi, thành công mở nháp version 1. Có lỗi tải/tạo; không có publish ở đây | `DeskIndex`, `DraftListView`, `DeskError` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs) |
 | Viết và lưu nháp | `/ban-viet/{id}` → sửa “Tiêu đề”, “Nội dung” (CodeMirror 6) → “Lưu nháp”; có Enter ở tiêu đề và Ctrl/Cmd+S trong form (chờ IME commit) | `unsaved` → `saving` → `saved` khi server xác nhận; `failed` (thông báo có “Thử lưu lại”, “Tải bản đang viết”) hoặc `conflict` giữ nội dung trên trang. Lưu thủ công, chưa autosave | `DraftEditor`, `Editor` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [EditorSession](../../apps/vink-web/src/desk_state.rs), [BodyEditor](../../apps/vink-web/src/editor.rs), [runtime](../../apps/vink-web/editor/README.md) |
 | Xử lý xung đột | Mở cùng nháp ở hai tab, tab B lưu trước, tab A lưu bản cũ → “Lưu đè bằng nội dung đang viết” khi muốn giữ bản A | Save cũ nhận `409`, không ghi; bản A còn trong editor. Lưu đè dùng version được báo và vẫn có thể xung đột lần nữa. Muốn mở bản server thì “Tải bản đang viết” trước khi reload | `Editor`, `EditorSession`; owner/version được kiểm trong [PgStore](../../services/vink-app/src/persistence/postgres.rs) |
 | Xem trước và tải `.txt` | “Xem trước” hoặc “Tải .txt” trên thanh công cụ editor | Hộp thoại đọc dùng `DocumentView` từ chữ hiện tại (kể cả chưa lưu); tệp `Tiêu đề.txt` gồm tiêu đề, dòng trống, nội dung đúng như đang viết. Không lưu, không gửi duyệt, không đổi trạng thái | `Editor`, [document.rs](../../apps/vink-web/src/document.rs) (`export_text`, `export_file_name`) |
-| Rời editor khi chưa lưu | Link “Đọc”/“Bàn viết”, brand, “← Bàn viết”, back/forward của trình duyệt khi còn chữ chưa được xác nhận | Hộp thoại “Ở lại” (Escape, trả focus về trường đang viết) / “Lưu và rời trang” (chỉ đi sau ack của bản mới nhất). Khi lưu lỗi, xung đột hoặc còn treo: “Tải bản đang viết (.txt)” và “Rời mà không lưu…” có bước xác nhận. Reload/đóng tab dùng `beforeunload` của trình duyệt | [LeaveGuard](../../apps/vink-web/src/desk_state.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs), `Editor` |
+| Rời editor khi chưa lưu | Link “Khám phá”/“Bàn viết”/“Tôi”, brand, “← Bàn viết”, back/forward của trình duyệt khi còn chữ chưa được xác nhận | Hộp thoại “Ở lại” (Escape, trả focus về trường đang viết) / “Lưu và rời trang” (chỉ đi sau ack của bản mới nhất). Khi lưu lỗi, xung đột hoặc còn treo: “Tải bản đang viết (.txt)” và “Rời mà không lưu…” có bước xác nhận. Reload/đóng tab dùng `beforeunload` của trình duyệt | [LeaveGuard](../../apps/vink-web/src/desk_state.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs), `Editor` |
 | Kiểm tra tiến trình | `/health/live`, `/health/ready` | Liveness tách khỏi kết nối/schema database; readiness không khẳng định có auth, moderation, Discourse hay job | [health.rs](../../services/vink-app/src/http/health.rs) |
 
 Các điểm bám automation đã có trong Bàn viết: `data-testid=create-draft`, `save`, `save-status`,
@@ -48,13 +52,14 @@ Các điểm bám automation đã có trong Bàn viết: `data-testid=create-dra
 `loading|ready|failed`; chữ ở `.cm-content`, từng dòng là `.cm-line`); `input[name=title]`;
 hộp thoại `leave-editor` (`leave-message`, `leave-stay`, `leave-save`, `leave-recovery`,
 `leave-export`, `leave-discard`, `discard-back`, `discard-confirm`) và `draft-preview`
-(`preview-close`). `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
+(`preview-close`). Shell có `rail-toggle`, `profile-trigger`, `profile-menu`, `profile-close`, `open-me`;
+radio theme có `name=overlay-theme|page-theme` và `value=light|dark|system`. `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
 Đây là điểm tìm phần tử, không thay thế việc kiểm nội dung, version và dữ liệu bền vững.
 
 ## Assertion hiện có và phần còn thiếu
 
 Nguồn kiểm trình duyệt là [browser-smoke.mjs](../../apps/vink-web/e2e/browser-smoke.mjs);
-`serverHtml`, `mainPhase`, `afterRestartPhase` là các phần trong script, không phải lệnh CLI
+`serverHtml`, `adaptiveShell`, `shellWithDirtyEditor`, `mainPhase`, `afterRestartPhase` là các phần trong script, không phải lệnh CLI
 mới. Nguồn kiểm PostgreSQL là [tests/postgres.rs](../../services/vink-app/tests/postgres.rs).
 Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác phá dữ liệu trên database sử dụng thật.
 
@@ -64,20 +69,23 @@ Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác 
 | Hydration và chuyển từ reader sang Bàn viết | `mainPhase` kiểm dấu hydration, giữ marker JS qua điều hướng, không có console error/exception | Một Chrome headless desktop; không bao phủ mọi link hoặc trình duyệt |
 | Gõ tiếng Việt, giữ dòng/khổ/thụt lề, lưu rồi reload | `vietnamese_text_lines_and_stanzas_round_trip` (`postgres`); `mainPhase` kiểm CodeMirror mount từ `/pkg/vink-editor.js` (trang đọc không tải), không còn textarea, so chữ trong `.cm-line`, document server và version sau lưu/reload; chờ window cũ được thay và editor mới hydrated trước khi đọc lại | CDP dùng `Input.insertText`, thử `imeSetComposition` có fallback; không phải IME hệ điều hành. Chưa kiểm Word/Docs paste hay thiết bị thật |
 | Chỉ báo đã lưu cho đúng nội dung được xác nhận | Unit tests của [desk_state.rs](../../apps/vink-web/src/desk_state.rs) kiểm phản hồi cũ, sửa tiếp khi request đang bay, một save đang bay và lỗi; `mainPhase` kiểm phiên bản 2 sau nút lưu, Ctrl+S, và trạng thái `failed` khi request bị làm lỗi bằng CDP Fetch | Smoke chưa kiểm Enter ở tiêu đề; lỗi mạng là mô phỏng ở tầng Fetch của trình duyệt |
-| Một EditorView giữ trạng thái | `mainPhase` đánh dấu phần tử `.cm-editor`, đổi `data-theme`, mở/đóng xem trước và hộp thoại rời trang, rồi kiểm cùng view, selection (`getSelection`), vị trí cuộn trang sau khi đóng xem trước, Ctrl+Z/Ctrl+Shift+Z | Selection/undo/cuộn đo qua DOM của một Chrome desktop; chưa kiểm cuộn khi bàn phím ảo mở |
+| Một EditorView giữ trạng thái | `shellWithDirtyEditor` đánh dấu `.cm-editor`, thu/mở rail, đổi theme qua radio, mở/đóng Tôi, resize mobile; so chữ/selection/dirty và không có PUT/POST, Tab trở lại và native blur/focus qua `EditorView.focus()`; `mainPhase` đổi `data-theme`, mở/đóng xem trước và hộp thoại rời trang, rồi kiểm cùng view, selection (`getSelection`), vị trí cuộn trang sau khi đóng xem trước, Ctrl+Z/Ctrl+Shift+Z | Selection/undo/cuộn đo qua DOM của một Chrome desktop; chưa kiểm cuộn khi bàn phím ảo mở |
 | Xem trước và export dùng chữ hiện tại | `mainPhase` so khối trong `draft-preview` với khổ chưa lưu và kiểm version server không đổi; `afterRestartPhase` tải `.txt` thật qua `Browser.setDownloadBehavior` và so nội dung; tệp khôi phục từ hộp thoại được kiểm trong `mainPhase` | Mỗi phase chỉ tải một tệp vì Chrome hỏi trước lần tải thứ hai; chưa kiểm mở tệp trên Windows/macOS |
 | Version cũ không ghi, giữ nội dung để người viết chọn | `stale_expected_version_conflicts_without_writing`, `concurrent_saves_of_one_version_have_exactly_one_winner` (`postgres`); `mainPhase` kiểm conflict và nút giữ bản local | Smoke mô phỏng bên ghi cạnh tranh bằng PUT trong cùng trang, chưa thao tác hai tab thật; test PostgreSQL chạy 8 save đồng thời |
 | Quyền đọc/ghi riêng và lỗi API không bị gộp thành thành công | `another_actor_cannot_read_list_or_write_a_private_draft`, `api_distinguishes_outcomes_and_keeps_drafts_private` (`postgres`); `private_routes_are_closed_without_an_auth_authority`, `database_outage_is_reported_not_hidden` trong [http/mod.rs](../../services/vink-app/src/http/mod.rs) (`quick`) | Resolver header chỉ nằm trong test; fixture loopback không chứng minh session, logout/ban hoặc ACC-01/02 |
 | Dữ liệu đã xác nhận còn sau restart, process dừng đúng | `confirmed_save_survives_a_new_connection_pool` (`postgres`); `afterRestartPhase` và orchestration trong [web.rs](../../xtask/src/web.rs) (`web`) | Không phải crash/replay/backup-restore; worker chỉ có lifecycle, không có job |
-| Font tự host được phục vụ và tải | `mainPhase` kiểm trang đọc có Be Vietnam Pro 400 và Literata ở trạng thái `loaded`, file font trả `font/woff2` (`web`); repository checks so hash từng face/license với [provenance](../../apps/vink-web/assets/fonts/provenance.json) và kiểm URL font trong CSS/shell (`quick`) | Không chứng minh vị trí dấu, fallback trên máy thiếu font hay hiển thị trên thiết bị thật; theme sáng/tối và `data-theme` chưa có assertion, chỉ có ảnh chụp ghi trong [baseline thiết kế](../design/README.md) |
-| Rời editor khi chưa lưu | Unit tests `LeaveGuard` (hủy khi đang lưu, ack muộn, đổi đích, chữ mới hơn, lỗi/409, xác nhận bỏ, bỏ khi save treo); `mainPhase` kiểm chữ đã xác nhận rời không hỏi, brand và back bị giữ, Escape/“Ở lại” giữ URL/chữ/focus, lưu rồi rời sau ack, hủy khi PUT bị giữ rồi thả không điều hướng muộn, lỗi → tải bản đang viết → rời mà không lưu → ack muộn không điều hướng lần nữa và không đánh dấu nháp khác đã lưu | `beforeunload` (reload/đóng tab) chưa có assertion; Chrome desktop headless, back qua `history.back()`; chưa kiểm cử chỉ vuốt back trên mobile |
+| Font tự host được phục vụ và tải | `mainPhase` kiểm trang đọc có Be Vietnam Pro 400 và Literata ở trạng thái `loaded`, file font trả `font/woff2` (`web`); repository checks so hash từng face/license với [provenance](../../apps/vink-web/assets/fonts/provenance.json) và kiểm URL font trong CSS/shell (`quick`) | Không chứng minh vị trí dấu, fallback trên máy thiếu font hay hiển thị trên thiết bị thật; kiểm theme trong `adaptiveShell` là bằng chứng riêng của shell |
+| Shell, preference và focus | `adaptiveShell` kiểm rail 220/96, mặc định/ghi đè/reload, thứ tự/active route, tooltip focus/Escape, Tôi overlay focus đầu/Tab/Escape/outside/Đóng/resize, ba đích mobile, theme system/override/reload/storage denied, không overflow và bottom clearance ở 320px/chữ 200%; `vietnamese_initials_use_first_and_last_words` kiểm tên tiếng Việt/NFC/blank | Một Chrome headless Linux, resize CSS và cỡ chữ root; không phải thiết bị mobile/zoom trình duyệt/screen reader; initials fixture không là profile |
+| Rời editor khi chưa lưu | Unit tests `LeaveGuard` (hủy khi đang lưu, ack muộn, đổi đích, chữ mới hơn, lỗi/409, xác nhận bỏ, bỏ khi save treo); `mainPhase` kiểm chữ đã xác nhận rời không hỏi, brand và back bị giữ, Escape/“Ở lại” giữ URL/chữ/focus, lưu rồi rời sau ack, hủy chuyển sang Tôi khi PUT bị giữ rồi thả không điều hướng muộn, lỗi → tải bản đang viết → rời mà không lưu → ack muộn không điều hướng lần nữa và không đánh dấu nháp khác đã lưu | `beforeunload` (reload/đóng tab) chưa có assertion; Chrome desktop headless, back qua `history.back()`; chưa kiểm cử chỉ vuốt back trên mobile |
 
 ## Công cụ và bằng chứng ngoài smoke
 
 Web runner chuẩn bị database thử, server và Chrome; khi chạy tới bước tương ứng, nó ghi
 `target/verify-web/server.log` và `smoke-state.json`. Thư mục này được làm mới ở lần chạy kế
-tiếp; cần giữ bằng chứng có ích trước khi chạy lại nếu nhiệm vụ cần bàn giao. Script hiện chưa
-tạo screenshot, video hoặc performance trace. Assertions DOM không chứng minh bố cục đẹp.
+tiếp; cần giữ bằng chứng có ích trước khi chạy lại nếu nhiệm vụ cần bàn giao. `adaptiveShell`
+và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/screenshots/` (1440/1024/390/320px,
+sáng/tối, 320px chữ 200%, editor dirty và overlay). Manifest `contexts.json` ghi route, viewport, DPR, theme, root font và user agent. Không có video hay performance trace.
+Assertions DOM và ảnh chưa mở không chứng minh bố cục đẹp.
 
 Với yêu cầu visual QA, dùng công cụ browser có sẵn để chụp **và mở** ảnh, ghi viewport/theme/
 text scale; xem [vink-ui-inspector](../../.agents/skills/vink-ui-inspector/SKILL.md).

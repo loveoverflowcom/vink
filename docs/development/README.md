@@ -27,6 +27,12 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung đột hoặc
   còn treo thì có thêm Tải bản đang viết và Rời mà không lưu (xác nhận hai bước). Server chỉ render
   khung trang, bản nháp được tải bằng API sau hydration.
+- Shell thích ứng ([#7](https://github.com/loveoverflowcom/vink/issues/7)): Khám phá (`/`) trước
+  Bàn viết, Tôi ở chân rail. Desktop từ 1100px mặc định 220px, tablet 760–1099px và editor
+  mặc định 96px; nút thu/mở ghi đè mặc định và nhớ trên thiết bị. Dưới 760px dùng bottom bar
+  Khám phá → Bàn viết → Tôi, ẩn khi viết. Web/tablet mở Tôi bằng overlay; mobile tới `/toi`.
+  Sáng/Tối/Hệ thống chỉ có trong Tôi. Preference lỗi/không có storage vẫn dùng được trong phiên.
+  Không có profile API hay danh tính được suy ra từ fixture; xem [spec shell](../design/README.md#shell-thích-ứng-7).
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và
@@ -111,6 +117,9 @@ Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed`. Mã tho
 
 ```text
 apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của web, CSS tokens
+  src/shell.rs            rail/bar/overlay; giữ route/editor, dùng NavigationGuard cho chuyển trang
+  src/appearance.rs       theme/rail local, bootstrap trước CSS, initials thuần có fixture tiếng Việt
+  src/pages/me.rs         /toi: thông tin tài khoản chưa có, chọn giao diện
   src/contract.rs         biểu diễn API v1 của consumer, kiểm bằng fixtures của server
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp
@@ -150,7 +159,7 @@ riêng; không dùng `--all-features`.
 | --- | --- | --- |
 | `quick` | Luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
 | `postgres` | Migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop | Hành vi trình duyệt, IME thật |
-| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
+| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
 triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp để mô hình hóa ngoài CAS
@@ -185,8 +194,6 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
   backup/restore (OPS-02).
 - Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
   trình duyệt, không phải lỗi lưu.
-- Bộ chọn giao diện sáng/tối: CSS đã nhận `data-theme="light|dark"` và mặc định theo hệ thống,
-  nhưng chưa có control hay nơi lưu lựa chọn.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.
 
 ## Việc tiếp theo
