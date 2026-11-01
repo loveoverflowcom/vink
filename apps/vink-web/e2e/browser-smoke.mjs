@@ -514,6 +514,48 @@ async function chooseTheme(page, value, group = 'overlay-theme') {
   // Token colours switch at once; nav background transitions take 160ms. Contrast samples
   // describe the settled theme, separately from those transient animation frames.
   await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
+  await assertBrand(page, value);
+}
+
+async function assertBrand(page, preference) {
+  const theme = preference === 'system'
+    ? await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
+    : preference;
+  await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/enso-${theme}.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
+  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].every(el => getComputedStyle(el).backgroundImage.includes('enso-${theme}-96.avif') && getComputedStyle(el).filter === 'none' && el.textContent === '')`), `${theme} rail/mobile marks use the approved asset without inversion or placeholder text`);
+  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].filter(el => el.getClientRects().length).every(el => { const r = el.getBoundingClientRect(); return r.width === r.height && r.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize); })`), `${theme} brand reserves its square before image decoding`);
+}
+
+async function brandAssets(page) {
+  console.log('approved Enso asset delivery and decoding:');
+  for (const theme of ['light', 'dark']) {
+    for (const size of [24, 32, 48, 96, 192, 512]) {
+      const path = `/pkg/brand/enso-${theme}-${size}.avif`;
+      const response = await fetch(`${args.base}${path}`);
+      check(response.ok && response.headers.get('content-type')?.startsWith('image/avif'), `${theme} ${size}px AVIF is served as an image`);
+      check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth === ${size} && image.naturalHeight === ${size}; })()`), `${theme} ${size}px AVIF decodes at the declared size`);
+    }
+    const response = await fetch(`${args.base}/pkg/brand/manifest-${theme}.webmanifest`);
+    const manifest = await response.json();
+    check(response.ok && manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512'), `${theme} app manifest exposes 192/512 icons`);
+    for (const icon of manifest.icons) {
+      check((await fetch(`${args.base}${icon.src}`)).ok, `${theme} manifest icon ${icon.src} exists`);
+    }
+  }
+  // Suppress only this app's hydration bundle to inspect the real server document
+  // with CSS + appearance bootstrap. Restore it before any interaction checks.
+  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`localStorage.setItem('vink.ui.theme', '${theme}')`);
+    await page.goto(`${args.base}/toi`);
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && document.documentElement.dataset.theme === '${theme}'`), `${theme} bootstrap selects the stored theme without hydration`);
+    await assertBrand(page, theme);
+    await page.capture(`brand-before-hydration-${theme}`);
+  }
+  await page.send('Network.setBlockedURLs', { urls: [] });
+  await page.eval(`localStorage.removeItem('vink.ui.theme')`);
+  await page.goto(`${args.base}/`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after brand bootstrap check');
 }
 
 async function textContrast(page, theme, surface = 'shell') {
@@ -551,6 +593,7 @@ async function adaptiveShell(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration');
+  await brandAssets(page);
   check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('.vk-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
   check((await page.eval(RAIL_WIDTH)) === 220, 'desktop defaults to a 220px rail');
   await page.click('[data-testid=rail-toggle]');
@@ -598,6 +641,7 @@ async function adaptiveShell(page) {
   check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
   await page.reload();
   check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
+  await assertBrand(page, 'dark');
   await openProfile(page);
   await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1400, y: 20, button: 'left', clickCount: 1 });
   await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1400, y: 20, button: 'left', clickCount: 1 });
@@ -618,8 +662,10 @@ async function adaptiveShell(page) {
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
   await chooseTheme(page, 'system', 'page-theme');
   const darkSurface = await page.eval(`getComputedStyle(document.body).backgroundColor`);
+  await assertBrand(page, 'dark');
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
   await page.waitFor(`getComputedStyle(document.body).backgroundColor !== ${JSON.stringify(darkSurface)}`, 'system appearance follows OS changes');
+  await assertBrand(page, 'light');
   await chooseTheme(page, 'dark', 'page-theme');
   check((await page.eval(`getComputedStyle(document.body).backgroundColor`)) === darkSurface, 'explicit dark overrides a light system');
   await chooseTheme(page, 'light', 'page-theme');
@@ -635,6 +681,7 @@ async function adaptiveShell(page) {
   await page.viewport(1440);
   await page.click('[data-testid=rail-toggle]');
   check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
+  await assertBrand(page, 'dark');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
   await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme')`);

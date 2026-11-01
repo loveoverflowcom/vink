@@ -9,6 +9,8 @@ cho [#7](https://github.com/loveoverflowcom/vink/issues/7). Dashboard Bàn viế
 [#8](https://github.com/loveoverflowcom/vink/issues/8).
 Khám phá/reader và assertions `publicReading` đối chiếu ngày 01/11/2026 trên nền `c6a8a29`
 cho [#9](https://github.com/loveoverflowcom/vink/issues/9), theo cập nhật v3 của #14.
+Logo/theme và assertions `brandAssets`/`assertBrand` đối chiếu ngày 01/11/2026 trên nền
+`738e6c6` cho [#10](https://github.com/loveoverflowcom/vink/issues/10).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -36,6 +38,14 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
   [contract v1](../../services/vink-app/contracts/http/v1/README.md) sở hữu.
 
 ## Điểm vào và trạng thái cần nhận biết
+
+Logo Enso trong brand rail/mobile là ảnh trang trí của link trang chủ hiện có, cùng
+accessible name/dirty guard. Owner: `shell.rs`, `appearance.rs`, `vink.css`,
+[assets/brand](../../apps/vink-web/assets/brand/README.md) và pipeline `xtask`.
+`brandAssets` kiểm asset thật/MIME/decode 24–512px, manifest và bootstrap trước hydration;
+`assertBrand` kiểm cặp theme/geometry qua các lựa chọn, reload, OS và storage denied trong
+`adaptiveShell`. Ảnh `brand-before-hydration-*` và các ảnh shell dùng cùng fixture local;
+phải mở chúng để nhận xét thị giác. Manifest chưa chứng minh cài app/launcher trên OS thật.
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |

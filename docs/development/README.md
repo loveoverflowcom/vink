@@ -88,11 +88,11 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
 | `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` (ẩn credential), kết nối PostgreSQL; Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
-| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`; `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
+| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/, brand/}`; `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
 | `cargo xtask db migrate` | Chạy migrations lên `DATABASE_URL` | Không kết nối được hoặc migration lỗi |
 | `cargo xtask db seed` | Nạp dữ liệu tổng hợp có nhãn `[Mẫu]` (chỉ `VINK_PROFILE=local`, idempotent) | Profile khác `local` hoặc chưa migrate |
 | `cargo xtask dev` | Build, migrate rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi |
-| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module, font asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
+| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module, font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
 | `cargo xtask verify postgres` | Test trên PostgreSQL thật, config sai thoát 2, worker start/SIGTERM | Thiếu PostgreSQL hoặc một bước lỗi |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web`, server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify all` | `quick`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
@@ -140,6 +140,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   editor/                 runtime CodeMirror 6 (TypeScript, npm pin, esbuild) → /pkg/vink-editor.js
   style/vink.css          owner token M3 Expressive Lavender: sáng/tối, `data-theme`, primitives
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
+  assets/brand/           Enso light/dark AVIF/SVG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
 services/vink-app/        crate vink-app: composition root, bin vink-app và vink-worker
   src/domain/             luật thuần: document, title, version, revision hash

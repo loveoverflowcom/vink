@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 
 /// Self-hosted font faces, their OFL licenses and `provenance.json`.
 pub const FONTS_DIR: &str = "apps/vink-web/assets/fonts";
+pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
 
 pub fn run(root: &Path) -> Result<(), String> {
     let mut problems = Vec::new();
@@ -14,6 +15,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     links(root, &mut problems);
     boundaries(root, &mut problems);
     fonts(root, &mut problems);
+    brand(root, &mut problems);
     editor_packages(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
@@ -28,6 +30,35 @@ pub fn run(root: &Path) -> Result<(), String> {
 
 fn read(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok()
+}
+
+/// Preserve the approved source derivatives and catch missing/corrupt release assets.
+fn brand(root: &Path, problems: &mut Vec<String>) {
+    let dir = root.join(BRAND_DIR);
+    let record = read(&dir.join("provenance.json"))
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
+    let Some(files) = record.as_ref().and_then(|value| value["files"].as_object()) else {
+        problems.push(format!(
+            "{BRAND_DIR}/provenance.json: missing or invalid files"
+        ));
+        return;
+    };
+    for (name, entry) in files {
+        match std::fs::read(dir.join(name)) {
+            Ok(bytes) if entry["sha256"].as_str() == Some(sha256_hex(&bytes).as_str()) => {}
+            _ => problems.push(format!("{BRAND_DIR}/{name}: missing or SHA-256 differs")),
+        }
+    }
+    for theme in ["light", "dark"] {
+        for size in [24, 32, 48, 96, 192, 512] {
+            let name = format!("enso-{theme}-{size}.avif");
+            if !files.contains_key(&name) {
+                problems.push(format!(
+                    "{BRAND_DIR}/{name}: not recorded in provenance.json"
+                ));
+            }
+        }
+    }
 }
 
 fn rel(root: &Path, path: &Path) -> String {

@@ -81,3 +81,10 @@ jobs:
           node-version: 24
       # Google Chrome is preinstalled on GitHub's ubuntu-24.04 image.
       - run: cargo xtask verify web
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-evidence
+          path: target/verify-web/
+          retention-days: 14

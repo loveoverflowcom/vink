@@ -8,7 +8,10 @@ pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 
 // Runs before CSS; only mutates the document root outside the hydrated app. The browser effect
 // reads these same keys after hydration. Storage denial leaves system/context defaults intact.
-pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}"#;
+// Head links are outside the hydrated body. Observe the existing theme authority so explicit
+// choices, system changes and storage-denied sessions share one icon/manifest selection.
+pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}
+(()=>{const root=document.documentElement,media=matchMedia('(prefers-color-scheme: dark)');const sync=()=>{const theme=root.dataset.theme||(media.matches?'dark':'light');document.getElementById('vink-favicon').setAttribute('href','/pkg/brand/enso-'+theme+'.svg');document.getElementById('vink-manifest').setAttribute('href','/pkg/brand/manifest-'+theme+'.webmanifest')};sync();new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['data-theme']});media.addEventListener('change',sync)})()"#;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(crate) enum Theme {

@@ -1,0 +1,116 @@
+{
+  "reference_url": "https://drive.google.com/file/d/1hHQguADQ2tbiNjQ9r8WqMnYUSEnkAyYs/view",
+  "reference_sha256": "ee10182451ce3b658d5d5160f3011e9334ab1f5fa4388d9cb751bb6076cf6cad",
+  "reference_size": [
+    1774,
+    887
+  ],
+  "sizes": [
+    24,
+    32,
+    48,
+    96,
+    192,
+    512
+  ],
+  "files": {
+    "enso-dark-192.avif": {
+      "sha256": "b8d45e86bdb897c873565d1666a471c6264f422c1e8130efe032b6b4a0002855",
+      "bytes": 27184
+    },
+    "enso-dark-24.avif": {
+      "sha256": "983b052d1e533c306098adbd9c0db032b85f55a138980967f064da8301cca085",
+      "bytes": 2048
+    },
+    "enso-dark-32.avif": {
+      "sha256": "b036e7fa501216f79af15004914929906fd07d702c99d117b655795890aeeee7",
+      "bytes": 2801
+    },
+    "enso-dark-48.avif": {
+      "sha256": "e88f5fd3693479f04f8395a02550a5578318b52efb02aba5a64600dfd635c42a",
+      "bytes": 4623
+    },
+    "enso-dark-512.avif": {
+      "sha256": "4b66969fb48d58281662085282da74692f5ef55b1b80218b9327d214cfd92e40",
+      "bytes": 104048
+    },
+    "enso-dark-96.avif": {
+      "sha256": "bfdf8c8a3e19c0ae3362bebfd4367d3e4d53370a98f516e0fac55785b52d346f",
+      "bytes": 10960
+    },
+    "enso-dark.svg": {
+      "sha256": "9c73bf306ed32d50181ca2952e7f1c1599be0fdd098b1005d152db3ef00f984d",
+      "bytes": 21906
+    },
+    "enso-light-192.avif": {
+      "sha256": "68da94ec3802462f4889c436e0b8b9114cdde3cebc3633f8d130ec581fda44a3",
+      "bytes": 29828
+    },
+    "enso-light-24.avif": {
+      "sha256": "9716af6e727d23ffa5f469e18ae68d154136e020d999189ff634d6331ca76610",
+      "bytes": 1952
+    },
+    "enso-light-32.avif": {
+      "sha256": "59bcacc0cb76a052858b9401495127f6dd4b5a8129ccca9597337e1715ae70fe",
+      "bytes": 2818
+    },
+    "enso-light-48.avif": {
+      "sha256": "f52d081f55125f86bbf5159f5f6d1936f9b89fa78716d6e68b7bec6f9ee684bb",
+      "bytes": 4300
+    },
+    "enso-light-512.avif": {
+      "sha256": "d1dbe12c13c0a92b6e24449517cb86860af616a9b37f9a2a6be95cbc6755c05e",
+      "bytes": 105149
+    },
+    "enso-light-96.avif": {
+      "sha256": "4e321dfdbefbe4f09911c3d8efe81d66c9f167d393747d37b492135922c5fe09",
+      "bytes": 11883
+    },
+    "enso-light.svg": {
+      "sha256": "c5d935975cab8e05ccf4e64bc63a32c19e377dcc50858683d0b0fd52ae2ad0d8",
+      "bytes": 21102
+    },
+    "favicon.svg": {
+      "sha256": "a8a9b24b8cc5550605a6898869aaa4ffd4df7fe00b38f9aac30527519fc6c722",
+      "bytes": 45262
+    },
+    "manifest-dark.webmanifest": {
+      "sha256": "5b2b4c690e5524412c3b59c1d63116c12c02666f0d9af5b0bc10af64a5e1d19d",
+      "bytes": 603
+    },
+    "manifest-light.webmanifest": {
+      "sha256": "4d09c18e04bd98da39a258baeacdc4b67b6d76b00771fe486106366b1dd1e34c",
+      "bytes": 606
+    }
+  },
+  "themes": {
+    "light": {
+      "source_half": [
+        0,
+        0,
+        887,
+        887
+      ],
+      "crop_in_half": [
+        80,
+        80,
+        800,
+        800
+      ]
+    },
+    "dark": {
+      "source_half": [
+        887,
+        0,
+        1774,
+        887
+      ],
+      "crop_in_half": [
+        80,
+        80,
+        800,
+        800
+      ]
+    }
+  }
+}
