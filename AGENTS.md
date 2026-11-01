@@ -8,7 +8,8 @@ The user's current instructions take precedence over repository conventions.
 
 The repository holds product/architecture proposals, agent skills and a bootstrap skeleton:
 a Cargo workspace with the Leptos SSR + Axum app and its hydration bundle (`apps/vink-web`,
-`services/vink-app`), PostgreSQL migrations, a draft/reader slice, a lifecycle-only worker,
+`services/vink-app`), PostgreSQL migrations, a draft/reader slice with a CodeMirror 6 body editor
+(`apps/vink-web/editor`, pinned npm runtime), a lifecycle-only worker,
 `cargo xtask` lanes and CI. [docs/development](docs/development/README.md) owns its layout,
 commands, evidence and limits. No production auth, publish/moderation workflow, Discourse
 plugin, AI provider, job or executable behavior model exists. Inspect actual files before

@@ -15,6 +15,9 @@ use std::process::ExitCode;
 
 use process::{Report, cargo};
 
+/// The browser editor runtime: TypeScript sources, locked npm dependencies and build script.
+const EDITOR_RUNTIME_DIR: &str = "apps/vink-web/editor";
+
 const USAGE: &str = "\
 usage: cargo xtask <command>
 
@@ -72,10 +75,13 @@ fn finish(result: Result<(), String>) -> ExitCode {
     }
 }
 
-/// Server binaries plus `target/site/pkg/{vink.js, vink_bg.wasm, vink.css, fonts/}`.
+/// Server binaries plus
+/// `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`.
 pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     let root = root();
     doctor::require_wasm_bindgen(&root)?;
+    doctor::node_version()?;
+    doctor::npm_version()?;
     let profile = if release { "wasm-release" } else { "dev" };
     let mut wasm = cargo(&root);
     wasm.args([
@@ -112,6 +118,7 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
         .arg(&pkg)
         .arg(&wasm_file);
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
+    editor_runtime(&root, &pkg.join("vink-editor.js"))?;
     std::fs::copy(
         root.join("apps/vink-web/style/vink.css"),
         pkg.join("vink.css"),
@@ -125,6 +132,33 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     }
     env.apply(&mut server);
     process::run(&mut server, "build server binaries (vink-app, vink-worker)")
+}
+
+/// The CodeMirror runtime (`apps/vink-web/editor`): installs the locked npm dependencies when the
+/// lockfile changed since the last install, then type-checks and bundles it to `outfile`.
+/// Install scripts are not run; esbuild and TypeScript ship their binaries as packages.
+fn editor_runtime(root: &Path, outfile: &Path) -> Result<(), String> {
+    let dir = root.join(EDITOR_RUNTIME_DIR);
+    let lock = std::fs::read(dir.join("package-lock.json"))
+        .map_err(|e| format!("read {EDITOR_RUNTIME_DIR}/package-lock.json: {e}"))?;
+    let stamp = dir.join("node_modules/.vink-installed-lock.json");
+    if std::fs::read(&stamp).ok().as_ref() != Some(&lock) {
+        let mut install = std::process::Command::new("npm");
+        install
+            .current_dir(&dir)
+            .args(["ci", "--ignore-scripts", "--no-audit", "--no-fund"]);
+        process::run(&mut install, "npm ci (editor runtime, locked)")?;
+        std::fs::write(&stamp, &lock).map_err(|e| format!("write {}: {e}", stamp.display()))?;
+    }
+    let mut bundle = std::process::Command::new("node");
+    bundle
+        .current_dir(&dir)
+        .arg("scripts/build.mjs")
+        .arg(outfile);
+    process::run(
+        &mut bundle,
+        "editor runtime: type check + bundle → vink-editor.js",
+    )
 }
 
 /// Font faces and their licenses, served next to `vink.css` at `/pkg/fonts/`. The directory is
@@ -241,7 +275,7 @@ fn quick(report: &mut Report) -> bool {
         }
     }
     report.step(
-        "repository checks (skills, links, boundaries, fonts)",
+        "repository checks (skills, links, boundaries, fonts, editor packages)",
         || checks::run(&root),
     )
 }

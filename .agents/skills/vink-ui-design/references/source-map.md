@@ -61,8 +61,10 @@ khi khẳng định root cause, line hoặc patch cụ thể. Tất cả đườ
 | Shell, routes, hydration | `apps/vink-web/src/lib.rs` |
 | Home/reader/not found | `apps/vink-web/src/pages/mod.rs` |
 | Bàn viết | `apps/vink-web/src/pages/desk.rs` |
-| Pure save state | `apps/vink-web/src/desk_state.rs` |
-| Document/textarea/render | `apps/vink-web/src/document.rs` |
+| Pure save state, leave intent | `apps/vink-web/src/desk_state.rs` |
+| Document/source text/render/export | `apps/vink-web/src/document.rs` |
+| CodeMirror bridge; runtime | `apps/vink-web/src/editor.rs`; `apps/vink-web/editor/` |
+| Leave guard for navigation | `apps/vink-web/src/navigation.rs` |
 | Consumer API, transport, SSR read seam | `apps/vink-web/src/contract.rs`, `src/api.rs`, `src/server.rs` |
 | CSS semantic tokens/components | `apps/vink-web/style/vink.css` |
 | Browser smoke | `apps/vink-web/e2e/browser-smoke.mjs` |

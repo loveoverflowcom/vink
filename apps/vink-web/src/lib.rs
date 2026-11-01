@@ -7,6 +7,8 @@ pub mod api;
 pub mod contract;
 pub mod desk_state;
 pub mod document;
+pub mod editor;
+pub mod navigation;
 mod pages;
 #[cfg(feature = "ssr")]
 pub mod server;
@@ -59,39 +61,50 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 pub fn App() -> impl IntoView {
     provide_meta_context();
     mark_hydrated();
+    navigation::NavigationGuard::provide();
     view! {
         <Router>
-            <a class="vk-skip-link" href="#noi-dung">
-                "Bỏ qua tới nội dung"
-            </a>
-            <header class="vk-topbar">
-                <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                    <span class="vk-brand__mark" aria-hidden="true">
-                        "V"
-                    </span>
-                    <span class="vk-brand__name">"Vink"</span>
-                </a>
-                <nav class="vk-nav" aria-label="Điều hướng chính">
-                    <A href="/" exact=true>
-                        "Đọc"
-                    </A>
-                    <A href="/ban-viet">"Bàn viết"</A>
-                </nav>
-            </header>
-            <main id="noi-dung" class="vk-main" tabindex="-1">
-                <Routes fallback=NotFound>
-                    <Route path=path!("/") view=Home ssr=SsrMode::Async />
-                    <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
-                    <Route path=path!("/ban-viet") view=DeskIndex />
-                    <Route path=path!("/ban-viet/:id") view=DraftEditor />
-                </Routes>
-            </main>
-            <footer class="vk-footer">
-                <p>
-                    "Vink · Việt Ink — bản dựng nền tảng. Chưa mở đăng ký; tác phẩm gắn nhãn [Mẫu] là dữ liệu phát triển."
-                </p>
-            </footer>
+            <Chrome />
         </Router>
+    }
+}
+
+/// Everything inside the router. Connects the shared [`navigation::NavigationGuard`], which
+/// links, back/forward and later navigation surfaces consult before leaving unconfirmed text.
+#[component]
+fn Chrome() -> impl IntoView {
+    navigation::use_navigation_guard().connect_router();
+    view! {
+        <a class="vk-skip-link" href="#noi-dung">
+            "Bỏ qua tới nội dung"
+        </a>
+        <header class="vk-topbar">
+            <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+                <span class="vk-brand__mark" aria-hidden="true">
+                    "V"
+                </span>
+                <span class="vk-brand__name">"Vink"</span>
+            </a>
+            <nav class="vk-nav" aria-label="Điều hướng chính">
+                <A href="/" exact=true>
+                    "Đọc"
+                </A>
+                <A href="/ban-viet">"Bàn viết"</A>
+            </nav>
+        </header>
+        <main id="noi-dung" class="vk-main" tabindex="-1">
+            <Routes fallback=NotFound>
+                <Route path=path!("/") view=Home ssr=SsrMode::Async />
+                <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
+                <Route path=path!("/ban-viet") view=DeskIndex />
+                <Route path=path!("/ban-viet/:id") view=DraftEditor />
+            </Routes>
+        </main>
+        <footer class="vk-footer">
+            <p>
+                "Vink · Việt Ink — bản dựng nền tảng. Chưa mở đăng ký; tác phẩm gắn nhãn [Mẫu] là dữ liệu phát triển."
+            </p>
+        </footer>
     }
 }
 

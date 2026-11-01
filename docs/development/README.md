@@ -19,10 +19,14 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
 - Trang chủ hữu hạn và trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
   từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
-- Bàn viết `/ban-viet` và `/ban-viet/{id}`: textarea, tạo nháp, lưu có điều kiện theo version,
+- Bàn viết `/ban-viet` và `/ban-viet/{id}`: nội dung soạn bằng CodeMirror 6
+  ([runtime riêng](../../apps/vink-web/editor/README.md)), tạo nháp, lưu có điều kiện theo version,
   trạng thái chưa lưu/đang lưu/đã lưu/lỗi/xung đột; chỉ báo đã lưu sau xác nhận của server;
   phản hồi cũ không đánh dấu nội dung mới hơn là đã lưu; xung đột giữ nguyên nội dung đang viết.
-  Server chỉ render khung trang, bản nháp được tải bằng API sau hydration.
+  Xem trước và tải `.txt` từ chữ đang có trên trang. Rời editor khi còn chữ chưa được xác nhận
+  (link, brand, back/forward) mở hộp thoại Ở lại / Lưu và rời trang; khi lưu lỗi, xung đột hoặc
+  còn treo thì có thêm Tải bản đang viết và Rời mà không lưu (xác nhận hai bước). Server chỉ render
+  khung trang, bản nháp được tải bằng API sau hydration.
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và
@@ -35,7 +39,8 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 | rustup | mọi lệnh | `rustup toolchain install` trong repo đọc [rust-toolchain.toml](../../rust-toolchain.toml) (1.99.1, rustfmt, clippy, wasm32) |
 | `wasm-bindgen` CLI | build bundle | Phải bằng phiên bản `wasm-bindgen` trong `Cargo.lock` (hiện 0.2.129): `cargo install wasm-bindgen-cli --version 0.2.129 --locked` |
 | PostgreSQL 17 | dev, `verify postgres`, `verify web` | [infra/dev/compose.yaml](../../infra/dev/compose.yaml) chạy bằng Podman hoặc Docker; role cần quyền `CREATEDB` cho test |
-| Node.js 22+ và Chrome/Chromium | `verify web` | Script không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` |
+| Node.js 22+ và npm | `build`, `dev`, `verify web` | Cài dependency đã khóa và bundle [runtime editor](../../apps/vink-web/editor/README.md) (cần mạng tới npm registry lần đầu hoặc khi lockfile đổi) |
+| Chrome/Chromium | `verify web` | Script smoke không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` |
 
 Thiết lập lần đầu:
 
@@ -67,12 +72,12 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
-| `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, `DATABASE_URL` (ẩn credential), kết nối PostgreSQL; Node/Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
-| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, vink.css, fonts/}` | Build hoặc wasm-bindgen lỗi |
+| `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` (ẩn credential), kết nối PostgreSQL; Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
+| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`; `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
 | `cargo xtask db migrate` | Chạy migrations lên `DATABASE_URL` | Không kết nối được hoặc migration lỗi |
 | `cargo xtask db seed` | Nạp dữ liệu tổng hợp có nhãn `[Mẫu]` (chỉ `VINK_PROFILE=local`, idempotent) | Profile khác `local` hoặc chưa migrate |
 | `cargo xtask dev` | Build, migrate rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi |
-| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module và font asset theo `provenance.json` | Một bước lỗi |
+| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module, font asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
 | `cargo xtask verify postgres` | Test trên PostgreSQL thật, config sai thoát 2, worker start/SIGTERM | Thiếu PostgreSQL hoặc một bước lỗi |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web`, server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify all` | `quick`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
@@ -109,8 +114,11 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/contract.rs         biểu diễn API v1 của consumer, kiểm bằng fixtures của server
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp
-  src/desk_state.rs       máy trạng thái lưu nháp, thuần, có unit test
-  src/document.rs         textarea ↔ document v1, DocumentView
+  src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
+  src/document.rs         chữ nguồn ↔ document v1, DocumentView, export .txt
+  src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
+  src/navigation.rs       NavigationGuard dùng chung cho link, back/forward, điều hướng bằng code
+  editor/                 runtime CodeMirror 6 (TypeScript, npm pin, esbuild) → /pkg/vink-editor.js
   style/vink.css          owner token M3 Expressive Lavender: sáng/tối, `data-theme`, primitives
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
@@ -142,7 +150,7 @@ riêng; không dùng `--all-features`.
 | --- | --- | --- |
 | `quick` | Luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
 | `postgres` | Migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop | Hành vi trình duyệt, IME thật |
-| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`; điều hướng client không tải lại trang; tạo, gõ, lưu, reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), mobile thật, screen reader, nhiều trình duyệt |
+| `web` | HTML có nội dung trước JavaScript; hydration không lỗi console; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
 triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp để mô hình hóa ngoài CAS
@@ -158,6 +166,8 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 | Bàn viết chỉ render khung ở server, tải nháp bằng API | Không có đường nào đưa nháp vào HTML/hydration payload | Có auth thật và cần render nháp cho chủ sở hữu ở server |
 | Document v1: block là danh sách dòng, NFC | Giữ khổ thơ, xuống dòng, thụt lề; hash ổn định giữa cách gõ dấu dựng sẵn và tổ hợp | S-01 chọn editor và schema dài hạn; cần migration document |
 | Lưu thủ công (nút, Enter ở tiêu đề, Ctrl/Cmd+S), chưa autosave | Đủ kiểm CAS và trạng thái lưu; tránh hẹn giờ trước khi chọn editor | Làm WR-01 đầy đủ trong S-01 |
+| CodeMirror 6 sửa chữ nguồn của nội dung, build bằng npm/esbuild riêng ([#6](https://github.com/loveoverflowcom/vink/issues/6)) | Giữ undo, selection, IME tốt hơn textarea mà không đổi document v1; runtime chỉ tải ở editor | S-01 chọn editor/schema dài hạn (D-04), cần rich text hoặc bundle quá lớn |
+| Guard rời editor: hộp thoại riêng cho điều hướng trong app, `beforeunload` cho reload/đóng tab | Router không hủy được back/forward; guard chặn trước router và đẩy URL trang về | Router có API chặn điều hướng, hoặc shell PR 03 cần lối thoát mới |
 | Origin check cho PUT/POST | Seam CSRF trước khi có cookie session | Chọn mô hình session/CSRF cùng D-05 |
 | PostgreSQL 17.11, Rust 1.99.1, Leptos 0.8.22, SQLx 0.9.0, Axum 0.8.9 | Bản ổn định đã kiểm tương thích ngày 30/10/2026, khóa trong `Cargo.lock` | Nâng cấp có chủ đích, chạy lại cả ba lane |
 | Font tự host: Be Vietnam Pro 400/600 và Literata variable, WOFF2 subset Latin + tiếng Việt ([assets/fonts](../../apps/vink-web/assets/fonts/README.md)) | Bộ thiết kế Lavender chọn hai family OFL này; 332 KB thay vì 1,37 MB TTF; nguồn, hash và license nằm trong repo | Cần weight/italic/script mới, hoặc chọn chính sách cache/CDN production |
@@ -168,19 +178,22 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 - Gửi duyệt, moderation người/AI, publish intent, publish/withdraw, curation, Tạp Chí
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). Chỉ seed local tạo `publications`.
 - Discourse, outbox, inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào.
-- Editor hoàn chỉnh, autosave, paste từ Word/Docs, undo, IME thật trên thiết bị (WR-01/WR-02, S-01).
-- Export (WR-05), nhiều chương (WR-04), tìm kiếm (UX-02), backup/restore (OPS-02).
-- Rời Bàn viết bằng điều hướng trong app (link "Bàn viết", "Đọc") chưa cảnh báo khi còn nội dung
-  chưa lưu; cảnh báo hiện chỉ có khi đóng hoặc tải lại tab (`beforeunload`).
+- Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
+  Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
+  điều hành.
+- Export ngoài `.txt` (WR-05 mới có bản văn bản thuần), nhiều chương (WR-04), tìm kiếm (UX-02),
+  backup/restore (OPS-02).
+- Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
+  trình duyệt, không phải lỗi lưu.
 - Bộ chọn giao diện sáng/tối: CSS đã nhận `data-theme="light|dark"` và mặc định theo hệ thống,
   nhưng chưa có control hay nơi lưu lựa chọn.
 - Kiểm tra trên mobile thật, screen reader và đo hiệu năng.
 
 ## Việc tiếp theo
 
-1. **S-01 Editor + SSR:** thử editor JavaScript (ProseMirror hoặc tương đương) sau ranh giới
-   `DocumentView`/document v1; IME thật trên macOS/Windows/Android/iOS, paste, undo, autosave
-   dùng lại `EditorSession`, hai tab, mobile.
+1. **S-01 Editor + SSR:** CodeMirror 6 đang sửa chữ nguồn sau ranh giới `DocumentView`/document v1;
+   còn IME thật trên macOS/Windows/Android/iOS, paste, autosave dùng lại `EditorSession`, hai tab,
+   mobile, và quyết định có cần rich text (D-04).
 2. **S-03 Identity:** chọn auth authority, thay `LocalFixture` bằng resolver thật giữ nguyên
    seam `IdentityResolver`, cookie/CSRF, liên kết principal; thử đổi email, ban, logout.
 3. **WR-03 + PUB-01/02 trên PostgreSQL (nền cho S-04):** tạo revision bất biến từ nháp khi gửi,

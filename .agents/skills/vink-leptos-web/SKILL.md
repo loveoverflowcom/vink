@@ -24,8 +24,10 @@ do not inherit Cantos's CSR/Trunk setup.
 | Pages: home, reader, not-found; Bàn viết | `src/pages/mod.rs`, `src/pages/desk.rs` |
 | The web app's own API v1 types and error classification | `src/contract.rs` (checked against the provider fixtures) |
 | Data access: SSR through `server::PublicReads`, browser through `/api/v1` | `src/api.rs`, `src/server.rs` |
-| Save-state machine (pure, unit-tested) | `src/desk_state.rs` |
-| Textarea ↔ document v1, reading view | `src/document.rs` |
+| Save-state and leave-intent machines (pure, unit-tested) | `src/desk_state.rs` |
+| Source text ↔ document v1, reading view, `.txt` export | `src/document.rs` |
+| CodeMirror 6 body editor: wasm-bindgen bridge, `BodySource::snapshot` | `src/editor.rs`; runtime in `editor/` (TypeScript, pinned npm, built to `/pkg/vink-editor.js`) |
+| Shared leave guard for links, back/forward and programmatic exits | `src/navigation.rs` (`NavigationGuard`) |
 | Design tokens and components; self-hosted fonts | `style/vink.css`; `assets/fonts` (copied to `/pkg/fonts/` by `cargo xtask build`) |
 | Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
 
@@ -73,9 +75,11 @@ real consumer and no private data crosses into the browser build.
 
 ## Editor and async state
 
-Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk is a textarea smoke over
-document v1 with manual save; it does not complete S-01. Reuse `EditorSession` for autosave or
-a JavaScript editor instead of adding a second save-state model. Choose the canonical
+Treat WR-01–WR-03 and S-01 as the acceptance boundary. The desk edits document v1 source text
+in CodeMirror 6 with manual save; it does not complete S-01 (no autosave, real-IME or device
+evidence). Reuse `EditorSession` for autosave instead of adding a second save-state model, and
+read the body only through `BodySource::snapshot`. New exits from the editor (rail, profile,
+menus) go through `NavigationGuard` so `LeaveGuard` can hold them. Choose the canonical
 document/schema version through the scoped design; derived HTML/text must not become competing
 sources.
 The JS editor bridge owns mount, subscriptions, selection and teardown. Preserve the editor
