@@ -7,6 +7,8 @@ Shell/appearance và assertions liên quan được cập nhật ngày 01/11/202
 cho [#7](https://github.com/loveoverflowcom/vink/issues/7). Dashboard Bàn viết và assertions
 `draftDashboard` đối chiếu ngày 01/11/2026 trên nền `cfad6a2` cho
 [#8](https://github.com/loveoverflowcom/vink/issues/8).
+Khám phá/reader và assertions `publicReading` đối chiếu ngày 01/11/2026 trên nền `c6a8a29`
+cho [#9](https://github.com/loveoverflowcom/vink/issues/9), theo cập nhật v3 của #14.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -37,8 +39,8 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |
-| Khám phá tác phẩm công khai | `/`, chọn thẻ trong “Tác phẩm công khai”; “Khám phá” trên thanh điều hướng trở về `/` | Danh sách snapshot công khai; có trạng thái rỗng và lỗi dữ liệu. Chưa phải Tạp Chí tuyển chọn | `Home`, `WorkCardView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs) |
-| Đọc tác phẩm | `/tac-pham/{id}`, thử `SAMPLE_WORK` trên fixture nguyên trạng | HTML trước JavaScript có nội dung publication, metadata và canonical; không thấy phần nháp. Thiếu/chưa công khai trả `404`, dữ liệu không tới được trả `503` | `Reader`, `PublicationView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [DocumentView](../../apps/vink-web/src/document.rs) |
+| Khám phá tác phẩm công khai | `/`, chọn thẻ trong “Tác phẩm công khai”; “Khám phá” trên thanh điều hướng trở về `/` | Luồng v3 hữu hạn tối đa 12 bài theo ngày đăng, title/byline/ngày UTC và link thật; gợi ý viết xuống sau luồng ở màn hẹp. Loading/rỗng/unavailable riêng, có điểm dừng. Chưa có search/intent/curation/feedback/bookmark | `Home`, `WorkCardView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs) |
+| Đọc tác phẩm | `/tac-pham/{id}`, thử `SAMPLE_WORK` trên fixture nguyên trạng | Lối về Khám phá; title dài wrap, đoạn/khổ/dòng/thụt lề giữ nguyên. HTML trước JavaScript có nội dung publication, metadata và canonical; không thấy phần nháp. Thiếu/chưa công khai trả `404`, dữ liệu không tới được trả `503` | `Reader`, `PublicationView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [DocumentView](../../apps/vink-web/src/document.rs) |
 | Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết | [shell.rs](../../apps/vink-web/src/shell.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
 | Tôi và chọn giao diện | Web/tablet: Tôi mở overlay; Mở trang Tôi tới `/toi`; mobile: Tôi tới `/toi` | Sáng/Tối/Hệ thống, lưu preference local; OS đổi được theo dõi bằng CSS khi chọn Hệ thống. Storage lỗi vẫn dùng được trong phiên. Không có dữ liệu profile/auth thật. Theme/rail/overlay không lưu hay rời editor; chuyển route dùng guard | [appearance.rs](../../apps/vink-web/src/appearance.rs), [me.rs](../../apps/vink-web/src/pages/me.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs) |
 | Tìm và viết tiếp | “Bàn viết” → `/ban-viet` → “Viết tiếp” hoặc “Mở bản thảo” → `/ban-viet/{id}` | Resume là nháp mới cập nhật nhất theo API; row có title/version/updated_at. Tìm có/không dấu, Đ/đ và NFC/NFD chỉ trong tối đa 100 nháp đã tải; đổi sort/tìm không đổi resume. Loading, rỗng, không kết quả, lỗi và 401 riêng; query/sort giữ qua tải lại/retry | `DeskIndex`, `DraftListView`, `DraftMetadata` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs) |
@@ -74,7 +76,9 @@ Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác 
 
 | Kịch bản / điều cần quan sát | Assertion hiện có | Giới hạn cần giữ |
 | --- | --- | --- |
-| Nháp thay đổi nhưng người đọc vẫn thấy snapshot công khai, không có dòng riêng | `public_read_serves_the_published_snapshot_not_the_draft`, `server_html_has_public_content_and_never_private_drafts` (`postgres`); `serverHtml` (`web`) kiểm HTML reader và khung Bàn viết không có `DRAFT_ONLY_LINE` | Seed tạo publication; chưa chứng minh gửi duyệt/xuất bản/thu hồi theo ý định tác giả |
+| Nháp thay đổi nhưng người đọc vẫn thấy snapshot công khai, không có dòng riêng | `public_read_serves_the_published_snapshot_not_the_draft`, `server_html_has_public_content_and_never_private_drafts` (`postgres`) kiểm draft save và revision chưa được trỏ không đổi public API/list/SSR; `serverHtml` (`web`) kiểm lại sau PUT thật, HTML reader/Khám phá và khung Bàn viết không có chữ riêng | Seed tạo publication; chưa chứng minh gửi duyệt/xuất bản/thu hồi theo ý định tác giả |
+| Khám phá hữu hạn, trạng thái và reader | `no_publications_is_an_empty_collection_and_not_an_outage` (`postgres`); `database_outage_is_reported_not_hidden` (`quick`) kiểm SSR `/` trả 503; `serverHtml` kiểm public HTML/title/canonical/description, missing/unpublished 404 và lưu nháp thật không đổi public API/SSR; `publicReading` kiểm link đọc/quay về, 12 rows riêng biệt, không N+1, loading/rỗng/503, reader 404/503 | Nhiều tác giả/title dài ở browser là HTTP fixtures có nhãn, không là dữ liệu sản phẩm; không có contract cho tương tác cộng đồng |
+| Reader/Explore responsive và chữ an toàn | `publicReading` kiểm markup là text, khổ/thụt lề/đoạn, không overflow tại 1440/1024/834/390/320px, hai theme, root text 100/200%; Tab/focus-visible giữa link đọc và action viết; `textContrast` lấy các cặp public UI; PNG + contexts | Ảnh chỉ thành bằng chứng thị giác sau khi mở; root text scale không phải browser zoom; headless focus do CDP giữ visible khi Chrome mở tab cập nhật. Không chứng minh screen reader hay thiết bị thật |
 | Dashboard, tìm trong phạm vi và trạng thái | `vietnamese_search_preserves_source_and_provider_order` (`quick`); `draftDashboard` (`web`) dùng fixtures rỗng/100 row/title dài NFD, kiểm work_id/version/time, scope, tìm Đ/đ, sort, không kết quả, giữ query/sort qua 503/retry, 401, không N+1; `serverHtml` kiểm index không có title/body riêng | Fixtures HTTP chỉ thuộc test, không phải data sản phẩm; không kiểm tìm toàn thư viện hoặc profile/publication |
 | Tạo nháp khi phản hồi mất hoặc đến muộn | `uncertain_create_needs_reconciliation_and_a_new_intent`, `explicit_pre_write_rejections_remain_distinct` (`quick`); `draftDashboard` giữ POST, chặn submit lặp, cho PostgreSQL commit thật rồi bỏ ack 201, kiểm GET lỗi không mở khóa, GET thành công tìm đúng một nháp không replay; response đến sau khi rời trang không kéo về editor | GET không xác định chắc chắn chủ nhân của một POST mất ack; chưa có idempotency key hay auth session thật |
 | Dashboard narrow/theme/keyboard | `draftDashboard` kiểm thứ tự resume → search → sort bằng Tab, focus-visible, reflow 1440/1024/390/320px và 320px chữ 200%; PNG + `contexts.json`; `textContrast` đo các cặp chữ dashboard hai theme | Phải mở PNG trước kết luận thị giác; không chứng minh screen reader, zoom hay điện thoại thật |
@@ -94,7 +98,7 @@ Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác 
 
 Web runner chuẩn bị database thử, server và Chrome; khi chạy tới bước tương ứng, nó ghi
 `target/verify-web/server.log` và `smoke-state.json`. Thư mục này được làm mới ở lần chạy kế
-tiếp; cần giữ bằng chứng có ích trước khi chạy lại nếu nhiệm vụ cần bàn giao. `adaptiveShell`
+tiếp; cần giữ bằng chứng có ích trước khi chạy lại nếu nhiệm vụ cần bàn giao. `adaptiveShell`, `publicReading`
 và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/screenshots/` (1440/1024/390/320px,
 sáng/tối, 320px chữ 200%, editor dirty và overlay). Manifest `contexts.json` ghi route, viewport, DPR, theme, root font và user agent. Không có video hay performance trace.
 Assertions DOM và ảnh chưa mở không chứng minh bố cục đẹp.
