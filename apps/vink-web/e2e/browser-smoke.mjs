@@ -419,16 +419,25 @@ async function openPage(cdp) {
   await page.send('Page.enable');
   await page.send('Runtime.enable');
   await page.send('Network.enable');
+  // Chrome may open its update/help tab on macOS after this target is created. Keep this
+  // headless target visible/focused so keyboard events and animation frames can run.
+  await page.send('Page.bringToFront');
+  await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   return page;
 }
 
 async function serverHtml() {
   console.log('server HTML before any JavaScript:');
+  const home = await fetch(args.base);
+  const homeHtml = await home.text();
+  check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Bạn đã xem hết danh sách này.'), 'Explore HTML contains its finite public collection before JavaScript');
+  check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
   const reader = await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   const html = await reader.text();
   check(reader.status === 200, 'reader responds 200');
   check(html.includes(PUBLISHED_LINE) && html.includes(INDENTED_LINE), 'reader HTML contains the published text');
-  check(/<link[^>]+rel="canonical"/.test(html) && html.includes('<title>[Mẫu] Mưa trên phố cũ — Vink</title>'), 'reader HTML has title and canonical link');
+  const canonicalTag = html.match(/<link\b(?=[^>]*\brel="canonical")[^>]*>/)?.[0];
+  check(canonicalTag?.includes(`href="${args.base}/tac-pham/${SAMPLE_WORK}"`) && html.includes('<title>[Mẫu] Mưa trên phố cũ — Vink</title>') && html.includes('name="description" content="Phố cũ mưa giăng sợi mỏng,"'), 'reader HTML has exact title, description and canonical link');
   check(!html.includes(DRAFT_ONLY_LINE), 'reader HTML and hydration payload exclude the private draft');
   const desk = await (await fetch(`${args.base}/ban-viet/${SAMPLE_WORK}`)).text();
   check(!desk.includes(DRAFT_ONLY_LINE), 'desk HTML is a shell without draft text');
@@ -437,6 +446,31 @@ async function serverHtml() {
   check(!index.includes(DRAFT_ONLY_LINE) && privateList.drafts.every(d => !d.title || !index.includes(d.title)), 'dashboard SSR contains no private title/body or list hydration payload');
   const anonymous = await fetch(`${args.base}/api/v1/drafts`);
   check(anonymous.status === 200, 'loopback identity fixture is active for this local run');
+
+  // The runner creates a scratch database; this writes only that disposable sample draft.
+  const draft = await (await fetch(`${args.base}/api/v1/drafts/${SAMPLE_WORK}`)).json();
+  const publicBefore = await (await fetch(`${args.base}/api/v1/works/${SAMPLE_WORK}/publication`)).json();
+  const privateTitle = 'Tiêu đề riêng sau khi sửa nháp — kiểm tra privacy';
+  const updated = await fetch(`${args.base}/api/v1/drafts/${SAMPLE_WORK}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: args.base },
+    body: JSON.stringify({ expected_version: draft.version, title: privateTitle, document: { schema_version: 1, blocks: [{ lines: [DRAFT_ONLY_LINE] }] } }),
+  });
+  check(updated.status === 200, 'a private sample draft is really saved in the scratch PostgreSQL database');
+  const publicAfter = await (await fetch(`${args.base}/api/v1/works/${SAMPLE_WORK}/publication`)).json();
+  const afterHtml = await (await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`)).text();
+  const afterHome = await (await fetch(args.base)).text();
+  check(JSON.stringify(publicAfter) === JSON.stringify(publicBefore) && afterHtml.includes(PUBLISHED_LINE), 'saving the draft leaves the public API snapshot and SSR text unchanged');
+  check([JSON.stringify(publicAfter), afterHtml, afterHome].every(text => !text.includes(privateTitle) && !text.includes(DRAFT_ONLY_LINE)), 'private edits stay out of public DTOs, HTML and hydration data');
+
+  const created = await fetch(`${args.base}/api/v1/drafts`, { method: 'POST', headers: { Origin: args.base } });
+  const privateWork = (await created.json()).work_id;
+  check(created.status === 201, 'an unpublished work exists for the public access check');
+  for (const id of [privateWork, '00000000-0000-4000-8000-000000000000', 'not-a-uuid']) {
+    for (const path of [`/tac-pham/${id}`, `/api/v1/works/${id}/publication`]) {
+      const missing = await fetch(`${args.base}${path}`);
+      check(missing.status === 404, `${path} returns 404 for missing/unpublished content`);
+    }
+  }
 }
 
 const RAIL_WIDTH = `Math.round(document.querySelector('.vk-rail').getBoundingClientRect().width)`;
@@ -456,9 +490,11 @@ async function chooseTheme(page, value, group = 'overlay-theme') {
 }
 
 async function textContrast(page, theme, surface = 'shell') {
-  const selectors = surface === 'desk'
-    ? ['.vk-resume__title', '.vk-resume .vk-draft-meta', '.vk-resume__action', '.vk-desk-heading .vk-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope']
-    : ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'];
+  const selectors = {
+    desk: ['.vk-resume__title', '.vk-resume .vk-draft-meta', '.vk-resume__action', '.vk-desk-heading .vk-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
+    explore: ['.vk-explore__title', '.vk-explore__heading p', '#public-scope', '.vk-public-row__title', '.vk-public-row__author', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt .vk-button', '.vk-reading-note'],
+    reader: ['#reader-return', '.vk-reader__title', '.vk-reader__byline', '.vk-reader .vk-eyebrow', '.vk-reader .vk-block'],
+  }[surface] ?? ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -836,9 +872,168 @@ async function draftDashboard(page) {
   const lateDeadline = Date.now() + 10000;
   while (gate.finishedPosts === finishedBefore && Date.now() < lateDeadline) await sleep(50);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  await page.waitFor(`document.querySelector('.vk-hero')`, 'home after late create reply');
+  await page.waitFor(`document.querySelector('#explore')`, 'home after late create reply');
   check(gate.finishedPosts === finishedBefore + 1 && await page.eval(`location.pathname === '/'`), 'late successful create response does not navigate away from another route');
   await gate.disable();
+  await page.viewport(1440);
+  await page.eval(`document.documentElement.removeAttribute('data-theme')`);
+}
+
+async function publicReading(page) {
+  console.log('public Explore and quiet reader: real navigation, then explicitly labelled HTTP fixtures:');
+  const setPublicTheme = async theme => {
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
+  };
+  const captureReal = async surface => {
+    for (const theme of ['light', 'dark']) {
+      await setPublicTheme(theme);
+      for (const width of [1440, 390]) {
+        await page.viewport(width);
+        await page.eval(`scrollTo(0, 0)`);
+        await page.capture(`${surface}-real-${width}-${theme}`);
+      }
+    }
+    await page.viewport(1440);
+  };
+  await page.viewport(1440);
+  await page.goto(`${args.base}/`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row__link')`, 'real Explore hydration');
+  check(await page.eval(`document.querySelectorAll('.vk-public-row').length === 1 && document.querySelector('.vk-public-row__link').getAttribute('href') === '/tac-pham/${SAMPLE_WORK}'`), 'one real publication is shown once, with its exact reader link');
+  await captureReal('explore');
+  await page.eval(`window.__publicNavigation = 'kept'; document.querySelector('.vk-public-row__link').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#writing-prompt a:focus-visible')`), 'keyboard moves from the real read link to the secondary writing action');
+  await page.key('Tab', SHIFT);
+  check(await page.eval(`document.activeElement.matches('.vk-public-row__link:focus-visible')`), 'read link has visible keyboard focus');
+  await page.click('.vk-public-row__link');
+  await page.waitFor(`document.querySelector('.vk-reader')?.textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`, 'real reader from collection');
+  check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/' && document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and has a stable return path');
+  await captureReal('reader');
+  await page.click('#reader-return');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row')`, 'return to real collection');
+
+  const longTitle = '[Mẫu kiểm tra] Đường về — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở';
+  const cards = Array.from({ length: 12 }, (_, i) => ({
+    work_id: `77777777-7777-4777-8777-${String(i).padStart(12, '0')}`,
+    title: i === 0 ? longTitle.normalize('NFD') : `[Mẫu kiểm tra] Một trang viết ${i}`,
+    author_display_name: i % 2 ? '[Mẫu kiểm tra] Trần Linh' : '[Mẫu kiểm tra] Nguyễn Hoài Thương',
+    published_at: '2026-11-01T08:30:00Z',
+  }));
+  const publicationPath = `/api/v1/works/${cards[0].work_id}/publication`;
+  const literal = '<script>window.__manuscriptExecuted = true</script> & chữ Việt';
+  const publication = {
+    ...cards[0], revision_id: '99999999-9999-4999-8999-999999999999',
+    document: { schema_version: 1, blocks: [
+      { lines: [PUBLISHED_LINE, INDENTED_LINE, literal] },
+      { lines: ['[Mẫu kiểm tra] Đoạn văn dài với đầy đủ ỹ ỷ ữ ợ Đ đ. ' + 'Một câu văn đi qua mùa mưa. '.repeat(30)] },
+      { lines: ['đêm'.repeat(120)] },
+    ] },
+  };
+  const answers = new Map([
+    ['/api/v1/works', { status: 200, body: { works: cards } }],
+    [publicationPath, { status: 200, body: publication }],
+  ]);
+  let holdList = false;
+  let heldList;
+  let publicationRequests = 0;
+  let gateError;
+  const respond = (requestId, answer) => page.send('Fetch.fulfillRequest', {
+    requestId, responseCode: answer.status,
+    responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+    body: Buffer.from(JSON.stringify(answer.body)).toString('base64'),
+  });
+  const listener = message => {
+    if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+    const { requestId, request } = message.params;
+    const path = new URL(request.url).pathname;
+    if (path.endsWith('/publication')) publicationRequests++;
+    if (path === '/api/v1/works' && holdList) { heldList = requestId; return; }
+    const answer = answers.get(path);
+    (answer ? respond(requestId, answer) : page.send('Fetch.continueRequest', { requestId })).catch(error => { gateError = error; });
+  };
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works*`, requestStage: 'Request' }] });
+  const openCollection = async () => {
+    await page.goto(`${args.base}/toi`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'utility hydration before public client read');
+    const nav = await page.eval(`innerWidth < 760`) ? '.vk-bottom-nav a[href="/"]' : '.vk-nav a[href="/"]';
+    await page.click(nav);
+  };
+  holdList = true;
+  await openCollection();
+  await page.waitFor(`document.querySelector('#community-stream [role=status]')`, 'public list loading');
+  check(await page.eval(`!document.querySelector('[data-testid=public-empty]') && !document.querySelector('[data-testid=public-unavailable]')`), 'public loading is separate from empty and unavailable');
+  const pendingDeadline = Date.now() + 10000;
+  while (!heldList && Date.now() < pendingDeadline) await sleep(50);
+  if (!heldList) throw new Error('public list request was not held');
+  holdList = false;
+  await respond(heldList, answers.get('/api/v1/works'));
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'finite public fixture collection');
+  check(publicationRequests === 0, 'Explore never fetches full manuscripts to populate cards (no N+1)');
+  check(await page.eval(`new Set([...document.querySelectorAll('.vk-public-row__link')].map(a => a.href)).size === 12 && document.querySelector('#feed-end') && document.querySelector('.vk-public-row time').getAttribute('datetime') === '2026-11-01T08:30:00Z'`), 'all 12 distinct public fields/links and the finite endpoint are rendered');
+  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore input, #explore button')`), 'unsupported search, filters, curation and social actions are not fabricated');
+  for (const theme of ['light', 'dark']) {
+    await setPublicTheme(theme);
+    await textContrast(page, theme, 'explore');
+    for (const width of [1440, 1024, 834, 390, 320]) {
+      await page.viewport(width);
+      for (const scale of [100, 200]) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `Explore reflows at ${width}px/${scale}%/${theme}`);
+        await page.capture(`explore-${width}-${scale}-${theme}`);
+      }
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
+  await page.viewport(1440);
+  await page.click('.vk-public-row__link');
+  await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${publication.revision_id}'`, 'fixture publication reader');
+  check(await page.eval(`document.querySelectorAll('.vk-reader .vk-block').length === 3 && document.querySelector('.vk-reader .vk-block').textContent.includes(${JSON.stringify(INDENTED_LINE)}) && document.querySelector('.vk-reader .vk-block').textContent.includes(${JSON.stringify(literal)}) && !document.querySelector('.vk-reader script') && !window.__manuscriptExecuted`), 'poetry, indentation, paragraphs and literal markup remain text, never executable HTML');
+  for (const theme of ['light', 'dark']) {
+    await setPublicTheme(theme);
+    await textContrast(page, theme, 'reader');
+    for (const width of [1440, 1024, 834, 390, 320]) {
+      await page.viewport(width);
+      for (const scale of [100, 200]) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && getComputedStyle(document.querySelector('.vk-reader .vk-block')).whiteSpace === 'pre-wrap'`), `reader preserves lines and reflows at ${width}px/${scale}%/${theme}`);
+        await page.capture(`reader-${width}-${scale}-${theme}`);
+        if (width === 320 && scale === 200) {
+          await page.eval(`document.querySelector('.vk-reader .vk-document').scrollIntoView({ block: 'start' })`);
+          await page.capture(`reader-body-320-200-${theme}`);
+        }
+      }
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize = ''`);
+  await page.viewport(1440);
+  for (const status of [404, 503]) {
+    answers.set(publicationPath, { status, body: { error: { code: status === 404 ? 'not_found' : 'dependency_unavailable' } } });
+    await openCollection();
+    await page.waitFor(`document.querySelector('.vk-public-row__link')`, 'collection before reader failure');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(status === 404 ? `document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'` : `document.querySelector('[data-testid=public-unavailable]')`, `reader ${status} state`);
+    check(await page.eval(`!document.querySelector('.vk-document') && !document.querySelector('[data-testid=public-empty]')`), `reader ${status} does not display stale text or a successful empty collection`);
+  }
+  for (const state of ['empty', 'unavailable']) {
+    answers.set('/api/v1/works', { status: state === 'empty' ? 200 : 503, body: state === 'empty' ? { works: [] } : { error: { code: 'dependency_unavailable' } } });
+    await openCollection();
+    await page.waitFor(`document.querySelector('[data-testid=public-${state}]')`, `Explore ${state}`);
+    check(await page.eval(`!document.querySelector('[data-testid=public-${state === 'empty' ? 'unavailable' : 'empty'}]') && document.querySelector('#writing-prompt a').getAttribute('href') === '/ban-viet'`), `${state} is distinct and keeps a truthful participation route`);
+    for (const theme of ['light', 'dark']) {
+      await setPublicTheme(theme);
+      for (const width of [1440, 320]) {
+        await page.viewport(width);
+        await page.eval(`scrollTo(0, 0)`);
+        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${state} reflows at ${width}px/${theme}`);
+        await page.capture(`explore-${state}-${width}-${theme}`);
+      }
+    }
+  }
+  await page.send('Fetch.disable');
+  page.cdp.listeners = page.cdp.listeners.filter(l => l !== listener);
+  if (gateError) throw gateError;
   await page.viewport(1440);
   await page.eval(`document.documentElement.removeAttribute('data-theme')`);
 }
@@ -847,6 +1042,7 @@ async function mainPhase(page) {
   await serverHtml();
   await adaptiveShell(page);
   await draftDashboard(page);
+  await publicReading(page);
 
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);

@@ -8,6 +8,7 @@ use leptos_meta::{Link, Meta, Title};
 use leptos_router::hooks::use_params_map;
 
 use crate::api::{self, LoadError};
+use crate::appearance::initials;
 use crate::canonical_url;
 use crate::contract::{Publication, WorkCard};
 use crate::document::DocumentView;
@@ -48,38 +49,31 @@ pub fn Home() -> impl IntoView {
     let works = api::works_resource();
     let status = ResponseStatus::capture();
     view! {
-        <Title text="Vink — Việt Ink" />
+        <Title text="Khám phá — Vink" />
         <Meta
             name="description"
             content="Vink là không gian viết, đọc và góp ý văn chương tiếng Việt."
         />
         <Link rel="canonical" href=canonical_url("/") />
-        <section class="vk-hero" aria-labelledby="hero-title">
-            <p class="vk-eyebrow">"Việt Ink"</p>
-            <h1 id="hero-title" class="vk-hero__title">
-                "Viết chậm, đọc kỹ, lớn lên cùng nhau."
-            </h1>
-            <p class="vk-hero__lede">
-                "Vink là không gian văn chương tiếng Việt: Bàn viết để giữ bản nháp riêng, nơi đọc yên tĩnh cho tác phẩm đã công khai và cộng đồng góp ý tử tế."
-            </p>
-            <div class="vk-actions">
-                <a class="vk-button vk-button--filled" href="/ban-viet">
-                    "Mở Bàn viết"
-                </a>
-            </div>
-        </section>
-        <section class="vk-section" aria-labelledby="works-title">
-            <h2 id="works-title" class="vk-section__title">
-                "Tác phẩm công khai"
-            </h2>
-            <Suspense fallback=|| view! { <p class="vk-muted">"Đang tải tác phẩm…"</p> }>
+        <div id="explore" class="vk-explore">
+            <header id="explore-heading" class="vk-explore__heading">
+                <h1 class="vk-explore__title">"Khám phá"</h1>
+                <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
+            </header>
+            <div class="vk-discover-grid">
+            <section id="community-stream" aria-labelledby="works-title">
+                <h2 id="works-title" class="vk-section__title">"Tác phẩm công khai"</h2>
+                <p id="public-scope" class="vk-muted vk-public-scope">
+                    "Tối đa 12 tác phẩm mới công khai, theo ngày đăng."
+                </p>
+            <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang tải tác phẩm…"</p> }>
                 {move || {
                     let status = status.clone();
                     Suspend::new(async move {
                         match works.await {
                             Ok(list) if list.works.is_empty() => {
                                 view! {
-                                    <div class="vk-empty">
+                                    <div class="vk-empty" data-testid="public-empty">
                                         <p class="vk-empty__title">"Chưa có tác phẩm nào được công khai."</p>
                                         <p>
                                             "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau."
@@ -90,9 +84,10 @@ pub fn Home() -> impl IntoView {
                             }
                             Ok(list) => {
                                 view! {
-                                    <ul class="vk-cards" role="list">
+                                    <ul class="vk-public-list" role="list" aria-describedby="public-scope">
                                         {list.works.into_iter().map(|w| view! { <WorkCardView work=w /> }).collect_view()}
                                     </ul>
+                                    <p id="feed-end" class="vk-feed-end">"Bạn đã xem hết danh sách này."</p>
                                 }
                                     .into_any()
                             }
@@ -104,20 +99,39 @@ pub fn Home() -> impl IntoView {
                     })
                 }}
             </Suspense>
-        </section>
+            </section>
+            <aside id="context" class="vk-explore-context" aria-label="Gợi ý viết">
+                <section id="writing-prompt" class="vk-writing-prompt" aria-labelledby="prompt-title">
+                    <p class="vk-eyebrow">"Một gợi ý để bắt đầu"</p>
+                    <h2 id="prompt-title">"Một nơi bạn nhớ"</h2>
+                    <p>"Một góc phố, căn phòng hay một người khiến bạn muốn trở về. Bạn sẽ bắt đầu từ chi tiết nào?"</p>
+                    <a class="vk-button vk-button--tonal" href="/ban-viet">"Bắt đầu viết"</a>
+                </section>
+                <p class="vk-reading-note">"Một câu chữ được đọc kỹ cũng là một sự đồng hành."</p>
+            </aside>
+            </div>
+        </div>
     }
 }
 
 #[component]
 fn WorkCardView(work: WorkCard) -> impl IntoView {
     let href = format!("/tac-pham/{}", work.work_id);
+    let avatar = initials(Some(&work.author_display_name));
     view! {
-        <li class="vk-card">
-            <a class="vk-card__link" href=href>
-                <span class="vk-card__title">{work.title}</span>
-                <span class="vk-card__meta">
-                    {work.author_display_name} " · " {display_date(&work.published_at)}
+        <li class="vk-public-row" data-work-id=work.work_id>
+            <p class="vk-public-row__byline">
+                <span class="vk-avatar" aria-hidden="true">{avatar}</span>
+                <span>
+                    <span class="vk-public-row__author">{work.author_display_name}</span>
+                    <time datetime=work.published_at.clone()>
+                        {display_date(&work.published_at)} " (UTC)"
+                    </time>
                 </span>
+            </p>
+            <a class="vk-public-row__link" href=href>
+                <h3 class="vk-public-row__title">{work.title}</h3>
+                <span class="vk-public-row__open">"Đọc tác phẩm" <span aria-hidden="true">"→"</span></span>
             </a>
         </li>
     }
@@ -168,27 +182,35 @@ fn PublicationView(publication: Publication) -> impl IntoView {
         <Meta property="og:type" content="article" />
         <Meta property="og:url" content=canonical.clone() />
         <Link rel="canonical" href=canonical />
-        <article class="vk-reader" data-revision=publication.revision_id>
-            <header class="vk-reader__header">
+        <div id="reader" class="vk-reader-page">
+        <a id="reader-return" class="vk-reader-return" href="/">
+            <span aria-hidden="true">"← "</span> "Khám phá"
+        </a>
+        <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
+            <header id="reader-header" class="vk-reader__header">
+                <p class="vk-eyebrow">"Bản công khai"</p>
                 <h1 class="vk-reader__title">{publication.title}</h1>
                 <p class="vk-reader__byline">
                     {publication.author_display_name} " · "
                     <time datetime=publication.published_at.clone()>
-                        {display_date(&publication.published_at)}
+                        {display_date(&publication.published_at)} " (UTC)"
                     </time>
                 </p>
             </header>
             <DocumentView document=publication.document />
         </article>
+        </div>
     }
 }
 
 #[component]
 fn Unavailable() -> impl IntoView {
     view! {
-        <div class="vk-notice" role="alert">
+        <div class="vk-notice" role="alert" data-testid="public-unavailable">
             <p class="vk-notice__title">"Tạm thời chưa đọc được nội dung."</p>
-            <p>"Máy chủ dữ liệu đang không phản hồi. Hãy thử tải lại sau ít phút."</p>
+            <p>"Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá."</p>
+            <p><a href="" rel="external">"Thử tải lại"</a></p>
+            <a class="vk-button vk-button--tonal" href="/">"Về Khám phá"</a>
         </div>
     }
 }
@@ -201,7 +223,7 @@ fn NotFoundContent() -> impl IntoView {
             <h1 class="vk-notice__title">"Không tìm thấy trang này."</h1>
             <p>"Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng."</p>
             <p>
-                <a href="/">"Về trang chủ"</a>
+                <a href="/">"Về Khám phá"</a>
             </p>
         </div>
     }

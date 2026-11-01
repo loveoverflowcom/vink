@@ -14,11 +14,13 @@ cần cập nhật.
 
 | Nguồn | Dùng cho |
 | --- | --- |
+| [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
 | [Ghi chú logo v2](https://drive.google.com/file/d/1pu1i_YqguPfbMCe2XDZk9rfU6bXZFtoO/view) và quyết định 01/11/2026 ([#10](https://github.com/loveoverflowcom/vink/issues/10)) | Trạng thái logo |
 
-Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định Drive mới hơn có phạm vi > spec v2.3.
+Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
+Khám phá/reader theo v3; palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
 Ảnh tham chiếu không ghi đè quyền của server hay ngữ nghĩa lưu/transport. `source/tokens.css` của
 prototype là nơi lấy giá trị ban đầu; từ nay sửa role trong `vink.css`, không đồng bộ ngược từ
 prototype. Lavender là palette riêng của Vink do người dùng chọn, không phải thương hiệu Cantos.
@@ -283,3 +285,8 @@ Node 24.22.2, Chrome 156.0.8078.73 headless, DPR 1, PostgreSQL local với datab
 `NOT_RUN`: mobile/IME hệ điều hành thật, Safari/Firefox, zoom trình duyệt thật và screen reader
 có tên. Browser dùng principal fixture local; chưa chứng minh production auth, publication,
 full-library search hay hoàn tất toàn bộ UX-01/UX-03/WR-01/WR-03.
+
+## Khám phá và reader công khai (#9)
+
+[LayoutSpec và delta capability lớp đọc v3](public-reading.md) ghi nguồn #9/#14, cơ chế
+SSR/API, bố cục hữu hạn và phạm vi kiểm chứng. Lớp đọc không hoàn tất tương tác cộng đồng.

@@ -17,9 +17,10 @@ use tower::ServiceExt;
 use uuid::Uuid;
 use vink_app::application::{DraftError, SaveDraft, Vink};
 use vink_app::dev_seed;
-use vink_app::domain::document::{BlockData, DocumentData, SCHEMA_VERSION};
+use vink_app::domain::document::{BlockData, Document, DocumentData, SCHEMA_VERSION, Title};
 use vink_app::domain::draft::DraftVersion;
 use vink_app::domain::ids::{PrincipalId, WorkId};
+use vink_app::domain::revision::RevisionContent;
 use vink_app::http::{AppState, router};
 use vink_app::identity::IdentityResolver;
 use vink_app::persistence::{PgStore, SchemaState, schema_state};
@@ -440,6 +441,40 @@ async fn api_distinguishes_outcomes_and_keeps_drafts_private(pool: PgPool) {
 async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
     let app = app(&pool).await;
     let work = dev_seed::SAMPLE_WORK;
+    let vink = Vink::new(PgStore::new(pool.clone()));
+    let private_title = "Tiêu đề mới chỉ ở nháp riêng";
+    vink.save_draft(
+        author(),
+        save(
+            sample_work(),
+            1,
+            private_title,
+            doc(&[&[dev_seed::DRAFT_ONLY_LINE]]),
+        ),
+    )
+    .await
+    .unwrap();
+
+    // An immutable revision is still private until the publication pointer selects it.
+    let unpublished = Uuid::now_v7();
+    let revision = RevisionContent::new(
+        Title::parse("Snapshot chưa công khai").unwrap(),
+        Document::parse(doc(&[&["Văn bản chỉ có trong snapshot chưa công khai."]])).unwrap(),
+    )
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(unpublished)
+    .bind(work)
+    .bind(revision.title().as_str())
+    .bind(sqlx::types::Json(revision.document().to_data()))
+    .bind(revision.hash().as_str())
+    .bind(dev_seed::SAMPLE_AUTHOR)
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let (status, _, html) = call(&app, "GET", &format!("/tac-pham/{work}"), None, None, None).await;
     assert_eq!(status, StatusCode::OK);
@@ -468,6 +503,14 @@ async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
     .await;
     assert_eq!(status, StatusCode::OK);
     assert!(!body.contains(dev_seed::DRAFT_ONLY_LINE));
+    assert!(!body.contains(private_title));
+    assert!(!body.contains("Snapshot chưa công khai"));
+    assert_eq!(
+        json(&body)["revision_id"],
+        dev_seed::SAMPLE_REVISION.to_string()
+    );
+    assert!(!html.contains(private_title) && !html.contains("Snapshot chưa công khai"));
+    assert!(html.contains(&format!(r#"data-revision="{}""#, dev_seed::SAMPLE_REVISION)));
 
     // The desk page is server-rendered as a shell; even the owner's draft is fetched later.
     let (status, _, html) = call(
@@ -485,11 +528,54 @@ async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
     let (status, _, html) = call(&app, "GET", "/", None, None, None).await;
     assert_eq!(status, StatusCode::OK);
     assert!(html.contains(dev_seed::SAMPLE_TITLE));
+    assert!(html.contains("Khám phá") && html.contains("Bạn đã xem hết danh sách này."));
+    assert!(!html.contains(private_title) && !html.contains("Snapshot chưa công khai"));
+
+    let (status, _, body) = call(&app, "GET", "/api/v1/works", None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body)["works"].as_array().unwrap().len(), 1);
+    assert!(body.contains(dev_seed::SAMPLE_TITLE) && !body.contains(private_title));
+
+    let private_work = vink.create_draft(author()).await.unwrap().work_id;
+    for path in [
+        format!("/tac-pham/{private_work}"),
+        format!("/api/v1/works/{private_work}/publication"),
+    ] {
+        let (status, _, _) = call(&app, "GET", &path, None, None, None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "private work: {path}");
+    }
 
     let (status, _, _) = call(
         &app,
         "GET",
         &format!("/tac-pham/{}", Uuid::now_v7()),
+        None,
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn no_publications_is_an_empty_collection_and_not_an_outage(pool: PgPool) {
+    let app = app(&pool).await;
+    sqlx::query("DELETE FROM publications")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (status, _, html) = call(&app, "GET", "/", None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(html.contains("Chưa có tác phẩm nào được công khai."));
+    assert!(!html.contains("Tạm thời chưa đọc được"));
+    assert!(!html.contains(dev_seed::SAMPLE_TITLE) && !html.contains(dev_seed::DRAFT_ONLY_LINE));
+    let (status, _, body) = call(&app, "GET", "/api/v1/works", None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body), json!({ "works": [] }));
+    let (status, _, _) = call(
+        &app,
+        "GET",
+        &format!("/tac-pham/{}", dev_seed::SAMPLE_WORK),
         None,
         None,
         None,

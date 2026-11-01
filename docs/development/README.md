@@ -17,7 +17,10 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 - PostgreSQL 17 với migration có phiên bản: `principals`, `works`, `working_drafts` (bản nháp có
   owner và version), `revisions` (snapshot bất biến, có `content_hash`, trigger chặn UPDATE) và
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
-- Trang chủ hữu hạn và trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
+- Khám phá `/` theo lớp đọc v3 ([#9](https://github.com/loveoverflowcom/vink/issues/9)): luồng
+  tối đa 12 tác phẩm mới công khai, tên tác giả/ngày UTC, điểm dừng và gợi ý bắt đầu viết;
+  phân biệt loading/rỗng/unavailable. Không spotlight hay tương tác thiếu chủ dữ liệu. Xem
+  [spec và delta](../design/public-reading.md). Trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
   từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
 - Dashboard `/ban-viet` ([#8](https://github.com/loveoverflowcom/vink/issues/8)): Viết tiếp mở
   nháp mới cập nhật nhất có quyền; danh sách hiện title/version/updated_at, tìm tiêu đề có/không

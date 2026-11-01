@@ -135,6 +135,11 @@ mod tests {
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("dependency_unavailable"), "{body}");
 
+        let (status, body) = get(&router, "/").await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(body.contains("Tạm thời chưa đọc được"), "{body}");
+        assert!(!body.contains("Chưa có tác phẩm nào"), "{body}");
+
         let (status, body) = get(&router, "/tac-pham/33333333-3333-4333-8333-333333333333").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("Tạm thời chưa đọc được"), "{body}");
