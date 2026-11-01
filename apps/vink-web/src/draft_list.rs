@@ -1,27 +1,13 @@
 //! Presentation rules for the loaded private draft list; no authority or manuscript reads.
 
-use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
-
 use crate::contract::{ApiError, DraftCard};
+pub use crate::search::search_key;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DraftSort {
     #[default]
     Recent,
     Title,
-}
-
-/// Vietnamese title matching accepts composed/decomposed accents and Đ/đ. Original text is
-/// never rewritten. This searches only the cards already returned by the list endpoint.
-pub fn search_key(text: &str) -> String {
-    text.nfd()
-        .filter(|c| !is_combining_mark(*c))
-        .flat_map(char::to_lowercase)
-        .map(|c| if c == 'đ' { 'd' } else { c })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 pub fn visible_drafts(drafts: &[DraftCard], query: &str, sort: DraftSort) -> Vec<DraftCard> {
@@ -117,6 +103,7 @@ impl CreateState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use unicode_normalization::UnicodeNormalization;
 
     fn card(id: &str, title: &str) -> DraftCard {
         DraftCard {

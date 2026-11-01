@@ -3127,6 +3127,7 @@ dependencies = [
  "leptos_axum",
  "leptos_meta",
  "leptos_router",
+ "percent-encoding",
  "send_wrapper",
  "serde",
  "serde_json",

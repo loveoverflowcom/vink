@@ -515,6 +515,11 @@ a {
 #community-stream > .vk-section__title { font-size: 1.125rem; margin-bottom: var(--vk-space-2); }
 .vk-public-scope { margin: 0 0 var(--vk-space-4); font-size: 0.875rem; }
 
+.vk-public-search { display: flex; flex-wrap: wrap; align-items: end; gap: var(--vk-space-3); margin-block: var(--vk-space-4); }
+.vk-public-search .vk-field { flex: 1 1 18rem; min-width: 0; margin: 0; }
+.vk-public-search__actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
+.vk-public-row { scroll-margin-block: var(--vk-space-4); }
+
 .vk-public-list {
   margin: 0;
   padding: 0 clamp(0.5rem, 2vw, 1.5rem);

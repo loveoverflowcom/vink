@@ -12,6 +12,8 @@ pub mod draft_list;
 pub mod editor;
 pub mod navigation;
 mod pages;
+pub mod public_list;
+pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;
 mod shell;

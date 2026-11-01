@@ -5,13 +5,15 @@ pub use desk::{DeskIndex, DraftEditor};
 
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
-use leptos_router::hooks::use_params_map;
+use leptos_router::components::Form;
+use leptos_router::hooks::{use_params_map, use_query_map};
 
 use crate::api::{self, LoadError};
 use crate::appearance::initials;
 use crate::canonical_url;
-use crate::contract::{Publication, WorkCard};
+use crate::contract::{Publication, WorkCard, WorkList};
 use crate::document::DocumentView;
+use crate::public_list::{explore_href, reader_href, visible_works, work_anchor};
 
 /// HTTP status for the server response; a no-op in the browser.
 #[derive(Clone)]
@@ -48,6 +50,8 @@ fn display_date(timestamp: &str) -> String {
 pub fn Home() -> impl IntoView {
     let works = api::works_resource();
     let status = ResponseStatus::capture();
+    let params = use_query_map();
+    let query = Memo::new(move |_| params.read().get("q").unwrap_or_default());
     view! {
         <Title text="Khám phá — Vink" />
         <Meta
@@ -64,8 +68,22 @@ pub fn Home() -> impl IntoView {
             <section id="community-stream" aria-labelledby="works-title">
                 <h2 id="works-title" class="vk-section__title">"Tác phẩm công khai"</h2>
                 <p id="public-scope" class="vk-muted vk-public-scope">
-                    "Tối đa 12 tác phẩm mới công khai, theo ngày đăng."
+                    "Tìm theo tiêu đề hoặc tên tác giả trong tối đa 12 tác phẩm mới công khai đã tải, theo ngày đăng. Không tìm toàn bộ thư viện."
                 </p>
+                <Form method="get" action="/" noscroll=true attr:role="search" attr:class="vk-public-search" attr:id="public-search">
+                    <label class="vk-field" for="public-query">
+                        <span class="vk-field__label">"Tìm trong danh sách"</span>
+                        <input id="public-query" class="vk-input" type="search" name="q"
+                            value=move || query.get() prop:value=move || query.get()
+                            aria-describedby="public-scope" />
+                    </label>
+                    <div class="vk-public-search__actions">
+                        <button class="vk-button vk-button--tonal" type="submit">"Tìm"</button>
+                        <Show when=move || !query.get().is_empty()>
+                            <a id="clear-public-search" class="vk-button vk-button--text" href="/">"Xóa tìm kiếm"</a>
+                        </Show>
+                    </div>
+                </Form>
             <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang tải tác phẩm…"</p> }>
                 {move || {
                     let status = status.clone();
@@ -83,17 +101,12 @@ pub fn Home() -> impl IntoView {
                                     .into_any()
                             }
                             Ok(list) => {
-                                view! {
-                                    <ul class="vk-public-list" role="list" aria-describedby="public-scope">
-                                        {list.works.into_iter().map(|w| view! { <WorkCardView work=w /> }).collect_view()}
-                                    </ul>
-                                    <p id="feed-end" class="vk-feed-end">"Bạn đã xem hết danh sách này."</p>
-                                }
+                                view! { <PublicListView list query /> }
                                     .into_any()
                             }
                             Err(_) => {
                                 status.set(503);
-                                view! { <Unavailable /> }.into_any()
+                                view! { <Unavailable return_href=explore_href(&query.get_untracked(), None) /> }.into_any()
                             }
                         }
                     })
@@ -115,11 +128,48 @@ pub fn Home() -> impl IntoView {
 }
 
 #[component]
-fn WorkCardView(work: WorkCard) -> impl IntoView {
-    let href = format!("/tac-pham/{}", work.work_id);
+fn PublicListView(list: WorkList, query: Memo<String>) -> impl IntoView {
+    let total = list.works.len();
+    let visible = Memo::new(move |_| visible_works(&list.works, &query.get()));
+    #[cfg(feature = "hydrate")]
+    restore_public_position(visible);
+    view! {
+        <div id="public-results">
+            <p class="vk-muted vk-public-scope" role="status">
+                {move || format!("{} trong {total} tác phẩm đã tải.", visible.read().len())}
+            </p>
+            {move || {
+                let works = visible.get();
+                if works.is_empty() {
+                    view! {
+                        <div class="vk-empty" data-testid="public-no-results">
+                            <p class="vk-empty__title">"Không có tác phẩm khớp trong danh sách này."</p>
+                            <p>"Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm để xem lại danh sách đã tải."</p>
+                        </div>
+                    }.into_any()
+                } else {
+                    view! {
+                        <ul class="vk-public-list" role="list" aria-describedby="public-scope">
+                            {works.into_iter().map(|work| view! { <WorkCardView work query /> }).collect_view()}
+                        </ul>
+                        <p id="feed-end" class="vk-feed-end">"Bạn đã xem hết danh sách này."</p>
+                    }.into_any()
+                }
+            }}
+        </div>
+    }
+}
+
+#[component]
+fn WorkCardView(work: WorkCard, query: Memo<String>) -> impl IntoView {
+    let work_id = work.work_id.clone();
+    let anchor = work_anchor(&work.work_id);
+    let href = Memo::new(move |_| reader_href(&work_id, &query.get()));
+    #[cfg(feature = "hydrate")]
+    let return_id = work.work_id.clone();
     let avatar = initials(Some(&work.author_display_name));
     view! {
-        <li class="vk-public-row" data-work-id=work.work_id>
+        <li id=anchor class="vk-public-row" data-work-id=work.work_id>
             <p class="vk-public-row__byline">
                 <span class="vk-avatar" aria-hidden="true">{avatar}</span>
                 <span>
@@ -129,7 +179,10 @@ fn WorkCardView(work: WorkCard) -> impl IntoView {
                     </time>
                 </span>
             </p>
-            <a class="vk-public-row__link" href=href>
+            <a class="vk-public-row__link" href=move || href.get() on:click=move |_event| {
+                #[cfg(feature = "hydrate")]
+                remember_public_position(&_event, &query.get_untracked(), &return_id);
+            }>
                 <h3 class="vk-public-row__title">{work.title}</h3>
                 <span class="vk-public-row__open">"Đọc tác phẩm" <span aria-hidden="true">"→"</span></span>
             </a>
@@ -141,6 +194,13 @@ fn WorkCardView(work: WorkCard) -> impl IntoView {
 pub fn Reader() -> impl IntoView {
     let params = use_params_map();
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
+    let query = use_query_map();
+    let return_href = Memo::new(move |_| {
+        explore_href(
+            &query.read().get("q").unwrap_or_default(),
+            Some(&work_id.get()),
+        )
+    });
     let publication = api::publication_resource(work_id);
     let status = ResponseStatus::capture();
     view! {
@@ -152,11 +212,11 @@ pub fn Reader() -> impl IntoView {
                         Ok(publication) => view! { <PublicationView publication /> }.into_any(),
                         Err(LoadError::NotFound) => {
                             status.set(404);
-                            view! { <NotFoundContent /> }.into_any()
+                            view! { <NotFoundContent return_href=return_href.get_untracked() /> }.into_any()
                         }
                         Err(LoadError::Unavailable) => {
                             status.set(503);
-                            view! { <Unavailable /> }.into_any()
+                            view! { <Unavailable return_href=return_href.get_untracked() /> }.into_any()
                         }
                     }
                 })
@@ -167,6 +227,10 @@ pub fn Reader() -> impl IntoView {
 
 #[component]
 fn PublicationView(publication: Publication) -> impl IntoView {
+    let params = use_query_map();
+    let id = publication.work_id.clone();
+    let return_href =
+        Memo::new(move |_| explore_href(&params.read().get("q").unwrap_or_default(), Some(&id)));
     let description = publication
         .document
         .blocks
@@ -183,7 +247,7 @@ fn PublicationView(publication: Publication) -> impl IntoView {
         <Meta property="og:url" content=canonical.clone() />
         <Link rel="canonical" href=canonical />
         <div id="reader" class="vk-reader-page">
-        <a id="reader-return" class="vk-reader-return" href="/">
+        <a id="reader-return" class="vk-reader-return" href=move || return_href.get()>
             <span aria-hidden="true">"← "</span> "Khám phá"
         </a>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
@@ -204,26 +268,83 @@ fn PublicationView(publication: Publication) -> impl IntoView {
 }
 
 #[component]
-fn Unavailable() -> impl IntoView {
+fn Unavailable(#[prop(default = "/".to_string())] return_href: String) -> impl IntoView {
     view! {
         <div class="vk-notice" role="alert" data-testid="public-unavailable">
             <p class="vk-notice__title">"Tạm thời chưa đọc được nội dung."</p>
             <p>"Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá."</p>
             <p><a href="" rel="external">"Thử tải lại"</a></p>
-            <a class="vk-button vk-button--tonal" href="/">"Về Khám phá"</a>
+            <a class="vk-button vk-button--tonal" href=return_href>"Về Khám phá"</a>
         </div>
     }
 }
 
+/// Mark only the current public history entry. A new tab/modifier click must not move it.
+#[cfg(feature = "hydrate")]
+fn remember_public_position(event: &web_sys::MouseEvent, query: &str, work_id: &str) {
+    if event.default_prevented()
+        || event.button() != 0
+        || event.meta_key()
+        || event.ctrl_key()
+        || event.alt_key()
+        || event.shift_key()
+    {
+        return;
+    }
+    if let Ok(history) = window().history() {
+        let state = history.state().unwrap_or(wasm_bindgen::JsValue::NULL);
+        let _ =
+            history.replace_state_with_url(&state, "", Some(&explore_href(query, Some(work_id))));
+    }
+}
+
+/// Run after the async list has mounted, including history traversal and initial reload.
+#[cfg(feature = "hydrate")]
+fn restore_public_position(visible: Memo<Vec<WorkCard>>) {
+    use leptos_router::hooks::use_location;
+    use wasm_bindgen::JsCast;
+
+    let location = use_location();
+    Effect::new(move |_| {
+        let hash = location.hash.get();
+        let id = hash.trim_start_matches('#');
+        if !visible
+            .read()
+            .iter()
+            .any(|work| work_anchor(&work.work_id) == id)
+        {
+            return;
+        }
+        request_animation_frame(move || {
+            // A stale animation frame must never scroll/focus a different page.
+            if window().location().pathname().ok().as_deref() != Some("/")
+                || window().location().hash().ok().as_deref() != Some(hash.as_str())
+            {
+                return;
+            }
+            if let Some(row) = document().get_element_by_id(hash.trim_start_matches('#')) {
+                row.scroll_into_view();
+                if let Ok(Some(link)) = row.query_selector("a")
+                    && let Ok(link) = link.dyn_into::<web_sys::HtmlElement>()
+                {
+                    let options = web_sys::FocusOptions::new();
+                    options.set_prevent_scroll(true);
+                    let _ = link.focus_with_options(&options);
+                }
+            }
+        });
+    });
+}
+
 #[component]
-fn NotFoundContent() -> impl IntoView {
+fn NotFoundContent(#[prop(default = "/".to_string())] return_href: String) -> impl IntoView {
     view! {
         <Title text="Không tìm thấy — Vink" />
         <div class="vk-notice">
             <h1 class="vk-notice__title">"Không tìm thấy trang này."</h1>
             <p>"Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng."</p>
             <p>
-                <a href="/">"Về Khám phá"</a>
+                <a href=return_href>"Về Khám phá"</a>
             </p>
         </div>
     }

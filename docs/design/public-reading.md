@@ -69,9 +69,10 @@ link tải lại thật và lối về Khám phá. Reader missing/unpublished l�
 503. Không có dữ liệu cũ dưới trạng thái lỗi. Link đọc và nội dung metadata có sẵn trong HTML
 server, khách không gặp login wall.
 
-**Delta capability so với mockup:** không spotlight khi chưa có cấu hình có nguồn; không search,
+**Delta capability r1 so với mockup:** không spotlight khi chưa có cấu hình có nguồn; chưa có search,
 intent filter, excerpt, genre, câu hỏi, số phản hồi, nút lưu/góp ý hay nhãn tuyển chọn/cá nhân hóa.
-Không có trạng thái bộ lọc để khôi phục; reader-return dùng `/`, lịch sử do router hiện có sở hữu.
+Ở r1 không có trạng thái bộ lọc để khôi phục; reader-return dùng `/`. Phần search/return được
+mở rộng ở r2 bên dưới; các khoảng trống metadata và tương tác vẫn giữ nguyên.
 Gợi ý viết là copy tĩnh do trang sở hữu, không tự nhận là một thử thách cộng đồng đang mở.
 
 ## Đường kiểm chứng
@@ -136,3 +137,83 @@ vì tài khoản Git CLI hiện tại không có quyền push repo này.
 các bằng chứng đó. Chưa có production auth, author publish/withdraw, moderation, curation,
 full public search, bookmark, feedback hoặc Discourse; giữ quyết định D/S và yêu cầu ở trạng thái
 đã ghi. B/C của #14 cần owner/contracts và authority thật trước khi nối tương tác.
+
+## LayoutSpec r2 — tìm trong danh sách và giữ ngữ cảnh (#14, lát cắt A)
+
+**Nền:** `develop@75ccb41c4bc4158c1897438e0316de8591fcc191`. Phạm vi UX-02 một phần,
+giữ ED-01/UX-01 và INV-08. Spec rút gọn đã trình bày trong work chat trước sửa UI.
+
+```text
+Region #community-stream — giữ luồng đọc hiện có
+  Region #public-scope — tiêu đề/tên tác giả, tối đa 12 tác phẩm mới công khai đã tải;
+                         nói rõ không tìm toàn bộ thư viện
+  Form #public-search — GET /, query q, có thể dùng trước JavaScript
+    Field #public-query — nhãn “Tìm trong danh sách”
+    Actions — Tìm; Xóa tìm kiếm khi URL có truy vấn
+  Region #public-results — số khớp / số đã tải; list hoặc no-results
+    Row #work-{id} — byline/title gốc; link reader mang q
+Region #reader — cấu trúc văn bản và canonical hiện có
+  Link #reader-return — /?q=…#work-{id}, chỉ đích nội bộ được dựng từ dữ liệu
+```
+
+Trước → sau: danh sách hiển thị tất cả và đường về cố định → form GET lọc sau khi bấm
+“Tìm”, URL giữ chữ người dùng đã nhập, các kết quả giữ thứ tự provider. Không thêm sort,
+intent filter, tags hoặc endpoint tìm kiếm. `search.rs` sở hữu comparison key dùng chung
+với dashboard: NFC/NFD, có/không dấu, Đ/đ, hoa/thường và whitespace; chữ gốc không bị sửa.
+`public_list.rs` sở hữu lọc title/author và link ngữ cảnh, không đọc nội dung manuscript.
+
+Home/reader vẫn SSR async qua `PublicReads`; canonical luôn bỏ ngữ cảnh q/hash. Truy vấn
+chỉ điều khiển projection của các public cards đã được phép đọc, không mở quyền đọc mới.
+Khi click link thường, Home đánh dấu hàng ở history entry hiện tại, giữ nguyên history state;
+Back/Forward và link quay về có thể khôi phục query/hash. Sau khi danh sách async đã mount,
+vùng khớp hash được cuộn tới và focus về link đọc. Modifier/new-tab không sửa history trang cũ;
+animation frame trễ kiểm lại route/hash trước khi chạm DOM. Không nhận `return_to` tùy ý,
+không dùng localStorage/sessionStorage hay lưu chữ riêng tư cho ngữ cảnh này.
+
+Màn hẹp và chữ 200% cho form/actions wrap; input co về `min-width: 0`, không đặt chiều cao
+cố định. Giữ cuộn trang chính, không overlay/sticky mới; bottom bar/safe area vẫn do shell sở hữu.
+`vk-field`, `vk-input`, nút tonal/text và focus ring dùng token hiện có, cùng thứ tự ở hai theme.
+Nhãn liên kết bằng `for`, phạm vi qua `aria-describedby`, số kết quả bằng `role=status`.
+
+Loading vẫn riêng; provider trả danh sách rỗng dùng empty kể cả khi có q; danh sách không rỗng
+nhưng không khớp dùng no-results; lỗi phụ thuộc vẫn 503/alert, không thành “không tìm thấy”.
+Link thử lại reload URL hiện tại nên giữ q. Reader 404/503 cũng giữ đích Khám phá nội bộ;
+không render lại nội dung thành công cũ dưới lỗi. Không đổi provider/query/schema/auth.
+
+**Đường kiểm:** `public_list::tests` kiểm matching/order/chữ gốc và encoding/đích nội bộ;
+test dashboard cũ kiểm hồi quy helper; HTTP outage test kiểm 503 với q và canonical.
+`publicReading`/`serverHtml` trong browser smoke có assertions cho SSR title/author/no-results,
+hydrated GET, reload, Back/Forward, focus về hàng, retry giữ q và không fetch thêm manuscript.
+Ma trận viewport/theme/root text và editor regression vẫn nằm trong lane web hiện có.
+Các assertions mới không tự được coi là đã chạy; kết quả local của r2 ghi riêng khi kết thúc.
+
+**Giới hạn:** đây là một phần A; A toàn phần chưa nghiệm thu lại, B/C vẫn pending.
+UX-02 còn cần tìm toàn thư viện/tags và access/withdrawal theo hợp đồng thật; D-05/S-03,
+D-08/S-02 cùng metadata/intent/bookmark/feedback không được giải quyết bởi thay đổi này.
+
+### Kiểm tra local r2 — 01/11/2026
+
+macOS ARM64, Rust 1.99.1, Node 22.15.0. `PASS`: `cargo xtask verify quick` (fmt,
+clippy SSR/WASM, 56 unit/contract tests, repository checks); `node --check` cho browser smoke
+và `git diff --check`. Bộ test dashboard cũ và hai test public-list mới đều qua. HTTP outage
+test dùng router thật với database không kết nối được, xác nhận query được escape, canonical
+không có query và trạng thái vẫn 503; đây không phải bằng chứng transaction PostgreSQL.
+
+Ổ hệ thống gần đầy: các lượt đầu lỗi link/strip do thiếu đĩa; sau khi dọn cache build riêng
+của task, chạy quick từ cache sạch với biến **chỉ cho tiến trình**: `CARGO_PROFILE_DEV_DEBUG=0`,
+`CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_PROFILE_DEV_STRIP=none`, `CARGO_PROFILE_TEST_STRIP=none`,
+`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=1`. Không sửa profile trong repo hay cấu hình host.
+Các lần lỗi đầu không được tính là PASS; kết quả quick ở trên là lượt hoàn tất sau cùng.
+
+`verify web`: **FAIL prerequisite**, `DATABASE_URL` chưa có. Doctor còn xác nhận thiếu
+wasm-bindgen CLI 0.2.129; Chrome hiện có tại `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`.
+Không cài service/package, không dùng VM/database Cantos. Full-app browser, hydration thực,
+Back/Forward/reload/focus, ma trận 320–1440px/chữ 200%/hai theme, ảnh chụp/contrast mới và
+editor regression: **NOT_RUN**. Các assertions tương ứng đã thêm vào smoke hiện có, chưa
+được tính thành bằng chứng runtime. Cần PostgreSQL Vink độc lập có CREATEDB + `DATABASE_URL`
+và CLI đúng pin để chạy lane web. CI không chờ theo yêu cầu; không bypass required checks.
+
+Self-review diff và callers không phát hiện lỗi mới cần sửa trong phạm vi này; không có
+GitHub approval độc lập. Đối chiếu vùng LayoutSpec r2 ở mức source: search trước kết quả,
+phạm vi/các trạng thái rõ, URL chỉ trỏ về nội bộ; đối chiếu render và tương tác còn chưa chạy.
+Không dùng bằng chứng runtime của r1 để nghiệm thu r2. A toàn phần và B/C #14 vẫn pending.

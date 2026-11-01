@@ -16,6 +16,7 @@ leptos_meta.workspace = true
 leptos_router.workspace = true
 serde.workspace = true
 unicode-normalization = "0.1.26"
+percent-encoding = "2.3.2"
 # Server-only: response status for SSR pages. Never part of the browser build.
 leptos_axum = { workspace = true, optional = true }
 # Browser-only.
