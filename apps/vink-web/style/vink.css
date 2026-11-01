@@ -722,6 +722,33 @@ a {
   margin: 0 auto;
 }
 
+/* Private list (#8): resume first, then one compact list. No empty support column. */
+.vk-desk--index { max-width: 64rem; }
+.vk-desk-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-4); margin-block: var(--vk-space-6) var(--vk-space-8); }
+.vk-desk-heading .vk-page-title { margin: 0; font-size: clamp(2rem, 1.5rem + 2vw, 3rem); }
+.vk-desk--index .vk-notice { margin-bottom: var(--vk-space-6); }
+.vk-resume { padding: clamp(0.5rem, 4vw, 2.5rem); border-radius: var(--vk-radius-hero); background: var(--vk-primary-container); color: var(--vk-on-primary-container); margin-bottom: var(--vk-space-8); }
+.vk-resume__label { margin: 0 0 var(--vk-space-3); font-weight: 600; }
+.vk-resume__title { font-family: var(--vk-font-reading); font-size: clamp(1.75rem, 1.3rem + 2vw, 2.5rem); line-height: 1.4; font-weight: 600; margin: 0 0 var(--vk-space-4); overflow-wrap: anywhere; }
+.vk-resume__action { min-height: 3.5rem; margin-top: var(--vk-space-6); }
+.vk-draft-tools { display: flex; flex-wrap: wrap; gap: var(--vk-space-4); align-items: end; }
+.vk-draft-tools .vk-field { margin: 0; min-width: 0; flex: 1 1 12rem; }
+.vk-draft-tools .vk-draft-search { flex: 2 1 18rem; }
+.vk-draft-tools :is(input, select) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 2.75rem; padding: var(--vk-space-3); font: inherit; color: var(--vk-on-surface); background: var(--vk-surface-container-low); border: 1px solid var(--vk-outline); border-radius: var(--vk-radius-md); }
+.vk-draft-rows { margin: 0; padding: var(--vk-space-2); list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-draft-rows:empty { display: none; }
+.vk-draft-row + .vk-draft-row { border-top: 1px solid var(--vk-outline-variant); }
+.vk-draft-row__link { display: flex; flex-direction: column; gap: var(--vk-space-2); min-width: 0; padding: var(--vk-space-4); color: var(--vk-on-surface); text-decoration: none; border-radius: var(--vk-radius-md); }
+.vk-draft-row__link:hover { background: var(--vk-state-hover); }
+.vk-draft-row__title { font-family: var(--vk-font-reading); font-weight: 600; font-size: 1.25rem; line-height: 1.5; overflow-wrap: anywhere; }
+.vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1) var(--vk-space-4); font-size: 0.875rem; }
+.vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }
+.vk-draft-row .vk-draft-meta { color: var(--vk-on-surface-variant); }
+.vk-draft-row__open { color: var(--vk-primary); font-size: 0.875rem; }
+.vk-desk-privacy { margin-top: var(--vk-space-8); font-size: 0.875rem; }
+.vk-desk-empty { max-width: none; }
+.vk-desk--index .vk-button { max-width: 100%; white-space: normal; padding-block: var(--vk-space-3); text-align: center; overflow-wrap: anywhere; }
+
 /* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
 
 .vk-editor-heading {

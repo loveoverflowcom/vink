@@ -8,6 +8,7 @@ pub mod appearance;
 pub mod contract;
 pub mod desk_state;
 pub mod document;
+pub mod draft_list;
 pub mod editor;
 pub mod navigation;
 mod pages;
