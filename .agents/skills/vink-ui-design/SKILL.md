@@ -42,10 +42,13 @@ The three spaces are experience scopes, not a mandate for three apps or fixed ta
 Apply M3 Expressive through hierarchy, shape, color, size, containment and purposeful motion.
 Keep text areas quiet; concentrate emphasis on the action or content that matters. Reuse or
 extend actual components and semantic tokens. The token owner is
-`apps/vink-web/style/vink.css`: warm paper surfaces, ink-indigo primary, seal-vermilion
-accent, light/dark schemes, radius/space/motion scales and `vk-*` components. Add a token
-there before adding a one-off color. Fonts are local stacks with Vietnamese coverage; adding a
-web font needs an asset decision. Cantos's lavender branding and player patterns are not defaults.
+`apps/vink-web/style/vink.css`: Vink's Lavender palette in light/dark (system default,
+`data-theme` override), radius/space/motion scales and `vk-*` components; the
+[design baseline](../../../docs/design/README.md) records its sources and measured contrast.
+Add a token there before adding a one-off color. Be Vietnam Pro (UI) and Literata (reading)
+are self-hosted in `apps/vink-web/assets/fonts` with provenance; a new face, weight or
+script needs the same license, size and coverage record. Vink's Lavender is its own palette:
+do not import Cantos's tokens, Lavender Stage branding or player patterns.
 
 ## Vietnamese text and states
 

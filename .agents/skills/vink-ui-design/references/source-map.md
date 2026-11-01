@@ -19,6 +19,7 @@ Repo `loveoverflowcom/vink`, nhánh `develop`, SHA
 | Đề xuất stack / asset / editor | [tech-stack.md](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/docs/architecture/tech-stack.md) |
 | Baseline Vink UI | [vink-ui-design/SKILL.md](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/.agents/skills/vink-ui-design/SKILL.md) |
 | Tokens và component CSS | [apps/vink-web/style/vink.css](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/apps/vink-web/style/vink.css) |
+| Baseline Lavender hiện hành (sau snapshot) | [docs/design/README.md](../../../../docs/design/README.md) — palette, font tự host, điều hướng, logo tạm, tương phản đã đo |
 | Web/SSR/editor owner map | [vink-leptos-web/SKILL.md](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/.agents/skills/vink-leptos-web/SKILL.md) |
 | Nghĩa publication và quyền | [vink-publication/SKILL.md](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/.agents/skills/vink-publication/SKILL.md) |
 | Lệnh thật và giới hạn từng lane | [docs/development/README.md](https://github.com/loveoverflowcom/vink/blob/85cc0b2763aaf87461a6f0382a71388251ad9614/docs/development/README.md) |
@@ -44,7 +45,7 @@ Repo `loveoverflowcom/cantos`, nhánh `develop`, SHA
 | [contextual-help.md](https://github.com/loveoverflowcom/cantos/blob/1c2c867114f181207950e02989dde113da587309/.agents/skills/cantos-ui-design/references/contextual-help.md) | Copy theo vai trò, bỏ lặp, giữ lý do thiết yếu và đường trợ giúp tiếp cận được. |
 | [components.md](https://github.com/loveoverflowcom/cantos/blob/1c2c867114f181207950e02989dde113da587309/.agents/skills/cantos-ui-inspector/references/components.md) | Mô hình component, dimensions, coverage và finding. |
 
-Không kế thừa brand lavender, player/audio/QC, CMP/native, hai-renderer admission,
+Không kế thừa brand/token Lavender Stage của Cantos, player/audio/QC, CMP/native, hai-renderer admission,
 schema/registry/lệnh Cantos, localization bắt buộc vi/en hay chính sách ảnh Cantos.
 Tài liệu nguồn có cả đề xuất lịch sử: chỉ mang phương pháp phù hợp, không coi mọi
 đoạn trong reference là capability thực.

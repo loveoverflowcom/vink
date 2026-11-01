@@ -1,12 +1,19 @@
-//! Cheap repository checks: skill metadata, relative Markdown links and layer boundaries.
+//! Cheap repository checks: skill metadata, relative Markdown links, layer boundaries and the
+//! served font assets against their provenance record.
 
 use std::path::{Path, PathBuf};
+
+use sha2::{Digest, Sha256};
+
+/// Self-hosted font faces, their OFL licenses and `provenance.json`.
+pub const FONTS_DIR: &str = "apps/vink-web/assets/fonts";
 
 pub fn run(root: &Path) -> Result<(), String> {
     let mut problems = Vec::new();
     skills(root, &mut problems);
     links(root, &mut problems);
     boundaries(root, &mut problems);
+    fonts(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
         Ok(())
@@ -230,6 +237,92 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
     }
 }
 
+/// Every served face and license matches `provenance.json` byte for byte, every face on disk is
+/// recorded, and every font URL the stylesheet or the shell requests names a recorded face.
+fn fonts(root: &Path, problems: &mut Vec<String>) {
+    let dir = root.join(FONTS_DIR);
+    let record: serde_json::Value =
+        match read(&dir.join("provenance.json")).map(|t| serde_json::from_str(&t)) {
+            Some(Ok(record)) => record,
+            Some(Err(error)) => {
+                problems.push(format!("{FONTS_DIR}/provenance.json: {error}"));
+                return;
+            }
+            None => {
+                problems.push(format!("{FONTS_DIR}/provenance.json is missing"));
+                return;
+            }
+        };
+    let files = record["files"].as_object();
+    let recorded = |name: &str| files.is_some_and(|files| files.contains_key(name));
+    let faces = files
+        .into_iter()
+        .flatten()
+        .map(|(name, entry)| (name.as_str(), &entry["sha256"]));
+    let licenses = record["families"]
+        .as_object()
+        .into_iter()
+        .flat_map(|families| families.values())
+        .map(|family| {
+            (
+                family["license_file"].as_str().unwrap_or_default(),
+                &family["license_sha256"],
+            )
+        });
+    for (name, sha256) in faces.chain(licenses) {
+        match std::fs::read(dir.join(name)) {
+            Ok(bytes) if sha256.as_str() == Some(sha256_hex(&bytes).as_str()) => {}
+            Ok(_) => problems.push(format!(
+                "{FONTS_DIR}/{name}: SHA-256 differs from provenance.json"
+            )),
+            Err(_) => problems.push(format!(
+                "{FONTS_DIR}/{name}: listed in provenance.json but missing"
+            )),
+        }
+    }
+    for entry in std::fs::read_dir(&dir)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+    {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".woff2") && !recorded(&name) {
+            problems.push(format!(
+                "{FONTS_DIR}/{name}: not recorded in provenance.json"
+            ));
+        }
+    }
+    let consumers = [
+        ("apps/vink-web/style/vink.css", "url(\"fonts/"),
+        ("apps/vink-web/src/lib.rs", "\"/pkg/fonts/"),
+    ];
+    for (file, prefix) in consumers {
+        let text = read(&root.join(file)).unwrap_or_default();
+        for (number, line) in text.lines().enumerate() {
+            let Some(start) = line.find(prefix) else {
+                continue;
+            };
+            let name = line[start + prefix.len()..]
+                .split(['"', ')'])
+                .next()
+                .unwrap_or_default();
+            if !recorded(name) {
+                problems.push(format!(
+                    "{file}:{}: font `{name}` is not a recorded asset",
+                    number + 1
+                ));
+            }
+        }
+    }
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -271,5 +364,41 @@ mod tests {
         assert_eq!(broken(&file, "#section"), None);
         assert_eq!(broken(&file, "src/main.rs:12"), None);
         assert_eq!(broken(&file, "missing.md"), Some("missing.md".into()));
+    }
+
+    #[test]
+    fn font_assets_must_match_their_provenance() {
+        let root = std::env::temp_dir().join(format!("vink-fonts-check-{}", std::process::id()));
+        let dir = root.join(FONTS_DIR);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir_all(root.join("apps/vink-web/src")).unwrap();
+        std::fs::create_dir_all(root.join("apps/vink-web/style")).unwrap();
+        std::fs::write(dir.join("a.woff2"), b"face").unwrap();
+        std::fs::write(dir.join("stray.woff2"), b"x").unwrap();
+        std::fs::write(dir.join("OFL.txt"), b"license").unwrap();
+        let record = format!(
+            r#"{{"files": {{"a.woff2": {{"sha256": "{}"}}}},
+                "families": {{"A": {{"license_file": "OFL.txt", "license_sha256": "0"}}}}}}"#,
+            sha256_hex(b"face")
+        );
+        std::fs::write(dir.join("provenance.json"), record).unwrap();
+        std::fs::write(
+            root.join("apps/vink-web/style/vink.css"),
+            "src: url(\"fonts/a.woff2\");\nsrc: url(\"fonts/b.woff2\");\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("apps/vink-web/src/lib.rs"),
+            "href=\"/pkg/fonts/a.woff2\"\n",
+        )
+        .unwrap();
+        let mut problems = Vec::new();
+        fonts(&root, &mut problems);
+        std::fs::remove_dir_all(&root).unwrap();
+        problems.sort();
+        assert_eq!(problems.len(), 3, "{problems:?}");
+        assert!(problems[0].ends_with("OFL.txt: SHA-256 differs from provenance.json"));
+        assert!(problems[1].ends_with("stray.woff2: not recorded in provenance.json"));
+        assert!(problems[2].contains("vink.css:2: font `b.woff2`"));
     }
 }

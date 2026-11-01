@@ -72,7 +72,7 @@ fn finish(result: Result<(), String>) -> ExitCode {
     }
 }
 
-/// Server binaries plus `target/site/pkg/{vink.js, vink_bg.wasm, vink.css}`.
+/// Server binaries plus `target/site/pkg/{vink.js, vink_bg.wasm, vink.css, fonts/}`.
 pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     let root = root();
     doctor::require_wasm_bindgen(&root)?;
@@ -117,6 +117,7 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
         pkg.join("vink.css"),
     )
     .map_err(|e| format!("copy vink.css: {e}"))?;
+    copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     let mut server = cargo(&root);
     server.args(["build", "--locked", "-p", "vink-app", "--bins"]);
     if release {
@@ -124,6 +125,25 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     }
     env.apply(&mut server);
     process::run(&mut server, "build server binaries (vink-app, vink-worker)")
+}
+
+/// Font faces and their licenses, served next to `vink.css` at `/pkg/fonts/`. The directory is
+/// recreated so a removed face is not served from an earlier build.
+fn copy_fonts(from: &Path, to: &Path) -> Result<(), String> {
+    if to.exists() {
+        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
+    }
+    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
+    let entries = std::fs::read_dir(from).map_err(|e| format!("read {}: {e}", from.display()))?;
+    for entry in entries.filter_map(Result::ok) {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.ends_with(".woff2") || name.starts_with("OFL") {
+            std::fs::copy(entry.path(), to.join(name.as_ref()))
+                .map_err(|e| format!("copy font {name}: {e}"))?;
+        }
+    }
+    Ok(())
 }
 
 fn app_command(env: &env::Env, command: &str) -> Result<(), String> {
@@ -220,9 +240,10 @@ fn quick(report: &mut Report) -> bool {
             return false;
         }
     }
-    report.step("repository checks (skills, links, boundaries)", || {
-        checks::run(&root)
-    })
+    report.step(
+        "repository checks (skills, links, boundaries, fonts)",
+        || checks::run(&root),
+    )
 }
 
 fn postgres(report: &mut Report, env: &env::Env) -> bool {

@@ -2,27 +2,19 @@
 
 ## Chủ nguồn và baseline
 
-Chủ tokens/component hiện hành: `apps/vink-web/style/vink.css` trong Vink, snapshot
-`85cc0b2763aaf87461a6f0382a71388251ad9614`. Dùng `--vk-*` và `.vk-*`; không tạo
-palette thứ hai trong feature. Các giá trị dưới đây là baseline đã triển khai,
-không phải tuyên bố mọi giá trị đã được chốt thương hiệu vĩnh viễn.
+Chủ tokens/component hiện hành: `apps/vink-web/style/vink.css`. Dùng `--vk-*` và
+`.vk-*`; không tạo palette thứ hai trong feature. [Baseline thiết kế](../../../../docs/design/README.md)
+ghi nguồn, bảng role sáng/tối, cơ chế theme và tương phản đã đo; đọc giá trị hiện hành
+trong CSS thay vì chép lại ở đây. Baseline không phải phê duyệt thương hiệu production.
 
-| Vai trò | Light | Dark |
-| --- | --- | --- |
-| `--vk-surface` | `#fbf8f3` | `#141312` |
-| `--vk-surface-container` | `#f0eae1` | `#22201e` |
-| `--vk-on-surface` | `#1d1b19` | `#e9e3da` |
-| `--vk-on-surface-variant` | `#4c463f` | `#d0c7bb` |
-| `--vk-primary` | `#2f3b73` | `#bac3ff` |
-| `--vk-on-primary` | `#ffffff` | `#1a2457` |
-| `--vk-primary-container` | `#dde1ff` | `#353f78` |
-| `--vk-on-primary-container` | `#16204f` | `#dde1ff` |
-| `--vk-tertiary` | `#9c3a26` | `#ffb4a3` |
-
-Giữ cảm giác **giấy ấm – mực chàm – đỏ son**. Accent đỏ son là điểm nhấn thương hiệu,
-không đồng nghĩa trạng thái lỗi; lỗi dùng token semantic riêng cùng icon/chữ. Thiết
-kế dark có phân cấp nền riêng, không đảo màu ảnh light. Không mang Lavender Stage,
-audio player, CMP parity hoặc yêu cầu AVIF-only của Cantos vào Vink.
+Palette là **Lavender M3 Expressive của Vink** (từ 01/11/2026, thay giấy ấm – mực chàm
+– đỏ son của bootstrap): surface gần trắng tím, `primary` tím đậm/tím nhạt theo theme,
+`secondary` cho nút tonal, `tertiary` hồng mận cho điểm nhấn phụ. Tertiary không đồng
+nghĩa lỗi; lỗi/cảnh báo/thành công dùng role riêng cùng chữ/icon. Light mặc định, dark
+theo hệ thống hoặc `data-theme`; dark có phân cấp nền riêng, không đảo màu ảnh light.
+Khám phá đứng trước Bàn viết trong điều hướng; logo production chưa có (mark “V” tạm).
+Không mang token Cantos, Lavender Stage, audio player, CMP parity hoặc yêu cầu
+AVIF-only của Cantos vào Vink.
 
 Nếu thay role chung, liệt kê các consumer bị ảnh hưởng và đo lại những cặp màu thực
 tế trong cả hai theme. Xem cả hover/focus/selected/disabled, nền ảnh và scrim nếu có.
@@ -30,14 +22,15 @@ Không suy ra tương phản đạt từ tên token hay một preview tạo sinh
 
 ## Typography và tính toàn vẹn văn bản
 
-Baseline reading stack: `Literata`, `Noto Serif`, `Source Serif 4`, `Source Serif Pro`,
-`Times New Roman`, serif. UI stack: `Be Vietnam Pro`, `Noto Sans`, `Segoe UI`, Roboto,
-`Helvetica Neue`, Arial, system-ui, sans-serif. Đây là **local fallback stacks**;
-không khẳng định các font đầu đã được tải hay nhúng. Thêm web font là một quyết định
-asset riêng, gồm license, dung lượng, coverage và fallback.
+UI dùng **Be Vietnam Pro** 400/600, văn đọc/editor/tiêu đề dùng **Literata** variable;
+cả hai tự host dạng WOFF2 subset Latin + tiếng Việt, có OFL và provenance tại
+`apps/vink-web/assets/fonts` (README ở đó ghi kích thước, cách tải, cách thêm face).
+Fallback (Noto, Segoe UI, Georgia…) vẫn phải đọc được khi font chưa tải hoặc lỗi.
+Thêm weight, italic hay script khác là quyết định asset riêng: license, dung lượng,
+coverage, fallback và cập nhật provenance.
 
-Reading hiện dùng `clamp(1.0625rem, 0.98rem + 0.35vw, 1.25rem)`, leading `1.8`, measure
-`36rem`. Giữ chúng làm điểm xuất phát, rồi kiểm với nội dung/thiết bị thật. UI và
+Reading hiện dùng `clamp(1.0625rem, 1rem + 0.25vw, 1.25rem)`, leading `1.85`, measure
+`42rem`. Giữ chúng làm điểm xuất phát, rồi kiểm với nội dung/thiết bị thật. UI và
 văn bản đọc có vai trò khác nhau; không buộc toàn bộ app dùng serif hoặc title cực lớn.
 
 - Dùng mẫu đầy đủ dấu, dấu kết hợp, tên dài, hội thoại, thơ và văn xuôi. Kiểm glyph
@@ -53,7 +46,7 @@ văn bản đọc có vai trò khác nhau; không buộc toàn bộ app dùng se
 
 ## Hình, khoảng cách, điều hướng
 
-Baseline radius `8/12/20/28px` và pill; spacing `0.25/0.5/0.75/1/1.5/2/3rem`.
+Baseline radius `8/12/20/28px`, `hero` 32px và pill; spacing `0.25/0.5/0.75/1/1.5/2/3rem`.
 Chọn scale nhất quán, dùng khác biệt hình/kích thước để nói vai trò. Nút hành động
 và vùng đọc không cần cùng radius. Ưu tiên surface separation và khoảng trắng;
 focus ring hoặc viền cần để hiểu control được giữ.
@@ -89,7 +82,8 @@ bấm phải phù hợp cảm ứng, không chỉ tăng icon. Cho text enlargeme
 truyền thông tin chỉ bằng màu, animation hoặc vị trí. Đo contrast từ màu resolve;
 đối chiếu tiêu chuẩn accessibility mà dự án chọn, không tự tuyên bố chứng nhận WCAG.
 
-Motion baseline: `150ms/280ms`, curve `cubic-bezier(0.2, 0, 0, 1)`; dùng theo ý định,
+Motion baseline: `160ms/320ms`, curve `--vk-ease-emphasized` cho màu và
+`--vk-ease-spatial` (vượt nhẹ) cho đổi shape; dùng theo ý định,
 không là thời lượng bắt buộc cho mọi thao tác. Input dispatch ngay, motion trang trí
 phản hồi; cho interrupt/reverse, giữ target ổn định và final state rõ. Respect reduced
 motion, không chạy animation lặp trang trí khi đọc/viết. Video hoặc tương tác runtime

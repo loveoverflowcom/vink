@@ -27,6 +27,23 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
+                // Faces every current page renders above the fold: UI body text and the
+                // reading/heading serif. The 600 face is left to CSS discovery.
+                // `as` first: after a string value the macro would read it as a cast.
+                <link
+                    as="font"
+                    rel="preload"
+                    href="/pkg/fonts/be-vietnam-pro-400.woff2"
+                    type="font/woff2"
+                    crossorigin="anonymous"
+                />
+                <link
+                    as="font"
+                    rel="preload"
+                    href="/pkg/fonts/literata-variable.woff2"
+                    type="font/woff2"
+                    crossorigin="anonymous"
+                />
                 <link rel="stylesheet" href="/pkg/vink.css" />
                 <HydrationScripts options />
                 <MetaTags />
