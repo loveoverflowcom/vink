@@ -19,7 +19,8 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
 - Khám phá `/` theo lớp đọc v3 ([#9](https://github.com/loveoverflowcom/vink/issues/9)): luồng
   tối đa 12 tác phẩm mới công khai, tên tác giả/ngày UTC, điểm dừng và gợi ý bắt đầu viết;
-  phân biệt loading/rỗng/unavailable. Không spotlight hay tương tác thiếu chủ dữ liệu. Xem
+  tìm tiêu đề/tên tác giả có/không dấu trong danh sách đã tải, giữ truy vấn/vị trí qua reader,
+  reload và lịch sử URL; phân biệt loading/rỗng/không kết quả/unavailable. Không spotlight hay tương tác thiếu chủ dữ liệu. Xem
   [spec và delta](../design/public-reading.md). Trang đọc `/tac-pham/{id}`: HTML có nội dung, title, description, canonical
   từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
 - Dashboard `/ban-viet` ([#8](https://github.com/loveoverflowcom/vink/issues/8)): Viết tiếp mở
@@ -133,6 +134,8 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp
   src/draft_list.rs       tìm/sort nháp đã tải và trạng thái tạo/đối chiếu kết quả, thuần
+  src/public_list.rs      lọc title/author của public cards, dựng link ngữ cảnh nội bộ, thuần
+  src/search.rs           comparison key tiếng Việt dùng chung, không sửa chữ gốc
   src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
   src/document.rs         chữ nguồn ↔ document v1, DocumentView, export .txt
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
@@ -201,7 +204,8 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
-- Export ngoài `.txt` (WR-05 mới có bản văn bản thuần), nhiều chương (WR-04), tìm kiếm (UX-02),
+- Export ngoài `.txt` (WR-05 mới có bản văn bản thuần), nhiều chương (WR-04), tìm toàn bộ thư viện
+  công khai/tags (UX-02; hiện chỉ tìm title/author trong tối đa 12 public cards đã tải),
   backup/restore (OPS-02).
 - Tải `.txt` lần thứ hai trên cùng trang có thể khiến Chrome hỏi “tải nhiều tệp”; đó là quyền của
   trình duyệt, không phải lỗi lưu.

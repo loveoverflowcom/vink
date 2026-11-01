@@ -459,6 +459,16 @@ async function serverHtml() {
   const homeHtml = await home.text();
   check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Bạn đã xem hết danh sách này.'), 'Explore HTML contains its finite public collection before JavaScript');
   check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
+  for (const query of ['mua tren pho cu', 'TÁC GIẢ MẪU'.normalize('NFD')]) {
+    const response = await fetch(`${args.base}/?q=${encodeURIComponent(query)}`);
+    const filtered = await response.text();
+    check(response.status === 200 && filtered.includes(`href="/tac-pham/${SAMPLE_WORK}?q=`) && !filtered.includes(DRAFT_ONLY_LINE), 'SSR finds the public title or author before JavaScript without exposing a draft');
+    const canonical = filtered.match(/<link\b(?=[^>]*\brel="canonical")[^>]*>/)?.[0];
+    check(canonical?.includes(`href="${args.base}/"`), 'Explore canonical excludes the search context');
+  }
+  const noResults = await fetch(`${args.base}/?q=khong-co-tac-pham-nay`);
+  const noResultsHtml = await noResults.text();
+  check(noResults.status === 200 && noResultsHtml.includes('data-testid="public-no-results"') && !noResultsHtml.includes('data-testid="public-empty"'), 'SSR distinguishes a filtered miss from an empty public collection');
   const reader = await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   const html = await reader.text();
   check(reader.status === 200, 'reader responds 200');
@@ -955,6 +965,12 @@ async function draftDashboard(page) {
 
 async function publicReading(page) {
   console.log('public Explore and quiet reader: real navigation, then explicitly labelled HTTP fixtures:');
+  const searchPublic = async query => {
+    await page.eval(`document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()`);
+    await page.send('Input.insertText', { text: query });
+    await page.click('#public-search button[type=submit]');
+    await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(query)} && document.querySelector('#public-query')?.value === ${JSON.stringify(query)}`, 'submitted public search URL');
+  };
   const setPublicTheme = async theme => {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
@@ -982,10 +998,27 @@ async function publicReading(page) {
   check(await page.eval(`document.activeElement.matches('.vk-public-row__link:focus-visible')`), 'read link has visible keyboard focus');
   await page.click('.vk-public-row__link');
   await page.waitFor(`document.querySelector('.vk-reader')?.textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`, 'real reader from collection');
-  check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/' && document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and has a stable return path');
+  check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/#work-${SAMPLE_WORK}' && document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and returns to the opened row');
   await captureReal('reader');
   await page.click('#reader-return');
   await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row')`, 'return to real collection');
+  const realQuery = 'mua tren pho cu';
+  await searchPublic(realQuery);
+  await page.click('.vk-public-row__link');
+  await page.waitFor(`document.querySelector('#reader-return') && new URL(location.href).searchParams.get('q') === '${realQuery}'`, 'reader carries the real public query');
+  await page.reload();
+  check(await page.eval(`document.querySelector('link[rel=canonical]').href === '${args.base}/tac-pham/${SAMPLE_WORK}'`), 'reader reload keeps a public canonical without query context');
+  await page.eval(`history.back()`);
+  await page.waitFor(`document.querySelector('#public-query')?.value === '${realQuery}' && document.activeElement?.closest('.vk-public-row')?.dataset.workId === '${SAMPLE_WORK}'`, 'Back restores query and focus at the opened row');
+  await page.eval(`history.forward()`);
+  await page.waitFor(`document.querySelector('#reader-return') && location.pathname === '/tac-pham/${SAMPLE_WORK}'`, 'Forward restores the reader');
+  await page.click('#reader-return');
+  await page.waitFor(`document.querySelector('#public-query')?.value === '${realQuery}'`, 'reader return preserves submitted query');
+  await page.reload();
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1 && document.activeElement?.closest('.vk-public-row')?.dataset.workId === '${SAMPLE_WORK}'`, 'Explore reload restores the real filtered row');
+  check(await page.eval(`document.querySelector('#public-query').value === '${realQuery}' && window.__publicNavigation === undefined`), 'a new hydrated document retains query from its URL');
+  await page.click('#clear-public-search');
+  await page.waitFor(`!location.search && document.querySelector('#public-query')?.value === ''`, 'clear public search');
 
   const longTitle = '[Mẫu kiểm tra] Đường về — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở';
   const cards = Array.from({ length: 12 }, (_, i) => ({
@@ -1011,6 +1044,7 @@ async function publicReading(page) {
   let holdList = false;
   let heldList;
   let publicationRequests = 0;
+  let listRequests = 0;
   let gateError;
   const respond = (requestId, answer) => page.send('Fetch.fulfillRequest', {
     requestId, responseCode: answer.status,
@@ -1022,6 +1056,7 @@ async function publicReading(page) {
     const { requestId, request } = message.params;
     const path = new URL(request.url).pathname;
     if (path.endsWith('/publication')) publicationRequests++;
+    if (path === '/api/v1/works') listRequests++;
     if (path === '/api/v1/works' && holdList) { heldList = requestId; return; }
     const answer = answers.get(path);
     (answer ? respond(requestId, answer) : page.send('Fetch.continueRequest', { requestId })).catch(error => { gateError = error; });
@@ -1046,7 +1081,20 @@ async function publicReading(page) {
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'finite public fixture collection');
   check(publicationRequests === 0, 'Explore never fetches full manuscripts to populate cards (no N+1)');
   check(await page.eval(`new Set([...document.querySelectorAll('.vk-public-row__link')].map(a => a.href)).size === 12 && document.querySelector('#feed-end') && document.querySelector('.vk-public-row time').getAttribute('datetime') === '2026-11-01T08:30:00Z'`), 'all 12 distinct public fields/links and the finite endpoint are rendered');
-  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore input, #explore button')`), 'unsupported search, filters, curation and social actions are not fabricated');
+  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore select') && document.querySelector('#public-scope').textContent.includes('Không tìm toàn bộ thư viện')`), 'search discloses its finite scope without fabricated metadata, filters or social actions');
+  const loadedRequests = listRequests;
+  await searchPublic('duong ve');
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1`, 'unaccented public title match');
+  check(await page.eval(`document.querySelector('.vk-public-row__title').textContent === ${JSON.stringify(cards[0].title)}`), 'search preserves the authored NFD title');
+  await searchPublic('TRẦN LINH'.normalize('NFD'));
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 6`, 'decomposed public author match');
+  check(await page.eval(`JSON.stringify([...document.querySelectorAll('.vk-public-row')].map(row => row.dataset.workId)) === ${JSON.stringify(JSON.stringify(cards.filter((_, i) => i % 2).map(card => card.work_id)))}`), 'author results preserve the provider order');
+  await searchPublic('không có tác phẩm này');
+  await page.waitFor(`document.querySelector('[data-testid=public-no-results]')`, 'filtered public miss');
+  check(await page.eval(`!document.querySelector('[data-testid=public-empty], [data-testid=public-unavailable], #feed-end')`), 'no-results is separate from empty, unavailable and the end of a visible list');
+  check(listRequests === loadedRequests && publicationRequests === 0, 'search uses loaded public cards without new list or manuscript requests');
+  await page.click('#clear-public-search');
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'clear restores all loaded public cards');
   for (const theme of ['light', 'dark']) {
     await setPublicTheme(theme);
     await textContrast(page, theme, 'explore');
@@ -1061,6 +1109,7 @@ async function publicReading(page) {
   }
   await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
   await page.viewport(1440);
+  await searchPublic('đường về'.normalize('NFD'));
   await page.click('.vk-public-row__link');
   await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${publication.revision_id}'`, 'fixture publication reader');
   check(await page.eval(`document.querySelectorAll('.vk-reader .vk-block').length === 3 && document.querySelector('.vk-reader .vk-block').textContent.includes(${JSON.stringify(INDENTED_LINE)}) && document.querySelector('.vk-reader .vk-block').textContent.includes(${JSON.stringify(literal)}) && !document.querySelector('.vk-reader script') && !window.__manuscriptExecuted`), 'poetry, indentation, paragraphs and literal markup remain text, never executable HTML');
@@ -1090,6 +1139,13 @@ async function publicReading(page) {
     await page.waitFor(status === 404 ? `document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'` : `document.querySelector('[data-testid=public-unavailable]')`, `reader ${status} state`);
     check(await page.eval(`!document.querySelector('.vk-document') && !document.querySelector('[data-testid=public-empty]')`), `reader ${status} does not display stale text or a successful empty collection`);
   }
+  answers.set('/api/v1/works', { status: 503, body: { error: { code: 'dependency_unavailable' } } });
+  await openCollection();
+  await page.waitFor(`document.querySelector('[data-testid=public-unavailable]')`, 'fixture collection outage');
+  await searchPublic(realQuery);
+  check(await page.eval(`document.querySelector('[data-testid=public-unavailable]') && !document.querySelector('[data-testid=public-no-results], [data-testid=public-empty]')`), 'search during an outage keeps the dependency error');
+  await page.click('[data-testid=public-unavailable] a[rel=external]');
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')?.value === '${realQuery}' && document.querySelectorAll('.vk-public-row').length === 1`, 'reload retry keeps the query and recovers from the fixture outage using real SSR data');
   for (const state of ['empty', 'unavailable']) {
     answers.set('/api/v1/works', { status: state === 'empty' ? 200 : 503, body: state === 'empty' ? { works: [] } : { error: { code: 'dependency_unavailable' } } });
     await openCollection();

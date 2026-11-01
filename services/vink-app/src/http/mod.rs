@@ -135,10 +135,22 @@ mod tests {
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("dependency_unavailable"), "{body}");
 
-        let (status, body) = get(&router, "/").await;
+        let (status, body) = get(&router, "/?q=%C4%90%20%26%20100%25").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("Tạm thời chưa đọc được"), "{body}");
         assert!(!body.contains("Chưa có tác phẩm nào"), "{body}");
+        assert!(!body.contains("Không có tác phẩm khớp"), "{body}");
+        assert!(body.contains("value=\"Đ &amp; 100%\""), "{body}");
+        let canonical = body
+            .split("<link")
+            .filter_map(|tag| tag.split_once('>').map(|(tag, _)| tag))
+            .find(|tag| tag.contains("rel=\"canonical\""))
+            .expect("public page has a canonical link");
+        assert!(
+            canonical.contains("href=\"http://127.0.0.1:3000/\""),
+            "{canonical}"
+        );
+        assert!(!body.contains("working_drafts"), "{body}");
 
         let (status, body) = get(&router, "/tac-pham/33333333-3333-4333-8333-333333333333").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
