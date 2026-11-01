@@ -61,7 +61,12 @@ pub fn run(env: &Env) -> ExitCode {
             "neither podman nor docker found; any PostgreSQL 17 works via DATABASE_URL".into()
         }),
     );
-    line(false, "Node.js >= 22 (verify web)", node_version());
+    line(
+        true,
+        "Node.js >= 22 (editor runtime, verify web)",
+        node_version(),
+    );
+    line(true, "npm (editor runtime)", npm_version());
     line(
         false,
         "Chrome/Chromium (verify web)",
@@ -209,6 +214,12 @@ pub fn node_version() -> Result<String, String> {
             "found {version}; Node.js 22+ is needed for the built-in WebSocket client"
         ))
     }
+}
+
+/// npm installs the editor runtime's locked dependencies during `cargo xtask build`.
+pub fn npm_version() -> Result<String, String> {
+    output("npm", &["--version"], Path::new("."))
+        .ok_or_else(|| "npm not found; it ships with Node.js".to_string())
 }
 
 pub fn chrome_binary(env: &Env) -> Option<String> {

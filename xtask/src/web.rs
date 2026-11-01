@@ -405,7 +405,7 @@ fn run_web_checks(
         }
     };
     if !report.step(
-        "SSR HTML, hydration, client navigation, save, reload, conflict",
+        "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview",
         || smoke(root, &["--phase", "main"], chrome, origin, state),
     ) {
         return false;
@@ -427,7 +427,7 @@ fn run_web_checks(
         }
     };
     let ok = report.step(
-        "confirmed draft survives server restart (browser reload)",
+        "confirmed draft survives server restart (browser reload), export",
         || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
     );
     let _ = restarted.terminate(Duration::from_secs(15));

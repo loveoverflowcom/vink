@@ -1,5 +1,5 @@
-//! Cheap repository checks: skill metadata, relative Markdown links, layer boundaries and the
-//! served font assets against their provenance record.
+//! Cheap repository checks: skill metadata, relative Markdown links, layer boundaries, the
+//! served font assets against their provenance record and the editor runtime's pinned packages.
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +14,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     links(root, &mut problems);
     boundaries(root, &mut problems);
     fonts(root, &mut problems);
+    editor_packages(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
         Ok(())
@@ -316,6 +317,46 @@ fn fonts(root: &Path, problems: &mut Vec<String>) {
     }
 }
 
+/// The editor runtime pins exact package versions, and its lockfile was produced from the same
+/// manifest, so `npm ci` installs what was reviewed.
+fn editor_packages(root: &Path, problems: &mut Vec<String>) {
+    const DIR: &str = "apps/vink-web/editor";
+    let mut parse = |name: &str| -> Option<serde_json::Value> {
+        match read(&root.join(DIR).join(name)).map(|t| serde_json::from_str(&t)) {
+            Some(Ok(value)) => Some(value),
+            Some(Err(error)) => {
+                problems.push(format!("{DIR}/{name}: {error}"));
+                None
+            }
+            None => {
+                problems.push(format!("{DIR}/{name} is missing"));
+                None
+            }
+        }
+    };
+    let (Some(manifest), Some(lock)) = (parse("package.json"), parse("package-lock.json")) else {
+        return;
+    };
+    for section in ["dependencies", "devDependencies"] {
+        let declared = manifest[section].as_object().cloned().unwrap_or_default();
+        for (name, version) in &declared {
+            let version = version.as_str().unwrap_or_default();
+            let exact = version.split('.').count() == 3
+                && version.split('.').all(|part| part.parse::<u32>().is_ok());
+            if !exact {
+                problems.push(format!(
+                    "{DIR}/package.json: {name} must pin an exact version, not `{version}`"
+                ));
+            }
+        }
+        if lock["packages"][""][section] != manifest[section] {
+            problems.push(format!(
+                "{DIR}/package-lock.json: {section} differ from package.json; run `npm install` there"
+            ));
+        }
+    }
+}
+
 fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
@@ -400,5 +441,29 @@ mod tests {
         assert!(problems[0].ends_with("OFL.txt: SHA-256 differs from provenance.json"));
         assert!(problems[1].ends_with("stray.woff2: not recorded in provenance.json"));
         assert!(problems[2].contains("vink.css:2: font `b.woff2`"));
+    }
+
+    #[test]
+    fn editor_packages_are_pinned_and_locked() {
+        let root = std::env::temp_dir().join(format!("vink-editor-check-{}", std::process::id()));
+        let dir = root.join("apps/vink-web/editor");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{"dependencies": {"a": "1.2.3", "b": "^2.0.0"}, "devDependencies": {"c": "3.0.0"}}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("package-lock.json"),
+            r#"{"packages": {"": {"dependencies": {"a": "1.2.3", "b": "^2.0.0"},
+                "devDependencies": {"c": "3.0.1"}}}}"#,
+        )
+        .unwrap();
+        let mut problems = Vec::new();
+        editor_packages(&root, &mut problems);
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(problems.len(), 2, "{problems:?}");
+        assert!(problems[0].contains("b must pin an exact version, not `^2.0.0`"));
+        assert!(problems[1].contains("devDependencies differ from package.json"));
     }
 }

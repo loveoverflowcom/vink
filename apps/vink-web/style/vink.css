@@ -93,6 +93,7 @@
   --vk-tertiary-container: #ffd9e8;
   --vk-on-tertiary-container: #3a1227;
   --vk-error: #ba1a1a;
+  --vk-on-error: #ffffff;
   --vk-error-container: #ffdad6;
   --vk-on-error-container: #410002;
   --vk-warning-container: #f7edcb;
@@ -137,6 +138,7 @@
   --vk-tertiary-container: #65364d;
   --vk-on-tertiary-container: #ffd9e8;
   --vk-error: #ffb4ab;
+  --vk-on-error: #690005;
   --vk-error-container: #6d2520;
   --vk-on-error-container: #ffdad6;
   --vk-warning-container: #4e4223;
@@ -176,6 +178,7 @@
     --vk-tertiary-container: #65364d;
     --vk-on-tertiary-container: #ffd9e8;
     --vk-error: #ffb4ab;
+    --vk-on-error: #690005;
     --vk-error-container: #6d2520;
     --vk-on-error-container: #ffdad6;
     --vk-warning-container: #4e4223;
@@ -431,6 +434,18 @@ a {
   color: var(--vk-on-warning-container);
 }
 
+.vk-notice--error {
+  background: var(--vk-error-container);
+  color: var(--vk-on-error-container);
+}
+
+.vk-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-2);
+  margin-top: var(--vk-space-4);
+}
+
 .vk-empty__title,
 .vk-notice__title {
   margin-top: 0;
@@ -478,8 +493,29 @@ a {
   color: var(--vk-on-secondary-container);
 }
 
+/* Low emphasis: secondary actions beside a filled one. */
+.vk-button--text {
+  padding: 0 var(--vk-space-4);
+  background: transparent;
+  color: var(--vk-primary);
+}
+
+.vk-button--danger {
+  color: var(--vk-error);
+}
+
+.vk-button--danger-filled {
+  background: var(--vk-error);
+  color: var(--vk-on-error);
+}
+
 .vk-button:hover:not(:disabled) {
   filter: brightness(1.08);
+}
+
+.vk-button--text:hover:not(:disabled) {
+  filter: none;
+  background: var(--vk-state-hover);
 }
 
 .vk-button:disabled {
@@ -527,11 +563,70 @@ a {
   margin: 0 auto;
 }
 
-.vk-breadcrumb {
+/* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
+
+.vk-editor-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--vk-space-1) var(--vk-space-3);
   margin: 0 0 var(--vk-space-4);
 }
 
+.vk-editor-heading__back {
+  margin-inline-start: calc(-1 * var(--vk-space-3));
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border-radius: var(--vk-radius-full);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vk-editor-heading__back:hover {
+  background: var(--vk-state-hover);
+}
+
+.vk-editor-heading__title {
+  margin: 0;
+  color: var(--vk-on-surface-variant);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .vk-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vk-space-6);
+}
+
+/* Sticks below the viewport top while writing; the surface ring hides text scrolling past its
+   rounded corners. Narrow screens keep it in the flow (see the media query below). */
+.vk-editor-toolbar {
+  position: sticky;
+  top: var(--vk-space-2);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vk-space-2) var(--vk-space-4);
+  padding: var(--vk-space-2) var(--vk-space-2) var(--vk-space-2) var(--vk-space-4);
+  border-radius: var(--vk-radius-xl);
+  background: var(--vk-surface-container-high);
+  box-shadow: 0 0 0 var(--vk-space-2) var(--vk-surface);
+}
+
+.vk-editor-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-1);
+}
+
+/* Focus moved by keyboard is not hidden under the sticky toolbar. */
+.vk-editor :is(input, button) {
+  scroll-margin-top: 6rem;
+}
+
+.vk-editor-paper {
   display: flex;
   flex-direction: column;
   gap: var(--vk-space-6);
@@ -574,27 +669,55 @@ a {
   font-weight: 600;
 }
 
-.vk-textarea {
-  min-height: 50vh;
-  resize: vertical;
+/* CodeMirror host. Selectors repeat `.cm-editor` to outrank CodeMirror's injected base theme. */
+.vk-editor-body {
+  border: 1px solid var(--vk-outline);
+  border-radius: var(--vk-radius-lg);
+  background: var(--vk-surface-container-low);
+  color: var(--vk-on-surface);
+}
+
+.vk-editor-body[data-state="loading"],
+.vk-editor-body[data-state="failed"] {
+  display: none;
+}
+
+.vk-editor-body:focus-within {
+  outline: 3px solid var(--vk-focus);
+  border-color: transparent;
+}
+
+.vk-editor-body .cm-editor.cm-focused {
+  outline: none;
+}
+
+.vk-editor-body .cm-editor .cm-scroller {
   font-family: var(--vk-font-reading);
   font-size: var(--vk-text-reading);
   line-height: var(--vk-leading-reading);
-  border-radius: var(--vk-radius-lg);
-  padding: var(--vk-space-6);
 }
 
-.vk-editor__bar {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--vk-space-4);
-  padding: var(--vk-space-3) var(--vk-space-4);
-  border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container-high);
-  box-shadow: var(--vk-shadow);
+.vk-editor-body .cm-editor .cm-content {
+  min-height: 50vh;
+  padding: var(--vk-space-6);
+  caret-color: var(--vk-primary);
+}
+
+.vk-editor-body .cm-editor .cm-line {
+  padding: 0;
+}
+
+.vk-editor-body .cm-editor .cm-content ::selection {
+  background: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+
+.vk-editor-body__pending {
+  min-height: 50vh;
+  margin: 0;
+  padding: var(--vk-space-6);
+  border-radius: var(--vk-radius-lg);
+  background: var(--vk-surface-container-low);
 }
 
 .vk-save-status {
@@ -638,6 +761,78 @@ a {
   background: var(--vk-error);
 }
 
+/* Dialogs: native modal <dialog>; the page behind is inert and keeps its scroll and state. */
+
+.vk-dialog {
+  width: min(32rem, calc(100vw - 2 * var(--vk-space-4)));
+  max-height: calc(100dvh - 2 * var(--vk-space-4));
+  overflow: auto;
+  padding: var(--vk-space-6);
+  border: 0;
+  border-radius: var(--vk-radius-xl);
+  background: var(--vk-surface-container-high);
+  color: var(--vk-on-surface);
+  box-shadow: var(--vk-shadow);
+}
+
+.vk-dialog::backdrop {
+  background: var(--vk-scrim);
+}
+
+.vk-dialog--preview {
+  width: min(48rem, calc(100vw - 2 * var(--vk-space-4)));
+  background: var(--vk-surface);
+}
+
+.vk-dialog__eyebrow {
+  margin: 0 0 var(--vk-space-2);
+  color: var(--vk-primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Focused only as the dialog's starting point, never by Tab. */
+.vk-dialog__eyebrow:focus {
+  outline: none;
+}
+
+.vk-dialog__title {
+  margin: 0 0 var(--vk-space-3);
+  font-family: var(--vk-font-reading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.vk-dialog__body {
+  margin: 0 0 var(--vk-space-6);
+}
+
+.vk-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--vk-space-2);
+}
+
+.vk-dialog__recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-2);
+  margin-top: var(--vk-space-6);
+  padding-top: var(--vk-space-4);
+  border-top: 1px solid var(--vk-outline-variant);
+}
+
+.vk-preview {
+  margin: var(--vk-space-6) 0;
+}
+
+.vk-preview .vk-reader__title {
+  margin-bottom: var(--vk-space-6);
+  font-size: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+}
+
 @media (min-width: 48rem) {
   .vk-topbar,
   .vk-main,
@@ -652,9 +847,26 @@ a {
 }
 
 @media (max-width: 30rem) {
-  .vk-editor__bar {
-    flex-direction: column;
-    align-items: stretch;
+  /* No sticky or fixed controls over the text on a phone; the toolbar wraps in the flow. */
+  .vk-editor-toolbar {
+    position: static;
+  }
+
+  .vk-editor-toolbar__actions {
+    width: 100%;
+  }
+
+  .vk-editor-toolbar__actions .vk-button {
+    padding: 0 var(--vk-space-3);
+  }
+
+  /* Enlarged text needs the width more than the inner margin. */
+  .vk-editor-body .cm-editor .cm-content {
+    padding: var(--vk-space-4) var(--vk-space-3);
+  }
+
+  .vk-editor-toolbar__actions .vk-button--filled {
+    margin-inline-start: auto;
   }
 
   .vk-nav a {

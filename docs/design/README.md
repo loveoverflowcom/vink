@@ -44,7 +44,7 @@ Chưa có control đặt thuộc tính này; HTML từ server không phụ thu�
 | Role | Light | Dark | Dùng cho |
 | --- | --- | --- | --- |
 | `surface` / `on-surface` | `#fffaff` / `#241d2d` | `#17121d` / `#f0e7f8` | Nền trang, chữ chính |
-| `surface-container-low` | `#f7f2fa` | `#211b29` | Input, textarea |
+| `surface-container-low` | `#f7f2fa` | `#211b29` | Input, vùng soạn nội dung |
 | `surface-container` | `#efe8f6` | `#2b2434` | Hero, thẻ, empty, notice |
 | `surface-container-high` / `-highest` | `#e8e0f0` / `#e3d8ec` | `#372e42` / `#44394f` | Thanh lưu, hover thẻ |
 | `on-surface-variant` | `#5f566b` | `#d1c3db` | Chữ phụ, metadata, nav chưa chọn |
@@ -55,6 +55,7 @@ Chưa có control đặt thuộc tính này; HTML từ server không phụ thu�
 | `secondary` / `secondary-container` / `on-` | `#685b78` / `#eadcf3` / `#31233d` | `#cec0df` / `#493c56` / `#f2daff` | Nút tonal |
 | `tertiary` / `tertiary-container` / `on-` | `#85506a` / `#ffd9e8` / `#3a1227` | `#f4b2ce` / `#65364d` / `#ffd9e8` | Chấm “chưa lưu”; đề bài sau này |
 | `error` / `error-container` / `on-` | `#ba1a1a` / `#ffdad6` / `#410002` | `#ffb4ab` / `#6d2520` / `#ffdad6` | Lưu lỗi, xung đột |
+| `on-error` | `#ffffff` | `#690005` | Chữ trên nút nguy hiểm “Bỏ thay đổi và rời” |
 | `warning-container` / `on-` | `#f7edcb` / `#514218` | `#4e4223` / `#f4e5af` | Thông báo xung đột |
 | `success` / `success-container` / `on-` | `#326846` / `#d7efde` / `#214b30` | `#a3d5b2` / `#244631` / `#c7ebd1` | Chấm “đã lưu” |
 | `focus` | `#7250b4` | `#d4bbff` | Vòng focus 3 px |
@@ -94,7 +95,12 @@ ngưỡng. Đây là đo cho app tại thời điểm trên, không phải 42 PA
 | Nút filled, skip link, mark | 6.98 | 8.16 |
 | Nav đang chọn | 10.84 | 8.23 |
 | Nút tonal | 11.14 | 7.87 |
-| Chữ trong input/textarea | 14.77 | 13.95 |
+| Chữ trong input và vùng soạn CodeMirror | 14.77 | 13.95 |
+| Nút text (`primary`) trên thanh công cụ/hộp thoại editor | 5.44 | 7.57 |
+| Nút “Bỏ thay đổi và rời” (`on-error` trên `error`) | 6.46 | 7.72 |
+| “Rời mà không lưu…” (`error`) trên hộp thoại | 5.03 | 7.58 |
+| Thông báo lỗi lưu (`on-error-container`) | 13.26 | 8.40 |
+| Chữ được chọn trong editor (`on-primary-container`) | 10.84 | 8.23 |
 | Trạng thái lưu trên thanh lưu | 5.40 | 7.68 |
 | Xung đột (`error`) trên thanh lưu | 5.03 | 7.58 |
 | Tiêu đề thông báo warning | 8.37 | 7.84 |
@@ -102,7 +108,9 @@ ngưỡng. Đây là đo cho app tại thời điểm trên, không phải 42 PA
 | Chấm đã lưu / chưa lưu / xung đột | 5.10 / 4.88 / 5.03 | 7.79 / 7.42 / 7.58 |
 | Vòng focus, thấp nhất trên `surface-container-high` | 4.64 | 7.57 |
 
-Vòng focus đo bằng phím Tab thật: 51 lần dừng mỗi theme, tất cả khớp `:focus-visible`. Chưa đo
+Năm hàng từ “Nút text” tới “Chữ được chọn” thêm cho editor của
+[#6](https://github.com/loveoverflowcom/vink/issues/6), tính từ giá trị token (nền đặc, không alpha)
+chứ chưa qua lần quét `getComputedStyle` ở trên. Vòng focus đo bằng phím Tab thật: 51 lần dừng mỗi theme, tất cả khớp `:focus-visible`. Chưa đo
 trạng thái hover (`filter: brightness`), nút disabled (độ mờ 50 %, được loại khỏi ngưỡng) và nền ảnh.
 
 ## Kiểm thị giác đã chạy và giới hạn
