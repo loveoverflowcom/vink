@@ -17,7 +17,7 @@ cần cập nhật.
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
-| [Ghi chú logo v2](https://drive.google.com/file/d/1pu1i_YqguPfbMCe2XDZk9rfU6bXZFtoO/view) và quyết định 01/11/2026 ([#10](https://github.com/loveoverflowcom/vink/issues/10)) | Trạng thái logo |
+| [Cặp logo Enso light/dark chính thức](https://drive.google.com/file/d/1hHQguADQ2tbiNjQ9r8WqMnYUSEnkAyYs/view), quyết định 01/11/2026 ([#10](https://github.com/loveoverflowcom/vink/issues/10)) | Nguồn artwork cho logo; thay hướng vết mực v2 |
 
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
 Khám phá/reader theo v3; palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
@@ -32,10 +32,10 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
   trong ảnh chụp và ZIP v2.3. Thứ tự tab không tự đổi màn khởi động; `/` vẫn là trang công khai.
 - [#7](https://github.com/loveoverflowcom/vink/issues/7) triển khai rail/bar, nhãn Khám phá,
   Tôi và preference Sáng/Tối/Hệ thống; spec và owner ở dưới.
-- **Logo chưa có bản production.** Mark chữ “V” trong shell là tạm thời, chỉ đổi sang
-  `primary`/`on-primary`. Logo vết mực v2 (PNG 1254 px) là preview và đã bị thay hướng bởi logo
-  Enso lông vũ + ngòi bút ngày 01/11; [#10](https://github.com/loveoverflowcom/vink/issues/10) sở
-  hữu vector hóa, các kích thước và tích hợp. Không dùng PNG preview làm logo.
+- **Logo Enso lông vũ + ngòi bút** được trích từ cặp chính thức của
+  [#10](https://github.com/loveoverflowcom/vink/issues/10), thay mark chữ “V”.
+  [Nguồn/crop/rendition](../../apps/vink-web/assets/brand/README.md) giữ provenance của hai
+  theme, AVIF sáu kích thước và SVG giản lược; không dùng lại logo vết mực v2.
 
 ## Màu và theme
 
@@ -54,7 +54,7 @@ storage lỗi, nhưng không hứa giữ sau reload.
 | `surface-container-high` / `-highest` | `#e8e0f0` / `#e3d8ec` | `#372e42` / `#44394f` | Thanh lưu, hover thẻ |
 | `on-surface-variant` | `#5f566b` | `#d1c3db` | Chữ phụ, metadata, nav chưa chọn |
 | `outline` / `outline-variant` | `#81768e` / `#d6cadd` | `#a095ab` / `#50455a` | Viền control / đường phân cách |
-| `primary` / `on-primary` | `#6846a5` / `#ffffff` | `#d4bbff` / `#381c63` | Hành động chính, link, mark tạm |
+| `primary` / `on-primary` | `#6846a5` / `#ffffff` | `#d4bbff` / `#381c63` | Hành động chính, link |
 | `primary-container` / `on-` | `#ebddff` / `#35205a` | `#4e3477` / `#f0e3ff` | Nav đang chọn |
 | `primary-fixed` / `on-` | `#dcc5ff` / `#2b1050` | `#5e4388` / `#f0e3ff` | Dự phòng cho điểm nhấn trang trí |
 | `secondary` / `secondary-container` / `on-` | `#685b78` / `#eadcf3` / `#31233d` | `#cec0df` / `#493c56` / `#f2daff` | Nút tonal |
@@ -290,3 +290,32 @@ full-library search hay hoàn tất toàn bộ UX-01/UX-03/WR-01/WR-03.
 
 [LayoutSpec và delta capability lớp đọc v3](public-reading.md) ghi nguồn #9/#14, cơ chế
 SSR/API, bố cục hữu hạn và phạm vi kiểm chứng. Lớp đọc không hoàn tất tương tác cộng đồng.
+
+## Logo Enso #10
+
+LayoutSpec vùng r1 đã trình bày trước patch ngày 01/11/2026, nền `develop@738e6c6`.
+
+```text
+Region #brand — cùng link trang chủ, accessible name và wordmark Vink
+  Region #brand-mark — thay V tạm bằng Enso AVIF, vùng vuông 2.25rem
+  Region #brand-name — Vink, giữ cách ẩn trên rail compact
+Region #head-icons — favicon và manifest theo theme, ngoài hydrated body
+```
+
+Rail 220/96px và header mobile dưới 760px dùng cùng mark, giữ thứ tự Khám phá → Bàn viết → Tôi.
+Không đổi CTA, route hay owner editor/dirty guard. CSS đổi asset ngay theo override hoặc OS;
+preload cặp AVIF 96px và kích thước cố định tránh nhảy layout do tải ảnh. Bootstrap khôi phục
+theme trước stylesheet, đồng bộ head links, theo dõi override và OS; storage lỗi vẫn cho đổi
+trong phiên. Bản fallback favicon SVG tự theo OS khi JavaScript không chạy.
+
+Không thêm palette vào app. Logo trong suốt được kiểm trên `surface`/`surface-container` của
+cả hai theme; lông/ngòi ở 48px và silhouette ở 24px cần mở contact sheet từ derivative thật.
+Logo trang trí có `aria-hidden`, link giữ nhãn “Vink — trang chủ”, focus do shell hiện có giữ.
+Không tuyên bố mọi pixel gradient của artwork đạt ngưỡng tương phản chữ; wordmark/focus vẫn
+dùng token đã đo ở trên. Asset app icon chưa được nghiệm thu trên launcher/OS thật.
+
+`brandAssets` kiểm HTTP/MIME, decode AVIF ở đủ sáu cỡ, manifest/icon URL và theme trên HTML thật
+khi chặn riêng hydration bundle; `assertBrand` kiểm theme/geometry, kể cả reload, OS và denied
+storage. `shellWithDirtyEditor` giữ kiểm instance, selection, text, save và brand dirty guard.
+PNG/manifest môi trường do lane web tạo là bằng chứng render; kết quả lần chạy được ghi ở PR,
+không suy ra PASS chỉ từ các assertions tồn tại.

@@ -1,0 +1,29 @@
+{
+  "name": "Vink — Việt Ink",
+  "short_name": "Vink",
+  "lang": "vi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffaff",
+  "theme_color": "#fffaff",
+  "icons": [
+    {
+      "src": "/pkg/brand/enso-light-192.avif",
+      "sizes": "192x192",
+      "type": "image/avif",
+      "purpose": "any"
+    },
+    {
+      "src": "/pkg/brand/enso-light-512.avif",
+      "sizes": "512x512",
+      "type": "image/avif",
+      "purpose": "any"
+    },
+    {
+      "src": "/pkg/brand/enso-light.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

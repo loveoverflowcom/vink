@@ -292,18 +292,19 @@ a {
   letter-spacing: -0.01em;
 }
 
-/* Temporary letter mark until a production logo is approved (issue #10); not brand artwork. */
+/* Approved Enso source (#10). Fixed geometry survives asset decoding and theme changes. */
 .vk-brand__mark {
-  display: inline-grid;
-  place-items: center;
+  display: inline-block;
+  flex-shrink: 0;
   width: 2.25rem;
   height: 2.25rem;
-  border-radius: 12px 12px 12px 4px;
-  background: var(--vk-primary);
-  color: var(--vk-on-primary);
-  font-size: 1.25rem;
+  background: url("brand/enso-light-96.avif") center / contain no-repeat;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .vk-brand__mark { background-image: url("brand/enso-dark-96.avif"); }
+}
+:root[data-theme="dark"] .vk-brand__mark { background-image: url("brand/enso-dark-96.avif"); }
 
 .vk-rail-brand { padding-inline: var(--vk-space-2); }
 .vk-rail-toggle { align-self: start; }

@@ -125,6 +125,7 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     )
     .map_err(|e| format!("copy vink.css: {e}"))?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
+    copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     let mut server = cargo(&root);
     server.args(["build", "--locked", "-p", "vink-app", "--bins"]);
     if release {
@@ -175,6 +176,25 @@ fn copy_fonts(from: &Path, to: &Path) -> Result<(), String> {
         if name.ends_with(".woff2") || name.starts_with("OFL") {
             std::fs::copy(entry.path(), to.join(name.as_ref()))
                 .map_err(|e| format!("copy font {name}: {e}"))?;
+        }
+    }
+    Ok(())
+}
+
+/// Serve committed brand derivatives only; extraction tools and reference/evidence stay off-site.
+fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
+    if to.exists() {
+        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
+    }
+    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
+    for entry in std::fs::read_dir(from).map_err(|e| format!("read brand: {e}"))? {
+        let path = entry.map_err(|e| format!("read brand entry: {e}"))?.path();
+        if matches!(
+            path.extension().and_then(|ext| ext.to_str()),
+            Some("avif" | "svg" | "webmanifest")
+        ) {
+            std::fs::copy(&path, to.join(path.file_name().expect("brand file name")))
+                .map_err(|e| format!("copy brand {}: {e}", path.display()))?;
         }
     }
     Ok(())

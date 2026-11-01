@@ -34,7 +34,7 @@ fn Icon(kind: IconKind) -> impl IntoView {
 fn Brand(#[prop(optional)] mobile: bool) -> impl IntoView {
     view! {
         <a class=if mobile { "vk-brand vk-mobile-brand" } else { "vk-brand vk-rail-brand" } href="/" aria-label="Vink — trang chủ">
-            <span class="vk-brand__mark" aria-hidden="true">"V"</span>
+            <span class="vk-brand__mark" aria-hidden="true"></span>
             <span class="vk-brand__name">"Vink"</span>
         </a>
     }
