@@ -5,10 +5,14 @@
 [kế hoạch #4](https://github.com/loveoverflowcom/vink/issues/4)). Đây không phải phê duyệt thương
 hiệu production; yêu cầu và D-02–D-12 giữ trạng thái trong [decision log](../architecture/decisions.md).
 
-Owner duy nhất của roles màu, chữ, shape, focus và motion là
-[`apps/vink-web/style/vink.css`](../../apps/vink-web/style/vink.css). Trang này ghi lựa chọn,
-nguồn và bằng chứng; khi giá trị trong CSS và bảng dưới khác nhau, CSS là hiện trạng và trang này
-cần cập nhật.
+Từ UI System 01/06 ([#19](https://github.com/loveoverflowcom/vink/issues/19)), owner duy nhất của
+giá trị roles màu, chữ, shape, spacing, mật độ, focus và motion là
+[`packages/ui-system/shared/tokens.json`](../../packages/ui-system/shared/tokens.json);
+`cargo xtask ui-tokens` sinh CSS custom properties (`--vk-*`), Rust và Kotlin từ đó và
+`--check` bắt drift. [`vink.css`](../../apps/vink-web/style/vink.css) chỉ còn component web.
+Trang này ghi lựa chọn, nguồn và bằng chứng; khi giá trị trong `tokens.json` và bảng dưới khác
+nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner map, renderer và preview:
+[UI system](../../packages/ui-system/README.md).
 
 ## Nguồn và thứ tự ưu tiên
 
@@ -22,7 +26,7 @@ cần cập nhật.
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
 Khám phá/reader theo v3; palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
 Ảnh tham chiếu không ghi đè quyền của server hay ngữ nghĩa lưu/transport. `source/tokens.css` của
-prototype là nơi lấy giá trị ban đầu; từ nay sửa role trong `vink.css`, không đồng bộ ngược từ
+prototype là nơi lấy giá trị ban đầu; từ nay sửa role trong `tokens.json`, không đồng bộ ngược từ
 prototype. Lavender là palette riêng của Vink do người dùng chọn, không phải thương hiệu Cantos.
 
 ## Điều hướng và logo
@@ -79,7 +83,16 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
 - Font tự host, nguồn/hash/license và cách tải: [assets/fonts](../../apps/vink-web/assets/fonts/README.md).
 - Radius 8/12/20/28 px, `hero` 32 px, pill. Spacing 0.25–3rem như trước.
 - Motion 160/320 ms; `ease-emphasized` cho màu, `ease-spatial` (có vượt nhẹ) cho đổi shape.
-  `prefers-reduced-motion` rút mọi transition/animation về gần 0.
+  `prefers-reduced-motion` rút mọi transition/animation về gần 0 và giới hạn animation chạy tối
+  đa một lần, nên vòng lặp không thành chớp vô hạn. Token UIS-01 tách chuyển tiếp hữu hạn
+  (`duration.short/medium` → 0ms) khỏi vòng lặp tải (`duration.loop` giữ chu kỳ,
+  `loop.iterations` → 0: dừng).
+- UIS-01 thêm role chưa có consumer Web: `on-secondary`, `on-tertiary`, `warning`/`on-warning`,
+  `on-success`, `info`/`info-container` (+ `on-`), `disabled-content`/`-container`,
+  `state-focus`/`state-pressed`; vai trò chữ display/headline/title/body/label/caption/reading/code
+  kiểm kê từ selector hiện có; kích thước chạm 44, icon 20/24, avatar 32/40, mật độ
+  thoải mái/gọn. Mọi cặp chữ/nền khai báo trong `contrast` của `tokens.json` được generator tính
+  lại cả hai theme và từ chối nguồn dưới ngưỡng; đó là số học token, không phải quét màn hình.
 
 ## Tương phản đo trên app
 

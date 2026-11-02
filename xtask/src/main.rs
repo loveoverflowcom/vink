@@ -11,6 +11,8 @@ mod identity;
 mod pgurl;
 mod process;
 mod provision;
+mod ui_preview;
+mod ui_tokens;
 mod web;
 
 use std::path::{Path, PathBuf};
@@ -40,7 +42,13 @@ usage: cargo xtask <command>
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
-  verify all             quick, postgres and web in order";
+  verify all             quick, postgres and web in order
+  ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
+                         (--check: write nothing, fail on missing or drifted output)
+  ui-preview leptos|cmp build|verify|run
+                         UI system previews: Leptos (wasm + headless Chrome checks) and
+                         Compose Multiplatform desktop (Gradle; VINK_UI_NATIVE_TARGETS=1 adds
+                         Android/iOS compilation)";
 
 pub fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -60,6 +68,16 @@ fn main() -> ExitCode {
         ["db", "migrate"] => finish(app_command(&env, "migrate")),
         ["db", "seed"] => finish(app_command(&env, "dev-seed")),
         ["dev"] => finish(dev(&env)),
+        ["ui-tokens"] => finish(ui_tokens::run(&root(), false)),
+        ["ui-tokens", "--check"] => finish(ui_tokens::run(&root(), true)),
+        ["ui-preview", renderer @ ("leptos" | "cmp"), "verify"] => {
+            ui_preview::verify(&env, renderer)
+        }
+        [
+            "ui-preview",
+            renderer @ ("leptos" | "cmp"),
+            action @ ("build" | "run"),
+        ] => finish(ui_preview::run(&env, renderer, action)),
         ["verify", lane] => match *lane {
             "quick" => verify(&[Lane::Quick], &env),
             "postgres" => verify(&[Lane::Postgres], &env),
@@ -87,7 +105,8 @@ fn finish(result: Result<(), String>) -> ExitCode {
 }
 
 /// Server binaries plus
-/// `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`.
+/// `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`;
+/// `vink.css` is the generated `tokens.css` followed by the app's `vink.css`.
 pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     let root = root();
     doctor::require_wasm_bindgen(&root)?;
@@ -130,11 +149,7 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
         .arg(&wasm_file);
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
-    std::fs::copy(
-        root.join("apps/vink-web/style/vink.css"),
-        pkg.join("vink.css"),
-    )
-    .map_err(|e| format!("copy vink.css: {e}"))?;
+    stylesheet(&root, &pkg.join("vink.css"))?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
     let mut server = cargo(&root);
@@ -144,6 +159,20 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     }
     env.apply(&mut server);
     process::run(&mut server, "build server binaries (vink-app, vink-worker)")
+}
+
+/// `/pkg/vink.css`: the generated UI tokens (checked against their source first, so a stale
+/// file is never served) followed by the web app's component styles. One request, one order.
+fn stylesheet(root: &Path, out: &Path) -> Result<(), String> {
+    ui_tokens::run(root, true)?;
+    let mut css = String::new();
+    for part in [ui_tokens::CSS_OUT, "apps/vink-web/style/vink.css"] {
+        let text =
+            std::fs::read_to_string(root.join(part)).map_err(|e| format!("read {part}: {e}"))?;
+        css.push_str(&text);
+        css.push('\n');
+    }
+    std::fs::write(out, css).map_err(|e| format!("write {}: {e}", out.display()))
 }
 
 /// The CodeMirror runtime (`apps/vink-web/editor`): installs the locked npm dependencies when the
@@ -262,7 +291,7 @@ fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
 
 fn quick(report: &mut Report) -> bool {
     let root = root();
-    let steps: [(&str, &[&str]); 4] = [
+    let steps: [(&str, &[&str]); 5] = [
         ("fmt", &["fmt", "--all", "--", "--check"]),
         (
             "clippy server (workspace, ssr)",
@@ -294,10 +323,33 @@ fn quick(report: &mut Report) -> bool {
             ],
         ),
         (
+            "clippy UI preview (vink-ui-preview, csr, wasm32)",
+            &[
+                "clippy",
+                "--locked",
+                "-p",
+                "vink-ui-preview",
+                "--lib",
+                "--target",
+                "wasm32-unknown-unknown",
+                "--features",
+                "csr",
+                "--",
+                "-D",
+                "warnings",
+            ],
+        ),
+        (
             "unit + contract tests (no database)",
             &["test", "--locked", "--workspace", "--lib", "--bins"],
         ),
     ];
+    if !report.step(
+        "ui tokens: source valid, generated CSS/Rust/Kotlin match",
+        || ui_tokens::run(&root, true),
+    ) {
+        return false;
+    }
     for (name, args) in steps {
         let mut command = cargo(&root);
         command.args(args);

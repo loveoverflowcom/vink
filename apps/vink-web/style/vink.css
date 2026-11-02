@@ -1,197 +1,18 @@
 /*
- * Vink design tokens and base components — the single owner of the semantic colour, type,
- * shape and motion roles (`--vk-*`) and of the `vk-*` primitives. Material 3 Expressive in
- * Vink's Lavender palette (light/dark); docs/design/README.md records the baseline and sources.
- * Reading and writing surfaces stay quiet; expression is concentrated in headings, shape and
- * the primary action. Components consume roles; add a role here before a one-off colour.
+ * Vink web components (`vk-*` primitives and page styles). Material 3 Expressive in Vink's
+ * Lavender palette; docs/design/README.md records the baseline and sources. Reading and writing
+ * surfaces stay quiet; expression is concentrated in headings, shape and the primary action.
+ *
+ * Token values (`--vk-*` colour, type, shape, spacing, density and motion roles, light/dark and
+ * the self-hosted @font-face rules) are NOT authored here: they come from
+ * packages/ui-system/shared/tokens.json through `cargo xtask ui-tokens`, which writes
+ * packages/ui-system/leptos/style/tokens.css. `cargo xtask build` serves that file followed by
+ * this one as /pkg/vink.css. Components consume roles; add a role to tokens.json before a
+ * one-off colour.
  *
  * Theme: light by default; dark follows the system unless `<html data-theme="light|dark">`
- * chooses. The two dark blocks below hold the same values — change them together.
- *
- * Fonts are self-hosted WOFF2 subsets with their OFL licenses and provenance in
- * apps/vink-web/assets/fonts (served from /pkg/fonts/). `swap` keeps text visible in the
- * fallback stack while a face loads or if it fails.
+ * chooses (generated in tokens.css; the app's appearance bootstrap sets the attribute).
  */
-
-@font-face {
-  font-family: "Be Vietnam Pro";
-  src: url("fonts/be-vietnam-pro-400.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Be Vietnam Pro";
-  src: url("fonts/be-vietnam-pro-600.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Literata";
-  src: url("fonts/literata-variable.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 200 900;
-  font-display: swap;
-}
-
-:root {
-  color-scheme: light dark;
-
-  /* UI text uses the shipped 400 and 600 faces; reading text any Literata weight. */
-  --vk-font-ui: "Be Vietnam Pro", "Noto Sans", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --vk-font-reading: "Literata", "Noto Serif", "Source Serif 4", Georgia, "Times New Roman", serif;
-
-  --vk-text-reading: clamp(1.0625rem, 1rem + 0.25vw, 1.25rem);
-  --vk-leading-reading: 1.85;
-  --vk-measure: 42rem;
-
-  --vk-radius-sm: 8px;
-  --vk-radius-md: 12px;
-  --vk-radius-lg: 20px;
-  --vk-radius-xl: 28px;
-  --vk-radius-hero: 32px;
-  --vk-radius-full: 999px;
-
-  --vk-space-1: 0.25rem;
-  --vk-space-2: 0.5rem;
-  --vk-space-3: 0.75rem;
-  --vk-space-4: 1rem;
-  --vk-space-6: 1.5rem;
-  --vk-space-8: 2rem;
-  --vk-space-12: 3rem;
-
-  --vk-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
-  --vk-ease-spatial: cubic-bezier(0.2, 0.8, 0.2, 1.15);
-  --vk-duration-short: 160ms;
-  --vk-duration-medium: 320ms;
-
-  /* Light scheme */
-  --vk-surface: #fffaff;
-  --vk-surface-container-low: #f7f2fa;
-  --vk-surface-container: #efe8f6;
-  --vk-surface-container-high: #e8e0f0;
-  --vk-surface-container-highest: #e3d8ec;
-  --vk-on-surface: #241d2d;
-  --vk-on-surface-variant: #5f566b;
-  --vk-inverse-surface: #241d2d;
-  --vk-inverse-on-surface: #fffaff;
-  --vk-outline: #81768e;
-  --vk-outline-variant: #d6cadd;
-  --vk-primary: #6846a5;
-  --vk-on-primary: #ffffff;
-  --vk-primary-container: #ebddff;
-  --vk-on-primary-container: #35205a;
-  --vk-primary-fixed: #dcc5ff;
-  --vk-on-primary-fixed: #2b1050;
-  --vk-secondary: #685b78;
-  --vk-secondary-container: #eadcf3;
-  --vk-on-secondary-container: #31233d;
-  --vk-tertiary: #85506a;
-  --vk-tertiary-container: #ffd9e8;
-  --vk-on-tertiary-container: #3a1227;
-  --vk-error: #ba1a1a;
-  --vk-on-error: #ffffff;
-  --vk-error-container: #ffdad6;
-  --vk-on-error-container: #410002;
-  --vk-warning-container: #f7edcb;
-  --vk-on-warning-container: #514218;
-  --vk-success: #326846;
-  --vk-success-container: #d7efde;
-  --vk-on-success-container: #214b30;
-  --vk-focus: #7250b4;
-  --vk-state-hover: rgb(104 70 165 / 0.08);
-  --vk-scrim: rgb(23 18 29 / 0.44);
-  --vk-shadow: 0 12px 40px rgb(36 29 45 / 0.14);
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-
-  --vk-surface: #17121d;
-  --vk-surface-container-low: #211b29;
-  --vk-surface-container: #2b2434;
-  --vk-surface-container-high: #372e42;
-  --vk-surface-container-highest: #44394f;
-  --vk-on-surface: #f0e7f8;
-  --vk-on-surface-variant: #d1c3db;
-  --vk-inverse-surface: #f0e7f8;
-  --vk-inverse-on-surface: #17121d;
-  --vk-outline: #a095ab;
-  --vk-outline-variant: #50455a;
-  --vk-primary: #d4bbff;
-  --vk-on-primary: #381c63;
-  --vk-primary-container: #4e3477;
-  --vk-on-primary-container: #f0e3ff;
-  --vk-primary-fixed: #5e4388;
-  --vk-on-primary-fixed: #f0e3ff;
-  --vk-secondary: #cec0df;
-  --vk-secondary-container: #493c56;
-  --vk-on-secondary-container: #f2daff;
-  --vk-tertiary: #f4b2ce;
-  --vk-tertiary-container: #65364d;
-  --vk-on-tertiary-container: #ffd9e8;
-  --vk-error: #ffb4ab;
-  --vk-on-error: #690005;
-  --vk-error-container: #6d2520;
-  --vk-on-error-container: #ffdad6;
-  --vk-warning-container: #4e4223;
-  --vk-on-warning-container: #f4e5af;
-  --vk-success: #a3d5b2;
-  --vk-success-container: #244631;
-  --vk-on-success-container: #c7ebd1;
-  --vk-focus: #d4bbff;
-  --vk-state-hover: rgb(212 187 255 / 0.1);
-  --vk-scrim: rgb(0 0 0 / 0.58);
-  --vk-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --vk-surface: #17121d;
-    --vk-surface-container-low: #211b29;
-    --vk-surface-container: #2b2434;
-    --vk-surface-container-high: #372e42;
-    --vk-surface-container-highest: #44394f;
-    --vk-on-surface: #f0e7f8;
-    --vk-on-surface-variant: #d1c3db;
-    --vk-inverse-surface: #f0e7f8;
-    --vk-inverse-on-surface: #17121d;
-    --vk-outline: #a095ab;
-    --vk-outline-variant: #50455a;
-    --vk-primary: #d4bbff;
-    --vk-on-primary: #381c63;
-    --vk-primary-container: #4e3477;
-    --vk-on-primary-container: #f0e3ff;
-    --vk-primary-fixed: #5e4388;
-    --vk-on-primary-fixed: #f0e3ff;
-    --vk-secondary: #cec0df;
-    --vk-secondary-container: #493c56;
-    --vk-on-secondary-container: #f2daff;
-    --vk-tertiary: #f4b2ce;
-    --vk-tertiary-container: #65364d;
-    --vk-on-tertiary-container: #ffd9e8;
-    --vk-error: #ffb4ab;
-    --vk-on-error: #690005;
-    --vk-error-container: #6d2520;
-    --vk-on-error-container: #ffdad6;
-    --vk-warning-container: #4e4223;
-    --vk-on-warning-container: #f4e5af;
-    --vk-success: #a3d5b2;
-    --vk-success-container: #244631;
-    --vk-on-success-container: #c7ebd1;
-    --vk-focus: #d4bbff;
-    --vk-state-hover: rgb(212 187 255 / 0.1);
-    --vk-scrim: rgb(0 0 0 / 0.58);
-    --vk-shadow: 0 16px 48px rgb(0 0 0 / 0.4);
-  }
-}
 
 *,
 *::before,
@@ -1093,5 +914,7 @@ a {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+    /* A near-zero duration must not become a flashing infinite loop: play once at most. */
+    animation-iteration-count: 1 !important;
   }
 }

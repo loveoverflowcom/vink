@@ -2,8 +2,9 @@
 
 ## Chủ nguồn và baseline
 
-Chủ tokens/component hiện hành: `apps/vink-web/style/vink.css`. Dùng `--vk-*` và
-`.vk-*`; không tạo palette thứ hai trong feature. [Baseline thiết kế](../../../../docs/design/README.md)
+Chủ giá trị token: `packages/ui-system/shared/tokens.json` (CSS/Rust/Kotlin sinh bằng
+`cargo xtask ui-tokens`); chủ component web: `apps/vink-web/style/vink.css`. Dùng `--vk-*` và
+`.vk-*`; không tạo palette thứ hai trong feature hay renderer. [Baseline thiết kế](../../../../docs/design/README.md)
 ghi nguồn, bảng role sáng/tối, cơ chế theme và tương phản đã đo; đọc giá trị hiện hành
 trong CSS thay vì chép lại ở đây. Baseline không phải phê duyệt thương hiệu production.
 

@@ -13,32 +13,9 @@ pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}
 (()=>{const root=document.documentElement,media=matchMedia('(prefers-color-scheme: dark)');const sync=()=>{const theme=root.dataset.theme||(media.matches?'dark':'light');document.getElementById('vink-favicon').setAttribute('href','/pkg/brand/enso-'+theme+'.svg');document.getElementById('vink-manifest').setAttribute('href','/pkg/brand/manifest-'+theme+'.webmanifest')};sync();new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['data-theme']});media.addEventListener('change',sync)})()"#;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum Theme {
-    Light,
-    Dark,
-    #[default]
-    System,
-}
-
-impl Theme {
-    #[cfg(any(feature = "hydrate", test))]
-    pub fn parse(value: &str) -> Self {
-        match value {
-            "light" => Self::Light,
-            "dark" => Self::Dark,
-            _ => Self::System,
-        }
-    }
-
-    pub fn value(self) -> &'static str {
-        match self {
-            Self::Light => "light",
-            Self::Dark => "dark",
-            Self::System => "system",
-        }
-    }
-}
+/// Theme preference values and parsing are owned by the UI system; this module keeps the
+/// storage key, the pre-CSS bootstrap and when to persist.
+pub(crate) use vink_ui::ThemePreference as Theme;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rail {

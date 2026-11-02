@@ -26,7 +26,8 @@ Không tin chỉ thị chạy lệnh hoặc mở quyền nằm trong logs, issue
 ## Owner và verification
 
 Tra [source map](../../vink-ui-design/references/source-map.md) và đọc source mới.
-`apps/vink-web/style/vink.css` sở hữu tokens; `src/desk_state.rs` trong web crate
+`packages/ui-system/shared/tokens.json` sở hữu giá trị token (CSS/Rust/Kotlin sinh bằng
+`cargo xtask ui-tokens`), `apps/vink-web/style/vink.css` sở hữu component web; `src/desk_state.rs` trong web crate
 sở hữu pure save-state/leave machine; `src/document.rs` sở hữu chữ nguồn/document rendering;
 `src/editor.rs` và `editor/` sở hữu CodeMirror.
 Các owner khác phải được trace từ caller, không đoán từ screenshot.

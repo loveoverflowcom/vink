@@ -66,7 +66,8 @@ khi khẳng định root cause, line hoặc patch cụ thể. Tất cả đườ
 | CodeMirror bridge; runtime | `apps/vink-web/src/editor.rs`; `apps/vink-web/editor/` |
 | Leave guard for navigation | `apps/vink-web/src/navigation.rs` |
 | Consumer API, transport, SSR read seam | `apps/vink-web/src/contract.rs`, `src/api.rs`, `src/server.rs` |
-| CSS semantic tokens/components | `apps/vink-web/style/vink.css` |
+| Semantic token values (since UIS-01) | `packages/ui-system/shared/tokens.json` → generated `packages/ui-system/leptos/style/tokens.css`, Rust, Kotlin |
+| Web component CSS | `apps/vink-web/style/vink.css` |
 | Browser smoke | `apps/vink-web/e2e/browser-smoke.mjs` |
 | Domain/application/HTTP/persistence | `services/vink-app/src/` theo owner trong docs development |
 

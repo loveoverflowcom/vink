@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["apps/vink-web", "packages/store-postgres", "services/vink-app", "services/vink-identity", "xtask"]
+members = ["apps/vink-web", "packages/store-postgres", "packages/ui-system/leptos", "packages/ui-system/leptos/preview", "services/vink-app", "services/vink-identity", "xtask"]
 
 [workspace.package]
 edition = "2024"
