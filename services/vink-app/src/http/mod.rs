@@ -20,13 +20,17 @@ pub use error::ApiError;
 
 use crate::application::Vink;
 use crate::domain::ids::PrincipalId;
-use crate::identity::IdentityResolver;
+use crate::identity::{IdentityClient, IdentityResolver, Resolution};
 use crate::persistence::PgStore;
 
 #[derive(Clone)]
 pub struct AppState {
     pub vink: Arc<Vink<PgStore>>,
     pub identity: Arc<dyn IdentityResolver>,
+    /// The Identity process, probed by readiness (informational: public reading never waits on it).
+    pub identity_probe: Option<IdentityClient>,
+    /// Readiness refuses a database role that can change schema or roles (production profile).
+    pub require_restricted_role: bool,
     pub public_origin: Arc<str>,
     pub leptos: LeptosOptions,
 }
@@ -52,17 +56,31 @@ impl AppState {
         Self {
             vink: Arc::new(vink),
             identity,
+            identity_probe: None,
+            require_restricted_role: false,
             public_origin: Arc::from(public_origin),
             leptos,
         }
     }
+
+    pub fn with_identity_probe(mut self, client: Option<IdentityClient>) -> Self {
+        self.identity_probe = client;
+        self
+    }
+
+    pub fn with_restricted_role_required(mut self, required: bool) -> Self {
+        self.require_restricted_role = required;
+        self
+    }
 }
 
-/// The authenticated principal of a request, as decided by the server-side resolver.
+/// The authenticated principal of a request, as decided by the server-side resolver. When the
+/// identity dependency cannot decide, the request fails with `dependency_unavailable` instead of
+/// being treated as anonymous or as anyone.
 pub struct Actor(pub Option<PrincipalId>);
 
 impl FromRequestParts<AppState> for Actor {
-    type Rejection = std::convert::Infallible;
+    type Rejection = ApiError;
 
     async fn from_request_parts(
         parts: &mut Parts,
@@ -72,7 +90,11 @@ impl FromRequestParts<AppState> for Actor {
             .extensions
             .get::<ConnectInfo<SocketAddr>>()
             .map(|info| info.0);
-        Ok(Self(state.identity.resolve(parts, peer)))
+        match state.identity.resolve(parts, peer).await {
+            Resolution::Principal(principal) => Ok(Self(Some(principal))),
+            Resolution::Anonymous => Ok(Self(None)),
+            Resolution::Unavailable => Err(ApiError::DependencyUnavailable),
+        }
     }
 }
 
@@ -163,5 +185,202 @@ mod tests {
         let (status, body) = get(&router, "/api/v1/drafts").await;
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
+    }
+}
+
+/// The App against a fake Identity process on a real Unix socket: the production resolver,
+/// client and router decide; only the server's answers are scripted.
+#[cfg(test)]
+mod identity_tests {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    use std::path::{Path, PathBuf};
+    use std::time::Duration;
+
+    use axum::body::Body;
+    use axum::http::{Request, StatusCode, header};
+    use axum::routing::{get, post};
+    use http_body_util::BodyExt;
+    use serde_json::{Value, json};
+    use tower::ServiceExt;
+
+    use super::*;
+    use crate::identity::{IdentityClient, IdentityService};
+    use crate::persistence::lazy_pool;
+
+    /// Answers by the presented credential, in the provider's wire format.
+    async fn fake_verify(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
+        use axum::response::IntoResponse;
+        let error = |status: u16, code: &str| {
+            (
+                StatusCode::from_u16(status).unwrap(),
+                axum::Json(json!({ "error": { "code": code, "message": "fixed" } })),
+            )
+                .into_response()
+        };
+        match body["credential"].as_str().unwrap_or_default() {
+            "rejected" => axum::Json(json!({ "outcome": "rejected" })).into_response(),
+            "authenticated" => axum::Json(json!({
+                "outcome": "authenticated",
+                "subject": { "authority": "test-fixture", "id": "fixture-subject-0001" },
+                "authenticated_at": "2026-11-02T00:00:00Z"
+            }))
+            .into_response(),
+            "no-authority" => error(501, "authority_not_configured"),
+            "unavailable" => error(503, "dependency_unavailable"),
+            "caller" => error(401, "caller_unauthenticated"),
+            "malformed" => (StatusCode::OK, "{\"outcome\":").into_response(),
+            "unknown-outcome" => axum::Json(json!({ "outcome": "admin" })).into_response(),
+            "slow" => {
+                tokio::time::sleep(Duration::from_secs(3)).await;
+                axum::Json(json!({ "outcome": "rejected" })).into_response()
+            }
+            _ => error(400, "malformed_request"),
+        }
+    }
+
+    struct Fake {
+        dir: PathBuf,
+        socket: PathBuf,
+        uid: u32,
+    }
+
+    impl Drop for Fake {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.dir);
+        }
+    }
+
+    async fn fake_identity(name: &str) -> Fake {
+        let dir = std::env::temp_dir().join(format!("vink-app-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let socket = dir.join("id.sock");
+        let listener = tokio::net::UnixListener::bind(&socket).unwrap();
+        let app = Router::new()
+            .route("/identity/v1/verify-credential", post(fake_verify))
+            .route(
+                "/identity/v1/capabilities",
+                get(|| async {
+                    axum::Json(json!({
+                        "contract": "vink.identity.v1",
+                        "authority": "not_configured",
+                        "operations": { "verify_credential": "not_configured" }
+                    }))
+                }),
+            );
+        tokio::spawn(async move { axum::serve(listener, app).await });
+        let uid = std::fs::metadata(&dir).unwrap().uid();
+        Fake { dir, socket, uid }
+    }
+
+    fn app(socket: &Path, server_uid: u32) -> Router {
+        let pool = lazy_pool("postgres://vink:unused@127.0.0.1:1/vink").unwrap();
+        let client = IdentityClient::with_timeout(
+            socket.to_path_buf(),
+            server_uid,
+            Duration::from_millis(400),
+        );
+        router(
+            AppState::new(
+                Vink::new(PgStore::new(pool)),
+                Arc::new(IdentityService::new(client.clone())),
+                "http://127.0.0.1:3000",
+                Path::new("target/site"),
+            )
+            .with_identity_probe(Some(client)),
+        )
+    }
+
+    async fn drafts(router: &Router, headers: &[(&str, &str)]) -> (StatusCode, String) {
+        let mut request = Request::get("/api/v1/drafts");
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let response = router
+            .clone()
+            .oneshot(request.body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let status = response.status();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        (status, String::from_utf8_lossy(&body).into_owned())
+    }
+
+    #[tokio::test]
+    async fn identity_answers_never_grant_and_outages_stay_distinct() {
+        let fake = fake_identity("answers").await;
+        let router = app(&fake.socket, fake.uid);
+        for (credential, status, code) in [
+            ("rejected", 401, "unauthenticated"),
+            // No principal binding exists: an authenticated subject is still nobody.
+            ("authenticated", 401, "unauthenticated"),
+            ("no-authority", 401, "unauthenticated"),
+            ("unavailable", 503, "dependency_unavailable"),
+            ("caller", 503, "dependency_unavailable"),
+            ("malformed", 503, "dependency_unavailable"),
+            ("unknown-outcome", 503, "dependency_unavailable"),
+            ("slow", 503, "dependency_unavailable"),
+        ] {
+            let bearer = format!("Bearer {credential}");
+            let forged = [
+                (header::AUTHORIZATION.as_str(), bearer.as_str()),
+                ("x-user-id", "11111111-1111-4111-8111-111111111111"),
+                ("x-vink-principal", "11111111-1111-4111-8111-111111111111"),
+            ];
+            let (got, body) = drafts(&router, &forged).await;
+            assert_eq!(got.as_u16(), status, "{credential}: {body}");
+            assert!(
+                body.contains(&format!(r#""code":"{code}""#)),
+                "{credential}: {body}"
+            );
+        }
+        // No credential is anonymous, never an outage, and does not call Identity.
+        let (got, body) = drafts(
+            &router,
+            &[("x-user-id", "11111111-1111-4111-8111-111111111111")],
+        )
+        .await;
+        assert_eq!(got, StatusCode::UNAUTHORIZED, "{body}");
+    }
+
+    #[tokio::test]
+    async fn a_socket_served_by_another_user_or_missing_is_unavailable() {
+        let fake = fake_identity("server-uid").await;
+        for router in [
+            app(&fake.socket, fake.uid.wrapping_add(1)),
+            app(&fake.dir.join("missing.sock"), fake.uid),
+        ] {
+            let (got, body) = drafts(&router, &[("authorization", "Bearer rejected")]).await;
+            assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+            let (got, _) = drafts(&router, &[]).await;
+            assert_eq!(got, StatusCode::UNAUTHORIZED);
+            let ready = router
+                .clone()
+                .oneshot(Request::get("/health/ready").body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            let body = ready.into_body().collect().await.unwrap().to_bytes();
+            assert!(
+                String::from_utf8_lossy(&body).contains(r#""identity":"unavailable""#),
+                "{}",
+                String::from_utf8_lossy(&body)
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn readiness_reports_identity_without_authority() {
+        let fake = fake_identity("ready").await;
+        let response = app(&fake.socket, fake.uid)
+            .oneshot(Request::get("/health/ready").body(Body::empty()).unwrap())
+            .await
+            .unwrap();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        let body: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["integrations"]["identity"], "no_authority");
+        // Database outage: not ready, regardless of Identity.
+        assert_eq!(body["checks"]["database"], "unavailable");
+        assert_eq!(body["checks"]["role"], "unknown");
     }
 }

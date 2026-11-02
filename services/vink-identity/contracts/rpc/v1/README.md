@@ -2,9 +2,10 @@
 
 **Owner:** `vink-identity` ([src/contract.rs](../../../src/contract.rs), [src/http.rs](../../../src/http.rs)).
 **Status:** draft, introduced with commit 2 of `codex/identity-postgres-boundaries`. Every path,
-field and code below is a **new design**, not an existing API. No consumer is implemented yet; the
-App's adapter (commit 3) must keep its own representation, checked against these fixtures, and must
-not import this crate.
+field and code below is a **new design**, not an existing API. The only consumer is the App's
+client ([services/vink-app/src/identity/client.rs](../../../../vink-app/src/identity/client.rs)), which keeps its own
+representation, decodes these fixtures in its tests and does not import this crate. It also
+checks that the socket is served by `VINK_IDENTITY_SERVER_UID` before sending anything.
 
 No authentication authority is selected (D-05, S-03). The provider therefore answers every
 verification with `authority_not_configured`; production authentication is NOT_IMPLEMENTED. The

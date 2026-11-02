@@ -22,7 +22,7 @@ use vink_app::domain::draft::DraftVersion;
 use vink_app::domain::ids::{PrincipalId, WorkId};
 use vink_app::domain::revision::RevisionContent;
 use vink_app::http::{AppState, router};
-use vink_app::identity::IdentityResolver;
+use vink_app::identity::{IdentityResolver, Resolution, ResolveFuture};
 use vink_app::persistence::{PgStore, SchemaState, schema_state};
 
 const ORIGIN: &str = "http://127.0.0.1:3000";
@@ -304,12 +304,14 @@ async fn snapshots_are_immutable_and_pointers_stay_within_their_work(pool: PgPoo
 struct HeaderIdentity;
 
 impl IdentityResolver for HeaderIdentity {
-    fn resolve(&self, parts: &Parts, _peer: Option<SocketAddr>) -> Option<PrincipalId> {
-        parts
+    fn resolve<'a>(&'a self, parts: &'a Parts, _peer: Option<SocketAddr>) -> ResolveFuture<'a> {
+        let resolution = parts
             .headers
             .get("x-test-principal")
             .and_then(|value| value.to_str().ok())
             .and_then(PrincipalId::parse)
+            .map_or(Resolution::Anonymous, Resolution::Principal);
+        Box::pin(std::future::ready(resolution))
     }
 }
 

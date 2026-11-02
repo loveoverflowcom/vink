@@ -11,7 +11,7 @@ use sqlx::postgres::PgPool;
 use vink_store_postgres::PoolSettings;
 
 pub use postgres::PgStore;
-pub use vink_store_postgres::{MigrationError, MigrationReport, SchemaState};
+pub use vink_store_postgres::{MigrationError, MigrationReport, SchemaState, role_is_privileged};
 
 /// Versioned migrations, embedded at build time from `services/vink-app/migrations`.
 pub static MIGRATOR: Migrator = sqlx::migrate!("./migrations");

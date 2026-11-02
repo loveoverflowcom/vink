@@ -17,6 +17,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     fonts(root, &mut problems);
     brand(root, &mut problems);
     editor_packages(root, &mut problems);
+    secrets(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
         Ok(())
@@ -203,6 +204,69 @@ fn broken(file: &Path, target: &str) -> Option<String> {
     };
     let resolved = file.parent()?.join(path);
     (!resolved.exists()).then(|| target.to_string())
+}
+
+/// Tracked files carry no private key and no PostgreSQL URL with a real-looking password. Allowed
+/// passwords are the documented throwaway values (`*-only`), short test placeholders and
+/// templates. A lint, not a scanner: it cannot recognise every secret.
+fn secrets(root: &Path, problems: &mut Vec<String>) {
+    let listed = std::process::Command::new("git")
+        .args(["ls-files", "-z"])
+        .current_dir(root)
+        .output();
+    let Some(listed) = listed.ok().filter(|out| out.status.success()) else {
+        problems.push("secrets: cannot list tracked files with git".into());
+        return;
+    };
+    for name in String::from_utf8_lossy(&listed.stdout).split('\0') {
+        if name.is_empty() {
+            continue;
+        }
+        let file = Path::new(name);
+        let base = file
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default();
+        if base == ".env" || base.ends_with(".env") {
+            problems.push(format!(
+                "{name}: an environment file is tracked; commit a .example instead"
+            ));
+        }
+        let Some(text) = read(&root.join(file)) else {
+            continue;
+        };
+        // Built at run time so this file does not match itself.
+        if text.contains(&["PRIVATE", " KEY-----"].concat()) {
+            problems.push(format!("{name}: contains a private key"));
+        }
+        for (index, _) in text.match_indices("postgres") {
+            let rest = &text[index..];
+            let Some(after) = rest
+                .strip_prefix("postgresql://")
+                .or_else(|| rest.strip_prefix("postgres://"))
+            else {
+                continue;
+            };
+            let token: String = after
+                .chars()
+                .take_while(|c| !c.is_whitespace() && !matches!(c, '"' | '`' | ')' | '\''))
+                .collect();
+            let Some((userinfo, _)) = token.split_once('@') else {
+                continue;
+            };
+            let Some((_, password)) = userinfo.split_once(':') else {
+                continue;
+            };
+            let placeholder = password.len() <= 6
+                || password.ends_with("-only")
+                || password.contains(['{', '$', '<', '*', '…']);
+            if !placeholder {
+                problems.push(format!(
+                    "{name}: a PostgreSQL URL carries a password that is not a documented placeholder"
+                ));
+            }
+        }
+    }
 }
 
 /// Layer rules from AGENTS.md, checked by imports.

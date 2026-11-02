@@ -26,7 +26,7 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 | Authentication facts (no authority yet), Identity migrations, private contract | `services/vink-identity/` and `contracts/rpc/v1/`; never imported by `vink-app` |
 | HTTP API v1, health, Origin check, SSR host | `services/vink-app/src/http/` |
 | Canonical API contract and fixtures | `services/vink-app/contracts/http/v1/` |
-| Principal resolution seam | `services/vink-app/src/identity.rs` |
+| Principal resolution seam; App's Identity client | `services/vink-app/src/identity/` (async resolver: principal / anonymous / unavailable) |
 | Shared config, logging, shutdown; worker | `config.rs`, `runtime.rs`, `src/bin/vink-worker.rs` |
 | PostgreSQL tests (`#[sqlx::test]`, HTTP through the router) | `services/vink-app/tests/postgres.rs` |
 | Browser-side views and DTOs | `apps/vink-web/` (see [vink-leptos-web](../vink-leptos-web/SKILL.md)) |

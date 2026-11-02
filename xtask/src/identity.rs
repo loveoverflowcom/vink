@@ -67,6 +67,12 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
     ) && report.step(
         "identity: SIGTERM exits 0, restart, second instance refused, stale socket replaced",
         || run.lifecycle(),
+    ) && report.step(
+        "App + Identity: no credential is anonymous, nothing grants, Identity down is 503 for presented credentials only, public reading stays up, independent restarts",
+        || run.app_integration(),
+    ) && report.step(
+        "App readiness refuses a privileged role (production) and an untrusted Identity server",
+        || run.app_refusals(),
     ) && report.step("identity: logs contain no credential or password", || {
         run.no_secrets_in_logs()
     })
@@ -79,7 +85,7 @@ struct Run<'a> {
 }
 
 /// Minimal HTTP/1.1 over the Unix socket: status code and body.
-fn request(
+pub fn request(
     socket: &Path,
     method: &str,
     path: &str,
@@ -118,6 +124,36 @@ fn read_response(stream: &mut UnixStream) -> Result<(u16, String), String> {
     let body = raw
         .split_once("\r\n\r\n")
         .map(|(_, body)| body.to_string())
+        .unwrap_or_default();
+    Ok((status, body))
+}
+
+/// Minimal HTTP/1.1 GET over loopback TCP: status code and body.
+fn http(port: u16, path: &str, headers: &[(&str, &str)]) -> Result<(u16, String), String> {
+    let mut stream =
+        std::net::TcpStream::connect(("127.0.0.1", port)).map_err(|e| e.to_string())?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .map_err(|e| e.to_string())?;
+    let mut head =
+        format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n");
+    for (name, value) in headers {
+        head.push_str(&format!("{name}: {value}\r\n"));
+    }
+    head.push_str("\r\n");
+    stream
+        .write_all(head.as_bytes())
+        .map_err(|e| e.to_string())?;
+    let mut raw = Vec::new();
+    stream.read_to_end(&mut raw).map_err(|e| e.to_string())?;
+    let raw = String::from_utf8_lossy(&raw).into_owned();
+    let status = raw
+        .get(9..12)
+        .and_then(|code| code.parse().ok())
+        .ok_or_else(|| format!("not an HTTP response: {raw:?}"))?;
+    let body = raw
+        .split_once("\r\n\r\n")
+        .map(|(_, b)| b.to_string())
         .unwrap_or_default();
     Ok((status, body))
 }
@@ -778,6 +814,223 @@ impl Run<'_> {
         }
         println!(
             "==> identity lifecycle: SIGTERM 0 (also with a stalled head), second instance refused, stale socket replaced"
+        );
+        Ok(())
+    }
+
+    fn start_app(
+        &self,
+        name: &str,
+        database_url: &str,
+        server_uid: u32,
+    ) -> Result<(Guard, u16), String> {
+        let port = web::free_port()?;
+        let log = std::fs::File::create(self.log(name)).map_err(|e| e.to_string())?;
+        let child = Command::new(web::binary(self.scratch.root, "vink-app"))
+            .arg("serve")
+            .current_dir(self.scratch.root)
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("DATABASE_URL", database_url)
+            .env("VINK_PROFILE", "production")
+            .env("VINK_BIND", format!("127.0.0.1:{port}"))
+            .env("VINK_PUBLIC_ORIGIN", format!("http://127.0.0.1:{port}"))
+            .env("VINK_SITE_ROOT", self.scratch.root.join("target/site"))
+            .env("VINK_IDENTITY_SOCKET", &self.socket)
+            .env("VINK_IDENTITY_SERVER_UID", server_uid.to_string())
+            .env("VINK_LOG_FORMAT", "text")
+            .stdout(Stdio::null())
+            .stderr(log)
+            .spawn()
+            .map_err(|e| format!("spawn vink-app: {e}"))?;
+        let mut guard = Guard(Some(child));
+        let deadline = Instant::now() + Duration::from_secs(30);
+        while Instant::now() < deadline {
+            if let Some(Ok(Some(status))) = guard.0.as_mut().map(|c| c.try_wait()) {
+                return Err(format!("vink-app ({name}) exited early with {status}"));
+            }
+            if http(port, "/health/live", &[]).is_ok_and(|(s, _)| s == 200) {
+                return Ok((guard, port));
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        Err(format!("vink-app ({name}) did not start within 30s"))
+    }
+
+    fn app_integration(&self) -> Result<(), String> {
+        let uid = self.uid()?;
+        let s = self.scratch;
+        let mut identity = Some(self.start("with-app", &s.identity_runtime, Some(uid))?);
+        let (app, port) = self.start_app("app", &s.app_runtime, uid)?;
+        let bearer = format!("Bearer {CREDENTIAL}");
+        let forged = [
+            ("authorization", bearer.as_str()),
+            ("x-user-id", "11111111-1111-4111-8111-111111111111"),
+            ("x-vink-principal", "11111111-1111-4111-8111-111111111111"),
+        ];
+        let checked = (|| {
+            expect(
+                "app ready",
+                http(port, "/health/ready", &[]),
+                200,
+                r#""role":"restricted""#,
+            )?;
+            expect(
+                "app ready identity",
+                http(port, "/health/ready", &[]),
+                200,
+                r#""identity":"no_authority""#,
+            )?;
+            expect(
+                "drafts without credential",
+                http(port, "/api/v1/drafts", &[]),
+                401,
+                "unauthenticated",
+            )?;
+            expect(
+                "drafts with credential",
+                http(port, "/api/v1/drafts", &forged),
+                401,
+                "unauthenticated",
+            )?;
+            self.public_reading(port)?;
+
+            // Identity stops: only presented credentials depend on it.
+            if let Some(server) = identity.take() {
+                self.stop(server)?;
+            }
+            expect(
+                "ready while Identity is down",
+                http(port, "/health/ready", &[]),
+                200,
+                r#""identity":"unavailable""#,
+            )?;
+            expect(
+                "no credential while Identity is down",
+                http(port, "/api/v1/drafts", &[]),
+                401,
+                "unauthenticated",
+            )?;
+            expect(
+                "credential while Identity is down",
+                http(port, "/api/v1/drafts", &forged),
+                503,
+                "dependency_unavailable",
+            )?;
+            self.public_reading(port)?;
+
+            // Identity restarts on its own; the App follows without a restart.
+            identity = Some(self.start("with-app-restarted", &s.identity_runtime, Some(uid))?);
+            expect(
+                "credential after Identity restart",
+                http(port, "/api/v1/drafts", &forged),
+                401,
+                "unauthenticated",
+            )?;
+            Ok::<_, String>(())
+        })();
+        let mut app = app;
+        let stopped = app.terminate(Duration::from_secs(15));
+        let result = checked.and_then(|()| {
+            match stopped {
+                Ok(status) if status.success() => {}
+                other => return Err(format!("vink-app did not stop cleanly: {other:?}")),
+            }
+            // The App restarts on its own while Identity keeps serving.
+            let (restarted, port) = self.start_app("app-restarted", &s.app_runtime, uid)?;
+            let mut restarted = restarted;
+            let ready = expect(
+                "App ready after restart",
+                http(port, "/health/ready", &[]),
+                200,
+                r#""identity":"no_authority""#,
+            );
+            let _ = restarted.terminate(Duration::from_secs(15));
+            ready
+        });
+        if let Some(server) = identity {
+            self.stop(server)?;
+        }
+        result?;
+        println!(
+            "==> App + Identity: 401 without/with credential, 503 only when Identity is down, public reading 200 throughout"
+        );
+        Ok(())
+    }
+
+    /// Public list, reader page and SSR never need Identity; their HTML carries no credential.
+    fn public_reading(&self, port: u16) -> Result<(), String> {
+        expect(
+            "public works",
+            http(port, "/api/v1/works", &[]),
+            200,
+            "works",
+        )?;
+        let (status, home) = http(port, "/", &[])?;
+        let (reader_status, reader) =
+            http(port, "/tac-pham/33333333-3333-4333-8333-333333333333", &[])?;
+        if status != 200 || reader_status != 200 {
+            return Err(format!("public pages: {status}/{reader_status}"));
+        }
+        let mut needles = self.scratch.secrets.clone();
+        needles.extend([
+            CREDENTIAL.to_string(),
+            "postgres://".into(),
+            "_DATABASE_URL".into(),
+        ]);
+        if needles
+            .iter()
+            .any(|n| home.contains(n.as_str()) || reader.contains(n.as_str()))
+        {
+            return Err("public HTML contains a credential or database setting".into());
+        }
+        Ok(())
+    }
+
+    fn app_refusals(&self) -> Result<(), String> {
+        let uid = self.uid()?;
+        let s = self.scratch;
+        let identity = self.start("app-refusals", &s.identity_runtime, Some(uid))?;
+        let checked = (|| {
+            // The migration credential can change the schema: a production App is not ready.
+            let (mut app, port) = self.start_app("app-migrator", &s.app_migrator, uid)?;
+            let privileged = expect(
+                "App with the migrator credential",
+                http(port, "/health/ready", &[]),
+                503,
+                r#""role":"privileged""#,
+            );
+            let _ = app.terminate(Duration::from_secs(15));
+            privileged?;
+            // A socket served by an unexpected user is not trusted.
+            let (mut app, port) =
+                self.start_app("app-wrong-server", &s.app_runtime, uid.wrapping_add(1))?;
+            let bearer = format!("Bearer {CREDENTIAL}");
+            let refused = expect(
+                "credential with an untrusted Identity server",
+                http(
+                    port,
+                    "/api/v1/drafts",
+                    &[("authorization", bearer.as_str())],
+                ),
+                503,
+                "dependency_unavailable",
+            )
+            .and_then(|()| {
+                expect(
+                    "ready reports it",
+                    http(port, "/health/ready", &[]),
+                    200,
+                    r#""identity":"unavailable""#,
+                )
+            });
+            let _ = app.terminate(Duration::from_secs(15));
+            refused
+        })();
+        self.stop(identity)?;
+        checked?;
+        println!(
+            "==> App refuses the migrator credential (503 privileged) and an Identity socket served by another user"
         );
         Ok(())
     }
