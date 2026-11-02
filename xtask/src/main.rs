@@ -7,6 +7,7 @@
 mod checks;
 mod doctor;
 mod env;
+mod identity;
 mod pgurl;
 mod process;
 mod provision;
@@ -36,7 +37,8 @@ usage: cargo xtask <command>
   dev                    build, migrate and serve on VINK_BIND (Ctrl-C to stop)
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
-                         and role isolation, worker lifecycle (VINK_TEST_DATABASE_URL, psql)
+                         and role isolation, worker and vink-identity processes
+                         (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
   verify all             quick, postgres and web in order";
 
@@ -333,6 +335,10 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
             "migrations + persistence/concurrency/HTTP tests",
             "vink-app",
         ),
+        (
+            "identity: migrations and readiness on PostgreSQL",
+            "vink-identity",
+        ),
     ] {
         let mut tests = cargo(&root);
         tests.args(["test", "--locked", "-p", package, "--test", "postgres"]);
@@ -343,7 +349,15 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
         }
     }
     let mut bins = cargo(&root);
-    bins.args(["build", "--locked", "-p", "vink-app", "--bins"]);
+    bins.args([
+        "build",
+        "--locked",
+        "-p",
+        "vink-app",
+        "-p",
+        "vink-identity",
+        "--bins",
+    ]);
     if !report.step("build binaries", || {
         process::run(&mut bins, "build binaries")
     }) {

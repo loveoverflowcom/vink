@@ -8,9 +8,11 @@
 mod error;
 mod migration;
 mod pool;
+mod role;
 
 pub use error::is_unavailable;
 pub use migration::{
     Divergence, HISTORY_TABLE, MigrationError, MigrationReport, SchemaState, migrate, schema_state,
 };
 pub use pool::{PoolSettings, connect, lazy_pool};
+pub use role::role_is_privileged;

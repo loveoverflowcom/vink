@@ -26,6 +26,7 @@ async fn ready(runtime_url: &str) -> Result<bool, sqlx::Error> {
 | `lazy_pool`, `connect`, `PoolSettings` | Pool kết nối khi dùng lần đầu (server khởi động khi DB down) hoặc ngay (lệnh một lần); `application_name` theo process | unit test pool tới cổng không có server |
 | `schema_state` | Chỉ đọc. `Current` khi mọi migration nhúng đã áp dụng cùng checksum và không có gì khác; `Pending`; `Diverged` khi có migration dở dang, checksum khác hoặc version binary không biết | unit test so sánh thuần + `tests/postgres.rs` |
 | `migrate` | Từ chối lịch sử diverged trước khi chạy; thiếu quyền là `Privilege`, không thử lại bằng role khác; sau khi chạy chỉ owner được ghi `_sqlx_migrations`; kiểm lại `Current` | `tests/postgres.rs`, provisioning trong `verify postgres` |
+| `role_is_privileged` | Chỉ đọc. Role đang kết nối có superuser/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS hoặc `CREATE` trên database/schema `public` không — readiness dùng để từ chối chạy bằng credential migrator/operator | `tests/postgres.rs` (superuser), role tạm trong `verify postgres` |
 | `is_unavailable` | I/O, TLS, pool, SQLSTATE 08/53/57 là không khả dụng; còn lại để adapter phân loại | unit test + phiên bị `pg_terminate_backend` |
 
 Bảng lịch sử là `public._sqlx_migrations`, quy ước của sqlx. Đổi tên sẽ làm mất liên kết với

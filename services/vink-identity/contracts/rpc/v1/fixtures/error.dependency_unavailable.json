@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "dependency_unavailable",
+    "message": "the authority or its storage is unavailable; nothing was decided"
+  }
+}

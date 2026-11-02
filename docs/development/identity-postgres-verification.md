@@ -85,3 +85,76 @@ bằng runtime báo `database="current"`, SIGTERM thoát 0; scratch đã xóa.
 - Readiness không kiểm role đang chạy có phải superuser; provisioning và lane kiểm điều đó.
 - PostgreSQL managed không có superuser, backup/restore từng owner, Identity service/contract và
   auth authority: chưa làm (commit 2/3; D-05/S-03 vẫn mở).
+
+## Commit 2 — Identity service độc lập
+
+**Predecessor:** commit 1 `6357922c149cb6f4e97358613ef8aa83f85c2d59` nằm trong ancestry của nhánh
+(`git merge-base --is-ancestor`), remote nhánh trùng SHA đó. Trước khi viết code, chạy lại
+`cargo xtask verify postgres` trên chính `6357922` với cluster PostgreSQL 17.11 tạm mới: exit 0,
+16/16 PASS. CI của PR #26 trên `6357922`: `quick` và `postgres` PASS (runner có `psql` 15+);
+`web` FAIL với `Failed to fetch dynamically imported module …/pkg/vink.js` — cùng chữ ký lỗi với
+CI `develop` tại `5afb00b` và ba merge trước đó, nên là lỗi có từ trước, không do PR này.
+
+**Cây được kiểm:** `6357922` + diff commit 2 (chưa commit lúc chạy). Môi trường như commit 1;
+không cần Podman cho commit 2.
+
+**Contract:** `vink.identity.v1` draft tại
+[services/vink-identity/contracts/rpc/v1](../../services/vink-identity/contracts/rpc/v1/README.md),
+revision = nội dung commit 2. **Migration ownership:** `services/vink-identity/migrations`
+(`20261102000000_identity_baseline`, không bảng), áp dụng bằng `vink_identity_migrator` lên
+`vink_identity`; App migrations không đổi. **Authority:** không có; production authentication
+NOT_IMPLEMENTED. Câu trả lời `authenticated`/`rejected` chỉ được tạo bởi fixture unit test có nhãn
+`test-fixture`, không có trong binary; mọi kiểm tra process dùng binary thật nên chỉ thấy
+`authority_not_configured`.
+
+| Lệnh / kịch bản | Kết quả | Phạm vi |
+| --- | --- | --- |
+| `cargo test -p vink-identity --lib` (trong `verify quick`) | 15 test PASS (chạy lặp 5 lần trước sửa review: ổn định) | Router thật, peer uid gắn như accept loop gắn; socket thật trong thư mục tạm; DB outage giả lập bằng cổng 1 |
+| Ca âm: tạm cho middleware caller cho qua mọi peer | 2 test FAIL (`the_caller_is_the_peer_user_and_nothing_else`, `versions_paths_and_methods_are_explicit`); đã hoàn tác | Độ nhạy của test caller |
+| `cargo xtask verify quick` | exit 0, 5/5 PASS | fmt, clippy SSR/WASM, unit, repository checks (luật App ⇄ Identity mới) |
+| Ca âm: file probe chứa `SELECT … FROM works JOIN working_drafts` trong `services/vink-identity/src` | repository checks FAIL đúng 2 vi phạm; probe đã xóa | Độ nhạy luật “Identity không chạm bảng App” |
+| `strings target/debug/vink-identity` tìm `fixture-credential-accepted`, `fixture-subject-0001` | 0 lần (chuỗi `authority_not_configured` có 1) | Fixture dương không có trong binary |
+| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres` | exit 0, 24/24 PASS (chạy lại sau mọi sửa review) | PostgreSQL thật; store 6 test, App 12, Identity 4 + 7 bước binary thật trên Unix socket thật với role tạm đã provision |
+| Ca âm: tạm đặt `header_read_timeout(None)` | lane FAIL đúng bước lifecycle: “a stalled request head was not closed within 5 s”; đã khôi phục | Độ nhạy hồi quy P3-1 |
+| Ca âm: probe `SELECT id FROM⏎ public.\"works\"` | repository checks FAIL `works`; probe đã xóa | Lint sau khi siết (P3-4) |
+
+Bảy bước binary Identity: cấu hình thiếu/sai thoát 2 nêu đúng biến (thiếu URL/socket, `migrate` chỉ
+có URL runtime/App, caller không phải số, scheme sai không lộ password, thư mục socket mở cho other,
+file thường tại đường dẫn socket được giữ nguyên); `migrate` bằng runtime thoát 1 và không tạo bảng,
+migrator áp dụng đúng `[20261102000000]` rồi `[]`, migrator Identity sang database App bị `permission
+denied`, chạy registry Identity trên lịch sử App bị `diverged` và lịch sử App không đổi; `serve`:
+readiness 200 `schema=current`, capabilities `not_configured`, verify `501`, payload hỏng/rỗng/subject
+giả `400`, 9000 byte `413`, `/identity/v2` `404 unsupported_version`, upload treo `503
+deadline_exceeded` trong ≤ 4 s; uid khác và thiếu caller `401` cả khi có `x-user-id`/`x-vink-principal`/
+`x-forwarded-for`/`authorization` giả, header giả với caller đúng vẫn `501`; `pg_terminate_backend`
+mọi kết nối Identity rồi readiness tự về 200; DB không tới được, role Identity trỏ database App
+(`unavailable`) và role App trên database App (`schema=diverged`) đều `503`, live vẫn `200`; SIGTERM
+thoát 0, log `stopped`, socket bị gỡ; instance thứ hai thoát 1 “already serving” mà instance đầu vẫn
+ready; SIGKILL để lại socket, lần chạy sau báo “replacing a stale socket” và ready; quét mọi log/stderr
+không thấy password tạm, password test harness hay chuỗi credential gửi vào.
+
+### Review độc lập và sửa
+
+Reviewer: một agent riêng, chỉ đọc (không phải approval của người); được giao code và yêu cầu, không
+được giao kết luận. Kết quả: không P0–P2; bốn P3 và các giới hạn coverage. Mỗi finding được tái
+hiện hoặc lần trong code trước khi sửa:
+
+| Finding | Tái hiện / lần vết | Sửa | Kiểm lại |
+| --- | --- | --- | --- |
+| P3-1: không timeout đọc request head; SIGTERM treo vô hạn | Binary trước sửa: gửi dở request line rồi SIGTERM → vẫn chạy sau 8 s, SIGKILL để lại socket | Vòng accept riêng ([server.rs](../../services/vink-identity/src/server.rs)): hyper HTTP/1 với `header_read_timeout` 2 s, shutdown chờ tối đa 5 s rồi đóng | Binary sau sửa: head dở bị đóng sau 2,0 s; SIGTERM khi còn head treo thoát sau 2,1 s, socket được gỡ; thêm bước lifecycle + ca âm |
+| P3-2: gỡ socket không kiểm còn là của mình; mọi lỗi connect bị coi là socket cũ | Lần trong code: `remove_file` vô điều kiện, `connect().is_ok()` | Chỉ gỡ khi device/inode trùng file đã bind; chỉ `ECONNREFUSED` là socket cũ; lỗi khác từ chối | Unit test: socket của instance sau không bị gỡ, socket sống/file thường giữ nguyên |
+| P3-3: xtask ngắt kết nối `vink-identity` ở mọi database | Lần trong code: thiếu điều kiện database | Thêm `datname` = database Identity tạm | Lane PASS |
+| P3-4: lint ranh giới bỏ sót `[dependencies.x]`, package đổi tên, `FROM⏎ public."works"` | Probe trước khi siết không bị bắt | Manifest: cấm mọi lần nhắc tên crate kia; SQL: bỏ nháy/escape, gộp khoảng trắng, bỏ `public.` | Ca âm FAIL đúng |
+
+Giới hạn coverage reviewer nêu và cách xử lý: readiness không phân biệt credential runtime/migrator →
+thêm `vink_store_postgres::role_is_privileged`, readiness Identity đòi `role = restricted` (binary chạy
+bằng migrator: `503 privileged`; bằng runtime: `200 restricted`); thư mục socket group-writable → bị
+từ chối; chuỗi fixture gửi vào binary thật → `501`; path giải mã hỏng → envelope `not_found`; oracle
+`applied` trong test Identity đổi thành literal `[20261102000000]`. Bỏ dùng `MockConnectInfo` trong
+code production (peer chỉ đến từ accept loop).
+
+**Còn mở / chưa làm:** uid caller xác thực user, không phải tiến trình — mọi tiến trình chạy bằng uid
+đó và tới được socket đều qua; config không cấm uid 0 hay uid của chính Identity (local dev dùng cùng
+user). App chưa kiểm uid server (commit 3). Không có authority thật, mapping subject → principal,
+chế độ mạng/mTLS, hay đăng nhập: production authentication NOT_IMPLEMENTED; S-03, ACC-01/02, D-05 không
+đổi trạng thái. `verify web` không đổi phạm vi ở commit này (lỗi có từ trước, xem trên).

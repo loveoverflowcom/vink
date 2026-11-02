@@ -49,11 +49,16 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   sử migration trùng migration nhúng; thiếu là `pending_migrations`, checksum lệch/version lạ/dở
   dang là `diverged`). Discourse và AI moderation được báo `not_implemented`.
 - PostgreSQL có owner tại [services/postgres](../../services/postgres/README.md): một container,
-  database `vink` (App) và `vink_identity` (rỗng tới khi có Identity), mỗi owner một role
+  database `vink` (App) và `vink_identity` (Identity, chưa có bảng), mỗi owner một role
   migrator và một role runtime do `provision.sh` tạo/kiểm. App chạy bằng role runtime (DML, không
   DDL); `vink-app migrate` chỉ dùng credential migrator. Pool, vòng đời migration và phân loại
   lỗi kết nối nằm ở [vink-store-postgres](../../packages/store-postgres/README.md). Ranh giới:
   [identity-postgres-boundaries](../architecture/identity-postgres-boundaries.md).
+- [vink-identity](../../services/vink-identity/README.md): binary riêng (`serve`/`migrate`) trên
+  database `vink_identity`, chỉ nghe Unix socket; caller là OS user kết nối (peer uid). Contract
+  riêng tư [v1 draft](../../services/vink-identity/contracts/rpc/v1/README.md) trả
+  `authority_not_configured` vì chưa có auth authority — production authentication
+  NOT_IMPLEMENTED. App chưa gọi Identity (commit 3).
 
 ## Chuẩn bị môi trường
 
@@ -121,6 +126,10 @@ không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó ch
 container, không push hay deploy. CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))
 chỉ chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi đúng ba lane này.
 
+Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy ước mã thoát; cấu hình
+`VINK_IDENTITY_*` ở [README của service](../../services/vink-identity/README.md). `cargo xtask`
+chưa có lệnh chạy Identity; `verify postgres` build và kiểm binary thật.
+
 Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed`. Mã thoát: `0` thành công,
 `1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
 hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
@@ -168,6 +177,8 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
 packages/store-postgres/  crate vink-store-postgres: pool, vòng đời migration, trạng thái schema,
                           phân loại lỗi kết nối; không biết database/bảng nghiệp vụ
 services/postgres/        container PostgreSQL (compose + overlay local), provision.sh, runbook
+services/vink-identity/   crate vink-identity: bin riêng, Unix socket, contract rpc/v1, migrations
+                          riêng; không phụ thuộc vink-app/vink-web và không đọc bảng App
 services/vink-app/        crate vink-app: composition root, bin vink-app và vink-worker
   src/domain/             luật thuần: document, title, version, revision hash
   src/application/        use case và port (DraftStore, PublicationStore)
@@ -188,7 +199,8 @@ Chiều phụ thuộc: `http`, `persistence` → `application` → `domain`; `pe
 `vink-web` (feature `ssr`) và cung cấp `PublicReads`; SSR gọi application trong tiến trình, không
 vòng HTTP về chính server. `vink-web` không phụ thuộc `vink-app`, SQLx hay secrets; build
 `hydrate` chỉ chứa view, DTO và fetch client. `verify quick` kiểm các import bị cấm trong
-`domain`/`application`, dependency của `vink-web` và của `packages/*`. Hai feature `ssr` và `hydrate` là hai build
+`domain`/`application`, dependency của `vink-web` và của `packages/*`, việc `vink-app` và
+`vink-identity` không import nhau, và SQL của Identity không chạm bảng App. Hai feature `ssr` và `hydrate` là hai build
 riêng; không dùng `--all-features`.
 
 ## Bằng chứng theo ranh giới
@@ -196,7 +208,7 @@ riêng; không dùng `--all-features`.
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
-| `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
+| `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime; Identity: migrations/readiness thật, binary thật trên Unix socket với role đã provision (config sai thoát 2, migrate runtime bị từ chối, migrate hai lần, migrator/App database bị từ chối, contract 200/501/400/413/404/503, uid khác và thiếu caller là 401, header giả không đổi kết quả, role migrator là `privileged` 503, mất kết nối tự phục hồi, sai database/schema là not ready, header gửi dở bị đóng và không giữ được SIGTERM, socket cũ/instance thứ hai, log không lộ credential) | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
 | `web` | Khám phá/reader: public HTML và metadata trước JS, save riêng không đổi publication, 404/503, link thật, list không N+1, states riêng, reflow 320–1440px/root text 100/200% và contrast hai theme; Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
@@ -222,7 +234,8 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 
 ## Chưa triển khai hoặc chưa kiểm chứng
 
-- Đăng nhập, session, tài khoản thật (D-05, S-03, ACC-01/ACC-02).
+- Đăng nhập, session, tài khoản thật (D-05, S-03, ACC-01/ACC-02). `vink-identity` chỉ có ranh giới
+  process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
 - Gửi duyệt, moderation người/AI, publish intent, publish/withdraw, curation, Tạp Chí
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). Chỉ seed local tạo `publications`.
 - Discourse, outbox, inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào.

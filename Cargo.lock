@@ -3117,6 +3117,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "vink-identity"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "time",
+ "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "vink-store-postgres",
+]
+
+[[package]]
 name = "vink-store-postgres"
 version = "0.1.0"
 dependencies = [

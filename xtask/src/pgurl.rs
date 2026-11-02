@@ -63,6 +63,10 @@ impl PgUrl {
         })
     }
 
+    pub fn password(&self) -> Option<&str> {
+        self.password.as_deref()
+    }
+
     /// The same server with another role and database.
     pub fn with(&self, user: &str, password: &str, database: &str) -> String {
         let host = if self.host.contains(':') {

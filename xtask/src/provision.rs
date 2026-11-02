@@ -188,7 +188,28 @@ impl Run<'_> {
         ) && report.step(
             "worker starts with the runtime role, reports a current schema, stops on SIGTERM",
             || web::worker_lifecycle(self.root, &self.url(&self.fresh.runtime, FRESH), "current"),
-        )
+        ) && crate::identity::verify(report, &self.identity_scratch())
+    }
+
+    /// The provisioned Identity owner, plus the fresh App owner as the "other" database.
+    fn identity_scratch(&self) -> crate::identity::Scratch<'_> {
+        let identity = &self.identity;
+        let mut secrets = vec![self.password.clone()];
+        secrets.extend(self.admin.password().map(str::to_string));
+        crate::identity::Scratch {
+            root: self.root,
+            admin: self.admin_url.clone(),
+            admin_identity: self.admin_on(IDENTITY),
+            identity_database: IDENTITY,
+            admin_app: self.admin_on(FRESH),
+            identity_runtime: self.url(&identity.runtime, IDENTITY),
+            identity_migrator: self.url(&identity.migrator, IDENTITY),
+            identity_runtime_on_app: self.url(&identity.runtime, FRESH),
+            identity_migrator_on_app: self.url(&identity.migrator, FRESH),
+            app_runtime: self.url(&self.fresh.runtime, FRESH),
+            app_migrator: self.url(&self.fresh.migrator, FRESH),
+            secrets,
+        }
     }
 
     /// Drops the scratch databases and roles; harmless when they do not exist.

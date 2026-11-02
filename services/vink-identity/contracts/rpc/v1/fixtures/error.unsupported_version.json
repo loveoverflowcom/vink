@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "unsupported_version",
+    "message": "this contract version is not served"
+  }
+}

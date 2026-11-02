@@ -9,16 +9,20 @@ The user's current instructions take precedence over repository conventions.
 The repository holds product/architecture proposals, agent skills and a bootstrap skeleton:
 a Cargo workspace with the Leptos SSR + Axum app and its hydration bundle (`apps/vink-web`,
 `services/vink-app`), PostgreSQL migrations, an owned PostgreSQL container with per-owner
-database/role provisioning (`services/postgres`: App `vink` and an empty `vink_identity`;
+database/role provisioning (`services/postgres`: App `vink` and Identity `vink_identity`;
 runtime and migrator credentials split) and a shared pool/migration package
-(`packages/store-postgres`), a draft/reader slice with a CodeMirror 6 body editor
+(`packages/store-postgres`), a separate `services/vink-identity` process (own database,
+migrations and draft private contract on a Unix socket; no auth authority, so it answers
+`authority_not_configured` and the App does not call it yet), a draft/reader slice with a
+CodeMirror 6 body editor
 (`apps/vink-web/editor`, pinned npm runtime), an adaptive 220/96 rail/mobile bar with local
 appearance preferences and a truthful `/toi` utility, a finite v3 public reading stream with
 loaded-list title/author search and URL-based reader return context, a quiet reader, a private
 draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a lifecycle-only worker,
 `cargo xtask` lanes and CI. [docs/development](docs/development/README.md) owns its layout,
-commands, evidence and limits. No Identity service, production auth, publish/moderation
-workflow, Discourse plugin, AI provider, job or executable behavior model exists. Inspect actual files before
+commands, evidence and limits. No auth authority, login/session, publish/moderation workflow,
+Discourse plugin, AI provider, job or executable behavior model exists; production
+authentication is NOT_IMPLEMENTED. Inspect actual files before
 claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.

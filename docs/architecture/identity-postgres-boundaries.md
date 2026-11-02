@@ -50,7 +50,8 @@ provisioning).
 ## Quyết định phạm vi cho PR này
 
 1. **Một instance, hai database theo owner:** `vink` (App, database nghiệp vụ hiện có, giữ
-   nguyên dữ liệu và lịch sử migration) và `vink_identity` (Identity, rỗng cho tới commit 2).
+   nguyên dữ liệu và lịch sử migration) và `vink_identity` (Identity; từ commit 2 chỉ có
+   migration baseline, chưa có bảng).
    Không cấp quyền chéo, không foreign key xuyên database, không `dblink`/`postgres_fdw`.
 2. **Ba loại credential:**
 
@@ -74,16 +75,36 @@ provisioning).
 5. **Package:** [packages/store-postgres](../../packages/store-postgres/README.md) (crate
    `vink-store-postgres`) chứa pool, vòng đời migration, trạng thái schema và phân loại lỗi kết
    nối. Caller truyền `Migrator`; package không biết database, role hay bảng nghiệp vụ.
-6. **Chưa quyết định:** auth authority và authority cho suspension (D-05/S-03); contract và
-   executable Identity (commit 2); có tách instance PostgreSQL cho Identity ở production hay không;
-   cách áp dụng trên PostgreSQL managed không có superuser.
+6. **Identity process (commit 2):** [services/vink-identity](../../services/vink-identity/README.md)
+   là binary riêng (`serve`/`migrate`), database `vink_identity`, migrations riêng (hiện chỉ có
+   baseline, không bảng). Contract riêng tư
+   [v1 draft](../../services/vink-identity/contracts/rpc/v1/README.md) do provider sở hữu; tên
+   path/field là thiết kế mới. Không authority nên mọi xác minh trả `authority_not_configured`
+   (`501`), tách khỏi `rejected` (`200`) và `dependency_unavailable`/`deadline_exceeded` (`503`).
+7. **Caller:** chỉ Unix socket, không TCP; caller là OS user của tiến trình kết nối (peer
+   credential) so với `VINK_IDENTITY_CALLER_UID`, thiếu cấu hình thì đóng. Chọn theo topology hiện
+   tại (cùng host/volume) và tiền lệ Cantos; không có secret để phân phối, không cổng nào có thể vô
+   tình publish. Đánh đổi: chỉ cùng host; xác thực theo uid nên mọi tiến trình chạy bằng uid caller
+   và tới được socket đều qua; chế độ mạng (mTLS) chưa thiết kế. Consumer (commit 3) nên kiểm cả uid
+   của server qua socket. Readiness từ chối role có quyền DDL/superuser.
+8. **Mapping subject → principal (đề xuất, chưa triển khai):** App sở hữu một binding
+   `(authority, subject_id) → principal_id` với unique trên cặp đầu, tạo ở App database khi luồng
+   đăng nhập thật tồn tại. Không dùng email/bút danh làm khóa, không tự nối tài khoản theo email,
+   không foreign key xuyên database. Tạo binding là idempotent theo unique: retry sau mất phản hồi
+   đọc lại binding hiện có; xung đột unique là “đã có chủ”, không ghi đè. Identity và App là hai
+   owner nên không có transaction nguyên tử giữa “authority xác nhận” và “App tạo binding”; kết quả
+   chưa rõ được giải bằng đọc lại binding, không bằng tạo mới. Hiện chưa có bảng nào vì chưa có
+   luồng tiêu thụ.
+9. **Chưa quyết định:** auth authority và authority cho suspension (D-05/S-03); có tách instance
+   PostgreSQL cho Identity ở production hay không; cách áp dụng trên PostgreSQL managed không có
+   superuser; giao thức mạng cho Identity nếu App và Identity khác host.
 
 ## Lát cắt
 
 | Commit | Kết quả | Kiểm chứng chính |
 | --- | --- | --- |
 | 1 `refactor(postgres)` | `services/postgres` (compose, provisioning, runbook), `vink-store-postgres`, App dùng credential runtime/migrator riêng | `verify quick`, `verify postgres` (provisioning fresh + DB cũ, chạy lại, cô lập role), Compose thật |
-| 2 `refactor(identity)` | `services/vink-identity` có binary, config, migrations, contract riêng; không auth giả | Executable thật với PostgreSQL thật, contract âm |
+| 2 `refactor(identity)` | `services/vink-identity` có binary, config, migrations, contract riêng; không auth giả (production auth NOT_IMPLEMENTED) | Executable thật trên socket thật với role đã provision, contract âm, review độc lập |
 | 3 `test(architecture)` | App tiêu thụ contract qua adapter riêng; runbook backup/restore/rollback; review toàn PR | Đủ bốn lane, restore thử, adversarial review |
 
 Bằng chứng từng commit nằm ở

@@ -5,7 +5,8 @@
 use sqlx::PgPool;
 use sqlx::migrate::Migrator;
 use vink_store_postgres::{
-    Divergence, MigrationError, SchemaState, is_unavailable, migrate, schema_state,
+    Divergence, MigrationError, SchemaState, is_unavailable, migrate, role_is_privileged,
+    schema_state,
 };
 
 static MIGRATOR: Migrator = sqlx::migrate!("./tests/migrations");
@@ -115,6 +116,12 @@ async fn a_diverged_history_is_reported_and_never_migrated(pool: PgPool) {
         migrate(&pool, &MIGRATOR).await.unwrap_err(),
         MigrationError::Diverged(Divergence::Failed { version: 3 })
     ));
+}
+
+#[sqlx::test(migrations = false)]
+async fn the_test_harness_superuser_is_privileged(pool: PgPool) {
+    // Restricted runtime roles are checked with provisioned roles by `verify postgres`.
+    assert!(role_is_privileged(&pool).await.unwrap());
 }
 
 #[sqlx::test(migrations = false)]

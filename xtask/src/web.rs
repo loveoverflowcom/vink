@@ -20,7 +20,7 @@ const CREATE_SCRATCH: &str = "CREATE DATABASE vink_verify_web";
 const SAMPLE_AUTHOR: &str = "11111111-1111-4111-8111-111111111111";
 
 /// Child process that is terminated when dropped, so a failed check never leaks a server.
-struct Guard(Option<Child>);
+pub struct Guard(pub Option<Child>);
 
 impl Guard {
     fn pid(&self) -> u32 {
@@ -28,7 +28,7 @@ impl Guard {
     }
 
     /// SIGTERM, then wait up to `timeout` for a clean exit.
-    fn terminate(&mut self, timeout: Duration) -> Result<ExitStatus, String> {
+    pub fn terminate(&mut self, timeout: Duration) -> Result<ExitStatus, String> {
         let Some(mut child) = self.0.take() else {
             return Err("process already stopped".into());
         };
@@ -158,7 +158,7 @@ fn wait_for_line(
     }
 }
 
-fn strip_ansi(line: &str) -> String {
+pub fn strip_ansi(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut chars = line.chars();
     while let Some(c) = chars.next() {
