@@ -107,6 +107,43 @@ mod tests {
     }
 
     #[test]
+    fn canonical_hash_matches_fixed_v1_vector_for_nfc_and_nfd() {
+        // Fixed vector: UTF-8 title length 12; two blocks with 2/1 lines of 14/15/13 bytes.
+        // Expected SHA-256 was computed independently from those literal canonical bytes,
+        // not by calling this implementation or serializing its output.
+        const EXPECTED: &str = "88bbbf2e34c3174e82d6a49388dddb70882a216e7ec3ba6b76eea165a49c36dd";
+        let nfc = RevisionContent::new(
+            Title::parse("Việt Đ/đ").unwrap(),
+            doc(&[&["Đêm xuống,", "  đợi trăng"], &["đường xa."]]),
+        )
+        .unwrap();
+        let nfd = RevisionContent::new(
+            Title::parse("  Vie\u{0323}\u{0302}t Đ/đ  ").unwrap(),
+            doc(&[&["Đe\u{0302}m xuống,", "  đợi trăng"], &["đường xa."]]),
+        )
+        .unwrap();
+        assert_eq!(nfc.hash().as_str(), EXPECTED);
+        assert_eq!(nfd.hash().as_str(), EXPECTED);
+        assert_eq!(nfc, nfd);
+    }
+
+    #[test]
+    fn hash_keeps_title_line_lengths_case_and_indentation_significant() {
+        let title = Title::parse("Đêm").unwrap();
+        let original = ContentHash::of(&title, &doc(&[&["a", "bc"]]));
+        assert_ne!(original, ContentHash::of(&title, &doc(&[&["ab", "c"]])));
+        assert_ne!(original, ContentHash::of(&title, &doc(&[&[" a", "bc"]])));
+        assert_ne!(
+            original,
+            ContentHash::of(&Title::parse("đêm").unwrap(), &doc(&[&["a", "bc"]]))
+        );
+        assert_ne!(
+            ContentHash::of(&title, &doc(&[&["Đ"]])),
+            ContentHash::of(&title, &doc(&[&["đ"]]))
+        );
+    }
+
+    #[test]
     fn revision_requires_title() {
         assert_eq!(
             RevisionContent::new(Title::parse(" ").unwrap(), Document::empty()),
