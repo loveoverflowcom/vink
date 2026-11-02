@@ -30,6 +30,7 @@ const LAST_LINE = 'lời cuối ở đây.';
 // CodeMirror renders one `.cm-line` per line of the document (all of it, for texts this short).
 const BODY_TEXT = `[...document.querySelectorAll('[data-testid=editor-body] .cm-line')].map((l) => l.textContent).join('\\n')`;
 const EDITOR_READY = `document.querySelector('[data-testid=editor-body] .cm-content[contenteditable=true]')`;
+const LIGHT_SYSTEM = { name: 'prefers-color-scheme', value: 'light' };
 const CTRL = 2;
 const META = 4;
 const SHIFT = 8;
@@ -448,6 +449,9 @@ async function openPage(cdp) {
   // headless target visible/focused so keyboard events and animation frames can run.
   await page.send('Page.bringToFront');
   await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+  // Headless Chrome follows the host appearance (dark on a dark-mode Mac); the checks assume a
+  // light system and emulate a dark one explicitly where they need it.
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   page.mac = await page.eval(`/Mac/.test(navigator.platform)`);
   page.mod = page.mac ? META : CTRL;
   return page;
@@ -554,6 +558,10 @@ async function brandAssets(page) {
   }
   // Suppress only this app's hydration bundle to inspect the real server document
   // with CSS + appearance bootstrap. Restore it before any interaction checks.
+  // Leptos's hydration script does not catch its `import()`, so each blocked document reports
+  // exactly that rejected import; account for those here and keep any other error.
+  const blockedImport = `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`;
+  const errorsBefore = page.errors.length;
   await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
   for (const theme of ['light', 'dark']) {
     await page.eval(`localStorage.setItem('vink.ui.theme', '${theme}')`);
@@ -563,6 +571,10 @@ async function brandAssets(page) {
     await page.capture(`brand-before-hydration-${theme}`);
   }
   await page.send('Network.setBlockedURLs', { urls: [] });
+  for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + 2 && Date.now() < deadline;) await sleep(50);
+  const blocked = page.errors.splice(errorsBefore);
+  const onlyBlocked = blocked.length === 2 && blocked.every((e) => e === blockedImport);
+  check(onlyBlocked, `the blocked bundle caused only its two rejected hydration imports${onlyBlocked ? '' : `: ${JSON.stringify(blocked)}`}`);
   await page.eval(`localStorage.removeItem('vink.ui.theme')`);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after brand bootstrap check');
@@ -681,7 +693,7 @@ async function adaptiveShell(page) {
   await chooseTheme(page, 'light', 'page-theme');
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
   check((await page.eval(`getComputedStyle(document.body).backgroundColor`)) !== darkSurface, 'explicit light overrides a dark system');
-  await page.send('Emulation.setEmulatedMedia', { features: [] });
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   await chooseTheme(page, 'system', 'page-theme');
 
   // Bootstrap and interactive writes must both tolerate browser privacy/storage denial.
@@ -1467,8 +1479,10 @@ try {
   console.error(`browser-smoke: FAIL ${error.message}`);
   exitCode = 1;
 } finally {
+  // Chrome may still be writing its profile; removing it must not replace the smoke's result.
+  const exited = chrome.child.exitCode !== null ? null : new Promise((resolve) => chrome.child.once('exit', resolve));
   chrome.child.kill();
-  await sleep(200);
-  rmSync(chrome.profile, { recursive: true, force: true });
+  await Promise.race([exited, sleep(5000)]);
+  rmSync(chrome.profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 process.exit(exitCode);
