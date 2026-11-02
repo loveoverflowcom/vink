@@ -34,11 +34,11 @@ class CaptureTest {
     }
 
     @Test
-    fun capturesFoundationSpecimens() {
+    fun capturesCatalogSpecimens() {
         val sizes = listOf("narrow" to (360 to 4200), "tablet" to (834 to 3000), "wide" to (1280 to 2600))
         for (theme in listOf(ThemePreference.Light, ThemePreference.Dark)) {
             for ((label, size) in sizes) {
-                for (entry in VinkCatalog.entries) {
+                for (entry in VinkCatalog.entries.filter { it.family == "foundation" }) {
                     capture("${entry.id}--default--${theme.value}--$label", size.first, size.second, PreviewConfig(theme = theme, entry = entry.id))
                 }
             }
@@ -56,12 +56,32 @@ class CaptureTest {
             capture("foundation.typography--combining-marks--light--$label--text200", size.first, size.second,
                 PreviewConfig(theme = ThemePreference.Light, entry = "foundation.typography", scenario = "combining-marks", textScale = 2f))
         }
+        // UIS-02: every component entry in both themes, narrow and wide, plus hard states.
+        for (theme in listOf(ThemePreference.Light, ThemePreference.Dark)) {
+            for ((label, size) in listOf("narrow" to (360 to 4200), "wide" to (1280 to 2600))) {
+                for (entry in COMPONENT_IDS) {
+                    capture("$entry--default--${theme.value}--$label", size.first, size.second, PreviewConfig(theme = theme, entry = entry))
+                }
+            }
+        }
+        val states = listOf(
+            "action.button" to "disabled", "action.button" to "pending", "field.text-field" to "invalid",
+            "field.text-field" to "read-only", "field.text-area" to "multiline", "field.form" to "invalid",
+            "identity.avatar" to "image-error", "identity.avatar" to "absent-identity", "identity.avatar" to "long-label",
+            "identity.avatar-group" to "absent-identity", "identity.image-frame" to "image-error", "composition.nested" to "narrow",
+        )
+        for ((entry, scenario) in states) {
+            capture("$entry--$scenario--light--narrow", 360, 4200, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario))
+        }
+        for (entry in listOf("field.form", "identity.author-byline", "action.button")) {
+            capture("$entry--default--light--narrow--text200", 360, 7000, PreviewConfig(theme = ThemePreference.Light, entry = entry, textScale = 2f))
+        }
         File(out, "contexts.json").writeText(
             "{\n  \"renderer\": \"Compose Multiplatform 1.9.0 desktop (Skia, offscreen ImageComposeScene)\",\n" +
                 "  \"os\": \"${System.getProperty("os.name")} ${System.getProperty("os.version")} ${System.getProperty("os.arch")}\",\n" +
                 "  \"jvm\": \"${System.getProperty("java.vendor")} ${System.getProperty("java.version")}\",\n" +
                 "  \"captures\": {\n    ${contexts.joinToString(",\n    ")}\n  }\n}\n",
         )
-        assertTrue(contexts.size == 30, "${contexts.size} captures")
+        assertTrue(contexts.size == 30 + COMPONENT_IDS.size * 4 + 15, "${contexts.size} captures")
     }
 }

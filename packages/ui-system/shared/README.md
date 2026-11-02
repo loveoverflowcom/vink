@@ -1,7 +1,7 @@
 # UI system — shared declarations
 
-Không runtime, không backend. Ba nguồn, đều do người sửa; mọi file renderer sinh từ đây bằng
-`cargo xtask ui-tokens`.
+Không runtime, không backend. Các nguồn dưới đây đều do người sửa; mọi file renderer sinh từ đây
+bằng `cargo xtask ui-tokens`.
 
 | File | Sở hữu |
 | --- | --- |
@@ -9,6 +9,9 @@ Không runtime, không backend. Ba nguồn, đều do người sửa; mọi file
 | [tokens.schema.json](tokens.schema.json) | Hợp đồng cho editor. Bộ kiểm thật là `xtask/src/ui_tokens.rs` (alias, vòng, type, theme đủ, tương phản) |
 | [preview-catalog.json](preview-catalog.json) | ID entry/kịch bản dùng chung cho hai preview, trạng thái từng renderer |
 | [fixtures/foundation.json](fixtures/foundation.json) | Đồng hồ cố định, seed, chữ mẫu tiếng Việt `[Mẫu]` (có chuỗi NFD lưu bằng escape) |
+| [fixtures/identity.json](fixtures/identity.json) | `avatar-identity-v1`: golden vectors initials/tone (NFC/NFD, Đ/đ, Ỗ/Ữ, emoji, một từ, blank), người `[Mẫu]`, ảnh PNG mẫu và byte AVIF hỏng để kiểm fallback |
+| [icons.json](icons.json) | Registry icon: path nguyên văn từ Material Icons (Apache-2.0, commit pin), SHA-256 file upstream được generator dựng lại và so; [license](icons/LICENSE-material-design-icons.txt) |
+| [components.md](components.md) | Contract component UIS-02: LayoutSpec/anatomy, props, sự kiện, owner, trạng thái không hỗ trợ, quy tắc identity |
 
 ## Lớp token
 

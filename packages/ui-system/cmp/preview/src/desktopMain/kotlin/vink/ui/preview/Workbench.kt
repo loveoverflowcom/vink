@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,7 +86,13 @@ import vink.ui.contrast
  */
 
 /** Catalog IDs this preview renders; a test keeps it equal to the shared catalog. */
-val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foundation.shape-spacing", "foundation.motion")
+val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foundation.shape-spacing", "foundation.motion") + listOf(
+    "text.text", "text.heading", "layout.surface", "layout.container", "layout.stack", "layout.grid", "layout.divider",
+    "action.button", "action.icon-button", "action.link", "action.filter-chip",
+    "field.text-field", "field.text-area", "field.search-field", "field.checkbox", "field.radio", "field.switch", "field.select", "field.form",
+    "identity.icon", "identity.avatar", "identity.avatar-group", "identity.author-byline", "identity.image-frame",
+    "composition.nested",
+)
 
 enum class Frame(val label: String, val width: Dp?) {
     Fluid("Tự do", null),
@@ -114,6 +121,11 @@ class PreviewModel(initial: PreviewConfig = PreviewConfig()) {
 
     fun update(event: String, change: (PreviewConfig) -> PreviewConfig) {
         config = change(config)
+        record(event)
+    }
+
+    /** An intent from a specimen; nothing is sent anywhere. */
+    fun record(event: String) {
         log.add(0, "${VinkFixture.CLOCK} · #${log.size + 1} $event")
     }
 }
@@ -142,7 +154,10 @@ fun Workbench(model: PreviewModel, fonts: LoadedFonts, scroll: Boolean = true) {
         }
     }
     themed {
-        CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale * config.textScale)) {
+        CompositionLocalProvider(
+            LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale * config.textScale),
+            LocalPreviewLog provides model::record,
+        ) {
             val vink = LocalVink.current
             // Fill the window (or the off-screen capture) so no area is left unpainted.
             val page = Modifier.fillMaxSize().background(vink.colors[ColorRole.Surface]).padding(16.dp)
@@ -325,12 +340,15 @@ fun Specimen(id: String, scenario: String) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(VinkDensityDimens.StackGap.at(vink.density)),
         ) {
+            // A new scenario starts from its own initial state.
+            key(id, scenario) {
             when (id) {
                 "foundation.color-roles" -> ColorRoles(nested = scenario == "nested-theme")
                 "foundation.typography" -> Typography(combining = scenario == "combining-marks")
                 "foundation.shape-spacing" -> ShapeSpacing()
                 "foundation.motion" -> Motion()
-                else -> TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
+                else -> if (!ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
+            }
             }
         }
     }

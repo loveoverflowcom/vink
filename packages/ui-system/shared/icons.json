@@ -1,0 +1,92 @@
+{
+  "format": 1,
+  "note": "Icon registry dùng chung cho Leptos và CMP. Path lấy nguyên văn từ upstream; generator dựng lại SVG gốc và so sha256.",
+  "source": {
+    "repository": "https://github.com/google/material-design-icons",
+    "commit": "10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7",
+    "style": "Material Icons (filled), 24px",
+    "license": "Apache-2.0",
+    "licenseFile": "icons/LICENSE-material-design-icons.txt"
+  },
+  "viewBox": "0 0 24 24",
+  "icons": {
+    "add": {
+      "upstream": "src/content/add/materialicons/24px.svg",
+      "sha256": "475c29758b4a689598f80099714362c0340ad3a4bc111e2d88807bbf4b0f817e",
+      "use": "Tạo mới",
+      "path": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"
+    },
+    "arrow-back": {
+      "upstream": "src/navigation/arrow_back/materialicons/24px.svg",
+      "sha256": "e1590e051f577d02ec994e7cc6005a2bc96407a3d1ba2d7ce6825fb80402684c",
+      "use": "Quay lại",
+      "path": "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"
+    },
+    "check": {
+      "upstream": "src/navigation/check/materialicons/24px.svg",
+      "sha256": "3f622661988927d85b134f07b0aa7842aeb404c71735d3c32f31de6c695b8d31",
+      "use": "Chip đang chọn, xác nhận",
+      "path": "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"
+    },
+    "close": {
+      "upstream": "src/navigation/close/materialicons/24px.svg",
+      "sha256": "b54342456d5a7f2da53795147f8af36ec76fbf5b57d792fe75f07538e6c6783e",
+      "use": "Xóa chữ, đóng",
+      "path": "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+    },
+    "edit": {
+      "upstream": "src/image/edit/materialicons/24px.svg",
+      "sha256": "2301568113724db8d9e6c1cdf649d16af34da24e223a1f6a295d867a2b2037c9",
+      "use": "Sửa",
+      "path": "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+    },
+    "error": {
+      "upstream": "src/alert/error/materialicons/24px.svg",
+      "sha256": "f54a85491fe6508849e9b8cf7de88eca054f34e0f3d4026214de66a2b99c9ccc",
+      "use": "Lỗi field, tóm tắt lỗi",
+      "path": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
+    },
+    "expand-more": {
+      "upstream": "src/navigation/expand_more/materialicons/24px.svg",
+      "sha256": "fe0ef658114738f046347758fc2f00dddd7e98fadc930048e34675d9153472ac",
+      "use": "Mở danh sách chọn",
+      "path": "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"
+    },
+    "image": {
+      "upstream": "src/image/image/materialicons/24px.svg",
+      "sha256": "6cb8813b8bd05133f2871ff948814cb258c599d5931e2a4e9bf165675d99fc07",
+      "use": "Khung ảnh chưa có hoặc lỗi",
+      "path": "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"
+    },
+    "info": {
+      "upstream": "src/action/info/materialicons/24px.svg",
+      "sha256": "5e3fe070eee9ca124d7591296c8052943d43d412aa25193284e7fde535180aa7",
+      "use": "Ghi chú, gợi ý",
+      "path": "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"
+    },
+    "open-in-new": {
+      "upstream": "src/action/open_in_new/materialicons/24px.svg",
+      "sha256": "fe2c764701d194a633c6d1c904adc07ae445323c77ae16fa49ad96d1b17127e2",
+      "use": "Link mở tab mới",
+      "path": "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"
+    },
+    "person": {
+      "upstream": "src/social/person/materialicons/24px.svg",
+      "sha256": "b3a98217a56e54c9ec91138f1c22c0c85163407c955dfd0c8c46b9192e5667f5",
+      "use": "Avatar/khung ảnh trung tính",
+      "path": "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+    },
+    "search": {
+      "upstream": "src/action/search/materialicons/24px.svg",
+      "sha256": "c25d4cdca9972ef7ed9f8e9f32553d0444afd6a7cf8cc6ca9eebf5b4073ef308",
+      "use": "Ô tìm kiếm",
+      "path": "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+    },
+    "visibility": {
+      "upstream": "src/action/visibility/materialicons/24px.svg",
+      "sha256": "c95003a018f3776b3107d3a70057e18e7e1f1810bbcbadd32eebb04238c75bbf",
+      "use": "Xem trước",
+      "path": "M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"
+    }
+  }
+}

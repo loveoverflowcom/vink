@@ -1,7 +1,7 @@
 [package]
 name = "vink-ui"
 version = "0.1.0"
-description = "Vink UI system: Leptos renderer of the shared token contract (typed tokens, UiRoot, ThemeScope)"
+description = "Vink UI system: Leptos renderer of the shared token contract (tokens, scopes and primitive components)"
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
@@ -11,6 +11,8 @@ publish.workspace = true
 # Features come from the consumer (`ssr` / `hydrate` / `csr` on leptos); this crate adds none.
 [dependencies]
 leptos.workspace = true
+# NFC and combining-mark classes for avatar initials (avatar-identity-v1).
+unicode-normalization = "0.1.26"
 
 [dev-dependencies]
 # String rendering in tests only.
