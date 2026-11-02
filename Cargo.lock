@@ -3159,6 +3159,7 @@ name = "vink-ui"
 version = "0.1.0"
 dependencies = [
  "leptos",
+ "unicode-normalization",
 ]
 
 [[package]]

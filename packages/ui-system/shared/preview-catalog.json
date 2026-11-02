@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -10,6 +10,30 @@
     {
       "id": "foundation",
       "label": "Nền tảng"
+    },
+    {
+      "id": "text",
+      "label": "Chữ"
+    },
+    {
+      "id": "layout",
+      "label": "Bố cục"
+    },
+    {
+      "id": "action",
+      "label": "Hành động"
+    },
+    {
+      "id": "field",
+      "label": "Nhập và chọn"
+    },
+    {
+      "id": "identity",
+      "label": "Danh tính và hình ảnh"
+    },
+    {
+      "id": "composition",
+      "label": "Kết hợp"
     }
   ],
   "entries": [
@@ -86,6 +110,538 @@
         {
           "id": "reduced",
           "label": "Giảm chuyển động"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "text.text",
+      "family": "text",
+      "label": "Text",
+      "summary": "Vai trò chữ và tông màu tách khỏi thẻ HTML/Compose.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Vai trò và tông"
+        },
+        {
+          "id": "long-label",
+          "label": "Tiêu đề dài, dấu tổ hợp NFD"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "text.heading",
+      "family": "text",
+      "label": "Heading",
+      "summary": "Cấp tiêu đề độc lập với kiểu hiển thị.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Cấp h1–h4 với kiểu khác nhau"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "layout.surface",
+      "family": "layout",
+      "label": "Surface",
+      "summary": "Nền theo tông, bo góc và khoảng đệm có tên.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Các tông nền"
+        },
+        {
+          "id": "nested-theme",
+          "label": "Surface trong theme lồng nhau"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "layout.container",
+      "family": "layout",
+      "label": "Container",
+      "summary": "Bề rộng đọc và bề rộng trang theo token measure.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Reading, Wide, Full"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "layout.stack",
+      "family": "layout",
+      "label": "Stack",
+      "summary": "Xếp dọc/ngang theo khoảng cách có tên, cho phép xuống dòng.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Dọc và ngang"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn dài xuống dòng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "layout.grid",
+      "family": "layout",
+      "label": "Grid",
+      "summary": "Lưới cột tự động theo bề rộng tối thiểu, một cột ở màn hẹp.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Cột sm và md"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "layout.divider",
+      "family": "layout",
+      "label": "Divider",
+      "summary": "Phân cách có nghĩa hoặc trang trí.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Có nghĩa và trang trí"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "action.button",
+      "family": "action",
+      "label": "Button",
+      "summary": "Nút hành động: Filled, Tonal, Outlined, Text, Danger; Disabled có lý do, Pending không nhận kích hoạt lặp.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Các biến thể"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng kèm lý do"
+        },
+        {
+          "id": "pending",
+          "label": "Đang xử lý, giữ bề rộng và focus"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn dài và chữ lớn"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "action.icon-button",
+      "family": "action",
+      "label": "IconButton",
+      "summary": "Nút chỉ có icon, nhãn truy cập bắt buộc, trạng thái nhấn tùy chọn.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        },
+        {
+          "id": "selected",
+          "label": "Đang bật (pressed)"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "action.link",
+      "family": "action",
+      "label": "Link",
+      "summary": "Link điều hướng thật, giữ href và mở tab mới có báo trước.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Trong đoạn và đứng riêng"
+        },
+        {
+          "id": "long-label",
+          "label": "Link dài xuống dòng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "action.filter-chip",
+      "family": "action",
+      "label": "FilterChip",
+      "summary": "Chip lọc bật/tắt có dấu chọn, không chỉ bằng màu.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Chưa chọn"
+        },
+        {
+          "id": "selected",
+          "label": "Đang chọn"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.text-field",
+      "family": "field",
+      "label": "TextField",
+      "summary": "Ô nhập một dòng có nhãn, gợi ý, lỗi; giữ selection và composition.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "invalid",
+          "label": "Lỗi"
+        },
+        {
+          "id": "read-only",
+          "label": "Chỉ đọc"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn dài và giá trị 0"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.text-area",
+      "family": "field",
+      "label": "TextArea",
+      "summary": "Ô nhập nhiều dòng giữ dòng trống và khổ thơ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "multiline",
+          "label": "Khổ thơ nhiều dòng"
+        },
+        {
+          "id": "invalid",
+          "label": "Lỗi"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.search-field",
+      "family": "field",
+      "label": "SearchField",
+      "summary": "Ô tìm có nút xóa và Enter để gửi, không gửi khi đang gõ dấu.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "long-label",
+          "label": "Có chữ và nhãn dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.checkbox",
+      "family": "field",
+      "label": "Checkbox",
+      "summary": "Ô chọn: nhãn và ô là một target.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "invalid",
+          "label": "Lỗi"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.radio",
+      "family": "field",
+      "label": "RadioGroup",
+      "summary": "Nhóm lựa chọn một trong nhiều bằng fieldset/legend.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "invalid",
+          "label": "Lỗi bắt buộc"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.switch",
+      "family": "field",
+      "label": "Switch",
+      "summary": "Công tắc bật/tắt có nhãn và trạng thái chữ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.select",
+      "family": "field",
+      "label": "Select",
+      "summary": "Chọn một giá trị, ưu tiên control gốc của nền tảng.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mặc định"
+        },
+        {
+          "id": "invalid",
+          "label": "Lỗi"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "field.form",
+      "family": "field",
+      "label": "FormSummary",
+      "summary": "Biểu mẫu với lỗi từng field và tóm tắt do caller cấp.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Chưa gửi"
+        },
+        {
+          "id": "invalid",
+          "label": "Có lỗi sau khi gửi"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "identity.icon",
+      "family": "identity",
+      "label": "Icon",
+      "summary": "Registry icon có nguồn và license; trang trí hoặc có nhãn.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Toàn bộ registry"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "identity.avatar",
+      "family": "identity",
+      "label": "Avatar",
+      "summary": "Initials từ đầu + cuối, màu từ key ổn định, ảnh lỗi quay về initials.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Kích thước và tông"
+        },
+        {
+          "id": "image-error",
+          "label": "Ảnh lỗi và URL không an toàn"
+        },
+        {
+          "id": "absent-identity",
+          "label": "Thiếu tên hoặc key"
+        },
+        {
+          "id": "long-label",
+          "label": "Cùng initials, khác key"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "identity.avatar-group",
+      "family": "identity",
+      "label": "AvatarGroup",
+      "summary": "Nhóm avatar giới hạn số hiển thị, +N chỉ khi biết tổng.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Biết tổng"
+        },
+        {
+          "id": "absent-identity",
+          "label": "Chưa biết tổng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "identity.author-byline",
+      "family": "identity",
+      "label": "AuthorByline",
+      "summary": "Tên tác giả nổi bật hơn metadata, avatar không bị đọc hai lần.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Feed, spotlight, reader"
+        },
+        {
+          "id": "long-label",
+          "label": "Tên rất dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "identity.image-frame",
+      "family": "identity",
+      "label": "ImageFrame",
+      "summary": "Khung ảnh tỉ lệ cố định, fallback trung tính khi lỗi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Có ảnh"
+        },
+        {
+          "id": "image-error",
+          "label": "Ảnh lỗi và chưa có ảnh"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "composition.nested",
+      "family": "composition",
+      "label": "Kết hợp lồng nhau",
+      "summary": "Theme lồng nhau + biểu mẫu + byline trong cùng màn mẫu.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Sáng trong Tối"
+        },
+        {
+          "id": "narrow",
+          "label": "Màn hẹp"
         }
       ],
       "status": {

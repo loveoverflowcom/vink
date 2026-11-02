@@ -1,0 +1,176 @@
+{
+  "format": 1,
+  "version": "avatar-identity-v1",
+  "note": "Golden vectors dùng chung: initials từ đầu + từ cuối sau NFC, màu FNV-1a-32 của UTF-8(NFC(key)) mod tones. Tên và key là dữ liệu [Mẫu], không phải người dùng thật. null = neutral.",
+  "tones": 6,
+  "initials": [
+    {
+      "name": "An Nhiên",
+      "expected": "AN"
+    },
+    {
+      "name": "Nguyễn Hoài Thương",
+      "expected": "NT"
+    },
+    {
+      "name": "Trần Linh",
+      "expected": "TL"
+    },
+    {
+      "name": "Nguyễn",
+      "expected": "N"
+    },
+    {
+      "name": "",
+      "expected": null
+    },
+    {
+      "name": "   \n\t",
+      "expected": null
+    },
+    {
+      "name": null,
+      "expected": null
+    },
+    {
+      "name": "Nguye\u0302\u0303n Thi\u0323 A\u0301nh",
+      "expected": "NÁ"
+    },
+    {
+      "name": "đặng thị hồng",
+      "expected": "ĐH"
+    },
+    {
+      "name": "  Đỗ   Ưng  ",
+      "expected": "ĐƯ"
+    },
+    {
+      "name": "ỗ ữ",
+      "expected": "ỖỮ"
+    },
+    {
+      "name": "a\u0301nh thu",
+      "expected": "ÁT"
+    },
+    {
+      "name": "🌸 Hoa",
+      "expected": "H"
+    },
+    {
+      "name": "🌸🌸",
+      "expected": null
+    },
+    {
+      "name": "👩\u200d💻 Lập Trình",
+      "expected": "LT"
+    },
+    {
+      "name": "(Minh)",
+      "expected": "M"
+    },
+    {
+      "name": "Nguyễn-Văn A",
+      "expected": "NA"
+    },
+    {
+      "name": "2024 Nhóm",
+      "expected": "2N"
+    },
+    {
+      "name": "李 小龍",
+      "expected": "李小"
+    },
+    {
+      "name": "Tôn Nữ Thị Hồng Hạnh Phương Thảo Ngọc Bích",
+      "expected": "TB"
+    },
+    {
+      "name": "ß thu",
+      "expected": "SST"
+    }
+  ],
+  "tones_vectors": [
+    {
+      "key": "acct-001",
+      "expected": 5
+    },
+    {
+      "key": "acct-002",
+      "expected": 4
+    },
+    {
+      "key": "acct-003",
+      "expected": 5
+    },
+    {
+      "key": "principal:7f3e2a90",
+      "expected": 5
+    },
+    {
+      "key": "author:an-nhien",
+      "expected": 1
+    },
+    {
+      "key": "author:tran-linh",
+      "expected": 6
+    },
+    {
+      "key": "Nguyễn",
+      "expected": 2
+    },
+    {
+      "key": "Nguye\u0302\u0303n",
+      "expected": 2
+    },
+    {
+      "key": "",
+      "expected": null
+    },
+    {
+      "key": null,
+      "expected": null
+    }
+  ],
+  "people": [
+    {
+      "key": "author:an-nhien",
+      "name": "An Nhiên"
+    },
+    {
+      "key": "author:tran-linh",
+      "name": "Trần Linh"
+    },
+    {
+      "key": "acct-001",
+      "name": "Trần Linh"
+    },
+    {
+      "key": "acct-002",
+      "name": "Trần Lâm"
+    },
+    {
+      "key": "author:hoai-thuong",
+      "name": "Nguyễn Hoài Thương"
+    },
+    {
+      "key": "author:do-ung",
+      "name": "Đỗ Ưng"
+    },
+    {
+      "key": "author:long",
+      "name": "Tôn Nữ Thị Hồng Hạnh Phương Thảo Ngọc Bích"
+    },
+    {
+      "key": null,
+      "name": null
+    }
+  ],
+  "sample_image": {
+    "note": "[Mẫu] PNG 48×32 do Vink tạo (gradient lavender), không phải ảnh người.",
+    "png_base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAgCAIAAADbtmxLAAAAuElEQVR42u3OWQ7BYBQGUPtfEiVmigcz7V8zCTrQllLzd29twKPkJmcBJ2VP3rb1Yk+HPMC17uzmkdhT8UFd2eVIIvDVmZ0gUGFgQhASH07mkR3OxIPIdCMDnAux2f5KdhAb20RKQhKSkIQkJCEJSUhCEvqzUD63yWfXbFUgSyhmF4kSmZc0mLFpmUygollMQVUzqxkwamQM9a8RG4KeGehp6DdIj3WbpAOtdDshIQlJSEISktCPoQ8w4p0W8w51XQAAAABJRU5ErkJggg=="
+  },
+  "broken_image": {
+    "note": "Byte không giải mã được, khai báo AVIF: kiểm fallback khi decode lỗi.",
+    "avif_base64": "AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZgAAAAA="
+  }
+}

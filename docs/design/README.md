@@ -93,6 +93,11 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
   kiểm kê từ selector hiện có; kích thước chạm 44, icon 20/24, avatar 32/40, mật độ
   thoải mái/gọn. Mọi cặp chữ/nền khai báo trong `contrast` của `tokens.json` được generator tính
   lại cả hai theme và từ chối nguồn dưới ngưỡng; đó là số học token, không phải quét màn hình.
+- UIS-02 (token 0.2.0) thêm 6 tông avatar `avatar-N`/`on-avatar-N` (lavender, mauve, rose, amber,
+  green, blue; tách khỏi role trạng thái) và tông trung tính, mỗi cặp ≥4.5:1 hai theme; kích thước
+  avatar theo amendment 02/11/2026 (feed 44/40, spotlight 40/38, reader 50/44, hẹp <760px);
+  `density.control-height` 48px (gọn 44px = sàn `size.hit-target`); `measure-wide` 70rem và
+  `size.grid-min-sm/md` 10/15rem. Component và contract: [UI System](../../packages/ui-system/shared/components.md).
 
 ## Tương phản đo trên app
 
@@ -169,8 +174,9 @@ Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc
 [shell.rs](../../apps/vink-web/src/shell.rs) giữ rail/bar/dialog;
 [appearance.rs](../../apps/vink-web/src/appearance.rs) giữ preference và initials;
 [me.rs](../../apps/vink-web/src/pages/me.rs) giữ `/toi`. CSS dùng palette/role hiện có, không
-thêm palette hay logo. `initials` dùng từ đầu/cuối, NFC và uppercase tiếng Việt; không có tên
-thật thì trả dấu trung tính. An Nhiên → AN chỉ là fixture unit test.
+thêm palette hay logo. `initials` ủy quyền cho `vink_ui::identity::initials` (UIS-02,
+`avatar-identity-v1`): từ đầu/cuối, NFC và uppercase tiếng Việt, bỏ từ không có chữ/số (emoji,
+dấu câu đứng riêng); không có tên thật thì trả dấu trung tính. An Nhiên → AN chỉ là fixture unit test.
 
 - Từ 1100px mặc định 220px; 760–1099px và editor mặc định 96px. Preference `vink.ui.rail`
   ghi đè ngữ cảnh. Rail compact đặt icon trên/nhãn dưới; rail cuộn khi thiếu chiều cao.

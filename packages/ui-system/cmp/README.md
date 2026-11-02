@@ -13,10 +13,12 @@ dev ngày 02/11/2026, khớp tổ hợp đang chạy ở Cantos — chỉ học,
 
 | Module | Target | Nội dung |
 | --- | --- | --- |
-| `:ui` | `desktop` (JVM) luôn bật; `android`, `iosArm64`, `iosSimulatorArm64` khi bật native | `commonMain`: `VinkTokens.kt`/`VinkCatalog.kt` (**sinh ra**), `VinkValues.kt`, `VinkTheme.kt` (`VinkTheme`, `VinkScope`, `LocalVink`, `RoleOverride`, `validate`) |
+| `:ui` | `desktop` (JVM) luôn bật; `android`, `iosArm64`, `iosSimulatorArm64` khi bật native | `commonMain`: `VinkTokens.kt`/`VinkCatalog.kt`/`VinkIcons.kt`/`VinkIdentityVectors.kt` (**sinh ra**), `VinkValues.kt`, `VinkTheme.kt` (`VinkTheme`, `VinkScope`, `LocalVink`, `RoleOverride`, `validate`), component theo họ: `VinkLayout.kt` (`VinkText`, `VinkHeading`, `VinkSurface`, `VinkContainer`, `VinkStack`, `VinkGrid`, `VinkDivider`), `VinkActions.kt`, `VinkFields.kt`, `VinkMedia.kt`, `VinkIdentity.kt` (`initials`, `tone`, `safeHref`, `expect fun nfc`); `desktopMain`/`androidMain`/`iosMain`: `nfc` theo nền tảng |
 | `:preview` | `desktop` | Workbench Compose Desktop, `PreviewFonts` (đọc WOFF2 tự host qua Skia), test và capture |
 
-`commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`).
+`commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`);
+API nền tảng (NFC) đi qua `expect`/`actual`. Text field nhận/trả `TextFieldValue`; ảnh là `ImageState`
+đã giải mã do host cấp (preview giải mã bằng Skia, lỗi → `Failed`). Contract: [components.md](../shared/components.md).
 Không có target Web Compose: Web là Leptos. Không dùng WebView.
 
 ```kotlin
@@ -35,4 +37,4 @@ TTF/OTF có provenance: dùng font hệ thống, ghi `UNSUPPORTED` cho tới khi
 
 Lệnh: `cargo xtask ui-preview cmp build|run|verify` (xem [README UI system](../README.md)).
 Ảnh: `preview/build/captures/*.png` + `contexts.json` (density 1, font scale 1/2, theme hệ thống
-cố định sáng).
+cố định sáng): 30 ảnh nền tảng + 100 ảnh component (sáng/tối × hẹp/rộng) + 15 trạng thái/chữ 200%.

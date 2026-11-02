@@ -1,7 +1,6 @@
 //! Device-local appearance preferences. No account, manuscript or server authority lives here.
 
 use leptos::prelude::*;
-use unicode_normalization::UnicodeNormalization;
 
 pub(crate) const THEME_KEY: &str = "vink.ui.theme";
 pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
@@ -108,19 +107,11 @@ fn apply(key: &str, attribute: &str, value: Option<&str>) {
     let _ = (key, attribute, value);
 }
 
-/// First and last word, Vietnamese uppercase, preserving a composed first letter. Callers
-/// without a real display name get a neutral mark; fixture names never establish identity.
+/// Delegates to the UI system's `avatar-identity-v1` rule (first and last word, NFC, Vietnamese
+/// uppercase). Callers without a real display name get the app's neutral mark; fixture names
+/// never establish identity.
 pub fn initials(display_name: Option<&str>) -> String {
-    let name: String = display_name.unwrap_or_default().nfc().collect();
-    let mut words = name.split_whitespace();
-    let Some(first) = words.next() else {
-        return "•".into();
-    };
-    let mut letters: String = first.chars().take(1).collect();
-    if let Some(last) = words.next_back() {
-        letters.extend(last.chars().take(1));
-    }
-    letters.to_uppercase()
+    vink_ui::identity::initials(display_name).unwrap_or_else(|| "•".into())
 }
 
 #[component]
@@ -175,6 +166,7 @@ mod tests {
             (Some("Nguyễn"), "N"),
             (Some("a\u{0301}nh thu"), "ÁT"),
             (Some("\n\t"), "•"),
+            (Some("🌸🌸"), "•"),
             (None, "•"),
         ] {
             assert_eq!(initials(name), expected);

@@ -213,6 +213,8 @@ body {
   font-weight: var(--vk-type-headline-weight);
   line-height: var(--vk-type-headline-line-height);
   letter-spacing: var(--vk-type-headline-tracking);
+  /* Component names are single long words ("AuthorByline") at 200% text on 320px. */
+  overflow-wrap: anywhere;
 }
 
 .vkp-specimen__head p {
@@ -556,4 +558,61 @@ body {
   .vkp-facts {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* UIS-02 specimens ---------------------------------------------------------------------------- */
+
+.vkp-row {
+  display: grid;
+  gap: var(--vk-space-1);
+}
+
+.vkp-row > code,
+.vkp-figure figcaption,
+.vkp-icon-cell code {
+  font-family: var(--vk-type-code-font);
+  font-size: var(--vk-type-caption-size);
+  color: var(--vk-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.vkp-outline {
+  padding: var(--vk-space-2);
+  border: 1px dashed var(--vk-outline-variant);
+  border-radius: var(--vk-radius-md);
+}
+
+.vkp-figure {
+  display: grid;
+  justify-items: center;
+  gap: var(--vk-space-2);
+  margin: 0;
+  max-inline-size: 9rem;
+  text-align: center;
+}
+
+.vkp-icon-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-2);
+  min-block-size: var(--vk-size-hit-target);
+}
+
+.vkp-narrow {
+  inline-size: min(100%, 360px);
+}
+
+.vkp-form-probe,
+.vkp-form {
+  display: grid;
+  gap: var(--vk-space-3);
+  margin: 0;
+  padding: 0;
+}
+
+.vkp-form-probe {
+  margin-block-start: var(--vk-space-6);
+  padding: var(--vk-space-4);
+  border: 1px dashed var(--vk-outline-variant);
+  border-radius: var(--vk-radius-lg);
 }

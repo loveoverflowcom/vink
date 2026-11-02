@@ -5,6 +5,11 @@
 //! reads no storage and calls no service. The URL hash (`#<entry>/<scenario>`) is the exact,
 //! shareable scenario link. Fixtures and the clock are fixed by `shared/fixtures`.
 
+// Deeply nested specimen views exceed the default type-query depth.
+#![recursion_limit = "256"]
+
+mod components;
+
 use leptos::prelude::*;
 use unicode_normalization::UnicodeNormalization;
 use vink_ui::catalog::{self, ENTRIES, fixture};
@@ -12,12 +17,39 @@ use vink_ui::tokens::{self, CONTRAST, ColorRole, dim, text};
 use vink_ui::values::{CatalogEntry, Dimension, TextSize};
 use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScope, UiRoot};
 
+pub use components::EventLog;
+
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 4] = [
+pub const REGISTERED: [&str; 29] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
     "foundation.motion",
+    "text.text",
+    "text.heading",
+    "layout.surface",
+    "layout.container",
+    "layout.stack",
+    "layout.grid",
+    "layout.divider",
+    "action.button",
+    "action.icon-button",
+    "action.link",
+    "action.filter-chip",
+    "field.text-field",
+    "field.text-area",
+    "field.search-field",
+    "field.checkbox",
+    "field.radio",
+    "field.switch",
+    "field.select",
+    "field.form",
+    "identity.icon",
+    "identity.avatar",
+    "identity.avatar-group",
+    "identity.author-byline",
+    "identity.image-frame",
+    "composition.nested",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.
@@ -104,6 +136,7 @@ pub fn App() -> impl IntoView {
             entries.insert(0, format!("{} · #{n} {message}", fixture::CLOCK));
         });
     };
+    provide_context(EventLog(Callback::new(record)));
 
     // Bumped when the system colour scheme or motion setting changes, so `System` re-reads.
     let media = RwSignal::new(0u32);
@@ -413,7 +446,8 @@ pub fn specimen(id: &str, scenario: &str) -> AnyView {
         "foundation.typography" => typography(scenario == "combining-marks"),
         "foundation.shape-spacing" => shape_spacing(),
         "foundation.motion" => motion_specimen(),
-        _ => view! { <p>"Chưa đăng ký trong preview Leptos."</p> }.into_any(),
+        other => components::specimen(other, scenario)
+            .unwrap_or_else(|| view! { <p>"Chưa đăng ký trong preview Leptos."</p> }.into_any()),
     };
     let density = (scenario == "compact").then_some(Density::Compact);
     let reduce = scenario == "reduced";
@@ -749,6 +783,24 @@ mod tests {
         assert!(compact.contains("data-density=\"compact\""));
         let reduced = Owner::new().with(|| specimen("foundation.motion", "reduced").to_html());
         assert!(reduced.contains("data-motion=\"reduce\""));
+    }
+
+    #[test]
+    fn no_scenario_repeats_an_element_id() {
+        for entry in ENTRIES {
+            for scenario in entry.scenarios {
+                let html = Owner::new().with(|| specimen(entry.id, scenario.id).to_html());
+                let mut ids: Vec<&str> = html
+                    .split(" id=\"")
+                    .skip(1)
+                    .filter_map(|rest| rest.split('"').next())
+                    .collect();
+                let total = ids.len();
+                ids.sort_unstable();
+                ids.dedup();
+                assert_eq!(ids.len(), total, "{} / {}: {html}", entry.id, scenario.id);
+            }
+        }
     }
 
     #[test]

@@ -12,7 +12,7 @@
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, value, i, all) => {
@@ -28,6 +28,8 @@ for (const key of ['base', 'chrome', 'out', 'catalog']) {
 }
 
 const catalog = JSON.parse(readFileSync(args.catalog, 'utf8'));
+const identity = JSON.parse(readFileSync(join(dirname(args.catalog), 'fixtures', 'identity.json'), 'utf8'));
+const COMPONENTS = catalog.entries.filter((e) => !e.id.startsWith('foundation.'));
 const LIGHT = '#fffaff';
 const DARK = '#17121d';
 const WIDTHS = [320, 390, 834, 1440];
@@ -150,6 +152,23 @@ class Page {
     }
   }
 
+  async key(name) {
+    const keys = {
+      Enter: { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' },
+      Space: { key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' },
+      Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 },
+      ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 },
+    };
+    const k = keys[name];
+    await this.send('Input.dispatchKeyEvent', { type: 'keyDown', ...k });
+    await this.send('Input.dispatchKeyEvent', { type: 'keyUp', ...k, text: undefined });
+    await this.settle();
+  }
+
+  async log() {
+    return this.eval(`document.querySelector('[data-testid=event-log]').textContent`);
+  }
+
   async choose(name, label) {
     await this.click(`input[name=${name}][data-label="${label}"]`);
     await this.waitFor(`document.querySelector('input[name=${name}][data-label="${label}"]').checked`, `${name} → ${label}`);
@@ -158,11 +177,23 @@ class Page {
   }
 
   async open(entry, scenario = 'default') {
-    await this.eval(`location.hash = ${JSON.stringify(`#${entry}/${scenario}`)}`);
-    await this.waitFor(
-      `document.querySelector('#specimen-scope[data-catalog-id="${entry}"][data-scenario-id="${scenario}"]')`,
-      `${entry}/${scenario}`,
-    );
+    const hash = JSON.stringify(`#${entry}/${scenario}`);
+    // Chrome drops same-document navigations past its flood limit ("Throttling navigation");
+    // wait out the window instead of failing on a harness limit.
+    for (let attempt = 0; attempt < 24; attempt += 1) {
+      await this.eval(`location.hash = ${hash}`);
+      if (await this.eval(`location.hash === ${hash}`)) break;
+      await sleep(500);
+    }
+    try {
+      await this.waitFor(
+        `document.querySelector('#specimen-scope[data-catalog-id="${entry}"][data-scenario-id="${scenario}"]')`,
+        `${entry}/${scenario}`,
+      );
+    } catch (error) {
+      const state = await this.eval(`[location.href, document.getElementById('specimen-scope')?.dataset.catalogId, document.getElementById('specimen-scope')?.dataset.scenarioId, innerWidth]`).catch(() => 'unknown');
+      throw new Error(`${error.message} (page: ${JSON.stringify(state)}, ${JSON.stringify(this.state)})`);
+    }
     await this.settle();
   }
 
@@ -247,8 +278,13 @@ async function structure(page) {
       await page.open(entry.id, scenario.id);
       const inspector = await page.eval(`document.querySelector('[data-testid=inspector-id]').textContent`);
       check(inspector === `${entry.id} / ${scenario.id}`, `exact link renders ${entry.id}/${scenario.id}`);
+      const duplicates = await page.eval(`(() => { const seen = new Set(), dup = []; for (const el of document.querySelectorAll('[id]')) { if (seen.has(el.id)) dup.push(el.id); seen.add(el.id); } return dup; })()`);
+      if (duplicates.length) throw new Error(`duplicate ids on ${entry.id}/${scenario.id}: ${duplicates.join(', ')}`);
+      const missing = await page.eval(`[...document.querySelectorAll('[aria-describedby]')].flatMap((el) => el.getAttribute('aria-describedby').split(' ')).filter((id) => !document.getElementById(id))`);
+      if (missing.length) throw new Error(`aria-describedby points at nothing on ${entry.id}/${scenario.id}: ${missing.join(', ')}`);
     }
   }
+  console.log('  ok  no duplicate ids and every aria-describedby resolves, every scenario');
   const status = await page.eval(`document.querySelector('[data-testid=inspector-status]').textContent`);
   check(status.includes('implemented-unverified'), 'inspector shows the registration status, not a pass');
 }
@@ -317,6 +353,175 @@ async function densityAndMotion(page) {
   await page.choose('motion', 'Hệ thống');
 }
 
+// Resolved-colour helpers evaluated in the page: WCAG 2.x on computed colours, walking up to the
+// first opaque background.
+const CONTRAST_JS = `
+  const rgb = (c) => { const m = c.match(/[\\d.]+/g).map(Number); return { r: m[0], g: m[1], b: m[2], a: m.length > 3 ? m[3] : 1 }; };
+  const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const lum = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  const over = (top, below) => ({ r: top.r * top.a + below.r * (1 - top.a), g: top.g * top.a + below.g * (1 - top.a), b: top.b * top.a + below.b * (1 - top.a), a: 1 });
+  const bgOf = (el) => { const layers = []; for (let n = el; n; n = n.parentElement) { const c = rgb(getComputedStyle(n).backgroundColor); if (c.a > 0) { layers.push(c); if (c.a >= 1) break; } } return layers.reverse().reduce((acc, c) => over(c, acc), { r: 255, g: 255, b: 255, a: 1 }); };
+  const ratio = (el) => { const bg = bgOf(el); const fg = over(rgb(getComputedStyle(el).color), bg); const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); };
+`;
+
+async function lowestContrast(page, selector) {
+  return page.eval(`(() => { ${CONTRAST_JS} return Math.min(...[...document.querySelectorAll(${JSON.stringify(selector)})].map(ratio)); })()`);
+}
+
+async function components(page) {
+  const count = () => page.eval(`document.querySelector('[data-testid=press-count]').textContent`);
+  await page.open('action.button');
+  await page.click('[data-testid=press-once] button');
+  check((await count()).includes('1 lần'), 'Button: a click dispatches exactly once');
+  await page.eval(`document.querySelector('[data-testid=press-once] button').focus()`);
+  await page.key('Enter');
+  check((await count()).includes('2 lần'), 'Button: Enter dispatches exactly once');
+  await page.key('Space');
+  check((await count()).includes('3 lần'), 'Button: Space dispatches exactly once');
+  const ring = await page.eval(`(() => { const el = document.activeElement; const s = getComputedStyle(el); return [el.matches(':focus-visible'), s.outlineStyle, s.outlineWidth]; })()`);
+  check(ring[0] && ring[1] === 'solid' && ring[2] === '3px', `Button: keyboard focus shows the 3px ring (${ring})`);
+  await page.click('[data-testid=in-form-button] button');
+  const formLog = await page.log();
+  check(formLog.includes('trong form') && !formLog.includes('form → submit'), 'Button: the default kind never submits its form');
+  const heights = await page.eval(`[...document.querySelectorAll('.vk-ui-button')].map((b) => b.getBoundingClientRect().height)`);
+  check(heights.every((h) => h >= 48), `Button: every target is at least 48px tall (${Math.min(...heights)})`);
+
+  await page.open('action.button', 'disabled');
+  await page.click('#disabled-filled');
+  const disabled = await page.eval(`(() => { const b = document.getElementById('disabled-filled'); b.focus(); return [b.getAttribute('aria-disabled'), document.activeElement === b, document.getElementById(b.getAttribute('aria-describedby'))?.textContent]; })()`);
+  check((await count()).includes('0 lần') && disabled[0] === 'true', 'Button: a disabled click dispatches nothing');
+  check(disabled[1] && disabled[2] === 'Chưa có thay đổi để lưu', 'Button: disabled stays focusable and its reason is linked');
+
+  await page.open('action.button', 'pending');
+  const width = () => page.eval(`document.getElementById('pending-save').getBoundingClientRect().width`);
+  const before = await width();
+  await page.click('#pending-save');
+  const busy = await page.eval(`document.getElementById('pending-save').getAttribute('aria-busy')`);
+  await page.click('#pending-save');
+  check((await count()).includes('1 lần') && busy === 'true', 'Button: pending ignores a second activation');
+  const after = await width();
+  const focused = await page.eval(`document.activeElement.id`);
+  check(Math.abs(after - before) < 0.5 && focused === 'pending-save', `Button: pending keeps width (${before}→${after}) and focus`);
+
+  await page.open('action.link');
+  const links = await page.eval(`(() => { const ext = document.querySelector('a[target=_blank]'); const bad = document.querySelector('[data-testid=refused-link] [data-invalid-href]'); return [ext?.rel, ext?.textContent.includes('(mở tab mới)'), bad && !bad.hasAttribute('href'), document.querySelectorAll('a[href^="javascript"]').length]; })()`);
+  check(links[0] === 'noopener noreferrer' && links[1], 'Link: a new tab is announced and isolated');
+  check(links[2] && links[3] === 0, 'Link: a script URL renders as text, never as a link');
+
+  await page.open('action.filter-chip');
+  await page.eval(`document.querySelector('.vk-ui-chip').focus()`);
+  await page.key('Space');
+  const chip = await page.eval(`document.querySelector('.vk-ui-chip').getAttribute('aria-pressed')`);
+  await page.key('Tab');
+  const next = await page.eval(`[...document.querySelectorAll('.vk-ui-chip')].indexOf(document.activeElement)`);
+  check(chip === 'true' && next === 1, 'FilterChip: Space toggles aria-pressed and Tab moves to the next chip');
+
+  await page.open('field.text-field');
+  await page.eval(`document.getElementById('title').focus()`);
+  await page.send('Input.insertText', { text: 'Bàn viết' });
+  await page.eval(`document.getElementById('title').setSelectionRange(3, 3)`);
+  await page.send('Input.insertText', { text: 'x' });
+  await page.settle();
+  const caret = await page.eval(`(() => { const i = document.getElementById('title'); return [i.value, i.selectionStart, document.querySelector('[data-testid=title-value]').textContent]; })()`);
+  check(caret[0] === 'Bànx viết' && caret[1] === 4 && caret[2].includes('Bànx viết'), `TextField: controlled value keeps the caret mid-text (${caret.slice(0, 2)})`);
+  await page.send('Input.imeSetComposition', { text: 'Vi', selectionStart: 2, selectionEnd: 2 });
+  await page.send('Input.imeSetComposition', { text: 'Việ', selectionStart: 3, selectionEnd: 3 });
+  await page.send('Input.insertText', { text: 'Việt' });
+  await page.settle();
+  const ime = await page.eval(`[document.getElementById('title').value, document.querySelector('[data-testid=event-log]').textContent]`);
+  check(ime[0].includes('Việt') && ime[1].includes('(đang soạn IME)'), 'TextField: composition updates are flagged as composing');
+  check(/title → "[^"]*Việt[^"]*"(?! \(đang soạn IME\))/.test(ime[1]), 'TextField: the committed text arrives without the composing flag');
+  const assoc = await page.eval(`(() => { const i = document.getElementById('title'); return [document.querySelector('label[for=title]')?.textContent, i.getAttribute('aria-describedby'), i.hasAttribute('aria-invalid'), i.getAttribute('aria-required')]; })()`);
+  check(assoc[0].startsWith('Tiêu đề') && assoc[1] === 'title-help' && !assoc[2] && assoc[3] === 'true', `TextField: label, help and required are linked; no error means not invalid (${assoc})`);
+  await page.open('field.text-field', 'invalid');
+  const invalid = await page.eval(`(() => { const i = document.getElementById('title'); return [i.getAttribute('aria-invalid'), i.getAttribute('aria-describedby'), document.getElementById('title-error').textContent]; })()`);
+  check(invalid[0] === 'true' && invalid[1] === 'title-help title-error' && invalid[2].includes('Cần có tiêu đề'), 'TextField: an error is linked and marks the field invalid');
+  await page.open('field.text-field', 'read-only');
+  const ro = await page.eval(`(() => { const i = document.getElementById('title'); i.focus(); return [i.readOnly, i.disabled, document.activeElement === i]; })()`);
+  await page.open('field.text-field', 'disabled');
+  const off = await page.eval(`(() => { const i = document.getElementById('title'); i.focus(); return [i.disabled, document.activeElement === i]; })()`);
+  check(ro[0] && !ro[1] && ro[2] && off[0] && !off[1], 'TextField: read-only stays focusable, disabled does not');
+  await page.open('field.text-field', 'long-label');
+  check((await page.eval(`document.getElementById('title').value`)) === '0', 'TextField: the value 0 is kept as typed');
+
+  await page.open('field.search-field', 'long-label');
+  await page.eval(`document.getElementById('search').focus()`);
+  await page.key('Enter');
+  check((await page.log()).includes('search → gửi "Hàng Đường"'), 'SearchField: Enter submits the current text');
+  await page.click('.vk-ui-field__control[data-search] .vk-ui-icon-button');
+  const cleared = await page.eval(`[document.getElementById('search').value, document.activeElement.id]`);
+  check(cleared[0] === '' && cleared[1] === 'search', 'SearchField: clear empties the value and returns focus');
+
+  await page.open('field.checkbox');
+  await page.click('#agree + .vk-ui-choice__label');
+  const box = await page.eval(`[document.getElementById('agree').checked, (document.querySelector('[data-testid=event-log]').textContent.match(/checkbox agree/g) || []).length]`);
+  check(box[0] && box[1] === 1, 'Checkbox: the label and box are one target with one dispatch');
+  await page.open('field.radio');
+  await page.eval(`document.querySelector('input[name=genre]:checked').focus()`);
+  await page.key('ArrowDown');
+  check((await page.log()).includes('radio genre = van-xuoi'), 'RadioGroup: arrow keys move the native selection');
+
+  for (const [entry, scenario] of [['field.text-field', 'default'], ['field.text-area', 'invalid'], ['field.select', 'invalid'], ['field.form', 'invalid'], ['composition.nested', 'default']]) {
+    await page.open(entry, scenario);
+    const unlabelled = await page.eval(`[...document.querySelectorAll('#specimen-scope input:not([type=radio]):not([type=checkbox]), #specimen-scope textarea, #specimen-scope select')].filter((c) => !document.querySelector('label[for="' + c.id + '"]')).map((c) => c.id || c.outerHTML.slice(0, 40))`);
+    if (unlabelled.length) throw new Error(`unlabelled controls in ${entry}/${scenario}: ${unlabelled}`);
+  }
+  console.log('  ok  every text, area and select control has a <label for>');
+  const targets = await page.eval(`[...document.querySelectorAll('#specimen-scope :is(.vk-ui-input, .vk-ui-choice__target, .vk-ui-button, .vk-ui-icon-button)')].map((e) => e.getBoundingClientRect().height)`);
+  check(targets.every((h) => h >= 48), `fields and choices are at least 48px tall (${Math.min(...targets)})`);
+
+  await page.open('identity.avatar', 'image-error');
+  await page.waitFor(`(() => { const r = document.querySelector('[data-case=ready] img'); return r && r.complete && r.naturalWidth > 0 && !document.querySelector('[data-case=broken] img'); })()`, 'avatar images settle');
+  const fallbacks = await page.eval(`['broken', 'unsafe', 'failed', 'loading'].map((c) => [c, !!document.querySelector('[data-case=' + c + '] img'), document.querySelector('[data-case=' + c + '] .vk-ui-avatar').dataset.initials])`);
+  check(fallbacks.every(([, img, letters]) => !img && letters), `Avatar: broken AVIF, unsafe URL, failed and loading show initials (${fallbacks.map((f) => f[0] + ':' + f[2])})`);
+  check((await page.eval(`document.querySelectorAll('img[src^="javascript"]').length`)) === 0, 'Avatar: a script URL never reaches an <img>');
+
+  await page.open('identity.avatar', 'long-label');
+  const toneMap = () => page.eval(`Object.fromEntries([...document.querySelectorAll('[data-testid=avatar-order] figure')].map((f) => [f.dataset.key, f.querySelector('.vk-ui-avatar').dataset.tone]))`);
+  const first = await toneMap();
+  await page.click('.vk-ui-button--tonal');
+  const second = await toneMap();
+  const expected = Object.fromEntries(identity.tones_vectors.filter((v) => v.key && first[v.key]).map((v) => [v.key, String(v.expected)]));
+  const order = (map) => Object.keys(map).join();
+  check(order(first) !== order(second) && Object.keys(first).every((k) => first[k] === second[k]), 'Avatar: reordering keeps every tone (seeded by key, not position)');
+  check(Object.keys(expected).length >= 2 && Object.entries(expected).every(([k, t]) => first[k] === t), `Avatar: rendered tones equal the shared golden vectors (${JSON.stringify(first)})`);
+
+  await page.open('identity.avatar-group', 'absent-identity');
+  const unknown = await page.eval(`(() => { const g = document.querySelector('[data-testid=group-unknown] .vk-ui-avatar-group'); return [g.textContent.includes('+'), g.getAttribute('aria-label'), g.querySelectorAll('[tabindex], a, button').length]; })()`);
+  check(!unknown[0] && !unknown[1].includes('người khác') && unknown[2] === 0, `AvatarGroup: an unknown total shows no count and no focus stops (${unknown[1]})`);
+  await page.open('identity.avatar-group');
+  check((await page.eval(`document.querySelector('[data-testid=group-known] .vk-ui-avatar-group__more').textContent`)) === '+9', 'AvatarGroup: a known total shows +9');
+
+  await page.open('identity.author-byline');
+  const byline = await page.eval(`(() => { const b = document.querySelector('[data-byline=feed]'); const n = getComputedStyle(b.querySelector('.vk-ui-byline__name')); const m = getComputedStyle(b.querySelector('.vk-ui-byline__meta')); return [Number(n.fontWeight), parseFloat(n.fontSize), parseFloat(m.fontSize), b.querySelector('.vk-ui-avatar').getAttribute('aria-hidden'), b.textContent.split('An Nhiên').length - 1]; })()`);
+  check(byline[0] >= 600 && byline[1] > byline[2] && byline[3] === 'true' && byline[4] === 1, `AuthorByline: bold name above smaller meta; the avatar is hidden and the name read once (${byline})`);
+  const size = await page.eval(`document.querySelector('[data-byline=reader] .vk-ui-avatar').getBoundingClientRect().width`);
+  check(size === 50, `AuthorByline: reader avatar is 50px wide on a wide screen (${size})`);
+
+  for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
+    await page.choose('theme', label);
+    const results = [];
+    for (const [entry, scenario, selector] of [
+      ['action.button', 'default', '#specimen-scope .vk-ui-button'],
+      ['action.filter-chip', 'selected', '#specimen-scope .vk-ui-chip'],
+      ['field.text-field', 'invalid', '#specimen-scope :is(.vk-ui-input, .vk-ui-field__label, .vk-ui-field__help, .vk-ui-field__error)'],
+      ['field.form', 'invalid', '#specimen-scope .vk-ui-summary :is(.vk-ui-summary__title, a)'],
+      ['identity.avatar', 'default', '#specimen-scope .vk-ui-avatar'],
+      ['identity.author-byline', 'default', '#specimen-scope :is(.vk-ui-byline__name, .vk-ui-byline__meta)'],
+      // Disabled controls are exempt (WCAG 1.4.3 inactive UI); they keep a visible text reason.
+      ['composition.nested', 'default', '#specimen-scope :is(.vk-ui-byline__name, .vk-ui-byline__meta, .vk-ui-input, .vk-ui-button:not([data-state=disabled]), .vk-ui-choice__target:not(:has(:disabled)) .vk-ui-choice__label)'],
+    ]) {
+      await page.open(entry, scenario);
+      await page.eval('new Promise((r) => setTimeout(r, 200))');
+      results.push([`${entry}/${scenario}`, await lowestContrast(page, selector)]);
+    }
+    const low = results.filter(([, r]) => r < 4.5);
+    if (low.length) throw new Error(`contrast below 4.5 (${theme}): ${JSON.stringify(low)}`);
+    console.log(`  ok  resolved text contrast ≥4.5 (${theme}); lowest ${Math.min(...results.map((r) => r[1])).toFixed(2)}`);
+  }
+  await page.choose('theme', 'Hệ thống');
+}
+
 async function search(page) {
   const type = async (text) => {
     await page.eval(`(() => { const i = document.querySelector('.vkp-search input'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -324,22 +529,24 @@ async function search(page) {
     return page.eval(`[...document.querySelectorAll('[data-catalog-link]')].map((a) => a.dataset.catalogLink)`);
   };
   const motion = await type('chuyen dong');
-  check(motion.length === 1 && motion[0] === 'foundation.motion', 'search ignores Vietnamese marks (chuyen dong → Chuyển động)');
+  check(motion.includes('foundation.motion'), 'search ignores Vietnamese marks (chuyen dong → Chuyển động)');
   const scenario = await type('DẤU TỔ HỢP');
-  check(scenario.length === 1 && scenario[0] === 'foundation.typography', 'search covers scenario labels');
+  check(scenario.includes('foundation.typography') && scenario.includes('text.text'), 'search covers scenario labels');
   await type('zzz');
   check(await page.eval(`document.querySelector('.vkp-empty')?.textContent === 'Không có mục khớp.'`), 'an unmatched search says so');
   await type('');
 }
 
 async function reflow(page) {
+  // One navigation per scenario and scale, then every width: Chrome throttles rapid hash changes.
   for (const scale of ['100%', '200%']) {
     await page.choose('scale', scale);
-    for (const width of WIDTHS) {
-      await page.viewport(width);
-      for (const entry of catalog.entries) {
-        for (const scenario of entry.scenarios) {
-          await page.open(entry.id, scenario.id);
+    for (const entry of catalog.entries) {
+      for (const scenario of entry.scenarios) {
+        await page.open(entry.id, scenario.id);
+        for (const width of WIDTHS) {
+          await page.viewport(width);
+          await page.settle();
           const overflow = await page.eval(`document.documentElement.scrollWidth - innerWidth`);
           if (overflow > 0) throw new Error(`horizontal overflow ${overflow}px at ${width}px/${scale} on ${entry.id}/${scenario.id}`);
         }
@@ -348,6 +555,7 @@ async function reflow(page) {
     console.log(`  ok  no horizontal page overflow at ${WIDTHS.join('/')}px, text ${scale}, every scenario`);
   }
   await page.choose('scale', '100%');
+  await page.viewport(1440);
   const fonts = await page.eval(`document.fonts.ready.then(() => ['16px "Be Vietnam Pro"', '600 16px "Be Vietnam Pro"', '16px "Literata"'].every((f) => document.fonts.check(f)))`);
   check(fonts, 'self-hosted Be Vietnam Pro 400/600 and Literata load');
 }
@@ -375,7 +583,32 @@ async function captures(page) {
     await page.open(entry, scenario);
     await page.capture(`${entry}--${scenario}--light--${width}`);
   }
+  for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
+    await page.choose('theme', label);
+    for (const width of [390, 1440]) {
+      await page.viewport(width);
+      for (const entry of COMPONENTS) {
+        await page.open(entry.id);
+        await page.capture(`${entry.id}--default--${theme}--${width}`);
+      }
+    }
+  }
+  await page.choose('theme', 'Sáng');
+  await page.viewport(390);
+  for (const [entry, scenario] of [
+    ['action.button', 'disabled'], ['action.button', 'pending'], ['field.text-field', 'invalid'], ['field.text-field', 'read-only'],
+    ['field.text-area', 'multiline'], ['field.form', 'invalid'], ['identity.avatar', 'image-error'], ['identity.avatar', 'absent-identity'],
+    ['identity.avatar', 'long-label'], ['identity.avatar-group', 'absent-identity'], ['identity.image-frame', 'image-error'], ['composition.nested', 'narrow'],
+  ]) {
+    await page.open(entry, scenario);
+    await page.capture(`${entry}--${scenario}--light--390`);
+  }
   await page.choose('scale', '200%');
+  await page.viewport(320);
+  for (const entry of ['field.form', 'identity.author-byline', 'action.button']) {
+    await page.open(entry);
+    await page.capture(`${entry}--default--light--320--text200`);
+  }
   for (const width of [320, 1440]) {
     await page.viewport(width);
     await page.open('foundation.typography', 'combining-marks');
@@ -387,16 +620,18 @@ async function captures(page) {
 
 const chrome = await launchChrome();
 let exitCode = 0;
+let page;
 try {
   const cdp = new Cdp(chrome.url);
   await cdp.open();
-  const page = await openPage(cdp);
+  page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
   await page.send('Page.navigate', { url: args.base });
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted');
   await structure(page);
   await themes(page);
   await densityAndMotion(page);
+  await components(page);
   await search(page);
   await reflow(page);
   await captures(page);
@@ -405,6 +640,7 @@ try {
   console.log(`preview-smoke: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
 } catch (error) {
   console.error(`preview-smoke: FAIL ${error.message}`);
+  if (page?.errors.length) console.error(`  page errors: ${page.errors.join(' | ')}`);
   exitCode = 1;
 } finally {
   const exited = chrome.child.exitCode !== null ? null : new Promise((resolve) => chrome.child.once('exit', resolve));
