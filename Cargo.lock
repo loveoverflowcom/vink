@@ -3155,6 +3155,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "vink-ui"
+version = "0.1.0"
+dependencies = [
+ "leptos",
+]
+
+[[package]]
+name = "vink-ui-preview"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "leptos",
+ "unicode-normalization",
+ "vink-ui",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "vink-web"
 version = "0.1.0"
 dependencies = [
@@ -3171,6 +3190,7 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-normalization",
+ "vink-ui",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

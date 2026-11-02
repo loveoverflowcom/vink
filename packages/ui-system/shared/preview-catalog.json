@@ -1,0 +1,97 @@
+{
+  "format": 1,
+  "version": "0.1.0",
+  "statuses": {
+    "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
+    "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
+    "unsupported": "The renderer intentionally has no counterpart; the reason is recorded."
+  },
+  "families": [
+    {
+      "id": "foundation",
+      "label": "Nền tảng"
+    }
+  ],
+  "entries": [
+    {
+      "id": "foundation.color-roles",
+      "family": "foundation",
+      "label": "Vai trò màu",
+      "summary": "Cặp nền/chữ theo role, giá trị hiệu lực và tỉ lệ tương phản.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Theo giao diện đang chọn"
+        },
+        {
+          "id": "nested-theme",
+          "label": "Theme lồng nhau đè giao diện ngoài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "foundation.typography",
+      "family": "foundation",
+      "label": "Kiểu chữ",
+      "summary": "Vai trò chữ UI, đọc, tiêu đề, nhãn, chú thích, code với dấu tiếng Việt.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Các vai trò chữ"
+        },
+        {
+          "id": "combining-marks",
+          "label": "Dấu tổ hợp (NFD) và tiêu đề dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "foundation.shape-spacing",
+      "family": "foundation",
+      "label": "Hình khối và khoảng cách",
+      "summary": "Thang radius, spacing, kích thước chạm và mật độ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mật độ thoải mái"
+        },
+        {
+          "id": "compact",
+          "label": "Mật độ gọn"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "foundation.motion",
+      "family": "foundation",
+      "label": "Chuyển động",
+      "summary": "Chuyển tiếp hữu hạn tách khỏi vòng lặp tải; giảm chuyển động dừng vòng lặp.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Chuyển tiếp và vòng lặp"
+        },
+        {
+          "id": "reduced",
+          "label": "Giảm chuyển động"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    }
+  ]
+}

@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/loveoverflowcom/vink/packages/ui-system/shared/tokens.schema.json",
+  "title": "Vink UI token source (format 1)",
+  "description": "Editor contract for tokens.json. The enforcing validator is `cargo xtask ui-tokens` (xtask/src/ui_tokens.rs); it also checks aliases, cycles, type matches, theme completeness and contrast, which JSON Schema cannot express.",
+  "type": "object",
+  "required": ["format", "name", "version", "fonts", "primitives", "tokens", "contrast"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": { "const": 1 },
+    "name": { "const": "vink-ui" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["family", "file", "weight"],
+        "additionalProperties": false,
+        "properties": {
+          "family": { "type": "string" },
+          "file": { "type": "string", "pattern": "^[a-z0-9-]+\\.woff2$" },
+          "weight": {
+            "oneOf": [
+              { "type": "integer", "minimum": 100, "maximum": 900 },
+              { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 }
+            ]
+          }
+        }
+      }
+    },
+    "primitives": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]+(\\.[0-9]+)?$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type", "value"],
+        "additionalProperties": false,
+        "properties": {
+          "type": { "const": "color" },
+          "value": { "$ref": "#/$defs/hex" }
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]+(\\.[a-z0-9-]+)*$" },
+      "additionalProperties": { "$ref": "#/$defs/token" }
+    },
+    "contrast": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fg", "bg", "min", "use"],
+        "additionalProperties": false,
+        "properties": {
+          "fg": { "type": "string" },
+          "bg": { "type": "string" },
+          "min": { "enum": [3, 4.5, 7] },
+          "use": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "hex": { "type": "string", "pattern": "^#[0-9a-f]{6}$" },
+    "alias": { "type": "string", "pattern": "^\\{[a-z0-9.-]+\\}$" },
+    "colorValue": {
+      "oneOf": [
+        { "$ref": "#/$defs/alias" },
+        {
+          "type": "object",
+          "required": ["ref", "alpha"],
+          "additionalProperties": false,
+          "properties": {
+            "ref": { "$ref": "#/$defs/alias" },
+            "alpha": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+          }
+        }
+      ]
+    },
+    "shadowValue": {
+      "type": "object",
+      "required": ["x", "y", "blur", "spread", "color"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "blur": { "type": "number", "minimum": 0 },
+        "spread": { "type": "number" },
+        "color": { "$ref": "#/$defs/colorValue" }
+      }
+    },
+    "fluid": {
+      "type": "object",
+      "required": ["base", "vw"],
+      "additionalProperties": false,
+      "properties": {
+        "base": { "type": "number", "minimum": 0 },
+        "vw": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "size": {
+      "oneOf": [
+        { "type": "number", "exclusiveMinimum": 0 },
+        { "$ref": "#/$defs/alias" },
+        {
+          "type": "object",
+          "required": ["value", "max", "fluid"],
+          "additionalProperties": false,
+          "properties": {
+            "value": { "type": "number", "exclusiveMinimum": 0 },
+            "max": { "type": "number", "exclusiveMinimum": 0 },
+            "fluid": { "$ref": "#/$defs/fluid" }
+          }
+        }
+      ]
+    },
+    "token": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["color", "shadow", "fontFamily", "dimension", "number", "typography", "duration", "iterations", "cubicBezier"]
+        },
+        "rationale": { "type": "string" },
+        "css": { "type": "string", "pattern": "^--vk-[a-z0-9-]+$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "color" } } },
+          "then": {
+            "oneOf": [
+              { "required": ["light", "dark"], "properties": { "light": { "$ref": "#/$defs/colorValue" }, "dark": { "$ref": "#/$defs/colorValue" } } },
+              { "required": ["value"], "properties": { "value": { "$ref": "#/$defs/alias" } } }
+            ]
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "shadow" } } },
+          "then": { "required": ["light", "dark"], "properties": { "light": { "$ref": "#/$defs/shadowValue" }, "dark": { "$ref": "#/$defs/shadowValue" } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "fontFamily" } } },
+          "then": {
+            "required": ["value", "native"],
+            "properties": {
+              "value": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+              "native": { "enum": ["sansSerif", "serif", "monospace"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "dimension" } } },
+          "then": {
+            "required": ["value", "web"],
+            "properties": {
+              "value": { "type": "number", "minimum": 0 },
+              "max": { "type": "number" },
+              "fluid": { "$ref": "#/$defs/fluid" },
+              "compact": { "type": "number", "minimum": 0 },
+              "web": { "enum": ["rem", "px"] }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "number" } } },
+          "then": { "required": ["value"], "properties": { "value": { "type": "number", "exclusiveMinimum": 0 } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "typography" } } },
+          "then": {
+            "required": ["value"],
+            "properties": {
+              "value": {
+                "type": "object",
+                "required": ["family", "size", "weight", "lineHeight", "tracking"],
+                "additionalProperties": false,
+                "properties": {
+                  "family": { "$ref": "#/$defs/alias" },
+                  "size": { "$ref": "#/$defs/size" },
+                  "weight": { "type": "integer", "minimum": 100, "maximum": 900 },
+                  "lineHeight": { "oneOf": [{ "type": "number", "exclusiveMinimum": 0 }, { "$ref": "#/$defs/alias" }] },
+                  "tracking": { "type": "number" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "duration" } } },
+          "then": { "required": ["value"], "properties": { "value": { "type": "integer", "minimum": 1 }, "reduced": { "const": 0 } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "iterations" } } },
+          "then": { "required": ["value", "reduced"], "properties": { "value": { "const": "infinite" }, "reduced": { "const": 0 } } }
+        },
+        {
+          "if": { "properties": { "type": { "const": "cubicBezier" } } },
+          "then": { "required": ["value"], "properties": { "value": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 } } }
+        }
+      ]
+    }
+  }
+}

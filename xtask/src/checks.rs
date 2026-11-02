@@ -320,7 +320,8 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             }
         }
     }
-    // Shared packages sit below every service: no service, web or HTTP framework dependency.
+    // Shared infrastructure packages (`packages/<name>/Cargo.toml`) sit below every service: no
+    // service, web or HTTP framework dependency. The UI system renderer has its own rule below.
     if let Ok(entries) = std::fs::read_dir(root.join("packages")) {
         for entry in entries.filter_map(Result::ok) {
             let path = entry.path().join("Cargo.toml");
@@ -339,6 +340,7 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             }
         }
     }
+    ui_system(root, problems);
     // Services never import each other; each keeps its own representation of the other's contract.
     // Any mention in the manifest counts: `[dependencies.x]`, renamed packages and paths too.
     for (manifest, forbidden) in [
@@ -395,6 +397,105 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             problems.push(format!(
                 "apps/vink-web/Cargo.toml: the browser-facing crate must not depend on `{forbidden}`"
             ));
+        }
+    }
+}
+
+/// The UI system renders facts and dispatches intents: its Rust crates name no service, web app,
+/// transport, router or database, read no browser storage and fetch nothing; its Kotlin common
+/// source uses no JVM, Android or Apple platform API, so every target compiles the same code.
+fn ui_system(root: &Path, problems: &mut Vec<String>) {
+    const FORBIDDEN_CRATES: [&str; 10] = [
+        "vink-app",
+        "vink-web",
+        "vink-identity",
+        "vink-store-postgres",
+        "axum",
+        "sqlx",
+        "tokio",
+        "leptos_router",
+        "leptos_axum",
+        "gloo-net",
+    ];
+    for manifest in [
+        "packages/ui-system/leptos/Cargo.toml",
+        "packages/ui-system/leptos/preview/Cargo.toml",
+    ] {
+        let text = read(&root.join(manifest)).unwrap_or_default();
+        for line in text.lines().map(str::trim_start) {
+            if let Some(name) = FORBIDDEN_CRATES.iter().find(|name| line.starts_with(*name)) {
+                problems.push(format!(
+                    "{manifest}: the UI system must not depend on `{name}`"
+                ));
+            }
+        }
+    }
+    let mut sources = Vec::new();
+    rust_files(&root.join("packages/ui-system/leptos/src"), &mut sources);
+    rust_files(
+        &root.join("packages/ui-system/leptos/preview/src"),
+        &mut sources,
+    );
+    for file in sources {
+        let Some(text) = read(&file) else { continue };
+        for (number, line) in text.lines().enumerate() {
+            let code = line.split("//").next().unwrap_or("");
+            for name in [
+                "local_storage",
+                "session_storage",
+                "localStorage",
+                "fetch(",
+                "Request::",
+            ] {
+                if code.contains(name) {
+                    problems.push(format!(
+                        "{}:{}: `{name}` is not allowed in the UI system (callers own storage and I/O)",
+                        rel(root, &file),
+                        number + 1
+                    ));
+                }
+            }
+        }
+    }
+    let mut common = Vec::new();
+    kotlin_files(
+        &root.join("packages/ui-system/cmp/ui/src/commonMain"),
+        &mut common,
+    );
+    for file in common {
+        let Some(text) = read(&file) else { continue };
+        for (number, line) in text.lines().enumerate() {
+            let line = line.trim_start();
+            for prefix in [
+                "import java.",
+                "import javax.",
+                "import android.",
+                "import platform.",
+                "import kotlinx.coroutines.swing",
+            ] {
+                if line.starts_with(prefix) {
+                    problems.push(format!(
+                        "{}:{}: `{}` is platform-specific; commonMain must compile for every target",
+                        rel(root, &file),
+                        number + 1,
+                        prefix.trim_start_matches("import ")
+                    ));
+                }
+            }
+        }
+    }
+}
+
+fn kotlin_files(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        if path.is_dir() {
+            kotlin_files(&path, out);
+        } else if path.extension().is_some_and(|e| e == "kt") {
+            out.push(path);
         }
     }
 }
@@ -456,6 +557,7 @@ fn fonts(root: &Path, problems: &mut Vec<String>) {
     }
     let consumers = [
         ("apps/vink-web/style/vink.css", "url(\"fonts/"),
+        ("packages/ui-system/leptos/style/tokens.css", "url(\"fonts/"),
         ("apps/vink-web/src/lib.rs", "\"/pkg/fonts/"),
     ];
     for (file, prefix) in consumers {
@@ -602,6 +704,37 @@ mod tests {
         assert!(problems[0].ends_with("OFL.txt: SHA-256 differs from provenance.json"));
         assert!(problems[1].ends_with("stray.woff2: not recorded in provenance.json"));
         assert!(problems[2].contains("vink.css:2: font `b.woff2`"));
+    }
+
+    #[test]
+    fn ui_system_rejects_services_storage_and_platform_imports() {
+        let root = std::env::temp_dir().join(format!("vink-ui-check-{}", std::process::id()));
+        let src = root.join("packages/ui-system/leptos/src");
+        let common = root.join("packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::create_dir_all(&common).unwrap();
+        std::fs::write(
+            root.join("packages/ui-system/leptos/Cargo.toml"),
+            "[dependencies]\nleptos.workspace = true\nleptos_router = \"0.8\"\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("lib.rs"),
+            "let s = window().local_storage(); // local_storage ok here\n",
+        )
+        .unwrap();
+        std::fs::write(
+            common.join("A.kt"),
+            "import androidx.compose.ui.unit.dp\nimport java.io.File\n",
+        )
+        .unwrap();
+        let mut problems = Vec::new();
+        ui_system(&root, &mut problems);
+        std::fs::remove_dir_all(&root).unwrap();
+        assert_eq!(problems.len(), 3, "{problems:?}");
+        assert!(problems[0].contains("must not depend on `leptos_router`"));
+        assert!(problems[1].contains("lib.rs:1: `local_storage`"));
+        assert!(problems[2].contains("A.kt:2: `java.`"));
     }
 
     #[test]

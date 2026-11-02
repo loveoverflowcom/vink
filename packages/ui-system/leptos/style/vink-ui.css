@@ -1,0 +1,18 @@
+/*
+ * Vink UI renderer styles. Load after tokens.css. Every selector is scoped under `.vk-ui` or a
+ * `vk-ui-` class: no global tag selectors, so app styles and the CodeMirror editor are unaffected.
+ */
+
+.vk-ui {
+  font-family: var(--vk-type-body-font);
+  font-size: var(--vk-type-body-size);
+  font-weight: var(--vk-type-body-weight);
+  line-height: var(--vk-type-body-line-height);
+  color: var(--vk-on-surface);
+  background-color: var(--vk-surface);
+}
+
+.vk-ui :focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}

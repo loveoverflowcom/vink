@@ -1,0 +1,5 @@
+# Gradle state and outputs (captures land in preview/build/captures).
+.gradle/
+.kotlin/
+build/
+local.properties

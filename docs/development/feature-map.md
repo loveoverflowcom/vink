@@ -17,6 +17,8 @@ Readiness, provisioning PostgreSQL theo owner và role tách đối chiếu ngà
 `5afb00b` cho commit 1 của [ranh giới PostgreSQL/Identity](../architecture/identity-postgres-boundaries.md);
 hàng Identity đối chiếu ngày 02/11/2026 trên nền `6357922` (commit 2); hàng App ↔ Identity và
 backup/restore trên nền `255ce77` (commit 3).
+Mục UI System preview thêm ngày 02/11/2026 trên nền `b358794` cho
+[#19](https://github.com/loveoverflowcom/vink/issues/19) (UIS-01).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -134,6 +136,18 @@ Với yêu cầu visual QA, dùng công cụ browser có sẵn để chụp **v�
 text scale; xem [vink-ui-inspector](../../.agents/skills/vink-ui-inspector/SKILL.md).
 IME thật, accessibility với screen reader, mobile thật và hiệu năng cần phiên kiểm riêng có
 môi trường và quan sát cụ thể. Không tự đổi chúng thành `PASS` vì lane `web` thành công.
+
+### UI System preview (UIS-01)
+
+Không phải route của app: hai preview chạy riêng, không gọi service. Owner và lệnh ở
+[packages/ui-system](../../packages/ui-system/README.md).
+
+| Luồng | Đường đi / thao tác | Assertion hiện có | Giới hạn |
+| --- | --- | --- | --- |
+| Token source → file sinh ra | Sửa `shared/tokens.json`, `cargo xtask ui-tokens` | `ui_tokens::tests` (vòng alias, alias treo/sai type, thiếu theme, đơn vị sai, field lạ, tương phản thấp, sinh hai lần không đổi, file commit khớp); `ui-tokens --check` trong `verify quick` | Tương phản là số học token |
+| Preview Leptos | `cargo xtask ui-preview leptos run` → `http://127.0.0.1:3019/#<entry>/<scenario>`; tìm, chọn kịch bản, đổi Giao diện/Khung/Cỡ chữ/Chuyển động | [preview-smoke.mjs](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) (`structure`, `themes`, `densityAndMotion`, `search`, `reflow`, `captures`); test crate `vink-ui`/`vink-ui-preview` | Một Chrome headless, DPR 1; ảnh ở `target/ui-preview/leptos/captures` phải được mở |
+| Preview CMP | `cargo xtask ui-preview cmp run` (cửa sổ desktop) | `VinkThemeTest` (common), `VinkScopeTest`, `PreviewTest`, `CaptureTest` (desktop) | JVM desktop off-screen; Android/iOS chỉ compile khi bật |
+| Web dùng token sinh ra | `/pkg/vink.css` = `tokens.css` + `vink.css` | `verify web` hiện có (contrast hai theme, theme/reload/OS/storage denied, reflow) chạy trên CSS mới | Không thêm assertion web mới cho UIS-01 |
 
 Chưa có đường đi cho đăng nhập thật, gửi duyệt, moderation, publish/withdraw, tuyển chọn Tạp Chí,
 bình luận Discourse, AI job, export ngoài `.txt` và nhiều chương. Trạng thái chi tiết và điều kiện làm tiếp

@@ -11,7 +11,8 @@ là ngữ cảnh; các vùng/bố cục có `#id` ổn định và mục đích.
 tự đọc dự kiến; ghi rõ nếu vị trí thị giác khác, giữ DOM/focus hợp lý. Tên component
 dự kiến phải tách khỏi tên đã có trong source. Không bịa component từ screenshot.
 
-Nguồn hiện hành cần kiểm: [tokens/component CSS](../../../../apps/vink-web/style/vink.css),
+Nguồn hiện hành cần kiểm: [token source](../../../../packages/ui-system/shared/tokens.json),
+[component CSS](../../../../apps/vink-web/style/vink.css),
 [routes/shell](../../../../apps/vink-web/src/lib.rs), phần page liên quan và
 [requirements](../../../../prd/requirements.md). Dùng
 [hệ thiết kế](../../vink-ui-design/references/design-system.md) cho tiêu chí thẩm mỹ;

@@ -1,0 +1,18 @@
+{
+  "format": 1,
+  "note": "Dữ liệu trình bày [Mẫu] do Vink tự viết cho preview; không phải tác phẩm, người dùng hay số liệu thật.",
+  "clock": "2026-11-02T09:00:00+07:00",
+  "seed": 19,
+  "texts": {
+    "display": "[Mẫu] Bàn viết của mùa thu",
+    "headline": "Những trang viết đầu tiên",
+    "title": "[Mẫu] Ghi chép từ phố Hàng Đường",
+    "body": "Vink giúp người viết Việt giữ nhịp viết, tìm người đọc phù hợp và tiến bộ qua phản hồi tử tế.",
+    "label": "Lưu bản nháp",
+    "caption": "Cập nhật 09:00 · 02/11/2026",
+    "reading": "Gió heo may về sớm trên những mái ngói rêu phong.\nTôi ngồi bên cửa sổ, nghe tiếng rao vọng lại từ đầu ngõ.\n\nMột khổ thơ mới chưa có tên,\nchữ còn ấm như tách trà vừa rót.",
+    "code": "--vk-primary · color.primary · 0.1.0",
+    "combining": "Tie\u0302\u0301ng Vie\u0323\u0302t co\u0301 da\u0302\u0301u to\u0302\u0309 ho\u031b\u0323p: Nguye\u0302\u0303n Thi\u0323 A\u0301nh Tuye\u0302\u0301t, đu\u031bo\u031b\u0300ng, khuy\u0309u tay, ngoa\u0306\u0300n ngoe\u0300o.",
+    "long_title": "[Mẫu] Một tiêu đề rất dài để kiểm tra việc xuống dòng của chữ tiếng Việt có dấu mà không bị cắt ở màn hình hẹp hay khi phóng to chữ hai trăm phần trăm"
+  }
+}

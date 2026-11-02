@@ -20,7 +20,10 @@ CodeMirror 6 body editor
 appearance preferences and a truthful `/toi` utility, a finite v3 public reading stream with
 loaded-list title/author search and URL-based reader return context, a quiet reader, a private
 draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a lifecycle-only worker,
-`cargo xtask` lanes and CI. [docs/development](docs/development/README.md) owns its layout,
+`cargo xtask` lanes and CI, and the UI System foundation (`packages/ui-system`: one token source in
+`shared/tokens.json` generating CSS/Rust/Kotlin with a drift check, the Leptos crate `vink-ui`, a
+Compose Multiplatform `:ui` library and two previews; native Android/iOS targets compile only
+when enabled and no native app exists). [docs/development](docs/development/README.md) owns its layout,
 commands, evidence and limits. No auth authority, login/session, publish/moderation workflow,
 Discourse plugin, AI provider, job or executable behavior model exists; production
 authentication is NOT_IMPLEMENTED. Inspect actual files before

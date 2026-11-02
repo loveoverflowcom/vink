@@ -1,0 +1,17 @@
+[package]
+name = "vink-ui"
+version = "0.1.0"
+description = "Vink UI system: Leptos renderer of the shared token contract (typed tokens, UiRoot, ThemeScope)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Renders facts and dispatches intents only: no storage, routes, session, API or service crates.
+# Features come from the consumer (`ssr` / `hydrate` / `csr` on leptos); this crate adds none.
+[dependencies]
+leptos.workspace = true
+
+[dev-dependencies]
+# String rendering in tests only.
+leptos = { workspace = true, features = ["ssr"] }

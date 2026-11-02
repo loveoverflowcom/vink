@@ -1,0 +1,102 @@
+# Vink UI System
+
+**Trạng thái:** UIS-01/06 ([#19](https://github.com/loveoverflowcom/vink/issues/19)) — nền tảng token,
+theme và hai preview. Chuỗi tiếp theo: #20 primitives → #21 states/motion → #22 shell/navigation →
+#23 patterns/adoption → #24 qualification. Đây là thư viện renderer, không phải ứng dụng thứ hai
+và không giữ session, API, route hay nghiệp vụ. Tổ chức học từ Cantos UI system (`7649017`) nhưng
+không chép thương hiệu, phiên bản, palette hay build; Vink giữ Lavender, Be Vietnam Pro/Literata,
+Enso và Leptos 0.8.
+
+## Owner map
+
+| Owner | Nội dung | Trạng thái |
+| --- | --- | --- |
+| [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` | Đã triển khai |
+| [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
+| [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, token/catalog Kotlin sinh ra), `:preview` (Compose Desktop) | Đã triển khai; JVM desktop có test và ảnh; Android/iOS chỉ compile khi bật |
+| `xtask/src/ui_tokens.rs` | Validate + generate + `--check` | Đã triển khai |
+| `xtask/src/ui_preview.rs` | `cargo xtask ui-preview leptos\|cmp build\|verify\|run` | Đã triển khai |
+| App (`apps/vink-web`) | Key `vink.ui.theme`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu | Giữ nguyên owner |
+
+Một role chỉ có một owner. `apps/vink-web/style/vink.css` không còn khai báo giá trị token: build
+phục vụ `tokens.css` (sinh) rồi `vink.css` (component web) thành một `/pkg/vink.css`.
+
+```text
+shared/tokens.json + preview-catalog.json + fixtures/   (không runtime, không backend)
+  ├─ cargo xtask ui-tokens → leptos/style/tokens.css, leptos/src/{tokens,catalog}.rs
+  │                            → vink-ui (UiRoot, ThemeScope) → vink-web pilot, preview Leptos
+  └─ cargo xtask ui-tokens → cmp/ui/src/commonMain/.../{VinkTokens,VinkCatalog}.kt
+                               → :ui (VinkTheme, VinkScope) → :preview (Compose Desktop)
+preview = public API của renderer; không clone component, không DOM chung với Compose, không WebView
+```
+
+## Lệnh
+
+Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/README.md); tóm tắt:
+
+| Lệnh | Việc |
+| --- | --- |
+| `cargo xtask ui-tokens` | Validate ba nguồn rồi ghi 5 file sinh ra (chỉ ghi file thay đổi) |
+| `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
+| `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
+| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |
+| `VINK_UI_NATIVE_TARGETS=1 cargo xtask ui-preview cmp build\|verify` | Thêm Android (`ANDROID_HOME`) và iOS arm64/simulator arm64 (Xcode, tải Kotlin/Native lần đầu) |
+
+Link kịch bản chính xác của preview Leptos: `http://127.0.0.1:3019/#<catalog-id>/<scenario>`, ví dụ
+`#foundation.typography/combining-marks`. Preview CMP chọn cùng ID trong danh mục.
+
+## LayoutSpec preview (r1, đã trình bày trước khi viết UI)
+
+```text
+Screen #preview — kiểm specimen foundation qua renderer thật
+  Column #page
+    Region #preview-header — tên, phiên bản token/catalog, "Không kết nối dịch vụ", đồng hồ cố định
+    Grid #workbench — rộng: nav | stage; hẹp hoặc chữ lớn: stage xuống dưới nav
+      Region #catalog-nav — ô tìm (không dấu, cả nhãn kịch bản) → danh sách catalog ID
+      Column #stage
+        Region #preview-controls — Giao diện Sáng/Tối/Hệ thống · Khung · Cỡ chữ 100/200% · Chuyển động
+        Region #specimen — UiRoot/ThemeScope (Leptos) | VinkTheme/VinkScope (CMP) với kịch bản
+        Region #inspector — catalog ID, nguồn @ phiên bản, trạng thái, giá trị hiệu lực, nhật ký
+```
+
+Leptos đọc giá trị hiệu lực bằng `getComputedStyle` của scope specimen; CMP đọc `LocalVink` của
+scope có cùng tham số. Preview không đọc storage, không gọi service; preference chỉ ở bộ nhớ.
+
+## API và precedence
+
+| Khía cạnh | Leptos (`vink-ui`) | CMP (`:ui`) |
+| --- | --- | --- |
+| Gốc | `UiRoot(preferences: Signal<Preferences>, overrides?)` → `.vk-ui.vk-scope[data-*]` | `VinkTheme(preferences, systemDark, systemReducedMotion, fonts, overrides)` |
+| Lồng | `ThemeScope(theme?, density?, reduce_motion, overrides)` | `VinkScope(theme?, density?, reduceMotion, overrides)` |
+| Theme | Scope gần nhất có theme tường minh > scope ngoài > `<html data-theme>` (app) > OS | Scope gần nhất > `VinkTheme` > `systemDark` (mặc định `isSystemInDarkTheme()`) |
+| Mật độ | Giá trị khai báo gần nhất | Như Leptos |
+| Giảm chuyển động | Cộng dồn: OS, gốc hoặc scope ngoài giảm thì bên trong không bật lại | Như Leptos; `systemReducedMotion` do host inject (CMP 1.9 không có API common) |
+| Override | `RoleOverride { role, to }`: role → role, không hex; tự tham chiếu/trùng/vòng bị từ chối, render `data-override-error` | `RoleOverride(role, to)`, `validate()`; scope có theme tường minh bỏ override kế thừa (giống CSS khai báo lại role) |
+| Đơn vị | rem (spacing, chữ), px (radius, hit target), chữ đọc fluid `clamp()` | dp, sp; line-height = size × ratio theo sp (font scale áp một lần); chữ fluid dùng giá trị min |
+
+Thư viện không đọc storage/tài khoản. App giữ persistence, key storage và bootstrap trước CSS:
+`apps/vink-web/src/appearance.rs` dùng `vink_ui::ThemePreference` cho giá trị/parse, còn lại giữ
+nguyên. CSS component có scope `.vk-ui`/`vkp-`; không reset tag toàn cục, không chạm CodeMirror.
+
+## Kế hoạch migration
+
+1. **UIS-01 (PR này):** nguồn token duy nhất; Web giữ nguyên toàn bộ tên `--vk-*` (đã so 59 + 37 + 36
+   giá trị cũ với CSS sinh ra, không lệch); `vink.css` bỏ khối token; reduced motion giới hạn
+   animation một lần; `appearance.rs` dùng type theme của thư viện. Không đổi route, DOM, editor
+   hay session.
+2. **#20–#22:** primitive và shell chuyển sang renderer; mỗi component đăng ký trong catalog và
+   kiểm ở **cả hai** preview trước khi adoption. Component CSS dần dùng role chữ `--vk-type-*`
+   thay literal trong `vink.css`.
+3. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
+   Đổi `version` trong `tokens.json` theo semver khi đổi/xóa role (major), thêm role (minor), sửa
+   giá trị không đổi nghĩa (patch); generator in phiên bản vào mọi file sinh ra.
+
+Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens` → xem diff 5 file sinh ra
+→ `cargo xtask verify quick` → hai preview. Không sửa tay file có dòng `GENERATED`.
+
+## Bằng chứng và giới hạn
+
+Kết quả chạy, môi trường, SHA và PASS/FAIL/NOT_RUN/UNSUPPORTED nằm ở
+[ui-system-foundation-evidence](../../docs/development/ui-system-foundation-evidence.md). Trạng thái
+catalog của mọi entry vẫn là `implemented-unverified`: compile, test và ảnh của JVM/Chrome không
+thành nghiệm thu thiết kế, Android/iOS, IME hay screen reader.

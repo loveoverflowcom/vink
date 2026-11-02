@@ -43,6 +43,12 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   Khám phá → Bàn viết → Tôi, ẩn khi viết. Web/tablet mở Tôi bằng overlay; mobile tới `/toi`.
   Sáng/Tối/Hệ thống chỉ có trong Tôi. Preference lỗi/không có storage vẫn dùng được trong phiên.
   Không có profile API hay danh tính được suy ra từ fixture; xem [spec shell](../design/README.md#shell-thích-ứng-7).
+- [UI System](../../packages/ui-system/README.md) UIS-01 ([#19](https://github.com/loveoverflowcom/vink/issues/19)):
+  một nguồn token `packages/ui-system/shared/tokens.json` sinh CSS/Rust/Kotlin có `--check`;
+  crate Leptos `vink-ui` (`UiRoot`/`ThemeScope`), thư viện Compose Multiplatform `:ui`
+  (`VinkTheme`/`VinkScope`), hai preview chạy bằng renderer thật với cùng catalog ID. Web dùng
+  CSS token sinh ra và kiểu theme của `vink-ui`; route/DOM/editor/session không đổi. Android/iOS
+  chỉ compile khi bật, chưa có app native.
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch
@@ -74,7 +80,9 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 | PostgreSQL 17 | dev, `verify postgres`, `verify web` | [services/postgres](../../services/postgres/README.md) chạy bằng Podman hoặc Docker; `VINK_TEST_DATABASE_URL` là superuser của cluster local/CI để tạo database/role tạm |
 | `psql` 15+ | `services/postgres/provision.sh`, `verify postgres` | Ví dụ `brew install libpq` hoặc gói `postgresql-client` |
 | Node.js 22+ và npm | `build`, `dev`, `verify web` | Cài dependency đã khóa và bundle [runtime editor](../../apps/vink-web/editor/README.md) (cần mạng tới npm registry lần đầu hoặc khi lockfile đổi) |
-| Chrome/Chromium | `verify web` | Script smoke không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` |
+| Chrome/Chromium | `verify web`, `ui-preview leptos verify` | Script smoke không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` (macOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`) |
+| JDK 17+ | `ui-preview cmp …` | Gradle wrapper 8.14.3 (tải bản phân phối lần đầu, kiểm SHA-256); không tự tải JDK |
+| Android SDK, Xcode | chỉ `VINK_UI_NATIVE_TARGETS=1` | `ANDROID_HOME` (platform 36) cho target Android; Xcode + tải Kotlin/Native 2.2.20 lần đầu cho iOS |
 
 Thiết lập lần đầu (chi tiết, chuyển từ `infra/dev` và trường hợp `-p`:
 [services/postgres](../../services/postgres/README.md)):
@@ -116,11 +124,14 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
 | `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` và `VINK_MIGRATE_DATABASE_URL` (ẩn credential, thử kết nối); `VINK_TEST_DATABASE_URL`, `psql` và Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
-| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker`, `vink-identity` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/, brand/}`; `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
+| `cargo xtask build [--release]` | Build `vink-app`, `vink-worker`, `vink-identity` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/, brand/}` (`vink.css` = `tokens.css` sinh ra + `apps/vink-web/style/vink.css`, sau khi `ui-tokens --check` đạt); `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
 | `cargo xtask db migrate` | Migrate App bằng `VINK_MIGRATE_DATABASE_URL` (không đọc `DATABASE_URL`), rồi Identity bằng `VINK_IDENTITY_MIGRATE_DATABASE_URL` nếu có | Thiếu biến, không kết nối được, thiếu quyền, lịch sử diverged hoặc migration lỗi |
 | `cargo xtask db seed` | Nạp dữ liệu tổng hợp có nhãn `[Mẫu]` (chỉ `VINK_PROFILE=local`, idempotent) | Profile khác `local` hoặc chưa migrate |
 | `cargo xtask dev` | Build, migrate các owner, chạy Identity (nếu có `VINK_IDENTITY_SOCKET`) và chờ ready, rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi, Identity không ready trong 20 s |
-| `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module, font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
+| `cargo xtask ui-tokens [--check]` | Validate `packages/ui-system/shared/{tokens.json, preview-catalog.json, fixtures/}` (type, đơn vị, alias treo/vòng/sai type, đủ light/dark, tương phản khai báo) rồi ghi `tokens.css`, `tokens.rs`, `catalog.rs`, `VinkTokens.kt`, `VinkCatalog.kt`; `--check` không ghi | Nguồn không hợp lệ; với `--check`, file sinh ra thiếu hoặc lệch |
+| `cargo xtask ui-preview leptos build\|run\|verify` | Bundle preview Leptos (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ loopback ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy [preview-smoke](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) trong Chrome headless và ghi ảnh + `contexts.json` | Build, wasm-bindgen, Node/Chrome thiếu hoặc một assertion lỗi |
+| `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
+| `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
 | `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify all` | `quick`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
@@ -129,7 +140,8 @@ Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thi
 không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó chạy (biến môi trường thật được
 ưu tiên); bản thân binary chỉ đọc biến môi trường. `xtask` không cài toolchain, không bật
 container, không push hay deploy. CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))
-chỉ chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi đúng ba lane này.
+chỉ chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi đúng ba lane này; `ui-preview` là
+lệnh cục bộ, chưa chạy trong CI (CI chưa chuẩn bị JDK/Chrome cho preview).
 
 Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy ước mã thoát; cấu hình
 `VINK_IDENTITY_*` ở [README của service](../../services/vink-identity/README.md). Khi `.env` có
@@ -180,10 +192,14 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
   src/navigation.rs       NavigationGuard dùng chung cho link, back/forward, điều hướng bằng code
   editor/                 runtime CodeMirror 6 (TypeScript, npm pin, esbuild) → /pkg/vink-editor.js
-  style/vink.css          owner token M3 Expressive Lavender: sáng/tối, `data-theme`, primitives
+  style/vink.css          component web `vk-*`; giá trị token đến từ tokens.css sinh ra (ghép khi build)
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   assets/brand/           Enso light/dark AVIF/SVG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
+packages/ui-system/       UI System (README owner map): shared/ tokens.json + catalog + fixtures;
+  leptos/                 crate vink-ui (tokens/catalog sinh ra, UiRoot, ThemeScope) + preview/
+                          crate vink-ui-preview (CSR, Chrome smoke)
+  cmp/                    Gradle: :ui (Compose Multiplatform commonMain), :preview (Desktop)
 packages/store-postgres/  crate vink-store-postgres: pool, vòng đời migration, trạng thái schema,
                           phân loại lỗi kết nối; không biết database/bảng nghiệp vụ
 services/postgres/        container PostgreSQL (compose + overlay local), provision.sh, runbook
@@ -200,7 +216,8 @@ services/vink-app/        crate vink-app: composition root, bin vink-app và vin
   migrations/             migration có phiên bản
   contracts/http/v1/      contract API và fixtures (owner: server)
   tests/postgres.rs       test PostgreSQL thật và HTTP qua router
-xtask/                    command owner cho local và CI; src/provision.rs kiểm provisioning
+xtask/                    command owner cho local và CI; src/provision.rs kiểm provisioning;
+                          src/ui_tokens.rs generator/validator, src/ui_preview.rs hai preview
 infra/dev/README.md       chỉ dẫn chuyển sang services/postgres
 ```
 
@@ -221,6 +238,8 @@ riêng; không dùng `--all-features`.
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
 | `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime; Identity: migrations/readiness thật, binary thật trên Unix socket với role đã provision (config sai thoát 2, migrate runtime bị từ chối, migrate hai lần, migrator/App database bị từ chối, contract 200/501/400/413/404/503, uid khác và thiếu caller là 401, header giả không đổi kết quả, role migrator là `privileged` 503, mất kết nối tự phục hồi, sai database/schema là not ready, header gửi dở bị đóng và không giữ được SIGTERM, socket cũ/instance thứ hai, log không lộ credential); App + Identity thật cùng chạy: không credential `401`, credential `401` (chưa authority), Identity dừng thì chỉ request có credential `503`, đọc công khai/SSR vẫn `200`, restart độc lập, App bằng role migrator `503 privileged`, socket do user khác phục vụ không được tin; backup/restore từng owner bằng `pg_dump`/`pg_restore` vào database khác khớp dữ liệu và lịch sử | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
 | `web` | Bundle `/pkg/` không chứa URL database, tên biến credential hay password local; Khám phá/reader: public HTML và metadata trước JS, save riêng không đổi publication, 404/503, link thật, list không N+1, states riêng, reflow 320–1440px/root text 100/200% và contrast hai theme; Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
+| `ui-preview leptos verify` | Catalog ID đúng thứ tự, link kịch bản chính xác, Sáng/Tối/Hệ thống và đổi OS không reload, scope lồng nhau (cả Hệ thống trong Tối, recipe giải theo scope), mật độ gọn giữ 44px, vòng lặp chạy/dừng theo scope/OS/preference, tìm không dấu, không tràn ngang 320–1440px ở chữ 100/200%, font tự host tải được, không lỗi console; 38 ảnh | Chrome khác, thiết bị thật, screen reader, chất lượng thị giác (ảnh phải được người mở) |
+| `ui-preview cmp verify` | Logic common trên JVM (parse, resolve theme, override, tương phản, motion, line-height sp); precedence scope trong composition; preview: đăng ký catalog, mọi kịch bản render, control đổi theme + nhật ký, vòng lặp dừng khi giảm, mật độ gọn ≥44, tìm không dấu, WOFF2 đọc được qua Skia; 30 ảnh off-screen | Android/iOS runtime, IME, TalkBack/VoiceOver, cửa sổ desktop thật (ảnh là render off-screen) |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
 triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp để mô hình hóa ngoài CAS
