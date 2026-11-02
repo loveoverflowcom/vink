@@ -256,6 +256,72 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             }
         }
     }
+    // Shared packages sit below every service: no service, web or HTTP framework dependency.
+    if let Ok(entries) = std::fs::read_dir(root.join("packages")) {
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path().join("Cargo.toml");
+            let manifest = read(&path).unwrap_or_default();
+            for line in manifest.lines().map(str::trim_start) {
+                let forbidden = ["vink-app", "vink-web", "vink-identity", "axum", "leptos"]
+                    .into_iter()
+                    .find(|name| line.starts_with(name))
+                    .or_else(|| line.contains("../../services/").then_some("a service path"));
+                if let Some(name) = forbidden {
+                    problems.push(format!(
+                        "{}: a shared package must not depend on `{name}`",
+                        rel(root, &path)
+                    ));
+                }
+            }
+        }
+    }
+    // Services never import each other; each keeps its own representation of the other's contract.
+    // Any mention in the manifest counts: `[dependencies.x]`, renamed packages and paths too.
+    for (manifest, forbidden) in [
+        ("services/vink-app/Cargo.toml", "vink-identity"),
+        ("services/vink-identity/Cargo.toml", "vink-app"),
+        ("services/vink-identity/Cargo.toml", "vink-web"),
+    ] {
+        let text = read(&root.join(manifest)).unwrap_or_default();
+        if text.lines().any(|l| l.contains(forbidden)) {
+            problems.push(format!("{manifest}: must not depend on `{forbidden}`"));
+        }
+    }
+    // Identity's code and migrations never touch App tables. A lint only: database roles that
+    // cannot connect across owners are the actual guard (`verify postgres`).
+    let mut identity = Vec::new();
+    rust_files(&root.join("services/vink-identity/src"), &mut identity);
+    if let Ok(entries) = std::fs::read_dir(root.join("services/vink-identity/migrations")) {
+        identity.extend(entries.filter_map(Result::ok).map(|e| e.path()));
+    }
+    for file in identity {
+        // Quotes and escapes dropped, whitespace collapsed: `FROM\n  public."works"` still counts.
+        let lowered = read(&file)
+            .unwrap_or_default()
+            .to_lowercase()
+            .replace(['"', '\\'], "");
+        let text = lowered
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+            .replace("public.", "");
+        for table in [
+            "working_drafts",
+            "works",
+            "principals",
+            "revisions",
+            "publications",
+        ] {
+            for verb in ["from", "join", "into", "update", "table"] {
+                if text.contains(&format!("{verb} {table}")) {
+                    problems.push(format!(
+                        "{}: Identity must not use the App table `{table}`",
+                        rel(root, &file)
+                    ));
+                }
+            }
+        }
+    }
     let manifest = read(&root.join("apps/vink-web/Cargo.toml")).unwrap_or_default();
     for forbidden in ["vink-app", "sqlx", "tokio-postgres"] {
         if manifest

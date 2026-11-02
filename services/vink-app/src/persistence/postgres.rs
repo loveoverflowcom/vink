@@ -37,25 +37,15 @@ fn classify(error: sqlx::Error) -> StoreError {
 }
 
 fn classify_inner(error: sqlx::Error) -> StoreError {
-    match &error {
-        sqlx::Error::Database(db) => {
-            if db.constraint() == Some("works_owner_id_fkey") {
-                return StoreError::UnknownPrincipal;
-            }
-            // SQLSTATE classes 08 (connection), 53 (resources), 57 (operator intervention).
-            let code = db.code().unwrap_or_default();
-            if code.starts_with("08") || code.starts_with("53") || code.starts_with("57") {
-                StoreError::Unavailable(error.to_string())
-            } else {
-                StoreError::Integrity(error.to_string())
-            }
-        }
-        sqlx::Error::Io(_)
-        | sqlx::Error::Tls(_)
-        | sqlx::Error::PoolTimedOut
-        | sqlx::Error::PoolClosed
-        | sqlx::Error::WorkerCrashed => StoreError::Unavailable(error.to_string()),
-        _ => StoreError::Integrity(error.to_string()),
+    if let sqlx::Error::Database(db) = &error
+        && db.constraint() == Some("works_owner_id_fkey")
+    {
+        return StoreError::UnknownPrincipal;
+    }
+    if vink_store_postgres::is_unavailable(&error) {
+        StoreError::Unavailable(error.to_string())
+    } else {
+        StoreError::Integrity(error.to_string())
     }
 }
 

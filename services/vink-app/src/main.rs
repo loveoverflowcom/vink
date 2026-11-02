@@ -1,20 +1,25 @@
 //! `vink-app [serve|migrate|dev-seed]` — HTTP/SSR server and explicit database commands.
 //!
-//! Exit codes: 0 success, 1 runtime failure, 2 invalid configuration or usage.
+//! `serve` and `dev-seed` use the runtime credential (`DATABASE_URL`); `migrate` uses only the
+//! migration credential (`VINK_MIGRATE_DATABASE_URL`). Exit codes: 0 success, 1 runtime
+//! failure, 2 invalid configuration or usage.
 
 use std::net::SocketAddr;
 use std::process::ExitCode;
 use std::sync::Arc;
-use std::time::Duration;
 
-use sqlx::postgres::PgPoolOptions;
 use vink_app::application::Vink;
-use vink_app::config::{Config, Profile};
+use vink_app::config::{Config, MigrateConfig, Profile};
 use vink_app::http::{AppState, router};
-use vink_app::persistence::{MIGRATOR, PgStore, lazy_pool};
+use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
 const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]";
+
+enum Loaded {
+    App(Config),
+    Migrate(MigrateConfig),
+}
 
 fn main() -> ExitCode {
     let command = std::env::args().nth(1).unwrap_or_else(|| "serve".into());
@@ -22,14 +27,21 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     }
-    let config = match Config::from_env() {
-        Ok(config) => config,
+    let loaded = match command.as_str() {
+        "migrate" => MigrateConfig::from_env().map(Loaded::Migrate),
+        _ => Config::from_env().map(Loaded::App),
+    };
+    let loaded = match loaded {
+        Ok(loaded) => loaded,
         Err(error) => {
             eprintln!("vink-app: {error}");
             return ExitCode::from(2);
         }
     };
-    runtime::init_tracing(config.log_format);
+    runtime::init_tracing(match &loaded {
+        Loaded::App(config) => config.log_format,
+        Loaded::Migrate(config) => config.log_format,
+    });
     let tokio = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
         Err(error) => {
@@ -38,10 +50,10 @@ fn main() -> ExitCode {
         }
     };
     let result = tokio.block_on(async {
-        match command.as_str() {
-            "migrate" => migrate(&config).await,
-            "dev-seed" => seed(&config).await,
-            _ => serve(config).await,
+        match loaded {
+            Loaded::Migrate(config) => migrate(&config).await,
+            Loaded::App(config) if command == "dev-seed" => seed(&config).await,
+            Loaded::App(config) => serve(config).await,
         }
     });
     match result {
@@ -62,23 +74,19 @@ enum Failure {
     Runtime(String),
 }
 
-async fn connect(config: &Config) -> Result<sqlx::PgPool, Failure> {
-    PgPoolOptions::new()
-        .max_connections(2)
-        .acquire_timeout(Duration::from_secs(10))
-        .connect(&config.database_url)
+async fn connect(database_url: &str, command: &'static str) -> Result<sqlx::PgPool, Failure> {
+    persistence::connect(database_url, command)
         .await
         .map_err(|error| Failure::Runtime(format!("cannot connect to PostgreSQL: {error}")))
 }
 
-async fn migrate(config: &Config) -> Result<(), Failure> {
-    let pool = connect(config).await?;
-    MIGRATOR
-        .run(&pool)
+async fn migrate(config: &MigrateConfig) -> Result<(), Failure> {
+    let pool = connect(&config.database_url, "vink-app migrate").await?;
+    let report = persistence::migrate(&pool)
         .await
         .map_err(|error| Failure::Runtime(format!("migration failed: {error}")))?;
-    let latest = MIGRATOR.iter().map(|m| m.version).max().unwrap_or_default();
-    tracing::info!(latest, "migrations applied");
+    pool.close().await;
+    tracing::info!(applied = ?report.applied, latest = report.latest, "migrations applied");
     Ok(())
 }
 
@@ -88,7 +96,7 @@ async fn seed(config: &Config) -> Result<(), Failure> {
             "dev-seed writes synthetic data and requires VINK_PROFILE=local".into(),
         ));
     }
-    let pool = connect(config).await?;
+    let pool = connect(&config.database_url, "vink-app dev-seed").await?;
     dev_seed::apply(&pool)
         .await
         .map_err(|error| Failure::Runtime(format!("seed failed (run migrate first?): {error}")))?;

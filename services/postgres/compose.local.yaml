@@ -1,0 +1,11 @@
+# Local development overlay; use it together with compose.yaml:
+#   podman compose -f services/postgres/compose.yaml -f services/postgres/compose.local.yaml up -d
+services:
+  postgres:
+    environment:
+      # Throwaway local bootstrap password (unchanged from infra/dev/compose.yaml). It is only
+      # read when an empty volume is initialised. Never reuse it outside this machine.
+      POSTGRES_PASSWORD: vink-local-only
+    ports:
+      # Loopback only; 55432 avoids clashing with another local PostgreSQL on 5432.
+      - "127.0.0.1:55432:5432"

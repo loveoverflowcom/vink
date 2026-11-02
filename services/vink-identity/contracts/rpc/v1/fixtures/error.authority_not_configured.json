@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "authority_not_configured",
+    "message": "no authentication authority is configured; nothing was verified"
+  }
+}

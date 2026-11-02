@@ -21,6 +21,9 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 | Pure rules (document v1, title, draft version, revision hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
 | Use cases, actor checks, storage ports | `services/vink-app/src/application/` |
 | SQL, transactions, constraint classification | `services/vink-app/src/persistence/` and `migrations/` |
+| Pools, migration lifecycle, schema state, connection-error classes | `packages/store-postgres/` (caller supplies its `Migrator`; no business SQL) |
+| PostgreSQL container, owner databases, migrator/runtime roles | `services/postgres/` (`provision.sh`, runbook) |
+| Authentication facts (no authority yet), Identity migrations, private contract | `services/vink-identity/` and `contracts/rpc/v1/`; never imported by `vink-app` |
 | HTTP API v1, health, Origin check, SSR host | `services/vink-app/src/http/` |
 | Canonical API contract and fixtures | `services/vink-app/contracts/http/v1/` |
 | Principal resolution seam | `services/vink-app/src/identity.rs` |

@@ -43,12 +43,16 @@ jobs:
           --health-cmd "pg_isready -U vink -d vink"
           --health-interval 2s --health-timeout 3s --health-retries 30
     env:
-      DATABASE_URL: postgres://vink:vink-ci-only@127.0.0.1:5432/vink
+      # Test harness credential: the service container's superuser creates scratch databases
+      # and roles; the lane provisions separate migrator/runtime roles for the binaries.
+      VINK_TEST_DATABASE_URL: postgres://vink:vink-ci-only@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the pinned Rust toolchain (rust-toolchain.toml)
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # services/postgres/provision.sh needs psql 15+ (\getenv); the runner image provides it.
+      - run: psql --version
       - run: cargo xtask verify postgres
 
   web:
@@ -66,7 +70,7 @@ jobs:
           --health-cmd "pg_isready -U vink -d vink"
           --health-interval 2s --health-timeout 3s --health-retries 30
     env:
-      DATABASE_URL: postgres://vink:vink-ci-only@127.0.0.1:5432/vink
+      VINK_TEST_DATABASE_URL: postgres://vink:vink-ci-only@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install the pinned Rust toolchain (rust-toolchain.toml)

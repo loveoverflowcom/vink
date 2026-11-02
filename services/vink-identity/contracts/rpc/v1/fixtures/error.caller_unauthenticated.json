@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "caller_unauthenticated",
+    "message": "the connecting process is not an allowed caller"
+  }
+}

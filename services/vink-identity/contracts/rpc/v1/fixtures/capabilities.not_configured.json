@@ -1,0 +1,7 @@
+{
+  "contract": "vink.identity.v1",
+  "authority": "not_configured",
+  "operations": {
+    "verify_credential": "not_configured"
+  }
+}

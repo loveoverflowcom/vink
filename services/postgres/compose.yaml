@@ -1,0 +1,33 @@
+# Vink PostgreSQL: the single container definition (owner: services/postgres, see README.md).
+# This base file publishes no port. Local development adds compose.local.yaml (loopback only);
+# a production deployment supplies its own secret source and never publishes the database.
+# Works with `podman compose` / `podman-compose` and `docker compose`.
+name: vink-dev
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17.11-alpine
+    environment:
+      # Bootstrap/operator superuser and the App database. The image applies these only when it
+      # initialises an empty volume; changing them later does not alter an existing cluster.
+      # Owner databases and service roles come from provision.sh, for new and existing volumes.
+      POSTGRES_USER: vink
+      POSTGRES_DB: vink
+    volumes:
+      - vink-postgres:/var/lib/postgresql/data
+    healthcheck:
+      # Answers "does the server accept connections", not "are schema and roles correct".
+      test: ["CMD-SHELL", "pg_isready -U vink -d vink"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  vink-postgres:
+    # Created once, explicitly (README). Compose never creates it, so a different project name or
+    # file path fails instead of initialising an empty cluster; `down -v` does not remove it.
+    # Default: the volume the former infra/dev/compose.yaml created for project `vink-dev`.
+    external: true
+    name: ${VINK_POSTGRES_VOLUME:-vink-dev_vink-postgres}

@@ -59,7 +59,8 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 ## Health (not versioned)
 
 `GET /health/live` answers `200` while the process serves HTTP. `GET /health/ready` answers
-`200` only when PostgreSQL is reachable and every embedded migration is applied, otherwise
-`503` with `checks.database` (`ok`/`unavailable`) and `checks.schema`
-(`current`/`pending_migrations`/`unknown`). It also reports `integrations.discourse` and
+`200` only when PostgreSQL is reachable and its migration history equals the embedded
+migrations, otherwise `503` with `checks.database` (`ok`/`unavailable`) and `checks.schema`
+(`current`/`pending_migrations`/`diverged`/`unknown`; `diverged` means an unfinished, edited or
+unknown applied migration). It also reports `integrations.discourse` and
 `integrations.ai_moderation` as `not_implemented` and `integrations.jobs` as `none`.

@@ -7,13 +7,22 @@
 mod checks;
 mod doctor;
 mod env;
+mod identity;
+mod pgurl;
 mod process;
+mod provision;
 mod web;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use process::{Report, cargo};
+
+/// Test harness credential for `verify postgres|web`: may create and drop scratch databases and
+/// roles. Never passed to a binary as its own credential outside those scratch databases.
+pub const TEST_DATABASE_URL: &str = "VINK_TEST_DATABASE_URL";
+pub const TEST_DATABASE_URL_MISSING: &str = "VINK_TEST_DATABASE_URL is not set; point it at a superuser of a local or CI \
+     PostgreSQL that may create scratch databases and roles (services/postgres/README.md)";
 
 /// The browser editor runtime: TypeScript sources, locked npm dependencies and build script.
 const EDITOR_RUNTIME_DIR: &str = "apps/vink-web/editor";
@@ -23,11 +32,13 @@ usage: cargo xtask <command>
 
   doctor                 check prerequisites and configuration (no secrets printed)
   build [--release]      build the server binaries and the browser bundle into target/site
-  db migrate             apply migrations to DATABASE_URL
+  db migrate             apply migrations with VINK_MIGRATE_DATABASE_URL
   db seed                load the synthetic development fixture (VINK_PROFILE=local)
   dev                    build, migrate and serve on VINK_BIND (Ctrl-C to stop)
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
-  verify postgres        migrations, persistence/concurrency/HTTP tests, worker lifecycle
+  verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
+                         and role isolation, worker and vink-identity processes
+                         (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
   verify all             quick, postgres and web in order";
 
@@ -302,26 +313,51 @@ fn quick(report: &mut Report) -> bool {
 
 fn postgres(report: &mut Report, env: &env::Env) -> bool {
     let root = root();
-    let Some(url) = env.get("DATABASE_URL") else {
+    let Some(url) = env.get(TEST_DATABASE_URL) else {
         report.fail(
-            "PostgreSQL available",
-            "DATABASE_URL is not set; start infra/dev/compose.yaml and copy .env.example to .env",
+            "PostgreSQL test harness credential",
+            TEST_DATABASE_URL_MISSING,
         );
         return false;
     };
-    if !report.step("PostgreSQL available", || doctor::probe_database(&url)) {
-        return false;
-    }
-    let mut tests = cargo(&root);
-    tests.args(["test", "--locked", "-p", "vink-app", "--test", "postgres"]);
-    env.apply(&mut tests);
-    if !report.step("migrations + persistence/concurrency/HTTP tests", || {
-        process::run(&mut tests, "postgres integration tests")
+    if !report.step("PostgreSQL available (test harness)", || {
+        doctor::probe_database(&url)
     }) {
         return false;
     }
+    // `#[sqlx::test]` creates a database per test from DATABASE_URL.
+    for (name, package) in [
+        (
+            "shared store: migration lifecycle and error classes",
+            "vink-store-postgres",
+        ),
+        (
+            "migrations + persistence/concurrency/HTTP tests",
+            "vink-app",
+        ),
+        (
+            "identity: migrations and readiness on PostgreSQL",
+            "vink-identity",
+        ),
+    ] {
+        let mut tests = cargo(&root);
+        tests.args(["test", "--locked", "-p", package, "--test", "postgres"]);
+        env.apply(&mut tests);
+        tests.env("DATABASE_URL", &url);
+        if !report.step(name, || process::run(&mut tests, name)) {
+            return false;
+        }
+    }
     let mut bins = cargo(&root);
-    bins.args(["build", "--locked", "-p", "vink-app", "--bins"]);
+    bins.args([
+        "build",
+        "--locked",
+        "-p",
+        "vink-app",
+        "-p",
+        "vink-identity",
+        "--bins",
+    ]);
     if !report.step("build binaries", || {
         process::run(&mut bins, "build binaries")
     }) {
@@ -329,7 +365,5 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
     }
     report.step("invalid configuration exits 2", || {
         web::config_rejection(&root)
-    }) && report.step("worker starts, probes schema, stops on SIGTERM", || {
-        web::worker_lifecycle(&root, env)
-    })
+    }) && provision::verify(report, &root, &url)
 }

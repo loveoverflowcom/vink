@@ -20,7 +20,7 @@ const CREATE_SCRATCH: &str = "CREATE DATABASE vink_verify_web";
 const SAMPLE_AUTHOR: &str = "11111111-1111-4111-8111-111111111111";
 
 /// Child process that is terminated when dropped, so a failed check never leaks a server.
-struct Guard(Option<Child>);
+pub struct Guard(pub Option<Child>);
 
 impl Guard {
     fn pid(&self) -> u32 {
@@ -28,7 +28,7 @@ impl Guard {
     }
 
     /// SIGTERM, then wait up to `timeout` for a clean exit.
-    fn terminate(&mut self, timeout: Duration) -> Result<ExitStatus, String> {
+    pub fn terminate(&mut self, timeout: Duration) -> Result<ExitStatus, String> {
         let Some(mut child) = self.0.take() else {
             return Err("process already stopped".into());
         };
@@ -58,33 +58,49 @@ impl Drop for Guard {
     }
 }
 
-fn binary(root: &Path, name: &str) -> PathBuf {
+pub fn binary(root: &Path, name: &str) -> PathBuf {
     root.join("target/debug").join(name)
 }
 
-/// Both binaries refuse to start without DATABASE_URL, with exit code 2 and a clear message.
+/// Without their credential the binaries exit 2 naming it: `serve` and the worker need
+/// DATABASE_URL; `migrate` needs VINK_MIGRATE_DATABASE_URL even when DATABASE_URL is set.
 pub fn config_rejection(root: &Path) -> Result<(), String> {
-    for name in ["vink-app", "vink-worker"] {
-        let out = Command::new(binary(root, name))
+    let cases = [
+        ("vink-app", None, "DATABASE_URL: missing"),
+        ("vink-worker", None, "DATABASE_URL: missing"),
+        (
+            "vink-app",
+            Some("migrate"),
+            "VINK_MIGRATE_DATABASE_URL: missing",
+        ),
+    ];
+    for (name, command, needle) in cases {
+        let mut process = Command::new(binary(root, name));
+        process
+            .args(command)
             .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
-            .output()
-            .map_err(|e| format!("{name}: {e}"))?;
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default());
+        if command.is_some() {
+            // The runtime credential must not stand in for the migration credential.
+            process.env("DATABASE_URL", "postgres://runtime:unused@127.0.0.1:1/vink");
+        }
+        let out = process.output().map_err(|e| format!("{name}: {e}"))?;
         let stderr = String::from_utf8_lossy(&out.stderr);
-        if out.status.code() != Some(2) || !stderr.contains("DATABASE_URL: missing") {
+        if out.status.code() != Some(2) || !stderr.contains(needle) || stderr.contains("unused@") {
             return Err(format!(
-                "{name}: expected exit 2 naming DATABASE_URL, got {} / {stderr}",
+                "{name} {}: expected exit 2 naming `{needle}`, got {} / {stderr}",
+                command.unwrap_or_default(),
                 out.status
             ));
         }
     }
-    println!("==> invalid configuration: both binaries exit 2");
+    println!("==> invalid configuration: serve, worker and migrate exit 2");
     Ok(())
 }
 
-/// Starts the worker, waits for its ready log line, sends SIGTERM and expects exit code 0.
-pub fn worker_lifecycle(root: &Path, env: &Env) -> Result<(), String> {
-    let url = env.get("DATABASE_URL").ok_or("DATABASE_URL is not set")?;
+/// Starts the worker, waits for its ready log line, checks it reports `schema`, sends SIGTERM
+/// and expects exit code 0.
+pub fn worker_lifecycle(root: &Path, url: &str, schema: &str) -> Result<(), String> {
     let mut command = Command::new(binary(root, "vink-worker"));
     // Explicit local configuration, independent of any `.env` (CI has none).
     command
@@ -103,8 +119,8 @@ pub fn worker_lifecycle(root: &Path, env: &Env) -> Result<(), String> {
     let lines = stream_lines(stderr);
     let ready = wait_for_line(&lines, "vink-worker ready", Duration::from_secs(20))?;
     println!("==> {}", ready.trim());
-    if ready.contains("unavailable") {
-        return Err(format!("worker could not reach PostgreSQL: {ready}"));
+    if !ready.contains(schema) {
+        return Err(format!("worker did not report `{schema}`: {ready}"));
     }
     let status = guard.terminate(Duration::from_secs(10))?;
     if !status.success() {
@@ -142,7 +158,7 @@ fn wait_for_line(
     }
 }
 
-fn strip_ansi(line: &str) -> String {
+pub fn strip_ansi(line: &str) -> String {
     let mut out = String::with_capacity(line.len());
     let mut chars = line.chars();
     while let Some(c) = chars.next() {
@@ -306,11 +322,8 @@ fn smoke(
 
 pub fn verify(report: &mut Report, env: &Env) -> bool {
     let root = root();
-    let Some(url) = env.get("DATABASE_URL") else {
-        report.fail(
-            "prerequisites",
-            "DATABASE_URL is not set (PostgreSQL is required)",
-        );
+    let Some(url) = env.get(crate::TEST_DATABASE_URL) else {
+        report.fail("prerequisites", crate::TEST_DATABASE_URL_MISSING);
         return false;
     };
     let chrome = doctor::chrome_binary(env);
@@ -357,7 +370,10 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
     let server = Server {
         port,
         env: vec![
+            // The test harness credential owns the scratch database; this lane checks web
+            // behavior, not role separation (`verify postgres` covers that).
             ("DATABASE_URL".into(), scratch_url.clone()),
+            ("VINK_MIGRATE_DATABASE_URL".into(), scratch_url.clone()),
             ("VINK_PROFILE".into(), "local".into()),
             ("VINK_BIND".into(), format!("127.0.0.1:{port}")),
             ("VINK_PUBLIC_ORIGIN".into(), origin.clone()),

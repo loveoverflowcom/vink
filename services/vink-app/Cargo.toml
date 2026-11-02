@@ -10,6 +10,7 @@ default-run = "vink-app"
 
 [dependencies]
 vink-web = { path = "../../apps/vink-web", features = ["ssr"] }
+vink-store-postgres = { path = "../../packages/store-postgres" }
 leptos = { workspace = true, features = ["ssr"] }
 leptos_meta = { workspace = true, features = ["ssr"] }
 leptos_axum.workspace = true

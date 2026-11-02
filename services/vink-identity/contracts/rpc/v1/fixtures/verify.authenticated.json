@@ -1,0 +1,8 @@
+{
+  "outcome": "authenticated",
+  "subject": {
+    "authority": "test-fixture",
+    "id": "fixture-subject-0001"
+  },
+  "authenticated_at": "2026-11-02T00:00:00Z"
+}

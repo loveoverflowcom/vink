@@ -39,26 +39,47 @@ pub fn run(env: &Env) -> ExitCode {
             Err("not found; `cp .env.example .env` for local defaults".into())
         },
     );
-    match env.get("DATABASE_URL") {
-        None => line(
-            true,
-            "DATABASE_URL",
-            Err("not set; start infra/dev/compose.yaml and copy .env.example to .env".into()),
-        ),
-        Some(url) => {
-            line(true, "DATABASE_URL", describe_database(&url));
-            line(
+    // Runtime and migration credentials are both needed by `cargo xtask dev`.
+    for (key, purpose) in [
+        ("DATABASE_URL", "runtime role"),
+        ("VINK_MIGRATE_DATABASE_URL", "migration role"),
+    ] {
+        match env.get(key) {
+            None => line(
                 true,
-                "PostgreSQL reachable",
-                probe_database(&url).map(|()| "SELECT 1 ok".into()),
-            );
+                key,
+                Err(format!(
+                    "not set ({purpose}); start and provision services/postgres, then copy .env.example to .env"
+                )),
+            ),
+            Some(url) => {
+                line(true, key, describe_database(&url));
+                line(
+                    true,
+                    &format!("PostgreSQL reachable as the {purpose}"),
+                    probe_database(&url).map(|()| "SELECT 1 ok".into()),
+                );
+            }
         }
     }
     line(
         false,
+        crate::TEST_DATABASE_URL,
+        env.get(crate::TEST_DATABASE_URL)
+            .ok_or_else(|| "not set; needed by `verify postgres` and `verify web`".to_string())
+            .and_then(|url| describe_database(&url)),
+    );
+    line(
+        false,
+        "psql 15+ (services/postgres/provision.sh, verify postgres)",
+        output("psql", &["--version"], Path::new("."))
+            .ok_or_else(|| "not found; install a PostgreSQL client (e.g. libpq)".to_string()),
+    );
+    line(
+        false,
         "container runtime (local PostgreSQL)",
         first_available(&["podman", "docker"], "--version").ok_or_else(|| {
-            "neither podman nor docker found; any PostgreSQL 17 works via DATABASE_URL".into()
+            "neither podman nor docker found; any provisioned PostgreSQL 17 works".into()
         }),
     );
     line(
@@ -175,7 +196,7 @@ pub fn probe_database(url: &str) -> Result<(), String> {
         match tokio::time::timeout(Duration::from_secs(5), connect).await {
             Ok(Ok(())) => Ok(()),
             Ok(Err(error)) => Err(format!(
-                "cannot connect ({}); is PostgreSQL running? `podman compose -f infra/dev/compose.yaml up -d`",
+                "cannot connect ({}); is PostgreSQL running and provisioned? see services/postgres/README.md",
                 redact(&error.to_string())
             )),
             Err(_) => Err("connection timed out after 5s".into()),
