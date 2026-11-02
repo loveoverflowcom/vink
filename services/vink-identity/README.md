@@ -77,8 +77,10 @@ curl --unix-socket target/identity/identity.sock http://identity/health/ready
 
 `serve` không tự migrate: thiếu migration là readiness `pending_migrations`; lịch sử lạ (ví dụ trỏ
 nhầm database App) là `diverged`. Readiness còn đòi role đang kết nối không có quyền DDL/superuser
-(`checks.role = restricted`): chạy `serve` bằng credential migrator hay operator là `503 privileged`. `cargo xtask dev` chưa khởi chạy Identity; tích hợp App ↔ Identity
-thuộc commit 3.
+(`checks.role = restricted`): chạy `serve` bằng credential migrator hay operator là `503 privileged`. Với `.env` từ `.env.example`, `cargo xtask db migrate` và `cargo xtask dev` migrate và chạy
+Identity (xem development guide). App là consumer duy nhất: nó gửi credential được trình qua
+client riêng ([services/vink-app/src/identity](../vink-app/src/identity/client.rs)) và kiểm uid
+của server.
 
 ## Kiểm chứng
 
@@ -86,5 +88,6 @@ thuộc commit 3.
 redaction) và socket (quyền thư mục, socket cũ/đang phục vụ/file thường, không gỡ socket của
 instance sau). `verify postgres` chạy `tests/postgres.rs` và kiểm binary thật trên socket thật với
 role đã provision: cấu hình sai, migrate hai lần, sai database/schema, role migrator bị từ chối,
-mất kết nối, header gửi dở, SIGTERM/restart, socket cũ, log không lộ credential. Bằng chứng:
+mất kết nối, header gửi dở, SIGTERM/restart, socket cũ, log không lộ credential; và App thật gọi
+Identity thật (dừng/khởi động lại độc lập, đọc công khai không phụ thuộc). Bằng chứng:
 [identity-postgres-verification](../../docs/development/identity-postgres-verification.md).

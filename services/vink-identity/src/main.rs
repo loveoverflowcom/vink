@@ -105,8 +105,7 @@ async fn serve(config: ServeConfig) -> Result<(), Failure> {
         "vink-identity listening"
     );
     let state = IdentityState::new(pool.clone(), Authority::NotConfigured, config.caller_uid);
-    server::serve(listener, router(state), runtime::shutdown_signal()).await;
-    bound.remove();
+    server::serve(listener, bound, router(state), runtime::shutdown_signal()).await;
     pool.close().await;
     tracing::info!("vink-identity stopped");
     Ok(())

@@ -108,6 +108,8 @@ pub fn worker_lifecycle(root: &Path, url: &str, schema: &str) -> Result<(), Stri
         .env("DATABASE_URL", url)
         .env("VINK_PROFILE", "local")
         .env("VINK_LOG_FORMAT", "text")
+        // Lifecycle assertions consume INFO logs regardless of the invoking shell's filter.
+        .env("RUST_LOG", "info,sqlx=warn")
         .env_remove("VINK_DEV_PRINCIPAL")
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
@@ -228,7 +230,39 @@ fn drop_scratch_database(url: &str) {
     }
 }
 
-fn free_port() -> Result<u16, String> {
+/// Everything served under `/pkg/` is public. Server settings and throwaway passwords must not
+/// appear in it.
+fn bundle_secrets(dir: &Path) -> Result<(), String> {
+    const NEEDLES: [&str; 6] = [
+        "postgres://",
+        "postgresql://",
+        "DATABASE_URL",
+        "VINK_IDENTITY",
+        "_PASSWORD",
+        "-local-only",
+    ];
+    let mut stack = vec![dir.to_path_buf()];
+    let mut files = 0;
+    while let Some(path) = stack.pop() {
+        for entry in std::fs::read_dir(&path).map_err(|e| format!("{}: {e}", path.display()))? {
+            let path = entry.map_err(|e| e.to_string())?.path();
+            if path.is_dir() {
+                stack.push(path);
+                continue;
+            }
+            files += 1;
+            let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+            let text = String::from_utf8_lossy(&bytes);
+            if let Some(needle) = NEEDLES.iter().find(|n| text.contains(**n)) {
+                return Err(format!("{} contains `{needle}`", path.display()));
+            }
+        }
+    }
+    println!("==> {files} bundle file(s) scanned");
+    Ok(())
+}
+
+pub fn free_port() -> Result<u16, String> {
     TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .map(|a| a.port())
@@ -343,6 +377,12 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
     }
     let chrome = chrome.unwrap_or_default();
     if !report.step("build server + browser bundle", || crate::build(env, false)) {
+        return false;
+    }
+    if !report.step(
+        "browser bundle carries no database URL, credential setting or local password",
+        || bundle_secrets(&root.join("target/site/pkg")),
+    ) {
         return false;
     }
 

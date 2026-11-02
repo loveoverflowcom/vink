@@ -36,8 +36,20 @@ pub struct Config {
     pub site_root: PathBuf,
     /// Local-profile identity fixture; see [`crate::identity`].
     pub dev_principal: Option<PrincipalId>,
+    /// The separate Identity process, when configured; see [`crate::identity::IdentityService`].
+    pub identity: Option<IdentitySettings>,
     pub log_format: LogFormat,
 }
+
+/// Where the Identity process listens and which OS user must be serving that socket.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IdentitySettings {
+    pub socket: PathBuf,
+    pub server_uid: u32,
+}
+
+/// `sun_path` is 104 bytes on macOS and 108 on Linux, including the terminator.
+const MAX_SOCKET_PATH: usize = 100;
 
 impl fmt::Debug for Config {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -48,6 +60,7 @@ impl fmt::Debug for Config {
             .field("public_origin", &self.public_origin)
             .field("site_root", &self.site_root)
             .field("dev_principal", &self.dev_principal)
+            .field("identity", &self.identity)
             .field("log_format", &self.log_format)
             .finish()
     }
@@ -152,6 +165,42 @@ impl Config {
             }
         };
 
+        let identity = match (
+            value("VINK_IDENTITY_SOCKET"),
+            value("VINK_IDENTITY_SERVER_UID"),
+        ) {
+            (None, None) => None,
+            (Some(_), None) => {
+                problems.push(
+                    "VINK_IDENTITY_SERVER_UID: required with VINK_IDENTITY_SOCKET (user id that must serve the socket)"
+                        .into(),
+                );
+                None
+            }
+            (None, Some(_)) => {
+                problems.push("VINK_IDENTITY_SERVER_UID: set without VINK_IDENTITY_SOCKET".into());
+                None
+            }
+            (Some(socket), Some(uid)) => {
+                if socket.len() > MAX_SOCKET_PATH {
+                    problems.push(format!(
+                        "VINK_IDENTITY_SOCKET: longer than {MAX_SOCKET_PATH} bytes, the Unix socket path limit"
+                    ));
+                }
+                match uid.trim().parse::<u32>() {
+                    Ok(server_uid) => Some(IdentitySettings {
+                        socket: PathBuf::from(socket),
+                        server_uid,
+                    }),
+                    Err(_) => {
+                        problems
+                            .push("VINK_IDENTITY_SERVER_UID: expected a numeric user id".into());
+                        None
+                    }
+                }
+            }
+        };
+
         let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
 
         if problems.is_empty() {
@@ -162,6 +211,7 @@ impl Config {
                 public_origin,
                 site_root,
                 dev_principal,
+                identity,
                 log_format,
             })
         } else {
@@ -317,6 +367,40 @@ mod tests {
         assert_eq!(config.public_origin, "http://127.0.0.1:3000");
         assert_eq!(config.dev_principal, PrincipalId::parse(DEV));
         assert!(!format!("{config:?}").contains("secret"));
+    }
+
+    #[test]
+    fn identity_socket_needs_the_server_uid() {
+        let base = [("DATABASE_URL", URL), ("VINK_PROFILE", "local")];
+        let with = |extra: &[(&str, &str)]| {
+            let pairs: Vec<(&str, &str)> = base.iter().chain(extra).copied().collect();
+            load(&pairs)
+        };
+        assert_eq!(with(&[]).unwrap().identity, None);
+        let error = with(&[("VINK_IDENTITY_SOCKET", "/run/vink/identity.sock")]).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("VINK_IDENTITY_SERVER_UID: required"),
+            "{error}"
+        );
+        let error = with(&[("VINK_IDENTITY_SERVER_UID", "1000")]).unwrap_err();
+        assert!(
+            error.to_string().contains("without VINK_IDENTITY_SOCKET"),
+            "{error}"
+        );
+        let config = with(&[
+            ("VINK_IDENTITY_SOCKET", "/run/vink/identity.sock"),
+            ("VINK_IDENTITY_SERVER_UID", "1000"),
+        ])
+        .unwrap();
+        assert_eq!(
+            config.identity,
+            Some(IdentitySettings {
+                socket: PathBuf::from("/run/vink/identity.sock"),
+                server_uid: 1000,
+            })
+        );
     }
 
     #[test]

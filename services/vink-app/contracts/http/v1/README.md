@@ -21,7 +21,15 @@ do not.
   `VINK_PUBLIC_ORIGIN`; otherwise `403 forbidden` before any use case runs.
 - Draft endpoints act for the principal resolved **by the server**. No authority is
   configured in production yet (D-05), so they answer `401` there. Nothing in the request
-  body or a header selects the actor. Draft responses carry `Cache-Control: no-store`.
+  body or a header such as `x-user-id` selects the actor. Draft responses carry
+  `Cache-Control: no-store`.
+- **Provisional credential carrier:** when the App is configured with the Identity process
+  (`VINK_IDENTITY_SOCKET`), a request may present `Authorization: Bearer <credential>`; the App
+  asks Identity (private contract `vink.identity.v1`) to verify it. Without an authority, a
+  rejection or an authenticated subject that has no principal binding (none exists yet), the
+  answer is `401`. Only when a credential is presented and Identity cannot decide (down, timeout,
+  malformed answer, untrusted server) is it `503 dependency_unavailable`. No credential is always
+  `401`, never `503`. D-05 may replace this carrier with a session model.
 
 ## Endpoints
 
@@ -62,5 +70,9 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 `200` only when PostgreSQL is reachable and its migration history equals the embedded
 migrations, otherwise `503` with `checks.database` (`ok`/`unavailable`) and `checks.schema`
 (`current`/`pending_migrations`/`diverged`/`unknown`; `diverged` means an unfinished, edited or
-unknown applied migration). It also reports `integrations.discourse` and
-`integrations.ai_moderation` as `not_implemented` and `integrations.jobs` as `none`.
+unknown applied migration). `checks.role` is `restricted`, `privileged` (the database role can
+change schema or roles) or `unknown`; in the production profile `privileged` is `503`. It also
+reports `integrations.discourse` and `integrations.ai_moderation` as `not_implemented`,
+`integrations.jobs` as `none` and `integrations.identity` as `not_configured`, `no_authority`,
+`available` or `unavailable` — informational: public reading does not depend on Identity, so
+Identity never makes the App not ready.

@@ -2,9 +2,9 @@
 //!
 //! Each connection is HTTP/1.1 through hyper with a header-read timeout, so a peer that stalls
 //! before finishing its request head is closed instead of holding the server open. The peer's OS
-//! user is attached to every request as [`ConnectInfo<Peer>`]. Shutdown stops accepting, lets open
-//! requests finish for a bounded grace period, then closes what is left. Only the socket file this
-//! process bound is ever removed.
+//! user is attached to every request as [`ConnectInfo<Peer>`]. Shutdown first removes the socket
+//! file while the listener still holds it (so its inode cannot have been reused by a successor),
+//! then stops accepting, lets open requests finish for a bounded grace period and closes the rest.
 
 use std::io;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
@@ -45,7 +45,8 @@ pub struct BoundSocket {
 
 impl BoundSocket {
     /// Removes the socket only if the path still holds the file this process bound; a successor
-    /// that replaced it keeps its socket.
+    /// that replaced it keeps its socket. Call it while the listener is open: once it is closed the
+    /// filesystem may give a successor's socket the same inode.
     pub fn remove(&self) {
         match std::fs::symlink_metadata(&self.path) {
             Ok(meta)
@@ -132,8 +133,14 @@ pub fn bind(path: &Path) -> Result<(UnixListener, BoundSocket), SocketError> {
     ))
 }
 
-/// Serves `router` until `shutdown` resolves, then drains for at most [`SHUTDOWN_GRACE`].
-pub async fn serve(listener: UnixListener, router: Router, shutdown: impl Future<Output = ()>) {
+/// Serves `router` until `shutdown` resolves, then removes the socket, stops accepting and drains
+/// open connections for at most [`SHUTDOWN_GRACE`].
+pub async fn serve(
+    listener: UnixListener,
+    bound: BoundSocket,
+    router: Router,
+    shutdown: impl Future<Output = ()>,
+) {
     let (closing, _) = watch::channel(false);
     let mut connections = JoinSet::new();
     let mut shutdown = std::pin::pin!(shutdown);
@@ -152,6 +159,7 @@ pub async fn serve(listener: UnixListener, router: Router, shutdown: impl Future
             Some(_) = connections.join_next(), if !connections.is_empty() => {}
         }
     }
+    bound.remove();
     drop(listener);
     let _ = closing.send(true);
     let drained = tokio::time::timeout(SHUTDOWN_GRACE, async {
@@ -254,9 +262,9 @@ mod tests {
     async fn removal_spares_a_successor_socket() {
         let dir = private_dir("successor", 0o700);
         let path = dir.join("s.sock");
-        let (first, first_bound) = bind(&path).unwrap();
-        drop(first);
-        // A successor replaces the stale file and binds its own socket at the same path.
+        let (_first, first_bound) = bind(&path).unwrap();
+        // While the first listener is still open, something else replaces the path.
+        std::fs::remove_file(&path).unwrap();
         let (_second, second_bound) = bind(&path).unwrap();
         first_bound.remove();
         assert!(

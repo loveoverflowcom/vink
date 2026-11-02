@@ -158,3 +158,87 @@ code production (peer chỉ đến từ accept loop).
 user). App chưa kiểm uid server (commit 3). Không có authority thật, mapping subject → principal,
 chế độ mạng/mTLS, hay đăng nhập: production authentication NOT_IMPLEMENTED; S-03, ACC-01/02, D-05 không
 đổi trạng thái. `verify web` không đổi phạm vi ở commit này (lỗi có từ trước, xem trên).
+
+## Commit 3 — Tích hợp, kiểm chứng và review toàn PR
+
+**Predecessors:** `BASE_SHA=5afb00b29c85965dc115718e6ada5a4dcd95399b` = merge-base với `develop`;
+HEAD trước commit 3 = `255ce77d56fdc175b4c35e0916a2bfaf27708e8b` (= remote); commit 1 `6357922` và
+commit 2 `255ce77` nằm trong ancestry; cây sạch khi bắt đầu. CI của `255ce77`: `postgres` PASS,
+`quick` FAIL — `server::tests::removal_spares_a_successor_socket` trên Linux. Nguyên nhân: sau khi
+listener đóng, Linux tái dùng ngay inode của file socket, nên so device/inode (bản sửa P3-2 của
+commit 2) không phân biệt được socket của instance sau. Sửa trong commit này: socket được gỡ **lúc
+bắt đầu shutdown, khi listener còn giữ inode**, rồi mới đóng listener và drain; test dựng đúng kịch
+bản (listener đầu còn mở khi đường dẫn bị thay). Sau sửa, `verify postgres` chạy lại trên cluster
+tạm mới: 24/24 PASS (contract, quyền DB, migrations, đường từ chối). `web` FAIL trên CI của PR này
+và của `develop` là lỗi script smoke có từ trước; phiên riêng đã sửa ở PR #27 (chỉ đổi
+`browser-smoke.mjs` và feature map), CI `web` của #27 PASS.
+
+**Cây được kiểm:** `255ce77` + diff commit 3 (chưa commit lúc chạy). Môi trường như trên (macOS 26.5.2
+arm64, Rust 1.99.1, PostgreSQL 17.11 Homebrew tạm ở `127.0.0.1:55433`, `pg_dump`/`pg_restore` 17.11,
+Chrome 156, Node 26.12.0).
+
+| Lệnh / kịch bản | Kết quả | Phạm vi |
+| --- | --- | --- |
+| `cargo xtask doctor` (biến môi trường trỏ cluster tạm đã provision bằng tên mặc định) | exit 0; PASS tất cả mục bắt buộc kể cả hai URL Identity; WARN `.env` không có | Cấu hình, kết nối từng role |
+| `cargo xtask db migrate` hai lần | Lần 1: App `[20261030000000]`, Identity `[20261102000000]`; lần 2: `[]` cả hai | Migrate theo owner bằng credential migrator |
+| `cargo xtask dev` trong process group riêng, rồi SIGINT cả nhóm | Identity ready trên socket (200) trước App; App ready `role=restricted`, `identity=no_authority`; Bàn viết qua local fixture 200; SIGINT: cả hai log `stopped`, socket bị gỡ, không còn tiến trình `serve` | Dev runner quản lý vòng đời/readiness |
+| `cargo xtask verify quick` | exit 0, 5/5 PASS; 30 unit test App (gồm 3 test App ↔ Identity giả trên socket thật, 2 test fixture consumer), 15 Identity | Thuần + repository (lint bí mật mới) |
+| Ca âm: resolver gộp “Identity không quyết được” thành ẩn danh | 2 test App FAIL; đã hoàn tác | Độ nhạy chống fallback |
+| Ca âm: file probe được track chứa URL PostgreSQL có password trông như thật | repository checks FAIL đúng file; probe đã gỡ | Độ nhạy lint bí mật |
+| `VINK_TEST_DATABASE_URL=… cargo xtask verify postgres` | exit 0, 27/27 PASS | Thêm: App + Identity thật cùng chạy, App từ chối role migrator và server Identity lạ, backup/restore từng owner |
+| `VINK_TEST_DATABASE_URL=… VINK_CHROME=… cargo xtask verify web` với **riêng** `browser-smoke.mjs` của PR #27 (`1a02c0b`) áp tạm, đã hoàn tác sau khi chạy | exit 0, 7/7 PASS, 330 assertion `ok`; bundle 27 file không chứa URL database, tên biến credential hay password local | Chrome headless, server thật; hồi quy save/reload/CAS, guard rời trang, CodeMirror/preview/export, SSR privacy, tìm kiếm/ngữ cảnh #18 |
+
+Bước App + Identity (hai binary thật, profile production, role đã provision): không credential
+`401`; `Authorization: Bearer` kèm `x-user-id`/`x-vink-principal` giả `401` (chưa authority);
+`/api/v1/works`, `/` và trang đọc `200`, HTML không chứa password, credential gửi vào, `postgres://`
+hay `_DATABASE_URL`; dừng Identity → readiness App vẫn `200` với `identity=unavailable`, không
+credential vẫn `401`, có credential `503 dependency_unavailable`, đọc công khai vẫn `200`; Identity
+khởi động lại → `401` mà không restart App; App restart riêng → ready. App bằng credential migrator
+(production) → `503 role=privileged`; App tin uid server khác → có credential `503`, readiness
+`identity=unavailable`.
+
+Backup/restore: `pg_dump --format=custom` database App tạm (đã nhận quyền từ bố cục cũ, có dữ liệu
+NFD/NFC, revision, con trỏ publication) và database Identity tạm; `pg_restore --exit-on-error` vào hai
+database mới khác tên; snapshot dữ liệu + lịch sử bằng nhau, nguồn không đổi, bảng App restore vẫn
+thuộc migrator.
+
+**Sai sót quy trình đã sửa:** trong lần kiểm Compose ở commit 1, script ghi dữ liệu bằng binary base
+để sót một `vink-app serve` (cổng `127.0.0.1:3999`, binary trong worktree tạm đã xóa) chạy từ 10:50.
+Phát hiện khi kiểm dev runner, đã SIGTERM. Không ảnh hưởng dữ liệu hay kết quả kiểm khác (cổng và
+database khác).
+
+### Review toàn PR và kiểm local tiếp ngày 02/11/2026
+
+Phạm vi: merge-base `5afb00b` → hai commit `6357922`, `255ce77` + toàn bộ cây commit 3 đang dở;
+đối chiếu source, callers, contract provider/consumer, provisioning, runbook và assertions. Đây
+là review tiếp bởi Codex, không phải approval của người. Không chọn authority, không thêm binding
+subject → principal và không đổi luật publication. Không có model Quint trong phạm vi này.
+
+| Finding | Bằng chứng trước sửa | Sửa và kiểm lại |
+| --- | --- | --- |
+| P2: lệnh thử chuyển quyền trên bản sao thực ra chọn database gốc | Giữ nguyên lệnh trong runbook, dùng `PSQL` ghi lại argv: dù truyền `VINK_APP_DATABASE=vink_copy`, script vẫn nhận `db=vink`, vì `--env-file` source lại tên mặc định | Nạp file trước trong subshell rồi chọn database/role thử cho **cả hai owner**. Chạy đúng code block mới với `PSQL` ghi argv: chỉ `db=vink_copy` và `db=vink_identity_copy`; không chạm database thật |
+| P3, có từ trước PR: test worker phụ thuộc bộ lọc log của shell | Lần chạy `verify postgres` đầu có `RUST_LOG=warn` từ môi trường Codex: mọi bước trước worker PASS, nhưng không thấy `vink-worker ready` trong 20 s. Chạy riêng worker với cùng filter: tiến trình vẫn sống, SIGTERM thoát 0, không có log INFO | Test lifecycle đặt `RUST_LOG=info,sqlx=warn` cho riêng process worker, nên assertion không phụ thuộc filter của shell; giữ nguyên logging runtime |
+
+Đồng thời sửa các mô tả cũ: consumer của `vink-store-postgres` gồm cả Identity; feature map có
+kiểm role của App; bảng kiểm commit 3 gọi đúng ba lane. Không tìm thấy finding P0/P1 hoặc lỗi cấp
+principal trái phép. Kiểm thêm client bị hủy giữa body HTTP: probe với socket thật trả body dở
+cho thấy timeout đóng socket; không giữ probe trong source vì không xác nhận được lỗi.
+
+Lần kiểm tiếp dùng macOS arm64, Rust 1.99.1, PostgreSQL/psql/pg_dump/pg_restore 17.11, Node
+26.12.0 và Chrome 156.0.8078.79. Cluster riêng chỉ nghe `127.0.0.1:60145`, TCP dùng SCRAM; không
+dùng database local đang phục vụ; đã dừng và xóa cluster/credential tạm sau khi kiểm. Kết quả và
+giới hạn của lần này được ghi theo cây commit 3;
+script smoke của #27 chỉ được áp tạm khi chạy web, sau đó khôi phục đúng byte. Không merge hay
+cherry-pick #27 vào nhánh này và không chờ CI.
+
+| Lệnh / kiểm tra trên cây cuối | Kết quả | Phạm vi / giới hạn |
+| --- | --- | --- |
+| `cargo xtask verify quick` | exit 0; 5/5 PASS, 86 unit/contract test | fmt, clippy SSR/WASM, repository links/metadata/boundaries; không database |
+| `VINK_TEST_DATABASE_URL=… VINK_PG_BIN=… cargo xtask verify postgres` với shell vẫn có `RUST_LOG=warn` | exit 0; 27/27 PASS, 22 test PostgreSQL | Role thật, hai binary thật, Unix socket, phục hồi/restart, backup/restore; worker vẫn báo `database="current"` và SIGTERM thoát 0 |
+| `VINK_TEST_DATABASE_URL=… VINK_CHROME=… cargo xtask verify web`, riêng smoke từ `1a02c0b` áp tạm | exit 0; 7/7 PASS, 330 assertion `ok`; 27 bundle file được quét | Chrome headless, SSR/hydration, CodeMirror/save/CAS/export và restart. Smoke đã khôi phục đúng byte; thay đổi sau lần này chỉ là test worker và tài liệu |
+| `git diff --check`; đối chiếu smoke với `HEAD`; kiểm argv của đúng code block runbook | PASS | Không giữ thay đổi của #27; ví dụ runbook chọn đúng hai database thử |
+
+Không còn finding P0–P2 chưa xử lý trong phạm vi review. Không chạy lại Compose/container trong
+lần tiếp này; bằng chứng ở các mục trước vẫn là lần chạy riêng. Không chạy CI hay kiểm lại trên
+Linux; production authentication vẫn NOT_IMPLEMENTED. Lane web vẫn dùng test harness trên
+database tạm; phân quyền runtime/migrator được kiểm bằng lane postgres.

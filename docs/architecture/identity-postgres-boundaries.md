@@ -95,7 +95,15 @@ provisioning).
    owner nên không có transaction nguyên tử giữa “authority xác nhận” và “App tạo binding”; kết quả
    chưa rõ được giải bằng đọc lại binding, không bằng tạo mới. Hiện chưa có bảng nào vì chưa có
    luồng tiêu thụ.
-9. **Chưa quyết định:** auth authority và authority cho suspension (D-05/S-03); có tách instance
+9. **Tích hợp App (commit 3):** resolver phía server trả về một trong ba kết quả: principal,
+   ẩn danh (`401`), hoặc không xác định (`503 dependency_unavailable`). App chỉ hỏi Identity khi
+   request trình `Authorization: Bearer` — **carrier tạm thời**, D-05 có thể thay bằng mô hình
+   session. Không credential luôn là `401`, kể cả khi Identity dừng. Không authority, bị từ chối
+   hay subject chưa có binding cũng là `401`; Identity dừng, quá hạn, trả lời ngoài contract hay
+   socket do user khác phục vụ là `503`. Không bao giờ fallback sang principal mẫu. Đọc công
+   khai/SSR không gọi Identity; readiness App báo Identity nhưng không phụ thuộc nó. Local fixture
+   chỉ còn ở profile local + loopback và vẫn thắng khi được bật.
+10. **Chưa quyết định:** auth authority và authority cho suspension (D-05/S-03); có tách instance
    PostgreSQL cho Identity ở production hay không; cách áp dụng trên PostgreSQL managed không có
    superuser; giao thức mạng cho Identity nếu App và Identity khác host.
 
@@ -105,10 +113,24 @@ provisioning).
 | --- | --- | --- |
 | 1 `refactor(postgres)` | `services/postgres` (compose, provisioning, runbook), `vink-store-postgres`, App dùng credential runtime/migrator riêng | `verify quick`, `verify postgres` (provisioning fresh + DB cũ, chạy lại, cô lập role), Compose thật |
 | 2 `refactor(identity)` | `services/vink-identity` có binary, config, migrations, contract riêng; không auth giả (production auth NOT_IMPLEMENTED) | Executable thật trên socket thật với role đã provision, contract âm, review độc lập |
-| 3 `test(architecture)` | App tiêu thụ contract qua adapter riêng; runbook backup/restore/rollback; review toàn PR | Đủ bốn lane, restore thử, adversarial review |
+| 3 `test(architecture)` | App tiêu thụ contract qua client riêng ở chế độ unavailable; `dev`/`db migrate`/`doctor` biết Identity; runbook backup/restore/rollback; kiểm bí mật; review toàn PR | `doctor`, `verify quick|postgres|web`, restore thử, review đối kháng |
 
 Bằng chứng từng commit nằm ở
 [identity-postgres-verification](../development/identity-postgres-verification.md).
+
+## Trạng thái
+
+| Phần | Requested | Proposed | Implemented | Runtime-verified |
+| --- | --- | --- | --- | --- |
+| Tách PostgreSQL theo owner, role runtime/migrator/operator | Có | — | Có | `verify postgres` (cluster tạm), Compose thật |
+| Nhận quyền DB cũ, dữ liệu/lịch sử không đổi | Có | — | Có | `verify postgres` + Compose với binary `5afb00b` |
+| `vink-store-postgres` | Có | — | Có | `verify quick`/`postgres` |
+| Identity process, socket, caller = peer uid | Có | Cơ chế caller | Có | `verify postgres` (binary thật) |
+| Contract `vink.identity.v1` | Có | Tên path/field (draft) | Có | Unit + binary thật |
+| App ↔ Identity, carrier Bearer | Có | Carrier tạm thời | Có (chế độ unavailable) | `verify postgres` (hai binary thật), unit với Identity giả |
+| Mapping subject → principal | — | Thiết kế ở mục 8 | Không | — |
+| Auth authority, đăng nhập, session | — | D-05/S-03 mở | Không (NOT_IMPLEMENTED) | — |
+| Backup/restore từng owner | Có | — | Runbook + bước lane | `verify postgres` (cùng cluster) |
 
 ## Giới hạn đã biết
 
