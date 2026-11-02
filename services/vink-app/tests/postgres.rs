@@ -1,6 +1,6 @@
 //! PostgreSQL integration tests. Each test gets a fresh database with all migrations applied
-//! (`#[sqlx::test]`), so `DATABASE_URL` must point at a server where the role may create
-//! databases. Run with `cargo xtask verify postgres`.
+//! (`#[sqlx::test]`), so `DATABASE_URL` must be a test harness credential that may create
+//! databases. Run with `cargo xtask verify postgres`, which passes `VINK_TEST_DATABASE_URL`.
 
 use std::net::SocketAddr;
 use std::sync::Arc;

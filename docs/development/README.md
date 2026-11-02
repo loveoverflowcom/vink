@@ -45,8 +45,15 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   Không có profile API hay danh tính được suy ra từ fixture; xem [spec shell](../design/README.md#shell-thích-ứng-7).
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
-- `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và
-  migrations đã chạy đủ). Discourse và AI moderation được báo `not_implemented`.
+- `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch
+  sử migration trùng migration nhúng; thiếu là `pending_migrations`, checksum lệch/version lạ/dở
+  dang là `diverged`). Discourse và AI moderation được báo `not_implemented`.
+- PostgreSQL có owner tại [services/postgres](../../services/postgres/README.md): một container,
+  database `vink` (App) và `vink_identity` (rỗng tới khi có Identity), mỗi owner một role
+  migrator và một role runtime do `provision.sh` tạo/kiểm. App chạy bằng role runtime (DML, không
+  DDL); `vink-app migrate` chỉ dùng credential migrator. Pool, vòng đời migration và phân loại
+  lỗi kết nối nằm ở [vink-store-postgres](../../packages/store-postgres/README.md). Ranh giới:
+  [identity-postgres-boundaries](../architecture/identity-postgres-boundaries.md).
 
 ## Chuẩn bị môi trường
 
@@ -54,18 +61,28 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 | --- | --- | --- |
 | rustup | mọi lệnh | `rustup toolchain install` trong repo đọc [rust-toolchain.toml](../../rust-toolchain.toml) (1.99.1, rustfmt, clippy, wasm32) |
 | `wasm-bindgen` CLI | build bundle | Phải bằng phiên bản `wasm-bindgen` trong `Cargo.lock` (hiện 0.2.129): `cargo install wasm-bindgen-cli --version 0.2.129 --locked` |
-| PostgreSQL 17 | dev, `verify postgres`, `verify web` | [infra/dev/compose.yaml](../../infra/dev/compose.yaml) chạy bằng Podman hoặc Docker; role cần quyền `CREATEDB` cho test |
+| PostgreSQL 17 | dev, `verify postgres`, `verify web` | [services/postgres](../../services/postgres/README.md) chạy bằng Podman hoặc Docker; `VINK_TEST_DATABASE_URL` là superuser của cluster local/CI để tạo database/role tạm |
+| `psql` 15+ | `services/postgres/provision.sh`, `verify postgres` | Ví dụ `brew install libpq` hoặc gói `postgresql-client` |
 | Node.js 22+ và npm | `build`, `dev`, `verify web` | Cài dependency đã khóa và bundle [runtime editor](../../apps/vink-web/editor/README.md) (cần mạng tới npm registry lần đầu hoặc khi lockfile đổi) |
 | Chrome/Chromium | `verify web` | Script smoke không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` |
 
-Thiết lập lần đầu:
+Thiết lập lần đầu (chi tiết, chuyển từ `infra/dev` và trường hợp `-p`:
+[services/postgres](../../services/postgres/README.md)):
 
 ```bash
-cp .env.example .env
+podman volume create vink-dev_vink-postgres
 ```
 
 ```bash
-podman compose -f infra/dev/compose.yaml up -d
+podman compose -f services/postgres/compose.yaml -f services/postgres/compose.local.yaml up -d
+```
+
+```bash
+services/postgres/provision.sh --env-file services/postgres/provision.env.example
+```
+
+```bash
+cp .env.example .env
 ```
 
 ```bash
@@ -88,14 +105,14 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
-| `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` (ẩn credential), kết nối PostgreSQL; Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
+| `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` và `VINK_MIGRATE_DATABASE_URL` (ẩn credential, thử kết nối); `VINK_TEST_DATABASE_URL`, `psql` và Chrome là cảnh báo | Thiếu điều kiện cho `dev` |
 | `cargo xtask build [--release]` | Build `vink-app`, `vink-worker` và `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/, brand/}`; `npm ci --ignore-scripts` cho runtime editor khi lockfile đổi | Build, wasm-bindgen, npm hoặc type-check/bundle editor lỗi |
-| `cargo xtask db migrate` | Chạy migrations lên `DATABASE_URL` | Không kết nối được hoặc migration lỗi |
+| `cargo xtask db migrate` | Chạy migrations bằng `VINK_MIGRATE_DATABASE_URL` (không đọc `DATABASE_URL`) | Thiếu biến, không kết nối được, thiếu quyền, lịch sử diverged hoặc migration lỗi |
 | `cargo xtask db seed` | Nạp dữ liệu tổng hợp có nhãn `[Mẫu]` (chỉ `VINK_PROFILE=local`, idempotent) | Profile khác `local` hoặc chưa migrate |
 | `cargo xtask dev` | Build, migrate rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi |
 | `cargo xtask verify quick` | `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), unit/contract tests không cần database, kiểm skills/link/ranh giới module, font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
-| `cargo xtask verify postgres` | Test trên PostgreSQL thật, config sai thoát 2, worker start/SIGTERM | Thiếu PostgreSQL hoặc một bước lỗi |
-| `cargo xtask verify web` | Build, database tạm `vink_verify_web`, server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
+| `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
+| `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify all` | `quick`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
 
 Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thiếu dependency là `FAIL`,
@@ -105,13 +122,16 @@ container, không push hay deploy. CI ([.github/workflows/ci.yml](../../.github/
 chỉ chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi đúng ba lane này.
 
 Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed`. Mã thoát: `0` thành công,
-`1` lỗi runtime, `2` cấu hình hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình.
+`1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
+hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
 
 ## Cấu hình
 
 | Biến | Mặc định | Ý nghĩa |
 | --- | --- | --- |
-| `DATABASE_URL` | bắt buộc | URL PostgreSQL; không bao giờ được in ra |
+| `DATABASE_URL` | bắt buộc cho `serve`, `dev-seed`, worker | URL PostgreSQL của role runtime; không bao giờ được in ra |
+| `VINK_MIGRATE_DATABASE_URL` | bắt buộc cho `migrate` | URL của role migrator; `migrate` chỉ đọc biến này, không fallback sang `DATABASE_URL` |
+| `VINK_TEST_DATABASE_URL` | chỉ `xtask verify` | Superuser của cluster local/CI để tạo database/role tạm; binary không đọc, không dùng cho app |
 | `VINK_PROFILE` | `production` | `local` mở seed và identity fixture; mặc định đóng |
 | `VINK_BIND` | `127.0.0.1:3000` | Địa chỉ lắng nghe |
 | `VINK_PUBLIC_ORIGIN` | `http://{VINK_BIND}` khi `local`; bắt buộc ở `production` | Origin cho canonical URL và kiểm `Origin` của PUT/POST |
@@ -145,10 +165,13 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
   assets/brand/           Enso light/dark AVIF/SVG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
+packages/store-postgres/  crate vink-store-postgres: pool, vòng đời migration, trạng thái schema,
+                          phân loại lỗi kết nối; không biết database/bảng nghiệp vụ
+services/postgres/        container PostgreSQL (compose + overlay local), provision.sh, runbook
 services/vink-app/        crate vink-app: composition root, bin vink-app và vink-worker
   src/domain/             luật thuần: document, title, version, revision hash
   src/application/        use case và port (DraftStore, PublicationStore)
-  src/persistence/        adapter PostgreSQL (SQLx), migrator nhúng
+  src/persistence/        adapter PostgreSQL (SQLx), migrator nhúng, wrapper vink-store-postgres
   src/http/               Axum: API v1, health, SSR host, Origin check
   src/identity.rs         seam xác định principal phía server
   src/config.rs           cấu hình chung, kiểm hợp lệ, ẩn secret
@@ -156,15 +179,16 @@ services/vink-app/        crate vink-app: composition root, bin vink-app và vin
   migrations/             migration có phiên bản
   contracts/http/v1/      contract API và fixtures (owner: server)
   tests/postgres.rs       test PostgreSQL thật và HTTP qua router
-xtask/                    command owner cho local và CI
-infra/dev/compose.yaml    PostgreSQL local
+xtask/                    command owner cho local và CI; src/provision.rs kiểm provisioning
+infra/dev/README.md       chỉ dẫn chuyển sang services/postgres
 ```
 
-Chiều phụ thuộc: `http`, `persistence` → `application` → `domain`. `vink-app` phụ thuộc
+Chiều phụ thuộc: `http`, `persistence` → `application` → `domain`; `persistence` →
+`vink-store-postgres`, package không phụ thuộc service/web/framework HTTP. `vink-app` phụ thuộc
 `vink-web` (feature `ssr`) và cung cấp `PublicReads`; SSR gọi application trong tiến trình, không
 vòng HTTP về chính server. `vink-web` không phụ thuộc `vink-app`, SQLx hay secrets; build
 `hydrate` chỉ chứa view, DTO và fetch client. `verify quick` kiểm các import bị cấm trong
-`domain`/`application` và dependency của `vink-web`. Hai feature `ssr` và `hydrate` là hai build
+`domain`/`application`, dependency của `vink-web` và của `packages/*`. Hai feature `ssr` và `hydrate` là hai build
 riêng; không dùng `--all-features`.
 
 ## Bằng chứng theo ranh giới
@@ -172,7 +196,7 @@ riêng; không dùng `--all-features`.
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
-| `postgres` | Migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop | Hành vi trình duyệt, IME thật |
+| `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
 | `web` | Khám phá/reader: public HTML và metadata trước JS, save riêng không đổi publication, 404/503, link thật, list không N+1, states riêng, reflow 320–1440px/root text 100/200% và contrast hai theme; Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 
 Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
@@ -192,6 +216,7 @@ triển khai. Chưa có model Quint; skeleton chưa có race đủ phức tạp 
 | CodeMirror 6 sửa chữ nguồn của nội dung, build bằng npm/esbuild riêng ([#6](https://github.com/loveoverflowcom/vink/issues/6)) | Giữ undo, selection, IME tốt hơn textarea mà không đổi document v1; runtime chỉ tải ở editor | S-01 chọn editor/schema dài hạn (D-04), cần rich text hoặc bundle quá lớn |
 | Guard rời editor: hộp thoại riêng cho điều hướng trong app, `beforeunload` cho reload/đóng tab | Router không hủy được back/forward; guard chặn trước router và đẩy URL trang về | Router có API chặn điều hướng, hoặc shell PR 03 cần lối thoát mới |
 | Origin check cho PUT/POST | Seam CSRF trước khi có cookie session | Chọn mô hình session/CSRF cùng D-05 |
+| Một instance, database và role riêng cho App/Identity; provisioning bằng `psql` ([services/postgres](../../services/postgres/README.md)) | Runtime không DDL, Identity không đọc được từ App; vận hành nhẹ ở quy mô hiện tại | Cần tách instance/failure domain, PostgreSQL managed không có superuser, hoặc chọn auth authority (D-05) |
 | PostgreSQL 17.11, Rust 1.99.1, Leptos 0.8.22, SQLx 0.9.0, Axum 0.8.9 | Bản ổn định đã kiểm tương thích ngày 30/10/2026, khóa trong `Cargo.lock` | Nâng cấp có chủ đích, chạy lại cả ba lane |
 | Font tự host: Be Vietnam Pro 400/600 và Literata variable, WOFF2 subset Latin + tiếng Việt ([assets/fonts](../../apps/vink-web/assets/fonts/README.md)) | Bộ thiết kế Lavender chọn hai family OFL này; 332 KB thay vì 1,37 MB TTF; nguồn, hash và license nằm trong repo | Cần weight/italic/script mới, hoặc chọn chính sách cache/CDN production |
 

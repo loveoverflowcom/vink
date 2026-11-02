@@ -8,7 +8,7 @@ use std::process::ExitCode;
 use std::time::Duration;
 
 use vink_app::config::Config;
-use vink_app::persistence::{SchemaState, lazy_pool, schema_state};
+use vink_app::persistence::{lazy_pool, schema_state};
 use vink_app::runtime;
 
 fn main() -> ExitCode {
@@ -42,8 +42,7 @@ async fn run(config: Config) -> ExitCode {
         }
     };
     let database = match tokio::time::timeout(Duration::from_secs(5), schema_state(&pool)).await {
-        Ok(Ok(SchemaState::Current)) => "current",
-        Ok(Ok(SchemaState::Pending)) => "pending_migrations",
+        Ok(Ok(state)) => state.label(),
         Ok(Err(_)) | Err(_) => "unavailable",
     };
     tracing::info!(

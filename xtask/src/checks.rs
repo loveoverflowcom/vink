@@ -256,6 +256,25 @@ fn boundaries(root: &Path, problems: &mut Vec<String>) {
             }
         }
     }
+    // Shared packages sit below every service: no service, web or HTTP framework dependency.
+    if let Ok(entries) = std::fs::read_dir(root.join("packages")) {
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path().join("Cargo.toml");
+            let manifest = read(&path).unwrap_or_default();
+            for line in manifest.lines().map(str::trim_start) {
+                let forbidden = ["vink-app", "vink-web", "vink-identity", "axum", "leptos"]
+                    .into_iter()
+                    .find(|name| line.starts_with(name))
+                    .or_else(|| line.contains("../../services/").then_some("a service path"));
+                if let Some(name) = forbidden {
+                    problems.push(format!(
+                        "{}: a shared package must not depend on `{name}`",
+                        rel(root, &path)
+                    ));
+                }
+            }
+        }
+    }
     let manifest = read(&root.join("apps/vink-web/Cargo.toml")).unwrap_or_default();
     for forbidden in ["vink-app", "sqlx", "tokio-postgres"] {
         if manifest

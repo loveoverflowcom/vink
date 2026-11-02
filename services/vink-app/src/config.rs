@@ -1,6 +1,8 @@
-//! Process configuration shared by `vink-app` and `vink-worker`, read from the environment.
+//! Process configuration read from the environment. [`Config`] serves `vink-app serve|dev-seed`
+//! and `vink-worker` with the runtime credential; [`MigrateConfig`] serves `vink-app migrate`
+//! with the separate migration credential.
 //!
-//! Validation collects every problem at once and never echoes `DATABASE_URL`.
+//! Validation collects every problem at once and never echoes a database URL.
 
 use std::fmt;
 use std::net::SocketAddr;
@@ -88,17 +90,12 @@ impl Config {
             }
         };
 
-        let database_url = match value("DATABASE_URL") {
-            Some(url) if url.starts_with("postgres://") || url.starts_with("postgresql://") => url,
-            Some(_) => {
-                problems.push("DATABASE_URL: must be a postgres:// or postgresql:// URL".into());
-                String::new()
-            }
-            None => {
-                problems.push("DATABASE_URL: missing (PostgreSQL connection URL)".into());
-                String::new()
-            }
-        };
+        let database_url = database_url(
+            "DATABASE_URL",
+            value("DATABASE_URL"),
+            "PostgreSQL URL of the runtime role",
+            &mut problems,
+        );
 
         let bind = match value("VINK_BIND")
             .unwrap_or_else(|| "127.0.0.1:3000".into())
@@ -155,16 +152,7 @@ impl Config {
             }
         };
 
-        let log_format = match value("VINK_LOG_FORMAT").as_deref() {
-            None | Some("text") => LogFormat::Text,
-            Some("json") => LogFormat::Json,
-            Some(other) => {
-                problems.push(format!(
-                    "VINK_LOG_FORMAT: expected `text` or `json`, got `{other}`"
-                ));
-                LogFormat::Text
-            }
-        };
+        let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
 
         if problems.is_empty() {
             Ok(Self {
@@ -178,6 +166,82 @@ impl Config {
             })
         } else {
             Err(ConfigError { problems })
+        }
+    }
+}
+
+/// Configuration of `vink-app migrate`. It reads only `VINK_MIGRATE_DATABASE_URL`, never
+/// `DATABASE_URL`: the runtime role gets no DDL rights by accident, and a missing migration
+/// credential stops the command instead of falling back to another role.
+#[derive(Clone)]
+pub struct MigrateConfig {
+    pub database_url: String,
+    pub log_format: LogFormat,
+}
+
+impl fmt::Debug for MigrateConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MigrateConfig")
+            .field("database_url", &"<redacted>")
+            .field("log_format", &self.log_format)
+            .finish()
+    }
+}
+
+impl MigrateConfig {
+    pub fn from_env() -> Result<Self, ConfigError> {
+        Self::from_lookup(|key| std::env::var(key).ok())
+    }
+
+    pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> Result<Self, ConfigError> {
+        let mut problems = Vec::new();
+        let value = |key: &str| get(key).filter(|v| !v.trim().is_empty());
+        let database_url = database_url(
+            "VINK_MIGRATE_DATABASE_URL",
+            value("VINK_MIGRATE_DATABASE_URL"),
+            "PostgreSQL URL of the migration role, separate from DATABASE_URL",
+            &mut problems,
+        );
+        let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
+        if problems.is_empty() {
+            Ok(Self {
+                database_url,
+                log_format,
+            })
+        } else {
+            Err(ConfigError { problems })
+        }
+    }
+}
+
+fn database_url(
+    key: &str,
+    raw: Option<String>,
+    purpose: &str,
+    problems: &mut Vec<String>,
+) -> String {
+    match raw {
+        Some(url) if url.starts_with("postgres://") || url.starts_with("postgresql://") => url,
+        Some(_) => {
+            problems.push(format!("{key}: must be a postgres:// or postgresql:// URL"));
+            String::new()
+        }
+        None => {
+            problems.push(format!("{key}: missing ({purpose})"));
+            String::new()
+        }
+    }
+}
+
+fn log_format(raw: Option<String>, problems: &mut Vec<String>) -> LogFormat {
+    match raw.as_deref() {
+        None | Some("text") => LogFormat::Text,
+        Some("json") => LogFormat::Json,
+        Some(other) => {
+            problems.push(format!(
+                "VINK_LOG_FORMAT: expected `text` or `json`, got `{other}`"
+            ));
+            LogFormat::Text
         }
     }
 }
@@ -252,6 +316,28 @@ mod tests {
         assert_eq!(config.profile, Profile::Local);
         assert_eq!(config.public_origin, "http://127.0.0.1:3000");
         assert_eq!(config.dev_principal, PrincipalId::parse(DEV));
+        assert!(!format!("{config:?}").contains("secret"));
+    }
+
+    #[test]
+    fn migrate_reads_only_its_own_credential() {
+        let migrate = |pairs: &[(&str, &str)]| {
+            let env: HashMap<String, String> = pairs
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect();
+            MigrateConfig::from_lookup(|key| env.get(key).cloned())
+        };
+        let error = migrate(&[("DATABASE_URL", URL)]).unwrap_err();
+        assert_eq!(error.problems.len(), 1, "{error}");
+        assert!(error.problems[0].starts_with("VINK_MIGRATE_DATABASE_URL: missing"));
+
+        let error =
+            migrate(&[("VINK_MIGRATE_DATABASE_URL", "mysql://m:secret@db/vink")]).unwrap_err();
+        assert!(!error.to_string().contains("secret"), "{error}");
+
+        let config = migrate(&[("VINK_MIGRATE_DATABASE_URL", URL)]).unwrap();
+        assert_eq!(config.database_url, URL);
         assert!(!format!("{config:?}").contains("secret"));
     }
 

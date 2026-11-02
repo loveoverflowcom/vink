@@ -3112,7 +3112,17 @@ dependencies = [
  "tracing-subscriber",
  "unicode-normalization",
  "uuid",
+ "vink-store-postgres",
  "vink-web",
+]
+
+[[package]]
+name = "vink-store-postgres"
+version = "0.1.0"
+dependencies = [
+ "sqlx",
+ "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]

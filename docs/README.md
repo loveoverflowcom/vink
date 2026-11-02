@@ -46,7 +46,7 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Nhóm | Vị trí | Cách sử dụng |
 | --- | --- | --- |
 | Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
-| Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; chưa phải ADR Accepted |
+| Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; chưa phải ADR Accepted |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
 | Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
 | Thiết kế | [Baseline thiết kế](design/README.md) | Palette Lavender, font tự host, thứ tự điều hướng, trạng thái logo và tương phản đã đo; owner giá trị là `vink.css` |
