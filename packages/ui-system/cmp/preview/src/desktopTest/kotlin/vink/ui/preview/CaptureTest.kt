@@ -76,12 +76,21 @@ class CaptureTest {
         for (entry in listOf("field.form", "identity.author-byline", "action.button")) {
             capture("$entry--default--light--narrow--text200", 360, 7000, PreviewConfig(theme = ThemePreference.Light, entry = entry, textScale = 2f))
         }
+        // UIS-03: every non-default state scenario (light, narrow) and three at 200% text.
+        val stateScenarios = VinkCatalog.entries.filter { it.family == "state" }.flatMap { e -> e.scenarios.drop(1).map { e.id to it.id } }
+        for ((entry, scenario) in stateScenarios) {
+            capture("$entry--$scenario--light--narrow", 360, 4200, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario))
+        }
+        val stateText200 = listOf("state.error" to "long-label", "state.playground" to "save-conflict", "state.notice" to "default")
+        for ((entry, scenario) in stateText200) {
+            capture("$entry--$scenario--light--narrow--text200", 360, 12000, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario, textScale = 2f))
+        }
         File(out, "contexts.json").writeText(
             "{\n  \"renderer\": \"Compose Multiplatform 1.9.0 desktop (Skia, offscreen ImageComposeScene)\",\n" +
                 "  \"os\": \"${System.getProperty("os.name")} ${System.getProperty("os.version")} ${System.getProperty("os.arch")}\",\n" +
                 "  \"jvm\": \"${System.getProperty("java.vendor")} ${System.getProperty("java.version")}\",\n" +
                 "  \"captures\": {\n    ${contexts.joinToString(",\n    ")}\n  }\n}\n",
         )
-        assertTrue(contexts.size == 30 + COMPONENT_IDS.size * 4 + 15, "${contexts.size} captures")
+        assertTrue(contexts.size == 30 + COMPONENT_IDS.size * 4 + 15 + stateScenarios.size + stateText200.size, "${contexts.size} captures")
     }
 }

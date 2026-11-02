@@ -1,9 +1,10 @@
 //! Actions: Button, IconButton, Link, FilterChip. One native target each, one dispatch per
 //! activation, none while disabled or pending. Fetching, retrying and permission stay with the
-//! caller; the loading indicator belongs to UIS-03 and plugs into the reserved status slot.
+//! caller; a pending Button shows the UIS-03 `LoadingIndicator` in its reserved status slot.
 
 use leptos::prelude::*;
 
+use crate::feedback::LoadingIndicator;
 use crate::icons::IconName;
 use crate::media::{Icon, IconSize};
 
@@ -150,7 +151,13 @@ pub fn Button(
             >
                 {leading.map(|name| view! { <Icon name=name size=IconSize::Small /> })}
                 <span class="vk-ui-button__label">{children()}</span>
-                <span class="vk-ui-button__status" data-slot="status" aria-hidden="true"></span>
+                <span class="vk-ui-button__status" data-slot="status" aria-hidden="true">
+                    {move || {
+                        state
+                            .with(|s| matches!(s, ActionState::Pending { .. }))
+                            .then(|| view! { <LoadingIndicator /> })
+                    }}
+                </span>
             </button>
             {note_view(state, note_id)}
         </span>
@@ -380,6 +387,7 @@ mod tests {
             "aria-busy=\"true\"",
             ">Lưu<",
             "data-slot=\"status\"",
+            "vk-ui-arc",
         ] {
             assert!(html.contains(needle), "{needle} in {html}");
         }

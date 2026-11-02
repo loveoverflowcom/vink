@@ -616,3 +616,21 @@ body {
   border: 1px dashed var(--vk-outline-variant);
   border-radius: var(--vk-radius-lg);
 }
+
+/* UIS-03 specimens */
+.vkp-works {
+  display: grid;
+  gap: var(--vk-space-2);
+  margin: 0;
+  padding-inline-start: var(--vk-space-6);
+}
+
+.vkp-edge { inline-size: min(100%, 32rem); }
+
+.vkp-playground-bar {
+  display: grid;
+  gap: var(--vk-space-2);
+  padding: var(--vk-space-3);
+  border-radius: var(--vk-radius-md);
+  background-color: var(--vk-surface-container);
+}

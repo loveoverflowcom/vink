@@ -12,6 +12,8 @@ bằng `cargo xtask ui-tokens`.
 | [fixtures/identity.json](fixtures/identity.json) | `avatar-identity-v1`: golden vectors initials/tone (NFC/NFD, Đ/đ, Ỗ/Ữ, emoji, một từ, blank), người `[Mẫu]`, ảnh PNG mẫu và byte AVIF hỏng để kiểm fallback |
 | [icons.json](icons.json) | Registry icon: path nguyên văn từ Material Icons (Apache-2.0, commit pin), SHA-256 file upstream được generator dựng lại và so; [license](icons/LICENSE-material-design-icons.txt) |
 | [components.md](components.md) | Contract component UIS-02: LayoutSpec/anatomy, props, sự kiện, owner, trạng thái không hỗ trợ, quy tắc identity |
+| [states.md](states.md) | Contract UIS-03: trục trạng thái và tổ hợp hợp lệ, `Problem`/intent phục hồi, chính sách vị trí/announce, motion/`LoadingGate`, LayoutSpec, recipe playground |
+| [fixtures/states.json](fixtures/states.json) | Vectors chung: 112 tổ hợp vùng, intent theo `ProblemKind`, 48 placement, 20 notice, 7 ca `LoadingGate`; sinh vào `state_vectors.rs`/`VinkStateVectors.kt` |
 
 ## Lớp token
 

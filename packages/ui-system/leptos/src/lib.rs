@@ -11,6 +11,7 @@
 pub mod action;
 #[rustfmt::skip]
 pub mod catalog;
+pub mod feedback;
 pub mod field;
 #[rustfmt::skip]
 pub mod icons;
@@ -20,6 +21,9 @@ pub mod identity_vectors;
 pub mod layout;
 pub mod media;
 pub mod root;
+pub mod state;
+#[rustfmt::skip]
+pub mod state_vectors;
 pub mod text;
 pub mod theme;
 #[rustfmt::skip]
@@ -29,6 +33,12 @@ pub mod values;
 pub use action::{
     ActionState, Button, ButtonKind, ButtonVariant, FilterChip, IconButton, Link, LinkTarget,
     LinkVariant,
+};
+pub use feedback::{
+    Banner, Clock, ContentRegion, Dialog, EdgeProgress, GateView, InlineNotice, ListEnd,
+    LoadingIndicator, MotionActivity, MotionActivityScope, Skeleton, Snackbar, StatePanel,
+    StatusBadge, document_visibility, motion_active, provide_motion_activity, use_loading_gate,
+    use_snackbar_timeout,
 };
 pub use field::{
     Checkbox, ChoiceOption, FieldMode, FormSummary, RadioGroup, SearchField, Select, Switch,
@@ -44,6 +54,13 @@ pub use media::{
     ImageFrame, ImageState, Person,
 };
 pub use root::{ThemeScope, UiRoot};
+pub use state::{
+    ActionPhase, Announce, Body, Content, DiagnosticCode, DialogKind, DialogRole, Dismiss,
+    DismissPolicy, DismissReason, EmptyKind, IndicatorSize, LoadingGate, LoadingPolicy, NoticeSpec,
+    PanelContent, PanelKind, Phase, Placement, Problem, ProblemKind, Progress, RecoveryAction,
+    RecoveryIntent, RegionCopy, RegionLayout, RegionNotice, RegionState, SkeletonShape,
+    SnackbarMessage, Tone, placement_for,
+};
 pub use text::{Heading, HeadingLevel, Text, TextTag, TextTone, TypeRole};
 pub use theme::{
     Density, MotionPreference, OverrideError, Preferences, ResolvedTheme, RoleOverride,

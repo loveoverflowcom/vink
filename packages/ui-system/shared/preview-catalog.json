@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -30,6 +30,10 @@
     {
       "id": "identity",
       "label": "Danh tính và hình ảnh"
+    },
+    {
+      "id": "state",
+      "label": "Trạng thái và phản hồi"
     },
     {
       "id": "composition",
@@ -622,6 +626,250 @@
         {
           "id": "image-error",
           "label": "Ảnh lỗi và chưa có ảnh"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.loading",
+      "family": "state",
+      "label": "Tải nội dung",
+      "summary": "ContentRegion: skeleton lần đầu, tải chậm, làm mới giữ nội dung.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Skeleton lần đầu"
+        },
+        {
+          "id": "slow",
+          "label": "Tải chậm (gợi ý, không phải lỗi)"
+        },
+        {
+          "id": "refreshing",
+          "label": "Làm mới giữ nội dung"
+        },
+        {
+          "id": "reduced",
+          "label": "Giảm chuyển động"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.progress",
+      "family": "state",
+      "label": "Chỉ báo tiến trình",
+      "summary": "MicroArc, EdgeProgress và nút pending; không giả phần trăm.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Cung, thanh và nút đang chờ"
+        },
+        {
+          "id": "determinate",
+          "label": "Có tiến độ thật"
+        },
+        {
+          "id": "reduced",
+          "label": "Giảm chuyển động"
+        },
+        {
+          "id": "inactive",
+          "label": "Không hoạt động (tab ẩn/nền)"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.empty",
+      "family": "state",
+      "label": "Trống và ít nội dung",
+      "summary": "Lần đầu, không có kết quả, ít nội dung, hết danh sách — không nhầm với lỗi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Lần đầu"
+        },
+        {
+          "id": "no-results",
+          "label": "Không có kết quả"
+        },
+        {
+          "id": "low-content",
+          "label": "Ít nội dung"
+        },
+        {
+          "id": "end-of-list",
+          "label": "Hết danh sách"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.error",
+      "family": "state",
+      "label": "Lỗi vùng và truy cập",
+      "summary": "StatePanel từ Problem an toàn: mạng, một phần, quyền, không tìm thấy, chưa rõ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Lỗi mạng có thử lại"
+        },
+        {
+          "id": "partial",
+          "label": "Lỗi một phần giữ nội dung"
+        },
+        {
+          "id": "forbidden",
+          "label": "Không có quyền"
+        },
+        {
+          "id": "not-found",
+          "label": "Không tìm thấy"
+        },
+        {
+          "id": "auth-required",
+          "label": "Cần đăng nhập (chưa có auth)"
+        },
+        {
+          "id": "rate-limited",
+          "label": "Giới hạn tần suất (chỉ fixture)"
+        },
+        {
+          "id": "unknown",
+          "label": "Chưa rõ nguyên nhân"
+        },
+        {
+          "id": "long-label",
+          "label": "Thông điệp dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.notice",
+      "family": "state",
+      "label": "Thông báo",
+      "summary": "InlineNotice theo tone, Banner, Snackbar và lỗi field kèm tóm tắt.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Inline theo tone"
+        },
+        {
+          "id": "banner",
+          "label": "Banner"
+        },
+        {
+          "id": "snackbar",
+          "label": "Snackbar"
+        },
+        {
+          "id": "field-summary",
+          "label": "Lỗi field và tóm tắt"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.status",
+      "family": "state",
+      "label": "Trạng thái tác vụ",
+      "summary": "StatusBadge cho từng pha: chưa đổi, đã sửa, đang lưu, đã xác nhận, lỗi, đã dừng, chưa rõ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mọi pha"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.dialog",
+      "family": "state",
+      "label": "Hộp thoại và sheet",
+      "summary": "Dialog controlled: focus ban đầu an toàn, Escape theo chính sách, trả focus.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Xác nhận phá hủy"
+        },
+        {
+          "id": "session-expired",
+          "label": "Hết phiên khi đang viết"
+        },
+        {
+          "id": "sheet",
+          "label": "Sheet"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "state.playground",
+      "family": "state",
+      "label": "Sân thử trạng thái",
+      "summary": "Kịch bản có đồng hồ cố định, bước điều khiển và nhật ký: tải, lỗi, hủy, chưa rõ, xung đột, hết phiên.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Tải → sẵn sàng"
+        },
+        {
+          "id": "loading-empty",
+          "label": "Tải → trống"
+        },
+        {
+          "id": "loading-error-retry",
+          "label": "Tải → lỗi → thử lại"
+        },
+        {
+          "id": "refresh-partial",
+          "label": "Làm mới → lỗi một phần"
+        },
+        {
+          "id": "pending-cancel",
+          "label": "Đang chờ → hủy"
+        },
+        {
+          "id": "submit-uncertain",
+          "label": "Gửi → chưa rõ → đối chiếu"
+        },
+        {
+          "id": "save-conflict",
+          "label": "Lưu → xung đột"
+        },
+        {
+          "id": "session-expired",
+          "label": "Hết phiên, giữ chữ"
         }
       ],
       "status": {

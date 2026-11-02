@@ -98,6 +98,11 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
   avatar theo amendment 02/11/2026 (feed 44/40, spotlight 40/38, reader 50/44, hẹp <760px);
   `density.control-height` 48px (gọn 44px = sàn `size.hit-target`); `measure-wide` 70rem và
   `size.grid-min-sm/md` 10/15rem. Component và contract: [UI System](../../packages/ui-system/shared/components.md).
+- UIS-03 (token 0.3.0) thêm `duration.pulse` 1400ms (chu kỳ skeleton), `duration.loading-delay`
+  300ms, `duration.loading-min-visible` 500ms, `duration.slow-notice` 8000ms, `duration.snackbar`
+  6000ms (không phải chuyển động: không đổi khi giảm), `size.indicator` 20px và
+  `size.edge-progress` 4px; thêm icon `warning`, `help`, `lock`, `block`, `refresh`. Khi nào dùng
+  skeleton/arc/thanh, empty/lỗi/banner/snackbar/dialog: [Trạng thái và phản hồi](state-and-feedback.md).
 
 ## Tương phản đo trên app
 

@@ -24,12 +24,14 @@ draft dashboard with loaded-list search/resume and uncertain-create reconciliati
 `shared/tokens.json` generating CSS/Rust/Kotlin with a drift check, the Leptos crate `vink-ui`, a
 Compose Multiplatform `:ui` library and two previews; native Android/iOS targets compile only
 when enabled and no native app exists) with UIS-02 primitives on both renderers (text/layout,
-actions, fields, icons from a licensed registry, avatar/byline with shared identity vectors) that
-no app screen uses yet. [docs/development](docs/development/README.md) owns its layout,
-commands, evidence and limits. No auth authority, login/session, publish/moderation workflow,
-Discourse plugin, AI provider, job or executable behavior model exists; production
-authentication is NOT_IMPLEMENTED. Inspect actual files before
-claiming a capability; update this paragraph when implementation changes those facts.
+actions, fields, icons from a licensed registry, avatar/byline with shared identity vectors) and
+UIS-03 state/feedback/loading components (content region with lawful content × phase combinations,
+state panel, notices, skeleton/arc/edge progress gated by host-injected activity, snackbar,
+dialog, shared state vectors) that no app screen uses yet.
+[docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
+No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider, job
+or executable behavior model exists; production authentication is NOT_IMPLEMENTED. Inspect actual
+files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
 - [Tech stack](docs/architecture/tech-stack.md) recommends Hybrid B: Vink owns literary content

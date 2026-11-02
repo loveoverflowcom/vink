@@ -17,7 +17,7 @@ use vink_ui::{
 #[derive(Clone, Copy)]
 pub struct EventLog(pub Callback<String>);
 
-fn log(message: impl Into<String>) {
+pub(crate) fn log(message: impl Into<String>) {
     if let Some(EventLog(record)) = use_context::<EventLog>() {
         record.run(message.into());
     }
@@ -67,7 +67,7 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
         "identity.author-byline" => identity_byline(scenario == "long-label"),
         "identity.image-frame" => identity_frame(scenario == "image-error"),
         "composition.nested" => composition(scenario == "narrow"),
-        _ => return None,
+        other => return crate::states::specimen(other, scenario),
     })
 }
 

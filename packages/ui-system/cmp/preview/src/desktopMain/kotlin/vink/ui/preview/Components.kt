@@ -139,7 +139,7 @@ fun ComponentSpecimen(id: String, scenario: String): Boolean {
         "identity.author-byline" -> IdentityByline(scenario == "long-label")
         "identity.image-frame" -> IdentityFrame(scenario == "image-error")
         "composition.nested" -> Composition(scenario == "narrow")
-        else -> return false
+        else -> return StateSpecimen(id, scenario)
     }
     return true
 }
