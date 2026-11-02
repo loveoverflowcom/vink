@@ -49,6 +49,9 @@ Logo Enso trong brand rail/mobile là ảnh trang trí của link trang chủ hi
 accessible name/dirty guard. Owner: `shell.rs`, `appearance.rs`, `vink.css`,
 [assets/brand](../../apps/vink-web/assets/brand/README.md) và pipeline `xtask`.
 `brandAssets` kiểm asset thật/MIME/decode 24–512px, manifest và bootstrap trước hydration;
+việc chặn `/pkg/vink.js` sinh đúng hai lỗi `import()` bị từ chối, được kiểm rồi loại khỏi
+điều kiện “không có console error” (mọi lỗi khác vẫn làm smoke thất bại). Smoke giả lập
+`prefers-color-scheme: light` làm hệ thống mặc định, nên không phụ thuộc giao diện máy chạy.
 `assertBrand` kiểm cặp theme/geometry qua các lựa chọn, reload, OS và storage denied trong
 `adaptiveShell`. Ảnh `brand-before-hydration-*` và các ảnh shell dùng cùng fixture local;
 phải mở chúng để nhận xét thị giác. Manifest chưa chứng minh cài app/launcher trên OS thật.
