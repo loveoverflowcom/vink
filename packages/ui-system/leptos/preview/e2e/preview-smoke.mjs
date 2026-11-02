@@ -158,6 +158,7 @@ class Page {
       Space: { key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' },
       Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 },
       ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 },
+      Escape: { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 },
     };
     const k = keys[name];
     await this.send('Input.dispatchKeyEvent', { type: 'keyDown', ...k });
@@ -522,6 +523,259 @@ async function components(page) {
   await page.choose('theme', 'Hệ thống');
 }
 
+// UIS-03: states, feedback and motion. Programmatic input over CDP; the playground's manual clock
+// makes every timing deterministic. Animation checks read the Web Animations API, not pixels.
+async function states(page, cdp) {
+  const text = (selector) => page.eval(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? null`);
+  const exists = (selector) => page.eval(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
+  const log = () => page.log();
+  const running = (selector) => page.eval(`[...document.querySelectorAll(${JSON.stringify(selector)})].flatMap((el) => el.getAnimations()).filter((a) => a.playState === 'running').length`);
+  const press = async (testid) => { await page.click(`[data-testid=${testid}] button`); await page.settle(); };
+  const input = () => page.eval(`document.getElementById('playground-input').value`);
+  const type = async (value) => {
+    await page.eval(`(() => { const i = document.getElementById('playground-input'); i.focus(); i.value = ${JSON.stringify(value)}; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await page.settle();
+  };
+  const layout = () => page.eval(`document.querySelector('[data-testid=playground-region] .vk-ui-region').dataset.layout`);
+  const ANCHOR = 'Phố cũ mưa phùn, [Mẫu] — đang viết dở';
+  // Re-opening the current hash keeps the specimen's state; pass through another entry first.
+  const fresh = async (entry, scenario = 'default') => { await page.open('state.status'); await page.open(entry, scenario); };
+  // The event log spans the whole session: count matches added since `base`.
+  const count = async (pattern) => (await log()).match(pattern)?.length ?? 0;
+
+  // Lawful region states render as their layout says.
+  await page.open('state.loading');
+  check(await page.eval(`[...document.querySelectorAll('.vk-ui-region')].every((r) => r.getAttribute('aria-busy') === 'true' && r.querySelector('.vk-ui-skeleton[aria-hidden=true]'))`), 'initial loading: skeleton is decorative and the region is aria-busy');
+  check((await running('.vk-ui-skeleton')) >= 1, 'SurfacePulse runs by default');
+  await page.open('state.loading', 'slow');
+  check((await text('.vk-ui-notice[data-tone=info]'))?.includes('Vẫn đang tải'), 'slow loading is an info notice, not an error');
+  check(!(await exists('[data-tone=error]')), 'slow loading shows no error tone');
+  await page.open('state.empty', 'no-results');
+  check(await exists('[data-panel="empty:no-results"] [data-intent=clear-filter]') && !(await exists('[data-tone=error]')), 'no-results is an empty panel with ClearFilter, never an error');
+  await page.open('state.empty', 'low-content');
+  check((await page.eval(`document.querySelectorAll('.vkp-works li').length`)) === 1, 'low content shows the one real item, nothing duplicated');
+  for (const [scenario, panel, intents] of [
+    ['default', 'error:network', ['retry', 'return']],
+    ['forbidden', 'error:forbidden', ['return']],
+    ['not-found', 'error:not-found', ['return']],
+    ['auth-required', 'error:auth-required', ['return']],
+    ['rate-limited', 'error:rate-limited', ['retry']],
+  ]) {
+    await page.open('state.error', scenario);
+    const offered = await page.eval(`[...document.querySelectorAll('[data-panel="${panel}"] [data-intent]')].map((e) => e.dataset.intent)`);
+    check(JSON.stringify(offered) === JSON.stringify(intents), `state.error/${scenario}: panel offers ${intents.join(', ')}`);
+  }
+  await page.open('state.error', 'auth-required');
+  check(!(await page.eval(`[...document.querySelectorAll('#specimen-scope button')].some((b) => /đăng nhập/i.test(b.textContent))`)), 'auth-required has no fake sign-in button');
+  await page.open('state.error', 'unknown');
+  check(!(await text('#specimen-scope')).includes('thất bại'), 'unknown error copy does not promise a certain failure');
+  check((await text('.vk-ui-panel__code'))?.includes('works.list.unexpected-500'), 'a stable diagnostic code is shown');
+  await page.open('state.error', 'partial');
+  check(await exists('.vkp-works li') && (await text('.vk-ui-notice[data-tone=warning]'))?.includes('Một phần'), 'partial failure keeps the loaded content with a warning notice');
+
+  // Announcements: explicit, not every notice an alert.
+  await page.open('state.notice');
+  check((await page.eval(`document.querySelectorAll('#specimen-scope [role=alert]').length`)) === 0, 'inline notices are polite statuses, none is role=alert');
+  await page.open('state.notice', 'banner');
+  check((await page.eval(`document.querySelectorAll('#specimen-scope [role=alert]').length`)) === 1, 'only the session-expired banner is assertive');
+  const notices = await lowestContrast(page, '#specimen-scope .vk-ui-notice__message, #specimen-scope .vk-ui-notice__title');
+  check(notices >= 4.5, `banner text contrast ≥ 4.5 (${notices.toFixed(2)})`);
+
+  // Snackbar timing on the manual clock.
+  await page.open('state.notice', 'snackbar');
+  await press('snackbar-show');
+  check(await exists('.vk-ui-snackbar[data-dismiss=auto]'), 'a snackbar without an action auto-dismisses');
+  await press('snackbar-advance');
+  check(!(await exists('.vk-ui-snackbar')), 'it closes after duration.snackbar (6000ms) on the injected clock');
+  await press('snackbar-show-action');
+  await press('snackbar-advance');
+  check(await exists('.vk-ui-snackbar[data-dismiss=manual]'), 'a snackbar with an action waits for the person');
+  const snack = await lowestContrast(page, '.vk-ui-snackbar__text, .vk-ui-snackbar__action');
+  check(snack >= 4.5, `snackbar contrast ≥ 4.5 (${snack.toFixed(2)})`);
+
+  await page.open('state.notice', 'field-summary');
+  await page.click('.vk-ui-summary a');
+  check((await page.eval(`document.activeElement.id`)) === 'notice-title', 'the summary link focuses its field');
+  check((await page.eval(`document.getElementById('notice-title').value`)) === '   ', 'the field keeps its raw text');
+
+  // Playground: delay, no flash, slow, retry.
+  await page.open('state.playground');
+  const shown = () => page.eval(`document.querySelector('[data-testid=playground-region] .vk-ui-region__skeleton')?.dataset.shown ?? null`);
+  check((await shown()) === 'false', 'loading → ready: no indicator at +0ms');
+  await press('playground-advance-100');
+  await press('playground-advance-100');
+  check((await shown()) === 'false', 'still hidden at +200ms');
+  await press('playground-advance-100');
+  check((await shown()) === 'true', 'skeleton appears at +300ms (duration.loading-delay)');
+  await press('playground-step');
+  check((await layout()) === 'content|-|-' && await exists('[data-testid=playground-region] .vkp-works'), 'step → content');
+  await fresh('state.playground');
+  await press('playground-step');
+  check((await layout()) === 'content|-|-', 'a load finishing before the delay never showed a skeleton');
+  await fresh('state.playground');
+  await press('playground-advance-8000');
+  check((await layout()) === 'skeleton|-|slow', 'after duration.slow-notice the region adds a slow notice, still loading');
+
+  await page.open('state.playground', 'loading-error-retry');
+  await type(ANCHOR);
+  await press('playground-step');
+  check((await layout()) === 'panel:error:network|-|-', 'loading → error panel');
+  let base = await count(/intent retry/g);
+  await page.click('[data-testid=playground-region] [data-intent=retry] button');
+  await page.settle();
+  check((await count(/intent retry/g)) - base === 1, 'Retry dispatches the caller intent exactly once');
+  check((await layout()).startsWith('skeleton'), 'retry reloads (caller policy)');
+  await press('playground-step');
+  check((await layout()) === 'content|-|-' && (await input()) === ANCHOR, 'error → retry → content, input kept');
+
+  // Refresh keeps content, focus and scroll.
+  await page.open('state.playground', 'refresh-partial');
+  await page.eval(`document.querySelector('[data-testid=playground-region] .vkp-works a').focus()`);
+  const before = await page.eval(`[document.activeElement.textContent, scrollY]`);
+  await page.eval(`document.querySelector('[data-testid=playground-step] button').click()`);
+  await page.settle();
+  check((await layout()) === 'content|+|-', 'refresh keeps content with EdgeProgress');
+  check(JSON.stringify(await page.eval(`[document.activeElement.textContent, scrollY]`)) === JSON.stringify(before), 'refresh keeps focus and scroll position');
+  await page.eval(`document.querySelector('[data-testid=playground-step] button').click()`);
+  await page.settle();
+  check((await layout()) === 'content|-|partial' && (await page.eval(`document.activeElement.textContent`)) === before[0], 'partial failure keeps content and focus');
+
+  // Pending → cancel, late acknowledgment ignored.
+  await page.open('state.playground', 'pending-cancel');
+  const width = () => page.eval(`document.querySelector('[data-testid=playground-action] button').getBoundingClientRect().width`);
+  const idleWidth = await width();
+  base = await count(/gửi vé/g);
+  await press('playground-action');
+  check((await page.eval(`document.querySelector('[data-testid=playground-action] button').getAttribute('aria-busy')`)) === 'true' && await exists('[data-testid=playground-action] .vk-ui-button__status .vk-ui-arc'), 'pending: aria-busy and a MicroArc in the status slot');
+  check(Math.abs((await width()) - idleWidth) < 0.5, 'the pending button keeps its width');
+  await press('playground-action');
+  check((await count(/gửi vé/g)) - base === 1, 'a second activation while pending sends nothing');
+  await press('playground-cancel');
+  check((await page.eval(`document.querySelector('[data-testid=playground-status] .vk-ui-status').dataset.phase`)) === 'cancelled' && !(await exists('[data-testid=playground-status] [data-tone=error]')), 'cancel is neutral, not a red error');
+  check(await exists('.vk-ui-snackbar'), 'cancel confirms with a snackbar');
+  await press('playground-step');
+  check((await log()).includes('ack muộn') && (await page.eval(`document.querySelector('[data-testid=playground-status] .vk-ui-status').dataset.phase`)) === 'cancelled', 'a late acknowledgment of the cancelled ticket shows no "saved"');
+  await press('playground-advance-8000');
+  check(!(await exists('.vk-ui-snackbar')), 'the snackbar closed on the clock');
+
+  // Uncertain create: reconcile before a deliberate resend; nothing replays.
+  await page.open('state.playground', 'submit-uncertain');
+  await type(ANCHOR);
+  base = await count(/gửi vé/g);
+  await press('playground-action');
+  await press('playground-step');
+  check((await page.eval(`document.querySelector('[data-testid=playground-status] .vk-ui-status').dataset.phase`)) === 'uncertain', 'unknown outcome → uncertain');
+  check((await page.eval(`document.querySelector('[data-testid=playground-action] button').getAttribute('aria-disabled')`)) === 'true', 'resend is blocked until reconciled');
+  check(!(await exists('[data-testid=playground-notice] [data-intent=retry]')), 'no Retry is offered for an uncertain write');
+  await press('playground-action');
+  await page.click('[data-testid=playground-notice] [data-intent=reconcile] button');
+  await page.settle();
+  check((await text('[data-testid=playground-action] button'))?.includes('Gửi lại có chủ ý'), 'after reconcile the resend is a deliberate action');
+  check((await count(/gửi vé/g)) - base === 1 && (await input()) === ANCHOR, 'no automatic replay; input kept');
+
+  // Conflict: text kept, never "saved".
+  await page.open('state.playground', 'save-conflict');
+  await type(ANCHOR);
+  check((await page.eval(`document.querySelector('[data-testid=playground-status] .vk-ui-status').dataset.phase`)) === 'dirty', 'typing marks the action dirty');
+  await press('playground-action');
+  await press('playground-step');
+  check((await text('[data-testid=playground-notice]'))?.includes('Bản trên máy chủ đã thay đổi') && (await input()) === ANCHOR, 'conflict keeps the text and explains');
+  check(!(await text('#specimen-scope')).includes('Đã lưu (máy chủ xác nhận)'), 'conflict never shows a saved status');
+
+  // Session expired while writing: decision required, text kept, no fake sign-in.
+  await page.open('state.playground', 'session-expired');
+  await type(ANCHOR);
+  await press('playground-step');
+  check(await page.eval(`document.getElementById('playground-session').open`), 'session expired while writing opens an alert dialog');
+  await page.key('Escape');
+  check(await page.eval(`document.getElementById('playground-session').open`), 'Escape cannot dismiss a required decision');
+  check(!(await page.eval(`[...document.querySelectorAll('#playground-session button')].some((b) => /đăng nhập/i.test(b.textContent))`)), 'no fake sign-in button');
+  await page.click('[data-testid=playground-stay] button');
+  await page.settle();
+  check(!(await page.eval(`document.getElementById('playground-session').open`)) && (await input()) === ANCHOR, 'staying closes the dialog with the text kept');
+
+  // Dialog focus: initial safe focus, trap, Escape, return.
+  await page.open('state.dialog');
+  await page.eval(`document.querySelector('[data-testid=dialog-open] button').focus()`);
+  await page.key('Enter');
+  check((await page.eval(`document.activeElement.textContent`)) === 'Giữ bản nháp', 'destructive confirmation focuses the safe choice first');
+  for (let i = 0; i < 4; i += 1) await page.key('Tab');
+  check(await page.eval(`document.getElementById('delete-dialog').contains(document.activeElement) || document.activeElement === document.body`), 'Tab stays inside the modal dialog');
+  await page.key('Escape');
+  check(!(await page.eval(`document.getElementById('delete-dialog').open`)), 'Escape closes an EscapeOnly dialog');
+  check((await page.eval(`document.activeElement.textContent`)) === 'Xóa bản nháp…', 'closing returns focus to the trigger');
+  await page.click('[data-testid=dialog-open] button');
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 4, y: 4, button: 'left', clickCount: 1 });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 4, y: 4, button: 'left', clickCount: 1 });
+  await page.settle();
+  check(await page.eval(`document.getElementById('delete-dialog').open`), 'an outside click does not close an EscapeOnly dialog');
+  await page.click('[data-testid=dialog-keep] button');
+  await page.open('state.dialog', 'sheet');
+  await page.click('[data-testid=dialog-open] button');
+  await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 4, y: 4, button: 'left', clickCount: 1 });
+  await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 4, y: 4, button: 'left', clickCount: 1 });
+  await page.settle();
+  check(!(await page.eval(`document.getElementById('sort-sheet').open`)) && (await log()).includes('bấm ngoài'), 'an EscapeAndOutside sheet closes on an outside click');
+
+  // Motion: purposes run by default; reduced, inactive and hidden stop every loop.
+  const LOOPS = '#specimen-scope .vk-ui-arc svg, #specimen-scope .vk-ui-edge__bar, #specimen-scope .vk-ui-skeleton';
+  await page.open('state.progress');
+  check((await running('#specimen-scope .vk-ui-arc svg')) >= 2 && (await running('#specimen-scope .vk-ui-edge__bar')) === 1, 'MicroArc and EdgeProgress run by default');
+  const widths = await page.eval(`['button-enabled', 'button-pending'].map((t) => document.querySelector('[data-testid=' + t + '] button').getBoundingClientRect().width)`);
+  check(Math.abs(widths[0] - widths[1]) < 0.5, `pending keeps the button width (${widths.map((w) => w.toFixed(1)).join(' = ')})`);
+  const overlap = await page.eval(`(() => { const b = document.querySelector('[data-testid=button-pending] button'); const l = b.querySelector('.vk-ui-button__label').getBoundingClientRect(); const s = b.querySelector('.vk-ui-arc').getBoundingClientRect(); return s.left < l.right && l.left < s.right; })()`);
+  check(!overlap, 'the MicroArc does not cover the label');
+  // Timestamped frames: the animation clock advances between samples.
+  const frames = [];
+  for (let i = 0; i < 3; i += 1) {
+    frames.push(await page.eval(`(() => { const a = document.querySelector('[data-testid=arc-labelled] svg').getAnimations()[0]; return { t: performance.now(), current: a.currentTime, rotate: getComputedStyle(document.querySelector('[data-testid=arc-labelled] svg')).rotate }; })()`));
+    const clip = await page.eval(`(() => { const r = document.querySelector('[data-testid=arc-labelled]').getBoundingClientRect(); return { x: r.x, y: r.y, width: Math.max(1, r.width), height: Math.max(1, r.height), scale: 1 }; })()`);
+    const { data } = await page.send('Page.captureScreenshot', { format: 'png', clip });
+    mkdirSync(join(args.out, 'motion'), { recursive: true });
+    writeFileSync(join(args.out, 'motion', `arc-frame-${i}.png`), Buffer.from(data, 'base64'));
+    await sleep(180);
+  }
+  writeFileSync(join(args.out, 'motion', 'arc-frames.json'), JSON.stringify(frames, null, 2));
+  check(frames[2].current > frames[0].current && new Set(frames.map((f) => f.rotate)).size > 1, `MicroArc advances over time (${frames.map((f) => Math.round(f.current)).join(' → ')} ms)`);
+  await page.open('state.progress', 'reduced');
+  check((await running(LOOPS)) === 0, 'reduced: no loop runs');
+  check(await page.eval(`document.querySelector('#specimen-scope .vk-ui-edge__label').getBoundingClientRect().width > 1`), 'reduced: EdgeProgress shows its label as text');
+  await page.open('state.progress', 'inactive');
+  check((await running(LOOPS)) === 0, 'inactive host: no loop runs');
+  await fresh('state.progress');
+  await page.emulate('prefers-reduced-motion', 'reduce');
+  await page.settle();
+  check((await running(LOOPS)) === 0, 'the system reduced-motion setting stops every loop');
+  await page.emulate('prefers-reduced-motion', 'no-preference');
+  await page.open('state.progress', 'determinate');
+  check((await page.eval(`document.querySelector('#specimen-scope [role=progressbar]').getAttribute('aria-valuenow')`)) === '42' && (await running(LOOPS)) === 0, 'determinate progress reports the real value and does not loop');
+
+  // Hidden tab: the preview injects document_visibility(); a foreground tab hides this one.
+  await fresh('state.progress');
+  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', background: false });
+  await cdp.send('Target.activateTarget', { targetId });
+  await sleep(300);
+  const hidden = await page.eval('document.visibilityState');
+  if (hidden === 'hidden') {
+    check((await running(LOOPS)) === 0, 'hidden tab (real visibilitychange): no loop runs');
+  } else {
+    console.log(`  NOT_RUN  hidden-tab lifecycle: headless Chrome kept visibilityState=${hidden}`);
+  }
+  await cdp.send('Target.closeTarget', { targetId });
+  await page.send('Page.bringToFront');
+  await sleep(300);
+  await page.settle();
+  check((await page.eval('document.visibilityState')) === 'visible' && (await running('#specimen-scope .vk-ui-arc svg')) >= 2, 'foreground again: loops resume');
+
+  // Announcements change only with their text (no per-frame or repeated messages).
+  await fresh('state.playground');
+  await page.eval(`window.__announced = []; new MutationObserver(() => { const t = document.querySelector('[data-testid=playground-region] [role=status]').textContent; if (window.__announced.at(-1) !== t) window.__announced.push(t); else window.__announced.push('REPEAT:' + t); }).observe(document.querySelector('[data-testid=playground-region] [role=status]'), { childList: true, characterData: true, subtree: true })`);
+  for (let i = 0; i < 6; i += 1) await press('playground-advance-100');
+  await press('playground-step');
+  const announced = await page.eval('window.__announced');
+  check(announced.length <= 2 && !announced.some((t) => t.startsWith('REPEAT:')), `the region status changes once per state (${JSON.stringify(announced)})`);
+}
+
 async function search(page) {
   const type = async (text) => {
     await page.eval(`(() => { const i = document.querySelector('.vkp-search input'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -603,8 +857,41 @@ async function captures(page) {
     await page.open(entry, scenario);
     await page.capture(`${entry}--${scenario}--light--390`);
   }
+  for (const entry of catalog.entries.filter((e) => e.family === 'state')) {
+    for (const scenario of entry.scenarios.slice(1)) {
+      await page.open(entry.id, scenario.id);
+      await page.capture(`${entry.id}--${scenario.id}--light--390`);
+    }
+  }
+  // Transitions: the state after the recipe's first step, with any overlay open.
+  for (const [scenario, prepare] of [
+    ['loading-error-retry', ['playground-step']],
+    ['save-conflict', ['playground-action', 'playground-step']],
+    ['pending-cancel', ['playground-action', 'playground-cancel']],
+    ['session-expired', ['playground-step']],
+  ]) {
+    await page.open('state.playground', scenario);
+    for (const testid of prepare) {
+      await page.click(`[data-testid=${testid}] button`);
+      await page.settle();
+    }
+    await page.capture(`state.playground--${scenario}--after-step--light--390`);
+  }
+  for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
+    await page.choose('theme', label);
+    await page.open('state.dialog');
+    await page.click('[data-testid=dialog-open] button');
+    await page.settle();
+    await page.capture(`state.dialog--default--open--${theme}--390`);
+    await page.click('[data-testid=dialog-keep] button');
+  }
+  await page.choose('theme', 'Sáng');
   await page.choose('scale', '200%');
   await page.viewport(320);
+  for (const entry of ['state.error', 'state.notice', 'state.playground']) {
+    await page.open(entry, entry === 'state.error' ? 'long-label' : 'default');
+    await page.capture(`${entry}--${entry === 'state.error' ? 'long-label' : 'default'}--light--320--text200`);
+  }
   for (const entry of ['field.form', 'identity.author-byline', 'action.button']) {
     await page.open(entry);
     await page.capture(`${entry}--default--light--320--text200`);
@@ -632,6 +919,7 @@ try {
   await themes(page);
   await densityAndMotion(page);
   await components(page);
+  await states(page, cdp);
   await search(page);
   await reflow(page);
   await captures(page);

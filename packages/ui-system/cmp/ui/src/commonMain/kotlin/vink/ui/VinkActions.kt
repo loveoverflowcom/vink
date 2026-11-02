@@ -2,6 +2,9 @@ package vink.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -102,15 +105,27 @@ fun VinkButton(
             ),
             border = if (variant == ButtonVariant.Outlined && !disabled) BorderStroke(1.dp, c[ColorRole.Outline]) else null,
             contentPadding = PaddingValues(
-                horizontal = if (variant == ButtonVariant.Text) VinkDimens.Space3 else VinkDimens.Space6,
-                vertical = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),
+                start = if (variant == ButtonVariant.Text) VinkDimens.Space3 else VinkDimens.Space6,
+                // The status slot lives in the end padding; a Text button widens it only while pending.
+                end = if (variant == ButtonVariant.Text && pending == null) VinkDimens.Space3 else VinkDimens.Space6,
+                top = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),
+                bottom = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),
             ),
         ) {
-            if (leading != null) {
-                VinkIcon(leading, size = IconSize.Small)
-                androidx.compose.foundation.layout.Spacer(Modifier.size(VinkDimens.Space2))
+            Box(contentAlignment = Alignment.CenterStart) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (leading != null) {
+                        VinkIcon(leading, size = IconSize.Small)
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(VinkDimens.Space2))
+                    }
+                    Text(label, style = LocalVink.current.text(VinkTextRoles.Label))
+                }
+                // UIS-03 status slot: the MicroArc sits in the end padding, so the label and the
+                // button width do not move when the state turns pending.
+                if (pending != null) {
+                    VinkLoadingIndicator(Modifier.align(Alignment.CenterEnd).wrapContentSize(unbounded = true).offset(x = VinkDimens.SizeIndicator + 2.dp))
+                }
             }
-            Text(label, style = LocalVink.current.text(VinkTextRoles.Label))
         }
         Note(state.note)
     }

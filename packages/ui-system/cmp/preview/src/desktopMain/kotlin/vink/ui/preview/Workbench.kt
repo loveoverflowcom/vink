@@ -61,6 +61,7 @@ import java.text.Normalizer
 import vink.ui.CatalogEntry
 import vink.ui.ColorRole
 import vink.ui.Density
+import vink.ui.LocalMotionActive
 import vink.ui.LocalVink
 import vink.ui.MotionPreference
 import vink.ui.ThemePreference
@@ -91,6 +92,7 @@ val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foun
     "action.button", "action.icon-button", "action.link", "action.filter-chip",
     "field.text-field", "field.text-area", "field.search-field", "field.checkbox", "field.radio", "field.switch", "field.select", "field.form",
     "identity.icon", "identity.avatar", "identity.avatar-group", "identity.author-byline", "identity.image-frame",
+    "state.loading", "state.progress", "state.empty", "state.error", "state.notice", "state.status", "state.dialog", "state.playground",
     "composition.nested",
 )
 
@@ -112,6 +114,8 @@ data class PreviewConfig(
     /** Null follows the platform; captures and tests fix it. */
     val systemDark: Boolean? = null,
     val systemReducedMotion: Boolean = false,
+    /** Host activity: the desktop window is shown and not minimized (Main.kt maps it). */
+    val hostActive: Boolean = true,
 )
 
 class PreviewModel(initial: PreviewConfig = PreviewConfig()) {
@@ -157,6 +161,7 @@ fun Workbench(model: PreviewModel, fonts: LoadedFonts, scroll: Boolean = true) {
         CompositionLocalProvider(
             LocalDensity provides androidx.compose.ui.unit.Density(base.density, base.fontScale * config.textScale),
             LocalPreviewLog provides model::record,
+            LocalMotionActive provides config.hostActive,
         ) {
             val vink = LocalVink.current
             // Fill the window (or the off-screen capture) so no area is left unpainted.

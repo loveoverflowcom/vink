@@ -13,6 +13,8 @@ Leptos **0.8** (workspace pin, không hạ về 0.7 của Cantos). Crate không 
 | `src/action.rs` | `Button`, `IconButton`, `Link` (`safe_href`), `FilterChip`, `ActionState` |
 | `src/field.rs` | `TextField`, `TextArea`, `SearchField`, `Checkbox`, `Switch`, `RadioGroup`, `Select`, `FormSummary` |
 | `src/media.rs`, `src/identity.rs` | `Icon`, `Avatar`, `AvatarGroup`, `AuthorByline`, `ImageFrame` (`safe_image_src`); `initials`, `tone` thuần |
+| `src/state.rs`, `src/state_vectors.rs` | Contract thuần UIS-03 (`RegionState::layout`, `Problem`, `placement_for`, `NoticeSpec`, `LoadingGate`…); vectors **sinh ra** |
+| `src/feedback.rs` | `ContentRegion`, `StatePanel`, `InlineNotice`, `Banner`, `Skeleton`, `LoadingIndicator`, `EdgeProgress`, `StatusBadge`, `ListEnd`, `Snackbar`, `Dialog`; `MotionActivity`/`provide_motion_activity`, `document_visibility()`, `use_loading_gate`, `use_snackbar_timeout` |
 | `src/values.rs` | Kiểu giá trị (`Rgba::contrast`, `Dimension::var`, `TextRole::style`…) |
 | `src/theme.rs` | `ThemePreference`, `Density`, `MotionPreference`, `Preferences`, `RoleOverride`, precedence |
 | `src/root.rs` | `UiRoot`, `ThemeScope` |

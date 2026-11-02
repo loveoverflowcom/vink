@@ -13,8 +13,8 @@ dev ngày 02/11/2026, khớp tổ hợp đang chạy ở Cantos — chỉ học,
 
 | Module | Target | Nội dung |
 | --- | --- | --- |
-| `:ui` | `desktop` (JVM) luôn bật; `android`, `iosArm64`, `iosSimulatorArm64` khi bật native | `commonMain`: `VinkTokens.kt`/`VinkCatalog.kt`/`VinkIcons.kt`/`VinkIdentityVectors.kt` (**sinh ra**), `VinkValues.kt`, `VinkTheme.kt` (`VinkTheme`, `VinkScope`, `LocalVink`, `RoleOverride`, `validate`), component theo họ: `VinkLayout.kt` (`VinkText`, `VinkHeading`, `VinkSurface`, `VinkContainer`, `VinkStack`, `VinkGrid`, `VinkDivider`), `VinkActions.kt`, `VinkFields.kt`, `VinkMedia.kt`, `VinkIdentity.kt` (`initials`, `tone`, `safeHref`, `expect fun nfc`); `desktopMain`/`androidMain`/`iosMain`: `nfc` theo nền tảng |
-| `:preview` | `desktop` | Workbench Compose Desktop, `PreviewFonts` (đọc WOFF2 tự host qua Skia), test và capture |
+| `:ui` | `desktop` (JVM) luôn bật; `android`, `iosArm64`, `iosSimulatorArm64` khi bật native | `commonMain`: `VinkTokens.kt`/`VinkCatalog.kt`/`VinkIcons.kt`/`VinkIdentityVectors.kt` (**sinh ra**), `VinkValues.kt`, `VinkTheme.kt` (`VinkTheme`, `VinkScope`, `LocalVink`, `RoleOverride`, `validate`), component theo họ: `VinkLayout.kt` (`VinkText`, `VinkHeading`, `VinkSurface`, `VinkContainer`, `VinkStack`, `VinkGrid`, `VinkDivider`), `VinkActions.kt` (Button pending có MicroArc ở slot status), `VinkFields.kt`, `VinkMedia.kt`, `VinkIdentity.kt` (`initials`, `tone`, `safeHref`, `expect fun nfc`); UIS-03: `VinkState.kt` (contract thuần: trục nội dung/pha, `RegionState.layout`, `Problem`, `placementFor`, `NoticeSpec`, `LoadingGate`…; `VinkStateVectors.kt` **sinh ra**) và `VinkFeedback.kt` (`VinkContentRegion`, `VinkStatePanel`, `VinkInlineNotice`, `VinkBanner`, `VinkSkeleton`, `VinkLoadingIndicator`, `VinkEdgeProgress`, `VinkStatusBadge`, `VinkListEnd`, `VinkSnackbar`, `VinkDialog`, `VinkMotionActivity`, `rememberLoadingGate`, `rememberSnackbarTimeout`); `desktopMain`/`androidMain`/`iosMain`: `nfc` theo nền tảng |
+| `:preview` | `desktop` | Workbench Compose Desktop, `PreviewFonts` (đọc WOFF2 tự host qua Skia), `StateSpecimens.kt` (họ `state.*`, playground có đồng hồ thủ công và reducer `Submission`), test và capture; `Main.kt` map cửa sổ thu nhỏ → `hostActive = false` (không vòng lặp nào chạy) |
 
 `commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`);
 API nền tảng (NFC) đi qua `expect`/`actual`. Text field nhận/trả `TextFieldValue`; ảnh là `ImageState`
@@ -37,4 +37,6 @@ TTF/OTF có provenance: dùng font hệ thống, ghi `UNSUPPORTED` cho tới khi
 
 Lệnh: `cargo xtask ui-preview cmp build|run|verify` (xem [README UI system](../README.md)).
 Ảnh: `preview/build/captures/*.png` + `contexts.json` (density 1, font scale 1/2, theme hệ thống
-cố định sáng): 30 ảnh nền tảng + 100 ảnh component (sáng/tối × hẹp/rộng) + 15 trạng thái/chữ 200%.
+cố định sáng): 30 ảnh nền tảng + 132 ảnh component UIS-02/03 (sáng/tối × hẹp/rộng) + 15 trạng thái/chữ
+200% UIS-02 + 29 kịch bản state (sáng, hẹp) + 3 state chữ 200% = 209; cộng 7 ảnh playground sau khi
+thao tác (`*--driven--*`, ghi trong `driven-contexts.json`, có lớp dialog) = 216.

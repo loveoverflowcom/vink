@@ -3,8 +3,10 @@
 **Trạng thái:** UIS-01/06 ([#19](https://github.com/loveoverflowcom/vink/issues/19)) — nền tảng token,
 theme và hai preview; UIS-02/06 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) — component
 nền theo họ (chữ/bố cục, hành động, nhập/chọn, danh tính/hình ảnh) ở cả hai renderer, contract ở
-[shared/components.md](shared/components.md). Chuỗi tiếp theo: #21 states/motion → #22 shell/navigation →
-#23 patterns/adoption → #24 qualification. Chưa màn nào của app dùng component UIS-02. Đây là thư viện renderer, không phải ứng dụng thứ hai
+[shared/components.md](shared/components.md); UIS-03/06 ([#21](https://github.com/loveoverflowcom/vink/issues/21)) —
+trạng thái, phản hồi, loading và motion ở cả hai renderer, contract ở [shared/states.md](shared/states.md).
+Chuỗi tiếp theo: #22 shell/navigation → #23 patterns/adoption → #24 qualification. Chưa màn nào của
+app dùng component UIS-02/03. Đây là thư viện renderer, không phải ứng dụng thứ hai
 và không giữ session, API, route hay nghiệp vụ. Tổ chức học từ Cantos UI system (`7649017`) nhưng
 không chép thương hiệu, phiên bản, palette hay build; Vink giữ Lavender, Be Vietnam Pro/Literata,
 Enso và Leptos 0.8.
@@ -13,10 +15,10 @@ Enso và Leptos 0.8.
 
 | Owner | Nội dung | Trạng thái |
 | --- | --- | --- |
-| [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity), `icons.json` + license, [contract component](shared/components.md) | Đã triển khai |
-| [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`), CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
-| [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ, token/catalog/icon/vector Kotlin sinh ra; NFC theo nền tảng), `:preview` (Compose Desktop) | Đã triển khai; JVM desktop có test và ảnh; Android/iOS chỉ compile khi bật |
-| `xtask/src/ui_tokens.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors) | Đã triển khai |
+| [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity và states), `icons.json` + license, [contract component](shared/components.md), [contract trạng thái](shared/states.md) | Đã triển khai |
+| [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`, `feedback`), contract thuần `state`, CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
+| [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ, `VinkState`/`VinkFeedback`, token/catalog/icon/vector Kotlin sinh ra; NFC theo nền tảng), `:preview` (Compose Desktop) | Đã triển khai; JVM desktop có test và ảnh; Android/iOS chỉ compile khi bật |
+| `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors) | Đã triển khai |
 | `xtask/src/ui_preview.rs` | `cargo xtask ui-preview leptos\|cmp build\|verify\|run` | Đã triển khai |
 | App (`apps/vink-web`) | Key `vink.ui.theme`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu | Giữ nguyên owner |
 
@@ -38,7 +40,7 @@ Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/RE
 
 | Lệnh | Việc |
 | --- | --- |
-| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 9 file sinh ra (chỉ ghi file thay đổi) |
+| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 11 file sinh ra (chỉ ghi file thay đổi) |
 | `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |
@@ -109,9 +111,12 @@ Tóm tắt khác biệt có chủ đích giữa hai renderer:
 2. **UIS-02 (#20):** 25 component đăng ký trong catalog và render ở **cả hai** preview; token
    thêm avatar tone/kích thước, `density.control-height`, `measure-wide`, `size.grid-min-*` (0.2.0,
    minor). `appearance.rs::initials` ủy quyền cho `vink_ui::identity::initials` (giữ `•`), không đổi
-   DOM/route/storage. **#21–#22:** trạng thái/loading (lấp slot `status` của Button) và shell.
+   DOM/route/storage.
+3. **UIS-03 (#21):** 8 entry `state.*` (37 kịch bản) ở cả hai preview, token 0.3.0 thêm thời lượng
+   loading/snackbar và kích thước chỉ báo (minor); Button pending lấp slot `status` bằng
+   `LoadingIndicator`. Không màn app nào đổi. **#22:** shell/navigation và coordinator overlay.
    Component CSS dần dùng role chữ `--vk-type-*` thay literal trong `vink.css`.
-3. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
+4. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
    Đổi `version` trong `tokens.json` theo semver khi đổi/xóa role (major), thêm role (minor), sửa
    giá trị không đổi nghĩa (patch); generator in phiên bản vào mọi file sinh ra.
 
@@ -122,6 +127,7 @@ Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens
 
 Kết quả chạy, môi trường, SHA và PASS/FAIL/NOT_RUN/UNSUPPORTED nằm ở
 [ui-system-foundation-evidence](../../docs/development/ui-system-foundation-evidence.md) (UIS-01) và
-[ui-system-primitives-evidence](../../docs/development/ui-system-primitives-evidence.md) (UIS-02). Trạng thái
+[ui-system-primitives-evidence](../../docs/development/ui-system-primitives-evidence.md) (UIS-02),
+[ui-system-states-evidence](../../docs/development/ui-system-states-evidence.md) (UIS-03). Trạng thái
 catalog của mọi entry vẫn là `implemented-unverified`: compile, test và ảnh của JVM/Chrome không
 thành nghiệm thu thiết kế, Android/iOS, IME hay screen reader.

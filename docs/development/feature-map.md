@@ -18,7 +18,8 @@ Readiness, provisioning PostgreSQL theo owner và role tách đối chiếu ngà
 hàng Identity đối chiếu ngày 02/11/2026 trên nền `6357922` (commit 2); hàng App ↔ Identity và
 backup/restore trên nền `255ce77` (commit 3).
 Mục UI System preview thêm ngày 02/11/2026 trên nền `b358794` cho
-[#19](https://github.com/loveoverflowcom/vink/issues/19) (UIS-01).
+[#19](https://github.com/loveoverflowcom/vink/issues/19) (UIS-01); hàng trạng thái/phản hồi thêm ngày
+02/11/2026 trên nền `f3ca042` cho [#21](https://github.com/loveoverflowcom/vink/issues/21) (UIS-03).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -137,7 +138,7 @@ text scale; xem [vink-ui-inspector](../../.agents/skills/vink-ui-inspector/SKILL
 IME thật, accessibility với screen reader, mobile thật và hiệu năng cần phiên kiểm riêng có
 môi trường và quan sát cụ thể. Không tự đổi chúng thành `PASS` vì lane `web` thành công.
 
-### UI System preview (UIS-01, UIS-02)
+### UI System preview (UIS-01, UIS-02, UIS-03)
 
 Không phải route của app: hai preview chạy riêng, không gọi service. Owner và lệnh ở
 [packages/ui-system](../../packages/ui-system/README.md).
@@ -149,6 +150,7 @@ Không phải route của app: hai preview chạy riêng, không gọi service. 
 | Preview CMP | `cargo xtask ui-preview cmp run` (cửa sổ desktop) | `VinkThemeTest` (common), `VinkScopeTest`, `PreviewTest`, `CaptureTest` (desktop) | JVM desktop off-screen; Android/iOS chỉ compile khi bật |
 | Web dùng token sinh ra | `/pkg/vink.css` = `tokens.css` + `vink.css` | `verify web` hiện có (contrast hai theme, theme/reload/OS/storage denied, reflow) chạy trên CSS mới | Không thêm assertion web mới cho UIS-01 |
 | Component nền UIS-02 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) | Preview Leptos `#<họ>.<component>/<kịch bản>` (ví dụ `#action.button/pending`, `#field.form/invalid`, `#identity.avatar/image-error`); preview CMP chọn cùng ID | Test `vink-ui` (`action`, `field`, `media`, `identity` golden vectors, `layout`, `text`), `vink-ui-preview` (mọi kịch bản render, không ID trùng); `components` trong [preview-smoke.mjs](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs); CMP `VinkIdentityTest`, `PreviewTest` (dispatch, selection, semantics), `CaptureTest` | Chưa có màn app dùng; IME thật, screen reader, Android/iOS runtime và hover CMP chưa chạy; contrast là màu resolve trên Chrome/Skia |
+| Trạng thái/phản hồi UIS-03 ([#21](https://github.com/loveoverflowcom/vink/issues/21)) | Preview `#state.<họ>/<kịch bản>` (ví dụ `#state.error/partial`, `#state.dialog/session-expired`); sân thử `#state.playground/<recipe>` (đồng hồ thủ công, bước, nhật ký) cho 8 recipe | Generator `ui_states` + vectors chung (`state::tests` Rust, `VinkStateTest` JVM/iOS simulator); test `feedback` (render vùng/panel/notice/dialog), `vink-ui-preview` (`states::tests`: reducer có ticket bỏ double-click và ack muộn); `states` trong [preview-smoke.mjs](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) (vùng, intent, announce, snackbar theo đồng hồ, 8 recipe, focus dialog, motion giảm/không hoạt động/tab ẩn qua `visibilitychange`, frame có timestamp); CMP `StatePreviewTest`, `DrivenCaptureTest` | Chưa màn app nào dùng; lifecycle Android/iOS chưa có host; TalkBack/VoiceOver, giảm chuyển động của OS thật chưa chạy |
 | Initials của app | `appearance.rs::initials` → `vink_ui::identity::initials` (giữ `•` khi neutral) | `vietnamese_initials_use_first_and_last_words` (`quick`); `verify web` của shell | App hiện chỉ gọi với `None`; tên thật chưa có nguồn |
 
 Chưa có đường đi cho đăng nhập thật, gửi duyệt, moderation, publish/withdraw, tuyển chọn Tạp Chí,

@@ -9,6 +9,7 @@
 #![recursion_limit = "256"]
 
 mod components;
+mod states;
 
 use leptos::prelude::*;
 use unicode_normalization::UnicodeNormalization;
@@ -20,7 +21,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 29] = [
+pub const REGISTERED: [&str; 37] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -49,6 +50,14 @@ pub const REGISTERED: [&str; 29] = [
     "identity.avatar-group",
     "identity.author-byline",
     "identity.image-frame",
+    "state.loading",
+    "state.progress",
+    "state.empty",
+    "state.error",
+    "state.notice",
+    "state.status",
+    "state.dialog",
+    "state.playground",
     "composition.nested",
 ];
 
@@ -137,6 +146,8 @@ pub fn App() -> impl IntoView {
         });
     };
     provide_context(EventLog(Callback::new(record)));
+    // Loops stop while the tab is hidden; the preview is the host that injects activity.
+    vink_ui::provide_motion_activity(vink_ui::document_visibility());
 
     // Bumped when the system colour scheme or motion setting changes, so `System` re-reads.
     let media = RwSignal::new(0u32);

@@ -245,14 +245,19 @@
   overflow-wrap: anywhere;
 }
 
-/* Reserved for the UIS-03 indicator: positioned, so filling it never changes the width. */
+/* UIS-03 MicroArc slot: positioned inside the inline-end padding, so filling it never changes
+ * the width or covers the label. Text buttons have narrower padding and widen while pending. */
 .vk-ui-button__status {
   position: absolute;
   inset-block-start: 50%;
-  inset-inline-end: var(--vk-space-3);
-  inline-size: 0;
-  block-size: 0;
+  inset-inline-end: calc((var(--vk-space-6) - var(--vk-size-indicator)) / 2);
+  display: grid;
+  translate: 0 -50%;
 }
+
+.vk-ui-button__status:empty { display: none; }
+
+.vk-ui-button--text[data-state="pending"] { padding-inline-end: var(--vk-space-6); }
 
 .vk-ui-button--tonal {
   background-color: var(--vk-action-tonal-container);
@@ -750,4 +755,468 @@
   font-family: var(--vk-type-caption-font);
   font-size: var(--vk-type-caption-size);
   text-align: center;
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * UIS-03 states and feedback (shared/states.md). Loops are CSS animations: they run
+ * `--vk-loop-iterations` times (0 under reduced motion, leaving the static first frame) and stop
+ * entirely when the host marks the subtree inactive (`data-active="false"`).
+ */
+
+@keyframes vk-ui-spin { to { rotate: 360deg; } }
+
+@keyframes vk-ui-pulse { 50% { opacity: 0.45; } }
+
+@keyframes vk-ui-slide {
+  from { inset-inline-start: -35%; }
+  to { inset-inline-start: 100%; }
+}
+
+/* MicroArc ------------------------------------------------------------------------------------- */
+
+.vk-ui-arc {
+  display: inline-grid;
+  flex: none;
+  inline-size: var(--vk-size-icon);
+  block-size: var(--vk-size-icon);
+  color: currentColor;
+}
+
+.vk-ui-arc--sm {
+  inline-size: var(--vk-size-indicator);
+  block-size: var(--vk-size-indicator);
+}
+
+.vk-ui-arc svg {
+  inline-size: 100%;
+  block-size: 100%;
+  animation: vk-ui-spin var(--vk-duration-loop) linear var(--vk-loop-iterations);
+}
+
+.vk-ui-arc__track,
+.vk-ui-arc__arc {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+}
+
+.vk-ui-arc__track { opacity: 0.24; }
+
+/* A quarter-and-a-bit of the circle (2πr ≈ 56.5): reads as "working" even when static. */
+.vk-ui-arc__arc {
+  stroke-linecap: round;
+  stroke-dasharray: 20 56.5;
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* EdgeProgress --------------------------------------------------------------------------------- */
+
+.vk-ui-edge {
+  display: grid;
+  gap: var(--vk-space-1);
+}
+
+.vk-ui-edge__track {
+  position: relative;
+  display: block;
+  block-size: var(--vk-size-edge-progress);
+  overflow: hidden;
+  border-radius: var(--vk-radius-full);
+  background-color: var(--vk-primary-container);
+}
+
+.vk-ui-edge__bar {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 35%;
+  border-radius: inherit;
+  background-color: var(--vk-primary);
+}
+
+.vk-ui-edge[data-mode="indeterminate"] .vk-ui-edge__bar {
+  animation: vk-ui-slide var(--vk-duration-loop) var(--vk-ease-emphasized) var(--vk-loop-iterations);
+}
+
+.vk-ui-edge[data-mode="determinate"] .vk-ui-edge__bar {
+  transition: inline-size var(--vk-duration-medium) var(--vk-ease-emphasized);
+}
+
+/* The name is announced from aria-label; it shows as text only when the bar cannot move. */
+.vk-ui-edge__label {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  font-family: var(--vk-type-caption-font);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+  color: var(--vk-on-surface-variant);
+}
+
+:where([data-motion="reduce"]) .vk-ui-edge__label,
+.vk-ui-edge[data-active="false"] .vk-ui-edge__label {
+  position: static;
+  inline-size: auto;
+  block-size: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vk-ui-edge__label {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    clip-path: none;
+    white-space: normal;
+  }
+}
+
+/* SurfacePulse --------------------------------------------------------------------------------- */
+
+.vk-ui-skeleton {
+  display: grid;
+  gap: var(--vk-space-3);
+  padding: var(--vk-space-4);
+  border-radius: var(--vk-radius-lg);
+  background-color: var(--vk-surface-container-low);
+  animation: vk-ui-pulse var(--vk-duration-pulse) ease-in-out var(--vk-loop-iterations);
+}
+
+.vk-ui-skeleton--text {
+  padding: 0;
+  background-color: transparent;
+}
+
+.vk-ui-skeleton__line,
+.vk-ui-skeleton__avatar {
+  display: block;
+  block-size: 1em;
+  border-radius: var(--vk-radius-sm);
+  background-color: var(--vk-surface-container-highest);
+}
+
+.vk-ui-skeleton__line--title {
+  inline-size: 70%;
+  block-size: 1.5em;
+}
+
+.vk-ui-skeleton__line--meta { inline-size: 40%; }
+.vk-ui-skeleton__line--short { inline-size: 60%; }
+
+.vk-ui-skeleton__byline {
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-3);
+}
+
+.vk-ui-skeleton__byline .vk-ui-skeleton__line--meta { flex: 0 1 40%; }
+
+.vk-ui-skeleton__avatar {
+  flex: none;
+  inline-size: var(--vk-size-avatar-sm);
+  block-size: var(--vk-size-avatar-sm);
+  border-radius: var(--vk-radius-full);
+}
+
+.vk-ui-skeleton__stack {
+  display: grid;
+  flex: 1;
+  gap: var(--vk-space-2);
+}
+
+[data-active="false"] .vk-ui-arc svg,
+.vk-ui-arc[data-active="false"] svg,
+.vk-ui-edge[data-active="false"] .vk-ui-edge__bar,
+.vk-ui-skeleton[data-active="false"] { animation: none; }
+
+/* StatePanel ----------------------------------------------------------------------------------- */
+
+.vk-ui-panel {
+  display: grid;
+  justify-items: start;
+  gap: var(--vk-space-3);
+  max-inline-size: var(--vk-measure);
+  padding: var(--vk-space-6);
+  border-radius: var(--vk-radius-lg);
+  background-color: var(--vk-surface-container);
+  color: var(--vk-on-surface);
+}
+
+.vk-ui-panel__symbol {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: var(--vk-radius-full);
+  background-color: var(--vk-surface-container-high);
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-ui-panel[data-tone="error"] .vk-ui-panel__symbol { background-color: var(--vk-error-container); color: var(--vk-on-error-container); }
+.vk-ui-panel[data-tone="warning"] .vk-ui-panel__symbol { background-color: var(--vk-warning-container); color: var(--vk-on-warning-container); }
+.vk-ui-panel[data-tone="info"] .vk-ui-panel__symbol { background-color: var(--vk-info-container); color: var(--vk-on-info-container); }
+.vk-ui-panel[data-tone="success"] .vk-ui-panel__symbol { background-color: var(--vk-success-container); color: var(--vk-on-success-container); }
+
+.vk-ui-panel .vk-ui-heading { margin: 0; }
+
+.vk-ui-panel__message {
+  margin: 0;
+  overflow-wrap: break-word;
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-ui-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2) var(--vk-space-3);
+}
+
+.vk-ui-panel__code {
+  margin: 0;
+  font-family: var(--vk-type-caption-font);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-ui-panel__code code { font-family: var(--vk-type-code-font); overflow-wrap: anywhere; }
+
+/* InlineNotice and Banner ---------------------------------------------------------------------- */
+
+.vk-ui-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--vk-space-2) var(--vk-space-3);
+  padding: var(--vk-space-3) var(--vk-space-4);
+  border-radius: var(--vk-radius-md);
+  background-color: var(--vk-surface-container-high);
+  color: var(--vk-on-surface);
+}
+
+.vk-ui-notice[data-tone="error"] { background-color: var(--vk-error-container); color: var(--vk-on-error-container); }
+.vk-ui-notice[data-tone="warning"] { background-color: var(--vk-warning-container); color: var(--vk-on-warning-container); }
+.vk-ui-notice[data-tone="info"] { background-color: var(--vk-info-container); color: var(--vk-on-info-container); }
+.vk-ui-notice[data-tone="success"] { background-color: var(--vk-success-container); color: var(--vk-on-success-container); }
+
+.vk-ui-notice--banner {
+  border-radius: 0;
+  padding-inline: var(--vk-space-6);
+}
+
+.vk-ui-notice__icon {
+  display: inline-grid;
+  flex: none;
+  padding-block-start: 0.125em;
+}
+
+.vk-ui-notice__body {
+  display: grid;
+  flex: 1 1 14rem;
+  gap: var(--vk-space-1);
+  min-inline-size: 0;
+}
+
+.vk-ui-notice__title,
+.vk-ui-notice__message {
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.vk-ui-notice__title { font-weight: 600; }
+
+/* Actions take the notice's own on-container colour, which meets its contrast pair. */
+.vk-ui-notice .vk-ui-button--text,
+.vk-ui-notice .vk-ui-icon-button { color: inherit; }
+
+.vk-ui-notice .vk-ui-button--text .vk-ui-button__label { text-decoration: underline; text-underline-offset: 0.2em; }
+
+/* StatusBadge and ListEnd ---------------------------------------------------------------------- */
+
+.vk-ui-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vk-space-2);
+  max-inline-size: 100%;
+  font-family: var(--vk-type-label-font);
+  font-size: var(--vk-type-label-size);
+  line-height: var(--vk-type-label-line-height);
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-ui-status__symbol { display: inline-grid; flex: none; }
+.vk-ui-status__label { min-inline-size: 0; overflow-wrap: break-word; }
+
+.vk-ui-status[data-tone="success"] .vk-ui-status__symbol { color: var(--vk-success); }
+.vk-ui-status[data-tone="warning"] .vk-ui-status__symbol { color: var(--vk-warning); }
+.vk-ui-status[data-tone="error"] .vk-ui-status__symbol { color: var(--vk-error); }
+.vk-ui-status[data-tone="info"] .vk-ui-status__symbol { color: var(--vk-tertiary); }
+.vk-ui-status[data-tone="warning"],
+.vk-ui-status[data-tone="error"] { color: var(--vk-on-surface); }
+
+.vk-ui-list-end {
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-3);
+  margin: 0;
+  font-family: var(--vk-type-caption-font);
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-ui-list-end::before,
+.vk-ui-list-end::after {
+  content: "";
+  flex: 1;
+  border-block-start: 1px solid var(--vk-outline-variant);
+}
+
+/* Snackbar ------------------------------------------------------------------------------------- */
+
+.vk-ui-snackbar-host {
+  position: sticky;
+  inset-block-end: var(--vk-space-4);
+  display: grid;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.vk-ui-snackbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-1) var(--vk-space-2);
+  box-sizing: border-box;
+  max-inline-size: min(36rem, 100%);
+  padding: var(--vk-space-2) var(--vk-space-2) var(--vk-space-2) var(--vk-space-4);
+  border-radius: var(--vk-radius-sm);
+  background-color: var(--vk-inverse-surface);
+  color: var(--vk-inverse-on-surface);
+  box-shadow: var(--vk-shadow);
+  pointer-events: auto;
+}
+
+.vk-ui-snackbar__text {
+  flex: 1 1 12rem;
+  margin: 0;
+  overflow-wrap: break-word;
+}
+
+.vk-ui-snackbar__action,
+.vk-ui-snackbar__close {
+  box-sizing: border-box;
+  min-block-size: var(--vk-density-control-height);
+  min-inline-size: var(--vk-density-control-height);
+  border: 0;
+  border-radius: var(--vk-radius-full);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.vk-ui-snackbar__action { padding-inline: var(--vk-space-3); text-decoration: underline; text-underline-offset: 0.2em; }
+.vk-ui-snackbar__close { display: inline-grid; place-items: center; padding: 0; }
+
+.vk-ui-snackbar :focus-visible { outline-color: var(--vk-inverse-on-surface); }
+
+/* Dialog and sheet ----------------------------------------------------------------------------- */
+
+.vk-ui-dialog {
+  box-sizing: border-box;
+  inline-size: min(32rem, calc(100% - 2 * var(--vk-space-4)));
+  max-inline-size: none;
+  max-block-size: calc(100% - 2 * var(--vk-space-4));
+  padding: 0;
+  border: 0;
+  border-radius: var(--vk-radius-xl);
+  background-color: var(--vk-surface-container-high);
+  color: var(--vk-on-surface);
+  box-shadow: var(--vk-shadow);
+}
+
+.vk-ui-dialog::backdrop { background-color: var(--vk-scrim); }
+
+.vk-ui-dialog__panel {
+  display: grid;
+  gap: var(--vk-space-3);
+  padding: var(--vk-space-6);
+}
+
+.vk-ui-dialog__title {
+  margin: 0;
+  font-family: var(--vk-type-title-font);
+  font-size: var(--vk-type-title-size);
+  font-weight: var(--vk-type-title-weight);
+  line-height: var(--vk-type-title-line-height);
+  overflow-wrap: break-word;
+}
+
+.vk-ui-dialog__context {
+  margin: 0;
+  color: var(--vk-on-surface-variant);
+  overflow-wrap: break-word;
+}
+
+.vk-ui-dialog__content:empty { display: none; }
+
+.vk-ui-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--vk-space-2) var(--vk-space-3);
+  padding-block-start: var(--vk-space-2);
+}
+
+@media (max-width: 759.98px) {
+  .vk-ui-dialog--sheet {
+    inline-size: 100%;
+    max-block-size: 85%;
+    margin-block-end: 0;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+}
+
+/* ContentRegion -------------------------------------------------------------------------------- */
+
+/* The progress edge has reserved space, so starting or ending a refresh never moves content. */
+.vk-ui-region {
+  position: relative;
+  display: grid;
+  gap: var(--vk-space-4);
+  padding-block-start: calc(var(--vk-size-edge-progress) + var(--vk-space-2));
+}
+
+.vk-ui-region__progress {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+}
+
+.vk-ui-region__progress .vk-ui-edge__label {
+  justify-self: end;
+  padding-inline: var(--vk-space-2);
+  border-radius: var(--vk-radius-sm);
+  background-color: var(--vk-surface);
+}
+
+/* Before the gate shows it, the skeleton keeps its space but is not painted. */
+.vk-ui-region__skeleton[data-shown="false"] { visibility: hidden; }
+
+.vk-ui-region__unlawful {
+  margin: 0;
+  padding: var(--vk-space-3);
+  border: 1px dashed var(--vk-outline);
+  border-radius: var(--vk-radius-md);
+  font-family: var(--vk-type-code-font);
+  color: var(--vk-on-surface);
 }
