@@ -116,13 +116,23 @@ async fn serve(config: Config) -> Result<(), Failure> {
         tracing::warn!(
             "local identity fixture enabled: loopback requests act as VINK_DEV_PRINCIPAL; this is not authentication"
         );
+        if config.identity.is_some() {
+            tracing::warn!(
+                "the local fixture takes precedence; Identity is only probed by readiness"
+            );
+        }
     }
+    let probe = config.identity.as_ref().map(|identity| {
+        identity::IdentityClient::new(identity.socket.clone(), identity.server_uid)
+    });
     let state = AppState::new(
         Vink::new(PgStore::new(pool.clone())),
         Arc::from(resolver),
         &config.public_origin,
         &config.site_root,
-    );
+    )
+    .with_identity_probe(probe)
+    .with_restricted_role_required(config.profile == Profile::Production);
     if !config.site_root.join("pkg").join("vink.js").exists() {
         tracing::warn!(
             site_root = %config.site_root.display(),

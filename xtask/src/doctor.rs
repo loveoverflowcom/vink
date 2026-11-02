@@ -62,6 +62,33 @@ pub fn run(env: &Env) -> ExitCode {
             }
         }
     }
+    // Identity is optional for the App; when its socket is configured, `dev` needs both URLs.
+    match env.get("VINK_IDENTITY_SOCKET") {
+        None => line(
+            false,
+            "Identity (services/vink-identity)",
+            Err("VINK_IDENTITY_SOCKET not set; `dev` runs the App alone (private routes stay closed outside the local fixture)".into()),
+        ),
+        Some(socket) => {
+            line(true, "VINK_IDENTITY_SOCKET", Ok(socket));
+            for key in ["VINK_IDENTITY_DATABASE_URL", "VINK_IDENTITY_MIGRATE_DATABASE_URL"] {
+                match env.get(key) {
+                    None => line(
+                        true,
+                        key,
+                        Err("not set; provision services/postgres and copy .env.example".into()),
+                    ),
+                    Some(url) => line(
+                        true,
+                        key,
+                        describe_database(&url).and_then(|description| {
+                            probe_database(&url).map(|()| format!("{description}, SELECT 1 ok"))
+                        }),
+                    ),
+                }
+            }
+        }
+    }
     line(
         false,
         crate::TEST_DATABASE_URL,

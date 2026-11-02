@@ -6,8 +6,9 @@ SQL, row mapping, port và migrations ở lại service sở hữu. Chiều ph�
 `services/* → vink-store-postgres`; `verify quick` từ chối package phụ thuộc service, web hay
 framework HTTP. Lý do tách: [ranh giới PostgreSQL và Identity](../../docs/architecture/identity-postgres-boundaries.md).
 
-Consumer hiện tại: [vink-app](../../services/vink-app/src/persistence/mod.rs). Wrapper ở đó gắn
-vòng đời với `MIGRATOR` của App để registry khác không chạm database App.
+Consumer hiện tại: [vink-app](../../services/vink-app/src/persistence/mod.rs) và
+[vink-identity](../../services/vink-identity/src/persistence.rs). Mỗi wrapper gắn vòng đời với
+`MIGRATOR` của owner để registry khác không chạm database của mình.
 
 ```rust
 use sqlx::migrate::Migrator;

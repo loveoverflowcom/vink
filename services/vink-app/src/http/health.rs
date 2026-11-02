@@ -11,7 +11,8 @@ use axum::{Json, Router};
 use serde_json::{Value, json};
 
 use super::AppState;
-use crate::persistence::{SchemaState, schema_state};
+use crate::identity::client::{Authority, CallError};
+use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -24,26 +25,50 @@ async fn live() -> Json<Value> {
 }
 
 /// Integrations that do not exist yet are reported as such, never as healthy.
-pub fn integrations() -> Value {
+pub fn integrations(identity: &str) -> Value {
     json!({
         "discourse": "not_implemented",
         "ai_moderation": "not_implemented",
         "jobs": "none",
+        "identity": identity,
     })
+}
+
+/// The Identity process as the App sees it. Informational: readiness does not depend on it,
+/// because public reading must keep working while Identity is down.
+async fn identity_status(state: &AppState) -> &'static str {
+    let Some(client) = &state.identity_probe else {
+        return "not_configured";
+    };
+    match tokio::time::timeout(Duration::from_secs(1), client.authority()).await {
+        Ok(Ok(Authority::NotConfigured)) | Ok(Err(CallError::NoAuthority)) => "no_authority",
+        Ok(Ok(Authority::Available)) => "available",
+        Ok(Err(CallError::Unavailable(_))) | Err(_) => "unavailable",
+    }
 }
 
 async fn ready(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
     let pool = state.vink.store().pool();
-    let probe = tokio::time::timeout(Duration::from_secs(5), schema_state(pool)).await;
-    let state = match probe {
-        Ok(Ok(state)) => Some(state),
-        Ok(Err(_)) | Err(_) => None,
+    let probe = tokio::time::timeout(Duration::from_secs(5), async {
+        Ok::<_, sqlx::Error>((schema_state(pool).await?, role_is_privileged(pool).await?))
+    })
+    .await;
+    let (schema, privileged) = match probe {
+        Ok(Ok((schema, privileged))) => (Some(schema), Some(privileged)),
+        Ok(Err(_)) | Err(_) => (None, None),
     };
-    let ready = state == Some(SchemaState::Current);
-    let (database, schema) = match state {
-        Some(state) => ("ok", state.label()),
+    let role_ok = privileged == Some(false) || !state.require_restricted_role;
+    let ready = schema == Some(SchemaState::Current) && role_ok;
+    let role = match privileged {
+        Some(false) => "restricted",
+        Some(true) => "privileged",
+        None => "unknown",
+    };
+    let (database, schema) = match schema {
+        Some(schema) => ("ok", schema.label()),
         None => ("unavailable", "unknown"),
     };
+    let identity = identity_status(&state).await;
     let status = if ready {
         StatusCode::OK
     } else {
@@ -53,8 +78,8 @@ async fn ready(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
         status,
         Json(json!({
             "status": if ready { "ready" } else { "not_ready" },
-            "checks": { "database": database, "schema": schema },
-            "integrations": integrations(),
+            "checks": { "database": database, "schema": schema, "role": role },
+            "integrations": integrations(identity),
         })),
     )
 }

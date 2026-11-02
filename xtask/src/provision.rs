@@ -20,6 +20,9 @@ use crate::web;
 const FRESH: &str = "vink_verify_prov_fresh";
 const LEGACY: &str = "vink_verify_prov_legacy";
 const IDENTITY: &str = "vink_verify_prov_identity";
+/// Separate databases that receive the per-owner backups; never an original.
+const RESTORED_APP: &str = "vink_verify_prov_restored_app";
+const RESTORED_IDENTITY: &str = "vink_verify_prov_restored_identity";
 
 /// Data written before provisioning; the title is NFD on purpose, so any rewrite would show.
 const LEGACY_AUTHOR: &str = "55555555-5555-4555-8555-555555555555";
@@ -189,6 +192,10 @@ impl Run<'_> {
             "worker starts with the runtime role, reports a current schema, stops on SIGTERM",
             || web::worker_lifecycle(self.root, &self.url(&self.fresh.runtime, FRESH), "current"),
         ) && crate::identity::verify(report, &self.identity_scratch())
+            && report.step(
+                "backup/restore per owner: pg_dump of App and Identity restored elsewhere matches data and history; originals untouched",
+                || self.backup_restore(),
+            )
     }
 
     /// The provisioned Identity owner, plus the fresh App owner as the "other" database.
@@ -215,10 +222,11 @@ impl Run<'_> {
     /// Drops the scratch databases and roles; harmless when they do not exist.
     fn cleanup(&self) -> Result<(), String> {
         let admin = self.admin_url.clone();
-        let mut statements: Vec<String> = [FRESH, LEGACY, IDENTITY]
-            .iter()
-            .map(|db| format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"))
-            .collect();
+        let mut statements: Vec<String> =
+            [FRESH, LEGACY, IDENTITY, RESTORED_APP, RESTORED_IDENTITY]
+                .iter()
+                .map(|db| format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"))
+                .collect();
         for owner in [&self.fresh, &self.legacy, &self.identity] {
             for role in [&owner.migrator, &owner.runtime] {
                 statements.push(format!("DROP ROLE IF EXISTS {role}"));
@@ -414,6 +422,142 @@ impl Run<'_> {
             .await
             .map_err(|e| format!("snapshot {database}: {e}"))
         })
+    }
+
+    /// Migration history of any owner database, as text.
+    fn history(&self, database: &str) -> Result<String, String> {
+        let url = self.admin_on(database);
+        block_on(async move {
+            let mut connection = connect(&url).await?;
+            sqlx::query_scalar(
+                "SELECT coalesce(json_agg(json_build_object(
+                    'version', h.version, 'description', h.description,
+                    'installed_on', h.installed_on, 'success', h.success,
+                    'checksum', encode(h.checksum, 'hex'),
+                    'execution_time', h.execution_time) ORDER BY h.version)::text, '[]')
+                   FROM _sqlx_migrations h",
+            )
+            .fetch_one(&mut connection)
+            .await
+            .map_err(|e| format!("history {database}: {e}"))
+        })
+    }
+
+    /// `pg_dump`/`pg_restore` from `VINK_PG_BIN` or PATH; their major version must not be older
+    /// than the server's, or the dump is refused.
+    fn pg_tool(&self, name: &str) -> Result<Command, String> {
+        let program = std::env::var_os("VINK_PG_BIN")
+            .map(|dir| Path::new(&dir).join(name))
+            .unwrap_or_else(|| name.into());
+        let version = Command::new(&program)
+            .arg("--version")
+            .output()
+            .map_err(|_| {
+                format!("{name} not found; install a PostgreSQL client or set VINK_PG_BIN")
+            })?;
+        let text = String::from_utf8_lossy(&version.stdout).to_string();
+        let major: u32 = text
+            .split_whitespace()
+            .find_map(|w| w.split('.').next()?.parse().ok())
+            .unwrap_or(0);
+        let admin = self.admin_url.clone();
+        let server: i32 = block_on(async move {
+            let mut connection = connect(&admin).await?;
+            sqlx::query_scalar("SELECT current_setting('server_version_num')::int / 10000")
+                .fetch_one(&mut connection)
+                .await
+                .map_err(|e| e.to_string())
+        })?;
+        if (major as i32) < server {
+            return Err(format!(
+                "{name} {major} cannot dump PostgreSQL {server}; set VINK_PG_BIN to a {server}+ client"
+            ));
+        }
+        let mut command = Command::new(program);
+        command
+            .current_dir(self.root)
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .envs(self.admin.psql_env());
+        Ok(command)
+    }
+
+    fn backup_restore(&self) -> Result<(), String> {
+        let dir = self.root.join("target/verify-backup");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let app_before = self.snapshot(LEGACY)?;
+        let identity_before = self.history(IDENTITY)?;
+        if identity_before == "[]" {
+            return Err("Identity has no migration history to back up".into());
+        }
+        for (source, target) in [(LEGACY, RESTORED_APP), (IDENTITY, RESTORED_IDENTITY)] {
+            let file = dir.join(format!("{source}.dump"));
+            let out = self
+                .pg_tool("pg_dump")?
+                .args(["--format=custom", "--file"])
+                .arg(&file)
+                .args(["--dbname", source])
+                .output()
+                .map_err(|e| e.to_string())?;
+            if !out.status.success() {
+                return Err(format!("pg_dump {source}: {}", tail(&out.stderr)));
+            }
+            let admin = self.admin_url.clone();
+            let create =
+                format!("CREATE DATABASE {target} WITH TEMPLATE template0 ENCODING 'UTF8'");
+            block_on(async move {
+                let mut connection = connect(&admin).await?;
+                connection
+                    .execute(AssertSqlSafe(create))
+                    .await
+                    .map(|_| ())
+                    .map_err(|e| e.to_string())
+            })?;
+            let out = self
+                .pg_tool("pg_restore")?
+                .args(["--exit-on-error", "--dbname", target])
+                .arg(&file)
+                .output()
+                .map_err(|e| e.to_string())?;
+            if !out.status.success() {
+                return Err(format!("pg_restore {target}: {}", tail(&out.stderr)));
+            }
+            println!("==> {source} dumped and restored into {target}");
+        }
+        if self.snapshot(RESTORED_APP)? != app_before {
+            return Err("the restored App database differs from its source".into());
+        }
+        if self.history(RESTORED_IDENTITY)? != identity_before {
+            return Err("the restored Identity history differs from its source".into());
+        }
+        if self.snapshot(LEGACY)? != app_before || self.history(IDENTITY)? != identity_before {
+            return Err("taking a backup changed an original database".into());
+        }
+        // Ownership comes back with the objects: the restored App stays migratable by its migrator.
+        let url = self.admin_on(RESTORED_APP);
+        let migrator = self.legacy.migrator.clone();
+        let foreign: i64 = block_on(async move {
+            let mut connection = connect(&url).await?;
+            sqlx::query_scalar(
+                "SELECT count(*) FROM pg_class c
+                  WHERE c.relnamespace = 'public'::regnamespace AND c.relkind IN ('r', 'p')
+                    AND c.relowner <> $1::regrole",
+            )
+            .bind(migrator)
+            .fetch_one(&mut connection)
+            .await
+            .map_err(|e| e.to_string())
+        })?;
+        if foreign != 0 {
+            return Err(format!(
+                "{foreign} restored App table(s) lost their migrator owner"
+            ));
+        }
+        println!(
+            "==> restored copies equal their sources (rows, IDs, Unicode, pointers, histories)"
+        );
+        Ok(())
     }
 
     /// Number of scratch roles and their stored password verifiers (compared, never printed).

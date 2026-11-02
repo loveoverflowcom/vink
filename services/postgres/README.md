@@ -75,11 +75,30 @@ File cũ `infra/dev/compose.yaml` tạo volume `<project>_vink-postgres`, mặc 
    ```
 
    ```bash
-   VINK_APP_DATABASE=vink_copy VINK_APP_MIGRATOR_ROLE=vink_copy_migrator VINK_APP_RUNTIME_ROLE=vink_copy_runtime VINK_APP_MIGRATOR_PASSWORD=copy-only VINK_APP_RUNTIME_PASSWORD=copy-only services/postgres/provision.sh --env-file services/postgres/provision.env.example
+   (
+     set -a
+     . services/postgres/provision.env.example
+     VINK_APP_DATABASE=vink_copy
+     VINK_APP_MIGRATOR_ROLE=vink_copy_migrator
+     VINK_APP_RUNTIME_ROLE=vink_copy_runtime
+     VINK_APP_MIGRATOR_PASSWORD=copy-only
+     VINK_APP_RUNTIME_PASSWORD=copy-only
+     VINK_IDENTITY_DATABASE=vink_identity_copy
+     VINK_IDENTITY_MIGRATOR_ROLE=vink_identity_copy_migrator
+     VINK_IDENTITY_RUNTIME_ROLE=vink_identity_copy_runtime
+     VINK_IDENTITY_MIGRATOR_PASSWORD=copy-only
+     VINK_IDENTITY_RUNTIME_PASSWORD=copy-only
+     services/postgres/provision.sh
+   )
    ```
 
-   Xem NOTICE `adopting ...`, chạy app với role của bản sao nếu muốn, rồi xóa **bản sao**
-   (`DROP DATABASE vink_copy`, `DROP ROLE vink_copy_migrator, vink_copy_runtime`).
+   Subshell nạp cấu hình local trước rồi chọn database/role thử cho cả hai owner. `--env-file` được source
+   trong script và ghi đè biến đã truyền, nên không ghép nó với các biến chọn bản sao ở trên.
+   Identity thử được tạo riêng, không thay đổi database Identity đang dùng.
+
+   Xem NOTICE `adopting ...`, chạy app với role của bản sao nếu muốn, rồi xóa **hai database thử**
+   (`DROP DATABASE vink_copy`, `DROP DATABASE vink_identity_copy`) và các role thử
+   (`DROP ROLE vink_copy_migrator, vink_copy_runtime, vink_identity_copy_migrator, vink_identity_copy_runtime`).
 4. Chạy `provision.sh` cho database thật, cập nhật `.env` theo `.env.example` (`DATABASE_URL`
    runtime, `VINK_MIGRATE_DATABASE_URL`, `VINK_TEST_DATABASE_URL`), rồi `cargo xtask db migrate`.
    Migration đã áp dụng không chạy lại; dữ liệu và lịch sử giữ nguyên.
@@ -113,6 +132,59 @@ chính superuser đó để migrator nhận lại quyền sở hữu.
 
 `postgres` và `template1` vẫn mở `CONNECT` cho `PUBLIC` theo mặc định PostgreSQL và không chứa dữ
 liệu Vink; script chỉ báo NOTICE. Object ngoài schema `public` không được nhận hay cấp quyền.
+
+## Migration theo owner, restart và rollback code
+
+- **Migrate:** mỗi owner chạy bằng credential migrator của mình: `vink-app migrate`
+  (`VINK_MIGRATE_DATABASE_URL`) và `vink-identity migrate` (`VINK_IDENTITY_MIGRATE_DATABASE_URL`);
+  `cargo xtask db migrate` chạy App rồi Identity khi Identity được cấu hình. Không có transaction
+  xuyên hai owner: lỗi ở Identity để App đã migrate; chạy lại lệnh là đủ (migration đã áp dụng là
+  no-op). `serve` của cả hai không tự migrate và báo `pending_migrations` cho tới khi migrate xong.
+- **Restart:** App, Identity và container khởi động lại độc lập. App vẫn phục vụ đọc công khai khi
+  Identity dừng; request có credential nhận `503 dependency_unavailable` tới khi Identity trở lại.
+  Container restart giữ volume; không dùng `down -v`.
+- **Rollback code:** triển khai lại binary cũ hơn. Nếu database đã có migration mà binary cũ không
+  biết, readiness của binary cũ là `diverged` và nó không migrate: đó là tín hiệu dừng, không phải
+  lý do sửa hay xóa lịch sử. Muốn quay lại schema cũ thì restore một backup đã kiểm vào nơi tách
+  biệt rồi chuyển hướng có chủ đích. Không rollback bằng xóa volume, database hay dòng
+  `_sqlx_migrations`. Provisioning chỉ đổi owner/grant; nó không cần rollback để binary cũ đọc dữ
+  liệu, nhưng binary cũ phải được cấu hình bằng credential có quyền tương ứng.
+
+## Backup và restore theo owner
+
+Mỗi database là một owner với backup riêng. Dùng `pg_dump`/`pg_restore` cùng major hoặc mới hơn
+server (17), bằng credential operator:
+
+```bash
+pg_dump --format=custom --file vink-app.dump --dbname vink
+```
+
+```bash
+pg_dump --format=custom --file vink-identity.dump --dbname vink_identity
+```
+
+Restore thử luôn vào **nơi tách biệt** (database mới hoặc cluster khác), không đè database đang dùng:
+
+```bash
+psql -d postgres -c "CREATE DATABASE vink_restore_check WITH TEMPLATE template0 ENCODING 'UTF8'"
+```
+
+```bash
+pg_restore --exit-on-error --dbname vink_restore_check vink-app.dump
+```
+
+Rồi đối chiếu số dòng, ID, nội dung và `_sqlx_migrations` với nguồn. Restore giữ owner và grant
+của object khi các role tồn tại; quyền `CONNECT` cấp ở mức database không nằm trong dump, nên một
+database restore để phục vụ thật cần chạy `provision.sh` cho tên database đó.
+
+**Giới hạn nhất quán:** hai dump là hai thời điểm khác nhau; không có snapshot chung của App và
+Identity. Hiện Identity chưa có dữ liệu ngoài lịch sử migration nên không mất gì; khi có binding
+subject → principal (App) và credential (Identity), restore phải đối soát hai phía và coi binding
+trỏ tới subject không còn ở Identity là “chưa rõ”, không tự xóa hay tự gán. Backup trong container:
+`podman compose ... exec -T postgres pg_dump -U vink -Fc vink > vink-app.dump`.
+
+`verify postgres` dump hai owner tạm, restore vào database tạm khác tên và kiểm dữ liệu, ID, Unicode,
+con trỏ publication, lịch sử migration và owner object giống nguồn, nguồn không đổi.
 
 ## Production
 

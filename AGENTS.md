@@ -13,7 +13,8 @@ database/role provisioning (`services/postgres`: App `vink` and Identity `vink_i
 runtime and migrator credentials split) and a shared pool/migration package
 (`packages/store-postgres`), a separate `services/vink-identity` process (own database,
 migrations and draft private contract on a Unix socket; no auth authority, so it answers
-`authority_not_configured` and the App does not call it yet), a draft/reader slice with a
+`authority_not_configured`; the App consults it through its own client only for a presented
+`Authorization: Bearer` credential and never maps a subject to a principal), a draft/reader slice with a
 CodeMirror 6 body editor
 (`apps/vink-web/editor`, pinned npm runtime), an adaptive 220/96 rail/mobile bar with local
 appearance preferences and a truthful `/toi` utility, a finite v3 public reading stream with
