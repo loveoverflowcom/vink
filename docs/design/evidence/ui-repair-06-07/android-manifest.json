@@ -1,0 +1,139 @@
+{
+  "format": "vink-native-sample-v1",
+  "host": "android-emulator",
+  "renderer": "cmp-native",
+  "serial": "emulator-5560",
+  "avd": "Pixel_7",
+  "os": "Android 17",
+  "api_level": "37",
+  "display_size": "Physical size: 1080x2400",
+  "display_density": "Physical density: 420",
+  "os_text_scale": "1.0",
+  "bundle_id": "com.vietink.ui.diagnostic",
+  "git_sha": "8045d45e554e0a01f11fd252ac681f8eb9d33a56",
+  "dirty": true,
+  "scope": "six selected diagnostic samples; not a product app",
+  "expected": 6,
+  "captures": [
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "layout.grid--default--light--text100.png",
+      "sha256": "d92a5a180dd1ea9a34a719138fe0784074003063e578fcdeeb66c03c035a0613",
+      "byte_size": 145083,
+      "captured_at": "2026-11-03T10:15:12.561581+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "identity.avatar-group--default--light--text100.png",
+      "sha256": "a045da07ff68bc23c9e22281447bc9f745ced19379de3c20d02a515da675d412",
+      "byte_size": 135751,
+      "captured_at": "2026-11-03T10:15:15.769151+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "state.empty--default--light--text100.png",
+      "sha256": "c83abde1f8d92b1b7a7d51018852eeab39d9fdb7871d175d72e36a09de64d806",
+      "byte_size": 153150,
+      "captured_at": "2026-11-03T10:15:19.018021+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "requested_theme": "dark",
+      "preview_text_scale": 100,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "state.error--default--dark--text100.png",
+      "sha256": "b93a5f6a71aab8850ea057bbd3101df6516e41d2bc5f38da5259ec1ef9316fa3",
+      "byte_size": 150723,
+      "captured_at": "2026-11-03T10:15:22.247676+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "compact",
+      "requested_theme": "dark",
+      "preview_text_scale": 100,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "navigation.rail--compact--dark--text100.png",
+      "sha256": "39696fc570665923ce4c2d2f5594197b9cbcef8854694a12223ec6b1c5589c78",
+      "byte_size": 147667,
+      "captured_at": "2026-11-03T10:15:25.484681+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "requested_theme": "dark",
+      "preview_text_scale": 200,
+      "viewport_logical": null,
+      "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "capture_mode": "viewport",
+      "path": "composition.feedback--default--dark--text200.png",
+      "sha256": "16ed244af435b3fbbdd462c26941e86f2151ea5c5af94f69252f08dd54481aed",
+      "byte_size": 205439,
+      "captured_at": "2026-11-03T10:15:28.779369+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    }
+  ]
+}

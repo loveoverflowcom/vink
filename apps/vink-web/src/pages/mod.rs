@@ -19,7 +19,8 @@ use crate::ui::{
 };
 use vink_ui::{
     Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, ListEnd, PanelContent,
-    PanelKind, Radius, Space, StatePanel, Surface, SurfaceTone, TextField, TextKind, TypeRole,
+    PanelKind, ProblemKind, Radius, Space, StatePanel, Surface, SurfaceTone, TextField, TextKind,
+    TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -85,7 +86,9 @@ pub fn Home() -> impl IntoView {
                             Ok(list) if list.works.is_empty() => {
                                 view! {
                                     <div data-testid="public-empty">
-                                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Chưa có tác phẩm nào được công khai.".into(), message: "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau.".into(), actions: vec![], code: None } />
+                                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Chưa có tác phẩm nào được công khai.".into(), message: "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau.".into(), actions: vec![], code: None }>
+                                            <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Về Bàn viết"</vink_ui::Link>
+                                        </StatePanel>
                                     </div>
                                 }
                                     .into_any()
@@ -135,7 +138,14 @@ fn PublicListView(list: WorkList, query: Memo<String>) -> impl IntoView {
                 if works.is_empty() {
                     view! {
                         <div data-testid="public-no-results">
-                            <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tác phẩm khớp trong danh sách này.".into(), message: "Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm để xem lại danh sách đã tải.".into(), actions: vec![], code: None } />
+                            <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tác phẩm khớp trong danh sách này.".into(), message: "Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm để xem lại danh sách đã tải.".into(), actions: vec![], code: None }>
+                                <vink_ui::Link href="/" attr:id="clear-public-results" variant=vink_ui::LinkVariant::Standalone
+                                    on:click=move |event: leptos::ev::MouseEvent| {
+                                        if event.button() == 0 && !event.meta_key() && !event.ctrl_key() && !event.shift_key() && !event.alt_key() {
+                                            focus_recovery("public-query");
+                                        }
+                                    }>"Xóa tìm kiếm"</vink_ui::Link>
+                            </StatePanel>
                         </div>
                     }.into_any()
                 } else {
@@ -183,7 +193,7 @@ pub fn Reader() -> impl IntoView {
     let publication = api::publication_resource(work_id);
     let status = ResponseStatus::capture();
     view! {
-        <Suspense fallback=|| view! { <p class="vk-muted">"Đang mở tác phẩm…"</p> }>
+        <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang mở tác phẩm…"</p> }>
             {move || {
                 let status = status.clone();
                 Suspend::new(async move {
@@ -195,7 +205,10 @@ pub fn Reader() -> impl IntoView {
                         }
                         Err(LoadError::Unavailable) => {
                             status.set(503);
-                            view! { <Unavailable return_href=return_href.get_untracked() /> }.into_any()
+                            view! {
+                                <Title text="Chưa tải được tác phẩm — Vink" />
+                                <Unavailable return_href=return_href.get_untracked() heading=HeadingLevel::H1 />
+                            }.into_any()
                         }
                     }
                 })
@@ -239,15 +252,62 @@ fn PublicationView(publication: Publication) -> impl IntoView {
 }
 
 #[component]
-fn Unavailable(#[prop(default = "/".to_string())] return_href: String) -> impl IntoView {
+fn Unavailable(
+    #[prop(default = "/".to_string())] return_href: String,
+    #[prop(default = HeadingLevel::H2)] heading: HeadingLevel,
+) -> impl IntoView {
+    let location = leptos_router::hooks::use_location();
+    let retry_href = Memo::new(move |_| {
+        let mut href = location.pathname.get();
+        let search = location.search.get();
+        let hash = location.hash.get();
+        if !search.is_empty() {
+            href.push('?');
+            href.push_str(search.trim_start_matches('?'));
+        }
+        if !hash.is_empty() && hash != "#" {
+            href.push('#');
+            href.push_str(hash.trim_start_matches('#'));
+        }
+        href
+    });
     view! {
-        <div data-testid="public-unavailable">
-            <vink_ui::InlineNotice tone=vink_ui::Tone::Error announce=vink_ui::Announce::Assertive title="Tạm thời chưa đọc được nội dung."
-                message="Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá." />
-            <p><a href="" rel="external">"Thử tải lại"</a></p>
-            <vink_ui::Link href=return_href variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
+        <div data-testid="public-unavailable" role="alert">
+            <StatePanel heading content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: "Tạm thời chưa đọc được nội dung.".into(), message: "Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá.".into(), actions: vec![], code: None }>
+                <vink_ui::Link href=retry_href attr:rel="external" attr:id="retry-public" variant=vink_ui::LinkVariant::Standalone
+                    on:click=move |_event: leptos::ev::MouseEvent| {
+                        #[cfg(feature = "hydrate")]
+                        if _event.button() == 0 && !_event.meta_key() && !_event.ctrl_key() && !_event.shift_key() && !_event.alt_key() {
+                            // A same-URL link with a fragment only scrolls. This intent always
+                            // reloads the GET document while retaining its query AND fragment.
+                            _event.prevent_default();
+                            let _ = window().location().reload();
+                        }
+                    }>"Thử tải lại"</vink_ui::Link>
+                <vink_ui::Link href=return_href.clone() variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
+            </StatePanel>
         </div>
     }
+}
+
+/// The recovery control can unmount as its state resolves. Focus an enduring field/heading
+/// after that render; never scroll a different route in response to a stale frame.
+fn focus_recovery(id: &'static str) {
+    #[cfg(feature = "hydrate")]
+    {
+        use wasm_bindgen::JsCast;
+        let path = window().location().pathname().ok();
+        request_animation_frame(move || {
+            if window().location().pathname().ok() == path
+                && let Some(element) = document().get_element_by_id(id)
+                && let Ok(element) = element.dyn_into::<web_sys::HtmlElement>()
+            {
+                let _ = element.focus();
+            }
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = id;
 }
 
 /// Mark only the current public history entry. A new tab/modifier click must not move it.
@@ -312,10 +372,9 @@ fn NotFoundContent(#[prop(default = "/".to_string())] return_href: String) -> im
     view! {
         <Title text="Không tìm thấy — Vink" />
         <div>
-            <StatePanel heading=HeadingLevel::H1 content=PanelContent { kind: PanelKind::Error(vink_ui::ProblemKind::NotFound), title: "Không tìm thấy trang này.".into(), message: "Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.".into(), actions: vec![], code: None } />
-            <p>
-                <a href=return_href>"Về Khám phá"</a>
-            </p>
+            <StatePanel heading=HeadingLevel::H1 content=PanelContent { kind: PanelKind::Error(ProblemKind::NotFound), title: "Không tìm thấy trang này.".into(), message: "Tác phẩm có thể chưa được công khai hoặc đường dẫn không đúng.".into(), actions: vec![], code: None }>
+                <vink_ui::Link href=return_href.clone() variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
+            </StatePanel>
         </div>
     }
 }

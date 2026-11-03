@@ -267,13 +267,19 @@ private fun Modifier.announce(announce: Announce): Modifier = when (announce) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun VinkStatePanel(content: PanelContent, onRecover: (RecoveryIntent) -> Unit, modifier: Modifier = Modifier, level: HeadingLevel = HeadingLevel.H2) {
+fun VinkStatePanel(
+    content: PanelContent,
+    onRecover: (RecoveryIntent) -> Unit,
+    modifier: Modifier = Modifier,
+    level: HeadingLevel = HeadingLevel.H2,
+    actions: (@Composable () -> Unit)? = null,
+) {
     val c = LocalVink.current.colors
     Column(modifier.fillMaxWidth().widthIn(max = VinkDimens.Measure), verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
         VinkIcon(content.icon, tint = c[toneAccent(content.tone)])
         VinkHeading(content.title, level, role = TypeRole.Title)
         if (content.message.isNotBlank()) VinkText(content.message, tone = TextTone.Muted)
-        if (content.actions.isNotEmpty()) {
+        if (content.actions.isNotEmpty() || actions != null) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2), verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
                 content.actions.forEachIndexed { i, action ->
                     VinkButton(
@@ -282,6 +288,7 @@ fun VinkStatePanel(content: PanelContent, onRecover: (RecoveryIntent) -> Unit, m
                         variant = if (i == 0) ButtonVariant.Filled else ButtonVariant.Text,
                     )
                 }
+                actions?.invoke()
             }
         }
         content.code?.let { VinkText("Mã: $it", role = TypeRole.Caption, tone = TextTone.Muted) }

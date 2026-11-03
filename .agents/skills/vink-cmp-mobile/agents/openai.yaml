@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vink CMP Mobile"
+  short_description: "UI Compose Vink, Android/iOS và preview có bằng chứng"
+  default_prompt: "Dùng $vink-cmp-mobile để triển khai hoặc sửa UI Compose Vink, tìm đúng owner và kiểm chứng riêng từng renderer/host."

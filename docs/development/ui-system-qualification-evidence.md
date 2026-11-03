@@ -1,5 +1,12 @@
 # UIS-06 — quality gates, replay và diagnostic hosts
 
+Bổ sung hiện hành sau UIS-06:
+[UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi requalification của optional
+StatePanel action slot (common/Desktop + native compile/runtime), capture focus
+Web và mẫu evidence Android/iOS ngày 03/11/2026. Các kết quả dưới đây vẫn là lịch
+sử theo revision đã ghi; không thay chúng bằng PASS của lượt mới. Slot callback
+được test trực tiếp trên JVM; native runtime chạy ba regression sẵn có mỗi host.
+
 Ngày 03/11/2026 (UTC+07), nền `develop@204d319` (UIS-05/#36 đã merge), nhánh
 `codex/ui-system-qualification`. Phạm vi #24; requirement liên quan UX-01/UX-03, WR-01/WR-03
 chỉ được giữ qua regressions hiện có, không nghiệm thu toàn MVP hay D-xx.

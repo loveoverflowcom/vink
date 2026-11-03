@@ -163,6 +163,7 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `cargo xtask dev` | Build, migrate các owner, chạy Identity (nếu có `VINK_IDENTITY_SOCKET`) và chờ ready, rồi chạy server ở `VINK_BIND` | Bất kỳ bước nào lỗi, Identity không ready trong 20 s |
 | `cargo xtask ui-tokens [--check]` | Validate `packages/ui-system/shared/{tokens.json, preview-catalog.json, icons.json, fixtures/}` (type, đơn vị, alias treo/vòng/sai type, đủ light/dark, tương phản khai báo; icon: commit pin, license, SHA-256 upstream dựng lại; identity: tone trong khoảng, ảnh base64; states: tổ hợp vùng, intent, placement, notice và ca `LoadingGate` khớp chính sách token) rồi ghi `tokens.css`, `tokens.rs`, `catalog.rs`, `icons.rs`, `identity_vectors.rs`, `state_vectors.rs`, `VinkTokens.kt`, `VinkCatalog.kt`, `VinkIcons.kt`, `VinkIdentityVectors.kt`, `VinkStateVectors.kt`; `--check` không ghi | Nguồn không hợp lệ; với `--check`, file sinh ra thiếu hoặc lệch |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle preview Leptos (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ loopback ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy [preview-smoke](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) trong Chrome headless và ghi ảnh + `contexts.json` | Build, wasm-bindgen, Node/Chrome thiếu hoặc một assertion lỗi |
+| `VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify` | Giữ smoke/matrix raw hiện có; thêm 36 capture specimen chọn lọc (6 entry × light/dark × 390/1440 text100, 390 text200), `focus-manifest.json` và PNG `--focus[--partN]`. Clip theo geometry, padding 12 CSS px; specimen cao chia tile cân bằng, tối đa 4096px và không quá chiều cao viewport (mặc định 900px), không thu ảnh. Cuộn trong viewport thật, không dùng CDP resize ngầm. Kiểm PNG/bounds/ảnh không trắng, phục hồi viewport/scroll/focus và source fingerprint | Cùng prerequisite với preview; identity/theme/clip/PNG/restore hoặc source đổi trong lúc chụp |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
 | `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
 | `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
@@ -173,8 +174,11 @@ Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thi
 không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó chạy (biến môi trường thật được
 ưu tiên); bản thân binary chỉ đọc biến môi trường. `xtask` không cài toolchain, không bật
 container, không push hay deploy. CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))
-chỉ chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi đúng ba lane này; `ui-preview` là
-lệnh cục bộ, chưa chạy trong CI (CI chưa chuẩn bị JDK/Chrome cho preview).
+chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi ba lane này. Job Web còn
+chạy preview Leptos với `VINK_UI_FOCUS_CAPTURE=1`; job `ui-cmp` dùng JDK 17 để chạy
+Desktop tests/captures. Hai job giữ bundle qua artifact 14 ngày theo workflow;
+Android/iOS diagnostic vẫn cần môi trường native riêng. Cấu hình CI không tự là
+bằng chứng một run đã PASS.
 
 Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy ước mã thoát; cấu hình
 `VINK_IDENTITY_*` ở [README của service](../../services/vink-identity/README.md). Khi `.env` có

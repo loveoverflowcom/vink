@@ -57,6 +57,10 @@ thể tạo scratch DB, ghi fixture và fault injection: đọc prerequisite, d�
 
 Leptos preview có deep link `#<catalog-id>/<scenario-id>`, ảnh và `contexts.json`
 qua runner [preview-smoke](../../../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs).
+Chế độ focus opt-in được ghi trong development guide: giữ menu/matrix raw, thêm
+ảnh `#specimen` (heading/scenario + scope, không inspector) ở sáu entry chọn lọc.
+Manifest liên kết ảnh raw có giới hạn chiều cao với các tile specimen đầy đủ;
+không tạo matrix thứ hai mặc định và không biến ảnh focus thành nguyên bản raw.
 CMP ở mốc nền có Desktop preview và ảnh test off-screen. Ghi
 `host=desktop`, `capture_mode=offscreen` khi đúng; không suy thành tương tác cửa
 sổ desktop thật. Android/iOS của thư viện chỉ compile opt-in, chưa có product app.

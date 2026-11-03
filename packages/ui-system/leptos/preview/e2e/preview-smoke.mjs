@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { captureTransaction, captureSpecimen, sourceIdentity } from './focus-capture.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, value, i, all) => {
@@ -135,6 +136,7 @@ class Page {
 
   async viewport(width, height = 900) {
     this.state.width = width;
+    this.state.height = height;
     await this.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   }
 
@@ -207,24 +209,70 @@ class Page {
   }
 
   async capture(name) {
-    await this.eval('document.fonts.ready');
-    const height = await this.eval('Math.min(document.documentElement.scrollHeight, 6000)');
-    await this.send('Emulation.setDeviceMetricsOverride', { width: this.state.width, height, deviceScaleFactor: 1, mobile: false });
-    await this.settle();
-    const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
-    mkdirSync(args.out, { recursive: true });
-    writeFileSync(join(args.out, `${name}.png`), Buffer.from(data, 'base64'));
-    const context = await this.eval(`({
-      hash: location.hash,
-      width: innerWidth,
-      dpr: devicePixelRatio,
-      rootFontSize: getComputedStyle(document.documentElement).fontSize,
-      theme: document.querySelector('.vk-ui').dataset.theme,
-      surface: getComputedStyle(document.getElementById('specimen-scope')).getPropertyValue('--vk-surface').trim(),
-      fonts: ['16px "Be Vietnam Pro"', '16px "Literata"'].map((f) => [f, document.fonts.check(f)]),
-    })`);
-    this.contexts[name] = { ...context, media: { ...this.media } };
-    await this.viewport(this.state.width);
+    return captureTransaction(this, async () => {
+      await this.eval('document.fonts.ready');
+      const height = await this.eval('Math.min(document.documentElement.scrollHeight, 6000)');
+      await this.send('Emulation.setDeviceMetricsOverride', { width: this.state.width, height, deviceScaleFactor: 1, mobile: false });
+      await this.eval('scrollTo(0,0)');
+      await this.settle();
+      const { data } = await this.send('Page.captureScreenshot', { format: 'png' });
+      mkdirSync(args.out, { recursive: true });
+      writeFileSync(join(args.out, `${name}.png`), Buffer.from(data, 'base64'));
+      const context = await this.eval(`({
+        hash: location.hash,
+        width: innerWidth,
+        dpr: devicePixelRatio,
+        rootFontSize: getComputedStyle(document.documentElement).fontSize,
+        theme: document.querySelector('.vk-ui').dataset.theme,
+        surface: getComputedStyle(document.getElementById('specimen-scope')).getPropertyValue('--vk-surface').trim(),
+        fonts: ['16px "Be Vietnam Pro"', '16px "Literata"'].map((f) => [f, document.fonts.check(f)]),
+      })`);
+      this.contexts[name] = { ...context, media: { ...this.media } };
+    });
+  }
+}
+
+async function focusedCaptures(page, version) {
+  const entries = ['layout.grid', 'identity.avatar-group', 'state.empty', 'state.error', 'navigation.rail', 'composition.feedback'];
+  const records = entries.flatMap(catalog_id => ['light', 'dark'].flatMap(theme =>
+    [[390, 100], [1440, 100], [390, 200]].map(([width, scale]) => ({
+      catalog_id, scenario_id: 'default', theme, width, text_scale: scale,
+      raw_name: `${catalog_id}--default--${theme}--${width}${scale === 200 ? '--text200' : ''}`,
+      capture_status: 'BLOCKED', reason: 'Not reached in this run', inspected: false,
+    }))));
+  const manifest = { format: 'vink-preview-focus-v1', run: { ...sourceIdentity(), browser: version.product,
+    host: 'headless-chrome', renderer: 'leptos-web', data_mode: 'synthetic', locale: 'vi-VN' },
+    scope: { selection: 'six default specimens, light/dark, 390/1440 at 100%, 390 at 200%; opt-in',
+      expected: records.length, raw_policy: 'preserve raw filenames; capped document is separate from complete specimen tiles' }, captures: records };
+  const save = () => {
+    manifest.coverage = { expected: records.length, captured: records.filter(r => r.capture_status === 'CAPTURED').length,
+      inspected: records.filter(r => r.inspected).length, blocked: records.filter(r => r.capture_status === 'BLOCKED').length };
+    writeFileSync(join(args.out, 'focus-manifest.json'), JSON.stringify(manifest, null, 2));
+  };
+  save();
+  try {
+    for (const record of records) {
+      await page.choose('theme', record.theme === 'dark' ? 'Tối' : 'Sáng');
+      await page.choose('scale', `${record.text_scale}%`);
+      await page.viewport(record.width);
+      await page.open(record.catalog_id, record.scenario_id);
+      // Exercise scroll/focus preservation on a specimen that can start below 6000px.
+      await page.eval(`document.querySelector('#specimen-scope button, #specimen-scope a, #specimen-scope input')?.focus();
+        document.getElementById('specimen').scrollIntoView({block:'start'})`);
+      if (!page.contexts[record.raw_name]) await page.capture(record.raw_name);
+      Object.assign(record, await captureSpecimen(page, record, args.out), { capture_status: 'CAPTURED', reason: null });
+      save();
+    }
+    check(sourceIdentity().source_fingerprint === manifest.run.source_fingerprint, 'focused capture source stayed unchanged');
+    check(manifest.coverage.captured === manifest.scope.expected, `focused captures: ${manifest.coverage.captured}/${manifest.scope.expected}; no blank PNGs, exact state restoration`);
+  } catch (error) {
+    const current = records.find(record => record.capture_status === 'BLOCKED');
+    if (current) current.reason = error.message;
+    throw error;
+  } finally {
+    save();
+    await page.choose('scale', '100%');
+    await page.viewport(1440);
   }
 }
 
@@ -1100,6 +1148,7 @@ try {
   await screenPatterns(page);
   await reflow(page);
   await captures(page);
+  if (args.focus === '1') await focusedCaptures(page, version);
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
   console.log(`preview-smoke: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);

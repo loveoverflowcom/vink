@@ -10,7 +10,8 @@ description: >-
 
 Read the [vision](../../../prd/vision.md), UX/WR/ED requirements in
 [requirements](../../../prd/requirements.md), and actual design/component owners.
-Use [vink-leptos-web](../vink-leptos-web/SKILL.md) for renderer implementation and
+Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
+[vink-cmp-mobile](../vink-cmp-mobile/SKILL.md) for renderer implementation and
 [vink-publication](../vink-publication/SKILL.md) for the meaning of publication states.
 For an audit-only request, inspect and report; fixing requires scope already granted by the user.
 

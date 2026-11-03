@@ -20,6 +20,7 @@ hiện tại nằm ở [docs/development](../../docs/development/README.md) — 
 | [vink-publication](vink-publication/SKILL.md) | Sửa revision, kiểm duyệt AI/người, ý định xuất bản, rút bài hoặc tuyển chọn |
 | [vink-behavior](vink-behavior/SKILL.md) | Phân tích state/guard/race, viết hoặc review model Quint có phạm vi rõ |
 | [vink-leptos-web](vink-leptos-web/SKILL.md) | Làm Leptos SSR/hydration, route, Bàn viết, editor, autosave và browser state |
+| [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) | Làm UI Kotlin Compose Multiplatform, shared primitives/patterns, Android/iOS diagnostic hosts và Desktop preview |
 | [vink-layout-spec](vink-layout-spec/SKILL.md) | Mô tả cây bố cục, responsive/theme/state trước sinh UI; dùng chung cho thiết kế, sửa nhỏ và đối chiếu |
 | [vink-ui-design](vink-ui-design/SKILL.md) | Thiết kế/review M3 Expressive, token, typography tiếng Việt, trải nghiệm đọc và accessibility |
 | [vink-ui-fix](vink-ui-fix/SKILL.md) | Sửa lỗi UI có phạm vi rõ hoặc bàn giao thiết kế để triển khai |
@@ -48,6 +49,7 @@ hiện tại nằm ở [docs/development](../../docs/development/README.md) — 
 | Phác thảo bố cục hoặc đặc tả hướng đã chọn | `vink-layout-spec` | Cây vùng là nguồn chính; spec-only dừng đúng phạm vi, không tự sinh UI |
 | Màn mới/redesign và prototype UI | `vink-ui-design` + `vink-layout-spec` (+ `vink-prototype` khi thử nghiệm) | 2–3 hướng cấu trúc nếu chưa chọn, spec trước sinh UI; đã giao làm thì tiếp tục không chờ duyệt mặc định |
 | Sửa lỗi UI có phạm vi rõ | `vink-ui-fix` (+ `vink-leptos-web` khi chạm component) | Xuất spec vùng rút gọn trước patch, giữ nghĩa trạng thái, kiểm cùng kịch bản |
+| UI CMP, Kotlin, Android/iOS hoặc preview native | `vink-cmp-mobile` (+ `vink-ui-fix` khi sửa lỗi) | Tìm đúng library/pattern/host, giữ input/lifecycle; Desktop, native compile và runtime là các bằng chứng riêng |
 | Đổi copy hoặc layout | `vink-ui-design` (+ `vink-leptos-web` nếu đổi component) | Không cần model Quint; mở ảnh ở viewport/theme liên quan, chạy `verify quick` và `verify web` nếu hành vi đổi |
 | Sửa lưu nháp, version, xung đột | `vink-engineering` (+ `vink-leptos-web` cho UI) | CAS cần `verify postgres`; máy trạng thái UI cần unit test và `verify web` |
 | Thiếu Discourse, PostgreSQL hoặc Chrome | Skill đang dùng + [verification](vink-engineering/references/verification.md) | Làm phần độc lập; báo `FAIL`/`NOT_RUN` cho lớp chưa chạy; không báo integration `PASS` |

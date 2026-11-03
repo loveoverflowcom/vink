@@ -1,0 +1,4328 @@
+{
+  "format": "vink-preview-focus-v1",
+  "run": {
+    "git_sha": "8045d45e554e0a01f11fd252ac681f8eb9d33a56",
+    "dirty": true,
+    "source_fingerprint": "c75c31d337f8f62a9b7697fc94e620b4fe464be6a29b7b616d4f5b7298ea38b4",
+    "source_files": {
+      "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+      "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+      "packages/ui-system/leptos/preview/Cargo.toml": "85f791e1d9a3eb944658801295ed9485f30b374b7d543bcb04ceeb2903fc6fb2",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+      "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "49e6495024f19e5e0bad36c5b98b9df3f3e495a0ec8630198f13b33e82472533",
+      "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+      "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+      "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+      "packages/ui-system/leptos/preview/src/navigation.rs": "b4ba88d0db7cd7feb6f594f89697ea42553793c60518c7a7ec95d5ded5873f50",
+      "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+      "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+      "packages/ui-system/leptos/preview/style/preview.css": "7cc64655fb82c56e458b87cf55f1541e446b23728098c655f4227a552ed91a0b",
+      "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+      "packages/ui-system/leptos/src/catalog.rs": "d857f1457682c60c32c74e9ef531377ca8876ef998212c8c98c1d25ac5be34c0",
+      "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+      "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+      "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+      "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+      "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+      "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+      "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+      "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+      "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+      "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+      "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+      "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+      "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+      "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+      "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+      "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+      "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+      "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+      "packages/ui-system/leptos/style/vink-ui.css": "79f3adbecc4dff300d909e0c1c1a5fa44ffbf13215cd66d975d38e6bcc8d0a27",
+      "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+      "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+      "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+      "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+      "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+      "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+      "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+      "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+      "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+      "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "packages/ui-system/shared/navigation.md": "c1b2a03ad0c8eb41c1d487b89f8adba295d81cdc6a03eacb053f20e8be1f3ada",
+      "packages/ui-system/shared/preview-catalog.json": "f2b3afed1d027784f97b94de4a8208fd5087bec95f4df9882d789e816a9bec93",
+      "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+      "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+      "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+      "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+      "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+      "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+    },
+    "browser": "Chrome/156.0.8078.79",
+    "host": "headless-chrome",
+    "renderer": "leptos-web",
+    "data_mode": "synthetic",
+    "locale": "vi-VN"
+  },
+  "scope": {
+    "selection": "six default specimens, light/dark, 390/1440 at 100%, 390 at 200%; opt-in",
+    "expected": 36,
+    "raw_policy": "preserve raw filenames; capped document is separate from complete specimen tiles"
+  },
+  "captures": [
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "layout.grid--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 1113.859375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11195
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--light--390.png",
+        "sha256": "500b790539150030d3c3352c2024f972157de2f48511a0ab50959314a4328022",
+        "byte_size": 379629,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--light--390--focus--part1.png",
+          "sha256": "b348fd7aac4c30eebdf5919eaa0bbb6592aee850bba7192d2dd5511728f1d7a3",
+          "byte_size": 24648,
+          "image_pixels": {
+            "width": 369,
+            "height": 569
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "layout.grid--default--light--390--focus--part2.png",
+          "sha256": "dd6aced1ac820f5c275af9acbcd21082763f9afb6fc25ae090b0284c96bc5d05",
+          "byte_size": 51886,
+          "image_pixels": {
+            "width": 369,
+            "height": 569
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4630,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4630
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:08.736Z"
+    },
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "layout.grid--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 607.515625
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4003
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--light--1440.png",
+        "sha256": "b726972a1810fd401db62b51f9d53c77b458517323441272b5b9d051f1c06cf5",
+        "byte_size": 926006,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--light--1440--focus.png",
+          "sha256": "a79fab291415e752e9696de038d268887d1edee335f012d3e627f1258bc48b6e",
+          "byte_size": 80103,
+          "image_pixels": {
+            "width": 1137,
+            "height": 633
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 633,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 633,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:09.032Z"
+    },
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "layout.grid--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 3001.734375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 37712
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--light--390--text200.png",
+        "sha256": "d223572bde629f7da583394aa35106eae6b5108a968b2935876b0c0a3b8ca37a",
+        "byte_size": 313188,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--light--390--text200--focus--part1.png",
+          "sha256": "d2f0365c35a54aaaaca428fc98872887eff2dcd409f0c99dc3b5efd0d3e84ace",
+          "byte_size": 39789,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--light--390--text200--focus--part2.png",
+          "sha256": "67d92e21f56d79c5d64845fcc904ebb0570ba7626a4fbb282f143b2f6bf901f7",
+          "byte_size": 22899,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10518,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10518
+          },
+          "tile": 2,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--light--390--text200--focus--part3.png",
+          "sha256": "85c76f3841d05f7220795cf5c5aa0ee59f33c02583834d5321d19008d1132bc0",
+          "byte_size": 47216,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11275,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11275
+          },
+          "tile": 3,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--light--390--text200--focus--part4.png",
+          "sha256": "8cc1d696bf403da38efa5d7157b8e792fc20b6c7e99636bdf9153359dec7aa21",
+          "byte_size": 59191,
+          "image_pixels": {
+            "width": 369,
+            "height": 756
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12032,
+            "width": 369,
+            "height": 756,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 756,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12032
+          },
+          "tile": 4,
+          "tiles": 4
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:09.652Z"
+    },
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "layout.grid--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 1113.859375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11329
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--dark--390.png",
+        "sha256": "0da07bcf9541d308980642f446e4a069b33a488c773d257d3ca7bc61aa3bc4ae",
+        "byte_size": 376148,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--dark--390--focus--part1.png",
+          "sha256": "a02b92b572b689ecc0712186df2d99a17ea7fadbbd3fffe5f084bc4b81c42a58",
+          "byte_size": 25353,
+          "image_pixels": {
+            "width": 369,
+            "height": 569
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "layout.grid--default--dark--390--focus--part2.png",
+          "sha256": "4abe649565c25e44bfd53df07310e97d7aff497168c9f45a89461f22302b59be",
+          "byte_size": 52183,
+          "image_pixels": {
+            "width": 369,
+            "height": 569
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4630,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 569,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4630
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:09.985Z"
+    },
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "layout.grid--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 607.515625
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4070
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--dark--1440.png",
+        "sha256": "3e76485e31282a2c09866efb30552580a970409b46ef96eb5aa2bb66eded0e80",
+        "byte_size": 917651,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--dark--1440--focus.png",
+          "sha256": "3d5212044afcaa5382277abb904677abd3c995155dbd32257c7dce86da127176",
+          "byte_size": 80856,
+          "image_pixels": {
+            "width": 1137,
+            "height": 633
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 633,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 633,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:10.283Z"
+    },
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "layout.grid--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 3001.734375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 38250
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "layout.grid--default--dark--390--text200.png",
+        "sha256": "4a48cbafcda840d86b0492a7a2f28d6c902ed75c54fc533494edd23220d77fea",
+        "byte_size": 312470,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "layout.grid--default--dark--390--text200--focus--part1.png",
+          "sha256": "d7ece6b88df488a6de80545ce35f427dfcd8245cb980e208ad8a0ee99a233438",
+          "byte_size": 41020,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--dark--390--text200--focus--part2.png",
+          "sha256": "096b64db4c8a03b2e0e73b9ae512195ddd4e69fe704cc2963e58b88b91127cb7",
+          "byte_size": 23465,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10518,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10518
+          },
+          "tile": 2,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--dark--390--text200--focus--part3.png",
+          "sha256": "e59988e41d9f73e9b228d021c99ba4202a6d01cd8f40ff6c61dffd3389d9e794",
+          "byte_size": 48457,
+          "image_pixels": {
+            "width": 369,
+            "height": 757
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11275,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 757,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11275
+          },
+          "tile": 3,
+          "tiles": 4
+        },
+        {
+          "path": "layout.grid--default--dark--390--text200--focus--part4.png",
+          "sha256": "a8fac15b7961fa85ce1cb42407b866a29ac09ab6718cd30cff3ec8fdea1eef41",
+          "byte_size": 59532,
+          "image_pixels": {
+            "width": 369,
+            "height": 756
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12032,
+            "width": 369,
+            "height": 756,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 756,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12032
+          },
+          "tile": 4,
+          "tiles": 4
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:10.916Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "identity.avatar-group--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 407.359375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 10757
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--light--390.png",
+        "sha256": "1f3cd49a80b49f5b516ae807d630c931d07c36fe7423522254135a962e4bbbc8",
+        "byte_size": 425437,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--light--390--focus.png",
+          "sha256": "14bb076ed3dfec5a540e50413c9c014aec06a9c5758b03890aac5bc737e5b4b8",
+          "byte_size": 37488,
+          "image_pixels": {
+            "width": 369,
+            "height": 432
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 432,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 432,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:11.164Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "identity.avatar-group--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 339.578125
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 3869
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--light--1440.png",
+        "sha256": "15e2ff9f83503ea2410e0c64db2fed26110b02637cedd11b91337fa6494172d9",
+        "byte_size": 889636,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--light--1440--focus.png",
+          "sha256": "474e84e9e606650e4dd5aff72228823077c9428f87c31beb976c10e63b6bdb3d",
+          "byte_size": 41531,
+          "image_pixels": {
+            "width": 1137,
+            "height": 365
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 365,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 365,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:11.417Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "identity.avatar-group--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 1150.03125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 36935
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--light--390--text200.png",
+        "sha256": "e6a50309bd4fda76ecf620b9fe44feb7991339c510905efc584d4bdfa54e1533",
+        "byte_size": 313000,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--light--390--text200--focus--part1.png",
+          "sha256": "86d17f3b783e3e7652db7e5fa0bc3c543538e698bc08a783823d223de4026d69",
+          "byte_size": 37320,
+          "image_pixels": {
+            "width": 369,
+            "height": 588
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 588,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 588,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "identity.avatar-group--default--light--390--text200--focus--part2.png",
+          "sha256": "f13e9334ea4cef45611d2770fd2562cc3dd2788520d33352eedb95368f4c50ec",
+          "byte_size": 37830,
+          "image_pixels": {
+            "width": 369,
+            "height": 587
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10349,
+            "width": 369,
+            "height": 587,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 587,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10349
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:11.918Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "identity.avatar-group--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 407.359375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 10891
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--dark--390.png",
+        "sha256": "847c6a2ae44acdd6c338ff28eb9168019606090a493746eabb3da6be4da5f351",
+        "byte_size": 420989,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--dark--390--focus.png",
+          "sha256": "63cf99797e74f526179f1ca110c5c95ddd8d806704917086264d197839c1c760",
+          "byte_size": 39132,
+          "image_pixels": {
+            "width": 369,
+            "height": 432
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 432,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 432,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:12.165Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "identity.avatar-group--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 339.578125
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 3936
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--dark--1440.png",
+        "sha256": "877d88be093384b75ca8a937e6f8c80984a51d11edd86335d3a6fed0a2a38d73",
+        "byte_size": 883552,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--dark--1440--focus.png",
+          "sha256": "659e9b9b0326afb65a1fde180d71948f6f868b183f52f5ec44e8ee64895e01b7",
+          "byte_size": 43822,
+          "image_pixels": {
+            "width": 1137,
+            "height": 365
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 365,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 365,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:12.417Z"
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "identity.avatar-group--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 1150.03125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 37473
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "identity.avatar-group--default--dark--390--text200.png",
+        "sha256": "00c21602d078a68f846ccde326e04ed063f1f1917cc004d4d96dab99d7bf2bf4",
+        "byte_size": 312320,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "identity.avatar-group--default--dark--390--text200--focus--part1.png",
+          "sha256": "7eca9ef8204ba6f72e095d7464e296be8f595ac11244ac5f84e6362d1d0e51d0",
+          "byte_size": 38345,
+          "image_pixels": {
+            "width": 369,
+            "height": 588
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 588,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 588,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "identity.avatar-group--default--dark--390--text200--focus--part2.png",
+          "sha256": "3885cc9841142d86aba0681441bc24dd632bf410118abf32398524947900d14f",
+          "byte_size": 39276,
+          "image_pixels": {
+            "width": 369,
+            "height": 587
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10349,
+            "width": 369,
+            "height": 587,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 587,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10349
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:12.901Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "state.empty--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 522.15625
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11141
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--light--390.png",
+        "sha256": "0053752b662512b9fa778eaeb321d516552ce9ac7cbce97819dfc15b3f61ba98",
+        "byte_size": 416052,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--light--390--focus.png",
+          "sha256": "42a95ce736c208e95c55bf853b14dcf41340a4e20a4e2610d5151b1bcdc4ef3b",
+          "byte_size": 43892,
+          "image_pixels": {
+            "width": 369,
+            "height": 547
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 547,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 547,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:13.148Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "state.empty--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 427.96875
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4092
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--light--1440.png",
+        "sha256": "cd9f71c0678eed6662d68eb2b67406fd3afeceffcecaeef128820d766d545d14",
+        "byte_size": 894426,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--light--1440--focus.png",
+          "sha256": "f4d3f8db7da697840cb44f9b2cfbf410b792167f51d763eb057d03b6664a0565",
+          "byte_size": 47923,
+          "image_pixels": {
+            "width": 1137,
+            "height": 453
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 453,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 453,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:13.404Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "state.empty--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 1696.796875
+      },
+      "document_css": {
+        "width": 375,
+        "height": 38557
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--light--390--text200.png",
+        "sha256": "687782ba0bf6ad4c1cd22c778805b08ab38d42f8f3b57deeb668c628bacf6fa1",
+        "byte_size": 312649,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--light--390--text200--focus--part1.png",
+          "sha256": "18da4e698b3842b896e6df6f2aabe71856820d9b61b3e58a4e75420e0642f281",
+          "byte_size": 59245,
+          "image_pixels": {
+            "width": 369,
+            "height": 861
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "state.empty--default--light--390--text200--focus--part2.png",
+          "sha256": "6a1f340f600ff8fa6861c25c4189c85234a3b2afa7a088e9f2babdb445a34200",
+          "byte_size": 42204,
+          "image_pixels": {
+            "width": 369,
+            "height": 861
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10622,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10622
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:13.915Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "state.empty--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 522.15625
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11275
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--dark--390.png",
+        "sha256": "5ad329ffd2aa7df010efe727fd54cedf6cf0dd2099da3acb398f854c0a581f32",
+        "byte_size": 409264,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--dark--390--focus.png",
+          "sha256": "d67602ed1b9304e535fb8bf6990e406ba7fdd1b65bfbe5a6dcb52650a4c961b4",
+          "byte_size": 45236,
+          "image_pixels": {
+            "width": 369,
+            "height": 547
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 547,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 547,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:14.168Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "state.empty--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 427.96875
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4159
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--dark--1440.png",
+        "sha256": "8064ca78764cac71fdc8fd46728159cef86a6a74454c88d98dd4dff820b3ed00",
+        "byte_size": 888963,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--dark--1440--focus.png",
+          "sha256": "d3c870a43a9fa58b2524aeedd092dd18c5315a4201201ebcd41dbf77959af53c",
+          "byte_size": 50313,
+          "image_pixels": {
+            "width": 1137,
+            "height": 453
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 453,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 453,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:14.420Z"
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "state.empty--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 1696.796875
+      },
+      "document_css": {
+        "width": 375,
+        "height": 39095
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.empty--default--dark--390--text200.png",
+        "sha256": "1b31f315e421ba693c7326e071da44f18146e7d6e3b72622756440256d46ad72",
+        "byte_size": 312148,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.empty--default--dark--390--text200--focus--part1.png",
+          "sha256": "95c9e8ddcd83e6c50095d2e8b2cca1ec6b95382e61e423ca25110ee9acd0e2ae",
+          "byte_size": 60393,
+          "image_pixels": {
+            "width": 369,
+            "height": 861
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "state.empty--default--dark--390--text200--focus--part2.png",
+          "sha256": "cdd10b61b225ad067fe2c7d4fd792eaf3a4f7e2d1b3bf241f767204201b915af",
+          "byte_size": 43610,
+          "image_pixels": {
+            "width": 369,
+            "height": 861
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10622,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 861,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10622
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:14.933Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "state.error--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 817.546875
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11705
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--light--390.png",
+        "sha256": "cd301e6a46d2f804a442ae0d200e34987003d7d0ab793ff0e260739be3d36703",
+        "byte_size": 403362,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--light--390--focus.png",
+          "sha256": "2d53004781bf477f45d927f050591ab8ed29a1352c5f7113bcd965fda6d4ea6e",
+          "byte_size": 70174,
+          "image_pixels": {
+            "width": 369,
+            "height": 842
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 842,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 842,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:15.202Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "state.error--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 515.359375
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4314
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--light--1440.png",
+        "sha256": "49eb6f0c4af3b59e38fa2a79dae1eaae52c3fdfd570359bc55cc92ae1bce7a7b",
+        "byte_size": 912910,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--light--1440--focus.png",
+          "sha256": "d460c64b1d6ab58e8540d1a22caae7d176d815e1c2a9cbfb79602ab1574cdf59",
+          "byte_size": 66791,
+          "image_pixels": {
+            "width": 1137,
+            "height": 540
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 540,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 540,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:15.437Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "state.error--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 2575.015625
+      },
+      "document_css": {
+        "width": 375,
+        "height": 40511
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--light--390--text200.png",
+        "sha256": "34ec25850100018f5651f061dcea1a6fcca02432077975051d168b174681956e",
+        "byte_size": 312727,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--light--390--text200--focus--part1.png",
+          "sha256": "c27cca827c895a377aae5cff1c238939adb874e836b3b76be8137ea725ea2736",
+          "byte_size": 63054,
+          "image_pixels": {
+            "width": 369,
+            "height": 867
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 3
+        },
+        {
+          "path": "state.error--default--light--390--text200--focus--part2.png",
+          "sha256": "e0b597ccf8338d787fcaed533e92a1859babdfd8843497b82322d6715a165c1a",
+          "byte_size": 52386,
+          "image_pixels": {
+            "width": 369,
+            "height": 867
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10628,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10628
+          },
+          "tile": 2,
+          "tiles": 3
+        },
+        {
+          "path": "state.error--default--light--390--text200--focus--part3.png",
+          "sha256": "7eb6110458f84b263d14695f9d3e659c216a769e7ccfba8c4a4a684627f4f0d3",
+          "byte_size": 45619,
+          "image_pixels": {
+            "width": 369,
+            "height": 866
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11495,
+            "width": 369,
+            "height": 866,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 866,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11495
+          },
+          "tile": 3,
+          "tiles": 3
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:15.997Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "state.error--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 817.546875
+      },
+      "document_css": {
+        "width": 375,
+        "height": 11839
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--dark--390.png",
+        "sha256": "3d66823819bf644573976a2e6dbb1ae584b3a3680c58f23670e784a6c8469312",
+        "byte_size": 399269,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--dark--390--focus.png",
+          "sha256": "e49cb90df6c1b2b9bb81e4abf42199d8a0ae8933c43c60e12a54a3b36cbc627d",
+          "byte_size": 71462,
+          "image_pixels": {
+            "width": 369,
+            "height": 842
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 842,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 842,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:16.250Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "state.error--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 515.359375
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4381
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--dark--1440.png",
+        "sha256": "e267dce9e2221f702c0af912fb06efaf4359f9c9875969773f2a7d4d0dd4d00b",
+        "byte_size": 906900,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--dark--1440--focus.png",
+          "sha256": "b7468ebec82f9f14072b490abd0450077d096cd6db1eadfba34bdba38d34c4c0",
+          "byte_size": 68939,
+          "image_pixels": {
+            "width": 1137,
+            "height": 540
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 540,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 540,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:16.486Z"
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "state.error--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 2575.015625
+      },
+      "document_css": {
+        "width": 375,
+        "height": 41048
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "state.error--default--dark--390--text200.png",
+        "sha256": "4a3b9e2f87ea22c428a6674e3ea499eba8cd3ff3f354c8551031ce888fd56e64",
+        "byte_size": 312183,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "state.error--default--dark--390--text200--focus--part1.png",
+          "sha256": "e35e9aa6f9a6fd8c7033201ed0c25eab4355b352ef775b8afd9dd72fc92771cf",
+          "byte_size": 64102,
+          "image_pixels": {
+            "width": 369,
+            "height": 867
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 3
+        },
+        {
+          "path": "state.error--default--dark--390--text200--focus--part2.png",
+          "sha256": "640ce36931fff6b0d0724baf521af2bb640f07dfa6adfad000b43a342ca9f453",
+          "byte_size": 53235,
+          "image_pixels": {
+            "width": 369,
+            "height": 867
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10628,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 867,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10628
+          },
+          "tile": 2,
+          "tiles": 3
+        },
+        {
+          "path": "state.error--default--dark--390--text200--focus--part3.png",
+          "sha256": "b574b161bdb49f12a9a483fd818bd99c68eaf40aca9a892db34c5ea525d8563c",
+          "byte_size": 46748,
+          "image_pixels": {
+            "width": 369,
+            "height": 866
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11495,
+            "width": 369,
+            "height": 866,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 866,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11495
+          },
+          "tile": 3,
+          "tiles": 3
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:17.067Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "navigation.rail--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 910.953125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 12067
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--light--390.png",
+        "sha256": "b637a639f2294785c150f1aa6ca59e9495599310fc8da83bd4603b09991c2425",
+        "byte_size": 386090,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--light--390--focus--part1.png",
+          "sha256": "f5171f2e586d184e61382cac3fe1be7b029d3aca7ed08a230b4d73a3e477d64c",
+          "byte_size": 43350,
+          "image_pixels": {
+            "width": 369,
+            "height": 468
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 468,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 468,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "navigation.rail--default--light--390--focus--part2.png",
+          "sha256": "558c29c83f16470ee183fd8458806c7c3b95d1a58d15a65f7cf623e4f389cf29",
+          "byte_size": 22869,
+          "image_pixels": {
+            "width": 369,
+            "height": 467
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4529,
+            "width": 369,
+            "height": 467,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 467,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4529
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:17.384Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "navigation.rail--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 713.578125
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4646
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--light--1440.png",
+        "sha256": "33987cb021091d1a5e0ff628acb97fcbb79ca90e37dc7abeea8687ea42dbd708",
+        "byte_size": 909938,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--light--1440--focus.png",
+          "sha256": "fdc650889ae6358322c3e5123f2e103e7c02182aa56d0c186ca76dbc3b65cf3d",
+          "byte_size": 65781,
+          "image_pixels": {
+            "width": 1137,
+            "height": 739
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 739,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 739,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:17.648Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "navigation.rail--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 4747.59375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 43758
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--light--390--text200.png",
+        "sha256": "3c4f53217894707b0f18b60817f553f465fc4c373efe6c9bebe22b060011beb2",
+        "byte_size": 312736,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part1.png",
+          "sha256": "be3d64c0bbd991b826af415a42928d6ec4b18c5115c89d264f0cb60edad45cac",
+          "byte_size": 58097,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part2.png",
+          "sha256": "4f52919faa91ca8f7d78ec871d8c0bbed7a013e9e86357a81f8ee0b0c9cab796",
+          "byte_size": 44598,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10557,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10557
+          },
+          "tile": 2,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part3.png",
+          "sha256": "d1ccb7a0e4dd8cc82c3d72ffc11c79b000ab3dc07c1d4980ca9e8a327476d46c",
+          "byte_size": 20581,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11353,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11353
+          },
+          "tile": 3,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part4.png",
+          "sha256": "0d2cd78cf0c7730f599ec333e8e3f72d8d1df43e5cecceded15d0f83d59cc240",
+          "byte_size": 9915,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12149,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12149
+          },
+          "tile": 4,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part5.png",
+          "sha256": "f2a5e44d8db2d4cfabd910a7bb526517d6adb965b322b12edb689ce7055e349e",
+          "byte_size": 10396,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12945,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12945
+          },
+          "tile": 5,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--light--390--text200--focus--part6.png",
+          "sha256": "48d9259c3901e21bf371f5818fc2147071f3fcf10f12b3e4554367e9e19a3092",
+          "byte_size": 11643,
+          "image_pixels": {
+            "width": 369,
+            "height": 793
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 13741,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 13741
+          },
+          "tile": 6,
+          "tiles": 6
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:18.409Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "navigation.rail--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 910.953125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 12201
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--dark--390.png",
+        "sha256": "54bf329084207d6c5571eaa7016f03be03b3594648f620c4b8676b45f530d406",
+        "byte_size": 382879,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--dark--390--focus--part1.png",
+          "sha256": "c5b4ec76a029161084cf5c736eac369d56f2ff30067c0ad1b3fd0ea17ccdf977",
+          "byte_size": 44359,
+          "image_pixels": {
+            "width": 369,
+            "height": 468
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 468,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 468,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "navigation.rail--default--dark--390--focus--part2.png",
+          "sha256": "d2cc5489d07a39d33f5ac01bf615fb3e65335a3657bd1ecafe34f5a4b5393b0c",
+          "byte_size": 23401,
+          "image_pixels": {
+            "width": 369,
+            "height": 467
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4529,
+            "width": 369,
+            "height": 467,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 467,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4529
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:18.820Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "navigation.rail--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 713.578125
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4714
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--dark--1440.png",
+        "sha256": "3dfb2151b465b6d49b8aa7be1f815585920e4955a452a13f5b979e2cfeae2a35",
+        "byte_size": 903470,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3566
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--dark--1440--focus.png",
+          "sha256": "28a736080700cdfa5d5d554135b511737dd755ca731cecc65c5f25477521bf41",
+          "byte_size": 68301,
+          "image_pixels": {
+            "width": 1137,
+            "height": 739
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 739,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 739,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:19.090Z"
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "navigation.rail--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 4747.59375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 44296
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "navigation.rail--default--dark--390--text200.png",
+        "sha256": "fe83c3e97121c153e90496824dde95e69014332a115a5e665b1791e4c14cbde9",
+        "byte_size": 311956,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part1.png",
+          "sha256": "27c333493ec6a942e5976234d0db79587b9fa2a8548b9b1ff8bf49f66882ea84",
+          "byte_size": 59375,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part2.png",
+          "sha256": "29bd72fd863e890058ac3efd5c49f04ba0428d7b197e84bb9841b6c4624b856b",
+          "byte_size": 45784,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10557,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10557
+          },
+          "tile": 2,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part3.png",
+          "sha256": "97cb54ad0a1661c4defa021b30aea2c1735f0d0b7097b000a4836fe73bc95928",
+          "byte_size": 20804,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11353,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11353
+          },
+          "tile": 3,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part4.png",
+          "sha256": "f47a9de1e92c083a27736293864cf4a1780765e40be7d47f65ad795a2d494094",
+          "byte_size": 9994,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12149,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12149
+          },
+          "tile": 4,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part5.png",
+          "sha256": "65cf51bfa289b60268d59803980d81541bd04451fc0157783a31462810e34448",
+          "byte_size": 10376,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12945,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12945
+          },
+          "tile": 5,
+          "tiles": 6
+        },
+        {
+          "path": "navigation.rail--default--dark--390--text200--focus--part6.png",
+          "sha256": "88db75aa9de3a1dbb1cd8151f0310855ef4017be466571978b22195bab596a5a",
+          "byte_size": 11895,
+          "image_pixels": {
+            "width": 369,
+            "height": 793
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 13741,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 13741
+          },
+          "tile": 6,
+          "tiles": 6
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:19.860Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "composition.feedback--default--light--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 968.453125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 12393
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--light--390.png",
+        "sha256": "1b7cc53866c2c7a3145cbbd6b2d0cbf367fbff4f09fedfc2d02dca36f7238d44",
+        "byte_size": 413833,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--light--390--focus--part1.png",
+          "sha256": "ed6b69f5e9ea5862e06cca79b8f684ffcf7beed2cb4ce337150ba9b1bc3b2fb1",
+          "byte_size": 51942,
+          "image_pixels": {
+            "width": 369,
+            "height": 497
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 497,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 497,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "composition.feedback--default--light--390--focus--part2.png",
+          "sha256": "027d5111bfbac3d5d4184690076844774f0ae825d43b92dd666b7156a4fe61dc",
+          "byte_size": 44385,
+          "image_pixels": {
+            "width": 369,
+            "height": 496
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4558,
+            "width": 369,
+            "height": 496,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 496,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4558
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:20.210Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "composition.feedback--default--light--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 752.890625
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4820
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--light--1440.png",
+        "sha256": "338bbcc811e35ccd8f5e51856d5e7a7eedbd8243763b7bc9dd493d7427e2d089",
+        "byte_size": 950828,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3592
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--light--1440--focus.png",
+          "sha256": "84783169cfecd2d13efd0f8bea7ece07570af05f26ae3f964c0b7291a754d922",
+          "byte_size": 104779,
+          "image_pixels": {
+            "width": 1137,
+            "height": 778
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 778,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 778,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:20.480Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "light",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "composition.feedback--default--light--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 2866.34375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 42952
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--light--390--text200.png",
+        "sha256": "64a8aed3c25cdee7eb97fcbe73dd737fbaef98d5007b9b94f0c4b9ac5637825e",
+        "byte_size": 312717,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--light--390--text200--focus--part1.png",
+          "sha256": "95949c06691df917488796d83f07019a235350bdf60a608a317a0d5023507a2d",
+          "byte_size": 55051,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--light--390--text200--focus--part2.png",
+          "sha256": "65aeddec29995da7a7c998e22e99ed015f976a7b88c2afa2671aeda4b753397f",
+          "byte_size": 42195,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10484,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10484
+          },
+          "tile": 2,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--light--390--text200--focus--part3.png",
+          "sha256": "f5ca463f7a574f4533f358424931f10148851b5977aa0934ec74004e55089da9",
+          "byte_size": 59591,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11207,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11207
+          },
+          "tile": 3,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--light--390--text200--focus--part4.png",
+          "sha256": "39c628301bccc7b345cde4da521cb0f0e9bd442df092152d5137b68f56a66004",
+          "byte_size": 48106,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11930,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11930
+          },
+          "tile": 4,
+          "tiles": 4
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:21.097Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 100,
+      "raw_name": "composition.feedback--default--dark--390",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 4073.03125,
+        "width": 343.8125,
+        "height": 968.453125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 12527
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 4073
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--dark--390.png",
+        "sha256": "47a5ad20497a6b0b7ddf9aa31b4b60293b94e9a22f1fbdcfc1c9536a31473363",
+        "byte_size": 410611,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--dark--390--focus--part1.png",
+          "sha256": "f6cf0701e04bce89a3b7a3b34d3a8a1074aae1ddc9394a0e74c3f6af31e69c4b",
+          "byte_size": 53193,
+          "image_pixels": {
+            "width": 369,
+            "height": 497
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4061,
+            "width": 369,
+            "height": 497,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 497,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4061
+          },
+          "tile": 1,
+          "tiles": 2
+        },
+        {
+          "path": "composition.feedback--default--dark--390--focus--part2.png",
+          "sha256": "35bb019d930db490d19c1bb800a67448f31e89061e96ef407a015bc0b3cc6496",
+          "byte_size": 44424,
+          "image_pixels": {
+            "width": 369,
+            "height": 496
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 4558,
+            "width": 369,
+            "height": 496,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 496,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 4558
+          },
+          "tile": 2,
+          "tiles": 2
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:21.397Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 1440,
+      "text_scale": 100,
+      "raw_name": "composition.feedback--default--dark--1440",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "16px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 296.640625,
+        "y": 174.578125,
+        "width": 1112.359375,
+        "height": 752.890625
+      },
+      "document_css": {
+        "width": 1425,
+        "height": 4887
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 1440,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 175
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--dark--1440.png",
+        "sha256": "803c924a17953cee2a63bfc6441cda54517839cb0a748ec901a809c37dd22ebe",
+        "byte_size": 942734,
+        "image_pixels": {
+          "width": 1440,
+          "height": 3592
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--dark--1440--focus.png",
+          "sha256": "bf1e66a829c43994c3cafccc33f1f3b9568474ee4285016a6b06e4d1b9a37324",
+          "byte_size": 105892,
+          "image_pixels": {
+            "width": 1137,
+            "height": 778
+          },
+          "clip_css": {
+            "x": 284,
+            "y": 162,
+            "width": 1137,
+            "height": 778,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 284,
+            "y": 0,
+            "width": 1137,
+            "height": 778,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 162
+          },
+          "tile": 1,
+          "tiles": 1
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:21.695Z"
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "theme": "dark",
+      "width": 390,
+      "text_scale": 200,
+      "raw_name": "composition.feedback--default--dark--390--text200",
+      "capture_status": "CAPTURED",
+      "reason": null,
+      "inspected": false,
+      "requested_theme": "Tối",
+      "effective_theme": "dark",
+      "surface": "#17121d",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 2866.34375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 43490
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9774
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "composition.feedback--default--dark--390--text200.png",
+        "sha256": "16a2cd7ac951d30a24ae65214fb03bcd50537e3ab8f7445641172a5176d77bfc",
+        "byte_size": 311954,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "artifacts": [
+        {
+          "path": "composition.feedback--default--dark--390--text200--focus--part1.png",
+          "sha256": "704fb5f9638a8f1701b1fe35c8cff473cf6a5ebbe30f374bcda0af5c60c7c5a4",
+          "byte_size": 56291,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--dark--390--text200--focus--part2.png",
+          "sha256": "392b4935aa0b20388a42fe922308c1055aed47e35060859b306e3d53f80ef876",
+          "byte_size": 42791,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10484,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10484
+          },
+          "tile": 2,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--dark--390--text200--focus--part3.png",
+          "sha256": "333950568e9849f2272c5431995f85680c47faebbd34cf40feabbadf0f5f021c",
+          "byte_size": 59777,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11207,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11207
+          },
+          "tile": 3,
+          "tiles": 4
+        },
+        {
+          "path": "composition.feedback--default--dark--390--text200--focus--part4.png",
+          "sha256": "95a0e910c5e90fd2683225a7572c306bf3adb4c31bc7f0832345e618fc00f75c",
+          "byte_size": 48844,
+          "image_pixels": {
+            "width": 369,
+            "height": 723
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11930,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 723,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11930
+          },
+          "tile": 4,
+          "tiles": 4
+        }
+      ],
+      "captured_at": "2026-11-03T10:28:22.314Z"
+    }
+  ],
+  "coverage": {
+    "expected": 36,
+    "captured": 36,
+    "inspected": 0,
+    "blocked": 0
+  }
+}

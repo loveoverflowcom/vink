@@ -1,0 +1,69 @@
+Vink UI-REPAIR-06/07 — kết quả local, 03/11/2026 UTC+07
+Base 8045d45e554e0a01f11fd252ac681f8eb9d33a56
+Source fingerprint 415e4339ba394de6dcff3d97f42be63b025e0d3aeae600833db164a5a70d0e19
+Runtime: macOS 26.5.2 arm64; Rust 1.99.1; Node 26.12.0; Chrome 156.0.8078.79; PostgreSQL 17.11 riêng; Microsoft JDK 17.0.19.
+Android: Pixel_7 / emulator-5560, Android 17 API 37, density 420, OS font scale 1.0.
+iOS: iPhone 17 Pro simulator, iOS 26.5, AB3B8430-88BD-4C77-AE22-19AFBFDA0BE1.
+
+PASS cargo xtask verify quick
+Log target/ui-repair-06-07/logs/quick-final-2.log
+PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)
+
+PASS cargo xtask verify web
+Log target/ui-repair-06-07/logs/after-web-final.log
+PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview
+  PASS  server stops gracefully on SIGTERM
+  PASS  confirmed draft survives server restart (browser reload), export
+
+PASS VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify
+Log target/ui-repair-06-07/logs/after-preview-final-2.log
+PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: headless Chrome scenarios and captures
+
+PASS cargo xtask ui-preview cmp verify
+Log target/ui-repair-06-07/logs/cmp-2.log
+PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+
+PASS cargo xtask ui-preview android verify
+Log target/ui-repair-06-07/logs/android.log
+PASS  ui tokens: generated files match
+  PASS  android: diagnostic runtime
+
+PASS cargo xtask ui-preview ios verify
+Log target/ui-repair-06-07/logs/ios.log
+PASS  ui tokens: generated files match
+  PASS  ios: diagnostic runtime
+
+PASS node --test packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs (4 geometry regressions; also executed by final preview lane).
+PASS skill-creator quick_validate (PyYAML supplied by uv); final metadata/link/diff validation.
+PASS source/artifact hashes and coverage: app 845 raw / 220 recovery, focus 36 records / 72 tiles, CMP 423 available / 6 inspected recipes, Android 6/6 and iOS 6/6 selected captures.
+Inspection: 19 Web overview sheets, 6 focus sheets, 1 native sheet, 1 CMP sheet, 2 representative sheets; full-size representatives opened separately.
+Self-review: no remaining actionable regression in changed owners/call paths; pre-existing narrow navigation specimen limit recorded in report.
+NOT_RUN dedicated verify postgres (no SQL/persistence change; Web lane used real isolated PostgreSQL).
+NOT_RUN OS Vietnamese IME, TalkBack/VoiceOver, physical devices, Safari/Firefox.
+CI: configuration opts in focus artifacts; actual remote PR run status is separate.
+
+Preserved intermediate results (not reclassified as NOT_RUN):
+FAIL CMP first attempt: missing VinkPreferences argument in new test, corrected before PASS.
+FAIL Web helper attempts: hidden navigation rect and stale focus across text scale, corrected without relaxing bounds.
+FAIL Web Reader retry with hash: same-document link scroll, corrected to real GET document reload.
+Runner PASS / visual REJECTED first focus attempt: CDP beyond-viewport reflow cropped specimen heading; replaced by real viewport tiles.
+FAIL narrow focus probe: viewport coordinates produced blank PNG; CDP document coordinates used and all 36 cases rerun.
+Visual REJECTED early Desk empty 320/text200: CTA split words; fixed container padding and added non-vacuous Intl.Segmenter/DOM Range oracle.
+FAIL quick-final.log: No space left on device at unit/contract step; fmt/clippy/doctests passed. cargo clean -p vink-web -p vink-ui -p vink-ui-preview -p vink-patterns removed rebuildable UI caches, preserving evidence; final quick PASS.
+Non-gate probe failures: closed temporary static server; missing fresh output directory. Corrected probe environment; no false PASS.
+Drive upload: NOT_REQUESTED. Source folders queried read-only; no images returned through available access.

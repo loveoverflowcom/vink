@@ -158,7 +158,7 @@ Tên dùng chung; Leptos không tiền tố (`StatePanel`), CMP tiền tố `Vin
 | Component | Props chính | Sự kiện | Không sở hữu / khác biệt nền tảng |
 | --- | --- | --- | --- |
 | `ContentRegion` | `state: RegionState`, `label` (vd. "Danh sách tác phẩm"), `panel: PanelContent?`, `notices: RegionNotices` (copy), `skeleton: SkeletonShape`, `content` slot | `on_recover(intent)` | Fetch, cache, scroll restore khi đổi route |
-| `StatePanel` | `content: PanelContent` (`from_problem`, `empty`, `cancelled`), `heading: HeadingLevel` | `on_recover(intent)` ×1 | Phân loại lỗi |
+| `StatePanel` | `content: PanelContent` (`from_problem`, `empty`, `cancelled`), `heading: HeadingLevel`; optional caller action slot (`children` Web / `actions` CMP) | `on_recover(intent)` ×1; slot giữ callback/link của caller | Phân loại lỗi |
 | `InlineNotice` / `Banner` | `tone: Tone`, `title?`, `message`, `action: RecoveryAction?`, `announce: Announce`; dismiss tùy chọn | `on_recover`, `on_dismiss` | Tự ẩn |
 | `Skeleton` | `shape: SkeletonShape` (`Text { lines }`, `Card`, `Byline`) | — | Nhãn (ở `ContentRegion`) |
 | `LoadingIndicator` | `label?` (rỗng = trang trí), `size: IndicatorSize` | — | Tiến độ giả |

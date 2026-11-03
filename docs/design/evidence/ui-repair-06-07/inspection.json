@@ -1,0 +1,2634 @@
+{
+  "format": "vink-inspection-receipt-v1",
+  "reviewer": "implementing agent, self-review",
+  "reviewed_at": "2026-11-03T10:41:40.555855+00:00",
+  "method": "Contact sheet overview; full-size representatives opened separately. Not a screen-reader, IME or pixel-parity claim.",
+  "groups": {
+    "web": [
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1024-100-dark.png",
+        "sha256": "34bdc60cba1827fa0eb3a594dc8504193d0fb8e931e39825c755e2a2d10f8363",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1024-100-light.png",
+        "sha256": "c31b96964dbbd98043e4b8920dac61e931c2af766617e593711a96905b4fc156",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1024-200-dark.png",
+        "sha256": "cf6628a89eb852438099c93fb263f121bf9b9b5bf3c4ec25a9cce7b6b70ddf2f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1024-200-light.png",
+        "sha256": "d6841def1b90c47643d20cd2f8f7e3c043f21378965ec497cb13aa610c0259d4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1440-100-dark.png",
+        "sha256": "ce33742ac68f6adede9671c926e9bc43d17dd0a9038f740ca7fff9c579b7e1fc",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1440-100-light.png",
+        "sha256": "5aad3cee20be8e85aa56429c5163f5fc48f74ef1fc523a359f3c527bd18660f6",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1440-200-dark.png",
+        "sha256": "7ba2c0cc27c7d0527995de3d01eb36a6878ffe75545939e8d807f1a2c82a3b4b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-1440-200-light.png",
+        "sha256": "f6114e48430c14237c74c5abdc7fdd831533c37e2631542cc7185a5cac4c66c0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-320-100-dark.png",
+        "sha256": "19b61ebe16503b3f4ae0d7ee97964212fd07557b1675b487638fa0811772d862",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-320-100-light.png",
+        "sha256": "af51ae46274446e3fbd14b111d22d76f65bfeb1d30f9e604691eb61e76d6c9b0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-320-200-dark.png",
+        "sha256": "a557c01d863d98d5f20305e13ea802c4aeae44ddf5b7a8f8508c328da370b96a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-320-200-light.png",
+        "sha256": "21cc44d98bb18d4d64fc70d630a11dce6987cdd31c4735d542ce8ab374fab809",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-01.png",
+        "sheet_sha256": "b151c32383575e78a5811aa1d0e4cc26550740245e13b3b8825c6c8a6984f8ff"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-390-100-dark.png",
+        "sha256": "5c4660caa623cee573efa6448aeace1a85d2bbda74090e18984a7ccb11d465b6",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-390-100-light.png",
+        "sha256": "79af4a7cc502b39aa715ddc83a4921e2fa4ecf6575cd8e170d21532993099b58",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-390-200-dark.png",
+        "sha256": "e4e951fe19c9660fe67e04e65e27a0c0e123b1801c8db3a37a818cac120e6f59",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-390-200-light.png",
+        "sha256": "39d50e5dc372b963cf4ccb6b5bfd2ec0e2f0134cce231e9cad33a49c863c43f6",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-834-100-dark.png",
+        "sha256": "bcae16b2a3d3c491ea0fc28b778acf32593f891f5d62a53c1d1ecf0c057fb6cf",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-834-100-light.png",
+        "sha256": "bf1ff481661f631ebb124d3eeed6c7545e58f721edba85c3abae1d032b565fe4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-834-200-dark.png",
+        "sha256": "20f551b28505cf7038eab89460b4aed663312ca5964385a64d49a8175096fe68",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-empty-834-200-light.png",
+        "sha256": "24218d27463b52831419aea605a76a5f12d99f8588d274ad031f4efe5b540883",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1024-100-dark.png",
+        "sha256": "9ad6ebcc661c7e6643342d4673c790902c1f36e40831d1ebe2c4efd4a2f31ec2",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1024-100-light.png",
+        "sha256": "92b46d08fa1c06e5b11eac6904876778c615bddf752a32df62af05af0a438058",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1024-200-dark.png",
+        "sha256": "8038993b0436d0d6bdd0e3d045a26b910a113171931039ff1fe7c21ffdf92d70",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1024-200-light.png",
+        "sha256": "3a1bb4763c491480e5374d51fbf00b83536b1976e9997ae6117f2b02488a5bf2",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-02.png",
+        "sheet_sha256": "8d9ee48e2921945a2f0aaff935a1971c00e3e10bf0061d6c6a2d535374f89a40"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1440-100-dark.png",
+        "sha256": "17c445200877ec30bb3327024a0575baa47f1d530cf0b3d301a45726ab221a6b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1440-100-light.png",
+        "sha256": "af5a6d8e758c831be24dd42ddea56d69b17d7f0545358719cb8ef080d72eaeda",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1440-200-dark.png",
+        "sha256": "f0c12c5f80c52f12d5b82f34c07092b86ae7109b35b9e4b5a838b23aafa61e8c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-1440-200-light.png",
+        "sha256": "9cf0d47c27a00047c304284cd25570a2e27f3dcc5062c58ed242e68e2d1c86a7",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-320-100-dark.png",
+        "sha256": "3a9917c0a32d84c0ac9e313b7f084d2001a92d89246821279d1d3899970024ec",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-320-100-light.png",
+        "sha256": "c4018ee82fb1003de32ee93a6a46835452a6fe5b42543c0f0f2737136be21667",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-320-200-dark.png",
+        "sha256": "c80334af67df6243e8ec739bb5ef3a902043e9eded0df62cbe16d9a181b4b84e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-320-200-light.png",
+        "sha256": "14c328ecd97a87678050975b41ed6020e5c523c3b81ef761cdd39b39a907960c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-390-100-dark.png",
+        "sha256": "0024440c4f4a378cbc51a254a1325b6c55629471ee526fc4830e717c947356c6",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-390-100-light.png",
+        "sha256": "acc75f0581ef8ca2da0958ef773defacd21ba62c756a56121dee506508b41d62",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-390-200-dark.png",
+        "sha256": "0f0e554c1ba4775dd7eb58c5b2f5c0438c328ca88fba4888b3e86995f8e5f74d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-390-200-light.png",
+        "sha256": "a4d71389138a1a59e7f779d5368cacfad6502773c58e8181e837c89e3d0d3d65",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-03.png",
+        "sheet_sha256": "70e14ad1c7723661f51624c705b4ece397f2ac2b540936431cff878e2a398a84"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-834-100-dark.png",
+        "sha256": "9d770a1c68cf86a4555358e13815476fc18fc8052bbfd213c39cf90c693209c0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-834-100-light.png",
+        "sha256": "42334df7fb0f32f7866a7ddd6e39536da592a5131747b88d798279a4cb4e0106",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-834-200-dark.png",
+        "sha256": "8355c471ae0e07a9e1163f5279df4f9053594dc2e05f06fbb69973544359d0f0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-forbidden-834-200-light.png",
+        "sha256": "9630fbf129fa1832c937e02f8910a463a4ce51365bb46466f7f8f7a29f53c385",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1024-100-dark.png",
+        "sha256": "d3b631685fc4673b443efbe6b5e5cad90085567ad44636679ca4e276c1fbbe09",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1024-100-light.png",
+        "sha256": "7f217feadd6ae8f757865ddac1a2e4f2f063fa338a3a691e3f3375b8d51f5a7a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1024-200-dark.png",
+        "sha256": "a57da51b43f55d09c91572c09dd7273c1803d08d3ea5992efaec40fefba145fa",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1024-200-light.png",
+        "sha256": "a625af7b90b4856f5b18d28c09cb5f9399c4158ec212f538d59b1ac30a8c5e85",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1440-100-dark.png",
+        "sha256": "06c75338facad90285fe11597a8820424576b17f189799bd53652d2c9bd40126",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1440-100-light.png",
+        "sha256": "798e39c6ca00b799b9ba9f2542554672257bb462b4a3a96aab8e1481bc68f4ab",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1440-200-dark.png",
+        "sha256": "1cfe5b9ca4ba73c42db3d90907554bf702061e8ad544f368a780a7c7660635f4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-1440-200-light.png",
+        "sha256": "5a2f7173bd87a82e5aa1d4553376e2f25e80f3917308e6092034816655560c6d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-04.png",
+        "sheet_sha256": "57c2603d653eb77a8512a057657d506151de6f7aaa0f80f46c777744bff2cbdf"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-320-100-dark.png",
+        "sha256": "a5fdf1fcbf9c038de2a4bebaaccb0f07ca3e86179d1c152acc91e50de790d085",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-320-100-light.png",
+        "sha256": "eec5ed764d23f405fa7cef3c1c6967773e9711cece32de3f0e3478a91725735f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-320-200-dark.png",
+        "sha256": "798d949de035de8436110bc432023c9d55672218050365c6b02418a4b00dd310",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-320-200-light.png",
+        "sha256": "266526fba8df0b49f9777e0f4f479053d3487065de8de0ae623facddebbc7c38",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-390-100-dark.png",
+        "sha256": "76726889149cc3a7a8913d414573947765062855f6583647e9c3ea1deeb43afc",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-390-100-light.png",
+        "sha256": "1e25ef7b07c6d20da2a7fb67c955f84fb46de6da2dca2f9368bd7f42bd5bb305",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-390-200-dark.png",
+        "sha256": "8c961dc36fca959769281c702c4b2bad52d3ae7dbaf43cab5593a0eec3fdbc20",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-390-200-light.png",
+        "sha256": "2c7e9de0fd5ac9228e26825443ad86340a5ee02e24991bd70b6c03c5a51eafd9",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-834-100-dark.png",
+        "sha256": "aa94d40616c19d2698037a7636e752867708a8b9c2d5d99e99b4812c1663a580",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-834-100-light.png",
+        "sha256": "bdb4a0426323c935c8f5de82bcdf2d0dda732f90967c04378249510e2bdf4a86",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-834-200-dark.png",
+        "sha256": "9b648e9da5c45ebee81c4142239d5c54293ca7a6924274f84e5e8f152ca88e7f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-no-results-834-200-light.png",
+        "sha256": "dc3b71ca1b3b9499904fd335f9fd183150d165e821450215b88d28b560b124e4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-05.png",
+        "sheet_sha256": "5078a6638b206a7dc5d91541a8dacbd0beb1ab979f8b38fc641a8e3468c8fb68"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1024-100-dark.png",
+        "sha256": "e1dcc299af2b2f7187da63fd4010b5959138053202110943565b06430e0d62f1",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1024-100-light.png",
+        "sha256": "e208d6aefd87aeba62ac0800d7edfe0e7c61378aebe72bc1c2b7f8d21c4a79f3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1024-200-dark.png",
+        "sha256": "d38fcad50f9e217b9f75cba9f5729bd23b7dcdc88a1e312e960bc507e107817d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1024-200-light.png",
+        "sha256": "df6e4a3d79e0d687e02100ee7c2f18bbbac13b287f9351c95588db521cf1cd6b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1440-100-dark.png",
+        "sha256": "eac2f0f318ed0fb15b3c7b3e3bb9df13695f26272be4e999bc354753839854b5",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1440-100-light.png",
+        "sha256": "b5bb622a849e9ac6158695c813aed81867eeac6cef441232f50331ab785f581b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1440-200-dark.png",
+        "sha256": "9415b10649fcea1a36421e6566038ca82ccf5ab59e882a4f91ae496768e3a507",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-1440-200-light.png",
+        "sha256": "acf2138e05d5016b96fa4ac0a52f4830f2e2a65d545d131d79fd1450ab15c074",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-320-100-dark.png",
+        "sha256": "f517bcdf6211beea11c1c9f56932042b5f8276fad687eb3cdea00f1f3dbd8ec5",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-320-100-light.png",
+        "sha256": "9abc32e925e1d781986778e3dbdc1ad6bf19a92f9d76fca427fb52e43fe98d0b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-320-200-dark.png",
+        "sha256": "38af40b9926cfc20ab335b40074ba0ba12ab943241a30279d822c5893c1123ce",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-320-200-light.png",
+        "sha256": "d203824330aa02d3a012b52d5bb794236096b00fa64f840524800cb2f5156e43",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-06.png",
+        "sheet_sha256": "61dad1c3cf242a0e51cb500a86b15f6d84fed12c08c21d85a1f3dc8e044e753a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-390-100-dark.png",
+        "sha256": "f4608894b4488d8eb28d3461771ac2686c459b0fcfbcf1723a4f7e292058675f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-390-100-light.png",
+        "sha256": "0cd11c2dea19bf2cc61b18c4b95153f61779460b1380d8670a67d275b28dc390",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-390-200-dark.png",
+        "sha256": "a96ffdc521e6aee8eda4ffc58b8e8537029181438486b42fbad07de57cb66987",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-390-200-light.png",
+        "sha256": "90d637775e32b3d80c2cbbba1f242c84a393af0e2e06e8157b10aed4c8fd6420",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-834-100-dark.png",
+        "sha256": "9fda1dfce27855a24eede62792779a8ecaf8af355e19df0cd09fc723c0444fb8",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-834-100-light.png",
+        "sha256": "c68dfecce984003a304f0ec37c37e5350c362c23e2969b9b549b9be404ad8302",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-834-200-dark.png",
+        "sha256": "0cc6bd484c7a545789e71aef7e6d82482114690dc3dc33e0ace2c0e30522083d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unauthenticated-834-200-light.png",
+        "sha256": "a9af0f856628a28340e5428f4e0cd0fabda3694e492a68dbb8bd0af80ae70790",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1024-100-dark.png",
+        "sha256": "1ee8054ee30f2d7cab4d6a513e77e70c92b35fe35e2ee750cf223097de9f1ac4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1024-100-light.png",
+        "sha256": "a7c7e6d3bd02ebae182b4c722c2149ebdd98fd990e320925734688f15bc1d900",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1024-200-dark.png",
+        "sha256": "24e2b0fd48d04d550eed30273b659f177bc44c308f375626f97c7ea3ef89942a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1024-200-light.png",
+        "sha256": "efe7d72a9a6b3a7d61728466aaa93135f458d517a6fad78cda8c6b70d84316a9",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-07.png",
+        "sheet_sha256": "f344af508a9cbae9b174a86eb9db594649d2c99b463318f1dffa66da64452d6d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1440-100-dark.png",
+        "sha256": "c6f3ceb42d19470dd64a230f0c4bc5b6f752089627ccc363839525ff4b759d29",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1440-100-light.png",
+        "sha256": "6bb02b925d86eb3bfcf0ecab753123c1d643c873f6081e68b2c597eef94bfa5f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1440-200-dark.png",
+        "sha256": "2d63be150d4b1dc90750c2b5a781f14f726055000b33fcec8c1b16d693b0b348",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-1440-200-light.png",
+        "sha256": "f4c19aa7c8eb61eb3a39fa2bbc9a2f72487e4f1305fe75e622f8d71ae2e2ce6f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-320-100-dark.png",
+        "sha256": "3816c582d132b369ff8f0e0c9bb95301921d63f185b597dd2a6ba97e4fe4dd7a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-320-100-light.png",
+        "sha256": "c38a458fb9772c2602d6604d04a4e8f3c7b0e788b9efcceb2e004537b924f9ef",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-320-200-dark.png",
+        "sha256": "be05ef0cbfd6112b3a0f95bc9fc186fe4afb64dd034cb493fc6664583c5acc7c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-320-200-light.png",
+        "sha256": "36c425fd753620fb8aae1c1cb4c3dccf224994ae80193d93be0c7175e974cf5c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-390-100-dark.png",
+        "sha256": "efbf1a1dfb7a1ad6728412ff8003176f6c78a35e22fd41f177201f141bfe0b95",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-390-100-light.png",
+        "sha256": "d6ebc5ef575f9287999a36b8c11b28fb2e96e4113e8a8abd9cc3315988f4ec55",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-390-200-dark.png",
+        "sha256": "a9e7af0c45dea1ba366afc2db60e161dc01fd43fa2766a4257ee1875e06653d0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-390-200-light.png",
+        "sha256": "7d72281cc12654ea5839df576ed4e4330185cc07449b458a77ddecb3c15cd24d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-08.png",
+        "sheet_sha256": "e861f861926f1b4a7a18ceffac6823b638903918ad9f7ebbfaf90ed266dc4adb"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-834-100-dark.png",
+        "sha256": "4f4610f369977f4fa59d2572a818810ecb95ffeeb7c41406a392c6c48bcf144e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-834-100-light.png",
+        "sha256": "e89aa054412080bfb72c24a08d4f1782b7c2b9f716847ec35fab274157c608ff",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-834-200-dark.png",
+        "sha256": "514aa33a08f23a496ab1368e6226ed61fc2efd1daf448ff0befd7176b4730e7c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-unavailable-834-200-light.png",
+        "sha256": "54a697ac1a9ba2091fb0c3a6dea292da36f6d5a01d2d3b4ca412f903f4f4b26b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1024-100-dark.png",
+        "sha256": "3d4e862d4311c0167381fbb62d13b55279d7c3f336b114cce1850cad3018727b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1024-100-light.png",
+        "sha256": "ae60a419154d079aa4e2ad5fd9d709c091f552b96c514adc45093c560b0a4201",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1024-200-dark.png",
+        "sha256": "b550519ab5f06e85e5c25c95ae228fd0715a6500af26c30f5f4c66dcb4b85e67",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1024-200-light.png",
+        "sha256": "ecc3e01195260c109a70d5c1a73536afc3d4f437e41902c7920d00c11ec6aad8",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1440-100-dark.png",
+        "sha256": "bfeb893bde1c68756a5144cbdbd51316455f568bfa4ae205efbe7b8e10a665d0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1440-100-light.png",
+        "sha256": "a4d078b89762f8a20f57b6d4105cffcb3dd730668cb8a3a3b95f9e8db7d00622",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1440-200-dark.png",
+        "sha256": "be54b8bc803a759b710e34d7ede03988a94c9ad051bcc17262368785302a7509",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-1440-200-light.png",
+        "sha256": "c44351a3ef8c4df2799db06dbee5baf05cdc43ec34ae56baaf482806516d315f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-09.png",
+        "sheet_sha256": "d8391fe7874a220c1a54ceccea310cb3410abba7ead89a35cb0732e03ab61bf1"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-320-100-dark.png",
+        "sha256": "014e6c82e2228f76204dafec69a84a040ecb756d5fd2d7373f454751e969381f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-320-100-light.png",
+        "sha256": "237f9a84b224aded53761d7e2a88a33987d32104952d1847fd66cf57c3a7684d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-320-200-dark.png",
+        "sha256": "58d5c8bb915b61976c70ee6b3e3379097733a039cd28ee836e54134116e8eb9a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-320-200-light.png",
+        "sha256": "bf7ed556d3de683af2c185b7f6b8759dc54645aa5f85e0c21233364ab6660f31",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-390-100-dark.png",
+        "sha256": "28d151d2887f2624ed883a338975cb16d07f935b791e79ff28603c395ecab97e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-390-100-light.png",
+        "sha256": "9a856584e74af2dcb2c272b2df0be4b03ce63a8d620c0fa5ee537b0dec5ea39b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-390-200-dark.png",
+        "sha256": "abd12f7f0e0896da04fd8f329e8b367b5e5b974cd1aecfb0c6e009efd39f2b18",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-390-200-light.png",
+        "sha256": "26523da685cfdb98017df11c48be2d492bc7dc909db92f81d2fc7744927ec131",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-834-100-dark.png",
+        "sha256": "f7f72292840b7dbf39e9f1baff9851fea730022088c3691cdbbfc9f4a054d148",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-834-100-light.png",
+        "sha256": "13c3f81da9914817b78872c9f68094639aa611c369fe73e3a04c36464523ce23",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-834-200-dark.png",
+        "sha256": "8177d55e3c08bb2a6570555df612f73d96e521785040f73e592307add1721a1b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-desk-uncertain-create-834-200-light.png",
+        "sha256": "5908ec64dba50729b38d658ea42fd09223a5f9f0d216418d4dbe513c42c71ec3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-10.png",
+        "sheet_sha256": "38b7697a28ce205d04e23a6c0d0047c6dcf1918d1791f6caa5d3dc95f1606015"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1024-100-dark.png",
+        "sha256": "be5b26fc0468df7f250e85b0213783940a5e077664a07c385a5b970b5938fb43",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1024-100-light.png",
+        "sha256": "6542ab119def7872e22bdeff9bb8a3f426f6d1de15ca700e11b7ff7cc3fc7430",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1024-200-dark.png",
+        "sha256": "4291faa8858522ff24c711e2ae67679734dff6adb30c1e57f71702c934fea360",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1024-200-light.png",
+        "sha256": "5b7b3d5e1d231afa55eae4778d798180e5701bb942c8de1ec29790b5c96ac9f4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1440-100-dark.png",
+        "sha256": "2d51936601e70eefc59c4183a09949741f65a590d9c572435d3fb2ab6a0f239a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1440-100-light.png",
+        "sha256": "5735d924c2aa6f442f210ce23b74efb4fbdb32183ac74b38a3606762936ebcd2",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1440-200-dark.png",
+        "sha256": "b17f56064a64f07080105d005ef8afe17599f7e56851d319df3050cfedf89ffb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-1440-200-light.png",
+        "sha256": "f12b0783efb2df481c677622100ce44c86b9566f46ca343b1f19f4ec9f9b228e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-320-100-dark.png",
+        "sha256": "f266e96e10128a917321256cc42dbe0df91a5af050a10e50e9fc1107e4b959ab",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-320-100-light.png",
+        "sha256": "da9f7263c40c834416cf553da3677eec986b4ec3284ee7b28da8ad8044a4d901",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-320-200-dark.png",
+        "sha256": "71256d8f3cd0da1750de6a0cda5bce97f819c54b4bce5d5aedd4153fc7dd7031",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-320-200-light.png",
+        "sha256": "05a5112a2eb3387efc0a9e301f4e9b4d4e6d0aa27d7ba239a1d3546f9cb60875",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-11.png",
+        "sheet_sha256": "bd583a52f2625d9292cce261934bd72057ce443f7c24e87a8cc986d535cd7a6b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-390-100-dark.png",
+        "sha256": "37373cd88b77d8fea928ba963262cc7e65297fdf6652d7326a451c74756e1e4f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-390-100-light.png",
+        "sha256": "4da49a4521368b8b3e20a19d3adfc063ba9997b430964c9bc4ad257451561a51",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-390-200-dark.png",
+        "sha256": "58dbfebabf7dbd0c09ab6d522c1cc09db5ccc515b52cf49a59da62f273ead981",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-390-200-light.png",
+        "sha256": "a1938cf18b7f249a43527010e45219c1823e26efb5f3c16361cd991cd4342782",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-834-100-dark.png",
+        "sha256": "ac9d111ef4989779d47583350a3af3069e16818a3980e0f9a7efef688fbc3ad1",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-834-100-light.png",
+        "sha256": "b857ad4aecaba643c7b5f60b3c39508759587b92f374bd6b0eb81e24cc8f1efa",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-834-200-dark.png",
+        "sha256": "ad6280ba3ff2682fcfd5f8503314f374af773c7cbb62d917ec19b2e71e657adb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-empty-834-200-light.png",
+        "sha256": "f6bf1f23828106ba065b75ef84824ab2ae9e45856e0265ef066e4cc19ef461eb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1024-100-dark.png",
+        "sha256": "5983b256167dda3b02b715791129eb60d6d16d407808515b7484dc6378b34e10",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1024-100-light.png",
+        "sha256": "cf4fb75b370a074c3f128d80d014cd42a0173dbdd10f9ff6bb969bb59c5f57fe",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1024-200-dark.png",
+        "sha256": "59d4f8ebf4e81a4ef958b0f196f33dbd631fa0e6f0f5141318ce1f55e4c5d70a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1024-200-light.png",
+        "sha256": "769f70b9013cb74604850544df1632cc04a7c1c79605d2109fa69e099151dbef",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-12.png",
+        "sheet_sha256": "277783653837cef71f9da0344729ddd3180da6d47bbecd90b3ec081af9a188ee"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1440-100-dark.png",
+        "sha256": "a5185a720f916686441a3f566f97d0b9016ccbd7bf1ff464958396a99c65be74",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1440-100-light.png",
+        "sha256": "84cde474dcae8258f08608413506c1211f49962a9315cf010cc95153b09319c9",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1440-200-dark.png",
+        "sha256": "edef7e8450dbdbe355214cf2a002c61e39985b6a98d8a1573ef49a68b8f4299f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-1440-200-light.png",
+        "sha256": "03895f893ad98fe6e0ada630fcf57538f74108b4b5a355ac78594fdcd728d45c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-320-100-dark.png",
+        "sha256": "6a107e90e7ed307bab1f69bbd97235f5ca85687e90f9a9a9089b21db9fb57217",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-320-100-light.png",
+        "sha256": "69f0c657faf62c7b36302c1e4abf5d9e6c3bd64b0f6b116cddd84a738e078cc0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-320-200-dark.png",
+        "sha256": "25746792932b23767956cd7e2b5f99baab6ed8444d178b4a9befbf2438ea7bdf",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-320-200-light.png",
+        "sha256": "7b07fc8579be4ad1485c9bc0cf04a95a6aed2ddee2af682d766734ff5703732e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-390-100-dark.png",
+        "sha256": "4adc398574c301dcc6322f6bb8799fe25c9d405ecd212ad1cf4a4a3ff2dcbd07",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-390-100-light.png",
+        "sha256": "c005039b924f1b3a69239e9e050bee394c5fccc7235639f8b041d6778b051518",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-390-200-dark.png",
+        "sha256": "c159aeb29b22876f187c4abdfc0ef02217f266b7bbba5cf548d49a5e00c1911e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-390-200-light.png",
+        "sha256": "2fcc05136f1e0ea4eff6c631e17cef992382a8967434422315f968bf69eaa241",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-13.png",
+        "sheet_sha256": "13586b89b4cb8473c759a92e10ed70fd5116545faec43de1c45adb026cb41062"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-834-100-dark.png",
+        "sha256": "591d3aec1066a94848fa42d56026475499ed1ce0d5b2172c42545a5836088f8c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-834-100-light.png",
+        "sha256": "5bb22f609467f1b32f6b7ccc427bfcd6b64625d5c5cb254ba7567910ef0a75c4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-834-200-dark.png",
+        "sha256": "4e66ffc2d0a1a3d95bfeb7dc6a16fa72df45ccce8332d16285876a65a41d8586",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-no-results-834-200-light.png",
+        "sha256": "05c637f55a763f23064beb3365d03b172235d743f51f0fce9a32d924bebe814a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1024-100-dark.png",
+        "sha256": "acad6803dc70645cb70d444273b68872b6ecd82b39f7a6b4ebbcf243cba61238",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1024-100-light.png",
+        "sha256": "ad5e5eef1524c8dbc305f76369f8edba78a169a75a7f36592d3536aac35d8a2c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1024-200-dark.png",
+        "sha256": "f9b54efcd8c080d7c63361845483328efcb1e1a51fc878a8d16d6b4fbc71c7af",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1024-200-light.png",
+        "sha256": "ccadabc167a052adadf907e297e72c2c9b72777f91490ea35495d504cf37800d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1440-100-dark.png",
+        "sha256": "98e077573c188bb9fff3211103f353d34f7f7baa23ff35145714350e7c5bd99b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1440-100-light.png",
+        "sha256": "dddb4696ec728540fa89c0a1710eeb22303c586b763c12ab03f9e63a59e50999",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1440-200-dark.png",
+        "sha256": "57988e38ab58b391fac79020a73c0191b480455165cd9e99bf00681e2e8ffec0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-1440-200-light.png",
+        "sha256": "c3d8046d00acc0ef49861e1a33686cfb28b683fc1e5b96a6252ccb8d1ea43d64",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-14.png",
+        "sheet_sha256": "b14b12ca198c7f5bbc78a97df2ada0074898992e8634865decb13434cf628d7b"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-320-100-dark.png",
+        "sha256": "04319f27e7f7d0a0a2b2f14f101e2631e0b516805fce7243d88f790b5ce09c4a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-320-100-light.png",
+        "sha256": "a306f1314b3081ad3faac2e02d74761173e5d62733d255c8e06637a79c545b8a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-320-200-dark.png",
+        "sha256": "1290a4f1bb2a852a70b37505be9d5d9dca5214e9b19f85b4cbb084e793ac64eb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-320-200-light.png",
+        "sha256": "67d21de033656411ee69cd1e0aa55f0b25bfb984bbc5da58a001c4fc86281a91",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-390-100-dark.png",
+        "sha256": "ed7a0aa331ddb666fb796c393d8892fa978de3c4331c2a506d705ef6da7baa4a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-390-100-light.png",
+        "sha256": "a8316d17e904731e241ba3a35991d2f5f3eaba30d01ceae6431c78d965cef003",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-390-200-dark.png",
+        "sha256": "ef9ea49436f1ad621228e0111bc06deb8c7e791c382cda9a68a8b2960634c6b5",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-390-200-light.png",
+        "sha256": "b6bcf5a0c9412ace6f6348af80fc62c3d87159a14feeee601f03d86e990f0b85",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-834-100-dark.png",
+        "sha256": "d57e5735b008eee6ada8f39c5c435f6ea5bb7be3dd48148f0a223a68bf521480",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-834-100-light.png",
+        "sha256": "9bbff2e65c1f348406fa9c4dee43605f061ffb75911fd56312f1f26a7e933571",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-834-200-dark.png",
+        "sha256": "87d2b308ff422c418c7d74983ee728a9c7e2b140e83afd6981e8a2245b570995",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-explore-unavailable-834-200-light.png",
+        "sha256": "80a5b61ea922b1497cfb51ce2e174b8196f7b475ce1d3fc1f216ce5f4f210081",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-15.png",
+        "sheet_sha256": "6a8d2db3f02f09aea9dffcbb0b34ef5255fc80b0a41f009a72677ac05094bb45"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1024-100-dark.png",
+        "sha256": "975dc3c7ef394870f6f08ab0aeed4c0e020ad7240b418f4203c8c77f885dac86",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1024-100-light.png",
+        "sha256": "f48d7378ddae191bdfc594f1fc41499b0e2cd6ce07a657167286d66b123ed368",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1024-200-dark.png",
+        "sha256": "f36b47bb7a859bd7221cc59c90c4c6985dda06b71f6004709ae57af8e9845409",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1024-200-light.png",
+        "sha256": "e1cf7d4eeabf41a2656c7463e6d5115894d4518325185f8fbb461365621b4768",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1440-100-dark.png",
+        "sha256": "248345d391b5f776dd54dd0bfd6d1d815bdf50cb34967932e0e5edea78728bc4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1440-100-light.png",
+        "sha256": "f953df0f24acc45208007c72046463d56a167b228cc378f387641eb7e7511085",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1440-200-dark.png",
+        "sha256": "3655eef3e35d50d6cab3f756786d6137f52b9430c3d49d4206e4475f826335e1",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-1440-200-light.png",
+        "sha256": "e32a724e910b7d3a31641e0c91f938200f54f627969751bf5fea53f0b7a6dd60",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-320-100-dark.png",
+        "sha256": "f777e339d9323241bf423e54f0b704646005c3a8ff295cda0eeb878eff509d81",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-320-100-light.png",
+        "sha256": "1d0e916c318ca9622c131723bf182358147e973ba3358b73b0a86a8137c39bef",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-320-200-dark.png",
+        "sha256": "0dd18f13a5982d9f8f39360f1bd1306d484698a63cef95585374ff8a81f560e6",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-320-200-light.png",
+        "sha256": "df8df3354521941e69d2c55510196867236b3a039a4ae9cfdad3ff682d5a7271",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-16.png",
+        "sheet_sha256": "a5e384d4db19dcc02ac73c4618e2ea00da42b34d5448ec7f54db80cba8214c1e"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-390-100-dark.png",
+        "sha256": "8081c0bbb30f3aef20109cb57787cfe076a95dff7f91a4a0f37dfcd7e808d84c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-390-100-light.png",
+        "sha256": "bc10b0e7b0d6020b3777ef23790fd3f5c1e70233805c90787708649521728036",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-390-200-dark.png",
+        "sha256": "1060ea6da97a8fd53ab5cd9c4305b13989e59e0a78d8e6f277de7f025083532e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-390-200-light.png",
+        "sha256": "a16c46d2f3d9650b94759e18996e7aff9e1bedc7ad8089a86e9be3b190a04a6b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-834-100-dark.png",
+        "sha256": "b7607e270a98d9b1bc7ab3d052d419ac3b0fc646c8a05b2bbdfb204096e33102",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-834-100-light.png",
+        "sha256": "498d2ae720f25973e33d4d0aeb75769973957ade00d568482956159ed8c43f3a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-834-200-dark.png",
+        "sha256": "ad165619c3e47cbf8056f6a77f46b3f62a463b0f1b87a1e5c8d622f973a8c480",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-404-834-200-light.png",
+        "sha256": "e667bdb80ee68465726fc3c6e998ebf6f095862eb61955fb6fd71683cfb0db79",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1024-100-dark.png",
+        "sha256": "46c577ec80296ca720ccdf1a87f434f9e76926a2d84bf57747b791097a5f090c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1024-100-light.png",
+        "sha256": "5d8d14a23b85e4d2de9256b152ebe152543d22dde1e5ad3f5532090f13ec7202",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1024-200-dark.png",
+        "sha256": "62175e7a9a7979fa1ac53bffc82bf8fae0b1605e33bbfcffe456bb6b383832fe",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1024-200-light.png",
+        "sha256": "4b4da6da4f725002fea46de7f84351da3b95d8bcb893f648c8676d40f0a02e17",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-17.png",
+        "sheet_sha256": "ff68f86d1b730fa963f0db7c3e3454bd9ffc1dc7dc82454e8a4727ade7eb569d"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1440-100-dark.png",
+        "sha256": "252f74a429afa35b1035f9c1522e6daf5944acf61802242cfcf704b3a70a2cec",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1440-100-light.png",
+        "sha256": "ec323bbddb23e411f9fe38d9f96fd253dcc152b157c36e3968b4c073780cc802",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1440-200-dark.png",
+        "sha256": "fd0201c09bd8d79b72792ecb5a25dd03a706a05038db09e6b519c8b0e60e58d7",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-1440-200-light.png",
+        "sha256": "c539d4c35577380944bd6a192ceed3bc845ed8959294ae921ec5a518f6218a22",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-320-100-dark.png",
+        "sha256": "71799b1829b2f9f36726fd3da67e41596cd32dc1a613e83cc71a885e9eaa1d36",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-320-100-light.png",
+        "sha256": "c9cc5407b1e05f14f5b67574e96146316b5af91622ebb4b9a0ce2a3bf44ccb43",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-320-200-dark.png",
+        "sha256": "342f7b3432cd199fe0893614cceebbbca6bdccee19c85422dad4ffbb38d7e3c9",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-320-200-light.png",
+        "sha256": "dbacba59978fd068b3b691e972a925b8dc0d4619244969ac24eb708d9ad061ee",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-390-100-dark.png",
+        "sha256": "baabce0ff6385dbe61fb1d7387e2f763edc1fce6b13ecf6783e5f4761184e675",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-390-100-light.png",
+        "sha256": "9a97f5ffde8c0d71d01d19cc06c9081e0c6c933864d225c395d8743f0626ab68",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-390-200-dark.png",
+        "sha256": "d5c9cb351d369b82f708cc14cc69f6b16def901656e7cdb68eefb51cb4478040",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-390-200-light.png",
+        "sha256": "1047ff2bbcb85dedcaad7a6770731bd3ea8f2e616fe7049d82ad18a348a6a0eb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-18.png",
+        "sheet_sha256": "f4d1798d2ecf36e98a6a180c83772fe0f7d9ae2fe1626cacdfffade1c9055d6a"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-834-100-dark.png",
+        "sha256": "e2a4b7c233dbdb520d2d4d5ce07bdc06e32cce1db2a8eec8a35cfd7c4faa68b0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-19.png",
+        "sheet_sha256": "507ca0d7a9d4b6fa948ebe20ba894b61b8fa30419c42b5b9a8f2c2914661b5e3"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-834-100-light.png",
+        "sha256": "a9a18e45a151a17cd735b641ddfe869258158c5f202e80971e8cf24b1eb015fa",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-19.png",
+        "sheet_sha256": "507ca0d7a9d4b6fa948ebe20ba894b61b8fa30419c42b5b9a8f2c2914661b5e3"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-834-200-dark.png",
+        "sha256": "b1efd018ad5277ecfe6693280d43c670afdcb950a9bf7b0e2d82ff8808733c96",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-19.png",
+        "sheet_sha256": "507ca0d7a9d4b6fa948ebe20ba894b61b8fa30419c42b5b9a8f2c2914661b5e3"
+      },
+      {
+        "path": "target/verify-web/screenshots/recovery-reader-503-834-200-light.png",
+        "sha256": "2baa9ef5c76b252f0dd369379faff37053e1128c71136b2c0d716a5f43bb5759",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/web-19.png",
+        "sheet_sha256": "507ca0d7a9d4b6fa948ebe20ba894b61b8fa30419c42b5b9a8f2c2914661b5e3"
+      }
+    ],
+    "focus": [
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--focus--part1.png",
+        "sha256": "b348fd7aac4c30eebdf5919eaa0bbb6592aee850bba7192d2dd5511728f1d7a3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--focus--part2.png",
+        "sha256": "dd6aced1ac820f5c275af9acbcd21082763f9afb6fc25ae090b0284c96bc5d05",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--1440--focus.png",
+        "sha256": "a79fab291415e752e9696de038d268887d1edee335f012d3e627f1258bc48b6e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--text200--focus--part1.png",
+        "sha256": "d2f0365c35a54aaaaca428fc98872887eff2dcd409f0c99dc3b5efd0d3e84ace",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--text200--focus--part2.png",
+        "sha256": "67d92e21f56d79c5d64845fcc904ebb0570ba7626a4fbb282f143b2f6bf901f7",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--text200--focus--part3.png",
+        "sha256": "85c76f3841d05f7220795cf5c5aa0ee59f33c02583834d5321d19008d1132bc0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--text200--focus--part4.png",
+        "sha256": "8cc1d696bf403da38efa5d7157b8e792fc20b6c7e99636bdf9153359dec7aa21",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--focus--part1.png",
+        "sha256": "a02b92b572b689ecc0712186df2d99a17ea7fadbbd3fffe5f084bc4b81c42a58",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--focus--part2.png",
+        "sha256": "4abe649565c25e44bfd53df07310e97d7aff497168c9f45a89461f22302b59be",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--1440--focus.png",
+        "sha256": "3d5212044afcaa5382277abb904677abd3c995155dbd32257c7dce86da127176",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--text200--focus--part1.png",
+        "sha256": "d7ece6b88df488a6de80545ce35f427dfcd8245cb980e208ad8a0ee99a233438",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--text200--focus--part2.png",
+        "sha256": "096b64db4c8a03b2e0e73b9ae512195ddd4e69fe704cc2963e58b88b91127cb7",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-01.png",
+        "sheet_sha256": "05b4e5a6a007f13f20c61c5ac87f78213be926e96d8beeebcccfdb56f0cc68ea"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--text200--focus--part3.png",
+        "sha256": "e59988e41d9f73e9b228d021c99ba4202a6d01cd8f40ff6c61dffd3389d9e794",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/layout.grid--default--dark--390--text200--focus--part4.png",
+        "sha256": "a8fac15b7961fa85ce1cb42407b866a29ac09ab6718cd30cff3ec8fdea1eef41",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--light--390--focus.png",
+        "sha256": "14bb076ed3dfec5a540e50413c9c014aec06a9c5758b03890aac5bc737e5b4b8",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--light--1440--focus.png",
+        "sha256": "474e84e9e606650e4dd5aff72228823077c9428f87c31beb976c10e63b6bdb3d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--light--390--text200--focus--part1.png",
+        "sha256": "86d17f3b783e3e7652db7e5fa0bc3c543538e698bc08a783823d223de4026d69",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--light--390--text200--focus--part2.png",
+        "sha256": "f13e9334ea4cef45611d2770fd2562cc3dd2788520d33352eedb95368f4c50ec",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--dark--390--focus.png",
+        "sha256": "63cf99797e74f526179f1ca110c5c95ddd8d806704917086264d197839c1c760",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--dark--1440--focus.png",
+        "sha256": "659e9b9b0326afb65a1fde180d71948f6f868b183f52f5ec44e8ee64895e01b7",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--dark--390--text200--focus--part1.png",
+        "sha256": "7eca9ef8204ba6f72e095d7464e296be8f595ac11244ac5f84e6362d1d0e51d0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/identity.avatar-group--default--dark--390--text200--focus--part2.png",
+        "sha256": "3885cc9841142d86aba0681441bc24dd632bf410118abf32398524947900d14f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--light--390--focus.png",
+        "sha256": "42a95ce736c208e95c55bf853b14dcf41340a4e20a4e2610d5151b1bcdc4ef3b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--light--1440--focus.png",
+        "sha256": "f4d3f8db7da697840cb44f9b2cfbf410b792167f51d763eb057d03b6664a0565",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-02.png",
+        "sheet_sha256": "cd79e6b406d2a317782e7117648d4b734276ea2a19d9db0439ac287d264b99bd"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--light--390--text200--focus--part1.png",
+        "sha256": "18da4e698b3842b896e6df6f2aabe71856820d9b61b3e58a4e75420e0642f281",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--light--390--text200--focus--part2.png",
+        "sha256": "6a1f340f600ff8fa6861c25c4189c85234a3b2afa7a088e9f2babdb445a34200",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--dark--390--focus.png",
+        "sha256": "d67602ed1b9304e535fb8bf6990e406ba7fdd1b65bfbe5a6dcb52650a4c961b4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--dark--1440--focus.png",
+        "sha256": "d3c870a43a9fa58b2524aeedd092dd18c5315a4201201ebcd41dbf77959af53c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--dark--390--text200--focus--part1.png",
+        "sha256": "95c9e8ddcd83e6c50095d2e8b2cca1ec6b95382e61e423ca25110ee9acd0e2ae",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.empty--default--dark--390--text200--focus--part2.png",
+        "sha256": "cdd10b61b225ad067fe2c7d4fd792eaf3a4f7e2d1b3bf241f767204201b915af",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--light--390--focus.png",
+        "sha256": "2d53004781bf477f45d927f050591ab8ed29a1352c5f7113bcd965fda6d4ea6e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--light--1440--focus.png",
+        "sha256": "d460c64b1d6ab58e8540d1a22caae7d176d815e1c2a9cbfb79602ab1574cdf59",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--light--390--text200--focus--part1.png",
+        "sha256": "c27cca827c895a377aae5cff1c238939adb874e836b3b76be8137ea725ea2736",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--light--390--text200--focus--part2.png",
+        "sha256": "e0b597ccf8338d787fcaed533e92a1859babdfd8843497b82322d6715a165c1a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--light--390--text200--focus--part3.png",
+        "sha256": "7eb6110458f84b263d14695f9d3e659c216a769e7ccfba8c4a4a684627f4f0d3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--dark--390--focus.png",
+        "sha256": "e49cb90df6c1b2b9bb81e4abf42199d8a0ae8933c43c60e12a54a3b36cbc627d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-03.png",
+        "sheet_sha256": "798fc276511e68757987502b544dbe1c7e2452e7f23500f6a99b6966f5826224"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--dark--1440--focus.png",
+        "sha256": "b7468ebec82f9f14072b490abd0450077d096cd6db1eadfba34bdba38d34c4c0",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--dark--390--text200--focus--part1.png",
+        "sha256": "e35e9aa6f9a6fd8c7033201ed0c25eab4355b352ef775b8afd9dd72fc92771cf",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--dark--390--text200--focus--part2.png",
+        "sha256": "640ce36931fff6b0d0724baf521af2bb640f07dfa6adfad000b43a342ca9f453",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/state.error--default--dark--390--text200--focus--part3.png",
+        "sha256": "b574b161bdb49f12a9a483fd818bd99c68eaf40aca9a892db34c5ea525d8563c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--focus--part1.png",
+        "sha256": "f5171f2e586d184e61382cac3fe1be7b029d3aca7ed08a230b4d73a3e477d64c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--focus--part2.png",
+        "sha256": "558c29c83f16470ee183fd8458806c7c3b95d1a58d15a65f7cf623e4f389cf29",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--1440--focus.png",
+        "sha256": "fdc650889ae6358322c3e5123f2e103e7c02182aa56d0c186ca76dbc3b65cf3d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part1.png",
+        "sha256": "be3d64c0bbd991b826af415a42928d6ec4b18c5115c89d264f0cb60edad45cac",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part2.png",
+        "sha256": "4f52919faa91ca8f7d78ec871d8c0bbed7a013e9e86357a81f8ee0b0c9cab796",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part3.png",
+        "sha256": "d1ccb7a0e4dd8cc82c3d72ffc11c79b000ab3dc07c1d4980ca9e8a327476d46c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part4.png",
+        "sha256": "0d2cd78cf0c7730f599ec333e8e3f72d8d1df43e5cecceded15d0f83d59cc240",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part5.png",
+        "sha256": "f2a5e44d8db2d4cfabd910a7bb526517d6adb965b322b12edb689ce7055e349e",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-04.png",
+        "sheet_sha256": "1c6ff72389eb991c394c0b5a6ff453a3411f5e542af1b795349e9555f109e8dc"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--light--390--text200--focus--part6.png",
+        "sha256": "48d9259c3901e21bf371f5818fc2147071f3fcf10f12b3e4554367e9e19a3092",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--focus--part1.png",
+        "sha256": "c5b4ec76a029161084cf5c736eac369d56f2ff30067c0ad1b3fd0ea17ccdf977",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--focus--part2.png",
+        "sha256": "d2cc5489d07a39d33f5ac01bf615fb3e65335a3657bd1ecafe34f5a4b5393b0c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--1440--focus.png",
+        "sha256": "28a736080700cdfa5d5d554135b511737dd755ca731cecc65c5f25477521bf41",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part1.png",
+        "sha256": "27c333493ec6a942e5976234d0db79587b9fa2a8548b9b1ff8bf49f66882ea84",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part2.png",
+        "sha256": "29bd72fd863e890058ac3efd5c49f04ba0428d7b197e84bb9841b6c4624b856b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part3.png",
+        "sha256": "97cb54ad0a1661c4defa021b30aea2c1735f0d0b7097b000a4836fe73bc95928",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part4.png",
+        "sha256": "f47a9de1e92c083a27736293864cf4a1780765e40be7d47f65ad795a2d494094",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part5.png",
+        "sha256": "65cf51bfa289b60268d59803980d81541bd04451fc0157783a31462810e34448",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/navigation.rail--default--dark--390--text200--focus--part6.png",
+        "sha256": "88db75aa9de3a1dbb1cd8151f0310855ef4017be466571978b22195bab596a5a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--focus--part1.png",
+        "sha256": "ed6b69f5e9ea5862e06cca79b8f684ffcf7beed2cb4ce337150ba9b1bc3b2fb1",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--focus--part2.png",
+        "sha256": "027d5111bfbac3d5d4184690076844774f0ae825d43b92dd666b7156a4fe61dc",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-05.png",
+        "sheet_sha256": "606650d089afffc86cb45836c284e8ef381f165c99560dc9ae63b307f175d7f3"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--1440--focus.png",
+        "sha256": "84783169cfecd2d13efd0f8bea7ece07570af05f26ae3f964c0b7291a754d922",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--text200--focus--part1.png",
+        "sha256": "95949c06691df917488796d83f07019a235350bdf60a608a317a0d5023507a2d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--text200--focus--part2.png",
+        "sha256": "65aeddec29995da7a7c998e22e99ed015f976a7b88c2afa2671aeda4b753397f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--text200--focus--part3.png",
+        "sha256": "f5ca463f7a574f4533f358424931f10148851b5977aa0934ec74004e55089da9",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--light--390--text200--focus--part4.png",
+        "sha256": "39c628301bccc7b345cde4da521cb0f0e9bd442df092152d5137b68f56a66004",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--focus--part1.png",
+        "sha256": "f6cf0701e04bce89a3b7a3b34d3a8a1074aae1ddc9394a0e74c3f6af31e69c4b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--focus--part2.png",
+        "sha256": "35bb019d930db490d19c1bb800a67448f31e89061e96ef407a015bc0b3cc6496",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--1440--focus.png",
+        "sha256": "bf1e66a829c43994c3cafccc33f1f3b9568474ee4285016a6b06e4d1b9a37324",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part1.png",
+        "sha256": "704fb5f9638a8f1701b1fe35c8cff473cf6a5ebbe30f374bcda0af5c60c7c5a4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part2.png",
+        "sha256": "392b4935aa0b20388a42fe922308c1055aed47e35060859b306e3d53f80ef876",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part3.png",
+        "sha256": "333950568e9849f2272c5431995f85680c47faebbd34cf40feabbadf0f5f021c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      },
+      {
+        "path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part4.png",
+        "sha256": "95a0e910c5e90fd2683225a7572c306bf3adb4c31bc7f0832345e618fc00f75c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/focus-06.png",
+        "sheet_sha256": "4361bec1e82ffbfbae47f08e2187fa2433c6ac4c9174236f41cb6f01825f829b"
+      }
+    ],
+    "native": [
+      {
+        "path": "target/ui-repair-06-07/native/ios/composition.feedback--default--dark--text200.png",
+        "sha256": "c3cfa8a88373e16e09c9d6318c66c147b5ef7ee15d3e97a5cbf5b0ab6b9ebf9d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/ios/identity.avatar-group--default--light--text100.png",
+        "sha256": "f29bb149dcfebdd86b3b8d136c6c2fdfb387fb9450ce4c9f4fb767d150b89869",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/ios/layout.grid--default--light--text100.png",
+        "sha256": "f24b82e22205c1c9dc2a277d443e484a957b87056b063a249fa1cac57ff000e5",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/ios/navigation.rail--compact--dark--text100.png",
+        "sha256": "3e9012a9156d9262ba3da131bad6ad843bfe0cbd297f1af5203a1df6614f5124",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/ios/state.empty--default--light--text100.png",
+        "sha256": "06aa1d4618d7ddde80beccfebeedf0f6b6e987044572c3f7643d1ef688903675",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/ios/state.error--default--dark--text100.png",
+        "sha256": "15243cc2e4910752d157b9d1f882b8d10d42647a60f8bb505bbb08a6c70c0eeb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/composition.feedback--default--dark--text200.png",
+        "sha256": "16ed244af435b3fbbdd462c26941e86f2151ea5c5af94f69252f08dd54481aed",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/identity.avatar-group--default--light--text100.png",
+        "sha256": "a045da07ff68bc23c9e22281447bc9f745ced19379de3c20d02a515da675d412",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/layout.grid--default--light--text100.png",
+        "sha256": "d92a5a180dd1ea9a34a719138fe0784074003063e578fcdeeb66c03c035a0613",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/navigation.rail--compact--dark--text100.png",
+        "sha256": "39696fc570665923ce4c2d2f5594197b9cbcef8854694a12223ec6b1c5589c78",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/state.empty--default--light--text100.png",
+        "sha256": "c83abde1f8d92b1b7a7d51018852eeab39d9fdb7871d175d72e36a09de64d806",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      },
+      {
+        "path": "target/ui-repair-06-07/native/android/state.error--default--dark--text100.png",
+        "sha256": "b93a5f6a71aab8850ea057bbd3101df6516e41d2bc5f38da5259ec1ef9316fa3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/native-01.png",
+        "sheet_sha256": "809693c359e946552efd017de2af27bac716af68649e228600029f2244b39c89"
+      }
+    ],
+    "cmp": [
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.explore--default--light--360--text100.png",
+        "sha256": "ea67f853c2ab159da1b322d491caf76404372f90383886a031276452cc00c6be",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      },
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.reader--default--light--360--text100.png",
+        "sha256": "bd2304f9063ae5e8bb01cb487b8f023a20c56b6659e6943ec44c96164edb78fe",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      },
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.desk--default--light--360--text100.png",
+        "sha256": "2f0fde47145bff94e28126f7f3adceb39199ac94269a682e15d44235ae51c71d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      },
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.editor--default--light--360--text100.png",
+        "sha256": "af75fbf44fc40f62e73304477a270880c7b59b23d66a80312faf88aaf81811a5",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      },
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.me--default--light--360--text100.png",
+        "sha256": "4fb1578c033de29d15db109cad91f03842e5f70d1f4910c72a73b6d42e5a7ebf",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      },
+      {
+        "path": "packages/ui-system/cmp/preview/build/captures/consumer--composition.feedback--default--light--360--text100.png",
+        "sha256": "4ecf2fd4e1636c5ac90691cc748eace5fcfb3d48a68a014b4dcff6893a6b9d4a",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/cmp-01.png",
+        "sheet_sha256": "c642014b9335ba6e10baf7e442e3733fd4e4df506d0af584829f22e74f5e7353"
+      }
+    ],
+    "samples": [
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/before-explore-error-390.png",
+        "sha256": "77e123e983ec623821224f959ab6198bca55ef1bd950f23e446a951816210d53",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/after-explore-error-390.png",
+        "sha256": "369b9dbee3b9b7866b786545248c21ffdfa01b086524acebc9aace204644e6bc",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/before-explore-empty-1440.png",
+        "sha256": "188833be834f748d1e74ad7dea30cb19395148c91e6ab8036eb937d80d560469",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/after-explore-empty-1440.png",
+        "sha256": "c22e4e95b12332156bef6777e90d1564baa03a491800439d2feaf211f574e2cb",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/before-desk-error-320.png",
+        "sha256": "0724d233632bbefb2885f8c65a684d4c8e0ae8fdd52e2089e7b2431063baabff",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/after-desk-error-320.png",
+        "sha256": "d696ad477482dc9cd156065df377b8473e9e68f8de023d3645b2442c1258427f",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/after-desk-empty-320-text200.png",
+        "sha256": "21cc44d98bb18d4d64fc70d630a11dce6987cdd31c4735d542ce8ab374fab809",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/after-desk-uncertain-390.png",
+        "sha256": "9a856584e74af2dcb2c272b2df0be4b03ce63a8d620c0fa5ee537b0dec5ea39b",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/layout.grid-focus-390-part1.png",
+        "sha256": "b348fd7aac4c30eebdf5919eaa0bbb6592aee850bba7192d2dd5511728f1d7a3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/layout.grid-focus-390-part2.png",
+        "sha256": "dd6aced1ac820f5c275af9acbcd21082763f9afb6fc25ae090b0284c96bc5d05",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/layout.grid-raw-390.png",
+        "sha256": "500b790539150030d3c3352c2024f972157de2f48511a0ab50959314a4328022",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/identity.avatar-group-focus-390.png",
+        "sha256": "14bb076ed3dfec5a540e50413c9c014aec06a9c5758b03890aac5bc737e5b4b8",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-01.png",
+        "sheet_sha256": "1b2ba1bac1c91a23ec575152401963d5f54bb69eb83aabc87ed2c723a2511c86"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/composition.feedback-focus-390-part1.png",
+        "sha256": "704fb5f9638a8f1701b1fe35c8cff473cf6a5ebbe30f374bcda0af5c60c7c5a4",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-02.png",
+        "sheet_sha256": "508dee3c492a42675e48168af11ade1cc27b6443b9fe3af98143a39480b909c9"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/composition.feedback-focus-390-part4.png",
+        "sha256": "95a0e910c5e90fd2683225a7572c306bf3adb4c31bc7f0832345e618fc00f75c",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-02.png",
+        "sheet_sha256": "508dee3c492a42675e48168af11ade1cc27b6443b9fe3af98143a39480b909c9"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/cmp-desk-offscreen.png",
+        "sha256": "2f0fde47145bff94e28126f7f3adceb39199ac94269a682e15d44235ae51c71d",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-02.png",
+        "sheet_sha256": "508dee3c492a42675e48168af11ade1cc27b6443b9fe3af98143a39480b909c9"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/ios-avatar-group.png",
+        "sha256": "f29bb149dcfebdd86b3b8d136c6c2fdfb387fb9450ce4c9f4fb767d150b89869",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-02.png",
+        "sheet_sha256": "508dee3c492a42675e48168af11ade1cc27b6443b9fe3af98143a39480b909c9"
+      },
+      {
+        "path": "docs/design/evidence/ui-repair-06-07/android-error.png",
+        "sha256": "b93a5f6a71aab8850ea057bbd3101df6516e41d2bc5f38da5259ec1ef9316fa3",
+        "review": "overview; full-size representatives reviewed separately",
+        "inspected": true,
+        "sheet": "target/ui-repair-06-07/inspection/samples-02.png",
+        "sheet_sha256": "508dee3c492a42675e48168af11ade1cc27b6443b9fe3af98143a39480b909c9"
+      }
+    ]
+  }
+}

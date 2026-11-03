@@ -97,6 +97,8 @@ jobs:
       # Google Chrome is preinstalled on GitHub's ubuntu-24.04 image.
       - run: cargo xtask verify web
       - run: cargo xtask ui-preview leptos verify
+        env:
+          VINK_UI_FOCUS_CAPTURE: "1"
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

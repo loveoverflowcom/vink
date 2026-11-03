@@ -1,0 +1,1855 @@
+{
+  "format": "vink-ui-repair-summary-v1",
+  "scope": "Representative Git evidence plus exact local coverage; not the complete format-1 upload bundle",
+  "base_sha": "8045d45e554e0a01f11fd252ac681f8eb9d33a56",
+  "branch": "codex/ui-state-focus-cmp",
+  "source_files": {
+    ".agents/skills/vink-cmp-mobile/SKILL.md": "af1aaac2ce6508684a692d57988b5332fb2638b9c161790211084eb8263012cb",
+    ".agents/skills/vink-cmp-mobile/agents/openai.yaml": "9d78700143d6a4b3e1684c9b69085b6a530b8216d5a288b2e6601ce8306b25f2",
+    ".agents/skills/vink-cmp-mobile/references/owners-and-evidence.md": "886652b02f80971c52cfb73cfc074d07f744354154e10cc21b7c7b9c433ca1ac",
+    ".github/workflows/ci.yml": "c1b4b1033541bbcdecd06a6407f279b52578107b371b13ee851efbeead523c2f",
+    "apps/vink-web/e2e/browser-smoke.mjs": "10af98b0e2c5901aab28f65642ea5aeee248a6e4aefdce43fc6a8144c6cb565e",
+    "apps/vink-web/src/pages/desk.rs": "70fc4d04539c46444af516e856dabd002da6ca44ebf13f4c197b729cb9df3d04",
+    "apps/vink-web/src/pages/mod.rs": "a4e94e26c29df87d89d723d106017683bb02d61f370be05af8474b3f4b897354",
+    "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt": "0eed695d17a9e944af44b209d99342c92231daaf029b0fe7f55d40d187dcb7fd",
+    "packages/ui-system/cmp/ui/src/desktopTest/kotlin/vink/ui/VinkPanelTest.kt": "632da47caf6577dec80643c21f0029c628d52366576dec18bd0fe59b28362dfc",
+    "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+    "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+    "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "49e6495024f19e5e0bad36c5b98b9df3f3e495a0ec8630198f13b33e82472533",
+    "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+    "packages/ui-system/leptos/style/vink-ui.css": "79f3adbecc4dff300d909e0c1c1a5fa44ffbf13215cd66d975d38e6bcc8d0a27",
+    "xtask/src/ui_preview.rs": "5a03fe5d3ae38e5d1818905fac81e5dc83b98db0373813185471b47898490b67"
+  },
+  "source_fingerprint": "415e4339ba394de6dcff3d97f42be63b025e0d3aeae600833db164a5a70d0e19",
+  "build_artifacts": {
+    "target/debug/vink-app": "96a323704ac804e78f794da471d621a97712ea28e47360afa7da2297aaf1fc8d",
+    "target/site/pkg/vink_bg.wasm": "3d4346e3b4a09c02888479d58de228c3223f1cbd3674ada527b7ccac9946783b",
+    "target/site/pkg/vink.css": "cf553ffd2fd0d53ef74b10fea18a493ca2b4b83cf3a2d4df87f1f556f9737e3d",
+    "packages/ui-system/cmp/androidDiagnostic/build/outputs/apk/debug/androidDiagnostic-debug.apk": "f1dee47cc812db139efe2cff308ab19917afeee6d5e95075702b311b21f62d93",
+    "packages/ui-system/cmp/iosDiagnostic/build/DerivedData/Build/Products/Debug-iphonesimulator/VinkUIDiagnostic.app/VinkUIDiagnostic": "6139a3c801ea4b4b54d28b64d258e8b0dfa3f67f0a2e237ad94997a1cba57f06"
+  },
+  "fixtures": "Synthetic/intercepted reads and isolated PostgreSQL real writes; no user manuscripts",
+  "hosts": {
+    "leptos-web": {
+      "expected_recovery_cases": 220,
+      "captured": 220,
+      "inspected": 220,
+      "blocked": 0,
+      "raw_total": 845,
+      "matrix": "11 states x 5 widths x 2 themes x CSS text100/200"
+    },
+    "leptos-preview": {
+      "expected": 36,
+      "captured": 36,
+      "inspected": 36,
+      "blocked": 0,
+      "focus_tiles": 72,
+      "raw_total": 654,
+      "raw_mode": "document-capped",
+      "focus_manifest": "preview-focus-manifest.json"
+    },
+    "cmp-desktop": {
+      "available_with_context": 423,
+      "expected_selected_recipes": 6,
+      "captured": 6,
+      "inspected": 6,
+      "blocked": 0,
+      "capture_mode": "offscreen",
+      "selected": [
+        "screen.explore",
+        "screen.reader",
+        "screen.desk",
+        "screen.editor",
+        "screen.me",
+        "composition.feedback"
+      ],
+      "local_contexts": [
+        "packages/ui-system/cmp/preview/build/captures/contexts.json",
+        "packages/ui-system/cmp/preview/build/captures/screen-contexts.json",
+        "packages/ui-system/cmp/preview/build/captures/driven-contexts.json"
+      ]
+    },
+    "android": {
+      "expected": 6,
+      "captured": 6,
+      "inspected": 6,
+      "blocked": 0,
+      "runtime_test_count": 3,
+      "manifest": "android-manifest.json"
+    },
+    "ios": {
+      "expected": 6,
+      "captured": 6,
+      "inspected": 6,
+      "blocked": 0,
+      "runtime_test_count": 3,
+      "manifest": "ios-manifest.json"
+    }
+  },
+  "samples": [
+    {
+      "artifact_id": "before-explore-error-390",
+      "path": "before-explore-error-390.png",
+      "source_path": "target/ui-repair-06-07/before/web/explore-unavailable-390-100-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 390,
+        "height": 900
+      },
+      "sha256": "77e123e983ec623821224f959ab6198bca55ef1bd950f23e446a951816210d53",
+      "byte_size": 68494,
+      "context": {
+        "route": "/",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": null,
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 343,
+            "height": 56.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 16,
+            "y": 195.375,
+            "width": 258.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 282.90625,
+            "y": 197.171875,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 16,
+            "y": 307.34375,
+            "width": 343,
+            "height": 264.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": {
+            "x": 16,
+            "y": 595.90625,
+            "width": 343,
+            "height": 342.359375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 375,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 34,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 129,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 160.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 298.625,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": "explore-error-390",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "after-explore-error-390",
+      "path": "after-explore-error-390.png",
+      "source_path": "target/verify-web/screenshots/explore-unavailable-390-100-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 390,
+        "height": 900
+      },
+      "sha256": "369b9dbee3b9b7866b786545248c21ffdfa01b086524acebc9aace204644e6bc",
+      "byte_size": 68822,
+      "context": {
+        "route": "/",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": null,
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 343,
+            "height": 56.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 16,
+            "y": 195.375,
+            "width": 258.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 282.90625,
+            "y": 197.171875,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 16,
+            "y": 307.34375,
+            "width": 343,
+            "height": 358.15625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": {
+            "x": 16,
+            "y": 689.5,
+            "width": 343,
+            "height": 342.359375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 375,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 34,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 129,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 160.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 298.625,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": "explore-error-390",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "before-explore-empty-1440",
+      "path": "before-explore-empty-1440.png",
+      "source_path": "target/ui-repair-06-07/before/web/explore-empty-1440-100-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 1440,
+        "height": 900
+      },
+      "sha256": "188833be834f748d1e74ad7dea30cb19395148c91e6ab8036eb937d80d560469",
+      "byte_size": 108715,
+      "context": {
+        "route": "/",
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": null,
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": {
+            "x": 286,
+            "y": 32,
+            "width": 1088,
+            "height": 63.984375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 286,
+            "y": 135.578125,
+            "width": 683.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 977.90625,
+            "y": 137.375,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 286,
+            "y": 229.359375,
+            "width": 776,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": {
+            "x": 1086,
+            "y": 229.359375,
+            "width": 288,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": null,
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Bàn viết",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Tôi",
+              "target": null,
+              "text": null
+            }
+          ]
+        }
+      },
+      "pair": "explore-empty-1440",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "after-explore-empty-1440",
+      "path": "after-explore-empty-1440.png",
+      "source_path": "target/verify-web/screenshots/explore-empty-1440-100-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 1440,
+        "height": 900
+      },
+      "sha256": "c22e4e95b12332156bef6777e90d1564baa03a491800439d2feaf211f574e2cb",
+      "byte_size": 110393,
+      "context": {
+        "route": "/",
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": null,
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": {
+            "x": 286,
+            "y": 32,
+            "width": 1088,
+            "height": 63.984375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 286,
+            "y": 135.578125,
+            "width": 683.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 977.90625,
+            "y": 137.375,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 286,
+            "y": 229.359375,
+            "width": 776,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": {
+            "x": 1086,
+            "y": 229.359375,
+            "width": 288,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": null,
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Bàn viết",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Tôi",
+              "target": null,
+              "text": null
+            }
+          ]
+        }
+      },
+      "pair": "explore-empty-1440",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "before-desk-error-320",
+      "path": "before-desk-error-320.png",
+      "source_path": "target/ui-repair-06-07/before/web/desk-error-320-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 320,
+        "height": 900
+      },
+      "sha256": "0724d233632bbefb2885f8c65a684d4c8e0ae8fdd52e2089e7b2431063baabff",
+      "byte_size": 44579,
+      "context": {
+        "route": "/ban-viet",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 288,
+            "height": 38.390625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": null,
+          "tools": null,
+          "search": null,
+          "input": null,
+          "submit": null,
+          "stream": null,
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": null
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 320,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 98.65625,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 24.828125,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 110.65625,
+                "y": 824,
+                "width": 98.671875,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 133.390625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 213.328125,
+                "y": 824,
+                "width": 98.65625,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 252.78125,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": "desk-error-320",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "after-desk-error-320",
+      "path": "after-desk-error-320.png",
+      "source_path": "target/verify-web/screenshots/desk-error-320-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 320,
+        "height": 900
+      },
+      "sha256": "d696ad477482dc9cd156065df377b8473e9e68f8de023d3645b2442c1258427f",
+      "byte_size": 49840,
+      "context": {
+        "route": "/ban-viet",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 273,
+            "height": 38.390625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": null,
+          "tools": null,
+          "search": null,
+          "input": null,
+          "submit": null,
+          "stream": null,
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": null
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 305,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 93.65625,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 22.328125,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 105.65625,
+                "y": 824,
+                "width": 93.671875,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 125.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 824,
+                "width": 93.65625,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 240.28125,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": "desk-error-320",
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "after-desk-empty-320-text200",
+      "path": "after-desk-empty-320-text200.png",
+      "source_path": "target/verify-web/screenshots/recovery-desk-empty-320-200-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 320,
+        "height": 900
+      },
+      "sha256": "21cc44d98bb18d4d64fc70d630a11dce6987cdd31c4735d542ce8ab374fab809",
+      "byte_size": 42064,
+      "context": {
+        "route": "/ban-viet",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 1113,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": {
+            "x": 32,
+            "y": -914.8125,
+            "width": 241,
+            "height": 76.796875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "resume": null,
+          "title": null,
+          "disclosure": null,
+          "metadata": null,
+          "cta": null,
+          "list": null,
+          "tools": null,
+          "search": null,
+          "sort": null,
+          "refresh": null,
+          "scope": null,
+          "firstRow": null
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": null,
+          "tools": null,
+          "search": null,
+          "input": null,
+          "submit": null,
+          "stream": null,
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": null
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 763.21875,
+            "width": 305,
+            "height": 136.78125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 16,
+                "y": 811.21875,
+                "width": 85.65625,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 109.65625,
+                "y": 771.21875,
+                "width": 85.671875,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 109.65625,
+                "y": 811.21875,
+                "width": 85.671875,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 226.421875,
+                "y": 829.40625,
+                "width": 39.453125,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "after-desk-uncertain-390",
+      "path": "after-desk-uncertain-390.png",
+      "source_path": "target/verify-web/screenshots/recovery-desk-uncertain-create-390-100-light.png",
+      "host": "leptos-web",
+      "surface_kind": "product",
+      "image_pixels": {
+        "width": 390,
+        "height": 900
+      },
+      "sha256": "9a856584e74af2dcb2c272b2df0be4b03ce63a8d620c0fa5ee537b0dec5ea39b",
+      "byte_size": 64976,
+      "context": {
+        "route": "/ban-viet",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "desk": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 343,
+            "height": 48,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "resume": {
+            "x": 16,
+            "y": 501.15625,
+            "width": 343,
+            "height": 180.984375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "title": {
+            "x": 32,
+            "y": 544.75,
+            "width": 137.40625,
+            "height": 28.59375,
+            "fontSize": "22px",
+            "lineHeight": "28.6px"
+          },
+          "disclosure": null,
+          "metadata": {
+            "x": 32,
+            "y": 581.34375,
+            "width": 293.6875,
+            "height": 20.796875,
+            "fontSize": "13px",
+            "lineHeight": "20.8px"
+          },
+          "cta": {
+            "x": 32,
+            "y": 618.140625,
+            "width": 107.90625,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "22.4px"
+          },
+          "list": {
+            "x": 16,
+            "y": 706.140625,
+            "width": 343,
+            "height": 600.296875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 16,
+            "y": 746.734375,
+            "width": 343,
+            "height": 162.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 16,
+            "y": 770.328125,
+            "width": 343,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "sort": {
+            "x": 16,
+            "y": 857.515625,
+            "width": 263.375,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "refresh": {
+            "x": 291.375,
+            "y": 861.109375,
+            "width": 67.625,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "scope": {
+            "x": 16,
+            "y": 921.109375,
+            "width": 343,
+            "height": 36.375,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstRow": {
+            "x": 24,
+            "y": 1007.671875,
+            "width": 327,
+            "height": 118.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "editor": {
+          "toolbar": null,
+          "save": null,
+          "title": null,
+          "body": null,
+          "preview": null,
+          "leave": null
+        },
+        "explore": {
+          "heading": null,
+          "tools": null,
+          "search": null,
+          "input": null,
+          "submit": null,
+          "stream": null,
+          "firstRow": null,
+          "byline": null,
+          "author": null,
+          "date": null,
+          "title": null,
+          "context": null
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 375,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 34,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 129,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 160.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 298.625,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "layout.grid-focus-390-part1",
+      "path": "layout.grid-focus-390-part1.png",
+      "source_path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--focus--part1.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 369,
+        "height": 569
+      },
+      "sha256": "b348fd7aac4c30eebdf5919eaa0bbb6592aee850bba7192d2dd5511728f1d7a3",
+      "byte_size": 24648,
+      "context": {
+        "catalog_id": "layout.grid",
+        "scenario_id": "default",
+        "theme": "light",
+        "text_scale": 100,
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "source_bounds_css": {
+          "x": 15.59375,
+          "y": 4073.03125,
+          "width": 343.8125,
+          "height": 1113.859375
+        },
+        "path": "layout.grid--default--light--390--focus--part1.png",
+        "sha256": "b348fd7aac4c30eebdf5919eaa0bbb6592aee850bba7192d2dd5511728f1d7a3",
+        "byte_size": 24648,
+        "image_pixels": {
+          "width": 369,
+          "height": 569
+        },
+        "clip_css": {
+          "x": 3,
+          "y": 4061,
+          "width": 369,
+          "height": 569,
+          "scale": 1
+        },
+        "viewport_clip_css": {
+          "x": 3,
+          "y": 0,
+          "width": 369,
+          "height": 569,
+          "scale": 1
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 4061
+        },
+        "tile": 1,
+        "tiles": 2
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "layout.grid-focus-390-part2",
+      "path": "layout.grid-focus-390-part2.png",
+      "source_path": "target/ui-preview/leptos/captures/layout.grid--default--light--390--focus--part2.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 369,
+        "height": 569
+      },
+      "sha256": "dd6aced1ac820f5c275af9acbcd21082763f9afb6fc25ae090b0284c96bc5d05",
+      "byte_size": 51886,
+      "context": {
+        "catalog_id": "layout.grid",
+        "scenario_id": "default",
+        "theme": "light",
+        "text_scale": 100,
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "source_bounds_css": {
+          "x": 15.59375,
+          "y": 4073.03125,
+          "width": 343.8125,
+          "height": 1113.859375
+        },
+        "path": "layout.grid--default--light--390--focus--part2.png",
+        "sha256": "dd6aced1ac820f5c275af9acbcd21082763f9afb6fc25ae090b0284c96bc5d05",
+        "byte_size": 51886,
+        "image_pixels": {
+          "width": 369,
+          "height": 569
+        },
+        "clip_css": {
+          "x": 3,
+          "y": 4630,
+          "width": 369,
+          "height": 569,
+          "scale": 1
+        },
+        "viewport_clip_css": {
+          "x": 3,
+          "y": 0,
+          "width": 369,
+          "height": 569,
+          "scale": 1
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 4630
+        },
+        "tile": 2,
+        "tiles": 2
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "layout.grid-raw-390",
+      "path": "layout.grid-raw-390.png",
+      "source_path": "target/ui-preview/leptos/captures/layout.grid--default--light--390.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 390,
+        "height": 6000
+      },
+      "sha256": "500b790539150030d3c3352c2024f972157de2f48511a0ab50959314a4328022",
+      "byte_size": 379629,
+      "context": {
+        "path": "layout.grid--default--light--390.png",
+        "sha256": "500b790539150030d3c3352c2024f972157de2f48511a0ab50959314a4328022",
+        "byte_size": 379629,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped"
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "identity.avatar-group-focus-390",
+      "path": "identity.avatar-group-focus-390.png",
+      "source_path": "target/ui-preview/leptos/captures/identity.avatar-group--default--light--390--focus.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 369,
+        "height": 432
+      },
+      "sha256": "14bb076ed3dfec5a540e50413c9c014aec06a9c5758b03890aac5bc737e5b4b8",
+      "byte_size": 37488,
+      "context": {
+        "catalog_id": "identity.avatar-group",
+        "scenario_id": "default",
+        "theme": "light",
+        "text_scale": 100,
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "source_bounds_css": {
+          "x": 15.59375,
+          "y": 4073.03125,
+          "width": 343.8125,
+          "height": 407.359375
+        },
+        "path": "identity.avatar-group--default--light--390--focus.png",
+        "sha256": "14bb076ed3dfec5a540e50413c9c014aec06a9c5758b03890aac5bc737e5b4b8",
+        "byte_size": 37488,
+        "image_pixels": {
+          "width": 369,
+          "height": 432
+        },
+        "clip_css": {
+          "x": 3,
+          "y": 4061,
+          "width": 369,
+          "height": 432,
+          "scale": 1
+        },
+        "viewport_clip_css": {
+          "x": 3,
+          "y": 0,
+          "width": 369,
+          "height": 432,
+          "scale": 1
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 4061
+        },
+        "tile": 1,
+        "tiles": 1
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "composition.feedback-focus-390-part1",
+      "path": "composition.feedback-focus-390-part1.png",
+      "source_path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part1.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 369,
+        "height": 723
+      },
+      "sha256": "704fb5f9638a8f1701b1fe35c8cff473cf6a5ebbe30f374bcda0af5c60c7c5a4",
+      "byte_size": 56291,
+      "context": {
+        "catalog_id": "composition.feedback",
+        "scenario_id": "default",
+        "theme": "dark",
+        "text_scale": 200,
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "source_bounds_css": {
+          "x": 15.59375,
+          "y": 9773.765625,
+          "width": 343.8125,
+          "height": 2866.34375
+        },
+        "path": "composition.feedback--default--dark--390--text200--focus--part1.png",
+        "sha256": "704fb5f9638a8f1701b1fe35c8cff473cf6a5ebbe30f374bcda0af5c60c7c5a4",
+        "byte_size": 56291,
+        "image_pixels": {
+          "width": 369,
+          "height": 723
+        },
+        "clip_css": {
+          "x": 3,
+          "y": 9761,
+          "width": 369,
+          "height": 723,
+          "scale": 1
+        },
+        "viewport_clip_css": {
+          "x": 3,
+          "y": 0,
+          "width": 369,
+          "height": 723,
+          "scale": 1
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 9761
+        },
+        "tile": 1,
+        "tiles": 4
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "composition.feedback-focus-390-part4",
+      "path": "composition.feedback-focus-390-part4.png",
+      "source_path": "target/ui-preview/leptos/captures/composition.feedback--default--dark--390--text200--focus--part4.png",
+      "host": "leptos-preview",
+      "surface_kind": "component-preview",
+      "image_pixels": {
+        "width": 369,
+        "height": 723
+      },
+      "sha256": "95a0e910c5e90fd2683225a7572c306bf3adb4c31bc7f0832345e618fc00f75c",
+      "byte_size": 48844,
+      "context": {
+        "catalog_id": "composition.feedback",
+        "scenario_id": "default",
+        "theme": "dark",
+        "text_scale": 200,
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "source_bounds_css": {
+          "x": 15.59375,
+          "y": 9773.765625,
+          "width": 343.8125,
+          "height": 2866.34375
+        },
+        "path": "composition.feedback--default--dark--390--text200--focus--part4.png",
+        "sha256": "95a0e910c5e90fd2683225a7572c306bf3adb4c31bc7f0832345e618fc00f75c",
+        "byte_size": 48844,
+        "image_pixels": {
+          "width": 369,
+          "height": 723
+        },
+        "clip_css": {
+          "x": 3,
+          "y": 11930,
+          "width": 369,
+          "height": 723,
+          "scale": 1
+        },
+        "viewport_clip_css": {
+          "x": 3,
+          "y": 0,
+          "width": 369,
+          "height": 723,
+          "scale": 1
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 11930
+        },
+        "tile": 4,
+        "tiles": 4
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "cmp-desk-offscreen",
+      "path": "cmp-desk-offscreen.png",
+      "source_path": "packages/ui-system/cmp/preview/build/captures/consumer--screen.desk--default--light--360--text100.png",
+      "host": "cmp-desktop",
+      "surface_kind": "screen-recipe",
+      "image_pixels": {
+        "width": 360,
+        "height": 2400
+      },
+      "sha256": "2f0fde47145bff94e28126f7f3adceb39199ac94269a682e15d44235ae51c71d",
+      "byte_size": 54197,
+      "context": {
+        "widthDp": 360,
+        "heightDp": 2400,
+        "density": 1,
+        "fontScale": 1.0,
+        "theme": "light",
+        "entry": "screen.desk",
+        "scenario": "default",
+        "paddingDp": 16,
+        "osInsetsDp": 0
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "ios-avatar-group",
+      "path": "ios-avatar-group.png",
+      "source_path": "target/ui-repair-06-07/native/ios/identity.avatar-group--default--light--text100.png",
+      "host": "ios",
+      "surface_kind": "diagnostic-host",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "sha256": "f29bb149dcfebdd86b3b8d136c6c2fdfb387fb9450ce4c9f4fb767d150b89869",
+      "byte_size": 242704,
+      "context": {
+        "catalog_id": "identity.avatar-group",
+        "scenario_id": "default",
+        "requested_theme": "light",
+        "preview_text_scale": 100,
+        "os_text_scale": null,
+        "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+        "density": null,
+        "viewport_logical": null,
+        "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+        "image_pixels": {
+          "width": 1206,
+          "height": 2622
+        },
+        "capture_mode": "viewport",
+        "path": "identity.avatar-group--default--light--text100.png",
+        "sha256": "f29bb149dcfebdd86b3b8d136c6c2fdfb387fb9450ce4c9f4fb767d150b89869",
+        "byte_size": 242704,
+        "captured_at": "2026-11-03T10:08:46.975080+00:00",
+        "readiness": "3s after bounded diagnostic launch; visual inspection required",
+        "capture_status": "CAPTURED",
+        "inspected": false
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    },
+    {
+      "artifact_id": "android-error",
+      "path": "android-error.png",
+      "source_path": "target/ui-repair-06-07/native/android/state.error--default--dark--text100.png",
+      "host": "android",
+      "surface_kind": "diagnostic-host",
+      "image_pixels": {
+        "width": 1080,
+        "height": 2400
+      },
+      "sha256": "b93a5f6a71aab8850ea057bbd3101df6516e41d2bc5f38da5259ec1ef9316fa3",
+      "byte_size": 150723,
+      "context": {
+        "catalog_id": "state.error",
+        "scenario_id": "default",
+        "requested_theme": "dark",
+        "preview_text_scale": 100,
+        "viewport_logical": null,
+        "viewport_reason": "App window/IME insets not measured; physical screenshot includes OS chrome",
+        "image_pixels": {
+          "width": 1080,
+          "height": 2400
+        },
+        "capture_mode": "viewport",
+        "path": "state.error--default--dark--text100.png",
+        "sha256": "b93a5f6a71aab8850ea057bbd3101df6516e41d2bc5f38da5259ec1ef9316fa3",
+        "byte_size": 150723,
+        "captured_at": "2026-11-03T10:15:22.247676+00:00",
+        "readiness": "3s after bounded diagnostic launch; visual inspection required",
+        "capture_status": "CAPTURED",
+        "inspected": false
+      },
+      "pair": null,
+      "inspected": true,
+      "upload_status": "NOT_REQUESTED",
+      "inspection_method": "Contact sheet overview; see inspection receipt and report for full-size representatives"
+    }
+  ],
+  "inspection": {
+    "web": "target/ui-repair-06-07/inspection/web-sheets.json",
+    "focus": "target/ui-repair-06-07/inspection/focus-sheets.json",
+    "native": "target/ui-repair-06-07/inspection/native-sheets.json",
+    "method": "Overview contact sheets; full-size representative PNGs inspected separately; hashes preserve exact originals",
+    "status": "SCREENSHOT_INSPECTED",
+    "receipt": "inspection.json"
+  },
+  "publication": {
+    "drive_upload_status": "NOT_REQUESTED",
+    "drive_folders_observed": {
+      "cmp-desktop": "1jACgbWUBjmPiPq03VLiN6VeYKWOnMdpT",
+      "ios": "1uw_K0j_6w1m-tyHCQrnBvXfc_W5sd8NG"
+    },
+    "result": "No images returned by allowed connector search; local native evidence is independent",
+    "ci_artifact_policy": "Web opts in focus captures; existing browser-evidence/ui-cmp-evidence artifacts retain 14 days. Actual PR run status is separate."
+  }
+}

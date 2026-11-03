@@ -355,6 +355,9 @@ pub fn StatePanel(
     #[prop(into)] content: Signal<PanelContent>,
     #[prop(optional)] heading: Option<HeadingLevel>,
     #[prop(optional, into)] on_recover: Option<Callback<RecoveryIntent>>,
+    /// Caller-owned navigation or stateful controls, after the typed recovery actions.
+    #[prop(optional)]
+    children: Option<ChildrenFn>,
 ) -> impl IntoView {
     let heading = heading.unwrap_or(HeadingLevel::H2);
     move || {
@@ -366,7 +369,8 @@ pub fn StatePanel(
         };
         let tone = c.tone().id();
         let icon = c.icon();
-        let has_actions = !c.actions.is_empty();
+        let has_actions = !c.actions.is_empty() || children.is_some();
+        let custom_actions = children.as_ref().map(|children| children());
         let actions = c
             .actions
             .clone()
@@ -395,7 +399,7 @@ pub fn StatePanel(
                 </span>
                 <Heading level=heading>{c.title}</Heading>
                 <p class="vk-ui-panel__message">{c.message}</p>
-                {has_actions.then(|| view! { <div class="vk-ui-panel__actions">{actions}</div> })}
+                {has_actions.then(|| view! { <div class="vk-ui-panel__actions">{actions}{custom_actions}</div> })}
                 {c.code.map(|code| view! {
                     <p class="vk-ui-panel__code">"Mã: "<code>{code.to_string()}</code></p>
                 })}
@@ -988,6 +992,28 @@ mod tests {
             assert!(html.contains(needle), "{needle} in {html}");
         }
         assert!(!html.contains("data-intent=\"retry\""), "{html}");
+    }
+
+    #[test]
+    fn panel_action_slot_keeps_real_navigation_and_typed_recovery_in_the_panel() {
+        let html = render(|| {
+            let content = PanelContent::from_problem(
+                &Problem::fallback(ProblemKind::Unavailable)
+                    .with_action(RecoveryIntent::Retry, "Thử lại")
+                    .unwrap(),
+            );
+            view! {
+                <StatePanel content=content>
+                    <crate::Link href="/ban-viet">"Về Bàn viết"</crate::Link>
+                </StatePanel>
+            }
+            .into_any()
+        });
+        let actions = html.split("vk-ui-panel__actions").nth(1).unwrap();
+        assert!(actions.contains("data-intent=\"retry\""), "{html}");
+        assert!(actions.contains("href=\"/ban-viet\""), "{html}");
+        assert!(actions.contains("Về Bàn viết"), "{html}");
+        assert_eq!(html.matches("href=\"/ban-viet\"").count(), 1, "{html}");
     }
 
     #[test]
