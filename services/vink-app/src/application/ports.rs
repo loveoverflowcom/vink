@@ -5,8 +5,7 @@ use std::future::Future;
 use time::OffsetDateTime;
 
 use super::{PublicWork, PublicWorkSummary};
-use crate::domain::document::{Document, Title};
-use crate::domain::draft::{DraftSummary, DraftVersion, WorkingDraft};
+use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, WorkId};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -53,13 +52,13 @@ pub trait DraftStore: Send + Sync {
         work_id: WorkId,
     ) -> impl Future<Output = Result<Option<WorkingDraft>, StoreError>> + Send;
 
+    /// Receives validated content, not raw transport data. Ownership and expected version must
+    /// still be checked atomically with the write; a `DraftChange` is not an authority witness.
     fn save_draft(
         &self,
         owner: PrincipalId,
         work_id: WorkId,
-        expected: DraftVersion,
-        title: &Title,
-        document: &Document,
+        change: &DraftChange,
     ) -> impl Future<Output = Result<SaveOutcome, StoreError>> + Send;
 }
 

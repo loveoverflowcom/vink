@@ -121,6 +121,28 @@ async fn confirmed_save_survives_a_new_connection_pool(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn empty_untitled_working_draft_can_be_saved_and_loaded(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    let draft = vink.create_draft(author()).await.unwrap();
+    assert!(draft.title.is_empty());
+    assert_eq!(draft.document.to_data(), doc(&[]));
+    let saved = vink
+        .save_draft(author(), save(draft.work_id, 1, "  ", doc(&[])))
+        .await
+        .unwrap();
+    assert_eq!(saved.version.get(), 2);
+    let loaded = vink.load_draft(author(), draft.work_id).await.unwrap();
+    assert_eq!(loaded.version.get(), 2);
+    assert_eq!(loaded.title.as_str(), "");
+    assert_eq!(loaded.document.to_data(), doc(&[]));
+    assert_eq!(loaded.updated_at, saved.updated_at);
+    assert_eq!(
+        vink.publication(draft.work_id).await,
+        Err(vink_app::application::ReadError::NotFound)
+    );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn another_actor_cannot_read_list_or_write_a_private_draft(pool: PgPool) {
     let vink = seeded(&pool).await;
     let work = sample_work();
@@ -170,6 +192,7 @@ async fn stale_expected_version_conflicts_without_writing(pool: PgPool) {
         })
     );
     let stored = vink.load_draft(author(), work).await.unwrap();
+    assert_eq!(stored.version.get(), 2);
     assert_eq!(stored.title.as_str(), "Tab A");
     assert_eq!(stored.document.to_data(), doc(&[&["bản của tab A"]]));
 }
@@ -211,7 +234,9 @@ async fn concurrent_saves_of_one_version_have_exactly_one_winner(pool: PgPool) {
     }
     assert_eq!(winners.len(), 1, "exactly one save may apply");
     let stored = vink.load_draft(author(), work).await.unwrap();
+    assert_eq!(stored.version.get(), 2);
     assert_eq!(stored.title.as_str(), winners[0]);
+    assert_eq!(stored.document.to_data(), doc(&[&[&winners[0]]]));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -437,6 +462,89 @@ async fn api_distinguishes_outcomes_and_keeps_drafts_private(pool: PgPool) {
 
     let (status, _, _) = call(&app, "GET", "/api/v1/drafts/not-a-uuid", author, None, None).await;
     assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn invalid_http_save_input_never_changes_the_durable_draft(pool: PgPool) {
+    let app = app(&pool).await;
+    let path = format!("/api/v1/drafts/{}", dev_seed::SAMPLE_WORK);
+    let actor = Some(dev_seed::SAMPLE_AUTHOR);
+    let (_, _, before) = call(&app, "GET", &path, actor, None, None).await;
+    let valid = json!({
+        "expected_version": 1,
+        "title": "Đợi trăng",
+        "document": { "schema_version": 1, "blocks": [{ "lines": ["đêm xuống"] }] }
+    });
+    let mut cases = Vec::new();
+    for (key, value, field) in [
+        ("expected_version", json!(0), "expected_version"),
+        ("title", json!("Đợi\ntrăng"), "title"),
+        (
+            "document",
+            json!({ "schema_version": 2, "blocks": [] }),
+            "document",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": [{ "lines": [] }] }),
+            "document",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": [{ "lines": ["đêm", " "] }] }),
+            "document",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": [{ "lines": ["đêm\nxuống"] }] }),
+            "document",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": [{ "lines": ["ư".repeat(200_001)] }] }),
+            "document",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": {} }),
+            "body",
+        ),
+        (
+            "document",
+            json!({ "schema_version": 1, "blocks": [], "html": "<b>not a document</b>" }),
+            "body",
+        ),
+    ] {
+        let mut input = valid.clone();
+        input[key] = value;
+        cases.push((input, field));
+    }
+    for (input, field) in cases {
+        let (status, cache, body) =
+            call(&app, "PUT", &path, actor, Some(ORIGIN), Some(input)).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert_eq!(cache.as_deref(), Some("no-store"));
+        assert_eq!(json(&body)["error"]["code"], "validation_failed");
+        assert_eq!(json(&body)["error"]["field"], field);
+        let (status, _, after) = call(&app, "GET", &path, actor, None, None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            json(&after),
+            json(&before),
+            "rejected {field} input mutated the draft"
+        );
+    }
+    let (status, _, body) = call(
+        &app,
+        "PUT",
+        &path,
+        None,
+        Some(ORIGIN),
+        Some(json!({ "document": 7 })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(json(&body)["error"]["code"], "unauthenticated");
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

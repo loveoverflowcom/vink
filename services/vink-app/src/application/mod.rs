@@ -6,7 +6,7 @@ pub mod ports;
 use time::OffsetDateTime;
 
 use crate::domain::document::{Document, DocumentData, DocumentError, Title, TitleError};
-use crate::domain::draft::{DraftSummary, DraftVersion, WorkingDraft};
+use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
 use ports::{DraftStore, PublicationStore, SaveOutcome, StoreError};
 
@@ -32,6 +32,7 @@ pub struct PublicWorkSummary {
     pub published_at: OffsetDateTime,
 }
 
+/// Untrusted save input. Only `save_draft` turns its raw fields into a [`DraftChange`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaveDraft {
     pub work_id: WorkId,
@@ -184,9 +185,10 @@ where
             DraftVersion::new(command.expected_version).ok_or(InvalidInput::ExpectedVersion)?;
         let title = Title::parse(&command.title).map_err(InvalidInput::from)?;
         let document = Document::parse(command.document).map_err(InvalidInput::from)?;
+        let change = DraftChange::new(expected, title, document);
         match self
             .store
-            .save_draft(owner, command.work_id, expected, &title, &document)
+            .save_draft(owner, command.work_id, &change)
             .await?
         {
             SaveOutcome::Saved {
@@ -202,3 +204,6 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
