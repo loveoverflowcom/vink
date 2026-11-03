@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -34,6 +34,10 @@
     {
       "id": "state",
       "label": "Trạng thái và phản hồi"
+    },
+    {
+      "id": "navigation",
+      "label": "Điều hướng và khung"
     },
     {
       "id": "composition",
@@ -874,6 +878,174 @@
       ],
       "status": {
         "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.rail",
+      "family": "navigation",
+      "label": "Rail điều hướng",
+      "summary": "Thương hiệu → nút thu/mở thường trực → Khám phá → Bàn viết; Tôi ở chân. Đích là link thật, đang chọn bằng aria-current.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Mở rộng 220"
+        },
+        {
+          "id": "compact",
+          "label": "Thu gọn 96"
+        },
+        {
+          "id": "reader",
+          "label": "Đang đọc thuộc Khám phá"
+        },
+        {
+          "id": "long-labels",
+          "label": "Nhãn dài"
+        },
+        {
+          "id": "guest",
+          "label": "Host cấp ít đích"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.bottom-bar",
+      "family": "navigation",
+      "label": "Thanh điều hướng dưới",
+      "summary": "Mobile: Khám phá → Bàn viết → Tôi; vùng an toàn và chữ lớn làm thanh cao lên.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Khám phá đang chọn"
+        },
+        {
+          "id": "desk",
+          "label": "Bàn viết đang chọn"
+        },
+        {
+          "id": "me",
+          "label": "Tôi đang chọn"
+        },
+        {
+          "id": "long-labels",
+          "label": "Nhãn dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.top-bar",
+      "family": "navigation",
+      "label": "Thanh trên",
+      "summary": "Header hẹp: thương hiệu và hành động của route, không chứa đích điều hướng chính.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Thương hiệu"
+        },
+        {
+          "id": "with-action",
+          "label": "Có hành động"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.scaffold",
+      "family": "navigation",
+      "label": "Khung thích ứng",
+      "summary": "Rail 220/96 hoặc thanh dưới theo lớp cửa sổ, ngữ cảnh và preference; nội dung giữ nguyên khi đổi khung.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Rộng: rail 220"
+        },
+        {
+          "id": "medium",
+          "label": "Vừa: rail 96"
+        },
+        {
+          "id": "compact",
+          "label": "Hẹp: thanh dưới"
+        },
+        {
+          "id": "editor",
+          "label": "Đang viết: rail 96, ẩn thanh"
+        },
+        {
+          "id": "toggle",
+          "label": "Thu/mở giữ trang"
+        },
+        {
+          "id": "short",
+          "label": "Thấp hoặc ngang"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.overlay",
+      "family": "navigation",
+      "label": "Lớp phủ và trả focus",
+      "summary": "Một modal tại một thời điểm; Escape/Back đóng lớp phủ trước khi rời trang, focus trả về trigger còn thấy hoặc main.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Đóng"
+        },
+        {
+          "id": "open",
+          "label": "Tôi đang mở"
+        },
+        {
+          "id": "back",
+          "label": "Back đóng lớp phủ trước"
+        },
+        {
+          "id": "busy",
+          "label": "Chỉ một modal"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "navigation.adapter",
+      "family": "navigation",
+      "label": "Adapter điều hướng (chẩn đoán)",
+      "summary": "Adapter của host giữ đích có kiểu, back stack và deep link; primitive chỉ phát intent. Web kiểm bằng router thật trong browser smoke.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Back stack"
+        },
+        {
+          "id": "deep-link",
+          "label": "Deep link hợp lệ và lỗi"
+        },
+        {
+          "id": "dirty-back",
+          "label": "Chữ chưa lưu qua đổi khung và Back"
+        }
+      ],
+      "status": {
+        "leptos": "unsupported",
         "cmp": "implemented-unverified"
       }
     },

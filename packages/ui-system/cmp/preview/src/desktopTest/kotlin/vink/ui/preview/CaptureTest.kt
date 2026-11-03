@@ -85,12 +85,30 @@ class CaptureTest {
         for ((entry, scenario) in stateText200) {
             capture("$entry--$scenario--light--narrow--text200", 360, 12000, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario, textScale = 2f))
         }
+        // UIS-04: every navigation scenario light at narrow and wide, defaults in dark, 200% text.
+        val navigation = VinkCatalog.entries.filter { it.family == "navigation" }.flatMap { e -> e.scenarios.map { e.id to it.id } }
+        for ((entry, scenario) in navigation) {
+            for ((label, size) in listOf("narrow" to (360 to 5200), "wide" to (1280 to 1600))) {
+                capture("$entry--$scenario--light--$label", size.first, size.second, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario))
+            }
+        }
+        for (entry in navigation.map { it.first }.distinct()) {
+            capture("$entry--default--dark--wide", 1280, 1600, PreviewConfig(theme = ThemePreference.Dark, entry = entry))
+        }
+        val navigationText200 = listOf("navigation.rail" to "long-labels", "navigation.bottom-bar" to "long-labels", "navigation.scaffold" to "short")
+        for ((entry, scenario) in navigationText200) {
+            capture("$entry--$scenario--light--narrow--text200", 360, 9000, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario, textScale = 2f))
+        }
         File(out, "contexts.json").writeText(
             "{\n  \"renderer\": \"Compose Multiplatform 1.9.0 desktop (Skia, offscreen ImageComposeScene)\",\n" +
                 "  \"os\": \"${System.getProperty("os.name")} ${System.getProperty("os.version")} ${System.getProperty("os.arch")}\",\n" +
                 "  \"jvm\": \"${System.getProperty("java.vendor")} ${System.getProperty("java.version")}\",\n" +
                 "  \"captures\": {\n    ${contexts.joinToString(",\n    ")}\n  }\n}\n",
         )
-        assertTrue(contexts.size == 30 + COMPONENT_IDS.size * 4 + 15 + stateScenarios.size + stateText200.size, "${contexts.size} captures")
+        assertTrue(
+            contexts.size == 30 + COMPONENT_IDS.size * 4 + 15 + stateScenarios.size + stateText200.size +
+                navigation.size * 2 + navigation.map { it.first }.distinct().size + navigationText200.size,
+            "${contexts.size} captures",
+        )
     }
 }

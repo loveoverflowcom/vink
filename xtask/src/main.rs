@@ -11,6 +11,7 @@ mod identity;
 mod pgurl;
 mod process;
 mod provision;
+mod ui_navigation;
 mod ui_preview;
 mod ui_states;
 mod ui_tokens;
@@ -109,7 +110,7 @@ fn finish(result: Result<(), String>) -> ExitCode {
 
 /// Server binaries plus
 /// `target/site/pkg/{vink.js, vink_bg.wasm, snippets/, vink-editor.js, vink.css, fonts/}`;
-/// `vink.css` is the generated `tokens.css` followed by the app's `vink.css`.
+/// `vink.css` is the generated `tokens.css`, the UI system's `vink-ui.css`, then the app's `vink.css`.
 pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     let root = root();
     doctor::require_wasm_bindgen(&root)?;
@@ -175,12 +176,16 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
     )
 }
 
+/// The UI system renderer styles (scoped `.vk-ui`/`vk-ui-*`; the app shell uses its navigation).
+const UI_CSS: &str = "packages/ui-system/leptos/style/vink-ui.css";
+
 /// `/pkg/vink.css`: the generated UI tokens (checked against their source first, so a stale
-/// file is never served) followed by the web app's component styles. One request, one order.
+/// file is never served), the UI system's renderer styles, then the web app's own styles.
+/// One request, one order.
 fn stylesheet(root: &Path, out: &Path) -> Result<(), String> {
     ui_tokens::run(root, true)?;
     let mut css = String::new();
-    for part in [ui_tokens::CSS_OUT, "apps/vink-web/style/vink.css"] {
+    for part in [ui_tokens::CSS_OUT, UI_CSS, "apps/vink-web/style/vink.css"] {
         let text =
             std::fs::read_to_string(root.join(part)).map_err(|e| format!("read {part}: {e}"))?;
         css.push_str(&text);

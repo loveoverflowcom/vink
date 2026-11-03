@@ -16,29 +16,8 @@ pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vin
 /// storage key, the pre-CSS bootstrap and when to persist.
 pub(crate) use vink_ui::ThemePreference as Theme;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Rail {
-    Expanded,
-    Compact,
-}
-
-impl Rail {
-    #[cfg(any(feature = "hydrate", test))]
-    pub fn parse(value: &str) -> Option<Self> {
-        match value {
-            "expanded" => Some(Self::Expanded),
-            "compact" => Some(Self::Compact),
-            _ => None,
-        }
-    }
-
-    pub fn value(self) -> &'static str {
-        match self {
-            Self::Expanded => "expanded",
-            Self::Compact => "compact",
-        }
-    }
-}
+/// Rail preference values are owned by the UI system too; the key and bootstrap stay here.
+pub(crate) use vink_ui::RailPreference as Rail;
 
 #[derive(Clone, Copy)]
 pub(crate) struct Appearance {

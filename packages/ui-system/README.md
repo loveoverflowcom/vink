@@ -4,10 +4,12 @@
 theme và hai preview; UIS-02/06 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) — component
 nền theo họ (chữ/bố cục, hành động, nhập/chọn, danh tính/hình ảnh) ở cả hai renderer, contract ở
 [shared/components.md](shared/components.md); UIS-03/06 ([#21](https://github.com/loveoverflowcom/vink/issues/21)) —
-trạng thái, phản hồi, loading và motion ở cả hai renderer, contract ở [shared/states.md](shared/states.md).
-Chuỗi tiếp theo: #22 shell/navigation → #23 patterns/adoption → #24 qualification. Chưa màn nào của
-app dùng component UIS-02/03. Đây là thư viện renderer, không phải ứng dụng thứ hai
-và không giữ session, API, route hay nghiệp vụ. Tổ chức học từ Cantos UI system (`7649017`) nhưng
+trạng thái, phản hồi, loading và motion ở cả hai renderer, contract ở [shared/states.md](shared/states.md);
+UIS-04/06 ([#22](https://github.com/loveoverflowcom/vink/issues/22)) — shell, điều hướng và lớp phủ ở cả
+hai renderer, contract ở [shared/navigation.md](shared/navigation.md). Chuỗi tiếp theo: #23
+patterns/adoption → #24 qualification. Shell Web (`apps/vink-web/src/shell.rs`) đã dùng primitive
+UIS-04; chưa màn route nào dùng component UIS-02/03. Đây là thư viện renderer, không phải ứng dụng
+thứ hai và không giữ session, API, route hay nghiệp vụ. Tổ chức học từ Cantos UI system (`7649017`) nhưng
 không chép thương hiệu, phiên bản, palette hay build; Vink giữ Lavender, Be Vietnam Pro/Literata,
 Enso và Leptos 0.8.
 
@@ -15,12 +17,12 @@ Enso và Leptos 0.8.
 
 | Owner | Nội dung | Trạng thái |
 | --- | --- | --- |
-| [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity và states), `icons.json` + license, [contract component](shared/components.md), [contract trạng thái](shared/states.md) | Đã triển khai |
+| [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity, states và navigation), `icons.json` + license, [contract component](shared/components.md), [contract trạng thái](shared/states.md), [contract điều hướng](shared/navigation.md) | Đã triển khai |
 | [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`, `feedback`), contract thuần `state`, CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
 | [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ, `VinkState`/`VinkFeedback`, token/catalog/icon/vector Kotlin sinh ra; NFC theo nền tảng), `:preview` (Compose Desktop) | Đã triển khai; JVM desktop có test và ảnh; Android/iOS chỉ compile khi bật |
-| `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors) | Đã triển khai |
+| `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs`, `xtask/src/ui_navigation.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors, navigation vectors) | Đã triển khai |
 | `xtask/src/ui_preview.rs` | `cargo xtask ui-preview leptos\|cmp build\|verify\|run` | Đã triển khai |
-| App (`apps/vink-web`) | Key `vink.ui.theme`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu | Giữ nguyên owner |
+| App (`apps/vink-web`) | Key `vink.ui.theme`/`vink.ui.rail`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu, đích Vink và thứ tự, `NavigationGuard`, lớp phủ Tôi | Giữ nguyên owner; shell render bằng primitive UIS-04 |
 
 Một role chỉ có một owner. `apps/vink-web/style/vink.css` không còn khai báo giá trị token: build
 phục vụ `tokens.css` (sinh) rồi `vink.css` (component web) thành một `/pkg/vink.css`.
@@ -40,7 +42,7 @@ Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/RE
 
 | Lệnh | Việc |
 | --- | --- |
-| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 11 file sinh ra (chỉ ghi file thay đổi) |
+| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 13 file sinh ra (chỉ ghi file thay đổi) |
 | `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |
@@ -102,6 +104,20 @@ Tóm tắt khác biệt có chủ đích giữa hai renderer:
 | Hover | CSS state layer 8%/12% | Material ripple/indication; capture off-screen không có hover (N/A) |
 | Kích thước | 48px, mật độ gọn 44px (sàn đã công bố) | ≥48dp |
 
+## Shell và điều hướng UIS-04
+
+Contract, LayoutSpec và owner: [shared/navigation.md](shared/navigation.md). Khác biệt có chủ đích:
+
+| Khía cạnh | Leptos | CMP |
+| --- | --- | --- |
+| Đích | `<a href>` thật; router/guard của host nhận click, modifier/middle click giữ hành vi trình duyệt | `onNavigate(key)`; adapter của host giữ back stack |
+| Chọn khung | CSS giải `NavLayout` trước hydration (`data-layout="auto"`); Rust giải cùng bảng cho nhãn | `NavLayout.resolve(WindowClass.fromDp(...))` tường minh |
+| Ngưỡng | 760/1100 CSS px (shell #7) | 600/840dp (Material window size class) |
+| Toggle | `<button aria-expanded aria-controls>`, tooltip `role=tooltip` ngoài rail, Escape ẩn | `IconButton` + `TooltipBox` Material, tên = hành động |
+| Thanh dưới | `position: fixed`, đo chiều cao → `--vk-ui-bar-height` | `Row` cuối khung, inset `safeDrawing` |
+| Back | `NavigationGuard` của app hỏi lớp phủ trước khi tới guard editor | Adapter gọi `OverlayLayer.back()` trước khi pop; predictive back/swipe chưa kiểm |
+| Giữ nội dung | Đổi khung chỉ đổi attribute; `#main` và `EditorView` không remount | `content` gọi từ một call site cố định; host giữ `TextFieldValue` |
+
 ## Kế hoạch migration
 
 1. **UIS-01 (PR này):** nguồn token duy nhất; Web giữ nguyên toàn bộ tên `--vk-*` (đã so 59 + 37 + 36
@@ -114,13 +130,18 @@ Tóm tắt khác biệt có chủ đích giữa hai renderer:
    DOM/route/storage.
 3. **UIS-03 (#21):** 8 entry `state.*` (37 kịch bản) ở cả hai preview, token 0.3.0 thêm thời lượng
    loading/snackbar và kích thước chỉ báo (minor); Button pending lấp slot `status` bằng
-   `LoadingIndicator`. Không màn app nào đổi. **#22:** shell/navigation và coordinator overlay.
-   Component CSS dần dùng role chữ `--vk-type-*` thay literal trong `vink.css`.
-4. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
+   `LoadingIndicator`. Không màn app nào đổi.
+4. **UIS-04 (#22):** token 0.4.0 thêm `size.rail-expanded`/`rail-compact`/`nav-item`/`bottom-bar`
+   (minor), icon `explore`/`menu`/`menu-open`, 6 entry `navigation.*` (24 kịch bản). Shell Web dùng
+   `AdaptiveScaffold`/`NavigationRail`/`BottomNavigation`/`TopBar`/`NavUtility` và `OverlayLayer`;
+   `vink-ui.css` vào `/pkg/vink.css`; DOM shell đổi class sang `vk-ui-*` và ID rail suy từ `navigation`
+   (`navigation-toggle`, `navigation-primary`, `navigation-account`, `navigation-tooltip`). Route,
+   storage key, guard và editor giữ nguyên owner. Component CSS dần dùng role chữ `--vk-type-*`.
+5. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
    Đổi `version` trong `tokens.json` theo semver khi đổi/xóa role (major), thêm role (minor), sửa
    giá trị không đổi nghĩa (patch); generator in phiên bản vào mọi file sinh ra.
 
-Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens` → xem diff 5 file sinh ra
+Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens` → xem diff các file sinh ra
 → `cargo xtask verify quick` → hai preview. Không sửa tay file có dòng `GENERATED`.
 
 ## Bằng chứng và giới hạn
@@ -128,6 +149,7 @@ Thêm hoặc đổi token: sửa `shared/tokens.json` → `cargo xtask ui-tokens
 Kết quả chạy, môi trường, SHA và PASS/FAIL/NOT_RUN/UNSUPPORTED nằm ở
 [ui-system-foundation-evidence](../../docs/development/ui-system-foundation-evidence.md) (UIS-01) và
 [ui-system-primitives-evidence](../../docs/development/ui-system-primitives-evidence.md) (UIS-02),
-[ui-system-states-evidence](../../docs/development/ui-system-states-evidence.md) (UIS-03). Trạng thái
+[ui-system-states-evidence](../../docs/development/ui-system-states-evidence.md) (UIS-03),
+[ui-system-navigation-evidence](../../docs/development/ui-system-navigation-evidence.md) (UIS-04). Trạng thái
 catalog của mọi entry vẫn là `implemented-unverified`: compile, test và ảnh của JVM/Chrome không
 thành nghiệm thu thiết kế, Android/iOS, IME hay screen reader.

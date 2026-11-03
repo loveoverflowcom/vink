@@ -7,6 +7,11 @@
 //! [`NavigationGuard::go`]. Leaving the document itself (reload, close, external link) keeps the
 //! browser's own `beforeunload` prompt, owned by the page.
 //!
+//! An open shell overlay (the Tôi utility) is asked first, through [`NavigationGuard::set_overlay`]:
+//! back/forward closes it and stays on the page (Back closes an overlay before it leaves a
+//! screen, shared/navigation.md), while a link or programmatic exit closes it and continues to
+//! the page's check. The guard stays the only owner of leaving.
+//!
 //! Links stay plain `<a href>`: the guard listens in the capture phase and prevents the default
 //! action, which the router's own link handler respects. Back/forward cannot be cancelled: the
 //! guard's `popstate` listener is registered before the router's, stops a held event before the
@@ -18,12 +23,16 @@ use leptos::prelude::*;
 use leptos_router::NavigateOptions;
 use leptos_router::hooks::{use_location, use_navigate};
 use leptos_router::location::Location;
+use vink_ui::CloseReason;
 
 type Check = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+/// Closes the open overlay for a reason; `true` when one was open.
+type Overlay = Arc<dyn Fn(CloseReason) -> bool + Send + Sync>;
 
 #[derive(Clone, Copy)]
 pub struct NavigationGuard {
     check: StoredValue<Option<(u64, Check)>>,
+    overlay: StoredValue<Option<(u64, Overlay)>>,
     registrations: StoredValue<u64>,
     router: StoredValue<Option<RouterHooks>>,
 }
@@ -43,6 +52,7 @@ impl NavigationGuard {
     pub fn provide() -> Self {
         let guard = Self {
             check: StoredValue::new(None),
+            overlay: StoredValue::new(None),
             registrations: StoredValue::new(0),
             router: StoredValue::new(None),
         };
@@ -78,6 +88,31 @@ impl NavigationGuard {
         });
     }
 
+    /// Registers the shell's overlay closer, consulted before the page's check.
+    pub fn set_overlay(&self, close: impl Fn(CloseReason) -> bool + Send + Sync + 'static) -> u64 {
+        let id = self.registrations.get_value() + 1;
+        self.registrations.set_value(id);
+        self.overlay.set_value(Some((id, Arc::new(close))));
+        id
+    }
+
+    pub fn clear_overlay(&self, id: u64) {
+        self.overlay.try_update_value(|overlay| {
+            if overlay.as_ref().is_some_and(|(current, _)| *current == id) {
+                *overlay = None;
+            }
+        });
+    }
+
+    /// Closes an open overlay; `true` when there was one.
+    fn close_overlay(&self, reason: CloseReason) -> bool {
+        let close = self
+            .overlay
+            .try_with_value(|overlay| overlay.as_ref().map(|(_, close)| close.clone()))
+            .flatten();
+        close.is_some_and(|close| close(reason))
+    }
+
     /// True when the open page holds a navigation to `destination` and is asking the author.
     pub fn holds(&self, destination: &str) -> bool {
         let check = self
@@ -87,8 +122,10 @@ impl NavigationGuard {
         check.is_some_and(|check| check(destination))
     }
 
-    /// A navigation started by code (a menu item, a redirect), subject to the guard.
+    /// A navigation started by code (a menu item, a redirect), subject to the guard. An open
+    /// overlay closes first.
     pub fn navigate(&self, destination: &str) {
+        self.close_overlay(CloseReason::Navigate);
         if !self.holds(destination) {
             self.go(destination);
         }
@@ -139,14 +176,18 @@ mod dom {
     use wasm_bindgen::closure::Closure;
     use web_sys::{AddEventListenerOptions, Element, Event, HtmlAnchorElement, MouseEvent, Url};
 
-    use super::NavigationGuard;
+    use super::{CloseReason, NavigationGuard};
 
     pub fn listen(guard: NavigationGuard) {
         let on_click = Closure::<dyn Fn(MouseEvent)>::new(move |event: MouseEvent| {
             let Some(destination) = link_destination(&event) else {
                 return;
             };
-            if !same_page(&destination) && guard.holds(&destination) {
+            if same_page(&destination) {
+                return;
+            }
+            guard.close_overlay(CloseReason::Navigate);
+            if guard.holds(&destination) {
                 event.prevent_default();
             }
         });
@@ -155,7 +196,11 @@ mod dom {
                 return;
             };
             // The router has not handled this event yet: its location is still the page's.
-            if path_and_query(&page) == path_and_query(&here) || !guard.holds(&here) {
+            // Back closes an open overlay before it leaves the screen; the next Back reaches
+            // the page's check.
+            if path_and_query(&page) == path_and_query(&here)
+                || !(guard.close_overlay(CloseReason::Back) || guard.holds(&here))
+            {
                 return;
             }
             event.stop_immediate_propagation();

@@ -93,6 +93,7 @@ val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foun
     "field.text-field", "field.text-area", "field.search-field", "field.checkbox", "field.radio", "field.switch", "field.select", "field.form",
     "identity.icon", "identity.avatar", "identity.avatar-group", "identity.author-byline", "identity.image-frame",
     "state.loading", "state.progress", "state.empty", "state.error", "state.notice", "state.status", "state.dialog", "state.playground",
+    "navigation.rail", "navigation.bottom-bar", "navigation.top-bar", "navigation.scaffold", "navigation.overlay", "navigation.adapter",
     "composition.nested",
 )
 

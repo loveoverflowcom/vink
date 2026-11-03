@@ -120,4 +120,53 @@ mod tests {
             "/?q=%2F%2Foutside.example#community-stream"
         );
     }
+
+    /// The router's own server-side URL parser reads back exactly what these links encode.
+    #[cfg(feature = "ssr")]
+    #[test]
+    fn return_context_round_trips_through_the_router_and_malformed_input_stays_local() {
+        use leptos_router::location::RequestUrl;
+
+        let id = "33333333-3333-4333-8333-333333333333";
+        let decomposed = "Đường về".nfd().collect::<String>();
+        for query in [
+            "",
+            "duong ve",
+            "Đ & 100% + #",
+            "a=b&q=c",
+            "?returnTo=https://outside.example/",
+            "/tac-pham/x?y#z",
+            decomposed.as_str(),
+        ] {
+            for (href, path) in [
+                (explore_href(query, Some(id)), "/".to_string()),
+                (reader_href(id, query), format!("/tac-pham/{id}")),
+            ] {
+                let url = RequestUrl::new(&href).parse().expect(&href);
+                assert_eq!(url.path(), path, "{href}");
+                assert_eq!(
+                    url.search_params().get_str("q").unwrap_or_default(),
+                    query,
+                    "{href}"
+                );
+                assert_eq!(url.search_params().get_str("returnTo"), None, "{href}");
+            }
+        }
+        // Malformed or hostile deep links decode without panicking and build only local links.
+        for raw in [
+            "/?q=%E0%A4%A",
+            "/?q=%",
+            "/?q=%2F%2Foutside.example",
+            "/?q=a%00b",
+        ] {
+            let url = RequestUrl::new(raw).parse().expect(raw);
+            let query = url.search_params().get("q").unwrap_or_default();
+            let back = explore_href(&query, Some("//outside.example"));
+            assert!(
+                back.starts_with("/?q=") && !back.starts_with("//"),
+                "{raw} → {back}"
+            );
+            assert!(back.ends_with("#community-stream"), "{back}");
+        }
+    }
 }

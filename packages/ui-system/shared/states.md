@@ -3,7 +3,8 @@
 **Trạng thái:** UIS-03/06 ([#21](https://github.com/loveoverflowcom/vink/issues/21)) — NEW. Đã triển khai ở cả
 hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. Chưa màn nào
 của app dùng; adoption thuộc #23 sau qualification #24. Coordinator overlay toàn app (một dialog
-mở tại một thời điểm, stack focus) thuộc UIS-04 (#22).
+mở tại một thời điểm, Back đóng lớp phủ trước, trả focus) là `OverlayLayer` của UIS-04 (#22), contract ở
+[navigation.md](navigation.md).
 
 Thư viện **trình bày** trạng thái có chủ nguồn; nó không phân loại lỗi nghiệp vụ, không fetch,
 không lên lịch retry, không logout, không điều hướng, không xóa chữ và không quyết định quyền.

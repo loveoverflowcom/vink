@@ -15,11 +15,12 @@ Leptos **0.8** (workspace pin, không hạ về 0.7 của Cantos). Crate không 
 | `src/media.rs`, `src/identity.rs` | `Icon`, `Avatar`, `AvatarGroup`, `AuthorByline`, `ImageFrame` (`safe_image_src`); `initials`, `tone` thuần |
 | `src/state.rs`, `src/state_vectors.rs` | Contract thuần UIS-03 (`RegionState::layout`, `Problem`, `placement_for`, `NoticeSpec`, `LoadingGate`…); vectors **sinh ra** |
 | `src/feedback.rs` | `ContentRegion`, `StatePanel`, `InlineNotice`, `Banner`, `Skeleton`, `LoadingIndicator`, `EdgeProgress`, `StatusBadge`, `ListEnd`, `Snackbar`, `Dialog`; `MotionActivity`/`provide_motion_activity`, `document_visibility()`, `use_loading_gate`, `use_snackbar_timeout` |
+| `src/navigation.rs`, `src/navigation_vectors.rs` | UIS-04: `WindowClass`, `NavLayout::resolve`, `RailPreference`, `OverlayLayer`/`CloseReason`/`FocusReturn` thuần; `NavItem`, `NavUtility`, `NavigationRail` (toggle thường trực + tooltip ngoài rail), `BottomNavigation` (đo chiều cao → `--vk-ui-bar-height`), `TopBar`, `AdaptiveScaffold` (`data-layout` auto bằng CSS hoặc cố định); vectors **sinh ra** |
 | `src/values.rs` | Kiểu giá trị (`Rgba::contrast`, `Dimension::var`, `TextRole::style`…) |
 | `src/theme.rs` | `ThemePreference`, `Density`, `MotionPreference`, `Preferences`, `RoleOverride`, precedence |
 | `src/root.rs` | `UiRoot`, `ThemeScope` |
 | `style/tokens.css` | **Sinh ra.** `@font-face`, `:root`, theme/scope, recipe theo scope, density, motion |
-| `style/vink-ui.css` | CSS renderer: gốc `.vk-ui` và class `vk-ui-*` của component; không selector tag toàn cục |
+| `style/vink-ui.css` | CSS renderer: gốc `.vk-ui` và class `vk-ui-*` của component; không selector tag toàn cục. Phần shell/điều hướng tự mang kiểu chữ/focus ring nên app dùng được dưới token cấp document (`<html data-theme>`, `:root[data-rail]`) trước khi có `UiRoot`; app gộp file này vào `/pkg/vink.css` |
 | `preview/` | crate `vink-ui-preview` (CSR, feature `csr`), `index.html`, `style/preview.css`, `e2e/preview-smoke.mjs` |
 
 `tokens.rs`/`catalog.rs` được `#[rustfmt::skip]` ở khai báo module: `--check` so byte với generator

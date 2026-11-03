@@ -67,7 +67,10 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
         "identity.author-byline" => identity_byline(scenario == "long-label"),
         "identity.image-frame" => identity_frame(scenario == "image-error"),
         "composition.nested" => composition(scenario == "narrow"),
-        other => return crate::states::specimen(other, scenario),
+        other => {
+            return crate::states::specimen(other, scenario)
+                .or_else(|| crate::navigation::specimen(other, scenario));
+        }
     })
 }
 

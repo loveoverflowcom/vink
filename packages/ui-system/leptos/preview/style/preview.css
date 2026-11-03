@@ -634,3 +634,22 @@ body {
   border-radius: var(--vk-radius-md);
   background-color: var(--vk-surface-container);
 }
+
+/* UIS-04 navigation specimens: a fixed-layout scaffold inside its own frame. */
+.vkp-shell-frame {
+  position: relative;
+  border: 1px solid var(--vk-outline-variant);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-surface);
+}
+
+.vkp-shell-main {
+  padding: var(--vk-space-4);
+  min-inline-size: 0;
+}
+
+.vkp-shell-main:focus { outline: none; }
+.vkp-shell-route { margin: 0 0 var(--vk-space-3); font-weight: 600; }
+.vkp-nav-brand { font-family: var(--vk-type-headline-font); font-size: 1.375rem; font-weight: 600; }
+.vkp-topbar-sample { margin-block-end: var(--vk-space-4); border: 1px dashed var(--vk-outline-variant); border-radius: var(--vk-radius-md); }
+.vkp-topbar-sample .vk-ui-top-bar { display: flex; }
