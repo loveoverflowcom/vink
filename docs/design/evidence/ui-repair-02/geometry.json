@@ -1,0 +1,1485 @@
+{
+  "date": "2026-11-03 Asia/Ho_Chi_Minh",
+  "base_commit": "0e69412",
+  "after_branch": "codex/explore-v4-density",
+  "source_sha256": {
+    "apps/vink-web/src/pages/mod.rs": "6007ede3324afcaca92c0e01c3ec6c1e66a1f203ba58003aedb95a8e9a2fd088",
+    "apps/vink-web/style/vink.css": "c2ea6d61a8082d611809f9770bf1c1fb9d681a363d01bd165b52398627bc31ea",
+    "packages/vink-patterns/leptos/patterns.css": "133da739f28744506aaef821bfb4cfb4f1149cff4d91e42b11bac3738f86f37d",
+    "apps/vink-web/e2e/browser-smoke.mjs": "3a041ac858f89b7a4c7db66938e531d0d6fda181a41e2b9ed782b862b1cf2549"
+  },
+  "same_fixture": {
+    "real": "PostgreSQL dev seed, one public publication",
+    "loaded": "12 labelled HTTP cards, long NFD Vietnamese title, unchanged provider fields"
+  },
+  "comparison": {
+    "explore-real-1440-100-light": {
+      "before": {
+        "route": "/",
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 286,
+            "y": 40,
+            "width": 1088,
+            "height": 95.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": null,
+          "search": {
+            "x": 286,
+            "y": 256.5625,
+            "width": 745.40625,
+            "height": 75.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 286,
+            "y": 280.15625,
+            "width": 657.3125,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 955.3125,
+            "y": 283.75,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 286,
+            "y": 167.1875,
+            "width": 745.40625,
+            "height": 435.328125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": {
+            "x": 310,
+            "y": 386.140625,
+            "width": 697.40625,
+            "height": 198.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "byline": {
+            "x": 310,
+            "y": 410.140625,
+            "width": 697.40625,
+            "height": 80.796875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "author": {
+            "x": 366,
+            "y": 420.9375,
+            "width": 249.328125,
+            "height": 22.390625,
+            "fontSize": "16px",
+            "lineHeight": "22.4px"
+          },
+          "date": {
+            "x": 366,
+            "y": 454.140625,
+            "width": 641.40625,
+            "height": 20.796875,
+            "fontSize": "13px",
+            "lineHeight": "20.8px"
+          },
+          "title": {
+            "x": 310,
+            "y": 502.9375,
+            "width": 697.40625,
+            "height": 28.59375,
+            "fontSize": "22px",
+            "lineHeight": "28.6px"
+          },
+          "context": {
+            "x": 1063.40625,
+            "y": 167.1875,
+            "width": 310.578125,
+            "height": 435.328125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": null,
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Bàn viết",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Tôi",
+              "target": null,
+              "text": null
+            }
+          ]
+        }
+      },
+      "after": {
+        "route": "/",
+        "width": 1440,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 286,
+            "y": 32,
+            "width": 1088,
+            "height": 63.984375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 286,
+            "y": 111.984375,
+            "width": 768,
+            "height": 101.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 286,
+            "y": 135.578125,
+            "width": 683.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 977.90625,
+            "y": 137.375,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 286,
+            "y": 229.359375,
+            "width": 776,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": {
+            "x": 286,
+            "y": 294.75,
+            "width": 776,
+            "height": 142.984375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "byline": {
+            "x": 286,
+            "y": 310.75,
+            "width": 776,
+            "height": 44,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "author": {
+            "x": 342,
+            "y": 312.453125,
+            "width": 720,
+            "height": 22.390625,
+            "fontSize": "16px",
+            "lineHeight": "22.4px"
+          },
+          "date": {
+            "x": 342,
+            "y": 334.84375,
+            "width": 720,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "title": {
+            "x": 286,
+            "y": 362.75,
+            "width": 776,
+            "height": 28.59375,
+            "fontSize": "22px",
+            "lineHeight": "28.6px"
+          },
+          "context": {
+            "x": 1086,
+            "y": 229.359375,
+            "width": 288,
+            "height": 367.953125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": null,
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Bàn viết",
+              "target": null,
+              "text": null
+            },
+            {
+              "label": "Tôi",
+              "target": null,
+              "text": null
+            }
+          ]
+        }
+      }
+    },
+    "explore-390-100-light": {
+      "before": {
+        "route": "/",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 16,
+            "y": 107.59375,
+            "width": 343,
+            "height": 101.578125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": null,
+          "search": {
+            "x": 16,
+            "y": 352.9375,
+            "width": 343,
+            "height": 135.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 16,
+            "y": 376.53125,
+            "width": 343,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 16,
+            "y": 440.125,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 16,
+            "y": 241.171875,
+            "width": 343,
+            "height": 3118.375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": {
+            "x": 24,
+            "y": 542.515625,
+            "width": 327,
+            "height": 313.34375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "byline": {
+            "x": 24,
+            "y": 566.515625,
+            "width": 327,
+            "height": 81.578125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "author": {
+            "x": 76,
+            "y": 566.515625,
+            "width": 275,
+            "height": 44.78125,
+            "fontSize": "16px",
+            "lineHeight": "22.4px"
+          },
+          "date": {
+            "x": 76,
+            "y": 611.296875,
+            "width": 275,
+            "height": 20.796875,
+            "fontSize": "13px",
+            "lineHeight": "20.8px"
+          },
+          "title": {
+            "x": 24,
+            "y": 660.09375,
+            "width": 327,
+            "height": 142.96875,
+            "fontSize": "22px",
+            "lineHeight": "28.6px"
+          },
+          "context": {
+            "x": 16,
+            "y": 3391.546875,
+            "width": 343,
+            "height": 381.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 375,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 34,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 129,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 160.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 298.625,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      },
+      "after": {
+        "route": "/",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "16px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 16,
+            "y": 99.59375,
+            "width": 343,
+            "height": 56.1875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "tools": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "search": {
+            "x": 16,
+            "y": 171.78125,
+            "width": 343,
+            "height": 119.5625,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "input": {
+            "x": 16,
+            "y": 195.375,
+            "width": 258.90625,
+            "height": 51.59375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "submit": {
+            "x": 282.90625,
+            "y": 197.171875,
+            "width": 76.09375,
+            "height": 48,
+            "fontSize": "14px",
+            "lineHeight": "19.6px"
+          },
+          "stream": {
+            "x": 16,
+            "y": 307.34375,
+            "width": 343,
+            "height": 1912.296875,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "firstRow": {
+            "x": 16,
+            "y": 372.734375,
+            "width": 343,
+            "height": 253.9375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "byline": {
+            "x": 16,
+            "y": 388.734375,
+            "width": 343,
+            "height": 40.578125,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "author": {
+            "x": 68,
+            "y": 388.734375,
+            "width": 291,
+            "height": 22.390625,
+            "fontSize": "16px",
+            "lineHeight": "22.4px"
+          },
+          "date": {
+            "x": 68,
+            "y": 411.125,
+            "width": 291,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "title": {
+            "x": 16,
+            "y": 437.3125,
+            "width": 343,
+            "height": 142.96875,
+            "fontSize": "22px",
+            "lineHeight": "28.6px"
+          },
+          "context": {
+            "x": 16,
+            "y": 2243.640625,
+            "width": 343,
+            "height": 342.359375,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 820,
+            "width": 375,
+            "height": 80,
+            "fontSize": "16px",
+            "lineHeight": "25.6px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 8,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 34,
+                "y": 864.90625,
+                "width": 65,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 129,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 160.890625,
+                "y": 864.90625,
+                "width": 53.203125,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 824,
+                "width": 117,
+                "height": 72,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              },
+              "text": {
+                "x": 298.625,
+                "y": 864.90625,
+                "width": 19.734375,
+                "height": 18.1875,
+                "fontSize": "13px",
+                "lineHeight": "18.2px"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "explore-320-200-light": {
+      "before": {
+        "route": "/",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 32,
+            "y": 214.1875,
+            "width": 241,
+            "height": 382.34375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "tools": null,
+          "search": {
+            "x": 32,
+            "y": 1165.28125,
+            "width": 241,
+            "height": 300.75,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "input": {
+            "x": 32,
+            "y": 1251.65625,
+            "width": 241,
+            "height": 101.1875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "submit": {
+            "x": 32,
+            "y": 1376.84375,
+            "width": 150.171875,
+            "height": 89.1875,
+            "fontSize": "28px",
+            "lineHeight": "39.2px"
+          },
+          "stream": {
+            "x": 32,
+            "y": 660.53125,
+            "width": 241,
+            "height": 11897.078125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "firstRow": {
+            "x": 48,
+            "y": 1619.625,
+            "width": 209,
+            "height": 1575.34375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "byline": {
+            "x": 48,
+            "y": 1667.625,
+            "width": 209,
+            "height": 383.96875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "author": {
+            "x": 112,
+            "y": 1667.625,
+            "width": 145,
+            "height": 268.78125,
+            "fontSize": "32px",
+            "lineHeight": "44.8px"
+          },
+          "date": {
+            "x": 112,
+            "y": 1936.40625,
+            "width": 145,
+            "height": 83.1875,
+            "fontSize": "26px",
+            "lineHeight": "41.6px"
+          },
+          "title": {
+            "x": 48,
+            "y": 2075.59375,
+            "width": 209,
+            "height": 972.1875,
+            "fontSize": "44px",
+            "lineHeight": "57.2px"
+          },
+          "context": {
+            "x": 32,
+            "y": 12621.609375,
+            "width": 241,
+            "height": 1817.5625,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 763.21875,
+            "width": 305,
+            "height": 136.78125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 16,
+                "y": 811.21875,
+                "width": 85.65625,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 109.65625,
+                "y": 771.21875,
+                "width": 85.671875,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 109.65625,
+                "y": 811.21875,
+                "width": 85.671875,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 226.421875,
+                "y": 829.40625,
+                "width": 39.453125,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            }
+          ]
+        }
+      },
+      "after": {
+        "route": "/",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": null,
+          "header": null,
+          "body": null
+        },
+        "explore": {
+          "heading": {
+            "x": 32,
+            "y": 198.1875,
+            "width": 241,
+            "height": 229.9375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "tools": {
+            "x": 32,
+            "y": 460.125,
+            "width": 241,
+            "height": 519.09375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "search": {
+            "x": 32,
+            "y": 460.125,
+            "width": 241,
+            "height": 519.09375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "input": {
+            "x": 32,
+            "y": 546.5,
+            "width": 241,
+            "height": 101.1875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "submit": {
+            "x": 32,
+            "y": 655.6875,
+            "width": 150.171875,
+            "height": 89.1875,
+            "fontSize": "28px",
+            "lineHeight": "39.2px"
+          },
+          "stream": {
+            "x": 32,
+            "y": 1011.21875,
+            "width": 241,
+            "height": 8379.796875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "firstRow": {
+            "x": 32,
+            "y": 1240.78125,
+            "width": 241,
+            "height": 1295.375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "byline": {
+            "x": 32,
+            "y": 1272.78125,
+            "width": 241,
+            "height": 296.765625,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "author": {
+            "x": 96,
+            "y": 1272.78125,
+            "width": 177,
+            "height": 223.984375,
+            "fontSize": "32px",
+            "lineHeight": "44.8px"
+          },
+          "date": {
+            "x": 96,
+            "y": 1496.765625,
+            "width": 177,
+            "height": 72.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "title": {
+            "x": 32,
+            "y": 1585.546875,
+            "width": 241,
+            "height": 857.8125,
+            "fontSize": "44px",
+            "lineHeight": "57.2px"
+          },
+          "context": {
+            "x": 32,
+            "y": 9439.015625,
+            "width": 241,
+            "height": 1225.625,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 763.21875,
+            "width": 305,
+            "height": 136.78125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 16,
+                "y": 811.21875,
+                "width": 85.65625,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 109.65625,
+                "y": 771.21875,
+                "width": 85.671875,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 109.65625,
+                "y": 811.21875,
+                "width": 85.671875,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 226.421875,
+                "y": 829.40625,
+                "width": 39.453125,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "inspected_sheets": [
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-real-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-1440-100-light.png",
+        "target/verify-web/screenshots/explore-real-1024-100-light.png",
+        "target/verify-web/screenshots/explore-real-834-100-light.png",
+        "target/verify-web/screenshots/explore-real-390-100-light.png",
+        "target/verify-web/screenshots/explore-real-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-loaded-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-1440-100-light.png",
+        "target/verify-web/screenshots/explore-1024-100-light.png",
+        "target/verify-web/screenshots/explore-834-100-light.png",
+        "target/verify-web/screenshots/explore-390-100-light.png",
+        "target/verify-web/screenshots/explore-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-no-results-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-no-results-1440-100-light.png",
+        "target/verify-web/screenshots/explore-no-results-1024-100-light.png",
+        "target/verify-web/screenshots/explore-no-results-834-100-light.png",
+        "target/verify-web/screenshots/explore-no-results-390-100-light.png",
+        "target/verify-web/screenshots/explore-no-results-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-empty-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-empty-1440-100-light.png",
+        "target/verify-web/screenshots/explore-empty-1024-100-light.png",
+        "target/verify-web/screenshots/explore-empty-834-100-light.png",
+        "target/verify-web/screenshots/explore-empty-390-100-light.png",
+        "target/verify-web/screenshots/explore-empty-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-unavailable-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-unavailable-1440-100-light.png",
+        "target/verify-web/screenshots/explore-unavailable-1024-100-light.png",
+        "target/verify-web/screenshots/explore-unavailable-834-100-light.png",
+        "target/verify-web/screenshots/explore-unavailable-390-100-light.png",
+        "target/verify-web/screenshots/explore-unavailable-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-several-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-1440-100-light.png",
+        "target/verify-web/screenshots/explore-several-1024-100-light.png",
+        "target/verify-web/screenshots/explore-several-834-100-light.png",
+        "target/verify-web/screenshots/explore-several-390-100-light.png",
+        "target/verify-web/screenshots/explore-several-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/reader-100-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/reader-1440-100-light.png",
+        "target/verify-web/screenshots/reader-1024-100-light.png",
+        "target/verify-web/screenshots/reader-834-100-light.png",
+        "target/verify-web/screenshots/reader-390-100-light.png",
+        "target/verify-web/screenshots/reader-320-100-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-real-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-1440-200-light.png",
+        "target/verify-web/screenshots/explore-real-1024-200-light.png",
+        "target/verify-web/screenshots/explore-real-834-200-light.png",
+        "target/verify-web/screenshots/explore-real-390-200-light.png",
+        "target/verify-web/screenshots/explore-real-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-loaded-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-1440-200-light.png",
+        "target/verify-web/screenshots/explore-1024-200-light.png",
+        "target/verify-web/screenshots/explore-834-200-light.png",
+        "target/verify-web/screenshots/explore-390-200-light.png",
+        "target/verify-web/screenshots/explore-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-no-results-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-no-results-1440-200-light.png",
+        "target/verify-web/screenshots/explore-no-results-1024-200-light.png",
+        "target/verify-web/screenshots/explore-no-results-834-200-light.png",
+        "target/verify-web/screenshots/explore-no-results-390-200-light.png",
+        "target/verify-web/screenshots/explore-no-results-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-empty-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-empty-1440-200-light.png",
+        "target/verify-web/screenshots/explore-empty-1024-200-light.png",
+        "target/verify-web/screenshots/explore-empty-834-200-light.png",
+        "target/verify-web/screenshots/explore-empty-390-200-light.png",
+        "target/verify-web/screenshots/explore-empty-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-unavailable-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-unavailable-1440-200-light.png",
+        "target/verify-web/screenshots/explore-unavailable-1024-200-light.png",
+        "target/verify-web/screenshots/explore-unavailable-834-200-light.png",
+        "target/verify-web/screenshots/explore-unavailable-390-200-light.png",
+        "target/verify-web/screenshots/explore-unavailable-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-several-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-1440-200-light.png",
+        "target/verify-web/screenshots/explore-several-1024-200-light.png",
+        "target/verify-web/screenshots/explore-several-834-200-light.png",
+        "target/verify-web/screenshots/explore-several-390-200-light.png",
+        "target/verify-web/screenshots/explore-several-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/reader-200-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/reader-1440-200-light.png",
+        "target/verify-web/screenshots/reader-1024-200-light.png",
+        "target/verify-web/screenshots/reader-834-200-light.png",
+        "target/verify-web/screenshots/reader-390-200-light.png",
+        "target/verify-web/screenshots/reader-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-real-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-real-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-real-834-100-dark.png",
+        "target/verify-web/screenshots/explore-real-390-100-dark.png",
+        "target/verify-web/screenshots/explore-real-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-loaded-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-834-100-dark.png",
+        "target/verify-web/screenshots/explore-390-100-dark.png",
+        "target/verify-web/screenshots/explore-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-no-results-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-no-results-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-no-results-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-no-results-834-100-dark.png",
+        "target/verify-web/screenshots/explore-no-results-390-100-dark.png",
+        "target/verify-web/screenshots/explore-no-results-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-empty-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-empty-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-empty-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-empty-834-100-dark.png",
+        "target/verify-web/screenshots/explore-empty-390-100-dark.png",
+        "target/verify-web/screenshots/explore-empty-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-unavailable-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-unavailable-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-834-100-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-390-100-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-several-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-1440-100-dark.png",
+        "target/verify-web/screenshots/explore-several-1024-100-dark.png",
+        "target/verify-web/screenshots/explore-several-834-100-dark.png",
+        "target/verify-web/screenshots/explore-several-390-100-dark.png",
+        "target/verify-web/screenshots/explore-several-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/reader-100-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/reader-1440-100-dark.png",
+        "target/verify-web/screenshots/reader-1024-100-dark.png",
+        "target/verify-web/screenshots/reader-834-100-dark.png",
+        "target/verify-web/screenshots/reader-390-100-dark.png",
+        "target/verify-web/screenshots/reader-320-100-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-real-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-real-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-real-834-200-dark.png",
+        "target/verify-web/screenshots/explore-real-390-200-dark.png",
+        "target/verify-web/screenshots/explore-real-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-loaded-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-834-200-dark.png",
+        "target/verify-web/screenshots/explore-390-200-dark.png",
+        "target/verify-web/screenshots/explore-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-no-results-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-no-results-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-no-results-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-no-results-834-200-dark.png",
+        "target/verify-web/screenshots/explore-no-results-390-200-dark.png",
+        "target/verify-web/screenshots/explore-no-results-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-empty-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-empty-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-empty-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-empty-834-200-dark.png",
+        "target/verify-web/screenshots/explore-empty-390-200-dark.png",
+        "target/verify-web/screenshots/explore-empty-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-unavailable-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-unavailable-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-834-200-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-390-200-dark.png",
+        "target/verify-web/screenshots/explore-unavailable-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/explore-several-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-1440-200-dark.png",
+        "target/verify-web/screenshots/explore-several-1024-200-dark.png",
+        "target/verify-web/screenshots/explore-several-834-200-dark.png",
+        "target/verify-web/screenshots/explore-several-390-200-dark.png",
+        "target/verify-web/screenshots/explore-several-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/reader-200-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/reader-1440-200-dark.png",
+        "target/verify-web/screenshots/reader-1024-200-dark.png",
+        "target/verify-web/screenshots/reader-834-200-dark.png",
+        "target/verify-web/screenshots/reader-390-200-dark.png",
+        "target/verify-web/screenshots/reader-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-real-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-byline-390-200-light.png",
+        "target/verify-web/screenshots/explore-real-byline-320-200-light.png",
+        "target/verify-web/screenshots/explore-real-read-390-200-light.png",
+        "target/verify-web/screenshots/explore-real-read-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-real-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-byline-390-200-dark.png",
+        "target/verify-web/screenshots/explore-real-byline-320-200-dark.png",
+        "target/verify-web/screenshots/explore-real-read-390-200-dark.png",
+        "target/verify-web/screenshots/explore-real-read-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-loaded-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-loaded-byline-390-200-light.png",
+        "target/verify-web/screenshots/explore-loaded-byline-320-200-light.png",
+        "target/verify-web/screenshots/explore-loaded-read-390-200-light.png",
+        "target/verify-web/screenshots/explore-loaded-read-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-loaded-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-loaded-byline-390-200-dark.png",
+        "target/verify-web/screenshots/explore-loaded-byline-320-200-dark.png",
+        "target/verify-web/screenshots/explore-loaded-read-390-200-dark.png",
+        "target/verify-web/screenshots/explore-loaded-read-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-several-light.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-byline-390-200-light.png",
+        "target/verify-web/screenshots/explore-several-byline-320-200-light.png",
+        "target/verify-web/screenshots/explore-several-read-390-200-light.png",
+        "target/verify-web/screenshots/explore-several-read-320-200-light.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/detail-several-dark.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-several-byline-390-200-dark.png",
+        "target/verify-web/screenshots/explore-several-byline-320-200-dark.png",
+        "target/verify-web/screenshots/explore-several-read-390-200-dark.png",
+        "target/verify-web/screenshots/explore-several-read-320-200-dark.png"
+      ]
+    },
+    {
+      "sheet": "target/ui-repair-02/sheets/writing-prompt-narrow-200.jpg",
+      "originals": [
+        "target/verify-web/screenshots/explore-real-prompt-390-200-light.png",
+        "target/verify-web/screenshots/explore-real-prompt-390-200-dark.png",
+        "target/verify-web/screenshots/explore-real-prompt-320-200-light.png",
+        "target/verify-web/screenshots/explore-real-prompt-320-200-dark.png"
+      ]
+    }
+  ],
+  "contrast": {
+    "light": [
+      {
+        "selector": "#explore-heading h1",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-explore__heading p",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#public-query-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": ".vk-public-row h3",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-public-row .vk-ui-byline__name",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-public-row time",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": ".vk-public-row__open",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.772028317988944
+      },
+      {
+        "selector": "#writing-prompt h2",
+        "foreground": "rgb(53, 32, 90)",
+        "background": "rgb(235, 221, 255)",
+        "ratio": 10.838743732577884
+      },
+      {
+        "selector": "#writing-prompt p",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(235, 221, 255)",
+        "ratio": 5.425209032311361
+      },
+      {
+        "selector": "#writing-prompt a",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(235, 221, 255)",
+        "ratio": 5.425209032311361
+      },
+      {
+        "selector": ".vk-reading-note",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      }
+    ],
+    "dark": [
+      {
+        "selector": "#explore-heading h1",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-explore__heading p",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#public-query-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": ".vk-public-row h3",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-public-row .vk-ui-byline__name",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-public-row time",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": ".vk-public-row__open",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.828074023155285
+      },
+      {
+        "selector": "#writing-prompt h2",
+        "foreground": "rgb(240, 227, 255)",
+        "background": "rgb(78, 52, 119)",
+        "ratio": 8.232780588636986
+      },
+      {
+        "selector": "#writing-prompt p",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(78, 52, 119)",
+        "ratio": 5.933907344767659
+      },
+      {
+        "selector": "#writing-prompt a",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(78, 52, 119)",
+        "ratio": 5.933907344767659
+      },
+      {
+        "selector": ".vk-reading-note",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      }
+    ]
+  }
+}

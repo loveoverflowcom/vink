@@ -17,7 +17,7 @@ migrations and draft private contract on a Unix socket; no auth authority, so it
 `Authorization: Bearer` credential and never maps a subject to a principal), a draft/reader slice with a
 CodeMirror 6 body editor
 (`apps/vink-web/editor`, pinned npm runtime), an adaptive 220/96 rail/mobile bar with local
-appearance preferences and a truthful `/toi` utility, a finite v3 public reading stream with
+appearance preferences and a truthful `/toi` utility, a finite v4 public reading stream with
 loaded-list title/author search and URL-based reader return context, a quiet reader, a private
 draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a lifecycle-only worker,
 `cargo xtask` lanes and CI, and the UI System foundation (`packages/ui-system`: one token source in
