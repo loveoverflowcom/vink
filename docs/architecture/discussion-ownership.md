@@ -34,8 +34,8 @@ Không thêm process, cluster hay database mới. Ranh giới trong code:
 | Persistence | `services/vink-app/src/persistence/discussion.rs` và migration | Khóa/transaction, ràng buộc toàn vẹn độc lập Rust, nạp facts rồi gọi quyết định thuần |
 
 Domain không import Axum, SQLx, Leptos, đồng hồ hệ thống hay sinh ID ẩn. Adapter nạp facts
-trong transaction rồi gọi đúng hàm quyết định production; fake store của test application gọi
-cùng hàm đó, không viết lại luật.
+trong transaction rồi gọi đúng hàm quyết định production; store giả của test application chỉ ghi
+nhận input, không viết lại luật.
 
 **Khi nào tách process `vink-discussion`:** chỉ khi đo được contention/scaling hoặc lỗi lan
 truyền cần isolation. Khi đó service sở hữu database/schema, migrations, contracts và roles

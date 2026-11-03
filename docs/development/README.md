@@ -13,9 +13,10 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 [Ranh giới literary core](literary-domain-core.md) lần theo raw save → `DraftChange` đã validate
 → owner/version CAS, phân biệt working draft với immutable revision và public pointer.
 
-[Core bình luận hai tầng](discussion-core.md) ghi lát cắt cấu trúc thuần D2T-01, registry,
-model Quint và trace replay. Chưa nối request/store/API, chưa chọn discussion owner;
-[ADR ownership](../architecture/discussion-ownership.md) vẫn là đề xuất.
+[Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
+PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
+[ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026); chưa có HTTP route/UI
+hay authority kiểm duyệt nên chưa ai gửi được bình luận.
 
 ## Skeleton làm được gì
 
@@ -332,9 +333,9 @@ riêng; không dùng `--all-features`.
 | `ui-preview leptos verify` | Catalog ID đúng thứ tự, link kịch bản chính xác, không ID trùng và mọi `aria-describedby` trỏ tới phần tử có thật, Sáng/Tối/Hệ thống và đổi OS không reload, scope lồng nhau (cả Hệ thống trong Tối, recipe giải theo scope), mật độ gọn giữ 44px, vòng lặp chạy/dừng theo scope/OS/preference; component: click/Enter/Space gọi đúng một lần, disabled/pending không lần nào, pending giữ bề rộng/focus, Button mặc định không gửi form, focus ring 3px, target ≥48px, link tab mới có `rel`, URL script không thành link/ảnh, chip Space/Tab, caret giữa chữ và composition (`imeSetComposition`) giữ qua controlled value, nhãn/gợi ý/lỗi/required/read-only/disabled, giá trị `0`, Enter tìm và nút xóa trả focus, checkbox một target, radio phím mũi tên, ảnh AVIF hỏng/URL lạ → initials, màu avatar theo key khớp golden vectors khi đảo thứ tự, nhóm không bịa số, byline đọc tên một lần, tương phản chữ đã resolve ≥4.5 hai theme (control disabled được miễn); tìm không dấu, không tràn ngang 320–1440px ở chữ 100/200%, font tự host tải được, không lỗi console; trạng thái (UIS-03): vùng/intent/announce, snackbar theo đồng hồ tiêm, 8 recipe playground (không chỉ báo trước 300ms, retry một lần giữ chữ, refresh giữ focus/cuộn, huỷ trung tính, uncertain/conflict không saved hay replay, hết phiên giữ chữ), dialog focus/Tab/Escape/bấm ngoài/trả focus, vòng lặp dừng khi giảm/không hoạt động/tab ẩn thật; điều hướng (UIS-04): thứ tự, link thật, dispatch một lần theo key, reader thuộc Khám phá, host cấp đích, toggle 96→220→96 bằng chuột/Enter/Space giữ trang/chữ/selection, tooltip ngoài rail, skip link bị clip tới khi focus, một modal, Back đóng lớp phủ trước, Escape trả focus; 127 link kịch bản | Chrome khác, thiết bị thật, screen reader, IME hệ điều hành thật, chất lượng thị giác (ảnh phải được người mở) |
 | `ui-preview cmp verify` | Logic common trên JVM (parse, resolve theme, override, tương phản, motion, line-height sp; identity golden vectors, allow-list link/ảnh, nhóm không bịa số); precedence scope trong composition; preview: đăng ký catalog, mọi kịch bản render, control đổi theme + nhật ký, vòng lặp dừng khi giảm, mật độ gọn ≥44, tìm không dấu, WOFF2 đọc được qua Skia; component: nút gọi một lần, disabled/pending không gọi, pending giữ node enabled + `stateDescription`, text field giữ selection qua `TextFieldValue`, nhãn/lỗi trong semantics, checkbox/chip một lần, avatar có tên/ẩn trong byline, AVIF hỏng → `Failed`; trạng thái (UIS-03): vectors chung (cả iOS simulator khi bật native), reducer bỏ double-click/ack muộn, gate chờ độ trễ trên đồng hồ thủ công, retry một lần giữ input, conflict/uncertain không saved hay gửi lại tự động, giảm/không hoạt động/ẩn không vòng lặp, dialog focus an toàn + trả focus, snackbar theo thời lượng, chỉ hành động hợp lệ; điều hướng (UIS-04): vectors chung (cả iOS simulator khi bật native), deep link round-trip và từ chối link ngoài, Back đóng lớp phủ trước rồi pop, chữ chưa lưu giữ Back/điều hướng, đổi khung không remount, toggle giữ selection, thứ tự thanh dưới, một modal; 290 ảnh off-screen | Android/iOS runtime và lifecycle, predictive back/swipe-back, IME, TalkBack/VoiceOver, cửa sổ desktop thật (ảnh là render off-screen), hover |
 
-Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
-triển khai. Chỉ có model Quint cấu trúc nhỏ của D2T-01; chưa có model moderation/publication,
-withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests PostgreSQL riêng.
+Không lane nào chứng minh AI moderation, xác thực, publish/withdraw, hiệu năng hay triển khai.
+Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận (D2T-02a) có test domain trong
+`quick` và test PostgreSQL thật trong `postgres`, chưa có model, HTTP hay browser. Draft CAS vẫn có boundary tests PostgreSQL riêng.
 
 ## Lựa chọn bootstrap và điều kiện xem xét lại
 
@@ -359,7 +360,9 @@ withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests Postgr
   process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
 - Gửi duyệt, moderation người/AI, publish intent, publish/withdraw, curation, Tạp Chí
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). Chỉ seed local tạo `publications`.
-- Discourse, outbox, inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào.
+- API/UI bình luận, authority và màn kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, outbox,
+  inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào. Discourse không còn trong
+  phạm vi (Vink sở hữu bình luận).
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
@@ -379,6 +382,7 @@ withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests Postgr
    seam `IdentityResolver`, cookie/CSRF, liên kết principal; thử đổi email, ban, logout.
 3. **WR-03 + PUB-01/02 trên PostgreSQL (nền cho S-04):** tạo revision bất biến từ nháp khi gửi,
    ý định xuất bản, publish transaction ghi con trỏ + audit + outbox, test r1/r2.
-4. **S-02 Discourse:** pin release và plugin, thử cổng tiền kiểm trước khi viết adapter.
+4. **Bình luận D2T-02b/D2T-03:** HTTP API v1 + contract fixtures cho use case thảo luận, authority
+   kiểm duyệt và hàng đợi duyệt, rồi UI hai tầng (#45); xem [registry](discussion-core.md).
 5. **S-05 AI + vận hành:** bộ mẫu tiếng Việt, schema output và job lease trong worker; giữ
    AI ở chế độ tư vấn cho tới khi MOD-06 có bằng chứng.

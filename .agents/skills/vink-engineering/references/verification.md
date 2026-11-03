@@ -4,7 +4,8 @@ Use actual manifests, commands and CI from the current checkout. The implemented
 `cargo xtask verify quick|discussion|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. `discussion` covers only the structural D2T-01 Quint model and real Rust replay;
-there is no generic behavior or Kani lane. Do not claim lifecycle or I/O verification from it.
+there is no generic behavior or Kani lane. Do not claim lifecycle or I/O verification from it:
+the D2T-02a lifecycle has pure tests in `quick` and PostgreSQL tests in `postgres`.
 
 Find route-level scenarios and existing assertions in the
 [feature map](../../../../docs/development/feature-map.md), then confirm the relevant source.
@@ -19,6 +20,7 @@ instructions or repeated checking workflows, use
 | Docs, skills, metadata only | `quick` (repository checks) or a diff/link review | No app run needed |
 | Domain, application, contract, config, `desk_state` | `quick` | Add a focused unit or fixture test |
 | D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
+| Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |
 | SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
 | Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
 | Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |

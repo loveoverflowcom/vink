@@ -88,7 +88,8 @@ Do not infer permission to push, post messages or publish from a local editing t
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
 quick|discussion|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
-only the structural D2T-01 model and real core replay, not the entire comment lifecycle;
+only the structural D2T-01 model and real core replay, not the comment lifecycle (whose pure
+tests run in `quick` and real-database tests in `postgres`);
 `specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
 to validate documentation or skills.
 

@@ -190,23 +190,26 @@ Không phải route của app: hai preview chạy riêng, không gọi service. 
 | Initials của app | `appearance.rs::initials` → `vink_ui::identity::initials` (giữ `•` khi neutral) | `vietnamese_initials_use_first_and_last_words` (`quick`); `verify web` của shell | App hiện chỉ gọi với `None`; tên thật chưa có nguồn |
 
 Chưa có đường đi cho đăng nhập thật, gửi duyệt, moderation, publish/withdraw, tuyển chọn Tạp Chí,
-bình luận Discourse, AI job, export ngoài `.txt` và nhiều chương. Trạng thái chi tiết và điều kiện làm tiếp
+API/UI bình luận, AI job, export ngoài `.txt` và nhiều chương. Trạng thái chi tiết và điều kiện làm tiếp
 ở [giới hạn skeleton](README.md) và [S-01–S-05](../architecture/decisions.md).
 
 Khi một route, thao tác hoặc assertion đổi, cập nhật hàng liên quan cùng source owner;
 [vink-maintain-verification](../../.agents/skills/vink-maintain-verification/SKILL.md) hướng dẫn
 phân biệt tài liệu cũ, thiếu coverage và lỗi sản phẩm. Không cần cập nhật theo lịch cố định.
 
-## Core cấu trúc discussion D2T-01 (#41, lát cắt 1)
+## Bình luận hai tầng D2T-01/D2T-02a (#41, #43)
 
-Thêm ngày 03/11/2026 trên nền `8045d45`; không có route hay khả năng gửi bình luận mới.
-Owner và registry/gap: [core hai tầng](discussion-core.md),
-[ADR ownership còn mở](../architecture/discussion-ownership.md).
+Lát cắt 1 ngày 03/11/2026 trên nền `8045d45`; D2T-02a trên nền `31a62b1`. Chưa có route hay
+khả năng gửi bình luận. Owner và registry/gap: [bình luận hai tầng](discussion-core.md),
+[ADR ownership đã chốt](../architecture/discussion-ownership.md).
 
 | Điểm vào | Assertion có trong code/runner | Giới hạn |
 | --- | --- | --- |
 | `DiscussionThread::create_root/create_reply` | [Unit tests](../../services/vink-app/src/domain/discussion.rs): root A, reply B/C/D cùng root; context canonical; nhiều root; foreign/missing target; duplicate/self-reference, reject atomic và 20^4 chuỗi lệnh | State thuần, append-only, chưa restore/removal/auth/body/store/request/API; ID và thread/work binding bền vững phải kiểm tại owner thật |
-| Model → trace → core | [Behavior owner](../../services/vink-app/behavior/discussion/README.md): Quint typecheck/scenarios/simulation/mutation/drift; `quint_generated_inputs_replay_against_the_production_creation_seam` chỉ feed command input rồi so outcome/state | Một thread, bốn ID, bounds/seed hữu hạn. Chưa Kani hoặc model checking; không proof PostgreSQL, Discourse hay UI |
+| Model → trace → core | [Behavior owner](../../services/vink-app/behavior/discussion/README.md): Quint typecheck/scenarios/simulation/mutation/drift; `quint_generated_inputs_replay_against_the_production_creation_seam` chỉ feed command input rồi so outcome/state | Một thread, bốn ID, bounds/seed hữu hạn. Chưa Kani hoặc model checking; không proof PostgreSQL hay UI |
+| Domain vòng đời (`domain/discussion/*`) | Unit tests từng module (`quick`): body NFC/emoji/bidi, mode generation, lifecycle 4 bước, visibility mọi trạng thái × người xem, quyền tác giả, bảng `decide_submission`, cursor | Thuần; không chứng minh transaction hay transport |
+| Use case `Vink::{submit_comment, remove_own_comment, set_comments_mode, moderate_comment, discussion, replies}` | [discussion_tests.rs](../../services/vink-app/src/application/discussion_tests.rs) với store ghi nhận (`quick`) | Không HTTP route; `ModeratorGrant` chưa có authority cấp |
+| `PgStore` discussion + migration | [tests/postgres/discussion.rs](../../services/vink-app/tests/postgres/discussion.rs) (`postgres`): SQL trực tiếp, khóa tường minh, 8 retry đồng thời, audit, neo/context, keyset ties, SQL ↔ domain | Superuser harness; chưa có lệnh rút bài thật, benchmark hay EXPLAIN |
 
 ## Adoption UIS-05 (#23)
 
