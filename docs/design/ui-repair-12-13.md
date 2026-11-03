@@ -10,6 +10,14 @@ GitHub tạo commit khác metadata nhưng cây mã giống hệt: cả hai có t
 `16cabf2de66f758cf6e7b6b7268b01fd681fe205`. Phần tài liệu tiếp theo không đổi input
 runtime. CI của PR kiểm đúng head cuối và là gate trước merge.
 
+Trong lúc CI chạy, `develop@14c33c95f6ddc77e2990f37b741841df942ea3c5` nhận
+[PR #55](https://github.com/loveoverflowcom/vink/pull/55) về navigation. Đã hợp
+nhất không conflict, giữ cả thay đổi runner/CSS/catalog của #55 và replay/capture
+của lần sửa này. Các selector CSS mới chỉ scope vào rail/navigation specimens;
+không đổi recipe Tôi/góp ý. Bảng số liệu dưới ghi lượt kiểm ban đầu; kết quả local
+và CI chạy lại trên integration head được gắn đúng SHA trong
+[PR #56](https://github.com/loveoverflowcom/vink/pull/56).
+
 ## Finding và ranh giới
 
 - **UI-REPAIR-12: CONFIRMED.** Web `screen.me` dùng signal search rỗng làm value

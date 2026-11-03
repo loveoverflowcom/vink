@@ -1,0 +1,29 @@
+{
+  "renderer": "Compose Multiplatform 1.9.0 desktop (Skia, offscreen ImageComposeScene)",
+  "os": "Linux 7.0.0-42-generic amd64",
+  "jvm": "Eclipse Adoptium 17.0.20.1",
+  "captures": {
+    "navigation.rail--default--light--narrow": {
+      "widthDp": 360,
+      "heightDp": 5200,
+      "density": 1.0,
+      "fontScale": 1.0,
+      "theme": "light",
+      "systemDark": false,
+      "entry": "navigation.rail",
+      "scenario": "default",
+      "fonts": "Be Vietnam Pro + Literata từ TTF tự host (Skia, desktop)"
+    },
+    "navigation.scaffold--default--light--narrow": {
+      "widthDp": 360,
+      "heightDp": 5200,
+      "density": 1.0,
+      "fontScale": 1.0,
+      "theme": "light",
+      "systemDark": false,
+      "entry": "navigation.scaffold",
+      "scenario": "default",
+      "fonts": "Be Vietnam Pro + Literata từ TTF tự host (Skia, desktop)"
+    }
+  }
+}

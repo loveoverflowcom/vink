@@ -1,0 +1,144 @@
+UI-REPAIR-09 — source head fef2a540711b7ec720d66e24251723bb35738cfb
+All figures are local Linux evidence, not GitHub CI.
+Baseline full preview stopped after selected reproduction; NOT_COMPLETED.
+Selected baseline captures completed separately; no baseline full PASS claimed.
+
+COMMAND LOG: baseline-preview.log
+SHA256: 5d5c0905e69ce09b7b99cfc8d871b104b091924289ade827499dd295eb3cb07e
+(selected capture, no assertion output)
+
+COMMAND LOG: baseline-selected.log
+SHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+(selected capture, no assertion output)
+
+COMMAND LOG: negative-control.log
+SHA256: 78c286209c90b8b8d5576e2ac384f08addb1d7935d6852ed8ecc3c8615d47c20
+rail/default is a standalone 220px rail, with no squeezed page
+
+COMMAND LOG: baseline-cmp.log
+SHA256: 43b87cbeaf51e9da4466050d5b7cbde41ece91ba7b5a1310e64f75b6c1829a97
+BUILD SUCCESSFUL in 7m 3s
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+
+COMMAND LOG: build-r1.log
+SHA256: f525c59594818deffde1eacf0a363022316b1fc80627d80cb46d16d82e58aec5
+error[E0382]: borrow of moved value: `frame`
+error: could not compile `vink-ui-preview` (lib) due to 1 previous error
+
+COMMAND LOG: build-r3.log
+SHA256: 7ea6ddfa97c2b702adf1873034083a6d413d7d68d58efe030b292798fb6744d6
+error[E0615]: attempted to take value of method `width` on type `DomRect`
+error: could not compile `vink-ui-preview` (lib) due to 1 previous error
+
+COMMAND LOG: cmp-r1.log
+SHA256: 471eeb263b6451f9167527f0b95d03d46e368071a3171ddedb82b8a856eceac5
+> Task :diagnostics:compileKotlinDesktop FAILED
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/Components.kt:132:55 Unresolved reference 'NavigationSpecimen'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:340:1 Modifier 'private' is not applicable to 'local function'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:345:1 Modifier 'private' is not applicable to 'local function'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:376:1 Modifier 'private' is not applicable to 'local function'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:478:33 Unresolved reference 'Adapter'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:485:1 Modifier 'private' is not applicable to 'local function'.
+e: file:///home/manhpd/Projects/vink-ui-navigation-specimen-fit/packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/NavigationSpecimens.kt:531:2 Syntax error: Expecting '}'.
+FAILURE: Build failed with an exception.
+BUILD FAILED in 1m 20s
+verification summary
+  PASS  ui tokens: generated files match
+  FAIL  CMP: common + desktop tests and captures: CMP verify: gradlew :ui:desktopTest :patterns:desktopTest :diagnostics:desktopTest :preview:desktopTest: exited with exit status: 1
+  (later steps NOT_RUN)
+
+COMMAND LOG: cmp-r2.log
+SHA256: 48d2f3c8f111b58f1d40e3a4a28f2eb573fdba64fd400755eb24b6eb8aca7707
+NavigationPreviewTest[desktop] > adaptiveSpecimenMeasuresItsFrameAndKeepsDraftAndOverlayAcrossResize[desktop] FAILED
+NavigationPreviewTest[desktop] > toggleExpandsAndCollapsesWithoutLosingThePageOrSelection[desktop] FAILED
+NavigationPreviewTest[desktop] > bottomBarKeepsTheLockedOrderAndNavigatesByKey[desktop] FAILED
+> Task :preview:desktopTest FAILED
+FAILURE: Build failed with an exception.
+BUILD FAILED in 7m 18s
+verification summary
+  PASS  ui tokens: generated files match
+  FAIL  CMP: common + desktop tests and captures: CMP verify: gradlew :ui:desktopTest :patterns:desktopTest :diagnostics:desktopTest :preview:desktopTest: exited with exit status: 1
+  (later steps NOT_RUN)
+
+COMMAND LOG: fit-r1.log
+SHA256: 3868f36cc175e588678cad001e42f634952d358c293f6be008f452aa60b192e7
+  ok  rail/default is a standalone 220px rail, with no squeezed page
+
+COMMAND LOG: web.log
+SHA256: dc7b1be13c1a57061305ded13122d7d2bb5cd09a799beb458082875b617302f8
+browser-smoke: FAIL timed out waiting for empty dashboard
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  FAIL  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview: browser smoke --phase main: exited with exit status: 1
+  (later steps NOT_RUN)
+
+COMMAND LOG: web-r2.log
+SHA256: 6b31ba513958898c48a3be0da61d679d93e038d4a5183ecc6ac9ef4836ea3bc6
+browser-smoke: FAIL timed out waiting for conflict
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  FAIL  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview: browser smoke --phase main: exited with exit status: 1
+  (later steps NOT_RUN)
+
+COMMAND LOG: web-r3.log
+SHA256: cff2dadb145bbcc46db864cbc470fdbb0fea47136981249598f7a887dd2bc1ec
+browser-smoke: FAIL evaluate failed: Error: Click target is occluded: #retry-save by undefined
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  FAIL  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview: browser smoke --phase main: exited with exit status: 1
+  (later steps NOT_RUN)
+
+COMMAND LOG: quick-final.log
+SHA256: 85e8e1026aa07f4185baeab01629dd809b726bd1132ff18602fc26561a677a93
+test error::tests::transport_failures_are_unavailable_and_data_errors_are_not ... ok
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)
+
+COMMAND LOG: preview-final.log
+SHA256: 30794fa2e45a702e55418535abe470f3b796e80b39e54e7b11d05983f694b8a4
+  ok  rail/default is a standalone 220px rail, with no squeezed page
+  ok  focused captures: 36/36; no blank PNGs, exact state restoration
+preview-smoke: PASS (662 captures in /home/manhpd/Projects/vink-ui-navigation-specimen-fit/target/ui-preview/leptos/captures)
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: headless Chrome scenarios and captures
+
+COMMAND LOG: cmp-final.log
+SHA256: 9bb1ea2bdbdd097e5ec2d58ba54ef1a47068a6d9b9a63d455f612b289e5e0c4e
+BUILD SUCCESSFUL in 5m 22s
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+
+COMMAND LOG: web-final.log
+SHA256: ba08b3455b180cfb4cd62d6bf377793ba3f7e3e012d8c33c083c0c9743530c5c
+browser-smoke: PASS (main)
+browser-smoke: PASS (after-restart)
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview
+  PASS  server stops gracefully on SIGTERM
+  PASS  confirmed draft survives server restart (browser reload), export

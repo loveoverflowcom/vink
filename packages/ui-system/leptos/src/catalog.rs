@@ -778,7 +778,7 @@ pub const ENTRIES: &[CatalogEntry] = &[
         id: "navigation.rail",
         family: "navigation",
         label: "Rail điều hướng",
-        summary: "Thương hiệu → nút thu/mở thường trực → Khám phá → Bàn viết; Tôi ở chân. Đích là link thật, đang chọn bằng aria-current.",
+        summary: "Rail riêng 220/96; ghi chú và route ngoài rail, không ghép cột nội dung. Thương hiệu → nút thu/mở → Khám phá → Bàn viết; Tôi ở chân.",
         scenarios: &[
             Scenario {
                 id: "default",
@@ -852,31 +852,39 @@ pub const ENTRIES: &[CatalogEntry] = &[
         id: "navigation.scaffold",
         family: "navigation",
         label: "Khung thích ứng",
-        summary: "Rail 220/96 hoặc thanh dưới theo lớp cửa sổ, ngữ cảnh và preference; nội dung giữ nguyên khi đổi khung.",
+        summary: "Khung ép cố định có canvas cuộn ngang và nhãn rõ; adaptive đo frame thật, giữ nội dung qua resize và preference.",
         scenarios: &[
             Scenario {
                 id: "default",
-                label: "Rộng: rail 220",
+                label: "Ép cố định · Rộng: rail 220",
             },
             Scenario {
                 id: "medium",
-                label: "Vừa: rail 96",
+                label: "Ép cố định · Vừa: rail 96",
             },
             Scenario {
                 id: "compact",
-                label: "Hẹp: thanh dưới",
+                label: "Ép cố định · Hẹp: thanh dưới",
             },
             Scenario {
                 id: "editor",
-                label: "Đang viết: rail 96, ẩn thanh",
+                label: "Ép cố định · Đang viết: rail 96, ẩn thanh",
             },
             Scenario {
                 id: "toggle",
-                label: "Thu/mở giữ trang",
+                label: "Ép cố định · Thu/mở giữ trang",
             },
             Scenario {
                 id: "short",
-                label: "Thấp hoặc ngang",
+                label: "Ép cố định · Thấp hoặc ngang",
+            },
+            Scenario {
+                id: "adaptive",
+                label: "Thích ứng theo frame",
+            },
+            Scenario {
+                id: "adaptive-editor",
+                label: "Thích ứng · đang viết",
             },
         ],
         leptos: "implemented-unverified",

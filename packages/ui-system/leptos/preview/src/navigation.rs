@@ -1,6 +1,6 @@
 //! UIS-04 specimens: shell and navigation primitives through the public `vink_ui` API. The
 //! preview has no router: destinations dispatch into an in-memory route (logged), the layout is
-//! fixed per scenario (`data-layout`), and the toggle stores an in-memory preference. The real
+//! either fixed per scenario or measured from its frame, and toggles stay in memory. The real
 //! router, guard and history are checked against the app by the Web browser smoke.
 
 use leptos::prelude::*;
@@ -102,6 +102,8 @@ struct Frame {
     long: bool,
     primary: &'static [&'static str],
     height: u32,
+    adaptive: bool,
+    rail_only: bool,
 }
 
 impl Default for Frame {
@@ -113,6 +115,8 @@ impl Default for Frame {
             long: false,
             primary: &["explore", "desk"],
             height: 460,
+            adaptive: false,
+            rail_only: false,
         }
     }
 }
@@ -127,9 +131,22 @@ fn shell(frame: Frame, host: Host, page: AnyView, overlays: ViewFn) -> AnyView {
         long,
         primary,
         height,
+        adaptive,
+        rail_only,
     } = frame;
     host.route.set(route);
-    let layout = Memo::new(move |_| NavLayout::resolve(window, context, host.preference.get()));
+    let viewport = NodeRef::<leptos::html::Div>::new();
+    let width = RwSignal::new(0.0);
+    #[cfg(feature = "csr")]
+    Effect::new(move |_| observe_width(viewport, width));
+    let layout = Memo::new(move |_| {
+        let window = if adaptive {
+            WindowClass::from_css_px(width.get())
+        } else {
+            window
+        };
+        NavLayout::resolve(window, context, host.preference.get())
+    });
     let navigate = host.navigate();
     let toggle = Callback::new(move |()| {
         if let Some(next) = layout.get_untracked().next_preference() {
@@ -158,39 +175,49 @@ fn shell(frame: Frame, host: Host, page: AnyView, overlays: ViewFn) -> AnyView {
     } else {
         "Tôi"
     };
-    view! {
-        <div class="vkp-shell-frame" style=format!("--vk-ui-scaffold-height: {height}px") data-layout=move || layout.get().id()>
+    let rail = ViewFn::from(move || {
+        view! {
+            <NavigationRail
+                id="nav-rail"
+                label="Không gian Vink"
+                nav_label="Điều hướng chính"
+                expanded=Signal::derive(move || layout.get().rail_expanded())
+                expand_label="Mở rộng điều hướng"
+                collapse_label="Thu gọn điều hướng"
+                on_toggle=toggle
+                destinations=rail_items.clone()
+                on_navigate=navigate
+                brand=brand
+                account=move || view! {
+                    <NavUtility
+                        id="nav-profile-trigger"
+                        label=me_label
+                        icon=IconName::Person
+                        controls=PROFILE
+                        expanded=profile_open
+                        current=host.active("me")
+                        on_open=open_profile
+                    />
+                }
+            />
+        }
+    });
+    let content = if rail_only {
+        view! {
+            <div class="vk-ui-scaffold vkp-rail-only" data-layout=move || layout.get().id()>
+                {rail.run()}
+            </div>
+        }
+        .into_any()
+    } else {
+        view! {
             <AdaptiveScaffold
                 id="nav-shell"
                 main_id="nav-main"
                 skip_label="Bỏ qua tới nội dung"
                 fixed=Signal::derive(move || layout.get())
                 context=context
-                rail=move || view! {
-                    <NavigationRail
-                        id="nav-rail"
-                        label="Không gian Vink"
-                        nav_label="Điều hướng chính"
-                        expanded=Signal::derive(move || layout.get().rail_expanded())
-                        expand_label="Mở rộng điều hướng"
-                        collapse_label="Thu gọn điều hướng"
-                        on_toggle=toggle
-                        destinations=rail_items.clone()
-                        on_navigate=navigate
-                        brand=brand
-                        account=move || view! {
-                            <NavUtility
-                                id="nav-profile-trigger"
-                                label=me_label
-                                icon=IconName::Person
-                                controls=PROFILE
-                                expanded=profile_open
-                                current=host.active("me")
-                                on_open=open_profile
-                            />
-                        }
-                    />
-                }
+                rail=rail
                 top_bar=|| view! { <TopBar brand=brand /> }
                 bar=move || view! {
                     <BottomNavigation
@@ -203,15 +230,98 @@ fn shell(frame: Frame, host: Host, page: AnyView, overlays: ViewFn) -> AnyView {
                 overlays=overlays
             >
                 <main id="nav-main" class="vkp-shell-main" tabindex="-1">
-                    <p class="vkp-shell-route" data-testid="nav-route">
-                        {move || format!("Trang hiện tại: {}", host.route.get())}
-                    </p>
                     {page}
                 </main>
             </AdaptiveScaffold>
+        }
+        .into_any()
+    };
+    let minimum = if adaptive || rail_only || window == WindowClass::Compact {
+        0.0
+    } else if window == WindowClass::Expanded {
+        WindowClass::CSS_PX.1
+    } else {
+        WindowClass::CSS_PX.0
+    };
+    let requested = if rail_only {
+        "rail riêng"
+    } else if adaptive {
+        "adaptive"
+    } else {
+        window.id()
+    };
+    view! {
+        <p class="vkp-shell-meta" data-testid="nav-route">
+            {move || format!("Yêu cầu: {requested} · hiệu lực: {} · frame: {:.1} CSS px · Trang hiện tại: {}",
+                layout.get().id(), width.get(), host.route.get())}
+        </p>
+        <div class="vkp-shell-viewport" node_ref=viewport tabindex="0" role="region"
+            aria-label="Khung mẫu điều hướng; khung ép cố định có thể cuộn ngang">
+            <div class="vkp-shell-frame"
+                style=format!("--vk-ui-scaffold-height: {height}px; min-inline-size: {minimum}px")
+                data-requested=requested data-layout=move || layout.get().id()>
+                {content}
+            </div>
         </div>
+    }.into_any()
+}
+
+/// One observer per mounted frame. A hidden/zero-width frame starts Compact and is measured
+/// again when shown. Cleanup disconnects before dropping the callback; no timer or remount.
+#[cfg(feature = "csr")]
+fn observe_width(frame: NodeRef<leptos::html::Div>, width: RwSignal<f64>) {
+    use wasm_bindgen::{JsCast, closure::Closure};
+    let Some(frame) = frame.get() else {
+        return;
+    };
+    let measured = frame.clone();
+    let measure = move || {
+        let _ = width.try_set(measured.client_width() as f64);
+    };
+    measure();
+    let callback = Closure::<dyn FnMut()>::new(measure);
+    if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
+        observer.observe(&frame);
+        let observer = StoredValue::new_local(Some((observer, callback)));
+        on_cleanup(move || {
+            if let Some((observer, _)) = observer.try_update_value(Option::take).flatten() {
+                observer.disconnect();
+            }
+        });
     }
-    .into_any()
+}
+
+fn profile_dialog(host: Host) -> AnyView {
+    view! {
+        <Dialog id=PROFILE title="Tôi" context="Lớp phủ [Mẫu]; không có tài khoản hay lưu."
+            on:close=move |_| focus_visible_page()
+            open=Signal::derive(move || host.overlays.with(|layer| layer.is_open(PROFILE)))
+            on_dismiss=Callback::new(move |_: DismissReason| host.overlays.update(|layer| { layer.close(PROFILE, CloseReason::Dismiss); }))
+            actions=move || view! {
+                <Button on_press=move |_| host.overlays.update(|layer| { layer.close(PROFILE, CloseReason::Dismiss); })>"Đóng"</Button>
+            }
+        />
+    }.into_any()
+}
+
+// A resize may hide the rail trigger while the modal is open. The close event runs after
+// native close/focus return; move focus to the still-mounted page when that trigger is hidden.
+fn focus_visible_page() {
+    #[cfg(feature = "csr")]
+    {
+        use wasm_bindgen::JsCast;
+        if document()
+            .get_element_by_id("nav-profile-trigger")
+            .is_some_and(|trigger| trigger.get_bounding_client_rect().width() == 0.0)
+            && let Some(main) = document()
+                .get_element_by_id("nav-main")
+                .and_then(|main| main.dyn_into::<web_sys::HtmlElement>().ok())
+        {
+            let options = web_sys::FocusOptions::new();
+            options.set_prevent_scroll(true);
+            let _ = main.focus_with_options(&options);
+        }
+    }
 }
 
 fn draft() -> AnyView {
@@ -237,7 +347,7 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
     let host = Host::new("explore");
     Some(match (id, scenario) {
         ("navigation.rail", scenario) => {
-            let mut frame = Frame::default();
+            let mut frame = Frame { rail_only: true, ..Frame::default() };
             let text = match scenario {
                 "compact" => {
                     frame.window = WindowClass::Medium;
@@ -250,7 +360,7 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
                 "long-labels" => {
                     frame.long = true;
                     frame.window = WindowClass::Medium;
-                    "Nhãn dài xuống dòng trong rail 96, không cắt chữ và không tràn ngang."
+                    "Stress rail 96 với nhãn dài: chữ lớn có thể tách từ; dùng nút Mở rộng để đọc trong rail 220. Không coi đây là PASS khả năng đọc."
                 }
                 "guest" => {
                     frame.primary = &["explore"];
@@ -302,6 +412,14 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
         ("navigation.scaffold", scenario) => {
             let mut frame = Frame::default();
             let text = match scenario {
+                "adaptive" | "adaptive-editor" => {
+                    frame.adaptive = true;
+                    if scenario == "adaptive-editor" {
+                        frame.route = "editor";
+                        frame.context = NavContext { compact_rail: true, hide_bar: true };
+                    }
+                    "Khung thích ứng: đo bề rộng frame thật; giữ trang, chữ, vùng chọn và lớp phủ khi đổi cỡ."
+                }
                 "medium" => {
                     frame.window = WindowClass::Medium;
                     "Cửa sổ vừa: mặc định rail 96."
@@ -328,12 +446,16 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
                 }
                 _ => "Cửa sổ rộng: rail 220.",
             };
-            let page = if matches!(scenario, "toggle" | "editor") {
+            let page = if matches!(scenario, "toggle" | "editor" | "adaptive" | "adaptive-editor") {
                 draft()
             } else {
                 quiet()
             };
-            view! { {note(text)} {shell(frame, host, page, ViewFn::default())} }.into_any()
+            let mode_note = if frame.adaptive { "" } else {
+                "Khung ép cố định để kiểm variant. Khi không vừa, Tab vào vùng khung và cuộn ngang để xem nội dung; dùng adaptive để kiểm reflow."
+            };
+            let overlays = ViewFn::from(move || profile_dialog(host));
+            view! { {note(text)} {(!mode_note.is_empty()).then(|| note(mode_note))} {shell(frame, host, page, overlays)} }.into_any()
         }
         ("navigation.overlay", scenario) => overlay(scenario, host),
         ("navigation.adapter", _) => view! {

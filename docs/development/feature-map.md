@@ -262,3 +262,20 @@ Coverage trên nền `204d319` + UIS-06 diff; kết quả thực và readiness t
 
 Native diagnostic không là app production, không nối auth/save/feedback backend.
 Extension và compatibility/removal owners ở [UI guide](../../packages/ui-system/EXTENDING.md).
+
+## Preview điều hướng: UI-REPAIR-09
+
+`navigation.rail` chỉ kiểm rail 220/96; `navigation.scaffold` phân biệt canvas ép
+cố định (cuộn ngang có nhãn) với `adaptive`/`adaptive-editor` đo frame thật. Các ID
+cũ giữ nguyên. Owner/scenario và đơn vị:
+[navigation contract](../../packages/ui-system/shared/navigation.md#qualification-preview-ui-repair-09).
+
+`preview-smoke.mjs::navigationFit` kiểm width/role/scroll bằng bàn phím, hai frame
+320/800/1200 CSS px trong cùng viewport 1440, preference/context, input node +
+chữ/vùng chọn riêng, route/overlay/focus return, hidden mount và observer disposal.
+Matrix 320/390/834/1440 × sáng/tối × chữ 100/200 đo frame riêng và kiểm nguyên từ
+cho nhãn thường; rail96/long-labels vẫn là stress có giới hạn ghi rõ.
+`NavigationPreviewTest` kiểm counterpart dp, input/vùng chọn đã sửa và overlay qua
+resize trên JVM. Các lane ghi bằng chứng riêng; coverage này không xác nhận
+Android/iOS runtime, OS IME hay screen reader. Kết quả và ảnh ở
+[UI-REPAIR-09](../design/ui-repair-09.md).
