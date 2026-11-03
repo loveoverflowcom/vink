@@ -1,0 +1,500 @@
+{
+  "baseline_ui_sha": "585ab7edc2c09a79246061e075f0baf640755282",
+  "text_scale_method": "root font 16px / 32px; not browser zoom",
+  "measurements": {
+    "reader-320-200-light": {
+      "before": {
+        "route": "/tac-pham/77777777-7777-4777-8777-000000000000",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": {
+            "x": 32,
+            "y": 333.984375,
+            "width": 241,
+            "height": 1689.53125,
+            "fontSize": "64px",
+            "lineHeight": "76.8px"
+          },
+          "header": {
+            "x": 32,
+            "y": 297.59375,
+            "width": 241,
+            "height": 2065.09375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "body": {
+            "x": 32,
+            "y": 2386.6875,
+            "width": 241,
+            "height": 7264.71875,
+            "fontSize": "34px",
+            "lineHeight": "62.9px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 720.8125,
+            "width": 305,
+            "height": 179.1875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 736.8125,
+                "width": 85.65625,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 16,
+                "y": 784.8125,
+                "width": 85.65625,
+                "height": 83.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 109.65625,
+                "y": 736.8125,
+                "width": 85.671875,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 109.65625,
+                "y": 784.8125,
+                "width": 85.671875,
+                "height": 83.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 736.8125,
+                "width": 85.65625,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 226.421875,
+                "y": 805.609375,
+                "width": 39.453125,
+                "height": 41.59375,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            }
+          ]
+        }
+      },
+      "after": {
+        "route": "/tac-pham/77777777-7777-4777-8777-000000000000",
+        "width": 320,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": {
+            "x": 32,
+            "y": 333.984375,
+            "width": 241,
+            "height": 857.8125,
+            "fontSize": "44px",
+            "lineHeight": "57.2px"
+          },
+          "header": {
+            "x": 32,
+            "y": 297.59375,
+            "width": 241,
+            "height": 1233.375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "body": {
+            "x": 32,
+            "y": 1554.96875,
+            "width": 241,
+            "height": 7264.71875,
+            "fontSize": "34px",
+            "lineHeight": "62.9px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 763.21875,
+            "width": 305,
+            "height": 136.78125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 16,
+                "y": 811.21875,
+                "width": 85.65625,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 109.65625,
+                "y": 771.21875,
+                "width": 85.671875,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 109.65625,
+                "y": 811.21875,
+                "width": 85.671875,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 203.328125,
+                "y": 771.21875,
+                "width": 85.65625,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 226.421875,
+                "y": 829.40625,
+                "width": 39.453125,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "reader-390-200-light": {
+      "before": {
+        "route": "/tac-pham/77777777-7777-4777-8777-000000000000",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": {
+            "x": 32,
+            "y": 333.984375,
+            "width": 311,
+            "height": 1151.953125,
+            "fontSize": "64px",
+            "lineHeight": "76.8px"
+          },
+          "header": {
+            "x": 32,
+            "y": 297.59375,
+            "width": 311,
+            "height": 1396.328125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "body": {
+            "x": 32,
+            "y": 1717.921875,
+            "width": 311,
+            "height": 5818.234375,
+            "fontSize": "34px",
+            "lineHeight": "62.9px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 720.8125,
+            "width": 375,
+            "height": 179.1875,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 736.8125,
+                "width": 109,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 16,
+                "y": 784.8125,
+                "width": 109,
+                "height": 83.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 133,
+                "y": 736.8125,
+                "width": 109,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 134.296875,
+                "y": 805.609375,
+                "width": 106.40625,
+                "height": 41.59375,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 736.8125,
+                "width": 109,
+                "height": 147.1875,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              },
+              "text": {
+                "x": 284.765625,
+                "y": 805.609375,
+                "width": 39.453125,
+                "height": 41.59375,
+                "fontSize": "26px",
+                "lineHeight": "41.6px"
+              }
+            }
+          ]
+        }
+      },
+      "after": {
+        "route": "/tac-pham/77777777-7777-4777-8777-000000000000",
+        "width": 390,
+        "height": 900,
+        "dpr": 1,
+        "scrollX": 0,
+        "scrollY": 0,
+        "theme": "light",
+        "fontSize": "32px",
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+        "reader": {
+          "title": {
+            "x": 32,
+            "y": 333.984375,
+            "width": 311,
+            "height": 629.0625,
+            "fontSize": "44px",
+            "lineHeight": "57.2px"
+          },
+          "header": {
+            "x": 32,
+            "y": 297.59375,
+            "width": 311,
+            "height": 873.4375,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "body": {
+            "x": 32,
+            "y": 1195.03125,
+            "width": 311,
+            "height": 5818.234375,
+            "fontSize": "34px",
+            "lineHeight": "62.9px"
+          }
+        },
+        "navigation": {
+          "bar": {
+            "x": 0,
+            "y": 763.21875,
+            "width": 375,
+            "height": 136.78125,
+            "fontSize": "32px",
+            "lineHeight": "51.2px"
+          },
+          "labels": [
+            {
+              "label": "Khám phá",
+              "target": {
+                "x": 16,
+                "y": 771.21875,
+                "width": 109,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 16,
+                "y": 811.21875,
+                "width": 109,
+                "height": 72.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Bàn viết",
+              "target": {
+                "x": 133,
+                "y": 771.21875,
+                "width": 109,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 134.296875,
+                "y": 829.40625,
+                "width": 106.40625,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            },
+            {
+              "label": "Tôi",
+              "target": {
+                "x": 250,
+                "y": 771.21875,
+                "width": 109,
+                "height": 120.78125,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              },
+              "text": {
+                "x": 284.765625,
+                "y": 829.40625,
+                "width": 39.453125,
+                "height": 36.390625,
+                "fontSize": "26px",
+                "lineHeight": "36.4px"
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "after_screenshots_inspected": [
+    "reader-320-100-light",
+    "reader-320-200-light",
+    "reader-320-100-dark",
+    "reader-320-200-dark",
+    "reader-390-100-light",
+    "reader-390-200-light",
+    "reader-390-100-dark",
+    "reader-390-200-dark",
+    "reader-834-100-light",
+    "reader-834-200-light",
+    "reader-834-100-dark",
+    "reader-834-200-dark",
+    "reader-1440-100-light",
+    "reader-1440-200-light",
+    "reader-1440-100-dark",
+    "reader-1440-200-dark",
+    "reader-real-320-100-light",
+    "reader-real-320-200-light",
+    "reader-real-320-100-dark",
+    "reader-real-320-200-dark",
+    "reader-real-390-100-light",
+    "reader-real-390-200-light",
+    "reader-real-390-100-dark",
+    "reader-real-390-200-dark",
+    "reader-real-834-100-light",
+    "reader-real-834-200-light",
+    "reader-real-834-100-dark",
+    "reader-real-834-200-dark",
+    "reader-real-1440-100-light",
+    "reader-real-1440-200-light",
+    "reader-real-1440-100-dark",
+    "reader-real-1440-200-dark",
+    "reader-empty-320-100-light",
+    "reader-empty-320-200-light",
+    "reader-empty-320-100-dark",
+    "reader-empty-320-200-dark",
+    "reader-empty-390-100-light",
+    "reader-empty-390-200-light",
+    "reader-empty-390-100-dark",
+    "reader-empty-390-200-dark",
+    "reader-empty-834-100-light",
+    "reader-empty-834-200-light",
+    "reader-empty-834-100-dark",
+    "reader-empty-834-200-dark",
+    "reader-empty-1440-100-light",
+    "reader-empty-1440-200-light",
+    "reader-empty-1440-100-dark",
+    "reader-empty-1440-200-dark",
+    "reader-unbroken-320-200-light",
+    "reader-unbroken-320-200-dark",
+    "reader-unbroken-390-200-light",
+    "reader-unbroken-390-200-dark",
+    "320-me-light-text100",
+    "320-me-light-text200",
+    "320-me-dark-text100",
+    "320-me-dark-text200",
+    "390-me-light-text100",
+    "390-me-light-text200",
+    "390-me-dark-text100",
+    "390-me-dark-text200",
+    "1024-me-light-text100",
+    "1024-me-light-text200",
+    "1024-me-dark-text100",
+    "1024-me-dark-text200"
+  ]
+}
