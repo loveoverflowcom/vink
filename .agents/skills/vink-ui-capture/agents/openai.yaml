@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vink UI Capture"
+  short_description: "Chụp và báo cáo hiện trạng UI Vink để bàn giao review"
+  default_prompt: "Dùng $vink-ui-capture để thu thập ảnh UI Vink hiện tại, navigation, component, preview và tokens cùng manifest, coverage và giới hạn; upload Drive nếu yêu cầu đã bao gồm việc đó."
+policy:
+  allow_implicit_invocation: true

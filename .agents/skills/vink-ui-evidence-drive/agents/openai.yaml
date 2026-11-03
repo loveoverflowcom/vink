@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vink UI Evidence Drive"
+  short_description: "Upload bằng chứng UI Vink và cập nhật index trên Drive"
+  default_prompt: "Dùng $vink-ui-evidence-drive để upload hoặc resume bundle UI Vink, xác minh file/link, map reference và cập nhật screen index trên Drive để bàn giao review."
+policy:
+  allow_implicit_invocation: true
