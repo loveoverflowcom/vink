@@ -10,6 +10,7 @@
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
 import { spawn } from 'node:child_process';
+import { expressionPilot } from './expressions-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -1911,6 +1912,7 @@ async function editorChrome(page) {
 
 async function mainPhase(page) {
   await serverHtml();
+  await expressionPilot(page, args, check);
   await adaptiveShell(page);
   await draftDashboard(page);
   await publicReading(page);

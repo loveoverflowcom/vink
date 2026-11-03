@@ -1,0 +1,145 @@
+{
+  "format": "vink-expression-unicode-v1",
+  "cases": [
+    {
+      "source": "😀",
+      "codepoints": "1f600",
+      "asset_id": "noto-smile"
+    },
+    {
+      "source": "😂",
+      "codepoints": "1f602",
+      "asset_id": "noto-joy"
+    },
+    {
+      "source": "🥰",
+      "codepoints": "1f970",
+      "asset_id": "noto-hearts-face"
+    },
+    {
+      "source": "🤔",
+      "codepoints": "1f914",
+      "asset_id": "noto-thinking"
+    },
+    {
+      "source": "😢",
+      "codepoints": "1f622",
+      "asset_id": "noto-cry"
+    },
+    {
+      "source": "🤗",
+      "codepoints": "1f917",
+      "asset_id": "noto-hug"
+    },
+    {
+      "source": "🙏",
+      "codepoints": "1f64f",
+      "asset_id": "noto-thanks"
+    },
+    {
+      "source": "👍",
+      "codepoints": "1f44d",
+      "asset_id": "noto-thumbs-up"
+    },
+    {
+      "source": "👍🏽",
+      "codepoints": "1f44d-1f3fd",
+      "asset_id": "noto-thumbs-up-medium"
+    },
+    {
+      "source": "👏",
+      "codepoints": "1f44f",
+      "asset_id": "noto-clap"
+    },
+    {
+      "source": "🎉",
+      "codepoints": "1f389",
+      "asset_id": "noto-party"
+    },
+    {
+      "source": "✨",
+      "codepoints": "2728",
+      "asset_id": "noto-sparkles"
+    },
+    {
+      "source": "❤️",
+      "codepoints": "2764-fe0f",
+      "asset_id": "noto-heart"
+    },
+    {
+      "source": "❤",
+      "codepoints": "2764",
+      "asset_id": "noto-heart"
+    },
+    {
+      "source": "❤️‍🔥",
+      "codepoints": "2764-fe0f-200d-1f525",
+      "asset_id": "noto-heart-fire"
+    },
+    {
+      "source": "❤‍🔥",
+      "codepoints": "2764-200d-1f525",
+      "asset_id": "noto-heart-fire"
+    },
+    {
+      "source": "🔥",
+      "codepoints": "1f525",
+      "asset_id": "noto-fire"
+    },
+    {
+      "source": "😉",
+      "codepoints": "1f609",
+      "asset_id": "noto-wink"
+    },
+    {
+      "source": "👍🏻",
+      "codepoints": "1f44d-1f3fb",
+      "asset_id": null
+    },
+    {
+      "source": "👩‍👩‍👧‍👦",
+      "codepoints": "1f469-200d-1f469-200d-1f467-200d-1f466",
+      "asset_id": null
+    },
+    {
+      "source": "🇻🇳",
+      "codepoints": "1f1fb-1f1f3",
+      "asset_id": null
+    },
+    {
+      "source": "1️⃣",
+      "codepoints": "31-fe0f-20e3",
+      "asset_id": null
+    },
+    {
+      "source": "1⃣",
+      "codepoints": "31-20e3",
+      "asset_id": null
+    },
+    {
+      "source": "☃️",
+      "codepoints": "2603-fe0f",
+      "asset_id": null
+    },
+    {
+      "source": "😀😀",
+      "codepoints": "1f600-1f600",
+      "asset_id": null
+    },
+    {
+      "source": "😀‍",
+      "codepoints": "1f600-200d",
+      "asset_id": null
+    },
+    {
+      "source": "á — thơ\n  vẫn còn",
+      "codepoints": "61-301-20-2014-20-74-68-1a1-a-20-20-76-1eab-6e-20-63-f2-6e",
+      "asset_id": null
+    },
+    {
+      "source": "",
+      "codepoints": "",
+      "asset_id": null
+    }
+  ]
+}
