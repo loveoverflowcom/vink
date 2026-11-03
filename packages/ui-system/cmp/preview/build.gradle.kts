@@ -26,6 +26,7 @@ kotlin {
             dependencies {
                 implementation(project(":ui"))
                 implementation(project(":patterns"))
+                implementation(project(":diagnostics"))
                 implementation(compose.desktop.currentOs)
             }
             resources.srcDir(files(layout.buildDirectory.dir("generated/preview-fonts")).builtBy(syncPreviewFonts))

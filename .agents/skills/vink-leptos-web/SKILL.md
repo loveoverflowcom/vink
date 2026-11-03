@@ -29,7 +29,7 @@ do not inherit Cantos's CSR/Trunk setup.
 | CodeMirror 6 body editor: wasm-bindgen bridge, `BodySource::snapshot` | `src/editor.rs`; runtime in `editor/` (TypeScript, pinned npm, built to `/pkg/vink-editor.js`) |
 | Shared leave guard for links, back/forward and programmatic exits | `src/navigation.rs` (`NavigationGuard`) |
 | Token values (generated `tokens.css`, typed Rust); theme scope types | `packages/ui-system/shared/tokens.json` → `cargo xtask ui-tokens`; crate `vink-ui` (`packages/ui-system/leptos`) |
-| Web components; self-hosted fonts | `style/vink.css` (served after `tokens.css` as `/pkg/vink.css`); `assets/fonts` (copied to `/pkg/fonts/` by `cargo xtask build`) |
+| Shared controls/patterns; page glue and fonts | `packages/ui-system/leptos/style/vink-ui.css` + `packages/vink-patterns/leptos/patterns.css`; app `style/vink.css` owns page layout/CodeMirror only; build serves them with generated `tokens.css` as `/pkg/vink.css`; `assets/fonts` → `/pkg/fonts/` |
 | Browser smoke over the DevTools Protocol | `e2e/browser-smoke.mjs` (run by `verify web`) |
 
 Leptos is pinned at 0.8 (see `Cargo.lock`); check that version's docs when unsure of an API.

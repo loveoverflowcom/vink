@@ -14,7 +14,6 @@ import vink.ui.VinkFonts
  * (`vink-fonts/`). Skia decodes each file or the preview falls back to native families and says
  * so. Nothing here is part of the common library, and Android/iOS font loading is not covered.
  */
-data class LoadedFonts(val fonts: VinkFonts, val status: String, val loaded: List<String>)
 
 object PreviewFonts {
     fun load(): LoadedFonts {

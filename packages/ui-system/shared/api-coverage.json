@@ -1,0 +1,692 @@
+{
+  "format": 1,
+  "version": "0.1.0",
+  "components": [
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/action.rs",
+      "symbol": "Button",
+      "entry": "action.button"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/action.rs",
+      "symbol": "IconButton",
+      "entry": "action.icon-button"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/action.rs",
+      "symbol": "Link",
+      "entry": "action.link"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/action.rs",
+      "symbol": "FilterChip",
+      "entry": "action.filter-chip"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "MotionActivityScope",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "LoadingIndicator",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "EdgeProgress",
+      "entry": "state.progress"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "Skeleton",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "StatePanel",
+      "entry": "state.empty"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "InlineNotice",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "Banner",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "StatusBadge",
+      "entry": "state.status"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "ListEnd",
+      "entry": "state.empty"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "Snackbar",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "Dialog",
+      "entry": "state.dialog"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/feedback.rs",
+      "symbol": "ContentRegion",
+      "entry": "state.playground"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "TextField",
+      "entry": "field.text-field"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "TextArea",
+      "entry": "field.text-area"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "SearchField",
+      "entry": "field.search-field"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "Checkbox",
+      "entry": "field.checkbox"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "Switch",
+      "entry": "field.switch"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "RadioGroup",
+      "entry": "field.radio"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "Select",
+      "entry": "field.select"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "FormSummary",
+      "entry": "field.form"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/layout.rs",
+      "symbol": "Surface",
+      "entry": "layout.surface"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/layout.rs",
+      "symbol": "Container",
+      "entry": "layout.container"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/layout.rs",
+      "symbol": "Stack",
+      "entry": "layout.stack"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/layout.rs",
+      "symbol": "Grid",
+      "entry": "layout.grid"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/layout.rs",
+      "symbol": "Divider",
+      "entry": "layout.divider"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/media.rs",
+      "symbol": "Icon",
+      "entry": "identity.icon"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/media.rs",
+      "symbol": "Avatar",
+      "entry": "identity.avatar"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/media.rs",
+      "symbol": "AvatarGroup",
+      "entry": "identity.avatar-group"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/media.rs",
+      "symbol": "AuthorByline",
+      "entry": "identity.author-byline"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/media.rs",
+      "symbol": "ImageFrame",
+      "entry": "identity.image-frame"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "NavItem",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "NavUtility",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "NavigationRail",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "BottomNavigation",
+      "entry": "navigation.bottom-bar"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "TopBar",
+      "entry": "navigation.top-bar"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/navigation.rs",
+      "symbol": "AdaptiveScaffold",
+      "entry": "navigation.scaffold"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/root.rs",
+      "symbol": "UiRoot",
+      "entry": "foundation.color-roles"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/root.rs",
+      "symbol": "ThemeScope",
+      "entry": "composition.nested"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/text.rs",
+      "symbol": "Text",
+      "entry": "text.text"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/text.rs",
+      "symbol": "Heading",
+      "entry": "text.heading"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "WorkByline",
+      "entry": "screen.explore"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "WorkCard",
+      "entry": "screen.explore"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "ReaderHeader",
+      "entry": "screen.reader"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "DraftMetadata",
+      "entry": "screen.desk"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "DraftResume",
+      "entry": "screen.desk"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "DraftRow",
+      "entry": "screen.desk"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "EditorToolbar",
+      "entry": "screen.editor"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "ParticipantSummary",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "FeedbackItem",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "FeedbackThread",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "FeedbackComposer",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "RecentFeedback",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
+      "symbol": "VinkButton",
+      "entry": "action.button"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
+      "symbol": "VinkIconButton",
+      "entry": "action.icon-button"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
+      "symbol": "VinkLink",
+      "entry": "action.link"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
+      "symbol": "VinkFilterChip",
+      "entry": "action.filter-chip"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkMotionActivity",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkLoadingIndicator",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkEdgeProgress",
+      "entry": "state.progress"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkSkeleton",
+      "entry": "state.loading"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkStatePanel",
+      "entry": "state.empty"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkInlineNotice",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkBanner",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkStatusBadge",
+      "entry": "state.status"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkListEnd",
+      "entry": "state.empty"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkSnackbar",
+      "entry": "state.notice"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkDialog",
+      "entry": "state.dialog"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
+      "symbol": "VinkContentRegion",
+      "entry": "state.playground"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkTextField",
+      "entry": "field.text-field"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkTextArea",
+      "entry": "field.text-area"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkSearchField",
+      "entry": "field.search-field"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkCheckbox",
+      "entry": "field.checkbox"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkSwitch",
+      "entry": "field.switch"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkRadioGroup",
+      "entry": "field.radio"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkSelect",
+      "entry": "field.select"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "symbol": "VinkFormSummary",
+      "entry": "field.form"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkText",
+      "entry": "text.text"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkHeading",
+      "entry": "text.heading"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkSurface",
+      "entry": "layout.surface"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkContainer",
+      "entry": "layout.container"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkStack",
+      "entry": "layout.stack"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkGrid",
+      "entry": "layout.grid"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkLayout.kt",
+      "symbol": "VinkDivider",
+      "entry": "layout.divider"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkMedia.kt",
+      "symbol": "VinkIcon",
+      "entry": "identity.icon"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkMedia.kt",
+      "symbol": "VinkAvatar",
+      "entry": "identity.avatar"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkMedia.kt",
+      "symbol": "VinkAvatarGroup",
+      "entry": "identity.avatar-group"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkMedia.kt",
+      "symbol": "VinkAuthorByline",
+      "entry": "identity.author-byline"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkMedia.kt",
+      "symbol": "VinkImageFrame",
+      "entry": "identity.image-frame"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkNavItem",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkNavUtility",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkNavigationRail",
+      "entry": "navigation.rail"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkBottomNavigation",
+      "entry": "navigation.bottom-bar"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkTopBar",
+      "entry": "navigation.top-bar"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkNavigation.kt",
+      "symbol": "VinkAdaptiveScaffold",
+      "entry": "navigation.scaffold"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkTheme.kt",
+      "symbol": "VinkTheme",
+      "entry": "foundation.color-roles"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkTheme.kt",
+      "symbol": "VinkScope",
+      "entry": "composition.nested"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "WorkByline",
+      "entry": "screen.explore"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "WorkCard",
+      "entry": "screen.explore"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "ReaderHeader",
+      "entry": "screen.reader"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "DraftResume",
+      "entry": "screen.desk"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "EditorToolbar",
+      "entry": "screen.editor"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "ParticipantSummary",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "FeedbackItem",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "FeedbackThread",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "FeedbackComposer",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "RecentFeedback",
+      "entry": "composition.feedback"
+    }
+  ],
+  "style_exceptions": [
+    {
+      "path": "apps/vink-web/style/vink.css",
+      "declaration": "font-size: 0.9375rem",
+      "owner": "Editor save status",
+      "reason": "15px feature status; migrate when save status adopts shared badge anatomy."
+    },
+    {
+      "path": "apps/vink-web/style/vink.css",
+      "declaration": "transition-duration: 0.01ms !important",
+      "owner": "Web reduced-motion fallback",
+      "reason": "Near-zero finite transition compatibility; remove once all app transitions use shared motion."
+    },
+    {
+      "path": "apps/vink-web/style/vink.css",
+      "declaration": "animation-duration: 0.01ms !important",
+      "owner": "Web reduced-motion fallback",
+      "reason": "Finite iteration compatibility; loops remain stopped by library motion gate."
+    },
+    {
+      "path": "apps/vink-web/style/vink.css",
+      "declaration": "font: italic 1rem/1.8 var(--vk-font-reading)",
+      "owner": "Explore writing prompt quotation",
+      "reason": "Feature-specific italic quotation measure; remove when the quotation becomes a shared pattern with an admitted type recipe."
+    }
+  ]
+}

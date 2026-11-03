@@ -203,7 +203,7 @@ fun VinkSkeleton(shape: SkeletonShape, modifier: Modifier = Modifier) {
         null
     }
     val fill = LocalVink.current.colors[ColorRole.SurfaceContainerHighest]
-    val line = with(LocalDensity.current) { 16.sp.toDp() }
+    val line = with(LocalDensity.current) { VinkTextRoles.Body.size.toDp() }
     @Composable
     fun Bar(fraction: Float, height: Dp = line) =
         Box(Modifier.fillMaxWidth(fraction).height(height).background(fill, RoundedCornerShape(VinkDimens.RadiusSm)))
@@ -322,7 +322,7 @@ private fun NoticeBox(
                     // Aligned with the message; the 48dp target comes from the height and min width.
                     contentPadding = PaddingValues(horizontal = 0.dp),
                 ) {
-                    Text(it.label, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight.SemiBold, textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline))
+                    Text(it.label, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight(VinkTextRoles.Label.weight), textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline))
                 }
             }
         }
@@ -417,7 +417,7 @@ fun VinkSnackbar(message: SnackbarMessage?, onAction: () -> Unit, onDismiss: () 
         Text(message.text, Modifier.weight(1f).padding(vertical = VinkDimens.Space2), style = vink.text(VinkTextRoles.Body), color = ink)
         message.action?.let {
             TextButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp), colors = ButtonDefaults.textButtonColors(contentColor = ink)) {
-                Text(it, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight.SemiBold, textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline))
+                Text(it, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight(VinkTextRoles.Label.weight), textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline))
             }
         }
         androidx.compose.material3.IconButton(onClick = onDismiss) { VinkIcon(IconName.Close, label = "Đóng", size = IconSize.Small, tint = ink) }

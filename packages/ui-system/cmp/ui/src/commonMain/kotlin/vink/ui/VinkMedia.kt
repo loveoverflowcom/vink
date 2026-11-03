@@ -130,7 +130,7 @@ fun VinkAvatar(
         contentAlignment = Alignment.Center,
     ) {
         if (letters != null) {
-            Text(letters, color = c[fg], fontSize = letterSize, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+            Text(letters, color = c[fg], fontSize = letterSize, fontWeight = FontWeight(VinkTextRoles.Label.weight), maxLines = 1, softWrap = false)
         } else {
             Icon(IconName.Person.vector(), null, Modifier.size(diameter * 0.6f), tint = c[fg])
         }
@@ -169,7 +169,7 @@ fun VinkAvatarGroup(
                     .background(c[ColorRole.SurfaceContainerHighest], CircleShape).padding(horizontal = VinkDimens.Space1),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("+$more", style = LocalVink.current.text(VinkTextRoles.Caption), color = c[ColorRole.OnSurface], fontWeight = FontWeight.SemiBold)
+                Text("+$more", style = LocalVink.current.text(VinkTextRoles.Caption), color = c[ColorRole.OnSurface], fontWeight = FontWeight(VinkTextRoles.Label.weight))
             }
         }
     }
@@ -198,7 +198,7 @@ fun VinkAuthorByline(
         Column(Modifier.weight(1f, fill = false)) {
             if (onOpenProfile != null && !blank) {
                 // Same look as the Web byline link: the bold name colour, underlined.
-                val link = SpanStyle(color = vink.colors[ColorRole.OnSurface], fontWeight = FontWeight.SemiBold, textDecoration = TextDecoration.Underline)
+                val link = SpanStyle(color = vink.colors[ColorRole.OnSurface], fontWeight = FontWeight(VinkTextRoles.Label.weight), textDecoration = TextDecoration.Underline)
                 Text(
                     buildAnnotatedString { withLink(LinkAnnotation.Clickable("profile", TextLinkStyles(link)) { onOpenProfile() }) { append(shown) } },
                     style = vink.text(VinkTextRoles.Body),
@@ -207,7 +207,7 @@ fun VinkAuthorByline(
                 Text(
                     shown,
                     style = vink.text(VinkTextRoles.Body),
-                    fontWeight = if (blank) null else FontWeight.SemiBold,
+                    fontWeight = if (blank) null else FontWeight(VinkTextRoles.Label.weight),
                     color = vink.colors[if (blank) ColorRole.OnSurfaceVariant else ColorRole.OnSurface],
                 )
             }

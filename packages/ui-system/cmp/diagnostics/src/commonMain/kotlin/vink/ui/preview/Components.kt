@@ -1,5 +1,7 @@
 package vink.ui.preview
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,13 +20,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.painter.BitmapPainter
-import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import java.util.Base64
-import org.jetbrains.skia.Image
 import vink.ui.ActionState
 import vink.ui.AspectRatio
 import vink.ui.AvatarKind
@@ -82,16 +80,8 @@ import vink.ui.VinkTextField
 /** The preview's event log, provided by the workbench; specimens write intents into it. */
 val LocalPreviewLog = staticCompositionLocalOf<(String) -> Unit> { {} }
 
-/**
- * Preview adapter, not library code: decodes bytes with Skia. A decode failure (the undecodable
- * AVIF fixture) becomes [ImageState.Failed], so the component falls back without crashing.
- */
-fun decodeImage(base64: String): ImageState = try {
-    val bytes = Base64.getDecoder().decode(base64)
-    ImageState.Ready(BitmapPainter(Image.makeFromEncoded(bytes).toComposeImageBitmap()))
-} catch (e: Exception) {
-    ImageState.Failed
-}
+/** Host-owned decode adapter; invalid bytes must produce Failed. */
+expect fun decodeImage(base64: String): ImageState
 
 private val sample by lazy { decodeImage(VinkIdentityVectors.SAMPLE_PNG_BASE64) }
 private val broken by lazy { decodeImage(VinkIdentityVectors.BROKEN_AVIF_BASE64) }
@@ -400,10 +390,10 @@ private fun ActionChips(scenario: String) {
 @Composable
 private fun textState(initial: String, field: String): Pair<TextFieldValue, (TextFieldValue) -> Unit> {
     val log = LocalPreviewLog.current
-    var value by remember { mutableStateOf(TextFieldValue(initial)) }
+    var value by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(initial)) }
     return value to { next ->
         value = next
-        log("$field → \"${next.text}\" sel=${next.selection.start}..${next.selection.end}${if (next.composition != null) " (đang soạn IME)" else ""}")
+        log("$field input length=${next.text.length} sel=${next.selection.start}..${next.selection.end}${if (next.composition != null) " (đang soạn IME)" else ""}")
     }
 }
 

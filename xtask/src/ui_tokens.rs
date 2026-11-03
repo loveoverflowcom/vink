@@ -1197,6 +1197,16 @@ fn parse_catalog(text: &str) -> Result<Catalog, Vec<String>> {
                 Some(state) if statuses.contains(state) => {}
                 _ => problems.push(&at, format!("needs a declared status for {renderer}")),
             }
+            if status.get(renderer).is_some_and(|s| s == "unsupported")
+                && item["unsupported"][renderer]
+                    .as_str()
+                    .is_none_or(str::is_empty)
+            {
+                problems.push(
+                    &at,
+                    format!("unsupported {renderer} needs an explicit reason"),
+                );
+            }
         }
         if status.len() != RENDERERS.len() {
             problems.push(&at, "status names exactly leptos and cmp");
@@ -2863,6 +2873,20 @@ mod tests {
             mentions(&problems, "first scenario is `default`"),
             "{problems:?}"
         );
+    }
+
+    #[test]
+    fn unsupported_catalog_registration_requires_a_reason() {
+        let (tokens, catalog, fixtures) = sources();
+        let mut doc: Value = serde_json::from_str(&catalog).unwrap();
+        doc["entries"][0]["status"]["cmp"] = "unsupported".into();
+        assert!(mentions(
+            &generate(&tokens, &doc.to_string(), &fixtures).unwrap_err(),
+            "unsupported cmp needs an explicit reason"
+        ));
+        doc["entries"][0]["unsupported"]["cmp"] =
+            "Platform-specific semantics; see target contract".into();
+        assert!(generate(&tokens, &doc.to_string(), &fixtures).is_ok());
     }
 
     #[test]

@@ -32,7 +32,7 @@ const identity = JSON.parse(readFileSync(join(dirname(args.catalog), 'fixtures',
 const COMPONENTS = catalog.entries.filter((e) => !e.id.startsWith('foundation.'));
 const LIGHT = '#fffaff';
 const DARK = '#17121d';
-const WIDTHS = [320, 390, 834, 1440];
+const WIDTHS = [320, 390, 834, 1024, 1440];
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function check(condition, message) {
@@ -283,11 +283,62 @@ async function structure(page) {
       if (duplicates.length) throw new Error(`duplicate ids on ${entry.id}/${scenario.id}: ${duplicates.join(', ')}`);
       const missing = await page.eval(`[...document.querySelectorAll('[aria-describedby]')].flatMap((el) => el.getAttribute('aria-describedby').split(' ')).filter((id) => !document.getElementById(id))`);
       if (missing.length) throw new Error(`aria-describedby points at nothing on ${entry.id}/${scenario.id}: ${missing.join(', ')}`);
+      const invalid = await page.eval(`(() => {
+        const root = document.querySelector('#specimen-scope');
+        const nested = [...root.querySelectorAll('button, a[href]')].filter((el) => el.querySelector('button, a[href], input, select, textarea'));
+        const unnamed = [...root.querySelectorAll('button, a[href], input:not([type=hidden]), textarea, select')].filter((el) => {
+          const labelled = (el.getAttribute('aria-labelledby') || '').split(' ').map((id) => document.getElementById(id)?.textContent || '').join('');
+          return !(el.getAttribute('aria-label') || labelled || [...(el.labels || [])].map((l) => l.textContent).join('') || (el.matches('button, a') ? el.textContent : '')).trim();
+        });
+        return [...nested, ...unnamed].map((el) => el.outerHTML.slice(0, 200));
+      })()`);
+      if (invalid.length) throw new Error(`nested or unnamed controls on ${entry.id}/${scenario.id}: ${invalid.join(', ')}`);
     }
   }
   console.log('  ok  no duplicate ids and every aria-describedby resolves, every scenario');
   const status = await page.eval(`document.querySelector('[data-testid=inspector-status]').textContent`);
   check(status.includes('implemented-unverified'), 'inspector shows the registration status, not a pass');
+}
+
+async function forcedColors(page) {
+  await page.open('action.button');
+  await page.emulate('forced-colors', 'active');
+  await page.eval(`document.querySelector('#specimen-scope button').focus()`);
+  const focus = await page.eval(`(() => {
+    const el = document.activeElement, style = getComputedStyle(el);
+    return { name: el.textContent.trim(), outline: parseFloat(style.outlineWidth), adjustment: style.forcedColorAdjust };
+  })()`);
+  check(focus.name && focus.outline >= 3 && focus.adjustment !== 'none', 'forced-colors keeps named control and visible keyboard focus under system colors');
+  await page.capture('action.button--forced-colors--1440');
+  await page.emulate('forced-colors', 'none');
+}
+
+async function compactVietnameseWords(page) {
+  await page.viewport(1024);
+  await page.choose('scale', '200%');
+  await page.open('navigation.rail', 'compact');
+  const broken = await page.eval(`(() => {
+    const labels = [...document.querySelectorAll('.vk-ui-rail .vk-ui-nav-item__label')];
+    const selected = labels.filter((el) => el.textContent === 'Khám phá');
+    if (!selected.length) throw new Error('Missing Vietnamese rail label');
+    return selected.flatMap((el) => {
+      const node = el.firstChild;
+      return [[0,4],[5,8]].filter(([a,b]) => {
+        const r = document.createRange(); r.setStart(node,a); r.setEnd(node,b);
+        const rects = [...r.getClientRects()];
+        return rects.length !== 1;
+      });
+    });
+  })()`);
+  const geometry = await page.eval(`[...document.querySelectorAll('.vk-ui-rail .vk-ui-nav-item__label')].map(el => ({label:el.textContent, width:el.getBoundingClientRect().width,font:getComputedStyle(el).font,rail:el.closest('.vk-ui-rail').getBoundingClientRect().width, item:el.parentElement.getBoundingClientRect().width}))`);
+  await page.eval(`document.querySelector('#specimen-scope .vk-ui-rail .vk-ui-nav-item__label').scrollIntoView({block:'center'})`);
+  const shot = await page.send('Page.captureScreenshot', {format:'png', captureBeyondViewport:false});
+  writeFileSync(join(args.out, 'compact-words-viewport.png'), Buffer.from(shot.data, 'base64'));
+  console.log('  compact geometry ' + JSON.stringify(geometry));
+  await page.capture('navigation.rail--compact-words--1024--text200');
+  check(broken.length === 0, 'compact rail keeps Vietnamese words intact at 200% text: ' + JSON.stringify(broken));
+  await page.choose('scale', '100%');
+  await page.viewport(1440);
 }
 
 async function themes(page) {
@@ -1039,10 +1090,12 @@ try {
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted');
   await structure(page);
   await themes(page);
+  await forcedColors(page);
   await densityAndMotion(page);
   await components(page);
   await states(page, cdp);
   await navigation(page);
+  await compactVietnameseWords(page);
   await search(page);
   await screenPatterns(page);
   await reflow(page);

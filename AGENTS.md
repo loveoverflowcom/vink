@@ -23,7 +23,7 @@ draft dashboard with loaded-list search/resume and uncertain-create reconciliati
 `cargo xtask` lanes and CI, and the UI System foundation (`packages/ui-system`: one token source in
 `shared/tokens.json` generating CSS/Rust/Kotlin with a drift check, the Leptos crate `vink-ui`, a
 Compose Multiplatform `:ui` library and two previews; native Android/iOS targets compile only
-when enabled and no native app exists) with UIS-02 primitives on both renderers (text/layout,
+when enabled and no native product app exists) with UIS-02 primitives on both renderers (text/layout,
 actions, fields, icons from a licensed registry, avatar/byline with shared identity vectors) and
 UIS-03 state/feedback/loading components (content region with lawful content × phase combinations,
 state panel, notices, skeleton/arc/edge progress gated by host-injected activity, snackbar,
@@ -32,7 +32,10 @@ dialog, shared state vectors), and UIS-04 shell/navigation primitives
 toggle, bottom bar, top bar; a diagnostic CMP navigation adapter) that the Web shell now renders.
 UIS-05 adopts shared controls, identity, notices and dialog chrome on Explore/Reader/Desk/Editor/Me; `packages/vink-patterns` owns DTO-free Leptos/CMP compositions
 consumed by the app and both galleries. Feedback and native screen recipes remain explicitly
-labelled samples with no service, auth or save authority.
+labelled samples with no service, auth or save authority. UIS-06 adds an API admission map,
+scoped style/dependency guards and opt-in Android debug/iOS simulator diagnostic hosts sharing
+the CMP specimens with Desktop (`:diagnostics`); these are not native product apps. Target
+readiness and runtime limits live in `docs/development/ui-system-qualification-evidence.md`.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
 No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider, job
 or executable behavior model exists; production authentication is NOT_IMPLEMENTED. Inspect actual

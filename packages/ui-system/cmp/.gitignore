@@ -3,3 +3,7 @@
 .kotlin/
 build/
 local.properties
+
+# XcodeGen owns this reproducible diagnostic project.
+iosDiagnostic/*.xcodeproj/
+iosDiagnostic/Info.plist

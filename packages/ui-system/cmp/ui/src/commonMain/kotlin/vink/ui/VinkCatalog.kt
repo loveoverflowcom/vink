@@ -6,7 +6,7 @@
 package vink.ui
 
 object VinkCatalog {
-    const val VERSION: String = "0.5.0"
+    const val VERSION: String = "0.5.1"
     val statuses: List<String> = listOf("implemented-unverified", "unsupported", "verified")
     val families: List<Pair<String, String>> = listOf("foundation" to "Nền tảng", "text" to "Chữ", "layout" to "Bố cục", "action" to "Hành động", "field" to "Nhập và chọn", "identity" to "Danh tính và hình ảnh", "state" to "Trạng thái và phản hồi", "navigation" to "Điều hướng và khung", "composition" to "Kết hợp", "screen" to "Màn Vink — Mẫu")
 

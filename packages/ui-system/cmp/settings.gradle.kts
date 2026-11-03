@@ -16,7 +16,10 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "vink-ui-cmp"
-include(":ui", ":preview")
+include(":ui", ":preview", ":diagnostics")
+if (providers.gradleProperty("vink.ui.nativeTargets").orNull == "true") {
+    include(":androidDiagnostic")
+}
 
 include(":patterns")
 project(":patterns").projectDir = file("../../vink-patterns/cmp")

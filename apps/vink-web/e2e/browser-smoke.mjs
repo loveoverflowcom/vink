@@ -763,7 +763,18 @@ async function adaptiveShell(page) {
       check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px ${theme}: no horizontal overflow`);
     }
   }
+  await page.viewport(1024);
   await page.eval(`document.documentElement.style.fontSize = '200%'`);
+  const compactWords = await page.eval(`(() => {
+    const labels = [...document.querySelectorAll('.vk-ui-rail .vk-ui-nav-item__label')].filter((el) => el.textContent === 'Khám phá');
+    return { count: labels.length, intact: labels.every((el) => [[0,4],[5,8]].every(([a,b]) => {
+      const range = document.createRange(); range.setStart(el.firstChild,a); range.setEnd(el.firstChild,b);
+      return range.getClientRects().length === 1;
+    })) };
+  })()`);
+  check(compactWords.count > 0 && compactWords.intact, '1024px / 200% text keeps compact rail Vietnamese words intact');
+  await page.capture('1024-compact-words-text200');
+  await page.viewport(320);
   await page.capture('320-me-dark-text200');
   check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);

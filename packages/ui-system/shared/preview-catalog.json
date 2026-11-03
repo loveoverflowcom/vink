@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.5.0",
+  "version": "0.5.1",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -1051,6 +1051,9 @@
       "status": {
         "leptos": "unsupported",
         "cmp": "implemented-unverified"
+      },
+      "unsupported": {
+        "leptos": "Web uses the actual app router and NavigationGuard; browser smoke covers it. A fake gallery back stack would duplicate authority."
       }
     },
     {
