@@ -130,3 +130,18 @@ review ở bước sau. Điều chỉnh draft để phân biệt local identity 
 CMP off-screen/recipe với app native, metadata verification với toàn vẹn byte;
 không tự chọn v5, không suy reference current từ tên phiên bản và không bắt audit
 hay sửa UI trong một yêu cầu chỉ thu thập bằng chứng.
+
+## CMP mobile UI theo yêu cầu người dùng (03/11/2026)
+
+Thêm [vink-cmp-mobile](../../.agents/skills/vink-cmp-mobile/SKILL.md) bên cạnh
+Leptos Web, sau khi đối chiếu Vink `8045d45` và đọc `cantos-cmp-mobile` trong checkout
+Cantos tại `ce8ac58be662342e68f3d9e171be307efae44d9c`. Kế thừa phương pháp tìm
+source-set/owner, state thuần, controlled input, tiêm theme/lifecycle và kiểm chứng
+theo host. Skill có reference riêng với nguồn Vink, được index và nối từ Design/Fix;
+metadata và symlink Claude dùng cùng bản canonical.
+
+Phạm vi CMP hiện hành của Vink là thư viện/patterns và diagnostic hosts. Không nhập
+Theatre/player, media session, download/outbox, auth, localization catalog, module,
+dependency hay lệnh kiểm của Cantos; không dựng app native sản phẩm. Các mục loại
+trừ CMP ở lịch sử chuyển skills ngày 30–31/10 vẫn mô tả lần chuyển đó; bổ sung này
+là phạm vi mới được người dùng yêu cầu, không nâng bằng chứng native cũ thành PASS.

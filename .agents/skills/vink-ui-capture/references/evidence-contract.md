@@ -77,6 +77,21 @@ upload sau các artifact và ghi ID/readback/checksum cuối vào receipt local 
 output tool; tránh vòng manifest chứa chính checksum của manifest. `publication`
 có thể giữ null cho ID của chính manifest đến khi được xác nhận ngoài file.
 
+## Capture focused optional
+
+Capture focused là bổ sung optional cho format 1: dùng `capture_mode=specimen`,
+ghi `raw_artifact_id`, `clip_css`, `source_bounds_css`, padding và `tile/tiles` khi
+chia specimen cao. Các artifact raw và focus có ID/hash/kích thước riêng; không
+ghi đè raw hoặc suy `inspected=true` từ thành công của runner. Không đổi nghĩa
+record format 1 cũ. Ảnh raw của Leptos preview có giới hạn 6000 CSS px nên khi nhập
+bundle phải ghi `capture_mode=document-capped`, không gọi là full-page đầy đủ.
+
+`focus-manifest.json` do preview runner xuất là subset `vink-preview-focus-v1`,
+không phải bundle format 1 hoàn chỉnh: có source fingerprint, 36 expected records,
+raw ↔ focus, bounds/PNG/hash và coverage captured/inspected/blocked. Import vào
+bundle theo bảng trên, giữ nguyên tên raw và provenance. Source SHA khi dirty chỉ
+định danh base; source fingerprint và build context mới xác định đầu vào đã chụp.
+
 ## Báo cáo và graph
 
 `reports/REPORT.md` là bàn giao của một run, không phải index trung tâm thứ hai:

@@ -137,6 +137,13 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
     report.step(
         "Leptos preview: headless Chrome scenarios and captures",
         || {
+            process::run(
+                Command::new("node").arg("--test").arg(
+                    root.join(LEPTOS_DIR)
+                        .join("preview/e2e/focus-capture.test.mjs"),
+                ),
+                "focused specimen clip regression",
+            )?;
             let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| format!("bind: {e}"))?;
             let port = listener
                 .local_addr()
@@ -153,6 +160,9 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
                 .arg(root.join(OUT_DIR).join("captures"))
                 .arg("--catalog")
                 .arg(root.join(crate::ui_tokens::CATALOG));
+            if env.get("VINK_UI_FOCUS_CAPTURE").as_deref() == Some("1") {
+                smoke.args(["--focus", "1"]);
+            }
             process::run(&mut smoke, "preview smoke (Chrome DevTools Protocol)")
         },
     )

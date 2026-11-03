@@ -1,0 +1,153 @@
+{
+  "format": "vink-native-sample-v1",
+  "host": "ios-simulator",
+  "renderer": "cmp-native",
+  "device_udid": "AB3B8430-88BD-4C77-AE22-19AFBFDA0BE1",
+  "device": "iPhone 17 Pro",
+  "os": "iOS 26.5",
+  "bundle_id": "com.vietink.ui.diagnostic",
+  "git_sha": "8045d45e554e0a01f11fd252ac681f8eb9d33a56",
+  "dirty": true,
+  "scope": "six selected diagnostic samples; not a product app",
+  "expected": 6,
+  "captures": [
+    {
+      "catalog_id": "layout.grid",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "layout.grid--default--light--text100.png",
+      "sha256": "f24b82e22205c1c9dc2a277d443e484a957b87056b063a249fa1cac57ff000e5",
+      "byte_size": 220745,
+      "captured_at": "2026-11-03T10:08:41.486203+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "identity.avatar-group",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "identity.avatar-group--default--light--text100.png",
+      "sha256": "f29bb149dcfebdd86b3b8d136c6c2fdfb387fb9450ce4c9f4fb767d150b89869",
+      "byte_size": 242704,
+      "captured_at": "2026-11-03T10:08:46.975080+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "state.empty",
+      "scenario_id": "default",
+      "requested_theme": "light",
+      "preview_text_scale": 100,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "state.empty--default--light--text100.png",
+      "sha256": "06aa1d4618d7ddde80beccfebeedf0f6b6e987044572c3f7643d1ef688903675",
+      "byte_size": 242935,
+      "captured_at": "2026-11-03T10:08:52.340399+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "state.error",
+      "scenario_id": "default",
+      "requested_theme": "dark",
+      "preview_text_scale": 100,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "state.error--default--dark--text100.png",
+      "sha256": "15243cc2e4910752d157b9d1f882b8d10d42647a60f8bb505bbb08a6c70c0eeb",
+      "byte_size": 231649,
+      "captured_at": "2026-11-03T10:08:56.428015+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "compact",
+      "requested_theme": "dark",
+      "preview_text_scale": 100,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "navigation.rail--compact--dark--text100.png",
+      "sha256": "3e9012a9156d9262ba3da131bad6ad843bfe0cbd297f1af5203a1df6614f5124",
+      "byte_size": 206614,
+      "captured_at": "2026-11-03T10:09:00.369151+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    },
+    {
+      "catalog_id": "composition.feedback",
+      "scenario_id": "default",
+      "requested_theme": "dark",
+      "preview_text_scale": 200,
+      "os_text_scale": null,
+      "os_text_scale_reason": "Not measured; preview multiplier is not OS text scaling",
+      "density": null,
+      "viewport_logical": null,
+      "viewport_reason": "Native logical display/density not queried; physical PNG dimensions are observed",
+      "image_pixels": {
+        "width": 1206,
+        "height": 2622
+      },
+      "capture_mode": "viewport",
+      "path": "composition.feedback--default--dark--text200.png",
+      "sha256": "c3cfa8a88373e16e09c9d6318c66c147b5ef7ee15d3e97a5cbf5b0ab6b9ebf9d",
+      "byte_size": 287519,
+      "captured_at": "2026-11-03T10:09:04.810563+00:00",
+      "readiness": "3s after bounded diagnostic launch; visual inspection required",
+      "capture_status": "CAPTURED",
+      "inspected": false
+    }
+  ]
+}

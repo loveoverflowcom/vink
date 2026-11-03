@@ -937,6 +937,7 @@
 /* StatePanel ----------------------------------------------------------------------------------- */
 
 .vk-ui-panel {
+  container: vk-state-panel / inline-size;
   display: grid;
   justify-items: start;
   gap: var(--vk-space-3);
@@ -975,6 +976,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--vk-space-2) var(--vk-space-3);
+}
+
+/* Large text inside a narrow panel still needs room for whole Vietnamese words. */
+@container vk-state-panel (max-width: 16rem) {
+  .vk-ui-panel__actions .vk-ui-button { padding-inline: var(--vk-space-3); }
 }
 
 .vk-ui-panel__code {

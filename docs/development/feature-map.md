@@ -28,6 +28,9 @@ Ranh giới lưu nháp/hash/ID và assertions RUST-CORE-01 đối chiếu ngày 
 `3a024091df6eb1da962ad3fa08750954c0b83a4f`; [HOW/WHY và bất biến](literary-domain-core.md).
 Chrome editor, retry có đối chiếu và assertions `editorChrome` đối chiếu ngày 03/11/2026
 trên nền `0fc8c04`; [LayoutSpec và bằng chứng UI-REPAIR-05](../design/ui-repair-05.md).
+State/recovery và focus capture đối chiếu ngày 03/11/2026 trên nền `8045d45`;
+[UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi source fingerprint và kết quả
+từng renderer/host, tách ảnh nguyên bản, specimen và ảnh native.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -158,6 +161,19 @@ IME thật, accessibility với screen reader, mobile thật và hiệu năng c�
 môi trường và quan sát cụ thể. Không tự đổi chúng thành `PASS` vì lane `web` thành công.
 
 ### UI System preview (UIS-01, UIS-02, UIS-03, UIS-04)
+
+UI-REPAIR-06/07 bổ sung `StatePanel` action slot ở hai renderer. `feedback` SSR và
+`VinkPanelTest` kiểm typed recovery cùng callback/link của caller; `publicReading`
+và `draftDashboard` kiểm action nằm trong panel, clear trả focus về search,
+GET retry giữ query/hash và reload document thật, 401/403/503 cùng uncertain-create
+vẫn riêng. `captureRecovery` ghi 220 ảnh theo 11 state × 5 width × hai theme ×
+text100/200; input chương trình và cỡ chữ CSS không là OS IME/browser zoom.
+
+`focusedCaptures` trong preview smoke opt-in qua development guide: 36 selected
+records liên kết raw ↔ các tile specimen; geometry tests gồm tọa độ phân số,
+padding/clamp, specimen sau mốc 6000px, chia tile theo viewport và geometry sai.
+Chrome kiểm PNG/ảnh không trắng, ID/theme, giữ bounds và phục hồi viewport/scroll/
+focused DOM node. Manifest chỉ ghi CAPTURED; inspection/readback riêng.
 
 Không phải route của app: hai preview chạy riêng, không gọi service. Owner và lệnh ở
 [packages/ui-system](../../packages/ui-system/README.md).

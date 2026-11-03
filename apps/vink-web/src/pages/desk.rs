@@ -8,8 +8,8 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind, Heading,
-    HeadingLevel, InlineNotice, PanelContent, PanelKind, SearchField, Select, StatePanel,
-    TextField, Tone, TypeRole,
+    HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind, SearchField, Select,
+    StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
@@ -33,6 +33,7 @@ pub fn DeskIndex() -> impl IntoView {
     let sort = RwSignal::new(DraftSort::Recent);
     let creation = RwSignal::new(CreateState::Ready);
     let loading = RwSignal::new(true);
+    let recovery_focus = RwSignal::new(false);
     let drafts: LocalResource<Result<DraftList, ApiError>> =
         LocalResource::new(move || async move {
             let result = load_drafts().await;
@@ -40,6 +41,14 @@ pub fn DeskIndex() -> impl IntoView {
                 creation.try_update(CreateState::reconciled);
             }
             loading.try_update(|value| *value = false);
+            if recovery_focus.try_update(std::mem::take).unwrap_or(false) {
+                let target = if result.as_ref().is_ok_and(|list| !list.drafts.is_empty()) {
+                    "draft-search"
+                } else {
+                    "desk-title"
+                };
+                super::focus_recovery(target);
+            }
             result
         });
     let refresh = Callback::new(move |()| {
@@ -49,6 +58,7 @@ pub fn DeskIndex() -> impl IntoView {
             return;
         }
         loading.set(true);
+        recovery_focus.set(true);
         drafts.refetch();
     });
     let refresh_disabled =
@@ -92,7 +102,7 @@ pub fn DeskIndex() -> impl IntoView {
         <Meta name="robots" content="noindex" />
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
             <header id="heading" class="vk-desk-heading">
-                <Heading level=HeadingLevel::H1 id="desk-title">"Bàn viết"</Heading>
+                <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
                 <Show when=move || drafts.get().is_some_and(|result| result.is_ok_and(|list| !list.drafts.is_empty()))>
                     <CreateDraftButton creation can_create create />
                 </Show>
@@ -107,16 +117,14 @@ pub fn DeskIndex() -> impl IntoView {
                         match drafts.await {
                             Ok(list) if list.drafts.is_empty() => view! {
                                 <div class="vk-desk-empty" data-testid="draft-empty">
-                                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None } />
-                                    <CreateDraftButton creation can_create create first=true />
+                                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
+                                        <CreateDraftButton creation can_create create first=true />
+                                    </StatePanel>
                                 </div>
                             }.into_any(),
                             Ok(list) => view! { <DraftListView list query sort refresh refresh_disabled /> }.into_any(),
                             Err(error) => view! {
-                                <DeskError error />
-                                <Button variant=ButtonVariant::Tonal
-                                    id="retry-drafts" on_press=move |_| refresh.run(())
-                                    state=Signal::derive(move || blocked(loading.get()))>"Thử mở lại"</Button>
+                                <DeskError error refresh retry_disabled=loading />
                             }.into_any(),
                         }
                     })}
@@ -169,14 +177,19 @@ fn CreateNotice(
     refresh: Callback<()>,
 ) -> impl IntoView {
     move || {
+        if creation.get() == CreateState::Reconciled {
+            return view! {
+                <div data-testid="create-notice">
+                    <InlineNotice title="Đã tải lại danh sách bản thảo."
+                        message="Hãy kiểm tra bản thảo gần đây. Nếu vẫn muốn tạo bản khác, chọn Tạo thêm bản thảo."
+                        tone=Tone::Info announce=Announce::Polite />
+                </div>
+            }.into_any();
+        }
         let (title, detail) = match creation.get() {
             CreateState::Uncertain => (
                 "Chưa xác nhận được việc tạo bản thảo.",
                 "Bản thảo có thể đã được tạo. Hãy tải lại danh sách và kiểm tra trước khi tạo thêm.",
-            ),
-            CreateState::Reconciled => (
-                "Đã tải lại danh sách bản thảo.",
-                "Hãy kiểm tra bản thảo gần đây. Nếu vẫn muốn tạo bản khác, chọn Tạo thêm bản thảo.",
             ),
             CreateState::Rejected(ApiError::Unauthenticated) => (
                 "Bạn chưa đăng nhập.",
@@ -192,13 +205,20 @@ fn CreateNotice(
             ),
             _ => return ().into_any(),
         };
+        let kind = match creation.get() {
+            CreateState::Uncertain => ProblemKind::Uncertain,
+            CreateState::Rejected(ApiError::Unauthenticated) => ProblemKind::AuthRequired,
+            CreateState::Rejected(ApiError::Forbidden) => ProblemKind::Forbidden,
+            _ => ProblemKind::Validation,
+        };
         view! {
-            <div data-testid="create-notice">
-                <InlineNotice title=title message=detail tone=Tone::Warning announce=Announce::Polite />
-                <Button variant=ButtonVariant::Tonal id="reconcile-drafts"
-                    on_press=move |_| refresh.run(()) state=Signal::derive(move || blocked(loading.get()))>
-                    {move || if loading.get() { "Đang tải lại…" } else { "Tải lại danh sách" }}
-                </Button>
+            <div data-testid="create-notice" role="status">
+                <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
+                    <Button variant=ButtonVariant::Filled id="reconcile-drafts"
+                        on_press=move |_| refresh.run(()) state=Signal::derive(move || blocked(loading.get()))>
+                        {move || if loading.get() { "Đang tải lại…" } else { "Tải lại danh sách" }}
+                    </Button>
+                </StatePanel>
             </div>
         }.into_any()
     }
@@ -247,9 +267,13 @@ fn DraftListView(
             </p>
             <Show when=move || visible.with(Vec::is_empty)>
                 <div data-testid="draft-no-results">
-                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tiêu đề phù hợp".into(), message: "Thử một từ khác hoặc xem lại các bản thảo đã tải.".into(), actions: vec![], code: None } />
-                    <Button variant=ButtonVariant::Tonal id="clear-draft-search"
-                        on_press=move |_| query.set(String::new())>"Xem các bản thảo đã tải"</Button>
+                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tiêu đề phù hợp".into(), message: "Thử một từ khác hoặc xem lại các bản thảo đã tải.".into(), actions: vec![], code: None }>
+                        <Button variant=ButtonVariant::Filled id="clear-draft-search"
+                            on_press=move |_| {
+                                query.set(String::new());
+                                super::focus_recovery("draft-search");
+                            }>"Xem các bản thảo đã tải"</Button>
+                    </StatePanel>
                 </div>
             </Show>
             <ul id="draft-results" class="vk-draft-rows" aria-label="Bản thảo đã tải" role="list">
@@ -264,7 +288,17 @@ fn DraftListView(
 }
 
 #[component]
-fn DeskError(error: ApiError) -> impl IntoView {
+fn DeskError(
+    error: ApiError,
+    #[prop(optional)] refresh: Option<Callback<()>>,
+    #[prop(optional, into)] retry_disabled: Signal<bool>,
+) -> impl IntoView {
+    let kind = match error {
+        ApiError::Unauthenticated => ProblemKind::AuthRequired,
+        ApiError::Forbidden => ProblemKind::Forbidden,
+        ApiError::NotFound => ProblemKind::NotFound,
+        _ => ProblemKind::Unavailable,
+    };
     let (title, detail) = match error {
         ApiError::Unauthenticated => (
             "Bạn chưa đăng nhập.",
@@ -285,9 +319,14 @@ fn DeskError(error: ApiError) -> impl IntoView {
         _ => ("Có lỗi khi mở Bàn viết.", "Hãy thử mở lại."),
     };
     view! {
-        <div data-testid="desk-error">
-            <InlineNotice title=title message=detail tone=Tone::Error announce=Announce::Assertive />
-            <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
+        <div data-testid="desk-error" role="alert">
+            <StatePanel content=PanelContent { kind: PanelKind::Error(kind), title: title.into(), message: detail.into(), actions: vec![], code: None }>
+                {refresh.map(|refresh| view! {
+                    <Button variant=ButtonVariant::Filled id="retry-drafts" on_press=move |_| refresh.run(())
+                        state=Signal::derive(move || blocked(retry_disabled.get()))>"Thử mở lại"</Button>
+                })}
+                <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
+            </StatePanel>
         </div>
     }
 }

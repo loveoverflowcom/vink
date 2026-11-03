@@ -21,6 +21,10 @@ nhân. Với redesign toàn màn chưa có hướng chọn, dùng
 [quy trình Chat](../vink-ui-design/references/chat-workflow.md) theo phần liên quan.
 Đọc các reference tương ứng trong checkout hiện hành.
 
+Khi sửa Compose/Kotlin hoặc diagnostic host Android/iOS, dùng thêm
+[Vink CMP mobile](../vink-cmp-mobile/SKILL.md) để tìm owner và chọn bằng chứng từng
+target; web dùng [Vink Leptos web](../vink-leptos-web/SKILL.md).
+
 ## 1. Chốt bug contract từ dữ liệu đã có
 
 Ghi actual/expected, screen/region/state, ảnh hoặc finding ID, source/build nếu

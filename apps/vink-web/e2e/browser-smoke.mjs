@@ -1013,6 +1013,55 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after returning to system appearance');
 }
 
+// State anatomy and recovery targets at the same fixture, theme and CSS text scale.
+// Focus each actual control so 200% content below the fold is inspected as well as the header.
+async function captureRecovery(page, state, selector) {
+  const before = await page.eval(`({width:innerWidth,height:innerHeight,theme:document.documentElement.dataset.theme,
+    font:document.documentElement.style.fontSize,x:scrollX,y:scrollY})`);
+  try {
+    for (const theme of ['light', 'dark']) {
+      await page.eval(`document.documentElement.dataset.theme='${theme}'`);
+      for (const width of [1440, 1024, 834, 390, 320]) {
+        await page.viewport(width);
+        for (const scale of [100, 200]) {
+          await page.eval(`document.documentElement.style.fontSize='${scale}%'`);
+          await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+          const count = await page.eval(`document.querySelector(${JSON.stringify(selector)}).querySelectorAll('button,a[href]').length`);
+          for (const index of new Set([0, count - 1])) {
+            if (index < 0) continue;
+            await page.eval(`(() => { const el=document.querySelector(${JSON.stringify(selector)}).querySelectorAll('button,a[href]')[${index}];
+              if(document.activeElement===el) el.blur(); el?.focus(); })()`);
+            const geometry = await page.eval(`(() => {
+              const el=document.activeElement,r=el.getBoundingClientRect();
+              const bar=document.querySelector('.vk-ui-bottom-nav');
+              const limit=bar?.getClientRects().length ? bar.getBoundingClientRect().top : innerHeight;
+              const label=el.querySelector('.vk-ui-button__label') || el;
+              const walker=document.createTreeWalker(label,NodeFilter.SHOW_TEXT),brokenWords=[];
+              const segmenter=new Intl.Segmenter('vi',{granularity:'word'});let wordCount=0;
+              for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of segmenter.segment(node.textContent)) {
+                if(!word.isWordLike) continue; wordCount++;
+                const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word.segment.length);
+                if(new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size>1) brokenWords.push(word.segment);
+              }
+              return {ok:!!el.closest(${JSON.stringify(selector)}) && r.height>=44 && r.top>=0 && r.bottom<=limit+1
+                && document.documentElement.scrollWidth<=innerWidth && wordCount>0 && !brokenWords.length,
+                rect:r.toJSON(),limit,scrollWidth:document.documentElement.scrollWidth,wordCount,brokenWords};
+            })()`);
+            if (!geometry.ok) await page.capture(`recovery-failure-${state}-${width}-${scale}-${theme}`);
+            check(geometry.ok, `${state} ${width}/${scale}/${theme}: recovery ${index + 1} is reachable above navigation without horizontal overflow${geometry.ok ? '' : JSON.stringify(geometry)}`);
+          }
+          await page.capture(`recovery-${state}-${width}-${scale}-${theme}`);
+        }
+      }
+    }
+  } finally {
+    await page.eval(`document.documentElement.style.fontSize=${JSON.stringify(before.font)};
+      ${before.theme ? `document.documentElement.dataset.theme=${JSON.stringify(before.theme)}` : 'delete document.documentElement.dataset.theme'}`);
+    await page.viewport(before.width, before.height);
+    await page.eval(`scrollTo(${before.x},${before.y})`);
+  }
+}
+
 async function draftDashboard(page) {
   console.log('private dashboard: explicit list fixtures, search, states and non-idempotent creation:');
   const gate = new DraftGate(page);
@@ -1153,8 +1202,11 @@ async function draftDashboard(page) {
   await page.viewport(390);
   await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
   await page.capture('desk-no-results-390');
+  check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-ui-panel__actions #clear-draft-search')`), 'draft clear belongs to the no-results panel');
+  await captureRecovery(page, 'desk-no-results', '[data-testid=draft-no-results]');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear query');
+  await page.waitFor(`document.activeElement?.id === 'draft-search'`, 'clearing draft results restores search focus');
   await page.eval(`const sort = document.querySelector('#draft-sort'); sort.value = 'title'; sort.dispatchEvent(new Event('change', { bubbles: true }))`);
   await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#resume .vk-draft-meta').textContent.includes('Phiên bản 1') && document.querySelector('#resume time').dateTime === '2026-11-01T08:30:00Z'`), 'sorting preserves the newest resume work, version and timestamp');
@@ -1163,6 +1215,8 @@ async function draftDashboard(page) {
   await page.click('#refresh-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'dependency failure');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-row]')`), 'load failure never becomes an empty or stale draft list');
+  check(await page.eval(`!!document.querySelector('[data-testid=desk-error] .vk-ui-panel__actions #retry-drafts')`), 'draft retry belongs to the error panel');
+  await captureRecovery(page, 'desk-unavailable', '[data-testid=desk-error]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     for (const width of [1440, 320]) {
@@ -1179,14 +1233,18 @@ async function draftDashboard(page) {
   await page.click('#refresh-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-resume]') && !document.querySelector('#create-draft')`), 'forbidden remains distinct from empty and never exposes resume/create');
+  await captureRecovery(page, 'desk-forbidden', '[data-testid=desk-error]');
   gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
   await page.click('#retry-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('chưa đăng nhập')`, 'unauthenticated dashboard');
+  await captureRecovery(page, 'desk-unauthenticated', '[data-testid=desk-error]');
   check(await page.eval(`!document.querySelector('#create-draft') && document.querySelector('[data-testid=desk-error] a').getAttribute('href') === '/'`), '401 has an honest public-reading action and no fake login/create');
   gate.list = { body: { drafts: [] } };
   await page.click('#retry-drafts');
   await page.waitFor(`document.querySelector('[data-testid=draft-empty]')`, 'empty dashboard');
   check(await page.eval(`document.querySelectorAll('#create-draft').length === 1 && document.querySelector('#create-draft').textContent === 'Viết bản thảo đầu tiên' && !document.querySelector('[data-testid=draft-resume]')`), 'empty has exactly one primary create action');
+  check(await page.eval(`!!document.querySelector('[data-testid=draft-empty] .vk-ui-panel__actions #create-draft')`), 'first create belongs to the empty panel');
+  await captureRecovery(page, 'desk-empty', '[data-testid=draft-empty]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     for (const width of [1440, 320]) {
@@ -1218,6 +1276,8 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=create-notice]')?.textContent.includes('có thể đã được tạo')`, 'uncertain create after lost 201');
   check(gate.droppedStatus === 201 && gate.postCount === postsBefore, 'one real POST committed and its ack was dropped without duplicate submissions');
   check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true' && location.pathname === '/ban-viet'`), 'uncertain creation stays on desk and blocks another POST');
+  check(await page.eval(`!!document.querySelector('[data-testid=create-notice] [data-panel="error:uncertain"] .vk-ui-panel__actions #reconcile-drafts')`), 'uncertain creation offers GET reconciliation in its own warning panel');
+  await captureRecovery(page, 'desk-uncertain-create', '[data-testid=create-notice]');
   // Failed reconciliation must keep creation blocked.
   gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
   await page.click('#reconcile-drafts');
@@ -1226,6 +1286,7 @@ async function draftDashboard(page) {
   gate.list = null;
   await page.click('#reconcile-drafts');
   await page.waitFor(`document.querySelector('#create-draft')?.textContent === 'Tạo thêm bản thảo'`, 'successful list reconciliation');
+  await page.waitFor(`document.activeElement?.id === 'draft-search'`, 'GET reconciliation restores focus to the loaded search');
   const after = await page.eval(`fetch('/api/v1/drafts').then(r => r.json()).then(list => list.drafts.map(d => d.work_id))`);
   const created = after.filter(id => !before.includes(id));
   check(created.length === 1 && gate.postCount === postsBefore, 'GET reconciliation found the committed draft without retrying POST');
@@ -1450,6 +1511,13 @@ async function publicReading(page) {
   check(await page.eval(`!document.querySelector('[data-testid=public-empty], [data-testid=public-unavailable], #feed-end')`), 'no-results is separate from empty, unavailable and the end of a visible list');
   check(listRequests === loadedRequests && publicationRequests === 0, 'search uses loaded public cards without new list or manuscript requests');
   await captureExplore('no-results');
+  check(await page.eval(`document.querySelector('[data-testid=public-no-results] .vk-ui-panel__actions a')?.id === 'clear-public-results'`), 'public no-results offers a real clear link in its panel');
+  await captureRecovery(page, 'explore-no-results', '[data-testid=public-no-results]');
+  await page.eval(`document.querySelector('#clear-public-results').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`!location.search && document.querySelectorAll('.vk-public-row').length===12 && document.activeElement?.id==='public-query'`, 'panel clear restores loaded results, URL and search focus');
+  check(listRequests === loadedRequests, 'in-panel clear never refetches the public list');
+  await searchPublic('không có tác phẩm này');
   await page.eval(`document.querySelector('#public-query').focus()`);
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the compact GET search action');
@@ -1551,14 +1619,30 @@ async function publicReading(page) {
   answers.set(publicationPath, { status: 200, body: publication });
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(1440);
+  const recoveryPublicationPath = `/api/v1/works/${SAMPLE_WORK}/publication`;
+  answers.set('/api/v1/works', { status: 200, body: { works: [{ ...cards[0], work_id: SAMPLE_WORK, title: '[Mẫu kiểm tra] Mưa trên phố cũ' }] } });
   for (const status of [404, 503]) {
-    answers.set(publicationPath, { status, body: { error: { code: status === 404 ? 'not_found' : 'dependency_unavailable' } } });
+    answers.set(recoveryPublicationPath, { status, body: { error: { code: status === 404 ? 'not_found' : 'dependency_unavailable' } } });
     await openCollection();
     await page.waitFor(`document.querySelector('.vk-public-row__link')`, 'collection before reader failure');
+    await searchPublic(realQuery);
     await page.click('.vk-public-row__link');
     await page.waitFor(status === 404 ? `document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'` : `document.querySelector('[data-testid=public-unavailable]')`, `reader ${status} state`);
     check(await page.eval(`!document.querySelector('.vk-document') && !document.querySelector('[data-testid=public-empty]')`), `reader ${status} does not display stale text or a successful empty collection`);
+    if (status === 503) {
+      await page.eval(`location.hash='doan-tho'`);
+      await page.waitFor(`document.querySelector('#retry-public')?.getAttribute('href')===location.pathname+location.search+location.hash`, 'reader retry retains exact path, return query and hash');
+    } else {
+      check(await page.eval(`!document.querySelector('#retry-public') && document.querySelector('.vk-ui-panel a').getAttribute('href').includes('q=')`), 'reader 404 retains return query without claiming a retry');
+    }
+    await captureRecovery(page, `reader-${status}`, '[data-panel]');
+    if (status === 503) {
+      await page.eval(`window.__retryDocument='old'`);
+      await page.click('#retry-public');
+      await page.waitFor(`window.__retryDocument===undefined && document.documentElement.dataset.hydrated==='true' && document.querySelector('.vk-document') && location.hash==='#doan-tho'`, 'reader reload retry recovers through real SSR and retains hash');
+    }
   }
+  answers.delete(recoveryPublicationPath);
   answers.set('/api/v1/works', { status: 503, body: { error: { code: 'dependency_unavailable' } } });
   await openCollection();
   await page.waitFor(`document.querySelector('[data-testid=public-unavailable]')`, 'fixture collection outage');
@@ -1571,7 +1655,9 @@ async function publicReading(page) {
     await openCollection();
     await page.waitFor(`document.querySelector('[data-testid=public-${state}]')`, `Explore ${state}`);
     check(await page.eval(`!document.querySelector('[data-testid=public-${state === 'empty' ? 'unavailable' : 'empty'}]') && document.querySelector('#writing-prompt a').getAttribute('href') === '/ban-viet'`), `${state} is distinct and keeps a truthful participation route`);
+    check(await page.eval(`document.querySelector('[data-testid=public-${state}] .vk-ui-panel__actions a')?.getAttribute('href') === ${JSON.stringify(state === 'empty' ? '/ban-viet' : '/')}`), `${state} keeps its real recovery link inside the panel`);
     await captureExplore(state);
+    await captureRecovery(page, `explore-${state}`, `[data-testid=public-${state}]`);
   }
   answers.set('/api/v1/works', { status: 200, body: { works: cards.slice(0, 3) } });
   await openCollection();

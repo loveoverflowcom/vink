@@ -2,6 +2,11 @@
 
 Token source hiện hành 0.4.0, catalog 0.5.1. Package nội bộ chưa phát hành registry.
 
+UI-REPAIR-06/07 bổ sung slot thao tác optional cho `StatePanel`: Leptos `children`,
+CMP `actions`. Typed recovery giữ thứ tự trước slot, caller vẫn sở hữu link/disabled/
+effect; mọi callsite cũ giữ hành vi khi bỏ slot. Không đổi token, catalog ID hay DTO.
+Web dùng slot để link SSR thật và create/reconcile không bị tách khỏi panel.
+
 | Bề mặt giữ tương thích | Owner duy nhất | Consumer và điều kiện gỡ |
 | --- | --- | --- |
 | `--vk-font-ui`, `--vk-font-reading` | `font.ui`, `font.reading` trong tokens.json | Web brand/document/CodeMirror; chỉ gỡ khi mọi consumer đã đổi sang `--vk-type-*-font` và browser regression giữ typography/IME |
