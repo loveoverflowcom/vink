@@ -5,7 +5,7 @@
 
 use crate::values::{CatalogEntry, Scenario};
 
-pub const CATALOG_VERSION: &str = "0.5.0";
+pub const CATALOG_VERSION: &str = "0.5.1";
 pub const STATUSES: &[&str] = &["implemented-unverified", "unsupported", "verified"];
 pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp"), ("screen", "Màn Vink — Mẫu")];
 

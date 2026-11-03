@@ -1,0 +1,45 @@
+name: VinkUIDiagnostic
+options:
+  bundleIdPrefix: com.vietink.ui
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGNING_ALLOWED: YES
+    CODE_SIGN_IDENTITY: "-"
+targets:
+  VinkUIDiagnostic:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Info.plist
+      properties:
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vietink.ui.diagnostic
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Vink UI Mẫu
+        INFOPLIST_KEY_CADisableMinimumFrameDurationOnPhone: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        FRAMEWORK_SEARCH_PATHS: $(inherited) $(PROJECT_DIR)/../diagnostics/build/bin/iosSimulatorArm64/debugFramework
+        OTHER_LDFLAGS: $(inherited) -framework VinkDiagnostics
+  VinkUIDiagnosticTests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: VinkUIDiagnostic
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  VinkUIDiagnostic:
+    build:
+      targets:
+        VinkUIDiagnostic: all
+    test:
+      targets: [VinkUIDiagnosticTests]

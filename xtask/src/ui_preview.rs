@@ -39,6 +39,7 @@ pub fn run(env: &Env, renderer: &str, action: &str) -> Result<(), String> {
         }
         ("cmp", "build") => gradle(&root, env, &cmp_build_tasks(env), "CMP build"),
         ("cmp", "run") => gradle(&root, env, &[":preview:run"], "CMP desktop preview"),
+        (target @ ("android" | "ios"), action) => native(&root, env, target, action),
         _ => Err(format!("unknown ui-preview command: {renderer} {action}")),
     }
 }
@@ -51,8 +52,11 @@ pub fn verify(env: &Env, renderer: &str) -> std::process::ExitCode {
         crate::ui_tokens::run(&root, true)
     }) && match renderer {
         "leptos" => leptos_verify(&mut report, &root, env),
-        _ => report.step("CMP: common + desktop tests and captures", || {
+        "cmp" => report.step("CMP: common + desktop tests and captures", || {
             gradle(&root, env, &cmp_verify_tasks(env), "CMP verify")
+        }),
+        target => report.step(&format!("{target}: diagnostic runtime"), || {
+            native(&root, env, target, "verify")
         }),
     };
     report.finish()
@@ -239,6 +243,7 @@ fn cmp_verify_tasks(env: &Env) -> Vec<&'static str> {
     let mut tasks = vec![
         ":ui:desktopTest",
         ":patterns:desktopTest",
+        ":diagnostics:desktopTest",
         ":preview:desktopTest",
     ];
     if native_targets(env) {
@@ -248,6 +253,7 @@ fn cmp_verify_tasks(env: &Env) -> Vec<&'static str> {
             ":patterns:iosSimulatorArm64Test",
             ":patterns:compileKotlinIosArm64",
             ":patterns:compileDebugKotlinAndroid",
+            ":diagnostics:iosSimulatorArm64Test",
         ]);
     }
     tasks
@@ -261,7 +267,12 @@ fn gradle(root: &Path, env: &Env, tasks: &[&str], label: &str) -> Result<(), Str
         "--console=plain",
         "-Dorg.gradle.java.installations.auto-download=false",
     ]);
-    if native_targets(env) {
+    if native_targets(env)
+        || tasks.iter().any(|t| {
+            t.starts_with(":androidDiagnostic:")
+                || t.starts_with(":diagnostics:") && t.contains("Ios")
+        })
+    {
         command.arg("-Pvink.ui.nativeTargets=true");
     }
     command.args(tasks);
@@ -269,6 +280,107 @@ fn gradle(root: &Path, env: &Env, tasks: &[&str], label: &str) -> Result<(), Str
         &mut command,
         &format!("{label}: gradlew {}", tasks.join(" ")),
     )
+}
+
+/// Native hosts are opt-in and share `:diagnostics`; JVM/Web never configure them implicitly.
+fn native(root: &Path, env: &Env, target: &str, action: &str) -> Result<(), String> {
+    if target == "android" {
+        let task = match action {
+            "build" => ":androidDiagnostic:assembleDebug",
+            "verify" => ":androidDiagnostic:connectedDebugAndroidTest",
+            _ => ":androidDiagnostic:installDebug",
+        };
+        gradle(root, env, &[task], "Android diagnostic")?;
+        if action == "run" {
+            let sdk = env
+                .get("ANDROID_HOME")
+                .or_else(|| env.get("ANDROID_SDK_ROOT"))
+                .ok_or("set ANDROID_HOME for the Android diagnostic host")?;
+            let mut adb = Command::new(Path::new(&sdk).join("platform-tools/adb"));
+            if let Some(serial) = env.get("ANDROID_SERIAL") {
+                adb.args(["-s", &serial]);
+            }
+            adb.args([
+                "shell",
+                "am",
+                "start",
+                "-S",
+                "-n",
+                "com.vietink.ui.diagnostic/vink.ui.diagnostic.DiagnosticActivity",
+            ]);
+            for (key, value) in replay_env(env) {
+                adb.args(["--es", key, &value]);
+            }
+            process::run(&mut adb, "Android diagnostic launch")?;
+        }
+        return Ok(());
+    }
+    let device = env.get("VINK_UI_IOS_DEVICE").ok_or("set VINK_UI_IOS_DEVICE to an installed simulator UDID (`xcrun simctl list devices`); iOS diagnostic is simulator-only")?;
+    gradle(
+        root,
+        env,
+        &[":diagnostics:linkDebugFrameworkIosSimulatorArm64"],
+        "iOS diagnostic framework",
+    )?;
+    let dir = root.join(CMP_DIR).join("iosDiagnostic");
+    process::run(
+        Command::new("xcodegen")
+            .current_dir(&dir)
+            .args(["generate", "--spec", "project.yml"]),
+        "generate iOS diagnostic project (XcodeGen)",
+    )?;
+    let mut build = Command::new("xcodebuild");
+    build.current_dir(&dir).args([
+        "-project",
+        "VinkUIDiagnostic.xcodeproj",
+        "-scheme",
+        "VinkUIDiagnostic",
+        "-destination",
+        &format!("platform=iOS Simulator,id={device}"),
+        "-derivedDataPath",
+        "build/DerivedData",
+        // One explicit simulator; do not clone it or dispatch tests across user's simulators.
+        "-parallel-testing-enabled",
+        "NO",
+        if action == "verify" { "test" } else { "build" },
+    ]);
+    process::run(&mut build, "iOS diagnostic Xcode simulator build/test")?;
+    if action == "run" {
+        process::run(
+            Command::new("xcrun")
+                .args(["simctl", "install", &device])
+                .arg(dir.join(
+                    "build/DerivedData/Build/Products/Debug-iphonesimulator/VinkUIDiagnostic.app",
+                )),
+            "install iOS diagnostic",
+        )?;
+        let mut launch = Command::new("xcrun");
+        launch.args([
+            "simctl",
+            "launch",
+            "--terminate-running-process",
+            &device,
+            "com.vietink.ui.diagnostic",
+        ]);
+        for (key, value) in replay_env(env) {
+            launch.arg(format!("--{key}={value}"));
+        }
+        process::run(&mut launch, "launch iOS diagnostic")?;
+    }
+    Ok(())
+}
+
+fn replay_env(env: &Env) -> Vec<(&'static str, String)> {
+    [
+        ("entry", "VINK_UI_ENTRY"),
+        ("scenario", "VINK_UI_SCENARIO"),
+        ("theme", "VINK_UI_THEME"),
+        ("motion", "VINK_UI_MOTION"),
+        ("scale", "VINK_UI_SCALE"),
+    ]
+    .into_iter()
+    .filter_map(|(key, variable)| env.get(variable).map(|value| (key, value)))
+    .collect()
 }
 
 #[cfg(test)]

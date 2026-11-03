@@ -196,3 +196,20 @@ import DTO, service hay fixture. `DraftMetadata`/nhãn UTC được composition 
 - `CaptureTest` CMP và `preview-smoke` Leptos render các kịch bản vào captures; ảnh cần mở mới là
   bằng chứng thị giác. Native compile/common test không phải native screen runtime. Kết quả chạy
   thuộc evidence, không được suy từ hàng coverage này. #14 B/C vẫn chưa có backend.
+
+## Qualification UIS-06 (#24)
+
+Coverage trên nền `204d319` + UIS-06 diff; kết quả thực và readiness từng target ở
+[qualification evidence](ui-system-qualification-evidence.md).
+
+| Claim / failure | Owner / assertion | Boundary |
+| --- | --- | --- |
+| Public API thêm nhưng không có specimen, admission map cũ, preview vào production | `xtask/src/ui_qualification.rs` so component declarations với `shared/api-coverage.json`; negative tests API thiếu/mapping cũ/dependency | Source admission, không tự chứng minh render |
+| Literal style/weight lặp lại, app quay lại native controls | Cùng guard scan scoped CSS/Kotlin/Rust app; exceptions exact owner/reason/removal | Không thay review dynamic selectors/build assets |
+| Catalogue có unsupported nhưng không giải thích | `ui_tokens.rs` yêu cầu `unsupported.<renderer>`; generator tests | Schema/metadata |
+| Control lồng/không tên, forced-colors mất focus, chữ rail vỡ ở 200% | `preview-smoke::structure/forcedColors/compactVietnameseWords`, `browser-smoke::adaptiveShell` | Actual Chrome gallery + app tách riêng |
+| Native preview khác Desktop, launch recipe lạ, search tiếng Việt | `:diagnostics/commonMain` dùng chung Specimen; `ReplayTest` duyệt mọi ID/scenario và reject option lạ | Common/JVM/iOS common; không UI runtime |
+| Native input mất qua theme/recreation; background không ngừng hoạt động; double pending | Android `DiagnosticTest`, iOS `DiagnosticTests` | Actual instrumentation/XCTest trên target ghi trong evidence; chưa là OS IME/VoiceOver/TalkBack |
+
+Native diagnostic không là app production, không nối auth/save/feedback backend.
+Extension và compatibility/removal owners ở [UI guide](../../packages/ui-system/EXTENDING.md).

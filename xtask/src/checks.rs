@@ -17,6 +17,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     fonts(root, &mut problems);
     brand(root, &mut problems);
     editor_packages(root, &mut problems);
+    crate::ui_qualification::check(root, &mut problems);
     secrets(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
@@ -470,6 +471,14 @@ fn ui_system(root: &Path, problems: &mut Vec<String>) {
     let mut common = Vec::new();
     kotlin_files(
         &root.join("packages/ui-system/cmp/ui/src/commonMain"),
+        &mut common,
+    );
+    kotlin_files(
+        &root.join("packages/ui-system/cmp/diagnostics/src/commonMain"),
+        &mut common,
+    );
+    kotlin_files(
+        &root.join("packages/vink-patterns/cmp/src/commonMain"),
         &mut common,
     );
     for file in common {

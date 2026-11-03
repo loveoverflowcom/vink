@@ -242,12 +242,12 @@ private fun NavTarget(
         if (compact) {
             Column(target.padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 VinkIcon(icon)
-                Text(label, color = content, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                Text(label, color = content, fontSize = VinkTextRoles.Caption.size, fontWeight = FontWeight(VinkTextRoles.Label.weight), textAlign = TextAlign.Center)
             }
         } else {
             Row(target.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 VinkIcon(icon)
-                Text(label, color = content, fontWeight = FontWeight.SemiBold)
+                Text(label, color = content, fontWeight = FontWeight(VinkTextRoles.Label.weight))
             }
         }
     }

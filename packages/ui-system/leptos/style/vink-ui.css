@@ -631,7 +631,7 @@
   color: var(--vk-ui-avatar-fg);
   font-family: var(--vk-type-label-font);
   font-size: calc(var(--vk-ui-avatar-size) * 0.4);
-  font-weight: 600;
+  font-weight: var(--vk-type-label-weight);
   line-height: 1;
   user-select: none;
 }
@@ -685,7 +685,7 @@
   color: var(--vk-on-surface);
   font-family: var(--vk-type-caption-font);
   font-size: var(--vk-type-caption-size);
-  font-weight: 600;
+  font-weight: var(--vk-type-label-weight);
 }
 
 .vk-ui-avatar-group__more.vk-ui-avatar--sm { --vk-ui-avatar-size: var(--vk-size-avatar-sm); }
@@ -706,7 +706,7 @@
 .vk-ui-byline__name {
   font-family: var(--vk-type-body-font);
   font-size: var(--vk-type-body-size);
-  font-weight: 600;
+  font-weight: var(--vk-type-label-weight);
   line-height: var(--vk-type-label-line-height);
   color: var(--vk-on-surface);
   overflow-wrap: anywhere;
@@ -1029,7 +1029,7 @@
   overflow-wrap: break-word;
 }
 
-.vk-ui-notice__title { font-weight: 600; }
+.vk-ui-notice__title { font-weight: var(--vk-type-label-weight); }
 
 /* Actions take the notice's own on-container colour, which meets its contrast pair. */
 .vk-ui-notice .vk-ui-button--text,
@@ -1119,7 +1119,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--vk-type-label-weight);
   cursor: pointer;
 }
 
@@ -1331,7 +1331,7 @@
   background: transparent;
   color: var(--vk-on-surface-variant);
   font: inherit;
-  font-weight: 600;
+  font-weight: var(--vk-type-label-weight);
   text-align: start;
   text-decoration: none;
   cursor: pointer;
@@ -1357,9 +1357,15 @@
     justify-content: center;
     gap: var(--vk-space-1);
     padding: var(--vk-space-3) 0;
+    /* Reclaim the rail's side padding for Vietnamese words at 200% root text. */
+    margin-inline: calc(-1 * var(--vk-space-1));
     text-align: center;
-    font-size: 0.8125rem;
+    font-size: var(--vk-type-caption-size);
   }
+  /* A short frame's scrollbar also consumes width. Labels may use the side padding while
+     the clickable surface and its focus ring stay inside the rail's scroll viewport. */
+  .vk-ui-rail .vk-ui-nav-item__label { inline-size: calc(100% + var(--vk-space-1)); }
+  .vk-ui-rail .vk-ui-nav-item:focus-visible { outline-offset: -3px; }
 }
 
 /* Anchored beside the toggle by the component (measured rect), outside the rail's containment. */
@@ -1373,7 +1379,7 @@
   border-radius: var(--vk-radius-sm);
   background: var(--vk-inverse-surface);
   color: var(--vk-inverse-on-surface);
-  font-size: 0.875rem;
+  font-size: var(--vk-type-label-size);
   pointer-events: none;
   z-index: 10;
 }
@@ -1410,7 +1416,7 @@
   gap: var(--vk-space-1);
   padding: var(--vk-space-2) 0;
   text-align: center;
-  font-size: 0.8125rem;
+  font-size: var(--vk-type-caption-size);
 }
 
 /* Bar layouts: the rail leaves, the top bar and (unless hidden) the bottom bar appear. The

@@ -53,7 +53,7 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   crate Leptos `vink-ui` (`UiRoot`/`ThemeScope`), thư viện Compose Multiplatform `:ui`
   (`VinkTheme`/`VinkScope`), hai preview chạy bằng renderer thật với cùng catalog ID. Web dùng
   CSS token sinh ra và kiểu theme của `vink-ui`; route/DOM/editor/session không đổi. Android/iOS
-  chỉ compile khi bật, chưa có app native. UIS-02 ([#20](https://github.com/loveoverflowcom/vink/issues/20)):
+  compile khi bật; diagnostic hosts và readiness hiện hành ở UIS-06 bên dưới. UIS-02 ([#20](https://github.com/loveoverflowcom/vink/issues/20)):
   25 component nền theo họ ở cả `vink-ui` và `:ui` theo một [contract](../../packages/ui-system/shared/components.md)
   (controlled value/callback, `ActionState`, field có nhãn/gợi ý/lỗi liên kết, icon registry có
   license, avatar initials + màu theo `avatar-identity-v1` có golden vectors chung), đăng ký trong hai
@@ -77,6 +77,11 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   adapter DTO vẫn ở app. Hai gallery có 6 recipe cùng ID (Explore/Reader/Desk/Editor/Me/feedback),
   CMP render component native thật; community/native editor chỉ mẫu có nhãn, không fake backend.
   [Spec, mapping và bằng chứng](ui-system-adoption-evidence.md).
+- UIS-06 ([#24](https://github.com/loveoverflowcom/vink/issues/24)): API admission map và scan
+  style/dependency trong `verify quick`; specimens CMP chung ở `:diagnostics`, Android debug
+  host và iOS simulator host độc lập. [Mở rộng UI](../../packages/ui-system/EXTENDING.md),
+  [compatibility](../../packages/ui-system/shared/compatibility.md),
+  [readiness và bằng chứng từng target](ui-system-qualification-evidence.md).
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch
@@ -201,6 +206,48 @@ hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
 **Identity fixture không phải đăng nhập.** Khi bật, mọi request đến từ loopback hành động như
 `VINK_DEV_PRINCIPAL`. Ngoài fixture, server không có nguồn xác thực nào nên đường riêng tư trả
 `401`. Fixture không chứng minh ACC-01, ACC-02 hay S-03; không tự xây hệ mật khẩu để lấp chỗ này.
+
+## Diagnostic UI native (UIS-06)
+
+Chạy từ root; hai host chỉ dùng dữ liệu mẫu, không service/đăng nhập/save backend.
+Web/JVM không cần Android SDK/Xcode; native modules chỉ configure khi gọi target tương ứng
+hoặc bật `VINK_UI_NATIVE_TARGETS=1`. Không có app native production.
+
+```sh
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+# Khởi động một emulator bằng Android Studio hoặc emulator CLI trước verify/run.
+cargo xtask ui-preview android build
+cargo xtask ui-preview android verify
+VINK_UI_ENTRY=field.text-area VINK_UI_SCENARIO=multiline VINK_UI_THEME=dark cargo xtask ui-preview android run
+
+# macOS arm64, Xcode + iOS simulator đã cài, XcodeGen (project.yml là nguồn).
+xcrun simctl list devices
+export VINK_UI_IOS_DEVICE=SIMULATOR_UDID
+cargo xtask ui-preview ios build
+cargo xtask ui-preview ios verify
+VINK_UI_ENTRY=screen.reader VINK_UI_SCENARIO=long VINK_UI_THEME=dark cargo xtask ui-preview ios run
+```
+
+`ANDROID_SERIAL` chọn một emulator/device cụ thể. `VINK_UI_ENTRY`, `VINK_UI_SCENARIO`,
+`VINK_UI_THEME=light|dark|system`, `VINK_UI_MOTION=reduce|system`, `VINK_UI_SCALE=100|200`
+chọn replay khi `run`. Native host từ chối entry/scenario/tùy chọn lạ.
+Launch arguments trực tiếp iOS/Desktop: `--entry=field.text-field --scenario=default --theme=dark`;
+Android dùng intent extras cùng tên. Web dùng `#entry/scenario`, các preference do controls giữ.
+Clock/seed cố định do fixtures chung sở hữu, OS text scale/density/insets do máy thực sở hữu.
+
+Android `verify` gọi `:androidDiagnostic:connectedDebugAndroidTest` thật; iOS gọi framework
+`:diagnostics:linkDebugFrameworkIosSimulatorArm64`, XcodeGen rồi `xcodebuild test` scheme
+`VinkUIDiagnostic` trên UDID đã chọn (không tự clone simulator). Thư viện iOS device compile
+vẫn qua `VINK_UI_NATIVE_TARGETS=1 cargo xtask ui-preview cmp build`; iOS diagnostic host hiện
+chỉ simulator arm64, chưa có signing/distribution cho device.
+
+Output: Android `androidDiagnostic/build/outputs/androidTest-results/`, iOS
+`iosDiagnostic/build/DerivedData/Logs/Test/*.xcresult`, CMP `preview/build/captures/`.
+Chụp màn native bằng `adb exec-out screencap -p > PATH.png` hoặc
+`xcrun simctl io "$VINK_UI_IOS_DEVICE" screenshot PATH.png`, rồi mở ảnh và ghi context/hash.
+Đây không phải screenshot baseline tự được bless. Native dùng font hệ thống; pipeline branded
+TTF/OTF, OS IME tiếng Việt, TalkBack/VoiceOver và device thật cần evidence riêng.
 
 ## Cấu trúc và chiều phụ thuộc
 

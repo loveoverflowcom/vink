@@ -57,7 +57,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import java.text.Normalizer
+import vink.ui.nfc
+import kotlin.math.roundToInt
 import vink.ui.CatalogEntry
 import vink.ui.ColorRole
 import vink.ui.Density
@@ -137,8 +138,21 @@ class PreviewModel(initial: PreviewConfig = PreviewConfig()) {
 }
 
 /** Case- and diacritic-insensitive key: "Màu" matches "mau", Đ matches D. */
-fun fold(text: String): String =
-    Normalizer.normalize(text, Normalizer.Form.NFD).replace(Regex("\\p{Mn}+"), "").replace('đ', 'd').replace('Đ', 'd').lowercase()
+fun fold(text: String): String = buildString {
+    val groups = listOf("àáảãạăằắẳẵặâầấẩẫậ", "èéẻẽẹêềếểễệ", "ìíỉĩị", "òóỏõọôồốổỗộơờớởỡợ", "ùúủũụưừứửữự", "ỳýỷỹỵ", "đ")
+    for (c in nfc(text).lowercase()) {
+        if (c in '\u0300'..'\u036f') continue
+        val group = groups.indexOfFirst { c in it }
+        append(if (group >= 0) "aeiouyd"[group] else c)
+    }
+}
+
+/** Host reports its actual font boundary rather than claiming desktop fonts on mobile. */
+data class LoadedFonts(val fonts: vink.ui.VinkFonts, val status: String, val loaded: List<String>)
+private fun decimal(value: Double): String {
+    val n = (value * 100).roundToInt()
+    return "${n / 100}.${(n % 100).toString().padStart(2, '0')}"
+}
 
 fun matches(entry: CatalogEntry, query: String): Boolean {
     val q = fold(query.trim())
@@ -207,7 +221,7 @@ private fun Header(fonts: LoadedFonts) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         TextIn("Vink UI · preview CMP", VinkTextRoles.Title, modifier = Modifier.semantics { heading() })
         TextIn(
-            "tokens.json ${VinkTokens.VERSION} · catalog ${VinkCatalog.VERSION} · Compose Multiplatform 1.9 (JVM desktop)",
+            "tokens.json ${VinkTokens.VERSION} · catalog ${VinkCatalog.VERSION} · Compose Multiplatform 1.9 · diagnostic",
             VinkTextRoles.Caption,
             ColorRole.OnSurfaceVariant,
         )
@@ -443,7 +457,7 @@ private fun ColorRoles(nested: Boolean) {
         VinkContrastPairs.forEach { pair ->
             val light = contrast(pair.fg.light, pair.bg.light)
             val dark = contrast(pair.fg.dark, pair.bg.dark)
-            Code("${pair.fg.token} / ${pair.bg.token} · ${pair.usage} · sáng ${"%.2f".format(light)} · tối ${"%.2f".format(dark)} · ngưỡng ${pair.min}", ColorRole.OnSurface)
+            Code("${pair.fg.token} / ${pair.bg.token} · ${pair.usage} · sáng ${decimal(light)} · tối ${decimal(dark)} · ngưỡng ${pair.min}", ColorRole.OnSurface)
         }
     }
 }
@@ -458,8 +472,8 @@ private fun Note(text: String) {
 @Composable
 private fun Typography(combining: Boolean) {
     if (combining) {
-        val nfc = Normalizer.normalize(VinkFixture.COMBINING, Normalizer.Form.NFC)
-        Note("Chuỗi dấu tổ hợp lưu ở dạng NFD: ${VinkFixture.COMBINING.codePointCount(0, VinkFixture.COMBINING.length)} điểm mã, ${nfc.codePointCount(0, nfc.length)} khi chuẩn hóa NFC.")
+        val nfc = nfc(VinkFixture.COMBINING)
+        Note("Chuỗi dấu tổ hợp lưu ở dạng NFD: ${VinkFixture.COMBINING.length} điểm mã, ${nfc.length} khi chuẩn hóa NFC.")
     }
     val roles = listOf(
         VinkTextRoles.Display to (if (combining) VinkFixture.LONG_TITLE else VinkFixture.DISPLAY),
@@ -603,7 +617,7 @@ private fun Fact(name: String, value: String, tag: String? = null) {
     }
 }
 
-private fun hex(argb: Long) = "#%06x".format(argb and 0xFFFFFF)
+private fun hex(argb: Long) = "#" + (argb and 0xFFFFFF).toString(16).padStart(6, '0')
 
 @Composable
 private fun Effective(state: VinkScopeState, fontScale: Float) {
@@ -613,7 +627,7 @@ private fun Effective(state: VinkScopeState, fontScale: Float) {
         "color.on-surface" to hex(state.colors.argb(ColorRole.OnSurface)),
         "color.primary" to hex(state.colors.argb(ColorRole.Primary)),
         "action.primary.container" to hex(state.colors.argb(ColorRole.ActionPrimaryContainer)),
-        "type.body" to "${VinkTextRoles.Body.size.value}sp × fontScale ${"%.2f".format(fontScale)}",
+        "type.body" to "${VinkTextRoles.Body.size.value}sp × fontScale ${decimal(fontScale.toDouble())}",
         "density.control-padding" to "${VinkDensityDimens.ControlPadding.at(state.density).value}dp",
         "duration.short" to "${state.motion.shortMs}ms",
         "loop" to if (state.motion.loopsRun) "chạy" else "dừng",
@@ -627,3 +641,6 @@ private fun Effective(state: VinkScopeState, fontScale: Float) {
         }
     }
 }
+
+@Composable
+fun WorkbenchInspector(model: PreviewModel) = Inspector(model, VinkCatalog.entries.first { it.id == model.config.entry }, LoadedFonts(vink.ui.VinkFonts(), "Font hệ thống · native diagnostic", emptyList()))

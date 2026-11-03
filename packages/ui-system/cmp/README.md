@@ -16,6 +16,22 @@ dev ngày 02/11/2026, khớp tổ hợp đang chạy ở Cantos — chỉ học,
 | `:ui` | `desktop` (JVM) luôn bật; `android`, `iosArm64`, `iosSimulatorArm64` khi bật native | `commonMain`: `VinkTokens.kt`/`VinkCatalog.kt`/`VinkIcons.kt`/`VinkIdentityVectors.kt` (**sinh ra**), `VinkValues.kt`, `VinkTheme.kt` (`VinkTheme`, `VinkScope`, `LocalVink`, `RoleOverride`, `validate`), component theo họ: `VinkLayout.kt` (`VinkText`, `VinkHeading`, `VinkSurface`, `VinkContainer`, `VinkStack`, `VinkGrid`, `VinkDivider`), `VinkActions.kt` (Button pending có MicroArc ở slot status), `VinkFields.kt`, `VinkMedia.kt`, `VinkIdentity.kt` (`initials`, `tone`, `safeHref`, `expect fun nfc`); UIS-03: `VinkState.kt` (contract thuần: trục nội dung/pha, `RegionState.layout`, `Problem`, `placementFor`, `NoticeSpec`, `LoadingGate`…; `VinkStateVectors.kt` **sinh ra**) và `VinkFeedback.kt` (`VinkContentRegion`, `VinkStatePanel`, `VinkInlineNotice`, `VinkBanner`, `VinkSkeleton`, `VinkLoadingIndicator`, `VinkEdgeProgress`, `VinkStatusBadge`, `VinkListEnd`, `VinkSnackbar`, `VinkDialog`, `VinkMotionActivity`, `rememberLoadingGate`, `rememberSnackbarTimeout`); UIS-04: `VinkNavigation.kt` (`WindowClass.fromDp`, `NavLayout.resolve`, `RailPreference`, `OverlayLayer`/`CloseReason`/`FocusReturn` thuần; `VinkNavItem`, `VinkNavUtility`, `VinkNavigationRail`, `VinkBottomNavigation`, `VinkTopBar`, `VinkAdaptiveScaffold` gọi `content` từ một call site cố định nên đổi khung không remount; `VinkNavigationVectors.kt` **sinh ra**); `desktopMain`/`androidMain`/`iosMain`: `nfc` theo nền tảng |
 | `:preview` | `desktop` | Workbench Compose Desktop, `PreviewFonts` (đọc WOFF2 tự host qua Skia), `StateSpecimens.kt` (họ `state.*`, playground có đồng hồ thủ công và reducer `Submission`), `NavigationSpecimens.kt` (họ `navigation.*` và adapter chẩn đoán `DiagnosticNavigator`: đích có kiểu, back stack, deep link nội bộ, chữ chưa lưu do host giữ — không phải app native), test và capture; `Main.kt` map cửa sổ thu nhỏ → `hostActive = false` (không vòng lặp nào chạy) |
 
+Từ UIS-06, `Workbench.kt`, `Components.kt`, `StateSpecimens.kt`, `NavigationSpecimens.kt`,
+`ScreenRecipes.kt` nằm ở `:diagnostics/commonMain`, không còn bản sao trong `:preview`.
+`:preview` chỉ giữ Desktop window/fonts/tests. `:androidDiagnostic` là debug application host;
+`iosDiagnostic/project.yml` sinh Xcode simulator host gọi `NativeSession.controller()` từ cùng
+module. Settings chỉ include Android host khi native opt-in; Web/JVM không cần SDK/Xcode.
+Decoder ảnh nằm trong diagnostic expect/actual, không đưa Skia/BitmapFactory vào UI commonMain.
+
+Android inject lifecycle và theo dõi Animator duration scale; iOS inject app active và Reduce
+Motion notification. UI giữ một call site specimen qua theme/utility; trường controlled dùng
+`rememberSaveable(TextFieldValue.Saver)` ở sample để giữ chữ qua Android recreation. Đây không là
+local draft recovery hay backend. Bộ nhập thực dùng public `VinkTextField`/`VinkTextArea`.
+
+Lệnh native, replay, SDK/simulator prerequisites và output:
+[development](../../../docs/development/README.md#diagnostic-ui-native-uis-06).
+Readiness theo target: [UIS-06](../../../docs/development/ui-system-qualification-evidence.md).
+
 `commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`);
 API nền tảng (NFC) đi qua `expect`/`actual`. Text field nhận/trả `TextFieldValue`; ảnh là `ImageState`
 đã giải mã do host cấp (preview giải mã bằng Skia, lỗi → `Failed`). Contract: [components.md](../shared/components.md).

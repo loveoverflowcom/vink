@@ -1,5 +1,7 @@
 package vink.ui.preview
 
+import androidx.compose.runtime.saveable.rememberSaveable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -11,9 +13,9 @@ import vink.patterns.*
 /** Sample consumer. Fixtures never enter app adapters or the patterns library. */
 @Composable
 fun ScreenRecipe(id: String, scenario: String) {
-    var body by remember { mutableStateOf(TextFieldValue(VinkFixture.READING)) }
-    var title by remember { mutableStateOf(TextFieldValue(if (scenario == "long") VinkFixture.LONG_TITLE else VinkFixture.TITLE)) }
-    var query by remember { mutableStateOf(TextFieldValue("")) }
+    var body by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(VinkFixture.READING)) }
+    var title by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue(if (scenario == "long") VinkFixture.LONG_TITLE else VinkFixture.TITLE)) }
+    var query by rememberSaveable(stateSaver = TextFieldValue.Saver) { mutableStateOf(TextFieldValue("")) }
     var theme by remember { mutableStateOf<String?>("system") }
     var message by remember { mutableStateOf("") }
     val log = LocalPreviewLog.current

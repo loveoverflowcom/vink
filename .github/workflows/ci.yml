@@ -96,10 +96,37 @@ jobs:
           node-version: 24
       # Google Chrome is preinstalled on GitHub's ubuntu-24.04 image.
       - run: cargo xtask verify web
+      - run: cargo xtask ui-preview leptos verify
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: browser-evidence
-          path: target/verify-web/
+          path: |
+            target/verify-web/
+            target/ui-preview/leptos/captures/
+          retention-days: 14
+
+  ui-cmp:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - name: Prepare JVM renderer libraries
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends libgl1 libfontconfig1 libxrender1 libxi6 libxtst6
+      - name: Verify actual CMP desktop renderer (no native SDK required)
+        run: |
+          export JAVA_HOME="$JAVA_HOME_17_X64"
+          cargo xtask ui-preview cmp verify
+      - name: Preserve CMP evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-cmp-evidence
+          path: |
+            packages/ui-system/cmp/preview/build/captures/
+            packages/ui-system/cmp/preview/build/test-results/
+            packages/ui-system/cmp/diagnostics/build/test-results/
           retention-days: 14

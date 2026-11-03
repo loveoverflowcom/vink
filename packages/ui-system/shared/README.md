@@ -8,6 +8,8 @@ bằng `cargo xtask ui-tokens`.
 | [tokens.json](tokens.json) | `version` (semver), `fonts` (face tự host, file trong `apps/vink-web/assets/fonts`), `primitives` (màu hex theo họ/tông L\*), `tokens` (semantic + recipe), `contrast` (cặp và ngưỡng) |
 | [tokens.schema.json](tokens.schema.json) | Hợp đồng cho editor. Bộ kiểm thật là `xtask/src/ui_tokens.rs` (alias, vòng, type, theme đủ, tương phản) |
 | [preview-catalog.json](preview-catalog.json) | ID entry/kịch bản dùng chung cho hai preview, trạng thái từng renderer |
+| [api-coverage.json](api-coverage.json) | Public component → stable entry, style exception có owner/reason; `verify quick` so với declarations thật |
+| [compatibility.md](compatibility.md) | Alias, owner/removal condition và change notes; cách mở rộng ở [EXTENDING](../EXTENDING.md) |
 | [fixtures/foundation.json](fixtures/foundation.json) | Đồng hồ cố định, seed, chữ mẫu tiếng Việt `[Mẫu]` (có chuỗi NFD lưu bằng escape) |
 | [fixtures/identity.json](fixtures/identity.json) | `avatar-identity-v1`: golden vectors initials/tone (NFC/NFD, Đ/đ, Ỗ/Ữ, emoji, một từ, blank), người `[Mẫu]`, ảnh PNG mẫu và byte AVIF hỏng để kiểm fallback |
 | [icons.json](icons.json) | Registry icon: path nguyên văn từ Material Icons (Apache-2.0, commit pin), SHA-256 file upstream được generator dựng lại và so; [license](icons/LICENSE-material-design-icons.txt) |

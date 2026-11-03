@@ -13,6 +13,7 @@ mod process;
 mod provision;
 mod ui_navigation;
 mod ui_preview;
+mod ui_qualification;
 mod ui_states;
 mod ui_tokens;
 mod web;
@@ -49,10 +50,11 @@ usage: cargo xtask <command>
   verify all             quick, postgres and web in order
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
-  ui-preview leptos|cmp build|verify|run
+  ui-preview leptos|cmp|android|ios build|verify|run
                          UI system previews: Leptos (wasm + headless Chrome checks) and
                          Compose Multiplatform desktop (Gradle; VINK_UI_NATIVE_TARGETS=1 adds
-                         Android/iOS compilation)";
+                         Android/iOS compilation). android/ios run isolated diagnostic hosts;
+                         ios requires VINK_UI_IOS_DEVICE (simulator UDID), Xcode and XcodeGen.";
 
 pub fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -74,12 +76,14 @@ fn main() -> ExitCode {
         ["dev"] => finish(dev(&env)),
         ["ui-tokens"] => finish(ui_tokens::run(&root(), false)),
         ["ui-tokens", "--check"] => finish(ui_tokens::run(&root(), true)),
-        ["ui-preview", renderer @ ("leptos" | "cmp"), "verify"] => {
-            ui_preview::verify(&env, renderer)
-        }
         [
             "ui-preview",
-            renderer @ ("leptos" | "cmp"),
+            renderer @ ("leptos" | "cmp" | "android" | "ios"),
+            "verify",
+        ] => ui_preview::verify(&env, renderer),
+        [
+            "ui-preview",
+            renderer @ ("leptos" | "cmp" | "android" | "ios"),
             action @ ("build" | "run"),
         ] => finish(ui_preview::run(&env, renderer, action)),
         ["verify", lane] => match *lane {
