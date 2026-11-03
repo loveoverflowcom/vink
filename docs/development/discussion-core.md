@@ -68,13 +68,13 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 
 | ID / nguồn | Model Quint | Rust production / test | PostgreSQL (`tests/postgres/discussion.rs`) | Kani | Gap còn lại |
 | --- | --- | --- | --- | --- | --- |
-| D2T-INV-01 — #41 | `structure.apply`, `rootIsRoot`/`canonicalContext`/`noCycles` | `reply_placement`, `root_placement`, `DiscussionThread`; enumeration 20^4 và trace replay | `the_database_alone_rejects_a_third_tier_and_cross_scope_references` | NOT_RUN | Model chưa có removal |
+| D2T-INV-01 — #41 | `structure.apply`, `rootIsRoot`/`canonicalContext`/`noCycles` | `reply_placement`, `root_placement`, `DiscussionThread`; enumeration 20^4 và trace replay | `the_database_alone_rejects_a_third_tier_and_cross_scope_references` | NOT_RUN | Model cấu trúc không có removal; neo/context ẩn (INV-05) chưa có model |
 | D2T-INV-02 — #41 | Một thread là assumption | `decide_submission` (target tra trong thread), `CommentPlacement::from_stored` | Cùng test: cross-thread root, context khác root, đổi thread bị chặn | NOT_RUN | Chưa tenant; work binding qua `discussion_threads.work_id` unique |
-| D2T-INV-03 — COM-03, COM-07, INV-05 | Chưa có | `authorize_mode_change`, `DiscussionSettings::change_mode`, actor bắt buộc ở application | `closing_waits_for_an_in_flight_submission_and_vice_versa`, `the_work_author_toggles_comments_but_has_no_power_over_others`, `a_withdrawn_work_closes_its_discussion…` | NOT_RUN | Auth authority thật (D-05), ban/suspension, lệnh rút bài thật |
-| D2T-INV-04 — COM-02, MOD-02/04 | Chưa có | `lifecycle`, `visibility::view`; lý do chỉ cho `OwnRejected` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection`, `rejection_reasons_reach_only_their_writer…` | NOT_RUN | Cache/SSR/notification chưa tồn tại; sửa bình luận chặn theo D-08 |
-| D2T-INV-05 — PUB-03 | Chưa có | `remove_by_author`, `root_listing`, `reply_context` | `hidden_roots_anchor_public_replies_and_hidden_contexts_degrade`; SET NULL context ở test toàn vẹn | NOT_RUN | Purge/retention, restore, quote/snippet |
+| D2T-INV-03 — COM-03, COM-07, INV-05 | `lifecycle.setMode`/`submit`, `modeAuthority`, `premoderatedSubmission`, `scopedWrites`; trace `comments_mode` | `authorize_mode_change`, `DiscussionSettings::change_mode`, actor bắt buộc ở application | `closing_waits_for_an_in_flight_submission_and_vice_versa`, `the_work_author_toggles_comments_but_has_no_power_over_others`, `a_withdrawn_work_closes_its_discussion…` | NOT_RUN | Auth authority thật (D-05), ban/suspension, lệnh rút bài thật |
+| D2T-INV-04 — COM-02, MOD-02/04 | `viewerProjection`, `premoderatedSubmission`; replay so `view` cho 4 người xem | `lifecycle`, `visibility::view`; lý do chỉ cho `OwnRejected` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection`, `rejection_reasons_reach_only_their_writer…` | NOT_RUN | Cache/SSR/notification chưa tồn tại; sửa bình luận chặn theo D-08 |
+| D2T-INV-05 — PUB-03 | Một phần: `removeOwn`, gỡ là terminal trong `versionedLifecycle`; không có neo/context | `remove_by_author`, `root_listing`, `reply_context` | `hidden_roots_anchor_public_replies_and_hidden_contexts_degrade`; SET NULL context ở test toàn vẹn | NOT_RUN | Purge/retention, restore, quote/snippet |
 | D2T-INV-06 — COM-01/04 | Chưa có | `CommandKey`, `PayloadDigest`, `decide_submission` (receipt trước mọi gate) | `concurrent_retries_with_one_key_create_exactly_one_comment`, idempotency trong test pending | NOT_RUN | Retention receipt, endpoint trạng thái lệnh |
-| D2T-INV-07 — MOD-02, INV-07, COM-08 | Chưa có | `ModerationAction::apply`, `authorize_moderation` (grant + tự né), `ModerationVersion` | `moderation_is_version_bound_audited…`, `moderation_authority_is_a_revocable_grant_rechecked_at_commit` (thu hồi đang chạy vs quyết định đang chạy), `moderators_recuse_from_their_own_comments_and_their_own_works`, `the_http_moderation_api_keeps_every_outcome_distinct` | NOT_RUN | Worker/job fencing, appeal/mở lại, cảnh báo backlog |
+| D2T-INV-07 — MOD-02, INV-07, COM-08 | `lifecycle.moderate`, `writeAuthority`, `versionedLifecycle`; trace `moderation_authority`; counterexample `author-recusal` | `ModerationAction::apply`, `authorize_moderation` (grant + tự né), `ModerationVersion` | `moderation_is_version_bound_audited…`, `moderation_authority_is_a_revocable_grant_rechecked_at_commit` (thu hồi đang chạy vs quyết định đang chạy), `moderators_recuse_from_their_own_comments_and_their_own_works`, `the_http_moderation_api_keeps_every_outcome_distinct` | NOT_RUN | Worker/job fencing, appeal/mở lại, cảnh báo backlog |
 | D2T-INV-08 — COM-06 | Chưa có | Chưa có reaction | — | NOT_RUN | Desired-state set/remove, cardinality |
 | D2T-INV-09 — #41 | Chưa có | `PageCursor`, `PageLimit`, `PREVIEW_REPLIES` | `pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page` (ties theo ID) | NOT_RUN | Ranking “Nổi bật”, epoch/snapshot, benchmark |
 | D2T-INV-10 — #45 | Chưa có | Không đổi client | — | NOT_RUN | Ack theo actor/session/draft ở consumer |
@@ -93,7 +93,10 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
    enumeration 20^4 của cấu trúc. Đây là finite enumeration của code, không gọi là Kani.
 2. **Application (`quick`):** store ghi nhận để kiểm xác thực trước validate, input thô không tới
    store, ID do server sinh và mỗi kết quả giữ mã lỗi riêng. Không chứng minh luật của store.
-3. **Quint (`discussion`):** chỉ model cấu trúc của lát cắt 1; lifecycle chưa có model.
+3. **Quint (`discussion`):** model cấu trúc (lát cắt 1) và model vòng đời `lifecycle.qnt`
+   (D2T-02: tiền kiểm, gỡ, version, bật/tắt, grant tại commit, tự né). Simulation ngẫu nhiên có
+   giới hạn và replay input qua các quyết định Rust production, không phải model checking; khóa
+   và transaction vẫn chỉ có bằng chứng ở lane `postgres`.
 4. **PostgreSQL thật (`postgres`):** ràng buộc bằng SQL trực tiếp bỏ qua Rust, race có khóa tường
    minh, idempotency đồng thời, kiểm duyệt có audit, neo/context, keyset có ties, và so sánh bộ lọc
    SQL với projection domain trên mọi trạng thái × người xem. Chạy với superuser của harness;

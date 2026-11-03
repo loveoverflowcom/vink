@@ -27,6 +27,8 @@
 
 pub mod body;
 pub mod lifecycle;
+#[cfg(test)]
+mod lifecycle_replay;
 pub mod moderation;
 pub mod page;
 pub mod policy;

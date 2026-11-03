@@ -45,7 +45,8 @@ paging), application use cases, a PostgreSQL adapter/migration with real-databas
 v1 discussion routes with contract fixtures (read, submit, remove own, author toggle, moderation
 queue/decisions), DB-held moderator grants managed only by `vink-app moderator grant|revoke|list`
 and rechecked at each decision's commit (moderators recuse from their own comments and works),
-plus a scoped structural Quint model/trace replay (`services/vink-app/behavior`). Production
+plus scoped Quint models with trace replay (`services/vink-app/behavior`: structure and comment
+lifecycle/mode/moderation authority). Production
 writes answer `401` (no auth authority) and no discussion UI exists. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
@@ -91,8 +92,8 @@ Do not infer permission to push, post messages or publish from a local editing t
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
 quick|discussion|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
-only the structural D2T-01 model and real core replay, not the comment lifecycle (whose pure
-tests run in `quick` and real-database tests in `postgres`);
+the structural D2T-01 and lifecycle D2T-02 Quint models and replays their inputs through the real
+pure decisions; locking, transactions and I/O stay in `postgres`;
 `specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
 to validate documentation or skills.
 
