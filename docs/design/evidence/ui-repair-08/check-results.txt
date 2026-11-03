@@ -17,3 +17,9 @@ Preview tests: 37 executed, no failures; no skips.
 PNG count including the existing matrix: 447; font comparison: 24.
 Negative control: substituting VinkFonts() while retaining loaded=3 was rejected by Compose measurement.
 TTF derivative reproduction/check: PASS with fontTools 4.68.0 + brotli 1.2.1; see provenance and derive_desktop.py.
+Runtime JAR: PASS all three TTF lengths/hashes, both OFL hashes and sole provenance; no WOFF2 runtime entries.
+Final portable font oracle: PASS 3 FontTest cases after requiring a bundled FontListFontFamily plus exact Compose measurement; generic family mutation with loaded=3 rejected.
+CI run 41640577776 / head f0515995d27478f4f4761720a1a5cbf2334fcacd: web FAIL browser-smoke timed out waiting for clear query. Web source, CSS and WOFF2 bytes unchanged; font decoder is Desktop-only. Subsequent gates remain pending, not marked PASS.
+CI run 71 complete font gates: Linux ui-cmp PASS; macOS ui-cmp-macos PASS, 37 preview tests + 2 diagnostic replay per host; head f0515995d27478f4f4761720a1a5cbf2334fcacd, checkout 6ba1f59d16f9eb9c0941706ecd76ed85daa5f854.
+macOS 15.8.2 arm64 / Temurin 17.0.21: 12/12 font before/after PNG pairs byte-identical; all 24 opened via six content contact sheets. WOFF2 and TTF both decode all three faces.
+Final local quick after portable-family oracle and macOS evidence: PASS all eight steps; JSON/XML/YAML and diff review PASS.

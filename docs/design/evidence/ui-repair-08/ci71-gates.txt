@@ -1,0 +1,18 @@
+CI run 71
+PR head: f0515995d27478f4f4761720a1a5cbf2334fcacd
+Synthetic merge checkout: 6ba1f59d16f9eb9c0941706ecd76ed85daa5f854
+Base: 31a62b1dd7a20e445d9788b967613902f7dc1b91
+
+linux
+https://github.com/loveoverflowcom/vink/actions/runs/41640577776/job/125932763636
+2026-11-03T13:01:04.1968919Z Image: ubuntu-24.04
+2026-11-03T13:07:55.0861858Z BUILD SUCCESSFUL in 5m 52s
+2026-11-03T13:07:55.4272594Z   PASS  ui tokens: generated files match
+2026-11-03T13:07:55.4273245Z   PASS  CMP: common + desktop tests and captures
+
+macos
+https://github.com/loveoverflowcom/vink/actions/runs/41640577776/job/125932763191
+2026-11-03T13:01:02.3815510Z Image: macos-15-arm64
+2026-11-03T13:08:01.3087930Z BUILD SUCCESSFUL in 5m 54s
+2026-11-03T13:08:03.0451330Z   PASS  ui tokens: generated files match
+2026-11-03T13:08:03.0464270Z   PASS  CMP: common + desktop tests and captures

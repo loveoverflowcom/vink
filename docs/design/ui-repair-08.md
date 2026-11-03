@@ -52,14 +52,35 @@ kiểm tra, font byte được Compose tiêu thụ qua host hiện có.
 | Negative control: giả `loaded=3` nhưng trả font hệ thống | PASS: test đo chữ FAIL đúng (94.848206 thay vì 90.7522px cho Be Vietnam Pro 400), sau đó khôi phục loader thật; không là production code |
 | `cargo xtask verify quick` | PASS; fmt, clippy SSR/WASM/preview, doctest, unit/contract, repo checks; gồm guard derivative và ca hash bị sửa cùng độ dài/header |
 | `cargo xtask ui-preview cmp verify`, bản sửa cuối | PASS Linux local: common + Desktop; preview 37 tests, 0 failures/skips; 447 PNG gồm 24 đối chiếu font |
-| Linux CI `ui-cmp`, final PR head | Chờ CI; **bắt buộc trước merge** |
-| macOS CI `ui-cmp-macos`, final PR head | Chờ CI; cùng regression và renderer/captures, không suy PASS từ Linux |
-| Preview Leptos / Web | Chờ CI; manifest font đổi nhưng Web font bytes/token/CSS không đổi |
+| Linux CI `ui-cmp`, code head `f051599…` | PASS [job](https://github.com/loveoverflowcom/vink/actions/runs/41640577776/job/125932763636), Ubuntu 24.04/x64, Temurin 17.0.21; đủ ba TTF, WOFF2 trả `null` |
+| macOS CI `ui-cmp-macos`, code head `f051599…` | PASS [job](https://github.com/loveoverflowcom/vink/actions/runs/41640577776/job/125932763191), macOS 15.8.2/arm64, Temurin 17.0.21; TTF và WOFF2 đều đọc đủ ba face |
+| Preview Leptos / Web ở `f051599…` | FAIL Web tại `clear query` của Bàn viết; Leptos NOT_RUN sau đó. Đây là lịch sử lượt đầu, không phải kết quả cuối; Web font bytes/token/CSS không đổi |
+
+CI run 71 checkout synthetic merge `6ba1f59d16f9eb9c0941706ecd76ed85daa5f854`, từ PR head
+`f0515995d27478f4f4761720a1a5cbf2334fcacd` + base `31a62b1…`. Hai job cùng build fingerprint
+`6e9ee4d453c965e7e60704c2650be40a6d80da7abedfdfac7e97424997944b14` với local, mỗi job
+đạt 37 tests preview và 2 diagnostics replay trong XML rút gọn, cùng common tests của lane.
+
+Kết quả **final PR head**, tested SHA và run/job cuối được pin trong
+[PR #51](https://github.com/loveoverflowcom/vink/pull/51) và
+[checks hiện hành](https://github.com/loveoverflowcom/vink/pull/51/checks).
+Chỉ merge khi Linux font gate, macOS regression, quick và Web/Leptos của đúng head đạt;
+không biến lịch sử PASS trên `f051599…` thành PASS cho head khác.
 
 Lượt focused đầu FAIL ở oracle đo: Skia Font mặc định snap advance theo pixel, Compose paragraph
 dùng advance phân số. Test đã so cùng linear/subpixel metrics với hinting NONE, không nới kỳ vọng
-về font hoặc số face. Giữ XML/log thất bại và lần đạt trong evidence. Glyph ID tồn tại và phép đo
+về font hoặc số face. Self-review bỏ giả định font mặc định của host luôn có metrics khác:
+oracle cuối yêu cầu `FontListFontFamily` từ asset và vẫn so phép đo Compose với font bytes.
+[Ca âm `loaded=3` + generic family và lần khôi phục](evidence/ui-repair-08/portable-family-oracle.xml)
+đều kiểm đúng; ba FontTest cuối đạt trên Linux. Giữ XML/log thất bại và lần đạt trong evidence. Glyph ID tồn tại và phép đo
 không tự chứng minh shaping đầy đủ, OS IME hoặc accessibility trên thiết bị.
+
+[Web CI lượt đầu](https://github.com/loveoverflowcom/vink/actions/runs/41640577776/job/125932763681)
+ở head `f051599…` timeout chờ 100 kết quả sau click xóa truy vấn. Artifact cho thấy vẫn giữ query
+và panel no-results sau vòng capture đổi viewport/font scale; driver lấy tọa độ ngay sau scroll/
+restore, nên race reflow là giả thuyết cần kiểm, chưa phải nguyên nhân đã xác nhận. Không thay Web
+product, không bỏ assertion và không dùng PASS font để bỏ qua lỗi này; cần kết quả Web/Leptos
+đạt trên final head trước merge.
 
 ## Ảnh và phạm vi review
 
@@ -91,7 +112,24 @@ Dấu tiếng Việt NFC/NFD không bị cắt trong các mẫu đã mở; khôn
 
 Sidecar giữ source SHA, fingerprint bytecode/font của build dirty, JVM/OS, renderer, density,
 scale, input files và font thực. Ảnh là **CMP JVM off-screen**, nội dung tổng hợp; không phải
-app native, browser hay mockup. Ảnh/kết quả macOS sẽ được bổ sung từ CI trước merge.
+app native, browser hay mockup.
+
+| macOS CI, cùng fixture/390dp/theme/scale | Trước WOFF2 | Sau TTF |
+| --- | --- | --- |
+| Typography NFC/NFD, light/text100 | [Ảnh](evidence/ui-repair-08/macos-typography-before.png) | [Ảnh](evidence/ui-repair-08/macos-typography-after.png) |
+| Byline tên dài, light/text200 | [Ảnh](evidence/ui-repair-08/macos-byline-before.png) | [Ảnh](evidence/ui-repair-08/macos-byline-after.png) |
+| Reader thơ, dark/text200 | [Ảnh](evidence/ui-repair-08/macos-reader-before.png) | [Ảnh](evidence/ui-repair-08/macos-reader-after.png) |
+
+Đã mở 24 ảnh macOS qua sáu contact sheet crop toàn bộ vùng có nội dung ở tỷ lệ gốc.
+12/12 cặp trước/sau trên **cùng host macOS** trùng byte PNG; không có delta metrics/wrapping
+quan sát được trong matrix này. Không suy pixel parity giữa macOS và Linux. Theo
+[manifest macOS](evidence/ui-repair-08/macos-manifest.json), cả trước và sau đều dùng đủ ba
+face thật; nguồn/hash/family/weight/trục/glyph ghi trong
+[diagnostics macOS](evidence/ui-repair-08/ci71-macos-font-diagnostics.txt) và
+[diagnostics Linux CI](evidence/ui-repair-08/ci71-linux-font-diagnostics.txt).
+[XML Linux](evidence/ui-repair-08/ci71-linux-tests.xml),
+[XML macOS](evidence/ui-repair-08/ci71-macos-tests.xml) và
+[context macOS gốc](evidence/ui-repair-08/ci71-macos-font-contexts.json) giữ đúng run/checkout.
 
 Self-review diff/caller/oracle và ảnh, gồm negative control; chưa có independent approval. Không nghiệm thu
 Android/iOS branded fonts, OS IME, screen reader hoặc pixel parity giữa các rasterizer.

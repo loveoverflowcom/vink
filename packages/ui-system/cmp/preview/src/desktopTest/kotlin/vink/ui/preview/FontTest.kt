@@ -3,6 +3,7 @@ package vink.ui.preview
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontListFontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
@@ -16,6 +17,7 @@ import java.text.Normalizer
 import kotlin.math.abs
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import org.jetbrains.skia.Data
@@ -82,6 +84,9 @@ class FontTest {
             loaded.fonts.ui to "be-vietnam-pro-600.ttf",
             loaded.fonts.reading to "literata-variable.ttf",
         )) {
+            // Do not assume the host's default font has different metrics: users can change
+            // fontconfig defaults. Require a bundled family and measure against its bytes.
+            assertIs<FontListFontFamily>(family, "$file must use a bundled font family")
             val weights = if (file == "literata-variable.ttf") listOf(400, 600) else listOf(if ("600" in file) 600 else 400)
             for (weight in weights) {
                 typeface(file).use { original ->
@@ -97,8 +102,6 @@ class FontTest {
                             val expected = skia.measureTextWidth("HHHH")
                             val actual = result.getHorizontalPosition(4, true)
                             assertTrue(abs(expected - actual) < 0.05f, "$file/$weight: Compose=$actual, actual face=$expected")
-                            val fallback = measurer.measure("HHHH", style.copy(fontFamily = FontFamily.Default)).getHorizontalPosition(4, true)
-                            assertTrue(abs(fallback - actual) > 0.1f, "$file/$weight must not measure as the system fallback")
                         }
                     }
                 }
