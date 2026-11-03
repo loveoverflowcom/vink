@@ -43,6 +43,11 @@ pub type ResolveFuture<'a> = Pin<Box<dyn Future<Output = Resolution> + Send + 'a
 pub trait IdentityResolver: Send + Sync + 'static {
     /// Decides who acts. `peer` is the TCP peer when known.
     fn resolve<'a>(&'a self, parts: &'a Parts, peer: Option<SocketAddr>) -> ResolveFuture<'a>;
+    /// Diagnostic host hint only. Production resolvers never expose a marker. It grants
+    /// nothing: each API request still resolves its actor and enforces the loopback peer.
+    fn local_discussion_fixture_scope(&self) -> Option<String> {
+        None
+    }
 }
 
 /// No auth authority configured: private routes stay closed.
@@ -62,6 +67,19 @@ pub struct LocalFixture {
 }
 
 impl IdentityResolver for LocalFixture {
+    fn local_discussion_fixture_scope(&self) -> Option<String> {
+        // Per-process marker, unrelated to the principal's UUID or display name.
+        static MARKERS: std::sync::OnceLock<
+            std::sync::Mutex<std::collections::BTreeMap<PrincipalId, String>>,
+        > = std::sync::OnceLock::new();
+        let mut markers = MARKERS.get_or_init(Default::default).lock().ok()?;
+        Some(
+            markers
+                .entry(self.principal)
+                .or_insert_with(|| uuid::Uuid::now_v7().to_string())
+                .clone(),
+        )
+    }
     fn resolve<'a>(&'a self, _parts: &'a Parts, peer: Option<SocketAddr>) -> ResolveFuture<'a> {
         let resolution = match peer.filter(|addr| addr.ip().is_loopback()) {
             Some(_) => Resolution::Principal(self.principal),
@@ -151,6 +169,7 @@ mod tests {
 
     #[tokio::test]
     async fn default_authority_ignores_client_supplied_identity() {
+        assert!(NoAuthority.local_discussion_fixture_scope().is_none());
         assert_eq!(
             NoAuthority
                 .resolve(&parts(), Some(([127, 0, 0, 1], 9).into()))
@@ -163,6 +182,16 @@ mod tests {
     async fn fixture_requires_a_loopback_peer() {
         let id = PrincipalId::parse("22222222-2222-4222-8222-222222222222").unwrap();
         let fixture = LocalFixture { principal: id };
+        let marker = fixture.local_discussion_fixture_scope().unwrap();
+        assert_ne!(marker, id.to_string());
+        assert_eq!(
+            fixture.local_discussion_fixture_scope(),
+            Some(marker.clone())
+        );
+        let other = LocalFixture {
+            principal: PrincipalId::from_uuid(uuid::Uuid::now_v7()),
+        };
+        assert_ne!(other.local_discussion_fixture_scope(), Some(marker));
         assert_eq!(
             fixture
                 .resolve(&parts(), Some(([127, 0, 0, 1], 9).into()))

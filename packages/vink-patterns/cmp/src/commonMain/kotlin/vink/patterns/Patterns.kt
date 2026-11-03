@@ -12,7 +12,7 @@ data class Author(val name: String, val key: String?, val publishedAt: String)
 data class DraftSummary(val title: String, val version: Long, val updatedAt: String, val href: String)
 data class Feedback(val id: String, val person: Person, val text: String, val context: String, val href: String)
 enum class FeedbackIntent(val label: String) {
-    Sharing("Chỉ chia sẻ"), Impressions("Muốn nghe cảm nhận"), Technique("Xin góp ý kỹ thuật")
+    Unspecified("Nhận xét"), Sharing("Chỉ chia sẻ"), Impressions("Muốn nghe cảm nhận"), Technique("Xin góp ý kỹ thuật")
 }
 
 fun participants(items: List<Feedback>): List<Person> = items.map { it.person }.filter { !it.key.isNullOrEmpty() }.distinctBy { it.key }
@@ -96,15 +96,54 @@ fun FeedbackThread(items: List<Feedback>, onNavigate: (String) -> Unit) {
 
 /** Controlled TextFieldValue retains selection/composition through host updates and errors. */
 @Composable
-fun FeedbackComposer(intent: FeedbackIntent, value: TextFieldValue, onInput: (TextFieldValue) -> Unit, state: ActionState, onSubmit: () -> Unit) {
+fun FeedbackComposer(intent: FeedbackIntent, value: TextFieldValue, onInput: (TextFieldValue) -> Unit, state: ActionState, onSubmit: () -> Unit, commentsClosed: Boolean = false) {
     Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
         VinkText(intent.label, role = TypeRole.Label)
-        if (intent == FeedbackIntent.Sharing) {
-            VinkText("Tác giả chỉ chia sẻ bài viết này.", tone = TextTone.Muted)
-        } else {
-            VinkTextArea(if (intent == FeedbackIntent.Technique) "Góp ý kỹ thuật có ngữ cảnh" else "Cảm nhận của bạn", value, onInput)
-            VinkButton("Gửi nhận xét", onSubmit, state = state)
+        VinkTextArea(if (intent == FeedbackIntent.Technique) "Góp ý kỹ thuật có ngữ cảnh" else "Nhận xét của bạn", value, onInput)
+        VinkButton("Gửi nhận xét", onSubmit, state = if (state is ActionState.Pending) state else if (commentsClosed) ActionState.Disabled("Tác giả đã tắt bình luận. Bản đang soạn được giữ lại.") else state)
+    }
+}
+
+/** Authorized display facts; no HTTP, actor lookup or write authority in this library. */
+data class DiscussionComment(val id: String, val author: Author, val body: String, val status: String? = null, val context: DiscussionContext? = null, val canReply: Boolean = false, val canRemove: Boolean = false)
+sealed interface DiscussionContext {
+    data object Root : DiscussionContext
+    data class Reply(val name: String, val href: String?) : DiscussionContext
+    data object Unavailable : DiscussionContext
+}
+data class DiscussionThreadFacts(val rootId: String, val root: DiscussionComment?, val replies: List<DiscussionComment>)
+
+/** Context does not add an indentation level. Callers retain draft/request scope. */
+@Composable
+fun DiscussionThread(facts: DiscussionThreadFacts, onReply: (String) -> Unit, onRemove: (String) -> Unit, onNavigate: (String) -> Unit, actionState: ActionState = ActionState.Enabled) {
+    Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
+        if (facts.root == null) VinkText("Bình luận gốc không còn hiển thị.", tone = TextTone.Muted)
+        else key(facts.root.id) { DiscussionCommentContent(facts.root, onReply, onRemove, onNavigate, actionState) }
+        Column(Modifier.padding(start = VinkDimens.Space3), verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
+            facts.replies.forEach { comment -> key(comment.id) { DiscussionCommentContent(comment, onReply, onRemove, onNavigate, actionState) } }
         }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun DiscussionCommentContent(comment: DiscussionComment, onReply: (String) -> Unit, onRemove: (String) -> Unit, onNavigate: (String) -> Unit, state: ActionState) {
+    Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
+        WorkByline(comment.author, narrow = true, size = AvatarSize.Medium)
+        when (val context = comment.context) {
+            DiscussionContext.Root -> VinkText("Trả lời bình luận gốc", role = TypeRole.Caption)
+            DiscussionContext.Unavailable -> VinkText("Bình luận được trả lời không còn hiển thị", role = TypeRole.Caption)
+            is DiscussionContext.Reply -> if (context.href != null) VinkLink("Đang trả lời @${context.name}", context.href, onNavigate)
+                else VinkText("Đang trả lời @${context.name} · Ngoài trang đã tải; chưa có đường mở ngữ cảnh này.", role = TypeRole.Caption)
+            null -> Unit
+        }
+        comment.status?.let { VinkText(it, role = TypeRole.Label) }
+        VinkText(comment.body)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
+            if (comment.canReply) VinkButton("Trả lời", { onReply(comment.id) }, variant = ButtonVariant.Text)
+            if (comment.canRemove) VinkButton("Gỡ nhận xét của tôi", { onRemove(comment.id) }, variant = ButtonVariant.Text, state = state)
+        }
+        VinkDivider()
     }
 }
 

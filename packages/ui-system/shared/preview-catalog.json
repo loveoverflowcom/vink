@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.5.1",
+  "version": "0.5.2",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -1317,6 +1317,22 @@
         {
           "id": "uncertain",
           "label": "uncertain"
+        },
+        {
+          "id": "sharing-open",
+          "label": "sharing-open"
+        },
+        {
+          "id": "sharing-closed",
+          "label": "sharing-closed"
+        },
+        {
+          "id": "discussion-flat",
+          "label": "discussion-flat"
+        },
+        {
+          "id": "discussion-anchor",
+          "label": "discussion-anchor"
         }
       ],
       "status": {

@@ -106,7 +106,17 @@ fun ScreenRecipe(id: String, scenario: String) {
                         }
                         else -> {
                             RecentFeedback(comments, navigate)
-                            FeedbackComposer(when (scenario) { "sharing" -> FeedbackIntent.Sharing; "technique" -> FeedbackIntent.Technique; else -> FeedbackIntent.Impressions }, body, { body = it }, state, submit)
+                            if (scenario.startsWith("discussion-")) {
+                                val sampleAuthor = Author("[Mẫu] Lan Anh", null, "2026-11-03T08:00:00Z")
+                                val root = DiscussionComment("sample-root", sampleAuthor, VinkFixture.READING, canReply = true)
+                                val replies = listOf(
+                                    DiscussionComment("sample-reply", sampleAuthor, VinkFixture.READING, context = DiscussionContext.Root, canReply = true),
+                                    DiscussionComment("sample-context", sampleAuthor, VinkFixture.READING, context = DiscussionContext.Reply("[Mẫu] Lan Anh", "#comment-sample-reply"), canReply = true),
+                                    DiscussionComment("sample-unavailable", sampleAuthor, VinkFixture.READING, context = DiscussionContext.Unavailable, canReply = true),
+                                )
+                                DiscussionThread(DiscussionThreadFacts(root.id, if (scenario == "discussion-anchor") null else root, replies), { log("feedback → reply intent (sample)") }, { log("feedback → remove intent (sample)") }, navigate)
+                            }
+                            FeedbackComposer(if (scenario.startsWith("sharing")) FeedbackIntent.Sharing else if (scenario == "technique") FeedbackIntent.Technique else FeedbackIntent.Impressions, body, { body = it }, state, submit, commentsClosed = scenario == "sharing-closed")
                         }
                     }
                 }

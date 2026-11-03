@@ -140,6 +140,7 @@ pub fn EditorToolbar(
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FeedbackIntent {
+    Unspecified,
     Sharing,
     Impressions,
     Technique,
@@ -147,6 +148,7 @@ pub enum FeedbackIntent {
 impl FeedbackIntent {
     pub const fn label(self) -> &'static str {
         match self {
+            Self::Unspecified => "Nhận xét",
             Self::Sharing => "Chỉ chia sẻ",
             Self::Impressions => "Muốn nghe cảm nhận",
             Self::Technique => "Xin góp ý kỹ thuật",
@@ -213,21 +215,111 @@ pub fn FeedbackComposer(
     #[prop(into)] on_input: Callback<TextInput>,
     #[prop(into)] state: Signal<ActionState>,
     #[prop(into)] on_submit: Callback<()>,
+    /// Author intent never decides the per-work comments policy.
+    #[prop(optional, into)]
+    comments_closed: Signal<bool>,
 ) -> impl IntoView {
+    let submit_id = format!("{id}-send");
+    let submit_state = Signal::derive(move || {
+        if matches!(state.get(), ActionState::Pending { .. }) {
+            state.get()
+        } else if comments_closed.get() {
+            ActionState::disabled("Tác giả đã tắt bình luận. Bản đang soạn được giữ lại.")
+        } else {
+            state.get()
+        }
+    });
     view! {
         <section class="vk-feedback-composer">
             <Text role=TypeRole::Label>{intent.label()}</Text>
-            {if intent == FeedbackIntent::Sharing {
-                view! { <Text tone=TextTone::Muted>"Tác giả chỉ chia sẻ bài viết này."</Text> }.into_any()
-            } else {
-                view! {
-                    <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Cảm nhận của bạn" }
-                        value on_input help="Nêu chi tiết bạn đã đọc và điều bạn muốn trao đổi với tác giả." />
-                    <Button state on_press=on_submit>"Gửi nhận xét"</Button>
-                }.into_any()
-            }}
+            <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
+                value on_input help="Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." />
+            <Button id=submit_id state=submit_state on_press=on_submit>"Gửi nhận xét"</Button>
         </section>
     }
+}
+
+/// DTO-free, viewer-authorized projection. No identity key is invented from a name/ID.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscussionComment {
+    pub id: String,
+    pub author: Author,
+    pub body: String,
+    pub status: Option<String>,
+    pub context: Option<DiscussionContext>,
+    pub can_reply: bool,
+    pub can_remove: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DiscussionContext {
+    Root,
+    Reply { name: String, href: Option<String> },
+    Unavailable,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DiscussionThreadFacts {
+    pub root_id: String,
+    pub root: Option<DiscussionComment>,
+    pub replies: Vec<DiscussionComment>,
+}
+
+/// Exactly two levels. A contextual reply is still rendered in the same flat reply list.
+#[component]
+pub fn DiscussionThread(
+    #[prop(into)] facts: Signal<DiscussionThreadFacts>,
+    #[prop(into)] on_reply: Callback<String>,
+    #[prop(into)] on_remove: Callback<String>,
+    #[prop(optional, into)] action_state: Signal<ActionState>,
+) -> impl IntoView {
+    let root = Memo::new(move |_| facts.get().root);
+    view! {
+        <div class="vk-discussion-thread">
+            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state))
+                .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
+            <ul class="vk-discussion-replies" aria-label="Phản hồi theo thứ tự cũ đến mới">
+                <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
+                    children=move |id| {
+                        let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state))}</li> }
+                    } />
+            </ul>
+        </div>
+    }
+}
+
+fn discussion_comment(
+    comment: DiscussionComment,
+    on_reply: Callback<String>,
+    on_remove: Callback<String>,
+    state: Signal<ActionState>,
+) -> AnyView {
+    let reply_id = comment.id.clone();
+    let remove_id = comment.id.clone();
+    let reply_button_id = format!("reply-to-{}", comment.id);
+    let remove_button_id = format!("remove-comment-{}", comment.id);
+    view! {
+        <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
+            <WorkByline author=comment.author size=AvatarSize::Medium />
+            {comment.context.map(|context| match context {
+                DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
+                DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
+                DiscussionContext::Reply { name, href: Some(href) } => view! { <Link href>{format!("Đang trả lời @{name}")}</Link> }.into_any(),
+                DiscussionContext::Reply { name, href: None } => view! {
+                    <p class="vk-discussion-context">{format!("Đang trả lời @{name}")}
+                        <span>" · Ngoài trang đã tải; chưa có đường mở ngữ cảnh này."</span>
+                    </p>
+                }.into_any(),
+            })}
+            {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
+            <p class="vk-discussion-body">{comment.body}</p>
+            <div class="vk-discussion-actions">
+                {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
+                {comment.can_remove.then(|| view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> })}
+            </div>
+        </article>
+    }.into_any()
 }
 
 /// No authoritative recent timestamps in today's adapter: use an explicitly labelled sample.
@@ -288,7 +380,7 @@ mod tests {
     }
 
     #[test]
-    fn sharing_has_no_criticism_form_or_send_action() {
+    fn sharing_and_comments_mode_are_independent_and_keep_the_controlled_text() {
         let html = Owner::new().with(|| {
             view! {
                 <FeedbackComposer id="feedback" intent=FeedbackIntent::Sharing value="giữ chữ"
@@ -296,10 +388,31 @@ mod tests {
             }
             .to_html()
         });
-        assert!(html.contains("Tác giả chỉ chia sẻ"), "{html}");
         assert!(
-            !html.contains("textarea") && !html.contains("button"),
+            html.contains("textarea") && html.contains("Gửi nhận xét"),
             "{html}"
+        );
+        assert!(html.contains("giữ chữ"), "{html}");
+        let closed = Owner::new().with(|| {
+            view! {
+            <FeedbackComposer id="closed" intent=FeedbackIntent::Sharing value="giữ chữ"
+                on_input=|_| {} state=ActionState::Enabled comments_closed=true on_submit=|_| {} />
+        }.to_html()
+        });
+        assert!(
+            closed.contains("textarea")
+                && closed.contains("giữ chữ")
+                && closed.contains("aria-disabled=\"true\"")
+                && closed.contains("Tác giả đã tắt"),
+            "{closed}"
+        );
+        let pending = Owner::new().with(|| view! {
+            <FeedbackComposer id="pending-closed" intent=FeedbackIntent::Sharing value="giữ chữ"
+                on_input=|_| {} state=ActionState::pending("Đang gửi nhận xét…") comments_closed=true on_submit=|_| {} />
+        }.to_html());
+        assert!(
+            pending.contains("Đang gửi nhận xét…") && pending.contains("data-state=\"pending\""),
+            "{pending}"
         );
     }
 }

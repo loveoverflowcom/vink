@@ -47,7 +47,7 @@ queue/decisions), DB-held moderator grants managed only by `vink-app moderator g
 and rechecked at each decision's commit (moderators recuse from their own comments and works),
 plus scoped Quint models with trace replay (`services/vink-app/behavior`: structure and comment
 lifecycle/mode/moderation authority). Production
-writes answer `401` (no auth authority) and no discussion UI exists. Inspect actual
+writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker/reaction, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.

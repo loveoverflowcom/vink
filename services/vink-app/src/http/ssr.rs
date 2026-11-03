@@ -10,7 +10,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use vink_web::api::LoadError;
 use vink_web::contract as web;
-use vink_web::server::{PortFuture, PublicReads, SharedPublicReads, SiteOrigin};
+use vink_web::server::{
+    LocalDiscussionFixture, PortFuture, PublicReads, SharedPublicReads, SiteOrigin,
+};
 use vink_web::{App, shell};
 
 use super::AppState;
@@ -42,6 +44,23 @@ fn load_error(error: ReadError) -> LoadError {
 }
 
 impl PublicReads for PublicReadsAdapter {
+    fn discussion(&self, work_id: String) -> PortFuture<Result<web::DiscussionPage, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let id = WorkId::parse(&work_id).ok_or(LoadError::NotFound)?;
+            // Deliberately no request actor here, including with the development fixture.
+            let page =
+                vink.discussion(None, id, None, None)
+                    .await
+                    .map_err(|error| match error {
+                        crate::application::discussion::DiscussionError::NotFound => {
+                            LoadError::NotFound
+                        }
+                        _ => LoadError::Unavailable,
+                    })?;
+            to_web(&super::contract::DiscussionPage::new(id, &page, None))
+        })
+    }
     fn works(&self) -> PortFuture<Result<web::WorkList, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {
@@ -67,9 +86,13 @@ pub fn routes(state: &AppState) -> Router<AppState> {
         vink: state.vink.clone(),
     });
     let origin = SiteOrigin(state.public_origin.to_string());
+    let fixture = state.identity.local_discussion_fixture_scope();
     let context = move || {
         provide_context(reads.clone());
         provide_context(origin.clone());
+        if let Some(scope) = &fixture {
+            provide_context(LocalDiscussionFixture(scope.clone()));
+        }
     };
     let options = state.leptos.clone();
     Router::new()

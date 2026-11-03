@@ -201,7 +201,7 @@ phân biệt tài liệu cũ, thiếu coverage và lỗi sản phẩm. Không c�
 ## Bình luận hai tầng D2T-01/D2T-02a/D2T-02b (#41, #43)
 
 Lát cắt 1 ngày 03/11/2026 trên nền `8045d45`; D2T-02a/b trên nền `31a62b1`. Có route API v1,
-chưa có UI; production trả `401` cho lệnh ghi. Owner và registry/gap: [bình luận hai tầng](discussion-core.md),
+UI đọc thảo luận hai tầng D2T-03 bổ sung tại reader; production trả `401` cho lệnh ghi, LocalFixture chỉ là harness cục bộ. Owner và registry/gap: [bình luận hai tầng](discussion-core.md),
 [ADR ownership đã chốt](../architecture/discussion-ownership.md).
 
 | Điểm vào | Assertion có trong code/runner | Giới hạn |
@@ -213,6 +213,20 @@ chưa có UI; production trả `401` cho lệnh ghi. Owner và registry/gap: [b�
 | Kiểm duyệt `GET /api/v1/moderation/comments`, `POST …/{id}/decisions`; lệnh `vink-app moderator grant\|revoke\|list` | Domain `moderation`/`policy` (`quick`); `moderation_authority_is_a_revocable_grant_rechecked_at_commit`, `moderators_recuse…`, `rejection_reasons_reach_only_their_writer…`, `the_queue_lists_pending_present_comments_oldest_first`, `the_http_moderation_api_keeps_every_outcome_distinct` (`postgres`); parse đối số lệnh (`quick`, bin tests) | Chưa có UI kiểm duyệt, cảnh báo backlog, report/appeal; production trả 401 |
 | `PgStore` discussion + migration | [tests/postgres/discussion.rs](../../services/vink-app/tests/postgres/discussion.rs) (`postgres`): SQL trực tiếp, khóa tường minh, 8 retry đồng thời, audit, neo/context, keyset ties, SQL ↔ domain | Superuser harness; chưa có lệnh rút bài thật, benchmark hay EXPLAIN |
 | `GET/POST/DELETE/PUT /api/v1/works/{id}/discussion…` ([contract](../../services/vink-app/contracts/http/v1/README.md#discussion-d2t-02b)) | Fixture tests `http::contract::tests::discussion` (provider) và `decodes_discussion_fixtures`/`classifies_discussion_error_fixtures` (`vink-web`) trong `quick`; `the_http_api_keeps_every_discussion_outcome_distinct` qua router trên PostgreSQL (`postgres`) | Resolver test lấy principal từ header; production chưa có auth nên ghi trả 401; chưa browser/UI, chưa rate limit |
+
+### Consumer D2T-03 (#45)
+
+[LayoutSpec và state matrix](../design/discussion-ui.md) ghi vùng, semantics và dependency gaps.
+Các hàng dưới là assertion đã viết, không tự xác nhận kết quả chạy.
+
+| Điểm vào | Assertion có trong code/runner | Giới hạn |
+| --- | --- | --- |
+| Reader `#feedback-region` | `api::discussion_resource`, `PublicReadsAdapter::discussion` gọi viewer `None`; `discussionReadingAndWrites` kiểm SSR không chứa own-pending/rejected sau commit thật | Anonymous SSR; private projection chỉ qua no-store API sau hydration. Không auth production |
+| `DiscussionController` | Unit tests D2T-03: double send, new typing/IME, scope đổi, replay key/payload và physical attempt riêng, late ACK/error, Closed, context revoked | Rust consumer production seam; không phải Quint/Kani, OS IME hoặc chứng minh DB |
+| Root/reply paging và context | Adapter giữ cursor opaque, hai tầng, neutral anchor/unavailable, ID-keyed rows; unit tests projection/dedupe/cursor và mutation/read epoch fencing | Không endpoint context ngoài trang, ranking/count tổng/reaction/report |
+| Gửi/gỡ/author toggle cục bộ | `discussionReadingAndWrites` trong browser smoke: POST commit rồi mất ACK, exact keyed replay, pending receipt, giữ typing, PUT generation, DELETE own | LocalFixture + scratch PostgreSQL; không production auth/moderation E2E. Runtime result phải đọc log |
+| Web/CMP patterns | `sharing-open`, `sharing-closed`, `discussion-flat`, `discussion-anchor` cùng catalog IDs; Web render tests và CMP Desktop tests giữ text/selection qua policy | CMP là composition mẫu; chưa native service consumer, OS IME/screen reader/performance |
+| Responsive/target revocation | Browser smoke captures light/dark 320/390/834/1024/1440 và 200% ở 320/390; context fixture revoke giữ peers/draft | Capture labels tách real local PostgreSQL khỏi intercepted provider fixture; ảnh cần mở riêng |
 
 ## Adoption UIS-05 (#23)
 

@@ -1,4 +1,5 @@
 mod desk;
+mod discussion;
 pub(crate) mod me;
 
 pub use desk::{DeskIndex, DraftEditor};
@@ -232,6 +233,7 @@ fn PublicationView(publication: Publication) -> impl IntoView {
         .cloned()
         .unwrap_or_default();
     let canonical = canonical_url(&format!("/tac-pham/{}", publication.work_id));
+    let discussion_work = publication.work_id.clone();
     view! {
         <Title text=format!("{} — Vink", publication.title) />
         <Meta name="description" content=description.clone() />
@@ -247,6 +249,7 @@ fn PublicationView(publication: Publication) -> impl IntoView {
             <ReaderHeader title=publication.title author />
             <DocumentView document=publication.document />
         </article>
+        <discussion::Discussion work_id=discussion_work />
         </div>
     }
 }

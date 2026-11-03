@@ -7,7 +7,133 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "hydrate")]
 use crate::contract::{ApiError, Draft, DraftList, SaveDraftRequest, SavedDraft};
-use crate::contract::{Publication, WorkList};
+use crate::contract::{DiscussionPage, Publication, WorkList};
+
+const DISCUSSION_ID: percent_encoding::AsciiSet =
+    percent_encoding::NON_ALPHANUMERIC.remove(b'-').remove(b'_');
+
+pub fn local_discussion_fixture_scope() -> Option<String> {
+    #[cfg(feature = "ssr")]
+    {
+        use_context::<crate::server::LocalDiscussionFixture>().map(|scope| scope.0)
+    }
+    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    {
+        web_sys::window()?
+            .document()?
+            .query_selector("meta[name='vink-local-discussion-fixture']")
+            .ok()??
+            .get_attribute("content")
+    }
+    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    {
+        None
+    }
+}
+
+pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionPage, LoadError>> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            move || work_id.clone(),
+            move |id| {
+                let port = port.clone();
+                async move {
+                    match port {
+                        Some(port) => port.discussion(id).await,
+                        None => Err(LoadError::Unavailable),
+                    }
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(
+            move || work_id.clone(),
+            |id| browser(public_get(format!("/api/v1/works/{id}/discussion"))),
+        )
+    }
+}
+
+/// Cursors are opaque. Encode rather than concatenate provider text into a query string.
+pub fn discussion_path(work: &str, root: Option<&str>, cursor: Option<&str>) -> String {
+    use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+    let work = utf8_percent_encode(work, &DISCUSSION_ID);
+    let mut path = format!("/api/v1/works/{work}/discussion");
+    if let Some(root) = root {
+        path.push_str(&format!(
+            "/roots/{}/replies",
+            utf8_percent_encode(root, &DISCUSSION_ID)
+        ));
+    }
+    if let Some(cursor) = cursor {
+        path.push_str(&format!(
+            "?cursor={}",
+            utf8_percent_encode(cursor, NON_ALPHANUMERIC)
+        ));
+    }
+    path
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_discussion(work: &str, cursor: Option<&str>) -> Result<DiscussionPage, ApiError> {
+    http::get(&discussion_path(work, None, cursor)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_replies(
+    work: &str,
+    root: &str,
+    cursor: Option<&str>,
+) -> Result<crate::contract::ReplyList, ApiError> {
+    http::get(&discussion_path(work, Some(root), cursor)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn submit_comment(
+    work: &str,
+    request: &crate::contract::SubmitCommentRequest,
+) -> Result<crate::contract::SubmittedComment, ApiError> {
+    http::send(
+        "POST",
+        &format!("{}/comments", discussion_path(work, None, None)),
+        Some(request),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn remove_comment(
+    work: &str,
+    comment: &str,
+) -> Result<crate::contract::RemovedComment, ApiError> {
+    use percent_encoding::utf8_percent_encode;
+    http::send::<(), _>(
+        "DELETE",
+        &format!(
+            "{}/comments/{}",
+            discussion_path(work, None, None),
+            utf8_percent_encode(comment, &DISCUSSION_ID)
+        ),
+        None,
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn set_comments_mode(
+    work: &str,
+    request: &crate::contract::CommentsSettingsRequest,
+) -> Result<crate::contract::CommentsSettings, ApiError> {
+    http::send(
+        "PUT",
+        &format!("{}/settings", discussion_path(work, None, None)),
+        Some(request),
+    )
+    .await
+}
 
 /// Public read failures; serialized into the hydration payload with the page data.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -128,9 +254,55 @@ mod http {
     use serde::de::DeserializeOwned;
 
     use crate::contract::{ApiError, ErrorEnvelope};
+    use wasm_bindgen::{JsCast, closure::Closure};
+
+    /// One timer per physical HTTP attempt. Dropping the future clears its timer and aborts
+    /// fetch; an expired/aborted write is Network (uncertain), never a definitive rejection.
+    struct Deadline {
+        controller: web_sys::AbortController,
+        timer: i32,
+        _callback: Closure<dyn FnMut()>,
+    }
+
+    impl Deadline {
+        fn new() -> Result<Self, ApiError> {
+            let controller = web_sys::AbortController::new().map_err(|_| ApiError::Network)?;
+            let abort = controller.clone();
+            let callback = Closure::wrap(Box::new(move || abort.abort()) as Box<dyn FnMut()>);
+            let timer = web_sys::window()
+                .ok_or(ApiError::Network)?
+                .set_timeout_with_callback_and_timeout_and_arguments_0(
+                    callback.as_ref().unchecked_ref(),
+                    30_000,
+                )
+                .map_err(|_| ApiError::Network)?;
+            Ok(Self {
+                controller,
+                timer,
+                _callback: callback,
+            })
+        }
+    }
+
+    impl Drop for Deadline {
+        fn drop(&mut self) {
+            if let Some(window) = web_sys::window() {
+                window.clear_timeout_with_handle(self.timer);
+            }
+            self.controller.abort();
+        }
+    }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
+        let deadline = path
+            .contains("/discussion")
+            .then(Deadline::new)
+            .transpose()?;
+        let signal = deadline
+            .as_ref()
+            .map(|deadline| deadline.controller.signal());
         let response = Request::get(path)
+            .abort_signal(signal.as_ref())
             .header("accept", "application/json")
             .send()
             .await
@@ -143,11 +315,20 @@ mod http {
         path: &str,
         body: Option<&B>,
     ) -> Result<T, ApiError> {
+        let deadline = path
+            .contains("/discussion")
+            .then(Deadline::new)
+            .transpose()?;
+        let signal = deadline
+            .as_ref()
+            .map(|deadline| deadline.controller.signal());
         let builder = match method {
             "POST" => Request::post(path),
             "PUT" => Request::put(path),
+            "DELETE" => Request::delete(path),
             _ => return Err(ApiError::Unexpected { status: 0 }),
         }
+        .abort_signal(signal.as_ref())
         .header("accept", "application/json");
         let request = match body {
             Some(body) => builder
@@ -171,5 +352,24 @@ mod http {
         }
         let envelope = response.json::<ErrorEnvelope>().await.ok();
         Err(ApiError::from_response(status, envelope))
+    }
+}
+
+#[cfg(test)]
+mod discussion_tests {
+    #[test]
+    fn opaque_cursors_and_identifiers_cannot_change_query_or_scope() {
+        assert_eq!(
+            super::discussion_path("work-a", Some("root-b"), None),
+            "/api/v1/works/work-a/discussion/roots/root-b/replies"
+        );
+        assert_eq!(
+            super::discussion_path("work", Some("root"), Some("c1.a+b&limit=50?")),
+            "/api/v1/works/work/discussion/roots/root/replies?cursor=c1%2Ea%2Bb%26limit%3D50%3F"
+        );
+        assert_eq!(
+            super::discussion_path("../other", None, None),
+            "/api/v1/works/%2E%2E%2Fother/discussion"
+        );
     }
 }

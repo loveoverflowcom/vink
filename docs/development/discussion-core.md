@@ -10,7 +10,7 @@ của chính mình, bật/tắt; không có route kiểm duyệt. Production ch�
 ghi trả `401`. **D2T-02c** thêm authority kiểm duyệt: grant trong database do lệnh vận hành
 `vink-app moderator` cấp/thu hồi, kiểm lại trong transaction của từng quyết định, tự né bình luận
 của mình và tác phẩm của mình, lý do bắt buộc khi từ chối/gỡ (người viết thấy lý do từ chối),
-hàng đợi + route kiểm duyệt. Chưa có UI. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
+hàng đợi + route kiểm duyệt. D2T-03 bổ sung UI đọc/giao tiếp ghi tại Web reader; production auth và UI kiểm duyệt chưa có. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
 [#43](https://github.com/loveoverflowcom/vink/issues/43).
 
 ## HOW: từ lệnh tới hàng trong database
@@ -38,7 +38,7 @@ cùng hàng) tuần tự hóa: tắt commit trước thì lệnh gửi thấy `C
 tại. Tám lần gửi đồng thời cùng khóa idempotency chỉ tạo một bình luận; các lần còn lại replay.
 
 **Chưa xử lý:** chưa có lệnh rút bài (test xóa con trỏ publication để mô phỏng); thông báo, outbox,
-projection/cache, reaction, ranking, sticker và UI ack chưa tồn tại.
+cache/invalidation thời gian thực, reaction, ranking và sticker chưa tồn tại. D2T-03 thêm projection UI và acknowledgment có scope ở consumer; bằng chứng nằm riêng tại [UI thảo luận](discussion-ui-evidence.md).
 
 ## Lựa chọn trong lát này
 
@@ -71,13 +71,13 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 | D2T-INV-01 — #41 | `structure.apply`, `rootIsRoot`/`canonicalContext`/`noCycles` | `reply_placement`, `root_placement`, `DiscussionThread`; enumeration 20^4 và trace replay | `the_database_alone_rejects_a_third_tier_and_cross_scope_references` | NOT_RUN | Model cấu trúc không có removal; neo/context ẩn (INV-05) chưa có model |
 | D2T-INV-02 — #41 | Một thread là assumption | `decide_submission` (target tra trong thread), `CommentPlacement::from_stored` | Cùng test: cross-thread root, context khác root, đổi thread bị chặn | NOT_RUN | Chưa tenant; work binding qua `discussion_threads.work_id` unique |
 | D2T-INV-03 — COM-03, COM-07, INV-05 | `lifecycle.setMode`/`submit`, `modeAuthority`, `premoderatedSubmission`, `scopedWrites`; trace `comments_mode` | `authorize_mode_change`, `DiscussionSettings::change_mode`, actor bắt buộc ở application | `closing_waits_for_an_in_flight_submission_and_vice_versa`, `the_work_author_toggles_comments_but_has_no_power_over_others`, `a_withdrawn_work_closes_its_discussion…` | NOT_RUN | Auth authority thật (D-05), ban/suspension, lệnh rút bài thật |
-| D2T-INV-04 — COM-02, MOD-02/04 | `viewerProjection`, `premoderatedSubmission`; replay so `view` cho 4 người xem | `lifecycle`, `visibility::view`; lý do chỉ cho `OwnRejected` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection`, `rejection_reasons_reach_only_their_writer…` | NOT_RUN | Cache/SSR/notification chưa tồn tại; sửa bình luận chặn theo D-08 |
+| D2T-INV-04 — COM-02, MOD-02/04 | `viewerProjection`, `premoderatedSubmission`; replay so `view` cho 4 người xem | `lifecycle`, `visibility::view`; lý do chỉ cho `OwnRejected` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection`, `rejection_reasons_reach_only_their_writer…` | NOT_RUN | SSR anonymous có source D2T-03; chưa realtime invalidation/notification; sửa bình luận chặn theo D-08 |
 | D2T-INV-05 — PUB-03 | Một phần: `removeOwn`, gỡ là terminal trong `versionedLifecycle`; không có neo/context | `remove_by_author`, `root_listing`, `reply_context` | `hidden_roots_anchor_public_replies_and_hidden_contexts_degrade`; SET NULL context ở test toàn vẹn | NOT_RUN | Purge/retention, restore, quote/snippet |
 | D2T-INV-06 — COM-01/04 | Chưa có | `CommandKey`, `PayloadDigest`, `decide_submission` (receipt trước mọi gate) | `concurrent_retries_with_one_key_create_exactly_one_comment`, idempotency trong test pending | NOT_RUN | Retention receipt, endpoint trạng thái lệnh |
 | D2T-INV-07 — MOD-02, INV-07, COM-08 | `lifecycle.moderate`, `writeAuthority`, `versionedLifecycle`; trace `moderation_authority`; counterexample `author-recusal` | `ModerationAction::apply`, `authorize_moderation` (grant + tự né), `ModerationVersion` | `moderation_is_version_bound_audited…`, `moderation_authority_is_a_revocable_grant_rechecked_at_commit` (thu hồi đang chạy vs quyết định đang chạy), `moderators_recuse_from_their_own_comments_and_their_own_works`, `the_http_moderation_api_keeps_every_outcome_distinct` | NOT_RUN | Worker/job fencing, appeal/mở lại, cảnh báo backlog |
 | D2T-INV-08 — COM-06 | Chưa có | Chưa có reaction | — | NOT_RUN | Desired-state set/remove, cardinality |
 | D2T-INV-09 — #41 | Chưa có | `PageCursor`, `PageLimit`, `PREVIEW_REPLIES` | `pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page` (ties theo ID) | NOT_RUN | Ranking “Nổi bật”, epoch/snapshot, benchmark |
-| D2T-INV-10 — #45 | Chưa có | Không đổi client | — | NOT_RUN | Ack theo actor/session/draft ở consumer |
+| D2T-INV-10 — #45 | Chưa có consumer model | `apps/vink-web/src/discussion_state.rs`: scope, edit generation, logical key và physical attempt; unit regressions | Không thêm test DB; receipt/idempotency theo INV-06 | NOT_RUN | Consumer browser evidence riêng; CMP projection mẫu, chưa native integration/Quint interleavings/production auth/OS IME |
 | D2T-INV-11 — #25 | Chưa có | `CommentBody` giữ emoji Unicode nguồn | — | NOT_RUN | Sticker manifest/renderer |
 
 Các symbol model, fixture và lệnh thực thi của lát cắt 1 được chỉ mục ở
@@ -102,11 +102,13 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
    SQL với projection domain trên mọi trạng thái × người xem. Chạy với superuser của harness;
    ràng buộc/trigger áp cho mọi role.
 5. **Kani NOT_RUN:** release 0.68.0 cần `nightly-2026-08-21`, máy giữ duy nhất Rust stable 1.99.1.
-   **Apalache/model checking và browser NOT_RUN** vì chưa có lane/UI.
+   **Apalache/model checking NOT_RUN.** D2T-03 có browser scenarios trong lane Web; trạng thái từng run ghi riêng, không suy PASS từ source.
 6. **HTTP (`quick` + `postgres`):** fixture tests hai phía (provider serialize so field-for-field,
    consumer `vink-web` decode giữ đủ field và phân loại mã lỗi), và
    `the_http_api_keeps_every_discussion_outcome_distinct` qua router thật trên PostgreSQL: thứ tự
    xác thực → Origin → body, `no-store`, 201/200 replay, 422 theo field, 403/404/409 theo mã.
+
+7. **Consumer D2T-03:** [LayoutSpec](../design/discussion-ui.md), controller unit tests, Web/CMP projection scenarios và `discussionReadingAndWrites` trong browser smoke. [Bằng chứng riêng](discussion-ui-evidence.md) phân biệt local fixture/PostgreSQL, intercepted HTTP fixture, browser, model và native.
 
 Nguồn toolchain Kani: [release 0.68.0](https://github.com/model-checking/kani/releases/tag/kani-0.68.0),
 [compiler pin](https://github.com/model-checking/kani/blob/kani-0.68.0/rust-toolchain.toml).

@@ -27,20 +27,28 @@ class ScreenCaptureTest {
         val entries = VinkCatalog.entries.filter { it.family == "screen" || it.id == "composition.feedback" }
         for (entry in entries) {
             val focused = entry.id in listOf("screen.me", "screen.reader", "composition.feedback")
-            val widths = listOf(360, 834, 1280) + if (focused) listOf(320, 390) else emptyList()
+            val discussion = entry.id == "composition.feedback"
+            val widths = listOf(360, 834, 1280) + (if (focused) listOf(320, 390) else emptyList()) + (if (discussion) listOf(1024, 1440) else emptyList())
             for (width in widths) {
                 for (theme in listOf(ThemePreference.Light, ThemePreference.Dark)) {
                     for (scale in listOf(1f, 2f)) {
                         val scenarios = when {
                             width in listOf(320, 390) && entry.id == "screen.me" -> listOf("default", "auth-required", "long")
                             width in listOf(320, 390) && entry.id == "screen.reader" -> listOf("feedback")
-                            width in listOf(320, 390) && entry.id == "composition.feedback" -> listOf("default", "pending", "error", "uncertain")
+                            width in listOf(320, 390) && discussion -> listOf("default", "pending", "error", "uncertain", "sharing-open", "sharing-closed", "discussion-flat", "discussion-anchor")
+                            discussion -> listOf("default", "sharing-open", "sharing-closed", "discussion-flat", "discussion-anchor")
                             scale == 2f && entry.scenarios.any { it.id == "long" } -> listOf("long")
                             else -> listOf("default")
                         }
                         for (scenario in scenarios) {
                             val name = "consumer--${entry.id}--$scenario--${theme.value}--$width--text${(scale * 100).toInt()}"
-                            val height = if (scale == 2f) 5200 else 2400
+                            // Capture the complete four-comment specimen at its actual width.
+                            // These off-screen content heights do not represent a native viewport.
+                            val height = when {
+                                scenario.startsWith("discussion-") -> if (scale == 2f) 10000 else 5000
+                                scale == 2f -> 5200
+                                else -> 2400
+                            }
                             val scene = ImageComposeScene(width, height, Density(1f, 1f)) {
                                 CompositionLocalProvider(LocalDensity provides Density(1f, scale)) {
                                     VinkTheme(VinkPreferences(theme = theme), systemDark = false, fonts = fonts.fonts) {

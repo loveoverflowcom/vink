@@ -16,7 +16,7 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 [Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
 PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 [ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
-đọc/gửi/gỡ/bật-tắt; chưa có UI hay authority kiểm duyệt, và production trả `401` cho lệnh ghi.
+đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database. [UI thảo luận](../design/discussion-ui.md) hiển thị anonymous SSR và tải projection của viewer sau hydration; controller giữ draft/request theo scope. Chỉ LocalFixture hiện cho kiểm ghi cục bộ, có nhãn rõ; production trả `401`, chưa có UI kiểm duyệt hoặc auth authority.
 
 ## Skeleton làm được gì
 

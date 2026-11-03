@@ -17,6 +17,38 @@ fn author(long: bool) -> Author {
     }
 }
 
+fn discussion_sample(anchor: bool) -> DiscussionThreadFacts {
+    let author = Author {
+        name: "[Mẫu] Lan Anh".into(),
+        key: None,
+        published_at: "2026-11-03T08:00:00Z".into(),
+    };
+    let comment = |id: &str, context| DiscussionComment {
+        id: id.into(),
+        author: author.clone(),
+        body: fixture::READING.into(),
+        status: None,
+        context,
+        can_reply: true,
+        can_remove: false,
+    };
+    DiscussionThreadFacts {
+        root_id: "sample-root".into(),
+        root: (!anchor).then(|| comment("sample-root", None)),
+        replies: vec![
+            comment("sample-reply", Some(DiscussionContext::Root)),
+            comment(
+                "sample-context",
+                Some(DiscussionContext::Reply {
+                    name: "[Mẫu] Lan Anh".into(),
+                    href: Some("#comment-sample-reply".into()),
+                }),
+            ),
+            comment("sample-unavailable", Some(DiscussionContext::Unavailable)),
+        ],
+    }
+}
+
 fn comments() -> Vec<Feedback> {
     vec![Feedback {
         id: "feedback-01".into(),
@@ -177,8 +209,14 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
             }.into_any(),
             _ => view! {
                 <RecentFeedback items=comments() />
-                <FeedbackComposer id="sample-feedback" intent=match scenario.as_str() { "sharing" => FeedbackIntent::Sharing, "technique" => FeedbackIntent::Technique, _ => FeedbackIntent::Impressions }
+                {scenario.starts_with("discussion-").then(|| view! {
+                    <DiscussionThread facts=discussion_sample(scenario == "discussion-anchor")
+                        on_reply=move |_: String| record("feedback → reply intent (sample)")
+                        on_remove=move |_: String| record("feedback → remove intent (sample)") />
+                })}
+                <FeedbackComposer id="sample-feedback" intent=if scenario.starts_with("sharing") { FeedbackIntent::Sharing } else if scenario == "technique" { FeedbackIntent::Technique } else { FeedbackIntent::Impressions }
                     value=input on_input=move |e: TextInput| input.set(e.value) state=blocked
+                    comments_closed=scenario == "sharing-closed"
                     on_submit=submit />
             }.into_any(),
         };

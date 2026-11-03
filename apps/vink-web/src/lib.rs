@@ -10,6 +10,7 @@ pub mod api;
 pub mod appearance;
 pub mod contract;
 pub mod desk_state;
+pub mod discussion_state;
 pub mod document;
 pub mod draft_list;
 pub mod editor;
@@ -33,6 +34,7 @@ use shell::AdaptiveShell;
 
 /// HTML document around the app, rendered on the server only.
 pub fn shell(options: LeptosOptions) -> impl IntoView {
+    let fixture = api::local_discussion_fixture_scope();
     view! {
         <!DOCTYPE html>
         <html lang="vi">
@@ -40,6 +42,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
+                {fixture.map(|scope| view! { <meta name="vink-local-discussion-fixture" content=scope /> })}
                 <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/favicon.svg" />
                 <link id="vink-manifest" rel="manifest" href="/pkg/brand/manifest-light.webmanifest" />
                 <script inner_html=appearance::BOOTSTRAP></script>
