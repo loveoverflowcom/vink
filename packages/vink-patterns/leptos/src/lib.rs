@@ -83,13 +83,30 @@ pub fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
 
 #[component]
 pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
+    // Only presentation expands: the complete Unicode title and destination stay untouched.
+    // Short titles wrap in full; long ones have a disclosure in the compact layout.
+    // The container query also follows text enlargement without a viewport resize.
+    let expandable = draft.title.chars().count() > 60;
+    let expanded = RwSignal::new(false);
     view! {
-        <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S3>
-            <Text role=TypeRole::Label id="resume-label">"Trở lại trang đang viết"</Text>
-            <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{draft.title}</Heading>
-            <DraftMetadata version=draft.version updated_at=draft.updated_at />
-            <Link variant=LinkVariant::Standalone attr:data-testid="resume-draft" href=draft.href>"Viết tiếp"</Link>
-        </Surface>
+        <div class="vk-draft-resume">
+            <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S4>
+                <div class="vk-draft-resume__content">
+                    <Text role=TypeRole::Label id="resume-label">"Trở lại trang đang viết"</Text>
+                    <Heading level=HeadingLevel::H2 role=TypeRole::Title class:vk-draft-resume__title=true>{draft.title}</Heading>
+                    {expandable.then(|| view! {
+                        <Button variant=ButtonVariant::Text class:vk-draft-resume__disclosure=true
+                            id="resume-title-toggle" expanded
+                            on_press=move |_| expanded.update(|value| *value = !*value)>
+                            {move || if expanded.get() { "Thu gọn tiêu đề" } else { "Xem đầy đủ tiêu đề" }}
+                        </Button>
+                    })}
+                    <DraftMetadata version=draft.version updated_at=draft.updated_at />
+                </div>
+                <Link variant=LinkVariant::Standalone class:vk-draft-resume__continue=true
+                    attr:data-testid="resume-draft" href=draft.href>"Viết tiếp"</Link>
+            </Surface>
+        </div>
     }
 }
 

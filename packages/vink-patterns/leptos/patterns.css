@@ -12,6 +12,21 @@
 .vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
 .vk-draft-row__link { display: flex; flex-direction: column; align-items: start; text-align: start; gap: var(--vk-space-2); min-width: 0; padding: var(--vk-space-4); color: var(--vk-on-surface); text-decoration: none; }
 .vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1) var(--vk-space-4); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-caption-weight); }
+.vk-draft-resume { container-type: inline-size; min-width: 0; }
+.vk-draft-resume > .vk-ui-surface, .vk-draft-resume__content { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
+.vk-draft-resume__title { min-width: 0; overflow-wrap: anywhere; }
+/* Keep the original heading text (and accessible name); expansion removes only the clamp. */
+.vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.vk-draft-resume__disclosure { justify-self: start; text-align: start; }
+.vk-draft-resume__continue { justify-content: center; max-width: 100%; margin-top: var(--vk-space-2); padding: var(--vk-density-control-padding) var(--vk-space-6); border-radius: var(--vk-radius-full); background: var(--vk-action-primary-container); color: var(--vk-action-primary-content); }
+.vk-draft-resume__continue:hover { background: color-mix(in srgb, var(--vk-action-primary-content) 8%, var(--vk-action-primary-container)); }
+/* The rem threshold follows enlarged text and the actual pattern width, including galleries. */
+@container (min-width: 38rem) {
+  .vk-draft-resume > .vk-ui-surface { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--vk-space-6); }
+  .vk-draft-resume__disclosure { display: none; }
+  .vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  .vk-draft-resume__continue { margin-top: 0; }
+}
 .vk-feedback-item { padding-block: var(--vk-space-4); border-bottom: 1px solid var(--vk-outline-variant); overflow-wrap: anywhere; }
 .vk-feedback-composer { display: grid; gap: var(--vk-space-3); }
 @media (max-width: 759px) {
@@ -42,7 +57,7 @@
 }
 
 
-.vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); overflow-wrap: anywhere; }
+.vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); overflow-wrap: anywhere; }
 .vk-draft-row__open { color: var(--vk-primary); font-size: var(--vk-type-caption-size); }
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-state-hover); }
