@@ -24,6 +24,8 @@ hiện tại nằm ở [docs/development](../../docs/development/README.md) — 
 | [vink-ui-design](vink-ui-design/SKILL.md) | Thiết kế/review M3 Expressive, token, typography tiếng Việt, trải nghiệm đọc và accessibility |
 | [vink-ui-fix](vink-ui-fix/SKILL.md) | Sửa lỗi UI có phạm vi rõ hoặc bàn giao thiết kế để triển khai |
 | [vink-ui-inspector](vink-ui-inspector/SKILL.md) | Kiểm tra UI theo từng thành phần, kịch bản và bằng chứng |
+| [vink-ui-capture](vink-ui-capture/SKILL.md) | Chụp hiện trạng app/component/preview, ghi navigation, tokens và manifest để bàn giao review |
+| [vink-ui-evidence-drive](vink-ui-evidence-drive/SKILL.md) | Upload/resume UI evidence lên Drive, xác minh file và cập nhật screen index + graph |
 | [vink-code-review](vink-code-review/SKILL.md) | Review diff, commit, branch hoặc PR; mặc định trả findings và không sửa |
 | [vink-prompt](vink-prompt/SKILL.md) | Viết prompt triển khai, chia scope, review thành prompt sửa hoặc prompt tiếp tục |
 
@@ -41,6 +43,8 @@ hiện tại nằm ở [docs/development](../../docs/development/README.md) — 
 | Review diff/PR | `vink-code-review` | Findings trước, xếp theo mức độ; chỉ sửa khi người dùng giao thêm việc sửa |
 | Dựng hoặc mở rộng skeleton | `vink-work-item` + `vink-engineering`; thêm `vink-leptos-web`/`vink-ui-design` khi chạm web | Tiếp tục từ code hiện có, không scaffold bản cạnh tranh; chạy lane theo phần đã đổi |
 | Audit ảnh hoặc giao diện | `vink-ui-inspector` | Mở bằng chứng, báo finding và coverage; review không tự cấp quyền sửa |
+| Chụp/report UI hiện tại, component, preview, tokens | `vink-ui-capture` | Ảnh runtime thật, build/SHA và ma trận; tách product, recipe, preview và native/off-screen |
+| Upload hoặc resume bộ ảnh UI lên Drive | `vink-ui-evidence-drive` | Dùng bundle/manifest đã có, giữ history, readback file/link; không tự sửa UI hay đổi quyền chia sẻ |
 | Phác thảo bố cục hoặc đặc tả hướng đã chọn | `vink-layout-spec` | Cây vùng là nguồn chính; spec-only dừng đúng phạm vi, không tự sinh UI |
 | Màn mới/redesign và prototype UI | `vink-ui-design` + `vink-layout-spec` (+ `vink-prototype` khi thử nghiệm) | 2–3 hướng cấu trúc nếu chưa chọn, spec trước sinh UI; đã giao làm thì tiếp tục không chờ duyệt mặc định |
 | Sửa lỗi UI có phạm vi rõ | `vink-ui-fix` (+ `vink-leptos-web` khi chạm component) | Xuất spec vùng rút gọn trước patch, giữ nghĩa trạng thái, kiểm cùng kịch bản |
