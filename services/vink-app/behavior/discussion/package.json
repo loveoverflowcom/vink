@@ -1,0 +1,11 @@
+{
+  "name": "vink-discussion-behavior",
+  "private": true,
+  "scripts": {
+    "verify": "node verify.mjs",
+    "fixtures": "node verify.mjs --write"
+  },
+  "dependencies": {
+    "@informalsystems/quint": "0.33.1"
+  }
+}

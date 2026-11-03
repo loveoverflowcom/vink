@@ -1,0 +1,139 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "structure.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedChainStep",
+    "--max-steps=10",
+    "--max-samples=1",
+    "--invariant=rootIsRoot",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "root",
+        "id": 1,
+        "target": 0
+      },
+      "outcome": "created",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "reply",
+        "id": 2,
+        "target": 1
+      },
+      "outcome": "created",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 2,
+          "root": 1,
+          "reply_to": null
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "reply",
+        "id": 3,
+        "target": 3
+      },
+      "outcome": "missing",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 2,
+          "root": 1,
+          "reply_to": null
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "reply",
+        "id": 3,
+        "target": 4
+      },
+      "outcome": "missing",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 2,
+          "root": 1,
+          "reply_to": null
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "reply",
+        "id": 1,
+        "target": 4
+      },
+      "outcome": "duplicate",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 2,
+          "root": 1,
+          "reply_to": null
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "reply",
+        "id": 3,
+        "target": 2
+      },
+      "outcome": "created",
+      "state": [
+        {
+          "id": 1,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 2,
+          "root": 1,
+          "reply_to": null
+        },
+        {
+          "id": 3,
+          "root": 2,
+          "reply_to": 2
+        }
+      ]
+    }
+  ]
+}

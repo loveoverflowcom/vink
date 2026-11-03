@@ -41,6 +41,11 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
 | D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc ngay; remote cleanup có trạng thái riêng; không báo hoàn tất trước khi xác minh |
 
+Khảo sát discussion hai tầng D2T-01: [so sánh ownership](discussion-ownership.md) giữ D-02
+ở trạng thái trên; [core/registry cấu trúc](../development/discussion-core.md) không bật
+comment store/API và không chọn Vink thay Discourse. Một owner write/moderation duy nhất phải
+được chọn có chủ đích trước persistence #43; các quyết định auth/moderation/withdrawal vẫn mở.
+
 ## 3. Không dùng một state enum cho toàn bộ vòng đời
 
 Tách các trục sau giúp diễn đạt đúng trạng thái người dùng thấy:
