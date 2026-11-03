@@ -1,0 +1,555 @@
+{
+  "editor-clean-1440-100-light": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 1440,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 400.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 994.46875,
+        "y": 81.59375,
+        "width": 114.03125,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 400.5,
+        "y": 185.1875,
+        "width": 720,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 400.5,
+        "y": 352.765625,
+        "width": 720,
+        "height": 1173.265625,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "390-editor-dirty-dark": {
+    "route": "/ban-viet/01a1a0bf-569c-712c-a2f7-3425d693620c",
+    "width": 390,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "unsaved",
+      "toolbar": {
+        "x": 16,
+        "y": 141.1875,
+        "width": 343,
+        "height": 93,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 225.3125,
+        "y": 178.1875,
+        "width": 121.6875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 16,
+        "y": 281.78125,
+        "width": 343,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 16,
+        "y": 449.359375,
+        "width": 343,
+        "height": 452,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-saving-1024-100-dark": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 1024,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "saving",
+      "toolbar": {
+        "x": 192.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 86.1875,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 786.46875,
+        "y": 81.59375,
+        "width": 114.03125,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 192.5,
+        "y": 207.375,
+        "width": 720,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 192.5,
+        "y": 374.953125,
+        "width": 720,
+        "height": 1182.828125,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-failed-390-100-light": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 390,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "failed",
+      "toolbar": {
+        "x": 16,
+        "y": 141.1875,
+        "width": 343,
+        "height": 93,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 225.3125,
+        "y": 178.1875,
+        "width": 121.6875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 16,
+        "y": 568.9375,
+        "width": 343,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 16,
+        "y": 736.515625,
+        "width": 343,
+        "height": 1071.4375,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-conflict-320-100-dark": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "conflict",
+      "toolbar": {
+        "x": 16,
+        "y": 141.1875,
+        "width": 273,
+        "height": 166,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 28,
+        "y": 251.1875,
+        "width": 249,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 16,
+        "y": 757.53125,
+        "width": 273,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 16,
+        "y": 925.109375,
+        "width": 273,
+        "height": 1700.1875,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-dirty-320-200-dark-title": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 728,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "unsaved",
+      "toolbar": {
+        "x": 32,
+        "y": -397.03125,
+        "width": 241,
+        "height": 493.9375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": -47.46875,
+        "width": 193,
+        "height": 128.375,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 32,
+        "y": 192.09375,
+        "width": 241,
+        "height": 107.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 32,
+        "y": 569.0625,
+        "width": 241,
+        "height": 5223.03125,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-dirty-320-200-dark-writing": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 1297,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "unsaved",
+      "toolbar": {
+        "x": 32,
+        "y": -966.03125,
+        "width": 241,
+        "height": 493.9375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": -616.46875,
+        "width": 193,
+        "height": 128.375,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 32,
+        "y": -376.90625,
+        "width": 241,
+        "height": 107.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 32,
+        "y": 0.0625,
+        "width": 241,
+        "height": 5223.03125,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-preview-320-200-dark-actions": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "conflict",
+      "toolbar": {
+        "x": 32,
+        "y": 330.96875,
+        "width": 241,
+        "height": 577.9375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": 764.53125,
+        "width": 193,
+        "height": 128.375,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 32,
+        "y": 2594.15625,
+        "width": 241,
+        "height": 107.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 32,
+        "y": 2971.125,
+        "width": 241,
+        "height": 6669.484375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": {
+        "x": 24,
+        "y": 32,
+        "width": 257,
+        "height": 836,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "leave": null
+    }
+  },
+  "editor-leave-320-200-light-actions": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "conflict",
+      "toolbar": {
+        "x": 32,
+        "y": 330.96875,
+        "width": 241,
+        "height": 577.9375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": 764.53125,
+        "width": 193,
+        "height": 128.375,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 32,
+        "y": 2594.15625,
+        "width": 241,
+        "height": 107.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 32,
+        "y": 2971.125,
+        "width": 241,
+        "height": 6669.484375,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": {
+        "x": 24,
+        "y": 32,
+        "width": 257,
+        "height": 836,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      }
+    }
+  },
+  "editor-short-mobile-390": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 390,
+    "height": 420,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 1434,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "conflict",
+      "toolbar": {
+        "x": 16,
+        "y": -1292.8125,
+        "width": 343,
+        "height": 93,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 225.3125,
+        "y": -1255.8125,
+        "width": 121.6875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 16,
+        "y": -834.65625,
+        "width": 343,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 16,
+        "y": -667.078125,
+        "width": 343,
+        "height": 1102.875,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "editor-sticky-title-1440": {
+    "route": "/ban-viet/01a1a0be-95d6-76db-96eb-e124806d6038",
+    "width": 1440,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 274,
+    "theme": "light",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "editor": {
+      "status": "conflict",
+      "toolbar": {
+        "x": 400.5,
+        "y": 8,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 994.46875,
+        "y": 16,
+        "width": 114.03125,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 400.5,
+        "y": 95.96875,
+        "width": 720,
+        "height": 54.59375,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 400.5,
+        "y": 263.546875,
+        "width": 720,
+        "height": 1281.96875,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "before-390-editor-dirty-dark": {
+    "route": "/ban-viet/01a1a0a2-b372-70c1-820c-5bf5ea079eca",
+    "width": 390,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+  }
+}

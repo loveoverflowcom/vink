@@ -318,7 +318,7 @@ pub fn DraftEditor() -> impl IntoView {
                 <a class="vk-editor-heading__back" href="/ban-viet">
                     "← Bàn viết"
                 </a>
-                <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading">"Bản nháp"</Heading>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading" class:vk-editor-heading__title=true>"Bản nháp"</Heading>
             </header>
             <noscript>
                 <p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p>
@@ -359,7 +359,7 @@ fn Editor(draft: Draft) -> impl IntoView {
 
     // Sends the text as it is now. The ticket was taken in the same turn, so it covers exactly
     // this text. The outcome settles the session first; only then may the leave intent go.
-    let send = move |ticket: SaveTicket| {
+    let send = move |ticket: SaveTicket, reconcile: bool| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
             title: title.get_untracked(),
@@ -370,7 +370,36 @@ fn Editor(draft: Draft) -> impl IntoView {
             let id = work_id.get_value();
             leptos::task::spawn_local(async move {
                 use crate::desk_state::SaveRejection;
-                let outcome = crate::api::save_draft(id, request).await;
+                // A missing response may hide a committed write. Keep the expected version:
+                // an advanced server version needs the existing explicit conflict recovery.
+                let ready = if reconcile {
+                    match crate::api::load_draft(id.clone()).await {
+                        Ok(current) if current.version != ticket.expected_version => {
+                            Err(ApiError::VersionConflict {
+                                current_version: current.version,
+                            })
+                        }
+                        Ok(_) => Ok(()),
+                        Err(error) => Err(error),
+                    }
+                } else {
+                    Ok(())
+                };
+                // A GET can outlive the editor or an explicit discard. Never start a new
+                // mutation after that boundary. Staying only cancels navigation, not saving.
+                if !session
+                    .try_with_untracked(|s| s.in_flight() == Some(ticket))
+                    .unwrap_or(false)
+                    || leave
+                        .try_with_untracked(LeaveGuard::released)
+                        .unwrap_or(true)
+                {
+                    return;
+                }
+                let outcome = match ready {
+                    Ok(()) => crate::api::save_draft(id, request).await,
+                    Err(error) => Err(error),
+                };
                 // The editor may have closed while the request was in flight.
                 let applied = session.try_update(|s| match outcome {
                     Ok(saved) => s.save_succeeded(ticket, saved.version),
@@ -395,11 +424,12 @@ fn Editor(draft: Draft) -> impl IntoView {
             });
         }
         #[cfg(not(feature = "hydrate"))]
-        let _ = (request, work_id, navigation, page_scroll);
+        let _ = (request, work_id, navigation, page_scroll, reconcile);
     };
     let save = move || {
+        let reconcile = session.with_untracked(|s| matches!(s.status(), SaveStatus::Failed(_)));
         if let Some(ticket) = session.try_update(EditorSession::begin_save).flatten() {
-            send(ticket);
+            send(ticket, reconcile);
         }
     };
     let export = move || {
@@ -434,12 +464,13 @@ fn Editor(draft: Draft) -> impl IntoView {
         });
     };
     let save_and_leave = move || {
+        let reconcile = session.with_untracked(|s| matches!(s.status(), SaveStatus::Failed(_)));
         let ticket = leave
             .try_update(|g| session.try_update(|s| g.save_and_leave(s)))
             .flatten()
             .flatten();
         if let Some(ticket) = ticket {
-            send(ticket);
+            send(ticket, reconcile);
         }
     };
     let ask_discard = move || {
@@ -554,8 +585,9 @@ fn Editor(draft: Draft) -> impl IntoView {
             </crate::ui::patterns::EditorToolbar>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
                 <div data-testid="save-failed">
-                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Assertive title="Chưa lưu được bản nháp."
-                        message=format!("{} Chữ vẫn còn nguyên trên trang này. Hãy thử lưu lại, hoặc tải bản đang viết để giữ một bản trên máy.", match status() { SaveStatus::Failed(failure) => failure_reason(failure), _ => "" }) /> }}
+                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Polite
+                        title=if save_is_uncertain(status()) { "Chưa xác nhận lưu bản nháp." } else { "Chưa lưu được bản nháp." }
+                        message=format!("{} Chữ vẫn còn nguyên trên trang này. Chọn Thử lưu lại để đối chiếu bản trên máy chủ, hoặc tải bản đang viết để giữ trên máy.", match status() { SaveStatus::Failed(failure) => failure_reason(failure), _ => "" }) /> }}
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Tonal
                             id="retry-save"
@@ -573,7 +605,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             </Show>
             <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
                 <div data-testid="conflict">
-                    <InlineNotice tone=Tone::Warning announce=Announce::Assertive title="Bản nháp đã được lưu ở nơi khác."
+                    <InlineNotice tone=Tone::Warning announce=Announce::Polite title="Có phiên bản mới trên máy chủ."
                         message="Nội dung bạn đang viết vẫn còn nguyên trên trang này. Bạn có thể lưu đè bằng nội dung này, hoặc tải bản đang viết trước khi mở lại bản trên máy chủ." />
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Tonal
@@ -612,7 +644,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         "Nội dung"
                     </span>
                     <span id=BODY_HINT_ID class="vk-field__hint">
-                        "Xuống dòng để ngắt câu thơ; để một dòng trống giữa các đoạn hoặc khổ. Ctrl/⌘ + S để lưu."
+                        "Ctrl/⌘ + S để lưu nháp."
                     </span>
                     <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
                     <Show when=move || body.state.get() == BodyState::Loading>
@@ -623,6 +655,10 @@ fn Editor(draft: Draft) -> impl IntoView {
                             message="Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
                             attr:data-testid="editor-failed" />
                     </Show>
+                    <details class="vk-editor-help">
+                        <summary>"Cách ngắt dòng và chia khổ"</summary>
+                        <p>"Xuống dòng để ngắt câu thơ; để một dòng trống giữa các đoạn hoặc khổ."</p>
+                    </details>
                 </div>
             </div>
         </form>
@@ -774,24 +810,32 @@ fn download_text(file_name: &str, text: &str) -> Result<(), wasm_bindgen::JsValu
 fn status_text(status: SaveStatus) -> String {
     match status {
         SaveStatus::Saved { version } => format!("Đã lưu · phiên bản {version}"),
-        SaveStatus::Unsaved => "Chưa lưu".into(),
+        SaveStatus::Unsaved => "Chưa lưu thay đổi".into(),
         SaveStatus::Saving => "Đang lưu…".into(),
         SaveStatus::Conflict { server_version } => {
             format!("Xung đột · máy chủ ở phiên bản {server_version}")
         }
+        failed @ SaveStatus::Failed(_) if save_is_uncertain(failed) => "Chưa xác nhận lưu".into(),
         SaveStatus::Failed(_) => "Chưa lưu được".into(),
     }
 }
 
+fn save_is_uncertain(status: SaveStatus) -> bool {
+    matches!(
+        status,
+        SaveStatus::Failed(Failure::Network | Failure::Unavailable | Failure::Unexpected)
+    )
+}
+
 fn failure_reason(failure: Failure) -> &'static str {
     match failure {
-        Failure::Network => "Mất kết nối tới máy chủ.",
+        Failure::Network => "Mất phản hồi từ máy chủ; chưa rõ bản nháp đã được lưu hay chưa.",
         Failure::Unavailable => "Máy chủ tạm không phục vụ.",
         Failure::Unauthenticated => "Phiên đăng nhập không hợp lệ.",
         Failure::Forbidden => "Yêu cầu bị từ chối.",
         Failure::NotFound => "Không tìm thấy bản nháp.",
         Failure::Invalid => "Nội dung không hợp lệ.",
-        Failure::Unexpected => "Lỗi không xác định.",
+        Failure::Unexpected => "Phản hồi không xác định; chưa rõ bản nháp đã được lưu hay chưa.",
     }
 }
 
