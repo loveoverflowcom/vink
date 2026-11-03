@@ -51,11 +51,16 @@ jobs:
       - name: Install the pinned Rust toolchain (rust-toolchain.toml)
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      # services/postgres/provision.sh needs psql 15+ (\getenv); the runner image provides it.
-      # The backup/restore step needs pg_dump/pg_restore at least as new as the server (17); the
-      # runner's PGDG apt source provides the matching client.
+      # Provisioning needs psql 15+ (\getenv); backup/restore needs client 17 or newer.
+      # Configure PGDG explicitly: the runner's Ubuntu sources may not provide client 17.
+      # https://www.postgresql.org/download/linux/ubuntu/
       - name: Install the PostgreSQL 17 client tools
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends postgresql-client-17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error --retry 3 -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
       - run: psql --version && /usr/lib/postgresql/17/bin/pg_dump --version
       - run: cargo xtask verify postgres
         env:
