@@ -7,6 +7,7 @@ import { validate, sha256 } from '../../../packages/expressions/generate.mjs';
 
 const dir = dirname(fileURLToPath(import.meta.url)), root = resolve(dir, '../../..');
 const out = resolve(process.argv[2] ?? join(root, 'target/site/pkg/expressions'));
+assert.equal(out, join(root, 'target/site/pkg/expressions'), 'Expression output must be this checkout target/site/pkg/expressions');
 const catalogDir = join(root, 'packages/expressions');
 const manifest = validate(JSON.parse(readFileSync(join(catalogDir, 'shared/catalog.json'))), name => readFileSync(join(catalogDir, 'assets', name)));
 const provenance = JSON.parse(readFileSync(join(dir, 'runtime-provenance.json')));
