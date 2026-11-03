@@ -51,7 +51,8 @@ projection/cache, reaction, ranking, sticker và UI ack chưa tồn tại.
 - **Tác giả tác phẩm:** chỉ bật/tắt (`CommentsMode`, `SettingsGeneration`). Gỡ bình luận người
   khác: `NotCommentWriter` khi bình luận đang công khai, `NotFound` khi bị ẩn; không có grant kiểm
   duyệt qua quyền sở hữu tác phẩm.
-- **Tắt:** ngừng nhận root/reply mới, không ẩn bình luận đã duyệt (mặc định chờ xác nhận).
+- **Tắt:** ngừng nhận root/reply mới, không ẩn bình luận đã duyệt; tác phẩm mới mặc định bật
+  (chủ sản phẩm xác nhận 03/11/2026).
 - **Phân trang:** root và reply cùng thứ tự `created_at ASC, id ASC`; cursor `c1.<micros>.<uuid>`;
   page 1..50 (mặc định 20); preview 3 reply mỗi root với `preview_next` để đọc tiếp. Một trang dùng
   snapshot `REPEATABLE READ READ ONLY` để đếm, root và preview khớp nhau.

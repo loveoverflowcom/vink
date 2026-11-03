@@ -2,8 +2,8 @@
 //! work; this is independent of system moderation and never edits or hides existing comments.
 //!
 //! Closing stops new roots and replies at the commit boundary. Approved comments stay readable
-//! and reopening restores writing without data changes (default meaning recorded in the ownership
-//! ADR, pending product confirmation). A new public work starts open; comments remain premoderated.
+//! and reopening restores writing without data changes. A new public work starts open; comments
+//! remain premoderated. Both meanings were confirmed by the product owner on 03/11/2026.
 
 /// Monotonic version of a thread's settings, bumped only by an actual mode change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

@@ -77,14 +77,16 @@ không tạo bản thứ hai; cùng khóa nhưng nội dung khác bị từ ch�
 **Người kiểm duyệt** là principal có grant đang hiệu lực, do operator cấp bằng
 `vink-app moderator grant` và thu hồi bằng `revoke`. Mỗi quyết định kiểm lại grant trong chính
 transaction ghi (khóa chia sẻ), nên lệnh thu hồi commit trước thì thắng, lệnh đang chạy dở thì chờ.
-Tác giả tác phẩm dù có grant vẫn **tự né** mọi bình luận trên tác phẩm của mình (mặc định, cần
-chủ sản phẩm xác nhận), để quyền kiểm duyệt không thành đường vòng vi phạm COM-08.
+Tác giả tác phẩm dù có grant vẫn **tự né** mọi bình luận trên tác phẩm của mình (chủ sản phẩm
+xác nhận 03/11/2026): không duyệt, từ chối, gỡ hay sửa bình luận của người khác trên tác phẩm đó,
+để quyền kiểm duyệt không thành đường vòng vi phạm COM-08.
 
-**Ngữ nghĩa “tắt” mặc định (cần chủ sản phẩm xác nhận):** tắt là **ngừng nhận bình luận và
+**Ngữ nghĩa “tắt” (chủ sản phẩm xác nhận 03/11/2026):** tắt là **ngừng nhận bình luận và
 phản hồi mới**; bình luận đã duyệt vẫn đọc được, không bị xóa hay đổi trạng thái, và bật lại
 không mất gì. Tác giả không dùng “tắt” để ẩn bình luận của người khác. Nếu sản phẩm muốn “tắt”
 cũng ẩn toàn bộ thảo luận, đó là thay đổi trong `CommentsMode` và đường đọc, cần ghi lại ở đây.
-Tác phẩm mới công khai mặc định **bật** bình luận (vẫn tiền kiểm).
+Tác phẩm mới công khai mặc định **bật** bình luận (vẫn tiền kiểm; chủ sản phẩm xác nhận
+03/11/2026).
 
 Thay đổi chế độ dùng `expected_generation`: cùng chế độ là không đổi (an toàn khi gửi lại),
 khác chế độ với generation cũ bị từ chối để tab cũ không đè lựa chọn mới hơn.
