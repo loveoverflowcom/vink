@@ -99,3 +99,5 @@ Token SHA-256: `7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e
 CMP: 67 tests JVM/Desktop (31 ui + 1 patterns + 2 replay + 33 preview), 31 iOS common (28 ui + 1 patterns + 2 replay), 429 PNG trên Desktop; không suy mọi PNG đã mở.
 
 Mười ba ảnh giữ trong manifest đã mở. `web-explore.png` và `cmp-feedback.png` trùng byte với ảnh cùng fixture giữ ở UIS-05; các ảnh matrix khác không có baseline đồng cảnh để tuyên bố pixel parity. Native status bars đã mở lại sau sửa theme; ảnh chụp quá sớm ở splash/transition được bỏ và chụp lại khi UI idle.
+
+Tích hợp `develop@fe18d9f` (#37, skills/capture/Drive docs) trước PR; 145 implementation inputs trong manifest không đổi. Chạy lại `verify quick` cho metadata/links mới; không suy bằng chứng runtime mới từ việc merge tài liệu. Cluster PostgreSQL scratch và native diagnostic installs/emulator riêng task đã được dọn; simulator có sẵn vẫn giữ booted.

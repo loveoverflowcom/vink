@@ -344,5 +344,6 @@
       "opened": true,
       "capture_command": "xcrun simctl io <UDID> screenshot (after launch settles)"
     }
-  ]
+  ],
+  "integrated_base_sha": "fe18d9f01092501494c4a992a810516e13aba593"
 }
