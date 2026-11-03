@@ -1354,6 +1354,18 @@
   color: var(--vk-on-primary-container);
 }
 
+/* A 220px rail at enlarged text needs the full label line. Keep the requested rail
+   width and text size; only reflow its icon above the label within the same rail. */
+@container vk-ui-rail (min-width: 101px) and (max-width: 10rem) {
+  .vk-ui-rail .vk-ui-nav-item {
+    flex-direction: column;
+    gap: var(--vk-space-1);
+    padding-inline: 0;
+    text-align: center;
+  }
+}
+
+
 /* Compact rail: icon above label, centred. */
 @container vk-ui-rail (max-width: 100px) {
   .vk-ui-rail__brand { display: flex; justify-content: center; padding: 0; }

@@ -106,3 +106,25 @@ predictive back/iOS gesture chưa được kiểm (mục verification riêng, kh
 Đăng nhập/capability thật (D-05), tab Thư viện/Thảo luận, menu/tooltip chung cho mọi control, sheet
 native, Android predictive back, iOS swipe-back, TalkBack/VoiceOver, editor CMP production. Preview
 CMP có adapter chẩn đoán (đích có kiểu, back stack, deep link, chữ chưa lưu) — không phải app native.
+
+## Qualification preview (UI-REPAIR-09)
+
+`navigation.rail/*` là specimen **rail riêng**: 220/96 theo token, route và ghi chú
+ở ngoài rail, không tạo cột trang bên phải. `default` vẫn là rail mở rộng; nó không
+đổi thành thanh dưới khi viewport gallery hẹp. `long-labels` giữ stress rail 96,
+ghi rõ giới hạn đọc với chữ lớn và có nút mở rộng thường trực; capture thành công
+không tự là PASS usability cho variant ép này.
+
+Các deep link cũ của `navigation.scaffold` giữ mode cố định để kiểm variant. Host
+đặt canvas tối thiểu theo lớp cửa sổ (Web 760/1100 CSS px, CMP 600/840 dp) trong
+vùng cuộn ngang có nhãn; không ép cột nội dung vào phần còn lại của màn hẹp.
+`adaptive` và `adaptive-editor` đo **frame khả dụng** (Web ResizeObserver được
+ngắt khi unmount; CMP BoxWithConstraints), rồi gọi policy hiện có. Metadata hiển
+thị requested/effective và bề rộng với đơn vị của renderer. Preference và context
+giữ precedence; input, route, vùng chọn và overlay không remount qua resize.
+Ở Web, đóng overlay sau khi rail trigger bị ẩn trả focus về main, giữ cuộn.
+
+Web rail 220 reflow icon lên trên nhãn khi bề rộng theo rem không đủ cho chữ lớn;
+giữ token chiều rộng và cỡ chữ. CMP dùng spacing dp, không sao chép query CSS.
+Đây là qualification của preview, không phải triển khai điều hướng native product.
+Nguồn, negative control và giới hạn: [UI-REPAIR-09](../../../docs/design/ui-repair-09.md).

@@ -160,6 +160,7 @@ class Page {
       Space: { key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' },
       Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 },
       ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 },
+      ArrowRight: { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 },
       Escape: { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 },
     };
     const k = keys[name];
@@ -950,6 +951,104 @@ async function navigation(page) {
   check(await page.eval(`document.getElementById('nav-profile-trigger').getAttribute('aria-expanded') === 'false' && document.activeElement?.id === 'nav-profile-trigger'`), 'Escape closes Tôi and returns focus to its trigger');
 }
 
+// UI-REPAIR-09: observable geometry and state, independent of preview CSS declarations.
+async function navigationFit(page) {
+  await page.viewport(1440);
+  await page.choose('scale', '100%');
+  await page.open('navigation.rail');
+  check(await page.eval(`!document.querySelector('#nav-main, #nav-shell') && document.getElementById('nav-rail').getBoundingClientRect().width===220`), 'rail/default is a standalone 220px rail, with no squeezed page');
+  await page.open('navigation.rail', 'compact');
+  check(await page.eval(`document.getElementById('nav-rail').getBoundingClientRect().width===96`), 'rail/compact stays 96px');
+
+  await page.open('navigation.scaffold');
+  await page.viewport(390);
+  check(await page.eval(`(()=>{const v=document.querySelector('.vkp-shell-viewport');return v.tabIndex===0 && v.scrollWidth>v.clientWidth && document.getElementById('nav-main').getBoundingClientRect().width>760;})()`), 'fixed scaffold has a named keyboard-scrollable canvas, rather than a squeezed page');
+  await page.eval(`(()=>{const frame=document.querySelector('.vkp-shell-viewport');frame.scrollIntoView({block:'center'});frame.focus();})()`);
+  await page.key('ArrowRight');
+  await page.waitFor(`document.querySelector('.vkp-shell-viewport').scrollLeft>0`, 'keyboard scroll reaches the fixed canvas content');
+
+  await page.viewport(1440);
+  await page.open('navigation.scaffold', 'adaptive');
+  const frame = '.vkp-shell-viewport';
+  const size = async width => {
+    await page.eval(`document.querySelector('${frame}').style.inlineSize='${width}px'`);
+    await page.settle();
+  };
+  const mode = async expected => {
+    await page.waitFor(`document.getElementById('nav-shell').dataset.layout==='${expected}'`, `frame → ${expected}`);
+    check(await page.eval(`innerWidth===1440`), 'frame resize leaves the outer viewport unchanged');
+  };
+  await size(800); await mode('rail:compact');
+  await page.eval(`(()=>{const t=document.getElementById('nav-draft');globalThis.keptDraft=t;t.value='Chữ chưa lưu: tiếng Việt';t.dispatchEvent(new Event('input',{bubbles:true}));t.setSelectionRange(5,12);})()`);
+  await page.click('#nav-rail-toggle'); await mode('rail:expanded');
+  await size(320); await mode('bar');
+  check(await page.eval(`(()=>{const b=document.getElementById('nav-rail-toggle');return b.getClientRects().length===0 && document.getElementById('nav-bottom').getBoundingClientRect().width>0;})()`), 'compact adaptive frame has bottom navigation and no reachable rail toggle');
+  await size(1200); await mode('rail:expanded');
+  check(await page.eval(`document.getElementById('nav-draft')===globalThis.keptDraft && keptDraft.value==='Chữ chưa lưu: tiếng Việt' && keptDraft.selectionStart===5 && keptDraft.selectionEnd===12`), 'resize and toggle preserve the same input node, text and selection');
+  await page.click('#nav-rail-primary [data-destination=desk]');
+  await page.click('#nav-profile-trigger');
+  await page.waitFor(`document.getElementById('nav-profile').open`, 'adaptive overlay opens');
+  await size(320); await mode('bar');
+  check(await page.eval(`document.getElementById('nav-profile').open && document.querySelector('[data-testid=nav-route]').textContent.includes('desk')`), 'route and open overlay survive frame resize');
+  await page.key('Escape');
+  await page.waitFor(`!document.getElementById('nav-profile').open && document.activeElement.id==='nav-main'`, 'overlay closes after resize and focus returns to visible main');
+  await page.eval(`document.querySelector('${frame}').style.display='none'`);
+  await page.settle();
+  await page.eval(`document.querySelector('${frame}').style.display='';document.querySelector('${frame}').style.inlineSize='1200px'`);
+  await mode('rail:expanded');
+  check(await page.eval(`document.getElementById('nav-draft')===globalThis.keptDraft`), 'hidden/zero-width frame recovers without remounting input');
+
+  await page.open('navigation.scaffold', 'adaptive-editor');
+  await size(1200); await mode('rail:compact');
+  await page.click('#nav-rail-toggle'); await mode('rail:expanded');
+  await size(320); await mode('bar:hidden');
+  check(await page.eval(`document.getElementById('nav-bottom').getClientRects().length===0`), 'editor context hides the bar on compact frames, ignoring the rail preference');
+  // Mount with a hidden parent, then show it. Instrument observer ownership across a real
+  // scenario disposal, with no live subscription to the detached frame.
+  await page.eval(`(()=>{const Original=ResizeObserver;globalThis.navObservers=[];globalThis.navOriginal=Original;globalThis.ResizeObserver=class extends Original{constructor(cb){super(cb);navObservers.push(this)}disconnect(){this.wasDisconnected=true;super.disconnect()}};document.querySelector('.vkp-frame').style.display='none';})()`);
+  await page.open('navigation.scaffold', 'adaptive');
+  await page.eval(`document.querySelector('.vkp-frame').style.display=''`);
+  await size(1200); await mode('rail:expanded');
+  const count = await page.eval('navObservers.length');
+  await page.open('navigation.rail');
+  check(await page.eval(`navObservers.slice(0,${count}).every(o=>o.wasDisconnected)`), 'all frame and bar observers disconnect when the specimen owner is disposed');
+  await page.eval('globalThis.ResizeObserver=navOriginal;delete globalThis.keptDraft');
+
+  const records=[];
+  for (const theme of ['light','dark']) for(const scale of [100,200]) {
+    await page.choose('theme', theme==='light'?'Sáng':'Tối');
+    await page.choose('scale', `${scale}%`);
+    for(const [entry,scenario] of [['navigation.rail','default'],['navigation.rail','compact'],['navigation.rail','long-labels'],['navigation.scaffold','adaptive']]) {
+      await page.open(entry,scenario);
+      for (const width of [320,390,834,1440]) {
+        await page.viewport(width); await page.settle();
+        const geometry=await page.eval(`(()=>{const v=document.querySelector('.vkp-shell-viewport'),s=document.querySelector('.vkp-shell-frame'),r=document.getElementById('nav-rail');return {outer:innerWidth,frame:v.clientWidth,requested:s.dataset.requested,effective:s.dataset.layout,rail:r.getBoundingClientRect().width,main:document.getElementById('nav-main')?.getBoundingClientRect().width,pageOverflow:document.documentElement.scrollWidth>innerWidth,frameOverflow:v.scrollWidth>v.clientWidth+1}})()`);
+        check(!geometry.pageOverflow && !geometry.frameOverflow, `${entry}/${scenario} fits frame ${geometry.frame} at ${width}/${theme}/text${scale}`);
+        if(entry==='navigation.rail' && scenario!=='long-labels') {
+          const splitWords=await page.eval(`(()=>{
+            return [...document.querySelectorAll('#nav-rail .vk-ui-nav-item__label')].flatMap(label=>{
+              const node=label.firstChild;
+              return [...label.textContent.matchAll(/\\S+/gu)].filter(m=>{const range=document.createRange();range.setStart(node,m.index);range.setEnd(node,m.index+m[0].length);return range.getClientRects().length!==1}).map(m=>m[0]);
+            });
+          })()`);
+          check(splitWords.length===0, `rail ${scenario}: Vietnamese words stay intact at ${width}/text${scale}: ${splitWords}`);
+        }
+        if(entry==='navigation.scaffold') {
+          const expected=geometry.frame<760?'bar':geometry.frame<1100?'rail:compact':'rail:expanded';
+          check(geometry.effective===expected, `adaptive mode ${geometry.effective} follows frame width ${geometry.frame}, not outer ${width}`);
+        }
+        if(width===390 && scale===200) {
+          const record={catalog_id:entry,scenario_id:scenario,theme,raw_name:`${entry}--${scenario}--${theme}--390--text200`};
+          await page.capture(record.raw_name);
+          records.push({...record,...await captureSpecimen(page,record,args.out),geometry});
+        }
+      }
+    }
+  }
+  writeFileSync(join(args.out,'navigation-fit.json'),JSON.stringify({source:sourceIdentity(),records},null,2));
+  await page.choose('scale','100%'); await page.viewport(1440);
+}
+
 async function search(page) {
   const type = async (text) => {
     await page.eval(`(() => { const i = document.querySelector('.vkp-search input'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -1143,6 +1242,7 @@ try {
   await components(page);
   await states(page, cdp);
   await navigation(page);
+  await navigationFit(page);
   await compactVietnameseWords(page);
   await search(page);
   await screenPatterns(page);
