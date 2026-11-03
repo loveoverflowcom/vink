@@ -1,0 +1,128 @@
+{
+  "app-explore.png": {
+    "source": "target/verify-web/screenshots/explore-real-1440-light.png",
+    "sha256": "8e60220fd8b32e7a53405f510d8985e3d1f3046e91ea07f68dbb9898bb0a5e24",
+    "widthPx": 1440,
+    "heightPx": 900,
+    "boundary": "API/SSR thật, PostgreSQL scratch với dev_seed",
+    "context": {
+      "route": "/",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  },
+  "app-reader.png": {
+    "source": "target/verify-web/screenshots/reader-real-390-dark.png",
+    "sha256": "ff622e2d1c8101531fc00e69530cb00210d23531e66b3dfc2c25ce4486989bab",
+    "widthPx": 390,
+    "heightPx": 900,
+    "boundary": "Public snapshot từ PostgreSQL scratch",
+    "context": {
+      "route": "/tac-pham/33333333-3333-4333-8333-333333333333",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  },
+  "app-desk.png": {
+    "source": "target/verify-web/screenshots/desk-dashboard-1440-dark.png",
+    "sha256": "2d1914ddb1790fe39de01260843c45850fe9ab69cc13f09dd20f9f0ccaab5ab1",
+    "widthPx": 1440,
+    "heightPx": 900,
+    "boundary": "Route app thật, 100 card fixture qua Fetch gate; không manuscript N+1",
+    "context": {
+      "route": "/ban-viet",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  },
+  "app-editor.png": {
+    "source": "target/verify-web/screenshots/390-editor-dirty-dark.png",
+    "sha256": "d125c37133b6011fc44261da273e006edff13bda2486274a23c87368dca0de74",
+    "widthPx": 390,
+    "heightPx": 900,
+    "boundary": "Editor thật + CodeMirror, nháp scratch chưa lưu",
+    "context": {
+      "route": "/ban-viet/01a19f6a-6b84-7659-bbe6-cccb7d90df63",
+      "width": 390,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  },
+  "app-me.png": {
+    "source": "target/verify-web/screenshots/320-me-dark.png",
+    "sha256": "fc6871375f116e6a3e033f5719328ebeb5a3eac209f30a1e4d623ddf4208eba1",
+    "widthPx": 320,
+    "heightPx": 900,
+    "boundary": "Route app thật, không auth authority",
+    "context": {
+      "route": "/toi",
+      "width": 320,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+    }
+  },
+  "cmp-feedback.png": {
+    "source": "packages/ui-system/cmp/preview/build/captures/consumer--composition.feedback--default--light--834--text100.png",
+    "sha256": "3fb2f21efede3c4a7a17bd1a8d9b29614e0f84c2fdb28bf70f497fd3ed342500",
+    "widthPx": 834,
+    "heightPx": 2400,
+    "boundary": "CMP/JVM off-screen, controlled sample; không dịch vụ",
+    "context": {
+      "widthDp": 834,
+      "heightDp": 2400,
+      "density": 1,
+      "fontScale": 1.0,
+      "theme": "light",
+      "entry": "composition.feedback",
+      "scenario": "default",
+      "paddingDp": 16,
+      "osInsetsDp": 0
+    }
+  },
+  "cmp-desk-text200.png": {
+    "source": "packages/ui-system/cmp/preview/build/captures/consumer--screen.desk--long--dark--360--text200.png",
+    "sha256": "05b559ada20ef61c487d539412e66285bda4f456c0a3884c22efba64e744812e",
+    "widthPx": 360,
+    "heightPx": 5200,
+    "boundary": "CMP/JVM off-screen, long-title fixture; không backend",
+    "context": {
+      "widthDp": 360,
+      "heightDp": 5200,
+      "density": 1,
+      "fontScale": 2.0,
+      "theme": "dark",
+      "entry": "screen.desk",
+      "scenario": "long",
+      "paddingDp": 16,
+      "osInsetsDp": 0
+    }
+  }
+}

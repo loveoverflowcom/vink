@@ -3,6 +3,9 @@
 //! The two features are separate builds; never enable both. The browser build contains views,
 //! the web app's own API representations and a fetch client — no service, persistence or secrets.
 
+// Composition slots increase the hydration type depth without changing runtime state.
+#![recursion_limit = "256"]
+
 pub mod api;
 pub mod appearance;
 pub mod contract;
@@ -17,6 +20,7 @@ pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;
 mod shell;
+pub mod ui;
 
 use leptos::prelude::*;
 use leptos_meta::{MetaTags, provide_meta_context};

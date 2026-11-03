@@ -653,3 +653,8 @@ body {
 .vkp-nav-brand { font-family: var(--vk-type-headline-font); font-size: 1.375rem; font-weight: 600; }
 .vkp-topbar-sample { margin-block-end: var(--vk-space-4); border: 1px dashed var(--vk-outline-variant); border-radius: var(--vk-radius-md); }
 .vkp-topbar-sample .vk-ui-top-bar { display: flex; }
+
+/* Screen recipe geometry; the feature patterns own their anatomy. */
+.vkp-screen { display: grid; gap: var(--vk-space-4); min-inline-size: 0; overflow-wrap: anywhere; }
+.vkp-screen-grid { display: flex; flex-wrap: wrap; gap: var(--vk-space-6); }
+.vkp-screen-grid > * { flex: 1 1 20rem; min-inline-size: 0; }

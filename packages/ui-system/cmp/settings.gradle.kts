@@ -17,3 +17,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "vink-ui-cmp"
 include(":ui", ":preview")
+
+include(":patterns")
+project(":patterns").projectDir = file("../../vink-patterns/cmp")

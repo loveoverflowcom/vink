@@ -9,7 +9,7 @@ pub fn Me() -> impl IntoView {
         <Title text="Tôi — Vink" />
         <Meta name="robots" content="noindex" />
         <section id="me" class="vk-me" aria-labelledby="me-title">
-            <h1 id="me-title" class="vk-page-title">"Tôi"</h1>
+            <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1>"Tôi"</vink_ui::Heading>
             <AccountStatus />
             <ThemePicker group="page-theme" />
         </section>

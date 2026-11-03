@@ -5,9 +5,9 @@
 
 use crate::values::{CatalogEntry, Scenario};
 
-pub const CATALOG_VERSION: &str = "0.4.0";
+pub const CATALOG_VERSION: &str = "0.5.0";
 pub const STATUSES: &[&str] = &["implemented-unverified", "unsupported", "verified"];
-pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp")];
+pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp"), ("screen", "Màn Vink — Mẫu")];
 
 pub const ENTRIES: &[CatalogEntry] = &[
     CatalogEntry {
@@ -943,6 +943,234 @@ pub const ENTRIES: &[CatalogEntry] = &[
             Scenario {
                 id: "narrow",
                 label: "Màn hẹp",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "screen.explore",
+        family: "screen",
+        label: "Khám phá — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "loading",
+                label: "loading",
+            },
+            Scenario {
+                id: "low",
+                label: "low",
+            },
+            Scenario {
+                id: "empty",
+                label: "empty",
+            },
+            Scenario {
+                id: "no-results",
+                label: "no-results",
+            },
+            Scenario {
+                id: "error",
+                label: "error",
+            },
+            Scenario {
+                id: "long",
+                label: "long",
+            },
+            Scenario {
+                id: "refresh",
+                label: "refresh",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "screen.reader",
+        family: "screen",
+        label: "Reader — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "loading",
+                label: "loading",
+            },
+            Scenario {
+                id: "error",
+                label: "error",
+            },
+            Scenario {
+                id: "not-found",
+                label: "not-found",
+            },
+            Scenario {
+                id: "long",
+                label: "long",
+            },
+            Scenario {
+                id: "feedback",
+                label: "feedback",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "screen.desk",
+        family: "screen",
+        label: "Bàn viết — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "loading",
+                label: "loading",
+            },
+            Scenario {
+                id: "empty",
+                label: "empty",
+            },
+            Scenario {
+                id: "no-results",
+                label: "no-results",
+            },
+            Scenario {
+                id: "error",
+                label: "error",
+            },
+            Scenario {
+                id: "auth-required",
+                label: "auth-required",
+            },
+            Scenario {
+                id: "forbidden",
+                label: "forbidden",
+            },
+            Scenario {
+                id: "uncertain",
+                label: "uncertain",
+            },
+            Scenario {
+                id: "refresh",
+                label: "refresh",
+            },
+            Scenario {
+                id: "long",
+                label: "Tiêu đề Việt dài",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "screen.editor",
+        family: "screen",
+        label: "Editor chrome — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "loading",
+                label: "loading",
+            },
+            Scenario {
+                id: "dirty",
+                label: "dirty",
+            },
+            Scenario {
+                id: "pending",
+                label: "pending",
+            },
+            Scenario {
+                id: "error",
+                label: "error",
+            },
+            Scenario {
+                id: "conflict",
+                label: "conflict",
+            },
+            Scenario {
+                id: "uncertain",
+                label: "uncertain",
+            },
+            Scenario {
+                id: "long",
+                label: "long",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "screen.me",
+        family: "screen",
+        label: "Tôi — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "auth-required",
+                label: "auth-required",
+            },
+            Scenario {
+                id: "long",
+                label: "long",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "composition.feedback",
+        family: "composition",
+        label: "Góp ý có ngữ cảnh — Mẫu",
+        summary: "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "default",
+            },
+            Scenario {
+                id: "sharing",
+                label: "sharing",
+            },
+            Scenario {
+                id: "technique",
+                label: "technique",
+            },
+            Scenario {
+                id: "pending",
+                label: "pending",
+            },
+            Scenario {
+                id: "error",
+                label: "error",
+            },
+            Scenario {
+                id: "auth-required",
+                label: "auth-required",
+            },
+            Scenario {
+                id: "uncertain",
+                label: "uncertain",
             },
         ],
         leptos: "implemented-unverified",

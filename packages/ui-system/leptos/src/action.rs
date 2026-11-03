@@ -130,6 +130,7 @@ pub fn Button(
     #[prop(optional, into)]
     id: Option<String>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
+    #[prop(optional)] button_ref: NodeRef<leptos::html::Button>,
     children: Children,
 ) -> impl IntoView {
     let note_id = id.as_ref().map(|id| format!("{id}-note"));
@@ -137,6 +138,7 @@ pub fn Button(
     view! {
         <span class="vk-ui-action">
             <button
+                node_ref=button_ref
                 type=match kind {
                     ButtonKind::Button => "button",
                     ButtonKind::Submit => "submit",
@@ -235,10 +237,10 @@ pub fn safe_href(href: &str) -> Option<&str> {
 }
 
 /// A real `<a href>`: the browser keeps middle/modifier clicks, context menus and history. A
-/// refused `href` renders the text without a link (`data-invalid-href`) instead of a fake one.
+/// refused `href` renders an anchor without href (`data-invalid-href`), so it cannot navigate.
 #[component]
 pub fn Link(
-    #[prop(into)] href: String,
+    #[prop(into)] href: Signal<String>,
     #[prop(optional)] target: LinkTarget,
     #[prop(optional)] variant: LinkVariant,
     children: Children,
@@ -247,14 +249,13 @@ pub fn Link(
         LinkVariant::Inline => "vk-ui-link",
         LinkVariant::Standalone => "vk-ui-link vk-ui-link--standalone",
     };
-    let Some(href) = safe_href(&href).map(str::to_string) else {
-        return view! { <span class=class data-invalid-href="true">{children()}</span> }.into_any();
-    };
+    let target_href = Signal::derive(move || href.with(|h| safe_href(h).map(str::to_string)));
     let new_tab = target == LinkTarget::NewTab;
     view! {
         <a
             class=class
-            href=href
+            href=move || target_href.get()
+            data-invalid-href=move || target_href.with(|h| h.is_none()).then_some("true")
             target=new_tab.then_some("_blank")
             rel=new_tab.then_some("noopener noreferrer")
         >

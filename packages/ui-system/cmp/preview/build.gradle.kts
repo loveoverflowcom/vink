@@ -25,6 +25,7 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(project(":ui"))
+                implementation(project(":patterns"))
                 implementation(compose.desktop.currentOs)
             }
             resources.srcDir(files(layout.buildDirectory.dir("generated/preview-fonts")).builtBy(syncPreviewFonts))

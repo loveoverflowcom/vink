@@ -92,6 +92,11 @@ fn leptos_build(root: &Path) -> Result<(), String> {
         std::fs::copy(root.join(LEPTOS_DIR).join(from), out.join(to))
             .map_err(|e| format!("copy {from}: {e}"))?;
     }
+    std::fs::copy(
+        root.join("packages/vink-patterns/leptos/patterns.css"),
+        out.join("patterns.css"),
+    )
+    .map_err(|e| format!("copy patterns: {e}"))?;
     let fonts = out.join("fonts");
     std::fs::create_dir_all(&fonts).map_err(|e| format!("create {}: {e}", fonts.display()))?;
     for entry in std::fs::read_dir(root.join(crate::checks::FONTS_DIR))
@@ -222,15 +227,28 @@ fn cmp_build_tasks(env: &Env) -> Vec<&'static str> {
             ":ui:compileKotlinIosSimulatorArm64",
             ":ui:compileKotlinIosArm64",
             ":ui:compileDebugKotlinAndroid",
+            ":patterns:compileKotlinIosSimulatorArm64",
+            ":patterns:compileKotlinIosArm64",
+            ":patterns:compileDebugKotlinAndroid",
         ]);
     }
     tasks
 }
 
 fn cmp_verify_tasks(env: &Env) -> Vec<&'static str> {
-    let mut tasks = vec![":ui:desktopTest", ":preview:desktopTest"];
+    let mut tasks = vec![
+        ":ui:desktopTest",
+        ":patterns:desktopTest",
+        ":preview:desktopTest",
+    ];
     if native_targets(env) {
-        tasks.extend([":ui:iosSimulatorArm64Test", ":ui:compileDebugKotlinAndroid"]);
+        tasks.extend([
+            ":ui:iosSimulatorArm64Test",
+            ":ui:compileDebugKotlinAndroid",
+            ":patterns:iosSimulatorArm64Test",
+            ":patterns:compileKotlinIosArm64",
+            ":patterns:compileDebugKotlinAndroid",
+        ]);
     }
     tasks
 }

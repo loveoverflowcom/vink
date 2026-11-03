@@ -601,9 +601,10 @@ pub fn Snackbar(
 pub fn Dialog(
     #[prop(into)] id: String,
     #[prop(into)] open: Signal<bool>,
-    #[prop(into)] title: String,
+    #[prop(into)] title: Signal<String>,
     #[prop(optional, into)] context: Option<String>,
     #[prop(optional)] role: DialogRole,
+    #[prop(optional)] focus_title: bool,
     #[prop(optional)] kind: DialogKind,
     #[prop(optional)] dismiss: DismissPolicy,
     #[prop(into)] on_dismiss: Callback<DismissReason>,
@@ -635,7 +636,9 @@ pub fn Dialog(
                 if let Some(target) = returned.try_update_value(Option::take).flatten()
                     && target.is_connected()
                 {
-                    let _ = target.focus();
+                    let options = leptos::web_sys::FocusOptions::new();
+                    options.set_prevent_scroll(true);
+                    let _ = target.focus_with_options(&options);
                 }
             }
         });
@@ -661,6 +664,11 @@ pub fn Dialog(
         }
     };
     let closed = move |_| {
+        // `close` is queued. An earlier close can arrive after this dialog has reopened;
+        // only a dialog which is closed now may dismiss the caller's current intent.
+        if node.get_untracked().is_some_and(|el| el.open()) {
+            return;
+        }
         // Chrome may close a dialog after a repeated, un-activated Escape even though `cancel` was
         // prevented. Keep a required decision open; otherwise report it as an Escape.
         if !open.get_untracked() {
@@ -700,7 +708,7 @@ pub fn Dialog(
             on:close=closed
         >
             <div class="vk-ui-dialog__panel">
-                <h2 class="vk-ui-dialog__title" id=title_target>{title}</h2>
+                <h2 class="vk-ui-dialog__title" id=title_target tabindex="-1" autofocus=focus_title>{move || title.get()}</h2>
                 {context.map(|text| view! { <p class="vk-ui-dialog__context" id=context_target>{text}</p> })}
                 {children.map(|children| view! { <div class="vk-ui-dialog__content">{children()}</div> })}
                 <div class="vk-ui-dialog__actions">{actions.run()}</div>
@@ -712,11 +720,16 @@ pub fn Dialog(
 #[cfg(target_arch = "wasm32")]
 fn focus_initial(el: &leptos::web_sys::HtmlDialogElement) {
     use leptos::wasm_bindgen::JsCast;
-    let target = el.query_selector("[autofocus]").ok().flatten().or_else(|| {
-        el.query_selector(".vk-ui-dialog__actions button")
-            .ok()
-            .flatten()
-    });
+    let target = el
+        .query_selector("[autofocus]")
+        .ok()
+        .flatten()
+        .or_else(|| {
+            el.query_selector(".vk-ui-dialog__actions button")
+                .ok()
+                .flatten()
+        })
+        .or_else(|| el.query_selector("button").ok().flatten());
     if let Some(target) = target.and_then(|t| t.dyn_into::<leptos::web_sys::HtmlElement>().ok()) {
         let _ = target.focus();
     }

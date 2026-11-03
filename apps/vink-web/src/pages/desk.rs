@@ -6,16 +6,24 @@ use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 use leptos_router::hooks::use_params_map;
 
+use vink_ui::{
+    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind, Heading,
+    HeadingLevel, InlineNotice, PanelContent, PanelKind, SearchField, Select, StatePanel,
+    TextField, Tone, TypeRole,
+};
+
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
 use crate::desk_state::{
     EditorSession, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
 use crate::document::DocumentView;
-use crate::draft_list::{
-    CreateState, DraftSort, display_title as untitled, updated_at_label, visible_drafts,
-};
+use crate::draft_list::{CreateState, DraftSort, display_title as untitled, visible_drafts};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
+use crate::ui::{
+    adapters,
+    patterns::{DraftResume, DraftRow},
+};
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
 
@@ -84,12 +92,12 @@ pub fn DeskIndex() -> impl IntoView {
         <Meta name="robots" content="noindex" />
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
             <header id="heading" class="vk-desk-heading">
-                <h1 id="desk-title" class="vk-page-title">"Bàn viết"</h1>
+                <Heading level=HeadingLevel::H1 id="desk-title">"Bàn viết"</Heading>
                 <Show when=move || drafts.get().is_some_and(|result| result.is_ok_and(|list| !list.drafts.is_empty()))>
                     <CreateDraftButton creation can_create create />
                 </Show>
             </header>
-            <noscript><p class="vk-notice">{DESK_UNAVAILABLE_SSR}</p></noscript>
+            <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
             <CreateNotice creation loading refresh />
             <div aria-busy=move || if loading.get() { "true" } else { "false" } data-testid="draft-content">
                 <Suspense fallback=|| view! {
@@ -98,18 +106,17 @@ pub fn DeskIndex() -> impl IntoView {
                     {move || Suspend::new(async move {
                         match drafts.await {
                             Ok(list) if list.drafts.is_empty() => view! {
-                                <div class="vk-empty vk-desk-empty" data-testid="draft-empty">
-                                    <h2 class="vk-empty__title">"Bắt đầu một bản thảo"</h2>
-                                    <p>"Một trang dành riêng cho những điều bạn muốn viết."</p>
+                                <div class="vk-desk-empty" data-testid="draft-empty">
+                                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None } />
                                     <CreateDraftButton creation can_create create first=true />
                                 </div>
                             }.into_any(),
                             Ok(list) => view! { <DraftListView list query sort refresh refresh_disabled /> }.into_any(),
                             Err(error) => view! {
                                 <DeskError error />
-                                <button class="vk-button vk-button--tonal" type="button"
-                                    data-testid="retry-drafts" on:click=move |_| refresh.run(())
-                                    disabled=move || loading.get()>"Thử mở lại"</button>
+                                <Button variant=ButtonVariant::Tonal
+                                    id="retry-drafts" on_press=move |_| refresh.run(())
+                                    state=Signal::derive(move || blocked(loading.get()))>"Thử mở lại"</Button>
                             }.into_any(),
                         }
                     })}
@@ -141,10 +148,9 @@ fn CreateDraftButton(
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <button type="button"
-            class=if first { "vk-button vk-button--filled" } else { "vk-button vk-button--tonal" }
-            data-testid="create-draft" on:click=move |_| create.run(())
-            disabled=move || !can_create.get()
+        <Button variant=if first { ButtonVariant::Filled } else { ButtonVariant::Tonal }
+            id="create-draft" on_press=move |_| create.run(())
+            state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
         >
             {move || match creation.get() {
                 CreateState::Pending => "Đang tạo…",
@@ -152,7 +158,7 @@ fn CreateDraftButton(
                 _ if first => "Viết bản thảo đầu tiên",
                 _ => "Tạo bản thảo",
             }}
-        </button>
+        </Button>
     }
 }
 
@@ -187,12 +193,12 @@ fn CreateNotice(
             _ => return ().into_any(),
         };
         view! {
-            <div class="vk-notice vk-notice--warning" role="status" data-testid="create-notice">
-                <p class="vk-notice__title">{title}</p><p>{detail}</p>
-                <button class="vk-button vk-button--tonal" type="button" data-testid="reconcile-drafts"
-                    on:click=move |_| refresh.run(()) disabled=move || loading.get()>
+            <div data-testid="create-notice">
+                <InlineNotice title=title message=detail tone=Tone::Warning announce=Announce::Polite />
+                <Button variant=ButtonVariant::Tonal id="reconcile-drafts"
+                    on_press=move |_| refresh.run(()) state=Signal::derive(move || blocked(loading.get()))>
                     {move || if loading.get() { "Đang tải lại…" } else { "Tải lại danh sách" }}
-                </button>
+                </Button>
             </div>
         }.into_any()
     }
@@ -221,69 +227,40 @@ fn DraftListView(
     };
     view! {
         <section id="resume" class="vk-resume" aria-labelledby="resume-label" data-testid="draft-resume">
-            <p id="resume-label" class="vk-resume__label">"Trở lại trang đang viết"</p>
-            <h2 class="vk-resume__title">{untitled(&newest.title)}</h2>
-            <DraftMetadata version=newest.version updated_at=newest.updated_at />
-            <a class="vk-button vk-button--filled vk-resume__action" data-testid="resume-draft"
-                href=format!("/ban-viet/{}", newest.work_id)>"Viết tiếp"</a>
+            <DraftResume draft=adapters::draft_summary(&newest) />
         </section>
         <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
-            <h2 id="draft-list-title" class="vk-section__title">"Bản thảo gần đây"</h2>
+            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title>"Bản thảo gần đây"</Heading>
             <div id="draft-tools" class="vk-draft-tools">
-                <label class="vk-field vk-draft-search">
-                    <span class="vk-field__label">"Tìm theo tiêu đề"</span>
-                    <input type="search" data-testid="draft-search" placeholder="Có dấu hoặc không dấu"
-                        aria-describedby="draft-scope" prop:value=move || query.get()
-                        on:input=move |event| query.set(event_target_value(&event)) />
-                </label>
-                <label class="vk-field">
-                    <span class="vk-field__label">"Sắp xếp"</span>
-                    <select data-testid="draft-sort" prop:value=move || if sort.get() == DraftSort::Title { "title" } else { "recent" }
-                        on:change=move |event| sort.set(if event_target_value(&event) == "title" { DraftSort::Title } else { DraftSort::Recent })>
-                        <option value="recent">"Mới cập nhật"</option>
-                        <option value="title">"Tên A–Z (không dấu)"</option>
-                    </select>
-                </label>
-                <button class="vk-button vk-button--text" type="button" data-testid="refresh-drafts"
-                    disabled=move || refresh_disabled.get() on:click=move |_| refresh.run(())>"Tải lại"</button>
+                <SearchField id="draft-search" label="Tìm theo tiêu đề" value=query
+                    placeholder="Có dấu hoặc không dấu" on_input=move |input: vink_ui::TextInput| query.set(input.value) />
+                <Select id="draft-sort" label="Sắp xếp"
+                    options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z (không dấu)")]
+                    value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
+                    on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
+                <Button variant=ButtonVariant::Text id="refresh-drafts"
+                    state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(())>"Tải lại"</Button>
             </div>
             <p id="draft-scope" class="vk-muted" data-testid="draft-scope">{scope}</p>
             <p class="vk-muted" role="status" data-testid="draft-result-count">
                 {move || format!("Hiển thị {} / {count} bản thảo đã tải", visible.with(Vec::len))}
             </p>
             <Show when=move || visible.with(Vec::is_empty)>
-                <div class="vk-empty" data-testid="draft-no-results">
-                    <p class="vk-empty__title">"Không có tiêu đề phù hợp"</p>
-                    <p>"Thử một từ khác hoặc xem lại các bản thảo đã tải."</p>
-                    <button class="vk-button vk-button--tonal" type="button" data-testid="clear-draft-search"
-                        on:click=move |_| query.set(String::new())>"Xem các bản thảo đã tải"</button>
+                <div data-testid="draft-no-results">
+                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tiêu đề phù hợp".into(), message: "Thử một từ khác hoặc xem lại các bản thảo đã tải.".into(), actions: vec![], code: None } />
+                    <Button variant=ButtonVariant::Tonal id="clear-draft-search"
+                        on_press=move |_| query.set(String::new())>"Xem các bản thảo đã tải"</Button>
                 </div>
             </Show>
             <ul id="draft-results" class="vk-draft-rows" aria-label="Bản thảo đã tải" role="list">
                 <For each=move || visible.get() key=|draft| draft.work_id.clone() children=move |draft| view! {
                     <li class="vk-draft-row" data-testid="draft-row">
-                        <a class="vk-draft-row__link" href=format!("/ban-viet/{}", draft.work_id)>
-                            <span class="vk-draft-row__title">{untitled(&draft.title)}</span>
-                            <DraftMetadata version=draft.version updated_at=draft.updated_at />
-                            <span class="vk-draft-row__open">"Mở bản thảo →"</span>
-                        </a>
+                        <DraftRow draft=adapters::draft_summary(&draft) />
                     </li>
                 } />
             </ul>
         </section>
     }.into_any()
-}
-
-#[component]
-fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
-    let label = updated_at_label(&updated_at);
-    view! {
-        <span class="vk-draft-meta">
-            <span>"Phiên bản " {version}</span>
-            <span>"Cập nhật " <time datetime=updated_at>{label}</time></span>
-        </span>
-    }
-    .into_any()
 }
 
 #[component]
@@ -301,12 +278,16 @@ fn DeskError(error: ApiError) -> impl IntoView {
             "Chưa tải được bản thảo.",
             "Chưa kết nối được máy chủ. Hãy thử mở lại sau ít phút.",
         ),
+        ApiError::Forbidden => (
+            "Bạn không có quyền mở bản thảo này.",
+            "Hãy mở lại Bàn viết để kiểm tra quyền truy cập.",
+        ),
         _ => ("Có lỗi khi mở Bàn viết.", "Hãy thử mở lại."),
     };
     view! {
-        <div class="vk-notice" role="alert" data-testid="desk-error">
-            <p class="vk-notice__title">{title}</p><p>{detail}</p>
-            <a class="vk-button vk-button--text" href="/">"Khám phá tác phẩm"</a>
+        <div data-testid="desk-error">
+            <InlineNotice title=title message=detail tone=Tone::Error announce=Announce::Assertive />
+            <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
         </div>
     }
 }
@@ -337,12 +318,10 @@ pub fn DraftEditor() -> impl IntoView {
                 <a class="vk-editor-heading__back" href="/ban-viet">
                     "← Bàn viết"
                 </a>
-                <h1 id="editor-heading" class="vk-editor-heading__title">
-                    "Bản nháp"
-                </h1>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Title id="editor-heading">"Bản nháp"</Heading>
             </header>
             <noscript>
-                <p class="vk-notice">{DESK_UNAVAILABLE_SSR}</p>
+                <p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p>
             </noscript>
             <Suspense fallback=|| view! { <p class="vk-muted">"Đang mở bản nháp…"</p> }>
                 {move || Suspend::new(async move {
@@ -366,15 +345,13 @@ enum Field {
 #[component]
 fn Editor(draft: Draft) -> impl IntoView {
     let work_id = StoredValue::new(draft.work_id.clone());
-    let initial_title = draft.title.clone();
-    let title = StoredValue::new(initial_title.clone());
+    let title = RwSignal::new(draft.title.clone());
     let body = BodySource::new(crate::document::document_to_text(&draft.document));
     let session = RwSignal::new(EditorSession::loaded(draft.version));
     let leave = RwSignal::new(LeaveGuard::default());
     let navigation = use_context::<NavigationGuard>();
     let title_input = NodeRef::<html::Input>::new();
-    let leave_dialog = NodeRef::<html::Dialog>::new();
-    let preview_dialog = NodeRef::<html::Dialog>::new();
+    let leave_open = RwSignal::new(false);
     let keep_editing = NodeRef::<html::Button>::new();
     let last_field = StoredValue::new(Field::Body);
     let page_scroll = StoredValue::new(0.0_f64);
@@ -385,7 +362,7 @@ fn Editor(draft: Draft) -> impl IntoView {
     let send = move |ticket: SaveTicket| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
-            title: title.get_value(),
+            title: title.get_untracked(),
             document: crate::document::text_to_document(&body.snapshot()),
         };
         #[cfg(feature = "hydrate")]
@@ -409,7 +386,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                     .try_update(|g| session.with_untracked(|s| g.save_settled(s, ticket)))
                     .flatten();
                 if let Some(destination) = destination {
-                    close_dialog(leave_dialog, page_scroll);
+                    leave_open.set(false);
+                    restore_scroll(page_scroll);
                     if let Some(navigation) = navigation {
                         navigation.go(&destination);
                     }
@@ -425,8 +403,8 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
     };
     let export = move || {
-        let text = crate::document::export_text(&title.get_value(), &body.snapshot());
-        let name = crate::document::export_file_name(&title.get_value());
+        let text = crate::document::export_text(&title.get_untracked(), &body.snapshot());
+        let name = crate::document::export_file_name(&title.get_untracked());
         #[cfg(feature = "hydrate")]
         if let Err(error) = download_text(&name, &text) {
             leptos::logging::warn!("export failed: {error:?}");
@@ -448,8 +426,12 @@ fn Editor(draft: Draft) -> impl IntoView {
     };
     let stay = move || {
         leave.update(LeaveGuard::stay);
-        close_dialog(leave_dialog, page_scroll);
-        focus_last_field();
+        leave_open.set(false);
+        restore_scroll(page_scroll);
+        request_animation_frame(move || {
+            focus_last_field();
+            restore_scroll(page_scroll);
+        });
     };
     let save_and_leave = move || {
         let ticket = leave
@@ -470,7 +452,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     };
     let confirm_discard = move || {
         if let Some(destination) = leave.try_update(LeaveGuard::confirm_discard).flatten() {
-            close_dialog(leave_dialog, page_scroll);
+            leave_open.set(false);
+            restore_scroll(page_scroll);
             if let Some(navigation) = navigation {
                 navigation.go(&destination);
             }
@@ -478,8 +461,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     };
     let open_preview = move || {
         let document = crate::document::text_to_document(&body.snapshot());
-        preview.set(Some((title.get_value(), document)));
-        open_dialog(preview_dialog, page_scroll);
+        preview.set(Some((title.get_untracked(), document)));
+        remember_scroll(page_scroll);
     };
 
     if let Some(navigation) = navigation {
@@ -492,7 +475,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                 })
                 .unwrap_or(false);
             if held {
-                open_dialog(leave_dialog, page_scroll);
+                remember_scroll(page_scroll);
+                leave_open.set(true);
             }
             held
         });
@@ -512,7 +496,7 @@ fn Editor(draft: Draft) -> impl IntoView {
 
     let on_body_ready = Callback::new(move |()| {
         // A new, empty draft starts at its title; an existing one at its text.
-        if title.get_value().is_empty() && body.snapshot().is_empty() {
+        if title.get_untracked().is_empty() && body.snapshot().is_empty() {
             last_field.set_value(Field::Title);
         }
         focus_last_field();
@@ -544,119 +528,81 @@ fn Editor(draft: Draft) -> impl IntoView {
                 }
             }
         >
-            <div id=TOOLBAR_ID class="vk-editor-toolbar" data-testid="editor-toolbar">
-                <p
-                    class="vk-save-status"
-                    role="status"
-                    aria-live="polite"
-                    data-testid="save-status"
-                    data-status=move || status().token()
-                >
-                    {move || status_text(status())}
-                </p>
-                <div class="vk-editor-toolbar__actions">
-                    <button
-                        type="button"
-                        class="vk-button vk-button--text"
-                        data-testid="preview"
-                        on:click=move |_| open_preview()
+            <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
+                status=Signal::derive(move || status_text(status()).to_string())
+                status_token=Signal::derive(move || status().token().to_string())>
+                    <Button variant=ButtonVariant::Text
+                        id="preview"
+                        on_press=move |_| open_preview()
                     >
                         "Xem trước"
-                    </button>
-                    <button
-                        type="button"
-                        class="vk-button vk-button--text"
-                        data-testid="export"
-                        on:click=move |_| export()
+                    </Button>
+                    <Button variant=ButtonVariant::Text
+                        id="export"
+                        on_press=move |_| export()
                     >
                         "Tải .txt"
-                    </button>
-                    <button
-                        type="submit"
-                        class="vk-button vk-button--filled"
-                        data-testid="save"
-                        disabled=move || !session.with(EditorSession::can_save)
+                    </Button>
+                    <Button variant=ButtonVariant::Filled
+                        kind=ButtonKind::Submit
+
+                        id="save"
+                        state=Signal::derive(move || if status() == SaveStatus::Saving { ActionState::pending("Đang lưu…") } else { blocked(!session.with(EditorSession::can_save)) })
                     >
                         "Lưu nháp"
-                    </button>
-                </div>
-            </div>
+                    </Button>
+            </crate::ui::patterns::EditorToolbar>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
-                <div class="vk-notice vk-notice--error" role="alert" data-testid="save-failed">
-                    <p class="vk-notice__title">"Chưa lưu được bản nháp."</p>
-                    <p>
-                        {move || match status() {
-                            SaveStatus::Failed(failure) => failure_reason(failure),
-                            _ => "",
-                        }}
-                        " Chữ vẫn còn nguyên trên trang này. Hãy thử lưu lại, hoặc tải bản đang viết để giữ một bản trên máy."
-                    </p>
+                <div data-testid="save-failed">
+                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Assertive title="Chưa lưu được bản nháp."
+                        message=format!("{} Chữ vẫn còn nguyên trên trang này. Hãy thử lưu lại, hoặc tải bản đang viết để giữ một bản trên máy.", match status() { SaveStatus::Failed(failure) => failure_reason(failure), _ => "" }) /> }}
                     <div class="vk-notice__actions">
-                        <button
-                            type="button"
-                            class="vk-button vk-button--tonal"
-                            data-testid="retry-save"
-                            on:click=move |_| save()
+                        <Button variant=ButtonVariant::Tonal
+                            id="retry-save"
+                            on_press=move |_| save()
                         >
                             "Thử lưu lại"
-                        </button>
-                        <button
-                            type="button"
-                            class="vk-button vk-button--text"
-                            on:click=move |_| export()
+                        </Button>
+                        <Button variant=ButtonVariant::Text
+                            on_press=move |_| export()
                         >
                             "Tải bản đang viết"
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </Show>
             <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
-                <div class="vk-notice vk-notice--warning" role="alert" data-testid="conflict">
-                    <p class="vk-notice__title">"Bản nháp đã được lưu ở nơi khác."</p>
-                    <p>
-                        "Nội dung bạn đang viết vẫn còn nguyên trên trang này. Bạn có thể lưu đè bằng nội dung này, hoặc tải bản đang viết trước khi mở lại bản trên máy chủ."
-                    </p>
+                <div data-testid="conflict">
+                    <InlineNotice tone=Tone::Warning announce=Announce::Assertive title="Bản nháp đã được lưu ở nơi khác."
+                        message="Nội dung bạn đang viết vẫn còn nguyên trên trang này. Bạn có thể lưu đè bằng nội dung này, hoặc tải bản đang viết trước khi mở lại bản trên máy chủ." />
                     <div class="vk-notice__actions">
-                        <button
-                            type="button"
-                            class="vk-button vk-button--tonal"
-                            data-testid="keep-mine"
-                            on:click=move |_| {
+                        <Button variant=ButtonVariant::Tonal
+                            id="keep-mine"
+                            on_press=move |_| {
                                 session.update(EditorSession::keep_local_text);
                                 save();
                             }
                         >
                             "Lưu đè bằng nội dung đang viết"
-                        </button>
-                        <button
-                            type="button"
-                            class="vk-button vk-button--text"
-                            on:click=move |_| export()
+                        </Button>
+                        <Button variant=ButtonVariant::Text
+                            on_press=move |_| export()
                         >
                             "Tải bản đang viết"
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </Show>
             <div class="vk-editor-paper">
-                <label class="vk-field">
-                    <span class="vk-field__label">"Tiêu đề"</span>
-                    <input
-                        class="vk-input vk-input--title"
-                        name="title"
-                        lang="vi"
-                        maxlength="200"
-                        placeholder="Chưa đặt tên"
-                        autocomplete="off"
-                        node_ref=title_input
-                        prop:value=initial_title
-                        on:focus=move |_| last_field.set_value(Field::Title)
-                        on:input=move |event| {
-                            title.set_value(event_target_value(&event));
+                <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
+                    placeholder="Chưa đặt tên" autocomplete="off" value=title
+                    on_focus=move |_| last_field.set_value(Field::Title)
+                    on_input=move |input: vink_ui::TextInput| {
+                        if title.get_untracked() != input.value {
+                            title.set(input.value);
                             session.update(EditorSession::edited);
                         }
-                    />
-                </label>
+                    } />
                 <div class="vk-field" on:focusin=move |_| last_field.set_value(Field::Body)>
                     <span
                         id=BODY_LABEL_ID
@@ -673,119 +619,84 @@ fn Editor(draft: Draft) -> impl IntoView {
                         <p class="vk-muted vk-editor-body__pending">"Đang mở trình soạn thảo…"</p>
                     </Show>
                     <Show when=move || body.state.get() == BodyState::Failed>
-                        <p class="vk-notice vk-notice--error" role="alert" data-testid="editor-failed">
-                            "Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
-                        </p>
+                        <InlineNotice tone=Tone::Error announce=Announce::Assertive
+                            message="Không mở được trình soạn thảo. Nội dung đã lưu trên máy chủ không bị ảnh hưởng; hãy tải lại trang."
+                            attr:data-testid="editor-failed" />
                     </Show>
                 </div>
             </div>
         </form>
-        <dialog
-            class="vk-dialog"
-            aria-labelledby="leave-editor-title"
-            data-testid="leave-editor"
-            node_ref=leave_dialog
-            on:cancel=move |event: leptos::ev::Event| {
-                event.prevent_default();
-                stay();
-            }
-        >
+        <vink_ui::Dialog id="leave-editor" open=leave_open
+            title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ chữ chưa lưu và rời trang?" } else { "Rời trang khi còn chữ chưa lưu?" }.to_string())
+            dismiss=vink_ui::DismissPolicy::EscapeOnly on_dismiss=move |_| stay()
+            attr:data-testid="leave-editor">
             <Show
                 when=move || stage() == Some(LeaveStage::ConfirmingDiscard)
                 fallback=move || {
                     let saving = move || matches!(stage(), Some(LeaveStage::Saving { .. }));
                     view! {
-                        <h2 id="leave-editor-title" class="vk-dialog__title">
-                            "Rời trang khi còn chữ chưa lưu?"
-                        </h2>
                         <p class="vk-dialog__body" data-testid="leave-message">
                             {move || leave_message(stage(), status())}
                         </p>
                         <div class="vk-dialog__actions">
-                            <button
-                                type="button"
-                                class="vk-button vk-button--text"
-                                data-testid="leave-stay"
-                                on:click=move |_| stay()
+                            <Button variant=ButtonVariant::Text
+                                id="leave-stay"
+                                on_press=move |_| stay()
                             >
                                 "Ở lại"
-                            </button>
-                            <button
-                                type="button"
-                                class="vk-button vk-button--filled"
-                                data-testid="leave-save"
-                                disabled=move || {
-                                    saving() || matches!(status(), SaveStatus::Conflict { .. })
-                                }
-                                on:click=move |_| save_and_leave()
+                            </Button>
+                            <Button variant=ButtonVariant::Filled
+                                id="leave-save"
+                                state=Signal::derive(move || blocked(saving() || matches!(status(), SaveStatus::Conflict { .. })))
+                                on_press=move |_| save_and_leave()
                             >
                                 {move || if saving() { "Đang lưu…" } else { "Lưu và rời trang" }}
-                            </button>
+                            </Button>
                         </div>
                         <Show when=can_discard>
                             <div class="vk-dialog__recovery" data-testid="leave-recovery">
-                                <button
-                                    type="button"
-                                    class="vk-button vk-button--tonal"
-                                    data-testid="leave-export"
-                                    on:click=move |_| export()
+                                <Button variant=ButtonVariant::Tonal
+                                    id="leave-export"
+                                    on_press=move |_| export()
                                 >
                                     "Tải bản đang viết (.txt)"
-                                </button>
-                                <button
-                                    type="button"
-                                    class="vk-button vk-button--text vk-button--danger"
-                                    data-testid="leave-discard"
-                                    on:click=move |_| ask_discard()
+                                </Button>
+                                <Button variant=ButtonVariant::Danger
+                                    id="leave-discard"
+                                    on_press=move |_| ask_discard()
                                 >
                                     "Rời mà không lưu…"
-                                </button>
+                                </Button>
                             </div>
                         </Show>
                     }
                 }
             >
-                <h2 id="leave-editor-title" class="vk-dialog__title">
-                    "Bỏ chữ chưa lưu và rời trang?"
-                </h2>
                 <p class="vk-dialog__body">
                     "Chữ chưa được máy chủ xác nhận sẽ mất khỏi trang này. Tệp .txt đã tải (nếu có) chỉ nằm trên máy của bạn, không phải bản lưu trên máy chủ."
                 </p>
                 <div class="vk-dialog__actions">
-                    <button
-                        type="button"
-                        class="vk-button vk-button--text"
-                        data-testid="discard-back"
-                        node_ref=keep_editing
-                        on:click=move |_| leave.update(LeaveGuard::keep_choosing)
+                    <Button variant=ButtonVariant::Text
+                        id="discard-back"
+                        button_ref=keep_editing
+                        on_press=move |_| leave.update(LeaveGuard::keep_choosing)
                     >
                         "Quay lại"
-                    </button>
-                    <button
-                        type="button"
-                        class="vk-button vk-button--danger-filled"
-                        data-testid="discard-confirm"
-                        on:click=move |_| confirm_discard()
+                    </Button>
+                    <Button variant=ButtonVariant::Danger
+                        id="discard-confirm"
+                        on_press=move |_| confirm_discard()
                     >
                         "Bỏ thay đổi và rời"
-                    </button>
+                    </Button>
                 </div>
             </Show>
-        </dialog>
-        <dialog
-            class="vk-dialog vk-dialog--preview"
-            aria-labelledby="draft-preview-title"
-            data-testid="draft-preview"
-            node_ref=preview_dialog
-            on:close=move |_| {
-                restore_scroll(page_scroll);
-                preview.set(None);
-            }
-        >
-            // Opening focuses the heading, so a long draft opens at its start, not at "Đóng".
-            <p id="draft-preview-title" class="vk-dialog__eyebrow" tabindex="-1" autofocus>
-                "Xem trước bản nháp"
-            </p>
+        </vink_ui::Dialog>
+        <vink_ui::Dialog id="draft-preview" open=Signal::derive(move || preview.with(Option::is_some))
+            title="Xem trước bản nháp" focus_title=true
+            dismiss=vink_ui::DismissPolicy::EscapeOnly
+            on_dismiss=move |_| { preview.set(None); restore_scroll(page_scroll); }
+            attr:data-testid="draft-preview">
             <p class="vk-dialog__body vk-muted">
                 "Dùng chữ đang có trên trang, kể cả phần chưa lưu. Chỉ bạn thấy; chưa gửi duyệt, chưa công khai."
             </p>
@@ -796,7 +707,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         let empty = document.blocks.is_empty();
                         view! {
                             <article class="vk-preview" lang="vi">
-                                <h2 class="vk-reader__title">{untitled(&title)}</h2>
+                                <Heading level=HeadingLevel::H2 role=TypeRole::Headline>{untitled(&title)}</Heading>
                                 {if empty {
                                     view! { <p class="vk-muted">"Chưa có nội dung."</p> }.into_any()
                                 } else {
@@ -807,44 +718,25 @@ fn Editor(draft: Draft) -> impl IntoView {
                     })
             }}
             <div class="vk-dialog__actions">
-                <button
-                    type="button"
-                    class="vk-button vk-button--tonal"
-                    data-testid="preview-close"
-                    on:click=move |_| {
-                        if let Some(dialog) = preview_dialog.get_untracked() {
-                            dialog.close();
-                        }
+                <Button variant=ButtonVariant::Tonal
+                    id="preview-close"
+                    on_press=move |_| {
+                        preview.set(None);
+                        restore_scroll(page_scroll);
                     }
                 >
                     "Đóng"
-                </button>
+                </Button>
             </div>
-        </dialog>
+        </vink_ui::Dialog>
     }
 }
 
-fn open_dialog(dialog: NodeRef<html::Dialog>, page_scroll: StoredValue<f64>) {
+fn remember_scroll(page_scroll: StoredValue<f64>) {
     #[cfg(feature = "hydrate")]
-    if let Some(dialog) = dialog.get_untracked()
-        && !dialog.open()
-    {
-        page_scroll.set_value(window().scroll_y().unwrap_or_default());
-        let _ = dialog.show_modal();
-    }
+    page_scroll.set_value(window().scroll_y().unwrap_or_default());
     #[cfg(not(feature = "hydrate"))]
-    let _ = (dialog, page_scroll);
-}
-
-/// Closes a dialog and keeps the page where the author left it; returning focus to the trigger
-/// would otherwise scroll it into view.
-fn close_dialog(dialog: NodeRef<html::Dialog>, page_scroll: StoredValue<f64>) {
-    if let Some(dialog) = dialog.get_untracked()
-        && dialog.open()
-    {
-        dialog.close();
-        restore_scroll(page_scroll);
-    }
+    let _ = page_scroll;
 }
 
 fn restore_scroll(page_scroll: StoredValue<f64>) {
@@ -939,5 +831,14 @@ fn failure(error: &ApiError) -> Failure {
         ApiError::NotFound => Failure::NotFound,
         ApiError::Invalid { .. } => Failure::Invalid,
         ApiError::VersionConflict { .. } | ApiError::Unexpected { .. } => Failure::Unexpected,
+    }
+}
+
+/// The primitive uses aria-disabled and retains focus; the application still guards effects.
+fn blocked(disabled: bool) -> ActionState {
+    if disabled {
+        ActionState::Disabled { reason: None }
+    } else {
+        ActionState::Enabled
     }
 }

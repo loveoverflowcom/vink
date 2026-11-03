@@ -95,6 +95,7 @@ val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foun
     "state.loading", "state.progress", "state.empty", "state.error", "state.notice", "state.status", "state.dialog", "state.playground",
     "navigation.rail", "navigation.bottom-bar", "navigation.top-bar", "navigation.scaffold", "navigation.overlay", "navigation.adapter",
     "composition.nested",
+    "screen.explore", "screen.reader", "screen.desk", "screen.editor", "screen.me", "composition.feedback",
 )
 
 enum class Frame(val label: String, val width: Dp?) {
@@ -353,7 +354,7 @@ fun Specimen(id: String, scenario: String) {
                 "foundation.typography" -> Typography(combining = scenario == "combining-marks")
                 "foundation.shape-spacing" -> ShapeSpacing()
                 "foundation.motion" -> Motion()
-                else -> if (!ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
+                else -> if (id.startsWith("screen.") || id == "composition.feedback") ScreenRecipe(id, scenario) else if (!ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
             }
             }
         }

@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -42,6 +42,10 @@
     {
       "id": "composition",
       "label": "Kết hợp"
+    },
+    {
+      "id": "screen",
+      "label": "Màn Vink — Mẫu"
     }
   ],
   "entries": [
@@ -1062,6 +1066,246 @@
         {
           "id": "narrow",
           "label": "Màn hẹp"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "screen.explore",
+      "family": "screen",
+      "label": "Khám phá — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "loading",
+          "label": "loading"
+        },
+        {
+          "id": "low",
+          "label": "low"
+        },
+        {
+          "id": "empty",
+          "label": "empty"
+        },
+        {
+          "id": "no-results",
+          "label": "no-results"
+        },
+        {
+          "id": "error",
+          "label": "error"
+        },
+        {
+          "id": "long",
+          "label": "long"
+        },
+        {
+          "id": "refresh",
+          "label": "refresh"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "screen.reader",
+      "family": "screen",
+      "label": "Reader — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "loading",
+          "label": "loading"
+        },
+        {
+          "id": "error",
+          "label": "error"
+        },
+        {
+          "id": "not-found",
+          "label": "not-found"
+        },
+        {
+          "id": "long",
+          "label": "long"
+        },
+        {
+          "id": "feedback",
+          "label": "feedback"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "screen.desk",
+      "family": "screen",
+      "label": "Bàn viết — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "loading",
+          "label": "loading"
+        },
+        {
+          "id": "empty",
+          "label": "empty"
+        },
+        {
+          "id": "no-results",
+          "label": "no-results"
+        },
+        {
+          "id": "error",
+          "label": "error"
+        },
+        {
+          "id": "auth-required",
+          "label": "auth-required"
+        },
+        {
+          "id": "forbidden",
+          "label": "forbidden"
+        },
+        {
+          "id": "uncertain",
+          "label": "uncertain"
+        },
+        {
+          "id": "refresh",
+          "label": "refresh"
+        },
+        {
+          "id": "long",
+          "label": "Tiêu đề Việt dài"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "screen.editor",
+      "family": "screen",
+      "label": "Editor chrome — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "loading",
+          "label": "loading"
+        },
+        {
+          "id": "dirty",
+          "label": "dirty"
+        },
+        {
+          "id": "pending",
+          "label": "pending"
+        },
+        {
+          "id": "error",
+          "label": "error"
+        },
+        {
+          "id": "conflict",
+          "label": "conflict"
+        },
+        {
+          "id": "uncertain",
+          "label": "uncertain"
+        },
+        {
+          "id": "long",
+          "label": "long"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "screen.me",
+      "family": "screen",
+      "label": "Tôi — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "auth-required",
+          "label": "auth-required"
+        },
+        {
+          "id": "long",
+          "label": "long"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "composition.feedback",
+      "family": "composition",
+      "label": "Góp ý có ngữ cảnh — Mẫu",
+      "summary": "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "default"
+        },
+        {
+          "id": "sharing",
+          "label": "sharing"
+        },
+        {
+          "id": "technique",
+          "label": "technique"
+        },
+        {
+          "id": "pending",
+          "label": "pending"
+        },
+        {
+          "id": "error",
+          "label": "error"
+        },
+        {
+          "id": "auth-required",
+          "label": "auth-required"
+        },
+        {
+          "id": "uncertain",
+          "label": "uncertain"
         }
       ],
       "status": {

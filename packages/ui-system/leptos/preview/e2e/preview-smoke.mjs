@@ -889,6 +889,27 @@ async function reflow(page) {
   check(fonts, 'self-hosted Be Vietnam Pro 400/600 and Literata load');
 }
 
+async function screenPatterns(page) {
+  await page.open('composition.feedback');
+  await page.eval(`document.querySelector('#sample-feedback').focus(); document.querySelector('#sample-feedback').select()`);
+  await page.send('Input.insertText', { text: 'Góp ý chưa gửi\n\n  giữ nguyên khổ thơ.' });
+  const typed = await page.eval(`document.querySelector('#sample-feedback').value`);
+  await page.click('.vk-feedback-composer button');
+  check(await page.eval(`document.querySelector('[data-testid=sample-result]').textContent.includes('chưa gửi hoặc lưu') && document.querySelector('#sample-feedback').value === ${JSON.stringify(typed)}`), 'sample feedback dispatches an intent and preserves text without claiming success');
+  await page.choose('theme', 'Tối');
+  await page.viewport(320);
+  check(await page.eval(`document.querySelector('#sample-feedback').value === ${JSON.stringify(typed)}`), 'feedback draft survives theme and resize');
+  for (const state of ['pending', 'auth-required', 'uncertain']) {
+    await page.open('composition.feedback', state);
+    await page.eval(`document.querySelector('.vk-feedback-composer button').click()`);
+    check(await page.eval(`document.querySelector('.vk-feedback-composer button').getAttribute('aria-disabled') === 'true' && !document.querySelector('[data-testid=sample-result]').textContent`), `feedback ${state} cannot submit`);
+  }
+  await page.open('composition.feedback', 'sharing');
+  check(await page.eval(`!document.querySelector('.vk-feedback-composer textarea, .vk-feedback-composer button')`), 'Sharing offers no criticism form or fake action');
+  await page.choose('theme', 'Sáng');
+  await page.viewport(1440);
+}
+
 async function captures(page) {
   for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
     await page.choose('theme', label);
@@ -988,6 +1009,20 @@ async function captures(page) {
     await page.open('foundation.typography', 'combining-marks');
     await page.capture(`foundation.typography--combining-marks--light--${width}--text200`);
   }
+  for (const entry of catalog.entries.filter(e => e.family === 'screen' || e.id === 'composition.feedback')) {
+    await page.choose('scale', '100%');
+    await page.viewport(834);
+    for (const scenario of entry.scenarios) {
+      await page.open(entry.id, scenario.id);
+      await page.capture(`${entry.id}--${scenario.id}--light--834`);
+    }
+    await page.choose('scale', '200%');
+    for (const width of WIDTHS) {
+      await page.viewport(width);
+      await page.open(entry.id, entry.scenarios.some(s => s.id === 'long') ? 'long' : 'default');
+      await page.capture(`${entry.id}--long--light--${width}--text200`);
+    }
+  }
   await page.choose('scale', '100%');
   await page.viewport(1440);
 }
@@ -1009,6 +1044,7 @@ try {
   await states(page, cdp);
   await navigation(page);
   await search(page);
+  await screenPatterns(page);
   await reflow(page);
   await captures(page);
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);

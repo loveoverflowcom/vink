@@ -99,6 +99,13 @@ class CaptureTest {
         for ((entry, scenario) in navigationText200) {
             capture("$entry--$scenario--light--narrow--text200", 360, 9000, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario, textScale = 2f))
         }
+        val screenScenarios = VinkCatalog.entries.filter { it.family == "screen" || it.id == "composition.feedback" }.flatMap { e -> e.scenarios.map { e.id to it.id } }
+        for ((entry, scenario) in screenScenarios) {
+            capture("$entry--$scenario--light--tablet", 834, 8000, PreviewConfig(theme = ThemePreference.Light, entry = entry, scenario = scenario))
+        }
+        for (entry in VinkCatalog.entries.filter { it.family == "screen" || it.id == "composition.feedback" }) {
+            capture("${entry.id}--long--dark--narrow--text200", 360, 14000, PreviewConfig(theme = ThemePreference.Dark, entry = entry.id, scenario = if (entry.scenarios.any { it.id == "long" }) "long" else "default", textScale = 2f))
+        }
         File(out, "contexts.json").writeText(
             "{\n  \"renderer\": \"Compose Multiplatform 1.9.0 desktop (Skia, offscreen ImageComposeScene)\",\n" +
                 "  \"os\": \"${System.getProperty("os.name")} ${System.getProperty("os.version")} ${System.getProperty("os.arch")}\",\n" +
@@ -107,7 +114,7 @@ class CaptureTest {
         )
         assertTrue(
             contexts.size == 30 + COMPONENT_IDS.size * 4 + 15 + stateScenarios.size + stateText200.size +
-                navigation.size * 2 + navigation.map { it.first }.distinct().size + navigationText200.size,
+                navigation.size * 2 + navigation.map { it.first }.distinct().size + navigationText200.size + screenScenarios.size + 6,
             "${contexts.size} captures",
         )
     }

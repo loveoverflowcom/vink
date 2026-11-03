@@ -235,15 +235,15 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                 >
                     <header class="vk-profile-heading">
                         <h2 id="profile-title">"Tôi"</h2>
-                        <button type="button" class="vk-button vk-button--text" aria-label="Đóng Tôi" data-testid="profile-close" on:click=move |_| { close(CloseReason::Dismiss); }>
+                        <vink_ui::Button variant=vink_ui::ButtonVariant::Text id="profile-close" on_press=move |_| { close(CloseReason::Dismiss); }>
                             "Đóng"
-                        </button>
+                        </vink_ui::Button>
                     </header>
                     <AccountStatus />
                     <ThemePicker group="overlay-theme" />
-                    <button type="button" class="vk-button vk-button--tonal" data-testid="open-me" on:click=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
+                    <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal id="open-me" on_press=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
                         "Mở trang Tôi"
-                    </button>
+                    </vink_ui::Button>
                 </dialog>
             }
         >

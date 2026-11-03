@@ -27,9 +27,12 @@ when enabled and no native app exists) with UIS-02 primitives on both renderers 
 actions, fields, icons from a licensed registry, avatar/byline with shared identity vectors) and
 UIS-03 state/feedback/loading components (content region with lawful content × phase combinations,
 state panel, notices, skeleton/arc/edge progress gated by host-injected activity, snackbar,
-dialog, shared state vectors) that no app screen uses yet, and UIS-04 shell/navigation primitives
+dialog, shared state vectors), and UIS-04 shell/navigation primitives
 (pure `NavLayout`/`OverlayLayer` policy with shared vectors, adaptive scaffold, rail with a permanent
 toggle, bottom bar, top bar; a diagnostic CMP navigation adapter) that the Web shell now renders.
+UIS-05 adopts shared controls, identity, notices and dialog chrome on Explore/Reader/Desk/Editor/Me; `packages/vink-patterns` owns DTO-free Leptos/CMP compositions
+consumed by the app and both galleries. Feedback and native screen recipes remain explicitly
+labelled samples with no service, auth or save authority.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
 No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider, job
 or executable behavior model exists; production authentication is NOT_IMPLEMENTED. Inspect actual

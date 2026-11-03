@@ -1,10 +1,15 @@
 # Contract trạng thái, phản hồi và chuyển động (UIS-03)
 
 **Trạng thái:** UIS-03/06 ([#21](https://github.com/loveoverflowcom/vink/issues/21)) — NEW. Đã triển khai ở cả
-hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. Chưa màn nào
-của app dùng; adoption thuộc #23 sau qualification #24. Coordinator overlay toàn app (một dialog
+hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. UIS-05 (#23)
+đã dùng notice/panel/dialog ở các màn Web; qualification rộng hơn thuộc #24. Coordinator overlay toàn app (một dialog
 mở tại một thời điểm, Back đóng lớp phủ trước, trả focus) là `OverlayLayer` của UIS-04 (#22), contract ở
 [navigation.md](navigation.md).
+
+UIS-05: Web `Dialog.title` là signal để bước xác nhận của `LeaveGuard` đổi tiêu đề mà không
+remount; `focus_title` dùng cho preview dài. Trả focus dùng prevent-scroll. Sự kiện `close`
+xếp hàng từ lần đóng trước không dismiss dialog đang mở lại: kiểm trạng thái DOM hiện tại
+trước khi phát `on_dismiss`. App vẫn sở hữu chữ, scroll, quyết định lưu/rời và request identity.
 
 Thư viện **trình bày** trạng thái có chủ nguồn; nó không phân loại lỗi nghiệp vụ, không fetch,
 không lên lịch retry, không logout, không điều hướng, không xóa chữ và không quyết định quyền.

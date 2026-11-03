@@ -1,0 +1,15 @@
+[package]
+name = "vink-patterns"
+version = "0.1.0"
+description = "Vink reading, writing and feedback compositions; no DTOs or effects"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+leptos.workspace = true
+vink-ui = { path = "../../ui-system/leptos" }
+
+[dev-dependencies]
+leptos = { workspace = true, features = ["ssr"] }
