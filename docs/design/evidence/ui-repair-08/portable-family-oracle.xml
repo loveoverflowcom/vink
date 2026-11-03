@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<evidence note="Portable family oracle; no dependency on the host default font metrics">
+  <testsuite run="negative-loaded-three-generic-family" name="vink.ui.preview.FontTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-11-03T13:04:58.468Z" time="0.182">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.182">
+      <failure message="java.lang.AssertionError: be-vietnam-pro-400.ttf must use a bundled font family. Expected value to be of type &lt;androidx.compose.ui.text.font.FontListFontFamily (Kotlin reflection is not available)&gt;, actual &lt;class androidx.compose.ui.text.font.GenericFontFamily (Kotlin reflection is not available)&gt;." type="java.lang.AssertionError">java.lang.AssertionError: be-vietnam-pro-400.ttf must use a bundled font family. Expected value to be of type &lt;androidx.compose.ui.text.font.FontListFontFamily (Kotlin reflection is not available)&gt;, actual &lt;class androidx.compose.ui.text.font.GenericFontFamily (Kotlin reflection is not available)&gt;.
+	at org.junit.Assert.fail(Assert.java:89)</failure>
+    </testcase>
+  </testsuite>
+  <testsuite run="restored-real-loader" name="vink.ui.preview.FontTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-03T13:05:18.765Z" time="0.421">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.35" />
+    <testcase name="packagedFacesHaveTheApprovedMetadataAndVietnameseGlyphs[desktop]" classname="vink.ui.preview.FontTest" time="0.058" />
+    <testcase name="anyMissingOrCorruptFaceUsesAnHonestCompleteFallback[desktop]" classname="vink.ui.preview.FontTest" time="0.012" />
+  </testsuite>
+</evidence>

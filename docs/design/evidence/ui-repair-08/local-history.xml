@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<evidence baselineSha="31a62b1dd7a20e445d9788b967613902f7dc1b91">
+  <testsuite run="baseline-linux" name="vink.ui.preview.PreviewTest" tests="10" skipped="0" failures="1" errors="0" timestamp="2026-11-03T12:44:50.268Z" time="9.462">
+    <testcase name="selfHostedFacesDecodeOnDesktop[desktop]" classname="vink.ui.preview.PreviewTest" time="0.011">
+      <failure message="java.lang.AssertionError: Font hệ thống (không đọc được be-vietnam-pro-400.woff2, be-vietnam-pro-600.woff2, literata-variable.woff2) expected:&lt;3&gt; but was:&lt;0&gt;" type="java.lang.AssertionError">java.lang.AssertionError: Font hệ thống (không đọc được be-vietnam-pro-400.woff2, be-vietnam-pro-600.woff2, literata-variable.woff2) expected:&lt;3&gt; but was:&lt;0&gt;
+	at org.junit.Assert.fail(Assert.java:89)</failure>
+    </testcase>
+  </testsuite>
+  <testsuite run="focused-oracle-r1" name="vink.ui.preview.FontTest" tests="3" skipped="0" failures="1" errors="0" timestamp="2026-11-03T12:47:14.633Z" time="0.257">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.172">
+      <failure message="java.lang.AssertionError: be-vietnam-pro-400.ttf/400: Compose=90.7522, actual face=92.0" type="java.lang.AssertionError">java.lang.AssertionError: be-vietnam-pro-400.ttf/400: Compose=90.7522, actual face=92.0
+	at org.junit.Assert.fail(Assert.java:89)</failure>
+    </testcase>
+    <testcase name="packagedFacesHaveTheApprovedMetadataAndVietnameseGlyphs[desktop]" classname="vink.ui.preview.FontTest" time="0.07" />
+    <testcase name="anyMissingOrCorruptFaceUsesAnHonestCompleteFallback[desktop]" classname="vink.ui.preview.FontTest" time="0.015" />
+  </testsuite>
+  <testsuite run="focused-r2" name="vink.ui.preview.FontTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:48:34.407Z" time="0.653">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.562" />
+    <testcase name="packagedFacesHaveTheApprovedMetadataAndVietnameseGlyphs[desktop]" classname="vink.ui.preview.FontTest" time="0.075" />
+    <testcase name="anyMissingOrCorruptFaceUsesAnHonestCompleteFallback[desktop]" classname="vink.ui.preview.FontTest" time="0.015" />
+  </testsuite>
+  <testsuite run="negative-fake-loaded" name="vink.ui.preview.FontTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-11-03T12:50:20.640Z" time="0.391">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.391">
+      <failure message="java.lang.AssertionError: be-vietnam-pro-400.ttf/400: Compose=94.848206, actual face=90.7522" type="java.lang.AssertionError">java.lang.AssertionError: be-vietnam-pro-400.ttf/400: Compose=94.848206, actual face=90.7522
+	at org.junit.Assert.fail(Assert.java:89)</failure>
+    </testcase>
+  </testsuite>
+</evidence>

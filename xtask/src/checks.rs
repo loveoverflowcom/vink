@@ -7,6 +7,7 @@ use sha2::{Digest, Sha256};
 
 /// Self-hosted font faces, their OFL licenses and `provenance.json`.
 pub const FONTS_DIR: &str = "apps/vink-web/assets/fonts";
+const DESKTOP_FONTS_DIR: &str = "packages/ui-system/cmp/preview/fonts";
 pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
 
 pub fn run(root: &Path) -> Result<(), String> {
@@ -609,6 +610,7 @@ fn fonts(root: &Path, problems: &mut Vec<String>) {
             ));
         }
     }
+    desktop_fonts(root, &record, problems);
     let consumers = [
         ("apps/vink-web/style/vink.css", "url(\"fonts/"),
         ("packages/ui-system/leptos/style/tokens.css", "url(\"fonts/"),
@@ -630,6 +632,53 @@ fn fonts(root: &Path, problems: &mut Vec<String>) {
                     number + 1
                 ));
             }
+        }
+    }
+}
+
+/// The Desktop adapter follows the web face list; derivatives have one provenance owner.
+fn desktop_fonts(root: &Path, record: &serde_json::Value, problems: &mut Vec<String>) {
+    let dir = root.join(DESKTOP_FONTS_DIR);
+    if record["desktop"]["directory"].as_str() != Some(DESKTOP_FONTS_DIR) {
+        problems.push(format!(
+            "{FONTS_DIR}/provenance.json: invalid Desktop directory"
+        ));
+    }
+    let mut recorded = std::collections::BTreeSet::new();
+    for (source, entry) in record["files"].as_object().into_iter().flatten() {
+        let expected = format!("{}.ttf", source.trim_end_matches(".woff2"));
+        let derivative = &entry["desktop"];
+        if derivative["file"].as_str() != Some(expected.as_str()) {
+            problems.push(format!(
+                "{source}: missing or mismatched Desktop derivative"
+            ));
+            continue;
+        }
+        recorded.insert(expected.clone());
+        match std::fs::read(dir.join(&expected)) {
+            Ok(bytes) => {
+                if derivative["sha256"].as_str() != Some(sha256_hex(&bytes).as_str())
+                    || derivative["bytes"].as_u64() != Some(bytes.len() as u64)
+                    || !bytes.starts_with(&[0, 1, 0, 0])
+                {
+                    problems.push(format!("{DESKTOP_FONTS_DIR}/{expected}: format/length/SHA-256 differs from provenance.json"));
+                }
+            }
+            Err(_) => problems.push(format!(
+                "{DESKTOP_FONTS_DIR}/{expected}: listed but missing"
+            )),
+        }
+    }
+    for entry in std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+    {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".ttf") && !recorded.contains(&name) {
+            problems.push(format!(
+                "{DESKTOP_FONTS_DIR}/{name}: not recorded in provenance.json"
+            ));
         }
     }
 }
@@ -734,10 +783,16 @@ mod tests {
         std::fs::write(dir.join("a.woff2"), b"face").unwrap();
         std::fs::write(dir.join("stray.woff2"), b"x").unwrap();
         std::fs::write(dir.join("OFL.txt"), b"license").unwrap();
+        let desktop_dir = root.join(DESKTOP_FONTS_DIR);
+        std::fs::create_dir_all(&desktop_dir).unwrap();
+        let desktop_bytes = [0, 1, 0, 0, 7];
+        std::fs::write(desktop_dir.join("a.ttf"), desktop_bytes).unwrap();
         let record = format!(
-            r#"{{"files": {{"a.woff2": {{"sha256": "{}"}}}},
+            r#"{{"desktop": {{"directory": "{DESKTOP_FONTS_DIR}"}},
+                "files": {{"a.woff2": {{"sha256": "{}", "desktop": {{"file": "a.ttf", "bytes": 5, "sha256": "{}"}}}}}},
                 "families": {{"A": {{"license_file": "OFL.txt", "license_sha256": "0"}}}}}}"#,
-            sha256_hex(b"face")
+            sha256_hex(b"face"),
+            sha256_hex(&desktop_bytes),
         );
         std::fs::write(dir.join("provenance.json"), record).unwrap();
         std::fs::write(
@@ -758,6 +813,31 @@ mod tests {
         assert!(problems[0].ends_with("OFL.txt: SHA-256 differs from provenance.json"));
         assert!(problems[1].ends_with("stray.woff2: not recorded in provenance.json"));
         assert!(problems[2].contains("vink.css:2: font `b.woff2`"));
+    }
+
+    #[test]
+    fn desktop_font_derivative_checks_detect_corruption_and_unowned_files() {
+        let root =
+            std::env::temp_dir().join(format!("vink-desktop-fonts-check-{}", std::process::id()));
+        let dir = root.join(DESKTOP_FONTS_DIR);
+        std::fs::create_dir_all(&dir).unwrap();
+        let bytes = [0, 1, 0, 0, 7];
+        let record = serde_json::json!({
+            "desktop": {"directory": DESKTOP_FONTS_DIR},
+            "files": {"a.woff2": {"desktop": {"file": "a.ttf", "bytes": bytes.len(), "sha256": sha256_hex(&bytes)}}}
+        });
+        std::fs::write(dir.join("a.ttf"), bytes).unwrap();
+        let mut problems = Vec::new();
+        desktop_fonts(&root, &record, &mut problems);
+        assert!(problems.is_empty(), "{problems:?}");
+        // Valid header and unchanged byte count: only the pinned hash detects this mutation.
+        std::fs::write(dir.join("a.ttf"), [0, 1, 0, 0, 8]).unwrap();
+        std::fs::write(dir.join("stray.ttf"), bytes).unwrap();
+        desktop_fonts(&root, &record, &mut problems);
+        assert_eq!(problems.len(), 2, "{problems:?}");
+        assert!(problems[0].contains("a.ttf: format/length/SHA-256"));
+        assert!(problems[1].contains("stray.ttf: not recorded"));
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

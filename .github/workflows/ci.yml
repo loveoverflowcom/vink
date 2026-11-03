@@ -122,6 +122,28 @@ jobs:
             target/ui-preview/leptos/captures/
           retention-days: 14
 
+  ui-cmp-macos:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - name: Verify CMP fonts and renderer on macOS as well as Linux
+        run: |
+          export JAVA_HOME="$(/usr/libexec/java_home -v 17)"
+          cargo xtask ui-preview cmp verify
+      - name: Preserve macOS CMP evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-cmp-macos-evidence
+          path: |
+            packages/ui-system/cmp/preview/build/captures/
+            packages/ui-system/cmp/preview/build/test-results/
+            packages/ui-system/cmp/diagnostics/build/test-results/
+          retention-days: 14
+
   ui-cmp:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

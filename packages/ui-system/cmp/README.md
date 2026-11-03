@@ -47,8 +47,12 @@ VinkTheme(VinkPreferences(theme = ThemePreference.System), systemReducedMotion =
 ```
 
 Font: thư viện mặc định `FontFamily.SansSerif/Serif/Monospace`; host inject `VinkFonts`. Preview
-desktop nạp Be Vietnam Pro 400/600 và Literata (variation `wght`) từ WOFF2 của web (Gradle sao lúc
-build vào `build/generated/preview-fonts`, không commit bản sao). Android/iOS chưa có pipeline
+desktop nạp Be Vietnam Pro 400/600 và Literata (variation `wght`) từ TTF giải nén lossless của
+WOFF2 Web (Gradle sao derivative đã pin vào `build/generated/preview-fonts`). Nguồn, OFL, hash
+và cách tái tạo có một owner tại [font assets](../../../apps/vink-web/assets/fonts/README.md).
+`FontTest` kiểm metadata/glyph và đo font qua Compose; `FontCaptureTest` giữ 24 ảnh đối chiếu
+typography/byline/reader ở light/dark, chữ 100/200% và sidecar `font-contexts.json`.
+Android/iOS chưa có pipeline
 TTF/OTF có provenance: dùng font hệ thống, ghi `UNSUPPORTED` cho tới khi có.
 
 Lệnh: `cargo xtask ui-preview cmp build|run|verify` (xem [README UI system](../README.md)).

@@ -183,7 +183,9 @@ container, không push hay deploy. CI ([.github/workflows/ci.yml](../../.github/
 chuẩn bị Rust, wasm-bindgen, Node và PostgreSQL rồi gọi các lane tương ứng; job `discussion`
 chạy cùng runner cấu trúc như local. Job Web còn chạy preview Leptos với
 `VINK_UI_FOCUS_CAPTURE=1`; job `ui-cmp` dùng JDK 17 để chạy Desktop tests/captures.
-Hai job giữ bundle qua artifact 14 ngày theo workflow; Android/iOS diagnostic vẫn cần
+Các job giữ bundle qua artifact 14 ngày theo workflow. `ui-cmp-macos` chạy cùng lane và JDK 17
+trên macOS để giữ regression font Desktop; Linux `ui-cmp` vẫn là gate của lỗi font
+[PR 08](../design/ui-repair-08.md). Android/iOS diagnostic vẫn cần
 môi trường native riêng. Không có lane Kani hoặc generic behavior. Cấu hình CI không tự
 là bằng chứng một run đã PASS.
 

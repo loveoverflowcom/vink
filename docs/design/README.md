@@ -84,6 +84,7 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
   Noto Serif, Source Serif 4, Georgia, Times New Roman. Văn đọc
   `clamp(1.0625rem, 1rem + 0.25vw, 1.25rem)`, leading 1.85, measure 42rem.
 - Font tự host, nguồn/hash/license và cách tải: [assets/fonts](../../apps/vink-web/assets/fonts/README.md).
+- Font CMP Desktop và đối chiếu decoder Linux/macOS: [UI-REPAIR-08](ui-repair-08.md).
 - Radius 8/12/20/28 px, `hero` 32 px, pill. Spacing 0.25–3rem như trước.
 - Motion 160/320 ms; `ease-emphasized` cho màu, `ease-spatial` (có vượt nhẹ) cho đổi shape.
   `prefers-reduced-motion` rút mọi transition/animation về gần 0 và giới hạn animation chạy tối

@@ -41,8 +41,30 @@ Literata bỏ Greek/Cyrillic: các ký tự đó dùng font serif fallback. Serv
 
 `cargo xtask verify quick` kiểm mọi face/license khớp SHA-256 trong `provenance.json`, mọi
 `.woff2` đều được ghi nhận, và mọi URL font trong `tokens.css`/`vink.css`/shell trỏ tới face đã ghi.
-Preview CMP desktop đọc cùng các file WOFF2 này qua Skia (bản sao lúc build, không commit thêm);
-Android/iOS chưa có pipeline TTF/OTF nên dùng font hệ thống.
+Preview CMP Desktop dùng TTF giải nén từ chính ba WOFF2 này, xem phần dưới;
+Android/iOS vẫn dùng font hệ thống, chưa có pipeline branded-font native.
 `cargo xtask verify web` kiểm trang đọc tải được hai face chính và file được phục vụ đúng
 `font/woff2`. Các lane này không chứng minh vị trí dấu, cắt chữ hay hiển thị trên thiết bị thật;
 những điều đó cần ảnh chụp đã mở ở viewport/theme/cỡ chữ cụ thể.
+
+## Adapter CMP Desktop
+
+Skiko 0.9.22.2 trên Linux không giải mã được ba WOFF2 đã kiểm hash, trong khi TTF giải nén
+từ cùng dữ liệu đọc được. Desktop đóng gói ba derivative trong
+[`preview/fonts`](../../../../packages/ui-system/cmp/preview/fonts), tổng **844 748 bytes**;
+Gradle chép chúng, OFL và provenance vào classpath `vink-fonts/`. Web tiếp tục dùng các WOFF2
+trong bảng trên. Không cần Python hoặc mạng khi build/chạy preview.
+
+`files.*.desktop` trong [provenance.json](provenance.json) là nguồn duy nhất của tên, byte count
+và hash derivative; không có manifest font thứ hai. [derive_desktop.py](derive_desktop.py) giải
+nén bằng API [fontTools woff2](https://fonttools.readthedocs.io/en/latest/ttLib/woff2.html), không
+subset/instance lại. Script kiểm mọi bảng OpenType giữ nguyên, ngoại trừ checksum `head` được
+tính lại; các field còn lại của `head` cũng được so sánh. Font/license/nguồn Google Fonts và các
+trục Literata `opsz` 7–72, `wght` 200–900 được giữ nguyên. OFL cho phép derivative này.
+
+Để tái tạo, cài `fonttools==4.68.0 brotli==1.2.1` trong môi trường Python riêng rồi chạy
+`python3 apps/vink-web/assets/fonts/derive_desktop.py` từ repo; thêm `--check` để chỉ đối chiếu
+byte, không ghi. Các phiên bản và lệnh cũng được pin trong provenance. `verify quick` kiểm
+format/length/hash TTF và file không có chủ; Desktop tests kiểm resource, metadata, 154 điểm mã
+tiếng Việt NFC/NFD, font được Compose dùng ở 400/600 và fallback missing/corrupt. Glyph có sẵn
+không tự chứng minh shaping/IME đúng; xem [báo cáo PR 08](../../../../docs/design/ui-repair-08.md).

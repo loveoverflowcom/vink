@@ -6,13 +6,20 @@ plugins {
     id("org.jetbrains.compose")
 }
 
-// The self-hosted faces are copied from the web app's asset directory at build time (with their
-// OFL licences and provenance), never duplicated in Git.
+// Desktop uses losslessly decompressed TTF derivatives: Linux's pinned Skia cannot decode
+// these WOFF2s. The web asset provenance owns both formats, their hashes and OFL licences.
 val syncPreviewFonts by tasks.registering(Sync::class) {
+    from(layout.projectDirectory.dir("fonts")) { include("*.ttf") }
     from(rootProject.layout.projectDirectory.dir("../../../apps/vink-web/assets/fonts")) {
-        include("*.woff2", "OFL-*.txt", "provenance.json")
+        include("OFL-*.txt", "provenance.json")
     }
     into(layout.buildDirectory.dir("generated/preview-fonts/vink-fonts"))
+}
+
+// Keep the original inputs in the test classpath for format/decoder diagnostics only.
+val syncFontProbeSources by tasks.registering(Sync::class) {
+    from(rootProject.layout.projectDirectory.dir("../../../apps/vink-web/assets/fonts")) { include("*.woff2") }
+    into(layout.buildDirectory.dir("generated/font-probe/vink-web-fonts"))
 }
 
 kotlin {
@@ -32,6 +39,7 @@ kotlin {
             resources.srcDir(files(layout.buildDirectory.dir("generated/preview-fonts")).builtBy(syncPreviewFonts))
         }
         val desktopTest by getting {
+            resources.srcDir(files(layout.buildDirectory.dir("generated/font-probe")).builtBy(syncFontProbeSources))
             dependencies {
                 implementation(kotlin("test"))
                 implementation(kotlin("test-junit"))

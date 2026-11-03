@@ -21,6 +21,9 @@ Scan có phạm vi source/declaration đã mô tả; không thay dependency grap
 Ngoại lệ exact declaration có owner/reason/removal condition, không blanket ignore artwork.
 
 CMP chuyển năm file specimen/Workbench từ Desktop sang `:diagnostics/commonMain`; Desktop,
+Font Desktop hiện dùng derivative TTF từ WOFF2; lịch sử WOFF2 bên dưới giữ nguyên theo lượt
+đã ghi. Nguồn và kết quả Linux/macOS mới nằm trong [PR 08](../design/ui-repair-08.md).
+
 Android và iOS gọi cùng Specimen và public `:ui`/`:patterns`. Chỉ decoder ảnh, window/fonts,
 lifecycle, OS motion và system bars thuộc host. App Web không import diagnostic/fixture;
 không đổi query, API contract, authority, body editor hay save state machine.
