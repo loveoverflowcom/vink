@@ -271,7 +271,7 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   editor/                 runtime CodeMirror 6 (TypeScript, npm pin, esbuild) → /pkg/vink-editor.js
   style/vink.css          component web `vk-*`; build ghép tokens.css (sinh) + vink-ui.css + vink.css
   assets/fonts/           WOFF2 tự host, OFL, provenance.json (phục vụ tại /pkg/fonts/)
-  assets/brand/           Enso light/dark AVIF/SVG, manifest, provenance (phục vụ tại /pkg/brand/)
+  assets/brand/           Logo selected #34 SVG/PNG, manifest, provenance (phục vụ tại /pkg/brand/)
   e2e/browser-smoke.mjs   kiểm trình duyệt qua Chrome DevTools Protocol
 packages/ui-system/       UI System (README owner map): shared/ tokens.json + catalog + fixtures;
   leptos/                 crate vink-ui (tokens/catalog sinh ra, UiRoot, ThemeScope, component,

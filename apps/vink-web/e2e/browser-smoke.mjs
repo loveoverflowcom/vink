@@ -537,19 +537,25 @@ async function assertBrand(page, preference) {
   const theme = preference === 'system'
     ? await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
     : preference;
-  await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/enso-${theme}.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
-  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].every(el => getComputedStyle(el).backgroundImage.includes('enso-${theme}-96.avif') && getComputedStyle(el).filter === 'none' && el.textContent === '')`), `${theme} rail/mobile marks use the approved asset without inversion or placeholder text`);
+  await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/vink-mark-${theme}-compact.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
+  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].every(el => getComputedStyle(el).backgroundImage.includes('vink-mark-${theme}.svg') && getComputedStyle(el).filter === 'none' && el.textContent === '')`), `${theme} rail/mobile marks use the approved asset without inversion or placeholder text`);
   check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].filter(el => el.getClientRects().length).every(el => { const r = el.getBoundingClientRect(); return r.width === r.height && r.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize); })`), `${theme} brand reserves its square before image decoding`);
 }
 
 async function brandAssets(page) {
-  console.log('approved Enso asset delivery and decoding:');
+  console.log('final selected logo asset delivery and decoding:');
   for (const theme of ['light', 'dark']) {
     for (const size of [24, 32, 48, 96, 192, 512]) {
-      const path = `/pkg/brand/enso-${theme}-${size}.avif`;
+      const path = `/pkg/brand/vink-${theme}-${size}.png`;
       const response = await fetch(`${args.base}${path}`);
-      check(response.ok && response.headers.get('content-type')?.startsWith('image/avif'), `${theme} ${size}px AVIF is served as an image`);
-      check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth === ${size} && image.naturalHeight === ${size}; })()`), `${theme} ${size}px AVIF decodes at the declared size`);
+      check(response.ok && response.headers.get('content-type')?.startsWith('image/png'), `${theme} ${size}px PNG is served as an image`);
+      check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth === ${size} && image.naturalHeight === ${size}; })()`), `${theme} ${size}px PNG decodes at the declared size`);
+    }
+    for (const variant of ['', '-compact']) {
+      const path = `/pkg/brand/vink-mark-${theme}${variant}.svg`;
+      const response = await fetch(`${args.base}${path}`);
+      check(response.ok && response.headers.get('content-type')?.startsWith('image/svg+xml'), `${theme}${variant} SVG is served as an image`);
+      check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth > 0 && image.naturalHeight > 0; })()`), `${theme}${variant} selected SVG decodes`);
     }
     const response = await fetch(`${args.base}/pkg/brand/manifest-${theme}.webmanifest`);
     const manifest = await response.json();

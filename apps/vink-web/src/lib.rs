@@ -43,8 +43,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/favicon.svg" />
                 <link id="vink-manifest" rel="manifest" href="/pkg/brand/manifest-light.webmanifest" />
                 <script inner_html=appearance::BOOTSTRAP></script>
-                <link as="image" rel="preload" href="/pkg/brand/enso-light-96.avif" type="image/avif" />
-                <link as="image" rel="preload" href="/pkg/brand/enso-dark-96.avif" type="image/avif" />
+                <link as="image" rel="preload" href="/pkg/brand/vink-mark-light.svg" type="image/svg+xml" />
+                <link as="image" rel="preload" href="/pkg/brand/vink-mark-dark.svg" type="image/svg+xml" />
                 // Faces every current page renders above the fold: UI body text and the
                 // reading/heading serif. The 600 face is left to CSS discovery.
                 // `as` first: after a string value the macro would read it as a cast.

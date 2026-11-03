@@ -63,19 +63,19 @@ a {
   letter-spacing: -0.01em;
 }
 
-/* Approved Enso source (#10). Fixed geometry survives asset decoding and theme changes. */
+/* Final selected source (#34). Fixed geometry survives asset decoding and theme changes. */
 .vk-brand__mark {
   display: inline-block;
   flex-shrink: 0;
   width: 2.25rem;
   height: 2.25rem;
-  background: url("brand/enso-light-96.avif") center / contain no-repeat;
+  background: url("brand/vink-mark-light.svg") center / contain no-repeat;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .vk-brand__mark { background-image: url("brand/enso-dark-96.avif"); }
+  :root:not([data-theme="light"]) .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
 }
-:root[data-theme="dark"] .vk-brand__mark { background-image: url("brand/enso-dark-96.avif"); }
+:root[data-theme="dark"] .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
 
 /* Collapsed rail: the mark alone, centred by the rail's brand slot. */
 @container vk-ui-rail (max-width: 100px) {

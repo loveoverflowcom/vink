@@ -9,8 +9,8 @@ cho [#7](https://github.com/loveoverflowcom/vink/issues/7). Dashboard Bàn viế
 [#8](https://github.com/loveoverflowcom/vink/issues/8).
 Khám phá/reader và assertions `publicReading` đối chiếu ngày 01/11/2026 trên nền `c6a8a29`
 cho [#9](https://github.com/loveoverflowcom/vink/issues/9), theo cập nhật v3 của #14.
-Logo/theme và assertions `brandAssets`/`assertBrand` đối chiếu ngày 01/11/2026 trên nền
-`738e6c6` cho [#10](https://github.com/loveoverflowcom/vink/issues/10).
+Logo/theme và assertions `brandAssets`/`assertBrand` đối chiếu lại ngày 03/11/2026 trên nền
+`cbcbe0d` cho [#34](https://github.com/loveoverflowcom/vink/issues/34), thay asset #10.
 Search công khai và ngữ cảnh reader đối chiếu ngày 01/11/2026 trên nền `75ccb41c` cho lát cắt A
 của [#14](https://github.com/loveoverflowcom/vink/issues/14); [spec r2](../design/public-reading.md#layoutspec-r2--tìm-trong-danh-sách-và-giữ-ngữ-cảnh-14-lát-cắt-a).
 Readiness, provisioning PostgreSQL theo owner và role tách đối chiếu ngày 02/11/2026 trên nền
@@ -52,10 +52,10 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
 
 ## Điểm vào và trạng thái cần nhận biết
 
-Logo Enso trong brand rail/mobile là ảnh trang trí của link trang chủ hiện có, cùng
+Logo selected #34 trong brand rail/mobile là ảnh trang trí của link trang chủ hiện có, cùng
 accessible name/dirty guard. Owner: `shell.rs`, `appearance.rs`, `vink.css`,
 [assets/brand](../../apps/vink-web/assets/brand/README.md) và pipeline `xtask`.
-`brandAssets` kiểm asset thật/MIME/decode 24–512px, manifest và bootstrap trước hydration;
+`brandAssets` kiểm SVG chuẩn/compact, PNG thật/MIME/decode 24–512px, manifest và bootstrap trước hydration;
 việc chặn `/pkg/vink.js` sinh đúng hai lỗi `import()` bị từ chối, được kiểm rồi loại khỏi
 điều kiện “không có console error” (mọi lỗi khác vẫn làm smoke thất bại). Smoke giả lập
 `prefers-color-scheme: light` làm hệ thống mặc định, nên không phụ thuộc giao diện máy chạy.
