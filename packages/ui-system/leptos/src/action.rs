@@ -130,6 +130,9 @@ pub fn Button(
     #[prop(optional, into)]
     id: Option<String>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
+    /// Disclosure state belongs on the focusable button, not its action-note wrapper.
+    #[prop(optional, into)]
+    expanded: Option<Signal<bool>>,
     #[prop(optional)] button_ref: NodeRef<leptos::html::Button>,
     children: Children,
 ) -> impl IntoView {
@@ -148,6 +151,7 @@ pub fn Button(
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
+                aria-expanded=move || expanded.map(|value| value.get().to_string())
                 aria-describedby=move || state.with(ActionState::note).and(described.clone())
                 on:click=press_handler(state, on_press)
             >
@@ -360,6 +364,16 @@ mod tests {
         let html = render(|| view! { <Button>"Lưu"</Button> }.into_any());
         assert!(html.contains("type=\"button\""), "{html}");
         assert!(!html.contains("aria-disabled"), "{html}");
+        assert!(!html.contains("aria-expanded"), "{html}");
+        let html = render(|| view! { <Button expanded=false>"Xem tiêu đề"</Button> }.into_any());
+        let button = html
+            .split("<button")
+            .nth(1)
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap();
+        assert!(button.contains("aria-expanded=\"false\""), "{html}");
         let html = render(|| {
             view! {
                 <Button id="save" state=ActionState::disabled("Chưa có thay đổi")>"Lưu"</Button>

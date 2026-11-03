@@ -210,6 +210,7 @@ class Page {
       };
       return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
+        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label') })) },
@@ -623,7 +624,7 @@ async function brandAssets(page) {
 
 async function textContrast(page, theme, surface = 'shell') {
   const selectors = {
-    desk: ['#resume h2', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
+    desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
     explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
   }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked) span', '#profile-menu .vk-ui-button'];
@@ -907,6 +908,7 @@ async function draftDashboard(page) {
     title: i === 0 ? longTitle.normalize('NFD') : i === 1 ? '[Fixture] ĐƯỜNG VỀ CÓ NẮNG' : i === 2 ? '' : `[Fixture] Bản thảo ${i}`,
     version: i + 1, updated_at: '2026-11-01T08:30:00Z',
   }));
+  cards[43].title = cards[42].title; // Repeated titles still open their own work IDs.
   gate.list = { body: { drafts: cards } };
   gate.holdGets = true;
   await gate.enable();
@@ -929,21 +931,43 @@ async function draftDashboard(page) {
   check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard order moves from Viết tiếp to search with visible focus');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'draft-sort'`), 'empty search has no clear target; sort follows in keyboard order');
+  await page.viewport(390);
+  const toggleTitle = '#resume-title-toggle';
+  await page.eval(`document.querySelector('${toggleTitle}').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('${toggleTitle}').getAttribute('aria-expanded') === 'true' && getComputedStyle(document.querySelector('#resume h2')).webkitLineClamp === 'none' && getComputedStyle(document.querySelector('#resume h2')).overflow === 'visible' && document.querySelector('#resume h2').textContent === ${JSON.stringify(cards[0].title)} && document.activeElement.matches('${toggleTitle}:focus-visible')`), 'Enter reveals the entire combining title in place and keeps visible keyboard focus');
+  await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+  await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
+  check(await page.eval(`document.querySelector('${toggleTitle}').getAttribute('aria-expanded') === 'false' && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'Space collapses the title without changing the resume work ID');
+  const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
+  check(deskAX.some(node => node.role?.value === 'heading' && node.name?.value === cards[0].title) && deskAX.some(node => node.role?.value === 'button' && node.name?.value === 'Xem đầy đủ tiêu đề' && node.properties?.some(p => p.name === 'expanded' && p.value.value === false)) && deskAX.some(node => node.role?.value === 'link' && node.name?.value === 'Viết tiếp'), 'accessibility tree keeps the full title, named primary link and collapsed disclosure button');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     await page.eval(`Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})))`);
     await textContrast(page, theme, 'desk');
-    for (const width of [1440, 1024, 390, 320]) {
-      await page.viewport(width);
-      await page.eval(`scrollTo(0, 0)`);
-      await page.capture(`desk-dashboard-${width}-${theme}`);
-      if (width === 320) {
+    for (const scale of [100, 200]) {
+      await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
+      for (const width of [1440, 1024, 834, 390, 320]) {
+        await page.viewport(width);
+        await page.eval(`scrollTo(0, 0)`);
+        await page.capture(`desk-long-${width}-${scale}-${theme}`);
+        check(await page.eval(`(() => {
+          const title = document.querySelector('#resume h2'), cta = document.querySelector('[data-testid=resume-draft]');
+          const t = title.getBoundingClientRect(), c = cta.getBoundingClientRect();
+          const stacked = getComputedStyle(title).webkitLineClamp === '3';
+          return document.documentElement.scrollWidth <= innerWidth && (!stacked || t.height <= parseFloat(getComputedStyle(title).lineHeight) * 3 + 1) &&
+            c.width >= 48 && c.height >= 48 && c.left >= 0 && c.right <= innerWidth && (c.top >= t.bottom || c.left >= t.right) &&
+            c.bottom <= document.querySelector('#drafts').getBoundingClientRect().top && cta.textContent === 'Viết tiếp' &&
+            document.querySelector('#resume h2').textContent === ${JSON.stringify(cards[0].title)};
+        })()`), `${theme} ${width}px / ${scale}%: compact title or full wide title, primary link remains separate and no horizontal overflow`);
+        if (width === 390 && scale === 100) {
+          check(await page.eval(`document.querySelector('#draft-tools').getBoundingClientRect().top < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top && document.querySelector('[data-testid=resume-draft]').getBoundingClientRect().bottom < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), `${theme} 390px first viewport exposes Viết tiếp and the list tools`);
+        }
         await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
-        await page.capture(`desk-list-320-${theme}`);
+        await page.capture(`desk-list-${width}-${scale}-${theme}`);
+        check(await page.eval(`['#draft-search', '#draft-sort', '#refresh-drafts'].every(s => { const r = document.querySelector(s).getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth; })`), `${theme} ${width}px / ${scale}%: search, sort and refresh reflow within the viewport`);
       }
-      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && document.querySelector('#resume').getBoundingClientRect().top < document.querySelector('#drafts').getBoundingClientRect().top`), `${theme} ${width}px dashboard reflows with resume before list`);
     }
-    await page.eval(`document.documentElement.style.fontSize = '200%'`);
     const wholeWords = await page.eval(`(() => {
       const title = document.querySelector('#resume h2');
       return ['Đường', 'Những'].every(word => {
@@ -958,12 +982,43 @@ async function draftDashboard(page) {
       });
     })()`);
     check(wholeWords, `${theme} 320px / 200% text keeps common Vietnamese title words on one line`);
+    await page.eval(`document.querySelector('${toggleTitle}').focus()`);
+    await page.key('Enter');
     await page.eval(`document.querySelector('#resume h2').scrollIntoView({ block: 'start' })`);
-    await page.capture(`desk-dashboard-320-200-${theme}`);
+    await page.capture(`desk-title-expanded-320-200-${theme}`);
+    check(await page.eval(`getComputedStyle(document.querySelector('#resume h2')).webkitLineClamp === 'none' && getComputedStyle(document.querySelector('#resume h2')).overflow === 'visible'`), `${theme} 320px / 200%: full title is visible after disclosure`);
+    await page.key('Enter');
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement.matches('[data-testid=resume-draft]:focus-visible') && document.activeElement.getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), `${theme} 320px / 200%: keyboard reveals the primary link above the bottom bar`);
+    await page.capture(`desk-continue-320-200-${theme}`);
     check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${theme} dashboard keeps 320px width at 200% text`);
     await page.eval(`document.documentElement.style.fontSize = ''`);
   }
   await page.viewport(1440);
+  // One actual summary, then an unbroken Unicode title: disclosure never changes the DTO.
+  for (const [variant, title] of [['blank', ''], ['word', '[Fixture] ' + 'Đườngỹỷữợ'.repeat(20)]]) {
+    gate.list = { body: { drafts: [{ ...cards[0], title }] } };
+    await page.click('#refresh-drafts');
+    await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, `one ${variant} draft`);
+    check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo')`), `one ${variant} summary preserves title, scope and resume identity`);
+    for (const scale of [100, 200]) {
+      await page.viewport(320);
+      await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
+      if (variant === 'word') await page.click(toggleTitle);
+      await page.eval(`document.querySelector('#resume').scrollIntoView({ block: 'start' })`);
+      await page.capture(`desk-one-${variant}-320-${scale}`);
+      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `one ${variant} title reflows at 320px / ${scale}%`);
+      if (variant === 'word') {
+        check(await page.eval(`getComputedStyle(document.querySelector('#resume h2')).webkitLineClamp === 'none' && getComputedStyle(document.querySelector('#resume h2')).overflow === 'visible'`), 'an expanded unbroken title is fully available');
+        await page.click(toggleTitle);
+      }
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize = ''`);
+  await page.viewport(1440);
+  gate.list = { body: { drafts: cards } };
+  await page.click('#refresh-drafts');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'restore 100 loaded rows');
   const search = async text => {
     await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
     await page.send('Input.insertText', { text });
@@ -975,10 +1030,14 @@ async function draftDashboard(page) {
   await search('không có tên này');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'search never changes the most recent resume target');
+  await page.viewport(390);
+  await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
+  await page.capture('desk-no-results-390');
   await page.click('#clear-draft-search');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear query');
   await page.eval(`const sort = document.querySelector('#draft-sort'); sort.value = 'title'; sort.dispatchEvent(new Event('change', { bubbles: true }))`);
   await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
+  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#resume .vk-draft-meta').textContent.includes('Phiên bản 1') && document.querySelector('#resume time').dateTime === '2026-11-01T08:30:00Z'`), 'sorting preserves the newest resume work, version and timestamp');
   await search('duong ve');
   gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
   await page.click('#refresh-drafts');
@@ -996,8 +1055,12 @@ async function draftDashboard(page) {
   await page.click('#retry-drafts');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'retry with preserved query');
   check(await page.eval(`document.querySelector('#draft-search').value === 'duong ve' && document.querySelector('#draft-sort').value === 'title'`), 'query and sort survive failed refresh and retry');
-  gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
+  gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
   await page.click('#refresh-drafts');
+  await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
+  check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-resume]') && !document.querySelector('#create-draft')`), 'forbidden remains distinct from empty and never exposes resume/create');
+  gate.list = { status: 401, body: { error: { code: 'unauthenticated', message: 'test fixture' } } };
+  await page.click('#retry-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('chưa đăng nhập')`, 'unauthenticated dashboard');
   check(await page.eval(`!document.querySelector('#create-draft') && document.querySelector('[data-testid=desk-error] a').getAttribute('href') === '/'`), '401 has an honest public-reading action and no fake login/create');
   gate.list = { body: { drafts: [] } };
@@ -1050,8 +1113,13 @@ async function draftDashboard(page) {
   await page.click('[data-testid=resume-draft]');
   await page.waitFor(`${EDITOR_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'resume opens the real draft');
   check((await page.status()) === 'saved', 'reconciled draft opens at its real saved version');
+  const renamed = '[Fixture] Tiêu đề vừa sửa — tiếng Việt ỹ ỷ ữ ợ';
+  await page.typeAtEnd('input[name=title]', renamed);
+  await page.key('s', page.mod);
+  await page.waitStatus('saved', 'renamed title acknowledged by the real server');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=resume-draft]')`, 'return to dashboard');
+  check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(renamed)} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(created[0])} && document.querySelector('#resume .vk-draft-meta').textContent.includes('Phiên bản 2')`), 'return after a real title save shows the same work with its acknowledged title and version');
   await page.viewport(1440);
   await page.click('#create-draft');
   const late = await gate.next('posts');
