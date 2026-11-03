@@ -76,6 +76,10 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
         message.set("Mẫu · Đã yêu cầu tải lại; không gọi dịch vụ.".into());
         record("screen → retry (sample)");
     };
+    let submit = move |_| {
+        message.set("Mẫu · Intent gửi nhận xét, chưa gửi hoặc lưu.".into());
+        record("feedback → submit intent (sample)");
+    };
     let blocked = match scenario.as_str() {
         "pending" => ActionState::pending("Mẫu · Đang chờ phản hồi"),
         "auth-required" => ActionState::disabled("Cần đăng nhập; mẫu không có dịch vụ xác thực."),
@@ -138,7 +142,12 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 <Link href="#screen.explore/default">"← Khám phá"</Link>
                 <ReaderHeader title=title.get_untracked() author=author(long) />
                 <Text role=TypeRole::Reading>{fixture::READING}</Text>
-                {(scenario == "feedback").then(|| view! { <FeedbackThread items=comments() /><Composer input state=blocked.clone() /> })}
+                {(scenario == "feedback").then(|| view! {
+                    <FeedbackThread items=comments() />
+                    <FeedbackComposer id="reader-feedback" intent=FeedbackIntent::Impressions
+                        value=input on_input=move |e: TextInput| input.set(e.value)
+                        state=blocked.clone() on_submit=submit />
+                })}
             }.into_any(),
             "screen.desk" => view! {
                 <Heading level=HeadingLevel::H1>"Bàn viết"</Heading>
@@ -169,7 +178,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 <RecentFeedback items=comments() />
                 <FeedbackComposer id="sample-feedback" intent=match scenario.as_str() { "sharing" => FeedbackIntent::Sharing, "technique" => FeedbackIntent::Technique, _ => FeedbackIntent::Impressions }
                     value=input on_input=move |e: TextInput| input.set(e.value) state=blocked
-                    on_submit=move |_| { message.set("Mẫu · Intent gửi nhận xét, chưa gửi hoặc lưu.".into()); record("feedback → submit intent (sample)"); } />
+                    on_submit=submit />
             }.into_any(),
         };
         view! {
@@ -185,9 +194,4 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
             <p role="status" data-testid="sample-result">{move || message.get()}</p>
         </section>
     }
-}
-
-#[component]
-fn Composer(input: RwSignal<String>, state: ActionState) -> impl IntoView {
-    view! { <FeedbackComposer id="reader-feedback" intent=FeedbackIntent::Impressions value=input on_input=move |e: TextInput| input.set(e.value) state on_submit=|_| {} /> }
 }
