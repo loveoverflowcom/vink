@@ -1,7 +1,8 @@
 # UI-REPAIR-09 — Rail riêng và scaffold theo frame
 
-Ngày 03/11/2026. Nhánh `codex/ui-navigation-specimen-fit`, nền `origin/develop`
-`2829cea` sau PR #51/UI-REPAIR-08. Phạm vi UX-01 là qualification preview và reflow
+Ngày 03/11/2026. Nhánh `codex/ui-navigation-specimen-fit`, nền ban đầu `origin/develop`
+`2829cea` sau PR #51/UI-REPAIR-08; đã tích hợp PR #50 (`db90751`) và PR #54
+(`f8eaadd`) trước merge. Phạm vi UX-01 là qualification preview và reflow
 nhãn rail; không thay NavLayout policy, route, key preference, dirty guard hay API.
 Không triển khai native product navigation.
 
@@ -51,10 +52,10 @@ với preventScroll. Đây là host mẫu, không đổi policy overlay của ap
 
 ## Bằng chứng và kết quả
 
-Tất cả bốn lane local PASS trên source UI cuối, tích hợp `develop@db90751`, tested
+Tất cả bốn lane local PASS trước tích hợp PR #54, trên `develop@db90751`, tested
 head `fef2a540`. Commit evidence tiếp theo chỉ thêm tài liệu/ảnh/metadata; CI được
 kiểm lại theo PR head cuối. Source fingerprint (kể cả capture dirty trên base cũ)
-được so từng file với source UI cuối trong [manifest](evidence/ui-repair-09/manifest.json).
+được gắn với đúng đầu vào trong [manifest](evidence/ui-repair-09/manifest.json).
 
 | Boundary | Lệnh và kết quả |
 | --- | --- |
@@ -120,3 +121,8 @@ artifact local, ảnh đại diện và hash ở repository. Không upload Drive
 Giới hạn còn lại: không có OS IME, screen reader, Safari/Firefox, native device,
 Android/iOS focus/Back/lifecycle evidence. Không hoàn tất UX-01 trên toàn sản phẩm
 chỉ từ preview qualification này.
+
+Sau PR #54, chỉ `screens.rs` và tests preview đổi; không đổi owner navigation,
+app/runtime hay API. Quick và hai preview được kiểm lại sau tích hợp; kết quả Web
+app trên `fef2a540` được giữ vì source app/runtime và harness không đổi. CI của PR
+được kiểm theo head cuối, không tái sử dụng status của head cũ để merge.
