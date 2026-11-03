@@ -110,13 +110,21 @@ pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
     }
 }
 
+/// One scannable row: a constant writing mark (not a genre or status), the complete title with
+/// its version/date, then the open action. The whole row is the link; its name keeps all three.
 #[component]
 pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     view! {
         <Link href=draft.href attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
-            <span class="vk-draft-row__title">{draft.title}</span>
-            <DraftMetadata version=draft.version updated_at=draft.updated_at />
-            <span class="vk-draft-row__open">"Mở bản thảo →"</span>
+            <span class="vk-draft-row__mark"><Icon name=IconName::Edit /></span>
+            <span class="vk-draft-row__text">
+                <span class="vk-draft-row__title">{draft.title}</span>
+                <DraftMetadata version=draft.version updated_at=draft.updated_at />
+            </span>
+            <span class="vk-draft-row__open">
+                <span class="vk-draft-row__open-label">"Mở bản thảo"</span>
+                <Icon name=IconName::ArrowBack />
+            </span>
         </Link>
     }
 }

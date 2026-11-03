@@ -160,7 +160,7 @@ a {
 
 .vk-explore { container: vk-explore / inline-size; margin-block: var(--vk-space-4); }
 
-.vk-explore__heading { margin-bottom: var(--vk-space-4); }
+.vk-explore__heading { margin-bottom: var(--vk-space-6); }
 
 .vk-explore__heading p {
   margin: var(--vk-space-2) 0 0;
@@ -169,20 +169,39 @@ a {
   line-height: var(--vk-type-label-line-height);
 }
 
+/* H1 stays one step above the stream's Title H2; Display on wide pages, Headline when narrow. */
 @media (max-width: 759px) {
   .vk-explore__heading > .vk-ui-heading {
-    font-size: var(--vk-type-title-size);
-    line-height: var(--vk-type-title-line-height);
-    letter-spacing: var(--vk-type-title-tracking);
+    font-size: var(--vk-type-headline-size);
+    line-height: var(--vk-type-headline-line-height);
+    letter-spacing: var(--vk-type-headline-tracking);
   }
 }
 
 .vk-discover-grid { display: grid; gap: var(--vk-space-6); }
 .vk-discover-grid > * { min-width: 0; }
 
-.vk-public-scope { margin: var(--vk-space-2) 0; font-size: var(--vk-type-caption-size); }
+/* Stream header: H2 and the loaded-count status share a row; DOM order stays heading → count. */
+#community-stream { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; align-items: baseline; column-gap: var(--vk-space-4); }
+#community-stream > *, #public-results > * { grid-column: 1 / -1; }
+#community-stream > #works-title { grid-column: 1; margin: 0; }
+#public-results { display: contents; }
+#public-results > .vk-public-scope { grid-column: 2; grid-row: 1; margin: 0; text-align: end; }
+.vk-public-scope { font-size: var(--vk-type-caption-size); }
+#public-results > .vk-public-list, #public-results > [data-testid], #community-stream > [data-testid] { margin-top: var(--vk-space-3); }
+@container vk-explore (max-width: 28rem) {
+  #public-results > .vk-public-scope { grid-column: 1 / -1; grid-row: auto; margin-top: var(--vk-space-1); text-align: start; }
+}
+/* No match is a recovery inside the stream: centered, its title below the H2 it belongs to. */
+[data-testid=public-no-results] > .vk-ui-panel { max-inline-size: none; justify-items: center; text-align: center; }
+[data-testid=public-no-results] .vk-ui-heading {
+  font-size: var(--vk-type-title-size);
+  line-height: var(--vk-type-title-line-height);
+  letter-spacing: var(--vk-type-title-tracking);
+}
+[data-testid=public-no-results] .vk-ui-panel__actions { justify-content: center; }
 
-.vk-discovery-tools { container-type: inline-size; max-width: 48rem; margin-bottom: var(--vk-space-4); }
+.vk-discovery-tools { container-type: inline-size; max-width: 40rem; margin-bottom: var(--vk-space-8); }
 .vk-public-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--vk-space-1) var(--vk-space-2); }
 /* Keep the shared field's label, native control and described help, arranged with the GET action. */
 .vk-public-search > .vk-ui-field { display: contents; }
@@ -238,9 +257,10 @@ a {
 
 .vk-reader-page { max-width: var(--vk-measure); margin: var(--vk-space-4) auto 0; }
 
-#reader-return { margin-bottom: var(--vk-space-6); }
+#reader-return { gap: var(--vk-space-2); margin-bottom: var(--vk-space-6); }
+#reader-return .vk-ui-icon { margin: 0; }
 .vk-reader { min-width: 0; }
-.vk-reader__header { overflow-wrap: anywhere; }
+.vk-reader__header { overflow-wrap: anywhere; margin-bottom: var(--vk-space-8); }
 
 .vk-document {
   font-family: var(--vk-font-reading);

@@ -18,9 +18,9 @@ use crate::ui::{
     patterns::{ReaderHeader, WorkCard as WorkCardPattern},
 };
 use vink_ui::{
-    Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, ListEnd, PanelContent,
-    PanelKind, ProblemKind, Radius, Space, StatePanel, Surface, SurfaceTone, TextField, TextKind,
-    TypeRole,
+    Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, Icon, IconName, ListEnd,
+    PanelContent, PanelKind, ProblemKind, Radius, Space, StatePanel, Surface, SurfaceTone,
+    TextField, TextKind, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -59,7 +59,7 @@ pub fn Home() -> impl IntoView {
         <Link rel="canonical" href=canonical_url("/") />
         <div id="explore" class="vk-explore">
             <header id="explore-heading" class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1 role=TypeRole::Headline>"Khám phá"</Heading>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
             <div id="discovery-tools" class="vk-discovery-tools">
@@ -241,7 +241,7 @@ fn PublicationView(publication: Publication) -> impl IntoView {
         <Link rel="canonical" href=canonical />
         <div id="reader" class="vk-reader-page">
         <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
-            <span aria-hidden="true">"← "</span> "Khám phá"
+            <Icon name=IconName::ArrowBack /> "Khám phá"
         </vink_ui::Link>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
             <ReaderHeader title=publication.title author />
