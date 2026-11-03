@@ -11,6 +11,13 @@
     "unicodes": "U+0000-036F,U+1E00-1EFF,U+2000-22FF,U+25A0-25FF,U+2C60-2C7F,U+A720-A7FF,U+FB00-FB06,U+FEFF,U+FFFD",
     "notes": "Subset to Latin, Vietnamese, combining marks, punctuation and common symbols; all OpenType layout features, all name records (including the license fields) and hinting are kept. Be Vietnam Pro keeps every mapped code point; Literata drops Greek, Cyrillic and one private-use glyph. Neither font declares a Reserved Font Name. Running the command again reproduces identical bytes."
   },
+  "desktop": {
+    "directory": "packages/ui-system/cmp/preview/fonts",
+    "fonttools_version": "4.68.0",
+    "brotli_version": "1.2.1",
+    "command": "python3 apps/vink-web/assets/fonts/derive_desktop.py",
+    "notes": "Lossless WOFF2 decompression to sfnt TrueType for the pinned Desktop Skia runtime. Same subset, outlines, metrics, names, layout and variation tables; no instancing or new font selection. Checked-in derivatives need no Python or network at build/runtime. This record owns both formats; Android/iOS policy is unchanged."
+  },
   "families": {
     "Be Vietnam Pro": {
       "copyright": "Copyright 2021 The Be Vietnam Pro Project Authors (https://github.com/bettergui/BeVietnamPro)",
@@ -36,6 +43,11 @@
       "weight": "400",
       "bytes": 36464,
       "sha256": "9fe6cc58124208135fea9e5b74ddde1f7e1433ad7cfc8e7e22fcda8a74f30807",
+      "desktop": {
+        "file": "be-vietnam-pro-400.ttf",
+        "bytes": 127988,
+        "sha256": "4b64aae78c5954530aef67f899c61e407618fe2a8e066916f22b9bf28c5766ec"
+      },
       "source": {
         "path": "ofl/bevietnampro/BeVietnamPro-Regular.ttf",
         "bytes": 132948,
@@ -49,6 +61,11 @@
       "weight": "600",
       "bytes": 38844,
       "sha256": "c4f95d81e54f13b3472a20709c77081cea98d32183d1d773c3055e1d3b318bd3",
+      "desktop": {
+        "file": "be-vietnam-pro-600.ttf",
+        "bytes": 131748,
+        "sha256": "e052b87d30856f17793060b5ac14443f0d05b68e8777dc774a037edf93a8db50"
+      },
       "source": {
         "path": "ofl/bevietnampro/BeVietnamPro-SemiBold.ttf",
         "bytes": 136736,
@@ -63,6 +80,11 @@
       "axes": "opsz 7-72, wght 200-900",
       "bytes": 256620,
       "sha256": "05217342d169211573fc597c7ecf3356bf92b8ec433d03333fd509b8c7b1515b",
+      "desktop": {
+        "file": "literata-variable.ttf",
+        "bytes": 585012,
+        "sha256": "ffffebb982b13a28b9cbfebe1878de96c84b3ae4797792877dbd56bc8e5e5540"
+      },
       "source": {
         "path": "ofl/literata/Literata[opsz,wght].ttf",
         "bytes": 955132,

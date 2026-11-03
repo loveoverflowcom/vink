@@ -1,0 +1,7 @@
+Linux amd64 · JDK 17.0.20.1 · CMP 1.9.0 / Skiko 0.9.22.2
+be-vietnam-pro-400.ttf bytes=127988 sha256=4b64aae78c5954530aef67f899c61e407618fe2a8e066916f22b9bf28c5766ec family=Be Vietnam Pro weight=400 axes={} VietnameseGlyphs=154/154
+be-vietnam-pro-400.woff2 bytes=36464 sha256=9fe6cc58124208135fea9e5b74ddde1f7e1433ad7cfc8e7e22fcda8a74f30807 SkiaDecode=null
+be-vietnam-pro-600.ttf bytes=131748 sha256=e052b87d30856f17793060b5ac14443f0d05b68e8777dc774a037edf93a8db50 family=Be Vietnam Pro weight=600 axes={} VietnameseGlyphs=154/154
+be-vietnam-pro-600.woff2 bytes=38844 sha256=c4f95d81e54f13b3472a20709c77081cea98d32183d1d773c3055e1d3b318bd3 SkiaDecode=null
+literata-variable.ttf bytes=585012 sha256=ffffebb982b13a28b9cbfebe1878de96c84b3ae4797792877dbd56bc8e5e5540 family=Literata weight=400 axes={opsz=(7.0, 72.0), wght=(200.0, 900.0)} VietnameseGlyphs=154/154
+literata-variable.woff2 bytes=256620 sha256=05217342d169211573fc597c7ecf3356bf92b8ec433d03333fd509b8c7b1515b SkiaDecode=null

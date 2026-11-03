@@ -1,0 +1,19 @@
+Source: local dirty tree on 31a62b1dd7a20e445d9788b967613902f7dc1b91; input file hashes in linux-manifest.json
+Host: Ubuntu 26.04.1 x64, kernel 7.0.0-42, Temurin JDK 17.0.20.1
+Command: cargo xtask verify quick
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)
+Command: cargo xtask ui-preview cmp verify
+BUILD SUCCESSFUL in 5m 36s
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+Preview tests: 37 executed, no failures; no skips.
+PNG count including the existing matrix: 447; font comparison: 24.
+Negative control: substituting VinkFonts() while retaining loaded=3 was rejected by Compose measurement.
+TTF derivative reproduction/check: PASS with fontTools 4.68.0 + brotli 1.2.1; see provenance and derive_desktop.py.

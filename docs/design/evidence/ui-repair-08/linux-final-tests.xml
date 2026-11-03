@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<evidence run="final-local-cmp" baselineSha="31a62b1dd7a20e445d9788b967613902f7dc1b91" buildFingerprint="6e9ee4d453c965e7e60704c2650be40a6d80da7abedfdfac7e97424997944b14">
+  <testsuite name="vink.ui.preview.CaptureTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:53:21.824Z" time="232.607">
+    <testcase name="capturesCatalogSpecimens[desktop]" classname="vink.ui.preview.CaptureTest" time="232.607" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.DrivenCaptureTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:57:14.436Z" time="9.768">
+    <testcase name="capturesPlaygroundRecipesAfterTheirSteps[desktop]" classname="vink.ui.preview.DrivenCaptureTest" time="9.768" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.FontCaptureTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:57:24.208Z" time="8.719">
+    <testcase name="capturesTypographyBylineAndReaderWithBothFormats[desktop]" classname="vink.ui.preview.FontCaptureTest" time="8.719" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.FontTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:53:21.089Z" time="0.728">
+    <testcase name="composeMeasuresWithTheLoadedFacesAtBothWeights[desktop]" classname="vink.ui.preview.FontTest" time="0.629" />
+    <testcase name="packagedFacesHaveTheApprovedMetadataAndVietnameseGlyphs[desktop]" classname="vink.ui.preview.FontTest" time="0.078" />
+    <testcase name="anyMissingOrCorruptFaceUsesAnHonestCompleteFallback[desktop]" classname="vink.ui.preview.FontTest" time="0.021" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.NavigationPreviewTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:57:32.931Z" time="2.275">
+    <testcase name="overlayIsTheOnlyModalAndBackClosesItBeforeLeaving[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.853" />
+    <testcase name="layoutChangesKeepTheContentMounted[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.204" />
+    <testcase name="deepLinksRoundTripAndNeverLeaveTheApp[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.004" />
+    <testcase name="dirtyTextHoldsBackAndNavigationUntilThePersonChooses[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.003" />
+    <testcase name="toggleExpandsAndCollapsesWithoutLosingThePageOrSelection[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.747" />
+    <testcase name="bottomBarKeepsTheLockedOrderAndNavigatesByKey[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.461" />
+    <testcase name="backClosesTheOverlayFirstAndIntentsAddNoDuplicateEntries[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.002" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.PreviewTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:57:35.223Z" time="9.693">
+    <testcase name="controlsChangeTheEffectiveThemeAndLogEvents[desktop]" classname="vink.ui.preview.PreviewTest" time="0.674" />
+    <testcase name="choicesAreOneTargetWithOneDispatch[desktop]" classname="vink.ui.preview.PreviewTest" time="0.646" />
+    <testcase name="searchIgnoresVietnameseMarksAndSaysWhenNothingMatches[desktop]" classname="vink.ui.preview.PreviewTest" time="0.351" />
+    <testcase name="buttonsDispatchOnceAndNeverWhileDisabledOrPending[desktop]" classname="vink.ui.preview.PreviewTest" time="0.979" />
+    <testcase name="eachScenarioRendersItsSpecimen[desktop]" classname="vink.ui.preview.PreviewTest" time="6.223" />
+    <testcase name="everySharedCatalogEntryIsRegisteredHere[desktop]" classname="vink.ui.preview.PreviewTest" time="0.006" />
+    <testcase name="textFieldsKeepSelectionAndExposeTheirLabelAndError[desktop]" classname="vink.ui.preview.PreviewTest" time="0.437" />
+    <testcase name="avatarsFallBackAndGroupsNeverInventCounts[desktop]" classname="vink.ui.preview.PreviewTest" time="0.218" />
+    <testcase name="reducedScenarioStopsTheLoopAndCompactKeepsTheHitTarget[desktop]" classname="vink.ui.preview.PreviewTest" time="0.155" />
+    <testcase name="selfHostedFacesDecodeOnDesktop[desktop]" classname="vink.ui.preview.PreviewTest" time="0.002" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.ScreenCaptureTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:57:44.923Z" time="21.416">
+    <testcase name="capturesScreenConsumerAtItsActualWidth[desktop]" classname="vink.ui.preview.ScreenCaptureTest" time="21.416" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.ScreenPreviewTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:58:06.348Z" time="0.344">
+    <testcase name="feedbackKeepsTextAndSelectionAcrossThemePendingErrorAndUncertain[desktop]" classname="vink.ui.preview.ScreenPreviewTest" time="0.293" />
+    <testcase name="sharingDoesNotAskForCriticism[desktop]" classname="vink.ui.preview.ScreenPreviewTest" time="0.051" />
+  </testsuite>
+  <testsuite name="vink.ui.preview.StatePreviewTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-11-03T12:58:06.696Z" time="14.108">
+    <testcase name="theLoadingIndicatorWaitsForTheGateDelayOnTheManualClock[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.84" />
+    <testcase name="aSessionExpiredDialogRequiresAChoiceAndKeepsTheDraft[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.31" />
+    <testcase name="errorScenariosOfferOnlyTheirLawfulActions[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.422" />
+    <testcase name="aDestructiveDialogFocusesTheSafeActionAndReturnsFocus[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.16" />
+    <testcase name="anActionlessSnackbarClosesAfterItsDurationAndOneWithAnActionWaits[desktop]" classname="vink.ui.preview.StatePreviewTest" time="8.947" />
+    <testcase name="reducedInactiveAndHiddenHostsRunNoLoop[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.201" />
+    <testcase name="submissionRejectsDoubleBeginAndIgnoresLateAcks[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.003" />
+    <testcase name="retryDispatchesOnceAndKeepsTheInput[desktop]" classname="vink.ui.preview.StatePreviewTest" time="1.055" />
+    <testcase name="anUncertainSubmitNeedsReconcileBeforeADeliberateResend[desktop]" classname="vink.ui.preview.StatePreviewTest" time="1.082" />
+    <testcase name="aConflictKeepsTheTextAndNeverShowsSaved[desktop]" classname="vink.ui.preview.StatePreviewTest" time="1.002" />
+    <testcase name="anUnlawfulRegionShowsADiagnosticInsteadOfContent[desktop]" classname="vink.ui.preview.StatePreviewTest" time="0.083" />
+  </testsuite>
+</evidence>

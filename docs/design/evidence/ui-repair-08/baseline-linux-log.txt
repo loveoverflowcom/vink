@@ -1,0 +1,8 @@
+Command: cargo xtask ui-preview cmp verify
+Source SHA: 31a62b1dd7a20e445d9788b967613902f7dc1b91
+PreviewTest[desktop] > selfHostedFacesDecodeOnDesktop[desktop] FAILED
+    java.lang.AssertionError at PreviewTest.kt:194
+33 tests completed, 1 failed
+BUILD FAILED in 7m 18s
+  PASS  ui tokens: generated files match
+  FAIL  CMP: common + desktop tests and captures: CMP verify: gradlew :ui:desktopTest :patterns:desktopTest :diagnostics:desktopTest :preview:desktopTest: exited with exit status: 1

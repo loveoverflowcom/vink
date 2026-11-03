@@ -85,7 +85,8 @@ and 200% text for affected states. Preserve accessible names, headings, roles,
 disabled/pending reasons and visible focus. Touch targets, safe drawing/IME insets,
 Back/overlay order and focus return need evidence on the host that owns them.
 
-Fonts are host-supplied `VinkFonts`. Desktop attempts the self-hosted WOFF2 faces;
+Fonts are host-supplied `VinkFonts`. Desktop loads the pinned TTF derivatives of the
+self-hosted WOFF2 faces (one provenance owner in the web font asset directory);
 native currently uses system fonts until a licensed native font pipeline exists.
 Report actual decode/fallback, not parity inferred from the Web font files.
 
