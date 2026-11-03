@@ -1,0 +1,583 @@
+{
+ "base": "27927c462244f2a70e36a686a37c8c95690775b6",
+ "chrome": "156 headless, DPR 1, mobile emulation <768px",
+ "textScale": "documentElement.style.fontSize",
+ "captures": [
+  {
+   "name": "before__explore__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1820
+  },
+  {
+   "name": "before__explore__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 5436
+  },
+  {
+   "name": "before__explore__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1820
+  },
+  {
+   "name": "before__explore__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 5436
+  },
+  {
+   "name": "before__explore__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1586
+  },
+  {
+   "name": "before__explore__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4536
+  },
+  {
+   "name": "before__explore__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1586
+  },
+  {
+   "name": "before__explore__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4536
+  },
+  {
+   "name": "before__explore__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1270
+  },
+  {
+   "name": "before__explore__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 3054
+  },
+  {
+   "name": "before__explore__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1270
+  },
+  {
+   "name": "before__explore__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 3054
+  },
+  {
+   "name": "before__explore__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 936
+  },
+  {
+   "name": "before__explore__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 2564
+  },
+  {
+   "name": "before__explore__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 936
+  },
+  {
+   "name": "before__explore__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 2564
+  },
+  {
+   "name": "before__explore-noresults__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1585
+  },
+  {
+   "name": "before__explore-noresults__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 4547
+  },
+  {
+   "name": "before__explore-noresults__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1585
+  },
+  {
+   "name": "before__explore-noresults__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 4547
+  },
+  {
+   "name": "before__explore-noresults__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1421
+  },
+  {
+   "name": "before__explore-noresults__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4020
+  },
+  {
+   "name": "before__explore-noresults__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1421
+  },
+  {
+   "name": "before__explore-noresults__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4020
+  },
+  {
+   "name": "before__explore-noresults__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1082
+  },
+  {
+   "name": "before__explore-noresults__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 2535
+  },
+  {
+   "name": "before__explore-noresults__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1082
+  },
+  {
+   "name": "before__explore-noresults__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 2535
+  },
+  {
+   "name": "before__explore-noresults__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__explore-noresults__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 2182
+  },
+  {
+   "name": "before__explore-noresults__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__explore-noresults__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 2182
+  },
+  {
+   "name": "before__reader-poem__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2689
+  },
+  {
+   "name": "before__reader-poem__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2689
+  },
+  {
+   "name": "before__reader-poem__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 2330
+  },
+  {
+   "name": "before__reader-poem__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 2330
+  },
+  {
+   "name": "before__reader-poem__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1435
+  },
+  {
+   "name": "before__reader-poem__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1435
+  },
+  {
+   "name": "before__reader-poem__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1354
+  },
+  {
+   "name": "before__reader-poem__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 900
+  },
+  {
+   "name": "before__reader-poem__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1354
+  },
+  {
+   "name": "before__reader-prose__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1492
+  },
+  {
+   "name": "before__reader-prose__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 5210
+  },
+  {
+   "name": "before__reader-prose__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 1492
+  },
+  {
+   "name": "before__reader-prose__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 5210
+  },
+  {
+   "name": "before__reader-prose__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1356
+  },
+  {
+   "name": "before__reader-prose__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4335
+  },
+  {
+   "name": "before__reader-prose__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1356
+  },
+  {
+   "name": "before__reader-prose__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 4335
+  },
+  {
+   "name": "before__reader-prose__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 927
+  },
+  {
+   "name": "before__reader-prose__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 2569
+  },
+  {
+   "name": "before__reader-prose__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 927
+  },
+  {
+   "name": "before__reader-prose__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 2569
+  },
+  {
+   "name": "before__reader-prose__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1051
+  },
+  {
+   "name": "before__reader-prose__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1991
+  },
+  {
+   "name": "before__reader-prose__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1051
+  },
+  {
+   "name": "before__reader-prose__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1991
+  },
+  {
+   "name": "before__desk__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2220
+  },
+  {
+   "name": "before__desk__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 7653
+  },
+  {
+   "name": "before__desk__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2220
+  },
+  {
+   "name": "before__desk__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 7653
+  },
+  {
+   "name": "before__desk__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1963
+  },
+  {
+   "name": "before__desk__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 6378
+  },
+  {
+   "name": "before__desk__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1963
+  },
+  {
+   "name": "before__desk__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 6378
+  },
+  {
+   "name": "before__desk__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1426
+  },
+  {
+   "name": "before__desk__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 4006
+  },
+  {
+   "name": "before__desk__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1426
+  },
+  {
+   "name": "before__desk__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 4006
+  },
+  {
+   "name": "before__desk__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1355
+  },
+  {
+   "name": "before__desk__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 3183
+  },
+  {
+   "name": "before__desk__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1355
+  },
+  {
+   "name": "before__desk__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 3183
+  },
+  {
+   "name": "before__desk-list__320__light__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2220
+  },
+  {
+   "name": "before__desk-list__320__light__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 7653
+  },
+  {
+   "name": "before__desk-list__320__dark__t100",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 2220
+  },
+  {
+   "name": "before__desk-list__320__dark__t200",
+   "clientWidth": 320,
+   "overflowPx": 0,
+   "scrollHeight": 7653
+  },
+  {
+   "name": "before__desk-list__390__light__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1963
+  },
+  {
+   "name": "before__desk-list__390__light__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 6378
+  },
+  {
+   "name": "before__desk-list__390__dark__t100",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 1963
+  },
+  {
+   "name": "before__desk-list__390__dark__t200",
+   "clientWidth": 390,
+   "overflowPx": 0,
+   "scrollHeight": 6378
+  },
+  {
+   "name": "before__desk-list__834__light__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1426
+  },
+  {
+   "name": "before__desk-list__834__light__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 4006
+  },
+  {
+   "name": "before__desk-list__834__dark__t100",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 1426
+  },
+  {
+   "name": "before__desk-list__834__dark__t200",
+   "clientWidth": 834,
+   "overflowPx": 0,
+   "scrollHeight": 4006
+  },
+  {
+   "name": "before__desk-list__1440__light__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1355
+  },
+  {
+   "name": "before__desk-list__1440__light__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 3183
+  },
+  {
+   "name": "before__desk-list__1440__dark__t100",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 1355
+  },
+  {
+   "name": "before__desk-list__1440__dark__t200",
+   "clientWidth": 1440,
+   "overflowPx": 0,
+   "scrollHeight": 3183
+  }
+ ]
+}

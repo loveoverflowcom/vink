@@ -1,0 +1,7 @@
+{
+  "name": "vink-expressions-web",
+  "private": true,
+  "type": "module",
+  "dependencies": { "@lottiefiles/dotlottie-web": "0.82.1" },
+  "devDependencies": { "esbuild": "0.25.12" }
+}

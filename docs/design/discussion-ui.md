@@ -35,8 +35,9 @@ với comments mode ở cả hai renderer.
 Desktop/tablet giữ cột đọc; mobile 320/390 có một khoảng lệch `space-3` cho toàn bộ
 replies, không lồng card theo target. Action wrap và input co theo chiều rộng; không
 đặt chiều cao chữ cố định. Light/dark cùng cây, dùng semantic tokens hiện có. Không
-có overlay mới: manifest Google #25 chưa có trong checkout; picker/sticker/reaction
-không khả dụng và Unicode gõ trực tiếp vẫn giữ nguyên. Context trong danh sách dùng
+có overlay mới. PR #57 đã đưa canonical Google manifest/pilot vào base; tích hợp
+picker/caret/IME còn là phần chưa triển khai, API typed sticker/reaction chưa có.
+Unicode gõ trực tiếp vẫn giữ nguyên. Context trong danh sách dùng
 anchor có quyền; context ngoài trang chỉ hiện nhãn API cùng giải thích chưa có
 endpoint tra cứu đúng scope, không quét toàn bộ hội thoại hoặc đoán nội dung.
 

@@ -108,6 +108,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn expression_sequences_survive_document_and_export_without_markup() {
+        let source = "Tiếng Việt ❤️‍🔥 👍🏽 👩‍👩‍👧‍👦 🇻🇳 1️⃣\n  vẫn nguyên FE0F và ZWJ\n\n❤ và ❤️ cùng ở đây.";
+        assert_eq!(document_to_text(&text_to_document(source)), source);
+        assert_eq!(export_text("", source), format!("{source}\n"));
+    }
+
+    #[test]
     fn stanzas_lines_and_indentation_round_trip() {
         let text = "Phố cũ mưa giăng sợi mỏng,\n  mái ngói rêu xanh lặng thầm.\n\nĐêm nay ai thức cùng trăng?";
         let document = text_to_document(text);

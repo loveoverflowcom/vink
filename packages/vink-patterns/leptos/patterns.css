@@ -5,12 +5,37 @@
 .vk-work-byline .vk-ui-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
 .vk-work-byline .vk-ui-byline__text { grid-column: 2; grid-row: 1; align-self: end; }
 .vk-work-byline__date { grid-column: 2; grid-row: 2; align-self: start; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-.vk-reader__header > .vk-ui-heading { overflow-wrap: anywhere; }
+/* Reader rhythm: context caption → title → byline, each step separated before the body. */
+.vk-reader__header { display: grid; justify-items: start; row-gap: var(--vk-space-2); }
+.vk-reader__header > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
+.vk-reader__header > .vk-work-byline { margin: var(--vk-space-2) 0 0; }
 .vk-public-row__link { display: block; text-align: start; color: var(--vk-on-surface); text-decoration: none; }
 .vk-public-row__link:hover h3 { text-decoration: underline; }
 .vk-public-row__link > .vk-ui-heading { margin: 0; }
 .vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
-.vk-draft-row__link { display: flex; flex-direction: column; align-items: start; text-align: start; gap: var(--vk-space-2); min-width: 0; padding: var(--vk-space-4); color: var(--vk-on-surface); text-decoration: none; }
+/* DraftRow: mark | title + metadata | open. The row width (not the viewport) drives the
+   compact forms, so 200% text and narrow galleries reflow the same way. */
+.vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); color: var(--vk-on-surface); text-align: start; text-decoration: none; }
+.vk-draft-row__mark { grid-column: 1; display: inline-grid; margin-inline-end: var(--vk-space-4); place-items: center; inline-size: 2.5rem; block-size: 2.5rem; border-radius: var(--vk-radius-md); background: var(--vk-secondary-container); color: var(--vk-on-secondary-container); }
+.vk-draft-row__mark .vk-ui-icon { margin: 0; inline-size: 1.25rem; block-size: 1.25rem; }
+.vk-draft-row__text { grid-column: 2; display: grid; gap: var(--vk-space-1); min-width: 0; }
+.vk-draft-row__open { grid-column: 3; display: inline-flex; margin-inline-start: var(--vk-space-3); align-items: center; gap: var(--vk-space-1); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
+/* arrow-back mirrored is the registry's forward arrow; no extra icon asset. */
+.vk-draft-row__open .vk-ui-icon { margin: 0; transform: scaleX(-1); }
+.vk-draft-row__link:hover .vk-draft-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+@container vk-draft-row (max-width: 30rem) {
+  /* Long titles wrap: the mark and arrow stay with the first line instead of floating mid-row. */
+  .vk-draft-row__mark, .vk-draft-row__open { align-self: start; }
+  .vk-draft-row__mark { inline-size: 2rem; block-size: 2rem; margin-inline-end: var(--vk-space-3); }
+  .vk-draft-row__open { margin-inline-start: var(--vk-space-2); padding-block-start: var(--vk-space-1); }
+  .vk-draft-row__open-label { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+/* 320px at 200% text: give whole Vietnamese words the full width; the arrow follows the metadata. */
+@container vk-draft-row (max-width: 16rem) {
+  .vk-draft-row__mark { display: none; }
+  .vk-draft-row__text, .vk-draft-row__open { grid-column: 1 / -1; }
+  .vk-draft-row__open { justify-self: start; margin: var(--vk-space-1) 0 0; padding: 0; }
+}
 .vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1) var(--vk-space-4); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-caption-weight); }
 .vk-draft-resume { container-type: inline-size; min-width: 0; }
 .vk-draft-resume > .vk-ui-surface, .vk-draft-resume__content { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
@@ -79,7 +104,6 @@
 
 
 .vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); overflow-wrap: anywhere; }
-.vk-draft-row__open { color: var(--vk-primary); font-size: var(--vk-type-caption-size); }
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-state-hover); }
 .vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }

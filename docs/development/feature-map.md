@@ -15,6 +15,8 @@ Search công khai và ngữ cảnh reader đối chiếu ngày 01/11/2026 trên 
 của [#14](https://github.com/loveoverflowcom/vink/issues/14); [spec r2](../design/public-reading.md#layoutspec-r2--tìm-trong-danh-sách-và-giữ-ngữ-cảnh-14-lát-cắt-a).
 Mật độ Explore và assertions hình học/search/byline trong `publicReading` đối chiếu
 ngày 03/11/2026 trên nền `0e69412`; [LayoutSpec r3 và bằng chứng UI-REPAIR-02](../design/ui-repair-02.md).
+Phân cấp Explore, nhịp header reader và hàng bản thảo gọn đối chiếu ngày 04/11/2026 trên nền
+`27927c4`; [LayoutSpec và bằng chứng UI-REPAIR-14/15/16](../design/ui-repair-14-16.md).
 Readiness, provisioning PostgreSQL theo owner và role tách đối chiếu ngày 02/11/2026 trên nền
 `5afb00b` cho commit 1 của [ranh giới PostgreSQL/Identity](../architecture/identity-postgres-boundaries.md);
 hàng Identity đối chiếu ngày 02/11/2026 trên nền `6357922` (commit 2); hàng App ↔ Identity và
@@ -72,6 +74,7 @@ phải mở chúng để nhận xét thị giác. Manifest chưa chứng minh c�
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |
+| Thử biểu cảm · Mẫu | `/thu-nghiem/bieu-cam` → chọn một hình để phát một lần | 16 poster tĩnh; Unicode nguyên bản, cap 2, reduced/hidden/offscreen và lỗi quay về poster/Unicode; không lưu reaction/sticker. Không có picker sản phẩm. | [expressions.rs](../../apps/vink-web/src/expressions.rs), [catalog/policy](../../packages/expressions/README.md), [LayoutSpec/registry](expressions.md) |
 | Khám phá tác phẩm công khai | `/`, form GET “Tìm trong danh sách” → `/?q=…`; chọn link “Đọc tác phẩm” | Luồng v4 hữu hạn tối đa 12 bài theo ngày đăng; công cụ gọn, scope nối với input, avatar/tên/ngày cùng byline; tìm title/tên tác giả có/không dấu, Đ/đ, NFC/NFD trong cards đã tải, giữ thứ tự/chữ gốc và ghi rõ phạm vi. Loading/rỗng/không kết quả/unavailable riêng, có điểm dừng. Chưa có full-library/tags/intent/curation/feedback/bookmark | `Home`, `PublicListView`, `WorkCardView` trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [public_list.rs](../../apps/vink-web/src/public_list.rs), [search.rs](../../apps/vink-web/src/search.rs) |
 | Đọc tác phẩm | `/tac-pham/{id}?q=…` → “Khám phá” về `/?q=…#work-{id}`; Back/Forward, reload | Giữ query và đích hàng đọc bằng URL; sau khi list mount thì cuộn/focus về hàng còn khớp, không nhận đích ngoài. Title dài wrap, đoạn/khổ/dòng/thụt lề giữ nguyên. Public HTML/metadata/canonical trước JS; canonical bỏ q/hash. Thiếu/chưa công khai `404`, lỗi dữ liệu `503`, retry giữ URL/query | `Reader`, `PublicationView` và restore/remember position trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [DocumentView](../../apps/vink-web/src/document.rs) |
 | Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết. Route lạ (`/ban-vietnam`, `/tac-pham/a/b`) là 404, không sáng đích. Back khi Tôi mở chỉ đóng Tôi | [shell.rs](../../apps/vink-web/src/shell.rs) (`Destination`), primitive [vink-ui navigation](../../packages/ui-system/leptos/src/navigation.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
@@ -293,3 +296,17 @@ cho nhãn thường; rail96/long-labels vẫn là stress có giới hạn ghi r�
 resize trên JVM. Các lane ghi bằng chứng riêng; coverage này không xác nhận
 Android/iOS runtime, OS IME hay screen reader. Kết quả và ảnh ở
 [UI-REPAIR-09](../design/ui-repair-09.md).
+
+
+## Coverage EMO-01A
+
+Nền `27927c4`, nguồn/assertion cho #25: `expressionPilot` được `verify web` gọi trong main phase,
+kiểm SSR/no-JS/hydration không có engine trên route tĩnh; phát thật Software qua keyboard/touch;
+shared Rust budget, callback sau hủy/unmount, motion/offscreen/tab hidden, fallback engine/WASM/
+JSON/poster, CSP cùng origin được inject ở test. Các ảnh `expressions-*` dùng context capture
+hiện hữu. Chữ 200% ở 320px; năm viewport × hai theme. Source invariants/fixtures/model và bounds
+được chỉ mục trong [registry EMO](expressions.md#registry-emo--một-model-lifecycle).
+
+CMP `NotoExpressionTest` dùng fixture sinh từ cùng manifest, chỉ kiểm lookup/Unicode trên JVM.
+Đây là coverage intent; không phải tuyên bố lượt chạy PASS, heap leak-free, IME thật, screen reader,
+mobile native, full benchmark hoặc #45 integration. SHA/kết quả chạy phải xem evidence của PR.

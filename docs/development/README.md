@@ -18,6 +18,9 @@ PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 [ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
 đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database. [UI thảo luận](../design/discussion-ui.md) hiển thị anonymous SSR và tải projection của viewer sau hydration; controller giữ draft/request theo scope. Chỉ LocalFixture hiện cho kiểm ghi cục bộ, có nhãn rõ; production trả `401`, chưa có UI kiểm duyệt hoặc auth authority.
 
+[Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + Web pilot độc lập EMO-01A;
+chưa tích hợp composer/reaction/sticker persistence.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,
@@ -117,8 +120,8 @@ PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 | `wasm-bindgen` CLI | build bundle | Phải bằng phiên bản `wasm-bindgen` trong `Cargo.lock` (hiện 0.2.129): `cargo install wasm-bindgen-cli --version 0.2.129 --locked` |
 | PostgreSQL 17 | dev, `verify postgres`, `verify web` | [services/postgres](../../services/postgres/README.md) chạy bằng Podman hoặc Docker; `VINK_TEST_DATABASE_URL` là superuser của cluster local/CI để tạo database/role tạm |
 | `psql` 15+ | `services/postgres/provision.sh`, `verify postgres` | Ví dụ `brew install libpq` hoặc gói `postgresql-client` |
-| Node.js 22+ và npm | `build`, `dev`, `verify web` | Cài dependency đã khóa và bundle [runtime editor](../../apps/vink-web/editor/README.md) (cần mạng tới npm registry lần đầu hoặc khi lockfile đổi) |
-| Quint 0.33.1 qua npm lockfile | `verify discussion` | Lane cài local dependency bằng `npm ci --ignore-scripts`, dùng backend TypeScript tường minh; không cần global Quint hay thêm Rust toolchain |
+| Node.js 22+ và npm | `build`, `dev`, `verify quick`, `verify web`, `verify expressions` | Cài dependency đã khóa và bundle [runtime editor](../../apps/vink-web/editor/README.md) (cần mạng tới npm registry lần đầu hoặc khi lockfile đổi) |
+| Quint 0.33.1 qua npm lockfile | `verify discussion`, `verify expressions` | Lane cài local dependency bằng `npm ci --ignore-scripts`, dùng backend TypeScript tường minh; không cần global Quint hay thêm Rust toolchain |
 | Chrome/Chromium | `verify web`, `ui-preview leptos verify` | Script smoke không có npm dependency; đặt `VINK_CHROME` nếu Chrome không nằm trong `PATH` (macOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`) |
 | JDK 17+ | `ui-preview cmp …` | Gradle wrapper 8.14.3 (tải bản phân phối lần đầu, kiểm SHA-256); không tự tải JDK |
 | Android SDK, Xcode | chỉ `VINK_UI_NATIVE_TARGETS=1` | `ANDROID_HOME` (platform 36) cho target Android; Xcode + tải Kotlin/Native 2.2.20 lần đầu cho iOS |
@@ -175,7 +178,8 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
 | `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production | Thiếu Node/npm, sai tool version, model/test/drift hoặc negative control không phát hiện lỗi |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
-| `cargo xtask verify all` | `quick`, `discussion`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
+| `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A) | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
+| `cargo xtask verify all` | `quick`, `discussion`, `expressions`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
 
 Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thiếu dependency là `FAIL`,
 không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó chạy (biến môi trường thật được
@@ -282,6 +286,8 @@ apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của w
   src/search.rs           comparison key tiếng Việt dùng chung, không sửa chữ gốc
   src/desk_state.rs       máy trạng thái lưu nháp và rời editor (EditorSession, LeaveGuard), thuần
   src/document.rs         chữ nguồn ↔ document v1, DocumentView, export .txt
+  src/expressions.rs      static SSR + isolated Google Noto pilot, Rust policy bridge
+  expressions/            dotLottie 0.82.1, runtime hashes/licenses, lazy Web effects
   src/editor.rs           (hydrate) cầu wasm-bindgen tới CodeMirror, BodySource::snapshot
   src/navigation.rs       NavigationGuard dùng chung cho link, back/forward, điều hướng bằng code;
                           hỏi lớp phủ shell trước (Back đóng Tôi, điều hướng thật đóng rồi đi tiếp)
@@ -391,3 +397,52 @@ Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận 
    (#45) trên API v1 đã có; xem [registry](discussion-core.md).
 5. **S-05 AI + vận hành:** bộ mẫu tiếng Việt, schema output và job lease trong worker; giữ
    AI ở chế độ tư vấn cho tới khi MOD-06 có bằng chứng.
+
+## Biểu cảm Google Noto (EMO-01A)
+
+Pilot có nhãn Mẫu tại `/thu-nghiem/bieu-cam`, không cần principal hoặc ghi database. Catalog
+16 asset, nguồn/hash/license, policy production Rust và traceability ở
+[expressions](expressions.md); [manifest owner](../../packages/expressions/README.md).
+Build cài npm lockfile riêng ở `apps/vink-web/expressions`, self-host controller/Software JS,
+WASM và asset có hash dưới `/pkg/expressions/`. Reader/Explore không import animation engine.
+
+```sh
+node packages/expressions/generate.mjs --check
+node --test packages/expressions/validate.test.mjs
+cargo xtask verify expressions
+cargo xtask verify quick
+cargo xtask verify web
+```
+
+`verify expressions` cài Quint **0.33.1** từ lockfile owner-local, typecheck canonical model,
+simulation TypeScript (seed 25, 1000 × 40), scenario/trace drift, negative control callback và
+replay input qua Rust production. Không sửa model thảo luận; `verify discussion` vẫn là lane
+riêng. Muốn cập nhật output sau review nguồn dùng `node packages/expressions/generate.mjs --write`;
+fixture model dùng `node packages/expressions/behavior/verify.mjs --write` sau khi dependency được cài.
+
+Kani là kiểm riêng, **không bị tự cài hoặc tự đổi toolchain bởi xtask**. Pin `cargo-kani 0.67.0`
+và compiler bundled `nightly-2025-11-21`; từ repo root:
+
+```sh
+cargo kani --version
+cargo kani --manifest-path packages/expressions/kani/Cargo.toml
+```
+
+Manifest compatibility trỏ đúng source production, không đổi toolchain 1.99.1 của workspace.
+Ba harness: 6 event/3 player/cap 0..3 (unwind 12 + covers), callback/facts (8), 4 Unicode input
+đầy đủ (40). Giữ unwinding assertions. Toolchain thiếu phải ghi NOT_RUN, không thay bằng unit test.
+
+`web` gọi `expressionPilot` trong `e2e/expressions-smoke.mjs`: no-JS/SSR/hydration, network tĩnh,
+keyboard/touch, one-shot, cap 2/idempotency, delayed-load/unmount, motion/visibility, missing
+module/WASM/JSON/poster, source Unicode, responsive/theme/text scale và same-origin fallback.
+Một test inject CSP trên response (`worker-src 'none'`, connect self, wasm-unsafe-eval); không
+phải production CSP của toàn app. Browser tạo PNG qua capture helper chuẩn và context JSON.
+Native chỉ generated contract/Unicode vectors trong module `:ui`; kiểm JVM bằng:
+
+```sh
+cd packages/ui-system/cmp
+./gradlew :ui:desktopTest --tests vink.ui.NotoExpressionTest
+```
+
+Không suy Android/iOS runtime, IME OS, screen reader, heap GC hoặc backend benchmark từ các kiểm
+này. Những acceptance còn lại của #25/#43/#45 được giữ mở trong [scope](expressions.md).

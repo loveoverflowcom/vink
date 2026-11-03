@@ -1,0 +1,26 @@
+Vink EMO-01A — Google Noto expression pilot
+
+Animated Noto Emoji by Google — Creative Commons Attribution 4.0 International.
+https://googlefonts.github.io/noto-emoji-files/?view=docs
+https://creativecommons.org/licenses/by/4.0/
+Source snapshot: google-cdn-snapshot-2026-09-16; individual SHA-256 and aggregate
+snapshot digest are recorded in packages/expressions/shared/catalog.json.
+Artwork unchanged; Vietnamese labels and content-hash filenames added by Vink.
+
+Static Noto Emoji SVG by Google — Apache License 2.0 (LICENSE-STATIC.txt).
+https://github.com/googlefonts/noto-emoji/tree/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg
+These are separately licensed static assets, not generated animation frames.
+
+@lottiefiles/dotlottie-web 0.82.1 — MIT (LICENSE-DOTLOTTIE.txt).
+Upstream: LottieFiles/dotlottie-web@2f3693a1d5b9d6936027bc892fa4f9d1cd16d2bb.
+Only the Software renderer is shipped. Default WASM CDN endpoints are replaced
+with the local content-hash URL; loader is configured with setWasmUrl before use.
+No worker, WebGL2 or WebGPU entry point is instantiated or distributed.
+
+Bundled WASM: dotlottie-rs (MIT), ThorVG (MIT) and third-party notices in
+LICENSE-THIRD-PARTY.txt. Source pins: dotlottie-rs@e09b1967b6077294ad09a275f2899d6b8b4c542b,
+ThorVG@ce12cdd0e2d1329cb1482f2893cff8df75de6b04. The npm package's JS/WASM
+hashes and npm integrity are checked by the build and package-lock.json.
+
+esbuild 0.25.12 (MIT) is a build tool, not a browser runtime dependency.
+No font file is included in this expression bundle.

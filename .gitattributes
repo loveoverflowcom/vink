@@ -1,0 +1,2 @@
+# Pinned upstream artwork is byte-for-byte original; its hashes are validated offline.
+packages/expressions/assets/*.svg -whitespace

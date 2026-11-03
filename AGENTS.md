@@ -37,6 +37,14 @@ scoped style/dependency guards and opt-in Android debug/iOS simulator diagnostic
 the CMP specimens with Desktop (`:diagnostics`); these are not native product apps. Target
 readiness and runtime limits live in `docs/development/ui-system-qualification-evidence.md`.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
+EMO-01A adds a 16-asset Google Noto manifest in `packages/expressions`, generated Rust/CMP
+lookup contracts, a pure Rust admission/generation policy consumed by the isolated Web route
+`/thu-nghiem/bieu-cam`, and a self-hosted dotLottie Software renderer loaded only after activation.
+Expression lifecycle Quint simulation/trace replay has its own `verify expressions` lane;
+owner-local Kani harnesses use 0.67.0 against the production source. CMP is contract/Unicode
+fallback only; no native animation renderer, composer integration, durable stickers/reactions or
+backend performance qualification is implied. [Expression scope](docs/development/expressions.md)
+records provenance, licensing, model/proof bounds and remaining acceptance.
 No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
 production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
@@ -91,10 +99,10 @@ Use authorization already granted in the conversation; a skill adds no requireme
 Do not infer permission to push, post messages or publish from a local editing task.
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
-quick|discussion|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
+quick|discussion|expressions|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
 the structural D2T-01 and lifecycle D2T-02 Quint models and replays their inputs through the real
 pure decisions; locking, transactions and I/O stay in `postgres`;
-`specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
+`expressions` verifies its isolated playback model and Rust replay; `specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
 to validate documentation or skills.
 
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced

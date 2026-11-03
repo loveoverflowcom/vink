@@ -1,10 +1,14 @@
 # D2T-03 — phạm vi triển khai và bằng chứng
 
-Issue #45; branch `codex/discussion-ui`, đã tích hợp `develop@27927c462244f2a70e36a686a37c8c95690775b6`.
-Source kiểm local cuối: `0f46f817160c2507861e0c508cfd3dbb4c1b008b`.
+Issue #45; branch `codex/discussion-ui`, PR #59. Checkpoint local dưới đây đã tích hợp
+`develop@27927c462244f2a70e36a686a37c8c95690775b6`.
+Source checkpoint local: `0f46f817160c2507861e0c508cfd3dbb4c1b008b`.
 Cây source tương ứng trên GitHub: [`c09eeeb8`](https://github.com/loveoverflowcom/vink/commit/c09eeeb8d55b1ddf4bbfc6b4aa21ead9ac6b43ff);
 cả hai có Git tree `7b6b9f653d03d88901ba5966b3c65126ad2589be`. Commit tài liệu
-sau đó chỉ cập nhật LayoutSpec/evidence; kết quả local và sidecar giữ SHA gốc.
+sau đó cập nhật LayoutSpec/evidence; kết quả local và sidecar giữ SHA gốc.
+PR tiếp tục tích hợp `develop@3b95ca09ec9e134f9b80d2c7add677ca9d1cc028`
+(PR #57 Noto pilot và #58 UI). Kết quả revalidation trên base mới, head và CI run
+được ghi trong PR; không suy PASS cho cây mới từ các ảnh/lệnh checkpoint cũ.
 Checkpoint triển khai ban đầu `c6222a7` xuất phát từ `develop@14c33c9`; bảng checkpoint
 bên dưới là lịch sử, không thay kết quả kiểm cuối.
 [LayoutSpec](../design/discussion-ui.md) đã được trình bày trước sửa UI.
@@ -26,7 +30,7 @@ thuộc feature owner, không thuộc button/ô trả lời có thể được t
 page giữ cả receipt sau khi ACK xóa chữ đã gửi; editor chỉ được giữ khi còn chữ
 hoặc một lần gửi chưa rõ kết quả.
 
-## Kết quả kiểm cuối
+## Kết quả checkpoint local trước PR #57/#58
 
 Rust 1.99.1, Chrome 156.0.8078.80, PostgreSQL 17.11, macOS ARM64; CMP dùng JDK
 21.0.7. Cargo local dùng `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=2`,
@@ -96,8 +100,10 @@ theme/build. Ảnh phải được mở để được gọi là inspected.
 - Production auth/session và luồng end-to-end auth → moderation → public persistence
   chưa có. Không có nút login giả. UI đặt control tác giả tại reader; chưa có bề mặt
   quản lý tác phẩm đã đăng riêng để nối setting vào đó.
-- #25 chưa cung cấp Google manifest/asset/player trong checkout: không dựng picker,
-  sticker/reaction hoặc competing manifest. Unicode gõ trực tiếp được giữ nguyên.
+- PR #57 đã đưa manifest 16 asset, Rust policy và Web pilot của #25 vào base mới.
+  Tích hợp picker/composer, caret/IME và focus return vẫn chưa được triển khai;
+  không còn ghi thiếu manifest là blocker. API typed sticker/reaction vẫn chưa có.
+  Unicode gõ trực tiếp được giữ nguyên; không tạo competing manifest hay nút giả.
 - API chưa có ranking, context lookup ngoài page, reports/appeals hay rate limits.
   Paging không phải snapshot; refresh thay projection đã tải, không realtime thu hồi
   mọi nội dung khi không có invalidation source.

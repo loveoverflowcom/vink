@@ -1,0 +1,903 @@
+{
+  "format": "vink-expression-lifecycle-v1",
+  "quint_version": "0.33.1",
+  "capacity": 2,
+  "scenarios": [
+    {
+      "name": "lifecycle",
+      "steps": [
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 0
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "activate"
+          },
+          "outcome": "already_active",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 0
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 2,
+            "op": "activate"
+          },
+          "outcome": "budget",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 1,
+            "flag": false,
+            "id": 0,
+            "op": "ready"
+          },
+          "outcome": "play",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "playing",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 1,
+            "flag": false,
+            "id": 0,
+            "op": "complete"
+          },
+          "outcome": "complete",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 1,
+            "flag": false,
+            "id": 0,
+            "op": "complete"
+          },
+          "outcome": "ignored",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 0
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 2,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "loading",
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 2,
+            "op": "cancel"
+          },
+          "outcome": "cancelled",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 1,
+            "flag": false,
+            "id": 2,
+            "op": "ready"
+          },
+          "outcome": "ignored",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 2,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "loading",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 1,
+            "flag": false,
+            "id": 2,
+            "op": "ready"
+          },
+          "outcome": "ignored",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "loading",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 2,
+            "flag": false,
+            "id": 2,
+            "op": "ready"
+          },
+          "outcome": "play",
+          "active": 2,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "playing",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 2,
+            "op": "visible"
+          },
+          "outcome": "facts",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 2,
+            "flag": false,
+            "id": 2,
+            "op": "ready"
+          },
+          "outcome": "ignored",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": true,
+            "id": 2,
+            "op": "visible"
+          },
+          "outcome": "facts",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": true,
+            "id": 0,
+            "op": "reduced"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "activate"
+          },
+          "outcome": "static",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "reduced"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 2
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 2,
+            "flag": false,
+            "id": 0,
+            "op": "error"
+          },
+          "outcome": "error",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "error",
+              "generation": 2
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "loading",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "foreground"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 3,
+            "flag": false,
+            "id": 0,
+            "op": "ready"
+          },
+          "outcome": "ignored",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": true,
+            "id": 0,
+            "op": "foreground"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 0,
+            "op": "runtime"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "activate"
+          },
+          "outcome": "static",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": true,
+            "id": 0,
+            "op": "runtime"
+          },
+          "outcome": "facts",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "static",
+              "generation": 1
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "activate"
+          },
+          "outcome": "load",
+          "active": 1,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "loading",
+              "generation": 2
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "dispose"
+          },
+          "outcome": "disposed",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "disposed",
+              "generation": 2
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 2,
+            "flag": false,
+            "id": 1,
+            "op": "ready"
+          },
+          "outcome": "ignored",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "disposed",
+              "generation": 2
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "dispose"
+          },
+          "outcome": "disposed",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "disposed",
+              "generation": 2
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "expected": 0,
+            "flag": false,
+            "id": 1,
+            "op": "activate"
+          },
+          "outcome": "static",
+          "active": 0,
+          "players": [
+            {
+              "id": 0,
+              "phase": "static",
+              "generation": 3
+            },
+            {
+              "id": 1,
+              "phase": "disposed",
+              "generation": 2
+            },
+            {
+              "id": 2,
+              "phase": "static",
+              "generation": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

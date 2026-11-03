@@ -8,6 +8,7 @@ mod checks;
 mod discussion;
 mod doctor;
 mod env;
+mod expressions;
 mod identity;
 mod pgurl;
 mod process;
@@ -44,12 +45,13 @@ usage: cargo xtask <command>
   dev                    build, migrate, start Identity if VINK_IDENTITY_SOCKET is set,
                          serve on VINK_BIND (Ctrl-C to stop)
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
+  verify expressions     Noto manifest, Quint lifecycle/negative control and Rust replay
   verify discussion      pinned Quint structure/lifecycle checks, trace drift and Rust replays
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
-  verify all             quick, discussion, postgres and web in order
+  verify all             quick, discussion, expressions, postgres and web in order
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
   ui-preview leptos|cmp|android|ios build|verify|run
@@ -90,11 +92,18 @@ fn main() -> ExitCode {
         ] => finish(ui_preview::run(&env, renderer, action)),
         ["verify", lane] => match *lane {
             "quick" => verify(&[Lane::Quick], &env),
+            "expressions" => verify(&[Lane::Expressions], &env),
             "discussion" => verify(&[Lane::Discussion], &env),
             "postgres" => verify(&[Lane::Postgres], &env),
             "web" => verify(&[Lane::Web], &env),
             "all" => verify(
-                &[Lane::Quick, Lane::Discussion, Lane::Postgres, Lane::Web],
+                &[
+                    Lane::Quick,
+                    Lane::Discussion,
+                    Lane::Expressions,
+                    Lane::Postgres,
+                    Lane::Web,
+                ],
                 &env,
             ),
             _ => usage(),
@@ -163,6 +172,7 @@ pub fn build(env: &env::Env, release: bool) -> Result<(), String> {
         .arg(&wasm_file);
     process::run(&mut bindgen, "wasm-bindgen → target/site/pkg")?;
     editor_runtime(&root, &pkg.join("vink-editor.js"))?;
+    expressions::build(&root, &pkg.join("expressions"))?;
     stylesheet(&root, &pkg.join("vink.css"))?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
@@ -403,6 +413,7 @@ fn dev(env: &env::Env) -> Result<(), String> {
 enum Lane {
     Quick,
     Discussion,
+    Expressions,
     Postgres,
     Web,
 }
@@ -413,6 +424,7 @@ fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
         let ok = match lane {
             Lane::Quick => quick(&mut report),
             Lane::Discussion => discussion::verify(&mut report),
+            Lane::Expressions => expressions::verify(&mut report),
             Lane::Postgres => postgres(&mut report, env),
             Lane::Web => web::verify(&mut report, env),
         };
@@ -486,6 +498,11 @@ fn quick(report: &mut Report) -> bool {
         "ui tokens: source valid, generated CSS/Rust/Kotlin match",
         || ui_tokens::run(&root, true),
     ) {
+        return false;
+    }
+    if !report.step("expressions: manifest/hash/Unicode/drift", || {
+        expressions::check(&root)
+    }) {
         return false;
     }
     for (name, args) in steps {
