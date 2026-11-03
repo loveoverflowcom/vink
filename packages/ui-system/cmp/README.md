@@ -60,3 +60,9 @@ Lệnh: `cargo xtask ui-preview cmp build|run|verify` (xem [README UI system](..
 cố định sáng): 30 ảnh nền tảng + 132 ảnh component UIS-02/03 (sáng/tối × hẹp/rộng) + 15 trạng thái/chữ
 200% UIS-02 + 29 kịch bản state (sáng, hẹp) + 3 state chữ 200% = 209; cộng 7 ảnh playground sau khi
 thao tác (`*--driven--*`, ghi trong `driven-contexts.json`, có lớp dialog) = 216.
+
+
+EMO-01A: `NotoExpressions.kt` và `NotoExpressionTest.kt` được sinh từ
+[manifest biểu cảm](../../expressions/README.md), không phải catalog viết tay thứ hai.
+Module `:ui` chỉ hỗ trợ contract lookup và Unicode fallback; poster file là reference tương đối
+cho host tương lai. Không có dotLottie Web/native renderer, Rust FFI hoặc product app native.

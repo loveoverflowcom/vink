@@ -1,0 +1,6 @@
+{
+  "name": "vink-expression-behavior",
+  "private": true,
+  "dependencies": { "@informalsystems/quint": "0.33.1" },
+  "scripts": { "verify": "node verify.mjs", "fixtures": "node verify.mjs --write" }
+}

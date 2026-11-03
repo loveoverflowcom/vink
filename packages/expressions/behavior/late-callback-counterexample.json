@@ -1,0 +1,99 @@
+{
+  "format": "vink-expression-counterexample-v1",
+  "command": [
+    "quint",
+    "run",
+    "lifecycle.qnt",
+    "--backend=typescript",
+    "--seed=25",
+    "--step=unguardedLateStep",
+    "--max-steps=3",
+    "--max-samples=1",
+    "--invariant=lifecycleSafe",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "expected": 0,
+        "flag": false,
+        "id": 0,
+        "op": "activate"
+      },
+      "outcome": "load",
+      "active": 1,
+      "players": [
+        {
+          "id": 0,
+          "phase": "loading",
+          "generation": 1
+        },
+        {
+          "id": 1,
+          "phase": "static",
+          "generation": 0
+        },
+        {
+          "id": 2,
+          "phase": "static",
+          "generation": 0
+        }
+      ]
+    },
+    {
+      "command": {
+        "expected": 0,
+        "flag": false,
+        "id": 0,
+        "op": "dispose"
+      },
+      "outcome": "disposed",
+      "active": 0,
+      "players": [
+        {
+          "id": 0,
+          "phase": "disposed",
+          "generation": 1
+        },
+        {
+          "id": 1,
+          "phase": "static",
+          "generation": 0
+        },
+        {
+          "id": 2,
+          "phase": "static",
+          "generation": 0
+        }
+      ]
+    },
+    {
+      "command": {
+        "expected": 1,
+        "flag": false,
+        "id": 0,
+        "op": "ready"
+      },
+      "outcome": "play",
+      "active": 1,
+      "players": [
+        {
+          "id": 0,
+          "phase": "playing",
+          "generation": 1
+        },
+        {
+          "id": 1,
+          "phase": "static",
+          "generation": 0
+        },
+        {
+          "id": 2,
+          "phase": "static",
+          "generation": 0
+        }
+      ]
+    }
+  ]
+}

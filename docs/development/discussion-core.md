@@ -78,7 +78,7 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 | D2T-INV-08 — COM-06 | Chưa có | Chưa có reaction | — | NOT_RUN | Desired-state set/remove, cardinality |
 | D2T-INV-09 — #41 | Chưa có | `PageCursor`, `PageLimit`, `PREVIEW_REPLIES` | `pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page` (ties theo ID) | NOT_RUN | Ranking “Nổi bật”, epoch/snapshot, benchmark |
 | D2T-INV-10 — #45 | Chưa có | Không đổi client | — | NOT_RUN | Ack theo actor/session/draft ở consumer |
-| D2T-INV-11 — #25 | Chưa có | `CommentBody` giữ emoji Unicode nguồn | — | NOT_RUN | Sticker manifest/renderer |
+| D2T-INV-11 — #25 | [EMO lifecycle owner](expressions.md#registry-emo--một-model-lifecycle), không model comment | `CommentBody` giữ Unicode; `vink-expressions` sở hữu manifest/policy riêng, Web pilot dùng thật | — | Owner-local EMO harnesses, xem evidence PR | Chưa typed sticker/reaction persistence và composer #43/#45; không nhận proof EMO là proof discussion |
 
 Các symbol model, fixture và lệnh thực thi của lát cắt 1 được chỉ mục ở
 [owner-local behavior](../../services/vink-app/behavior/discussion/README.md).

@@ -1,0 +1,11 @@
+{
+  "package": "@lottiefiles/dotlottie-web",
+  "version": "0.82.1",
+  "upstream_commit": "2f3693a1d5b9d6936027bc892fa4f9d1cd16d2bb",
+  "license": "MIT",
+  "sha256": {
+    "dist/index.js": "76646d547e0768de80bf141edd168550f7d1272ea910930fca9138e4af6d5354",
+    "dist/dotlottie-player.wasm": "d63074204a3c50f95a27f591a0ad13fd2886d8705d25ec07e084c8d30436d9f0"
+  },
+  "modifications": "Build replaces the two default CDN WASM URLs with the self-hosted content-hash URL; only DotLottie is exported. No worker/WebGL/WebGPU entry point."
+}

@@ -1,0 +1,16 @@
+{
+  "version": "0.82.1",
+  "backend": "software",
+  "worker": false,
+  "engine": {
+    "file": "dotlottie-a66fb009e04a2945.js",
+    "bytes": 58149
+  },
+  "wasm": {
+    "file": "dotlottie-player-d63074204a3c50f9.wasm",
+    "bytes": 1226030
+  },
+  "glue_bytes": 9117,
+  "posters_bytes": 83912,
+  "animation_bytes": 847563
+}

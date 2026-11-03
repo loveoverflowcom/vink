@@ -13,6 +13,7 @@ pub mod desk_state;
 pub mod document;
 pub mod draft_list;
 pub mod editor;
+mod expressions;
 pub mod navigation;
 mod pages;
 pub mod public_list;
@@ -99,6 +100,7 @@ fn Chrome() -> impl IntoView {
                     <Route path=path!("/ban-viet") view=DeskIndex />
                     <Route path=path!("/ban-viet/:id") view=DraftEditor />
                     <Route path=path!("/toi") view=Me />
+                    <Route path=path!("/thu-nghiem/bieu-cam") view=expressions::ExpressionPilot />
                 </Routes>
             </main>
             <footer class="vk-footer">

@@ -1,11 +1,12 @@
 # Verification scope and evidence
 
 Use actual manifests, commands and CI from the current checkout. The implemented lanes are
-`cargo xtask verify quick|discussion|postgres|web|all`; what each covers, its prerequisites and its limits
+`cargo xtask verify quick|discussion|expressions|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
-lanes. `discussion` covers only the structural D2T-01 Quint model and real Rust replay;
-there is no generic behavior or Kani lane. Do not claim lifecycle or I/O verification from it:
-the D2T-02a lifecycle has pure tests in `quick` and PostgreSQL tests in `postgres`.
+lanes. `discussion` covers the structural D2T-01 and lifecycle D2T-02 Quint models and real Rust replay;
+there is no generic behavior or Kani lane. `expressions` checks the isolated EMO lifecycle model
+and production policy replay; its owner-local Kani manifest is run separately. Neither model
+lane verifies locking or I/O: PostgreSQL evidence remains in `postgres`, browser in `web`.
 
 Find route-level scenarios and existing assertions in the
 [feature map](../../../../docs/development/feature-map.md), then confirm the relevant source.
@@ -22,6 +23,7 @@ instructions or repeated checking workflows, use
 | D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
 | Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |
 | SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
+| Expression catalog/policy/model | `quick` + `expressions` (+ `web` for the adapter) | Kani bounds/toolchain and CMP contract checks are separate; see the development guide |
 | Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
 | Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |
 

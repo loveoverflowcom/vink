@@ -1,0 +1,632 @@
+{
+  "schema_version": 1,
+  "catalog_version": "noto-pilot-1",
+  "animation_source": {
+    "publisher": "Google",
+    "documentation": "https://googlefonts.github.io/noto-emoji-files/?view=docs",
+    "revision": "google-cdn-snapshot-2026-09-16",
+    "snapshot_sha256": "7f9e24f79c376d3ad047abaa1bf5fd4160c1d37e9fc07ac42ea0fd58d7fe252b",
+    "note": "Google CDN exposes no immutable Git revision. This source snapshot is pinned by per-file SHA-256 and the aggregate digest; production and builds read vendored bytes only."
+  },
+  "static_source": {
+    "repository": "https://github.com/googlefonts/noto-emoji",
+    "revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f"
+  },
+  "assets": [
+    {
+      "id": "noto-smile",
+      "unicode": "😀",
+      "lookup_sequences": [
+        "😀"
+      ],
+      "label_vi": "Mỉm cười",
+      "aliases_vi": [
+        "vui",
+        "cười"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-smile-544b36625a90af0b.svg",
+        "sha256": "544b36625a90af0b952ead586044d76c00b47e112200533b9b5439c163152d66",
+        "bytes": 3153,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f600.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-smile-b93b4e7f34019b29.json",
+        "sha256": "b93b4e7f34019b29df77a873ea6583f5974008c0add4cac69f8f3b37c07a2426",
+        "bytes": 37328,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f600/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 81
+      }
+    },
+    {
+      "id": "noto-joy",
+      "unicode": "😂",
+      "lookup_sequences": [
+        "😂"
+      ],
+      "label_vi": "Cười ra nước mắt",
+      "aliases_vi": [
+        "vui quá"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-joy-b553c8c7d447edbd.svg",
+        "sha256": "b553c8c7d447edbd684c436bdf49208ab142f3fc7004eb98fbe8ab6dc68451ab",
+        "bytes": 7425,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f602.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-joy-ae479405485961c5.json",
+        "sha256": "ae479405485961c5c233d882bd2b8ddf54c24e7ddb48371e6346b04b6b57edca",
+        "bytes": 59124,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f602/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 116
+      }
+    },
+    {
+      "id": "noto-hearts-face",
+      "unicode": "🥰",
+      "lookup_sequences": [
+        "🥰"
+      ],
+      "label_vi": "Mến thương",
+      "aliases_vi": [
+        "yêu",
+        "thương"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-hearts-face-ea04061b31c3fc1b.svg",
+        "sha256": "ea04061b31c3fc1bd188b43061d4d07213863f4e1659175c4a5d2c7357bc478e",
+        "bytes": 6250,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f970.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-hearts-face-c9fc242ce2d31e86.json",
+        "sha256": "c9fc242ce2d31e8660a5c6571363369faad508321443a015dac796e7cd133401",
+        "bytes": 58353,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f970/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 97
+      }
+    },
+    {
+      "id": "noto-thinking",
+      "unicode": "🤔",
+      "lookup_sequences": [
+        "🤔"
+      ],
+      "label_vi": "Suy ngẫm",
+      "aliases_vi": [
+        "nghĩ"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-thinking-b393f008e46a8813.svg",
+        "sha256": "b393f008e46a8813060545984a801d2304573860aaedb828da3ea20520d83a68",
+        "bytes": 5570,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f914.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-thinking-46405d972ad78a2f.json",
+        "sha256": "46405d972ad78a2fc917fa8e5786b0ebcdfdf644114be3c0941b98cb7e1c47c5",
+        "bytes": 68027,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f914/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-cry",
+      "unicode": "😢",
+      "lookup_sequences": [
+        "😢"
+      ],
+      "label_vi": "Rơi lệ",
+      "aliases_vi": [
+        "buồn"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-cry-1fc143ad6d49c38e.svg",
+        "sha256": "1fc143ad6d49c38e23db196ce4fa99d83f3bc93fbebd8de3164d56eba325f530",
+        "bytes": 3548,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f622.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-cry-58c4605cb7cae240.json",
+        "sha256": "58c4605cb7cae240597ebea1bb0cba87d592aea24b988e0f3cc48f39f045c2fb",
+        "bytes": 47018,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f622/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 61
+      }
+    },
+    {
+      "id": "noto-hug",
+      "unicode": "🤗",
+      "lookup_sequences": [
+        "🤗"
+      ],
+      "label_vi": "Một cái ôm",
+      "aliases_vi": [
+        "ôm"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-hug-112355c0ab7dd1b0.svg",
+        "sha256": "112355c0ab7dd1b03e64f5ce6229a845082f7b3a46adb6cbdd9544be68234af6",
+        "bytes": 16066,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f917.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-hug-feeec5c571e24716.json",
+        "sha256": "feeec5c571e24716e978f149617c57702da4e7849fc1f0d4e21570ff4f4f660c",
+        "bytes": 80181,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f917/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 106
+      }
+    },
+    {
+      "id": "noto-thanks",
+      "unicode": "🙏",
+      "lookup_sequences": [
+        "🙏"
+      ],
+      "label_vi": "Cảm ơn",
+      "aliases_vi": [
+        "cám ơn",
+        "cảm tạ"
+      ],
+      "category": "cu-chi",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-thanks-3eb0ad703c905166.svg",
+        "sha256": "3eb0ad703c9051666db5c387d292abec4f8319a5c774945745846c5163a7db5d",
+        "bytes": 6091,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f64f.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-thanks-96c6f33baf19eb1e.json",
+        "sha256": "96c6f33baf19eb1e0fdcc2e16cd32bec25797022c66f66203721354491f0fd2f",
+        "bytes": 63630,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f64f/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-thumbs-up",
+      "unicode": "👍",
+      "lookup_sequences": [
+        "👍"
+      ],
+      "label_vi": "Đồng tình",
+      "aliases_vi": [
+        "hay",
+        "tán thành"
+      ],
+      "category": "cu-chi",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-thumbs-up-c30d8e01a118cb2d.svg",
+        "sha256": "c30d8e01a118cb2dce565d9153cb885111fade63c8191770cce4ced236dfb98a",
+        "bytes": 5434,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f44d.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-thumbs-up-a5803c4978c07609.json",
+        "sha256": "a5803c4978c0760977aa08033ab0abcb5023945a47008261cd405815fc947698",
+        "bytes": 40892,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-thumbs-up-medium",
+      "unicode": "👍🏽",
+      "lookup_sequences": [
+        "👍🏽"
+      ],
+      "label_vi": "Đồng tình · da vừa",
+      "aliases_vi": [
+        "hay"
+      ],
+      "category": "cu-chi",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-thumbs-up-medium-56cbf6b17472786a.svg",
+        "sha256": "56cbf6b17472786a0241a26215f11bed0778c8e60d4b7ee9f2ab62d2ca9bd3e3",
+        "bytes": 5434,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f44d_1f3fd.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-thumbs-up-medium-ce274fdd56da2bdf.json",
+        "sha256": "ce274fdd56da2bdf71e98c96d04156141e17a4ca491a306f96de56fe2da6c014",
+        "bytes": 40915,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f44d_1f3fd/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-clap",
+      "unicode": "👏",
+      "lookup_sequences": [
+        "👏"
+      ],
+      "label_vi": "Vỗ tay",
+      "aliases_vi": [
+        "hoan hô"
+      ],
+      "category": "cu-chi",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-clap-34265e9431a758f6.svg",
+        "sha256": "34265e9431a758f6c4d3e88365b35a3e338cee0b1d84cfe9682a5779e52f452f",
+        "bytes": 5794,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f44f.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-clap-fc1d22422ac8ce68.json",
+        "sha256": "fc1d22422ac8ce686e9851ea69410d43dc7d244cc9c3a33cc768ffd2653a79e3",
+        "bytes": 138962,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f44f/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-party",
+      "unicode": "🎉",
+      "lookup_sequences": [
+        "🎉"
+      ],
+      "label_vi": "Chúc mừng",
+      "aliases_vi": [
+        "ăn mừng"
+      ],
+      "category": "bieu-tuong",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-party-4ab7ad6e03994f59.svg",
+        "sha256": "4ab7ad6e03994f59b270eca28efc08e408d74a868aa025bb4d4576c195d1e522",
+        "bytes": 5734,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f389.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-party-eab1fd7070bffd29.json",
+        "sha256": "eab1fd7070bffd2965c12a80d2d91cff76683af65019f142acf9a553ee877b5c",
+        "bytes": 67875,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f389/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 25
+      }
+    },
+    {
+      "id": "noto-sparkles",
+      "unicode": "✨",
+      "lookup_sequences": [
+        "✨"
+      ],
+      "label_vi": "Lấp lánh",
+      "aliases_vi": [
+        "lung linh"
+      ],
+      "category": "bieu-tuong",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-sparkles-e17f4ea67fb41fd0.svg",
+        "sha256": "e17f4ea67fb41fd082235eae90f03722980342d478c817e1359ec068d2fa64ab",
+        "bytes": 2637,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u2728.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-sparkles-60b0b7e80faadfad.json",
+        "sha256": "60b0b7e80faadfadef6972fbf63b707f01b022fe7662573dca0bbf76785863ad",
+        "bytes": 15584,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/2728/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-heart",
+      "unicode": "❤️",
+      "lookup_sequences": [
+        "❤️",
+        "❤"
+      ],
+      "label_vi": "Trái tim",
+      "aliases_vi": [
+        "yêu",
+        "tim"
+      ],
+      "category": "bieu-tuong",
+      "width": 800,
+      "height": 800,
+      "poster": {
+        "file": "noto-heart-280a633e0e72c7f4.svg",
+        "sha256": "280a633e0e72c7f45a0bdbc819d55d3de71dc47439d3024a0b9d3d7c76642023",
+        "bytes": 1598,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u2764.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-heart-7925790edd7ec4a4.json",
+        "sha256": "7925790edd7ec4a4da6ccb9491c61a2e03705182e7db263f12d8e46a8fcddb79",
+        "bytes": 8439,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/2764/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 75
+      }
+    },
+    {
+      "id": "noto-heart-fire",
+      "unicode": "❤️‍🔥",
+      "lookup_sequences": [
+        "❤️‍🔥",
+        "❤‍🔥"
+      ],
+      "label_vi": "Tim rực cháy",
+      "aliases_vi": [
+        "nhiệt thành"
+      ],
+      "category": "bieu-tuong",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-heart-fire-cb56cd897c225b28.svg",
+        "sha256": "cb56cd897c225b28d01553e326d1907ca35d46f64003907551044b62cd0fc28c",
+        "bytes": 4185,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u2764_200d_1f525.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-heart-fire-79b906bbe30d0de4.json",
+        "sha256": "79b906bbe30d0de4d5e70191f5109b5d5f0a4c7354f21bd6c0d40ba02bec96bf",
+        "bytes": 64140,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/2764_200d_1f525/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 20
+      }
+    },
+    {
+      "id": "noto-fire",
+      "unicode": "🔥",
+      "lookup_sequences": [
+        "🔥"
+      ],
+      "label_vi": "Ngọn lửa",
+      "aliases_vi": [
+        "lửa"
+      ],
+      "category": "bieu-tuong",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-fire-dbea451b6cba787d.svg",
+        "sha256": "dbea451b6cba787df0bb9bc84ceec1bed96e499e8b876b80682ce323f83b1a1b",
+        "bytes": 2502,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f525.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-fire-96199d8e8fea7d90.json",
+        "sha256": "96199d8e8fea7d90196b95b9a9e56b13af43e3817efe037bd9aa1e5215579838",
+        "bytes": 29358,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f525/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 0
+      }
+    },
+    {
+      "id": "noto-wink",
+      "unicode": "😉",
+      "lookup_sequences": [
+        "😉"
+      ],
+      "label_vi": "Nháy mắt",
+      "aliases_vi": [
+        "tinh nghịch"
+      ],
+      "category": "cam-xuc",
+      "width": 1024,
+      "height": 1024,
+      "poster": {
+        "file": "noto-wink-12f6e171841c75ee.svg",
+        "sha256": "12f6e171841c75ee34110fd80e1c08d6bd6f29e510e0c26272cf013093bf4bbd",
+        "bytes": 2491,
+        "source_url": "https://raw.githubusercontent.com/googlefonts/noto-emoji/99701e07d3d1fe1bdbcdb14964547f0fd592966f/2D/svg/emoji_u1f609.svg",
+        "source_revision": "99701e07d3d1fe1bdbcdb14964547f0fd592966f",
+        "last_modified": "",
+        "license": "Apache-2.0",
+        "attribution": "Google Noto Emoji",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash."
+      },
+      "animation": {
+        "file": "noto-wink-2ac8b005d0a95d73.json",
+        "sha256": "2ac8b005d0a95d73859f510572bf7c4724c704df3c0f35115504542a8b5fc827",
+        "bytes": 27737,
+        "source_url": "https://fonts.gstatic.com/s/e/notoemoji/latest/1f609/lottie.json",
+        "source_revision": "google-cdn-snapshot-2026-09-16",
+        "last_modified": "Wed, 16 Sep 2026 00:01:55 GMT",
+        "license": "CC-BY-4.0",
+        "attribution": "Animated Noto Emoji by Google",
+        "changes": "Không thay đổi artwork; tên tệp được gắn hash.",
+        "lottie_version": "5.8.1",
+        "rest_frame": 74
+      }
+    }
+  ]
+}

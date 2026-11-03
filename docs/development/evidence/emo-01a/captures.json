@@ -1,0 +1,62 @@
+{
+  "expressions-1440-light": {
+    "route": "/thu-nghiem/bieu-cam",
+    "width": 1440,
+    "height": 1100,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "sha256": "13e868b262328dab4439acf54229d88bf1c54c5e52e712e52159d942d7640b0e",
+    "inspected": true,
+    "source_commit": "036136550e4dd8873288c5dbe553d607ca2467c0",
+    "captured_at_utc": "2026-11-03T17:20:08.969528+00:00"
+  },
+  "expressions-system-dark-1440": {
+    "route": "/thu-nghiem/bieu-cam",
+    "width": 1440,
+    "height": 1200,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "system",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "sha256": "4b9e410c0b10b1b9f36115bef636d06ef18a964fed0fe989606ad37430a9fcdc",
+    "inspected": true,
+    "source_commit": "036136550e4dd8873288c5dbe553d607ca2467c0",
+    "captured_at_utc": "2026-11-03T17:20:10.596529+00:00"
+  },
+  "expressions-390-dark": {
+    "route": "/thu-nghiem/bieu-cam",
+    "width": 390,
+    "height": 1100,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "sha256": "0b9157915c385d9ccfb811dc6198a3d16d8f43fc4696e2d7a1d07603f4231d5d",
+    "inspected": true,
+    "source_commit": "036136550e4dd8873288c5dbe553d607ca2467c0",
+    "captured_at_utc": "2026-11-03T17:20:06.785528+00:00"
+  },
+  "expressions-320-dark-200-catalog": {
+    "route": "/thu-nghiem/bieu-cam",
+    "width": 320,
+    "height": 1100,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 2430,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "sha256": "6bb35161c025ca49b9e639bac295ce1db3ee695c7805385d7d1eec859a81f7cd",
+    "inspected": true,
+    "source_commit": "036136550e4dd8873288c5dbe553d607ca2467c0",
+    "captured_at_utc": "2026-11-03T17:20:06.013528+00:00"
+  }
+}

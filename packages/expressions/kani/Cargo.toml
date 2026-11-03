@@ -1,0 +1,15 @@
+# Isolated compiler compatibility surface: exactly the production library, no copied reducer.
+[package]
+name = "vink-expressions-proof"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+publish = false
+
+[lib]
+path = "../src/lib.rs"
+
+[workspace]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

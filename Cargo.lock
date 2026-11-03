@@ -3126,6 +3126,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "vink-expressions"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "vink-identity"
 version = "0.1.0"
 dependencies = [
@@ -3201,6 +3208,7 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-normalization",
+ "vink-expressions",
  "vink-patterns",
  "vink-ui",
  "wasm-bindgen",
