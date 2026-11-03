@@ -15,6 +15,8 @@ Search công khai và ngữ cảnh reader đối chiếu ngày 01/11/2026 trên 
 của [#14](https://github.com/loveoverflowcom/vink/issues/14); [spec r2](../design/public-reading.md#layoutspec-r2--tìm-trong-danh-sách-và-giữ-ngữ-cảnh-14-lát-cắt-a).
 Mật độ Explore và assertions hình học/search/byline trong `publicReading` đối chiếu
 ngày 03/11/2026 trên nền `0e69412`; [LayoutSpec r3 và bằng chứng UI-REPAIR-02](../design/ui-repair-02.md).
+Phân cấp Explore, nhịp header reader và hàng bản thảo gọn đối chiếu ngày 04/11/2026 trên nền
+`27927c4`; [LayoutSpec và bằng chứng UI-REPAIR-14/15/16](../design/ui-repair-14-16.md).
 Readiness, provisioning PostgreSQL theo owner và role tách đối chiếu ngày 02/11/2026 trên nền
 `5afb00b` cho commit 1 của [ranh giới PostgreSQL/Identity](../architecture/identity-postgres-boundaries.md);
 hàng Identity đối chiếu ngày 02/11/2026 trên nền `6357922` (commit 2); hàng App ↔ Identity và
