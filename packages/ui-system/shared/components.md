@@ -1,10 +1,16 @@
 # Contract component nền (UIS-02)
 
 **Trạng thái:** UIS-02/06 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) — đã triển khai ở
-cả hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. Chưa có màn
-nào của app dùng các component này; adoption thuộc #23 sau qualification #24. Đây là contract ngữ
+cả hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. UIS-05 (#23)
+đã đưa các component vào năm màn Web và composition CMP mẫu; qualification rộng hơn thuộc #24. Đây là contract ngữ
 nghĩa dùng chung: Leptos (`vink-ui`) và CMP (`:ui`) giữ **cùng tên, props, sự kiện, owner và trạng
 thái không hỗ trợ**, không cần cùng DOM/cây Compose.
+
+UIS-05 bổ sung seam cho consumer thật, không đổi owner dữ liệu: Web `Link.href` nhận
+`Signal<String>` (chuỗi tĩnh vẫn dùng được), URL không hợp lệ thành anchor không có href;
+`TextField` có `name`, `max_length`, `TextKind::Search`, `input_ref` và `on_focus` để form GET
+SSR và editor dùng cùng primitive mà giữ focus/giới hạn 200. `Button.button_ref` là điểm trả
+focus của host; vẫn một target và chặn activation khi disabled/pending.
 
 ## Nguyên tắc chung
 

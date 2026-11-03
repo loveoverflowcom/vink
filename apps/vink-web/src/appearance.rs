@@ -97,26 +97,10 @@ pub fn initials(display_name: Option<&str>) -> String {
 pub(crate) fn ThemePicker(group: &'static str) -> impl IntoView {
     let appearance = expect_context::<Appearance>();
     view! {
-        <fieldset class="vk-appearance">
-            <legend>"Giao diện"</legend>
-            <div class="vk-theme-choices">
-                {[(Theme::Light, "Sáng"), (Theme::Dark, "Tối"), (Theme::System, "Hệ thống")]
-                    .into_iter()
-                    .map(|(theme, label)| view! {
-                        <label class="vk-theme-choice">
-                            <input
-                                type="radio"
-                                name=group
-                                value=theme.value()
-                                prop:checked=move || appearance.theme.get() == theme
-                                on:change=move |_| appearance.set_theme(theme)
-                            />
-                            <span>{label}</span>
-                        </label>
-                    })
-                    .collect_view()}
-            </div>
-        </fieldset>
+        <vink_ui::RadioGroup id=group legend="Giao diện"
+            options=vec![vink_ui::ChoiceOption::new("light", "Sáng"), vink_ui::ChoiceOption::new("dark", "Tối"), vink_ui::ChoiceOption::new("system", "Hệ thống")]
+            value=Signal::derive(move || Some(appearance.theme.get().value().to_string()))
+            on_change=move |value: String| appearance.set_theme(Theme::parse(&value)) />
     }
 }
 
@@ -124,10 +108,10 @@ pub(crate) fn ThemePicker(group: &'static str) -> impl IntoView {
 pub(crate) fn AccountStatus() -> impl IntoView {
     view! {
         <div class="vk-account-status">
-            <span class="vk-avatar" aria-hidden="true">{initials(None)}</span>
+            <vink_ui::Avatar kind=vink_ui::AvatarKind::Account decorative=true />
             <div>
-                <p>"Chưa có thông tin tài khoản"</p>
-                <p class="vk-muted">"Vink chưa mở đăng nhập."</p>
+                <vink_ui::Text role=vink_ui::TypeRole::Label>"Chưa có thông tin tài khoản"</vink_ui::Text>
+                <vink_ui::Text tone=vink_ui::TextTone::Muted>"Vink chưa mở đăng nhập."</vink_ui::Text>
             </div>
         </div>
     }

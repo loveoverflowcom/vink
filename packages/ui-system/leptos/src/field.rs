@@ -26,6 +26,7 @@ pub enum TextKind {
     Email,
     Url,
     Tel,
+    Search,
 }
 
 impl TextKind {
@@ -35,6 +36,7 @@ impl TextKind {
             Self::Email => "email",
             Self::Url => "url",
             Self::Tel => "tel",
+            Self::Search => "search",
         }
     }
 }
@@ -116,6 +118,9 @@ struct TextProps {
     described: Signal<Option<String>>,
     placeholder: Option<String>,
     autocomplete: Option<String>,
+    name: Option<String>,
+    max_length: Option<u32>,
+    on_focus: Option<Callback<()>>,
 }
 
 /// The native text control. The DOM value is written only when the caller's value changes (a
@@ -173,6 +178,9 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
                     id=p.id
                     class="vk-ui-input"
                     type=kind
+                    name=p.name
+                    maxlength=p.max_length
+                    on:focus=move |_| { if let Some(focus) = p.on_focus { focus.run(()); } }
                     value=initial
                     prop:value=move || value.get()
                     readonly=readonly
@@ -217,6 +225,10 @@ fn text_field(
     mode: FieldMode,
     placeholder: Option<String>,
     autocomplete: Option<String>,
+    name: Option<String>,
+    max_length: Option<u32>,
+    input_ref: Option<NodeRef<leptos::html::Input>>,
+    on_focus: Option<Callback<()>>,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let has_help = help.is_some();
@@ -224,7 +236,7 @@ fn text_field(
         let id = id.clone();
         Signal::derive(move || described_by(&id, has_help, invalid.get()))
     };
-    let node = NodeRef::<leptos::html::Input>::new();
+    let node = input_ref.unwrap_or_default();
     let props = TextProps {
         id: id.clone(),
         value,
@@ -236,6 +248,9 @@ fn text_field(
         described,
         placeholder,
         autocomplete,
+        name,
+        max_length,
+        on_focus,
     };
     let search = control == TextControl::Search;
     let clear = move || {
@@ -291,6 +306,10 @@ pub fn TextField(
     #[prop(optional)] kind: TextKind,
     #[prop(optional, into)] placeholder: Option<String>,
     #[prop(optional, into)] autocomplete: Option<String>,
+    #[prop(optional, into)] name: Option<String>,
+    #[prop(optional)] max_length: Option<u32>,
+    #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
+    #[prop(optional, into)] on_focus: Option<Callback<()>>,
 ) -> impl IntoView {
     text_field(
         TextControl::Field(kind),
@@ -305,6 +324,10 @@ pub fn TextField(
         mode,
         placeholder,
         autocomplete,
+        name,
+        max_length,
+        input_ref,
+        on_focus,
     )
 }
 
@@ -335,6 +358,10 @@ pub fn TextArea(
         mode,
         placeholder,
         None,
+        None,
+        None,
+        None,
+        None,
     )
 }
 
@@ -363,6 +390,10 @@ pub fn SearchField(
         false,
         mode,
         placeholder,
+        None,
+        None,
+        None,
+        None,
         None,
     )
 }

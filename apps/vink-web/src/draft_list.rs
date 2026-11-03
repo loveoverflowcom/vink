@@ -37,21 +37,7 @@ pub fn display_title(title: &str) -> String {
     }
 }
 
-/// API v1 timestamps are RFC 3339 UTC. Keep that zone explicit rather than imply local time.
-pub fn updated_at_label(timestamp: &str) -> String {
-    match (timestamp.get(0..10), timestamp.get(11..16)) {
-        (Some(date), Some(clock))
-            if timestamp.get(10..11) == Some("T") && timestamp.ends_with('Z') =>
-        {
-            let parts: Vec<_> = date.split('-').collect();
-            if let [year, month, day] = parts.as_slice() {
-                return format!("{day}/{month}/{year}, {clock} UTC");
-            }
-            timestamp.to_string()
-        }
-        _ => timestamp.to_string(),
-    }
-}
+pub use vink_patterns::updated_at_label;
 
 /// A failed non-idempotent POST must not turn into an automatic replay. Even 503/500 can
 /// follow an uncertain transaction commit. Only explicit pre-write rejections are certain.

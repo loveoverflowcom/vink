@@ -7,8 +7,9 @@ nền theo họ (chữ/bố cục, hành động, nhập/chọn, danh tính/hìn
 trạng thái, phản hồi, loading và motion ở cả hai renderer, contract ở [shared/states.md](shared/states.md);
 UIS-04/06 ([#22](https://github.com/loveoverflowcom/vink/issues/22)) — shell, điều hướng và lớp phủ ở cả
 hai renderer, contract ở [shared/navigation.md](shared/navigation.md). Chuỗi tiếp theo: #23
-patterns/adoption → #24 qualification. Shell Web (`apps/vink-web/src/shell.rs`) đã dùng primitive
-UIS-04; chưa màn route nào dùng component UIS-02/03. Đây là thư viện renderer, không phải ứng dụng
+patterns/adoption (triển khai trong PR UIS-05) → #24 qualification. Shell Web (`apps/vink-web/src/shell.rs`) đã dùng primitive
+UIS-04; Explore/Reader/Desk/Editor/Me đã dùng các component UIS-02/03, qua
+[composition Vink](../vink-patterns/README.md) và adapter DTO thuộc app. Đây là thư viện renderer, không phải ứng dụng
 thứ hai và không giữ session, API, route hay nghiệp vụ. Tổ chức học từ Cantos UI system (`7649017`) nhưng
 không chép thương hiệu, phiên bản, palette hay build; Vink giữ Lavender, Be Vietnam Pro/Literata,
 Enso và Leptos 0.8.
@@ -137,7 +138,10 @@ Contract, LayoutSpec và owner: [shared/navigation.md](shared/navigation.md). Kh
    `vink-ui.css` vào `/pkg/vink.css`; DOM shell đổi class sang `vk-ui-*` và ID rail suy từ `navigation`
    (`navigation-toggle`, `navigation-primary`, `navigation-account`, `navigation-tooltip`). Route,
    storage key, guard và editor giữ nguyên owner. Component CSS dần dùng role chữ `--vk-type-*`.
-5. **#23–#24:** màn Web/CMP dùng pattern; qualification, Android/iOS diagnostic host và versioning.
+5. **UIS-05 (#23):** migration năm màn Web, package composition Vink dùng chung với preview và
+   thư viện CMP `:patterns`; 6 recipe có cùng ID/trạng thái ở hai gallery. Feedback/native editor
+   chỉ là mẫu, không nối backend. CSS duplicate của controls/fields/notices/dialog đã bỏ khỏi app.
+6. **#24:** qualification, Android/iOS diagnostic host và versioning.
    Đổi `version` trong `tokens.json` theo semver khi đổi/xóa role (major), thêm role (minor), sửa
    giá trị không đổi nghĩa (patch); generator in phiên bản vào mọi file sinh ra.
 
@@ -150,6 +154,7 @@ Kết quả chạy, môi trường, SHA và PASS/FAIL/NOT_RUN/UNSUPPORTED nằm 
 [ui-system-foundation-evidence](../../docs/development/ui-system-foundation-evidence.md) (UIS-01) và
 [ui-system-primitives-evidence](../../docs/development/ui-system-primitives-evidence.md) (UIS-02),
 [ui-system-states-evidence](../../docs/development/ui-system-states-evidence.md) (UIS-03),
-[ui-system-navigation-evidence](../../docs/development/ui-system-navigation-evidence.md) (UIS-04). Trạng thái
+[ui-system-navigation-evidence](../../docs/development/ui-system-navigation-evidence.md) (UIS-04),
+[ui-system-adoption-evidence](../../docs/development/ui-system-adoption-evidence.md) (UIS-05). Trạng thái
 catalog của mọi entry vẫn là `implemented-unverified`: compile, test và ảnh của JVM/Chrome không
 thành nghiệm thu thiết kế, Android/iOS, IME hay screen reader.

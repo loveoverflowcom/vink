@@ -69,7 +69,7 @@ phải mở chúng để nhận xét thị giác. Manifest chưa chứng minh c�
 | Đọc tác phẩm | `/tac-pham/{id}?q=…` → “Khám phá” về `/?q=…#work-{id}`; Back/Forward, reload | Giữ query và đích hàng đọc bằng URL; sau khi list mount thì cuộn/focus về hàng còn khớp, không nhận đích ngoài. Title dài wrap, đoạn/khổ/dòng/thụt lề giữ nguyên. Public HTML/metadata/canonical trước JS; canonical bỏ q/hash. Thiếu/chưa công khai `404`, lỗi dữ liệu `503`, retry giữ URL/query | `Reader`, `PublicationView` và restore/remember position trong [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [DocumentView](../../apps/vink-web/src/document.rs) |
 | Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết. Route lạ (`/ban-vietnam`, `/tac-pham/a/b`) là 404, không sáng đích. Back khi Tôi mở chỉ đóng Tôi | [shell.rs](../../apps/vink-web/src/shell.rs) (`Destination`), primitive [vink-ui navigation](../../packages/ui-system/leptos/src/navigation.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
 | Tôi và chọn giao diện | Web/tablet: Tôi mở overlay; Mở trang Tôi tới `/toi`; mobile: Tôi tới `/toi` | Sáng/Tối/Hệ thống, lưu preference local; OS đổi được theo dõi bằng CSS khi chọn Hệ thống. Storage lỗi vẫn dùng được trong phiên. Không có dữ liệu profile/auth thật. Theme/rail/overlay không lưu hay rời editor; chuyển route dùng guard | [appearance.rs](../../apps/vink-web/src/appearance.rs), [me.rs](../../apps/vink-web/src/pages/me.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs) |
-| Tìm và viết tiếp | “Bàn viết” → `/ban-viet` → “Viết tiếp” hoặc “Mở bản thảo” → `/ban-viet/{id}` | Resume là nháp mới cập nhật nhất theo API; row có title/version/updated_at. Tìm có/không dấu, Đ/đ và NFC/NFD chỉ trong tối đa 100 nháp đã tải; đổi sort/tìm không đổi resume. Loading, rỗng, không kết quả, lỗi và 401 riêng; query/sort giữ qua tải lại/retry | `DeskIndex`, `DraftListView`, `DraftMetadata` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs) |
+| Tìm và viết tiếp | “Bàn viết” → `/ban-viet` → “Viết tiếp” hoặc “Mở bản thảo” → `/ban-viet/{id}` | Resume là nháp mới cập nhật nhất theo API; row có title/version/updated_at. Tìm có/không dấu, Đ/đ và NFC/NFD chỉ trong tối đa 100 nháp đã tải; đổi sort/tìm không đổi resume. Loading, rỗng, không kết quả, lỗi và 401 riêng; query/sort giữ qua tải lại/retry | `DeskIndex`, `DraftListView` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs) |
 | Tạo và đối chiếu kết quả | Heading “Tạo bản thảo”; khi rỗng “Viết bản thảo đầu tiên” → editor. Mất phản hồi → “Tải lại danh sách” → mở nháp tìm thấy hoặc chủ động “Tạo thêm bản thảo” | Một POST đang bay; lỗi 401/403/validation tách khỏi outcome chưa rõ (network, 503, bất thường). Không tự retry POST. Chỉ GET thành công mới mở khóa tạo thêm; GET không chứng minh POST nào đã ghi. Phản hồi muộn sau khi rời dashboard không điều hướng | `CreateDraftButton`, `CreateNotice`, `DeskIndex`; `CreateState` trong [draft_list.rs](../../apps/vink-web/src/draft_list.rs) |
 | Viết và lưu nháp | `/ban-viet/{id}` → sửa “Tiêu đề”, “Nội dung” (CodeMirror 6) → “Lưu nháp”; có Enter ở tiêu đề và Ctrl/Cmd+S trong form (chờ IME commit) | `unsaved` → `saving` → `saved` khi server xác nhận; `failed` (thông báo có “Thử lưu lại”, “Tải bản đang viết”) hoặc `conflict` giữ nội dung trên trang. Lưu thủ công, chưa autosave | `DraftEditor`, `Editor` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [EditorSession](../../apps/vink-web/src/desk_state.rs), [BodyEditor](../../apps/vink-web/src/editor.rs), [runtime](../../apps/vink-web/editor/README.md) |
 | Xử lý xung đột | Mở cùng nháp ở hai tab, tab B lưu trước, tab A lưu bản cũ → “Lưu đè bằng nội dung đang viết” khi muốn giữ bản A | Save cũ nhận `409`, không ghi; bản A còn trong editor. Lưu đè dùng version được báo và vẫn có thể xung đột lần nữa. Muốn mở bản server thì “Tải bản đang viết” trước khi reload | `Editor`, `EditorSession`; owner/version được kiểm trong [PgStore](../../services/vink-app/src/persistence/postgres.rs) |
@@ -86,14 +86,18 @@ Các điểm bám dashboard: `draft-loading`, `draft-content` (`aria-busy`), `dr
 `retry-drafts`, `create-notice`, `reconcile-drafts`. Spec và delta nằm ở
 [dashboard #8](../design/README.md#dashboard-bàn-viết-8).
 
-Các điểm bám automation đã có trong Bàn viết: `data-testid=create-draft`, `save`, `save-status`,
-`editor-toolbar`, `preview`, `export`, `save-failed`, `retry-save`, `conflict`, `keep-mine`,
-`desk-error`, `editor-failed`; `data-testid=editor-body` (host CodeMirror, có `data-state`
-`loading|ready|failed`; chữ ở `.cm-content`, từng dòng là `.cm-line`); `input[name=title]`;
-hộp thoại `leave-editor` (`leave-message`, `leave-stay`, `leave-save`, `leave-recovery`,
-`leave-export`, `leave-discard`, `discard-back`, `discard-confirm`) và `draft-preview`
-(`preview-close`). Shell có ID `navigation-toggle`, `navigation-primary`, `navigation-tooltip`,
-`profile-trigger`, `bottom-navigation` và `data-testid` `profile-menu`, `profile-close`, `open-me`;
+Các action đã migrate có ID trên button (`#create-draft`, `#save`, `#preview`, `#export`,
+`#retry-save`, `#keep-mine`, `#leave-stay`, `#leave-save`, `#leave-export`, `#leave-discard`,
+`#discard-back`, `#discard-confirm`, `#preview-close`, `#profile-close`, `#open-me`);
+field có ID `#draft-search`/`#draft-sort`/`#draft-title`. Trạng thái vẫn dùng `data-testid`:
+`save-status`, `editor-toolbar`, `save-failed`, `conflict`, `desk-error`, `editor-failed`;
+`data-testid=editor-body` là host CodeMirror (`data-state=loading|ready|failed`, chữ ở
+`.cm-content`, từng dòng `.cm-line`); `input[name=title]` là trường tiêu đề. Dialog có
+`data-testid=leave-editor|draft-preview`, lời giải thích/phục hồi có `leave-message|leave-recovery`;
+button bên trong dùng các ID đã liệt kê. Dashboard refresh/retry/reconcile có ID
+`#refresh-drafts`, `#retry-drafts`, `#reconcile-drafts`, `#clear-draft-search`.
+Shell có ID `navigation-toggle`, `navigation-primary`, `navigation-tooltip`, `profile-trigger`,
+`bottom-navigation` và `data-testid=profile-menu`; nút tiện ích dùng `#profile-close`, `#open-me`.
 radio theme có `name=overlay-theme|page-theme` và `value=light|dark|system`. `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
 Đây là điểm tìm phần tử, không thay thế việc kiểm nội dung, version và dữ liệu bền vững.
 
@@ -169,3 +173,26 @@ bình luận Discourse, AI job, export ngoài `.txt` và nhiều chương. Trạ
 Khi một route, thao tác hoặc assertion đổi, cập nhật hàng liên quan cùng source owner;
 [vink-maintain-verification](../../.agents/skills/vink-maintain-verification/SKILL.md) hướng dẫn
 phân biệt tài liệu cũ, thiếu coverage và lỗi sản phẩm. Không cần cập nhật theo lịch cố định.
+
+## Adoption UIS-05 (#23)
+
+Đối chiếu 03/11/2026 trên nền `25e3d10` + diff PR UIS-05. Mapping của năm route → composition →
+primitive → token/adapter nằm trong [spec/evidence](ui-system-adoption-evidence.md), không đổi
+quyền, transport hoặc save state. [ui/adapters.rs](../../apps/vink-web/src/ui/adapters.rs) chuyển
+public/draft cards sang view facts; [vink-patterns](../../packages/vink-patterns/README.md) không
+import DTO, service hay fixture. `DraftMetadata`/nhãn UTC được composition sở hữu.
+
+- Browser `adaptiveShell`/`draftDashboard`/`publicReading`/`mainPhase`: gọi primitives qua DOM mới,
+  giữ kiểm tương phản, tab order, SSR/private HTML, no N+1, zero utility writes, one EditorView,
+  selection/undo, delayed save/create, conflict/export/leave. Button blocked được kiểm qua
+  `aria-disabled` (vẫn focus được) và số request thực.
+- Hai gallery đăng ký `screen.explore`, `screen.reader`, `screen.desk`, `screen.editor`,
+  `screen.me`, `composition.feedback`; mỗi màn có trạng thái áp dụng ở catalog. Fixtures chỉ ở
+  consumer preview. Web `screenPatterns` kiểm giữ chữ qua theme/resize, Sharing không có form,
+  pending/auth/uncertain không submit, sample intent không claim saved/sent. CMP
+  `ScreenPreviewTest` kiểm controlled TextFieldValue + selection qua theme/pending/uncertain;
+  `ScreenCaptureTest` chụp consumer riêng ở 360/834/1280dp, mật độ 1, font scale 1/2,
+  padding 16dp, OS inset 0; `ParticipantsTest` kiểm khử trùng người theo stable key/thứ tự, không bịa người thiếu ID.
+- `CaptureTest` CMP và `preview-smoke` Leptos render các kịch bản vào captures; ảnh cần mở mới là
+  bằng chứng thị giác. Native compile/common test không phải native screen runtime. Kết quả chạy
+  thuộc evidence, không được suy từ hàng coverage này. #14 B/C vẫn chưa có backend.

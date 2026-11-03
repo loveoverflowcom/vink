@@ -185,7 +185,12 @@ const UI_CSS: &str = "packages/ui-system/leptos/style/vink-ui.css";
 fn stylesheet(root: &Path, out: &Path) -> Result<(), String> {
     ui_tokens::run(root, true)?;
     let mut css = String::new();
-    for part in [ui_tokens::CSS_OUT, UI_CSS, "apps/vink-web/style/vink.css"] {
+    for part in [
+        ui_tokens::CSS_OUT,
+        UI_CSS,
+        "packages/vink-patterns/leptos/patterns.css",
+        "apps/vink-web/style/vink.css",
+    ] {
         let text =
             std::fs::read_to_string(root.join(part)).map_err(|e| format!("read {part}: {e}"))?;
         css.push_str(&text);

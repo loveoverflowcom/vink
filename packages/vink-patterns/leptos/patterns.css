@@ -1,0 +1,39 @@
+/* Vink feature composition geometry; primitive styles and tokens stay in vink-ui. */
+.vk-work-byline { position: relative; padding-bottom: var(--vk-space-4); margin-bottom: var(--vk-space-3); }
+.vk-work-byline__date { display: block; margin-inline-start: calc(var(--vk-size-avatar-feed) + var(--vk-space-3)); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-reader__header .vk-work-byline__date { margin-inline-start: calc(var(--vk-size-avatar-reader) + var(--vk-space-3)); }
+.vk-public-row__link { display: block; text-align: start; color: var(--vk-on-surface); text-decoration: none; }
+.vk-public-row__link:hover h3 { text-decoration: underline; }
+.vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-caption-size); }
+.vk-draft-row__link { display: flex; flex-direction: column; align-items: start; text-align: start; gap: var(--vk-space-2); min-width: 0; padding: var(--vk-space-4); color: var(--vk-on-surface); text-decoration: none; }
+.vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1) var(--vk-space-4); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-caption-weight); }
+.vk-feedback-item { padding-block: var(--vk-space-4); border-bottom: 1px solid var(--vk-outline-variant); overflow-wrap: anywhere; }
+.vk-feedback-composer { display: grid; gap: var(--vk-space-3); }
+@media (max-width: 759px) {
+  .vk-work-byline__date { margin-inline-start: calc(var(--vk-size-avatar-feed-narrow) + var(--vk-space-3)); }
+  .vk-reader__header .vk-work-byline__date { margin-inline-start: calc(var(--vk-size-avatar-reader-narrow) + var(--vk-space-3)); }
+}
+
+.vk-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vk-space-2) var(--vk-space-4);
+  padding: var(--vk-space-2) var(--vk-space-2) var(--vk-space-2) var(--vk-space-4);
+  border-radius: var(--vk-radius-xl);
+  background: var(--vk-surface-container-high);
+}
+
+.vk-editor-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vk-space-1);
+}
+
+
+.vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); overflow-wrap: anywhere; }
+.vk-draft-row__open { color: var(--vk-primary); font-size: var(--vk-type-caption-size); }
+
+.vk-draft-row__link:hover { text-decoration: none; background: var(--vk-state-hover); }
+.vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }

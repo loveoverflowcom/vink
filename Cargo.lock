@@ -3146,6 +3146,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vink-patterns"
+version = "0.1.0"
+dependencies = [
+ "leptos",
+ "vink-ui",
+]
+
+[[package]]
 name = "vink-store-postgres"
 version = "0.1.0"
 dependencies = [
@@ -3170,6 +3178,7 @@ dependencies = [
  "console_error_panic_hook",
  "leptos",
  "unicode-normalization",
+ "vink-patterns",
  "vink-ui",
  "wasm-bindgen",
  "web-sys",
@@ -3192,6 +3201,7 @@ dependencies = [
  "serde",
  "serde_json",
  "unicode-normalization",
+ "vink-patterns",
  "vink-ui",
  "wasm-bindgen",
  "wasm-bindgen-futures",

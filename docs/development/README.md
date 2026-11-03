@@ -71,6 +71,12 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
   (`AdaptiveScaffold`, `NavigationRail` có toggle thường trực, `BottomNavigation`, `TopBar`,
   `NavItem`, `NavUtility`); vectors chung Rust/Kotlin. Shell Web đã dùng; preview CMP có adapter
   chẩn đoán (back stack, deep link, chữ chưa lưu), chưa phải app native.
+- UIS-05 ([#23](https://github.com/loveoverflowcom/vink/issues/23)): năm màn Web dùng shared
+  controls/fields/avatar/byline/notice/dialog, composition Vink ở
+  [packages/vink-patterns](../../packages/vink-patterns/README.md) nhận view props và callbacks;
+  adapter DTO vẫn ở app. Hai gallery có 6 recipe cùng ID (Explore/Reader/Desk/Editor/Me/feedback),
+  CMP render component native thật; community/native editor chỉ mẫu có nhãn, không fake backend.
+  [Spec, mapping và bằng chứng](ui-system-adoption-evidence.md).
 - API JSON v1 có contract và fixtures do server sở hữu:
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch

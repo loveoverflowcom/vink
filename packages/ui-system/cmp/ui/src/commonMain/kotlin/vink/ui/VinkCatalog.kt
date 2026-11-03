@@ -6,9 +6,9 @@
 package vink.ui
 
 object VinkCatalog {
-    const val VERSION: String = "0.4.0"
+    const val VERSION: String = "0.5.0"
     val statuses: List<String> = listOf("implemented-unverified", "unsupported", "verified")
-    val families: List<Pair<String, String>> = listOf("foundation" to "Nền tảng", "text" to "Chữ", "layout" to "Bố cục", "action" to "Hành động", "field" to "Nhập và chọn", "identity" to "Danh tính và hình ảnh", "state" to "Trạng thái và phản hồi", "navigation" to "Điều hướng và khung", "composition" to "Kết hợp")
+    val families: List<Pair<String, String>> = listOf("foundation" to "Nền tảng", "text" to "Chữ", "layout" to "Bố cục", "action" to "Hành động", "field" to "Nhập và chọn", "identity" to "Danh tính và hình ảnh", "state" to "Trạng thái và phản hồi", "navigation" to "Điều hướng và khung", "composition" to "Kết hợp", "screen" to "Màn Vink — Mẫu")
 
     val entries: List<CatalogEntry> = listOf(
         CatalogEntry(
@@ -395,6 +395,60 @@ object VinkCatalog {
             label = "Kết hợp lồng nhau",
             summary = "Theme lồng nhau + biểu mẫu + byline trong cùng màn mẫu.",
             scenarios = listOf(Scenario("default", "Sáng trong Tối"), Scenario("narrow", "Màn hẹp")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "screen.explore",
+            family = "screen",
+            label = "Khám phá — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("loading", "loading"), Scenario("low", "low"), Scenario("empty", "empty"), Scenario("no-results", "no-results"), Scenario("error", "error"), Scenario("long", "long"), Scenario("refresh", "refresh")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "screen.reader",
+            family = "screen",
+            label = "Reader — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("loading", "loading"), Scenario("error", "error"), Scenario("not-found", "not-found"), Scenario("long", "long"), Scenario("feedback", "feedback")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "screen.desk",
+            family = "screen",
+            label = "Bàn viết — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("loading", "loading"), Scenario("empty", "empty"), Scenario("no-results", "no-results"), Scenario("error", "error"), Scenario("auth-required", "auth-required"), Scenario("forbidden", "forbidden"), Scenario("uncertain", "uncertain"), Scenario("refresh", "refresh"), Scenario("long", "Tiêu đề Việt dài")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "screen.editor",
+            family = "screen",
+            label = "Editor chrome — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("loading", "loading"), Scenario("dirty", "dirty"), Scenario("pending", "pending"), Scenario("error", "error"), Scenario("conflict", "conflict"), Scenario("uncertain", "uncertain"), Scenario("long", "long")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "screen.me",
+            family = "screen",
+            label = "Tôi — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("auth-required", "auth-required"), Scenario("long", "long")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "composition.feedback",
+            family = "composition",
+            label = "Góp ý có ngữ cảnh — Mẫu",
+            summary = "Composition Vink qua public APIs; dữ liệu trình bày Mẫu, không gọi dịch vụ hay xác nhận lưu/gửi.",
+            scenarios = listOf(Scenario("default", "default"), Scenario("sharing", "sharing"), Scenario("technique", "technique"), Scenario("pending", "pending"), Scenario("error", "error"), Scenario("auth-required", "auth-required"), Scenario("uncertain", "uncertain")),
             leptos = "implemented-unverified",
             cmp = "implemented-unverified",
         ),
