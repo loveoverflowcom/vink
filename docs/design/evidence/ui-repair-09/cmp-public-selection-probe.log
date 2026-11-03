@@ -1,0 +1,113 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :diagnostics:kmpPartiallyResolvedDependenciesChecker
+> Task :diagnostics:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostics:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :diagnostics:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :diagnostics:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :diagnostics:generateResourceAccessorsForCommonMain SKIPPED
+> Task :diagnostics:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :diagnostics:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :diagnostics:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :diagnostics:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :diagnostics:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :diagnostics:generateComposeResClass SKIPPED
+> Task :diagnostics:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :patterns:kmpPartiallyResolvedDependenciesChecker
+> Task :patterns:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :patterns:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :patterns:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :patterns:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :patterns:generateResourceAccessorsForCommonMain SKIPPED
+> Task :patterns:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :patterns:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :patterns:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :patterns:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :patterns:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :patterns:generateComposeResClass SKIPPED
+> Task :patterns:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ui:kmpPartiallyResolvedDependenciesChecker
+> Task :ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ui:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ui:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :ui:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :ui:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :ui:generateComposeResClass SKIPPED
+> Task :ui:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ui:compileKotlinDesktop UP-TO-DATE
+> Task :ui:compileDesktopMainJava NO-SOURCE
+> Task :ui:assembleDesktopMainResources UP-TO-DATE
+> Task :ui:desktopProcessResources UP-TO-DATE
+> Task :ui:processDesktopMainResources SKIPPED
+> Task :ui:desktopMainClasses UP-TO-DATE
+> Task :ui:desktopJar UP-TO-DATE
+> Task :patterns:compileKotlinDesktop UP-TO-DATE
+> Task :patterns:compileDesktopMainJava NO-SOURCE
+> Task :patterns:assembleDesktopMainResources UP-TO-DATE
+> Task :patterns:desktopProcessResources UP-TO-DATE
+> Task :patterns:processDesktopMainResources SKIPPED
+> Task :patterns:desktopMainClasses UP-TO-DATE
+> Task :patterns:desktopJar UP-TO-DATE
+> Task :diagnostics:compileKotlinDesktop UP-TO-DATE
+> Task :diagnostics:compileDesktopMainJava NO-SOURCE
+> Task :diagnostics:assembleDesktopMainResources UP-TO-DATE
+> Task :diagnostics:desktopProcessResources UP-TO-DATE
+> Task :diagnostics:processDesktopMainResources SKIPPED
+> Task :diagnostics:desktopMainClasses UP-TO-DATE
+> Task :diagnostics:desktopJar UP-TO-DATE
+> Task :preview:kmpPartiallyResolvedDependenciesChecker
+> Task :preview:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :preview:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :preview:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :preview:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :preview:generateResourceAccessorsForCommonMain SKIPPED
+> Task :preview:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :preview:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :preview:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :preview:generateResourceAccessorsForDesktopMain SKIPPED
+> Task :preview:generateActualResourceCollectorsForDesktopMain SKIPPED
+> Task :preview:generateComposeResClass SKIPPED
+> Task :preview:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :preview:compileKotlinDesktop UP-TO-DATE
+> Task :preview:compileDesktopMainJava NO-SOURCE
+> Task :preview:assembleDesktopMainResources UP-TO-DATE
+> Task :preview:syncPreviewFonts UP-TO-DATE
+> Task :preview:desktopProcessResources UP-TO-DATE
+> Task :preview:processDesktopMainResources SKIPPED
+> Task :preview:desktopMainClasses UP-TO-DATE
+> Task :preview:desktopJar UP-TO-DATE
+> Task :preview:convertXmlValueResourcesForCommonTest NO-SOURCE
+> Task :preview:copyNonXmlValueResourcesForCommonTest NO-SOURCE
+> Task :preview:prepareComposeResourcesTaskForCommonTest NO-SOURCE
+> Task :preview:generateResourceAccessorsForCommonTest SKIPPED
+> Task :preview:convertXmlValueResourcesForDesktopTest NO-SOURCE
+> Task :preview:copyNonXmlValueResourcesForDesktopTest NO-SOURCE
+> Task :preview:prepareComposeResourcesTaskForDesktopTest NO-SOURCE
+> Task :preview:generateResourceAccessorsForDesktopTest SKIPPED
+> Task :preview:assembleDesktopTestResources UP-TO-DATE
+> Task :preview:syncFontProbeSources UP-TO-DATE
+> Task :preview:desktopTestProcessResources UP-TO-DATE
+> Task :preview:processDesktopTestResources SKIPPED
+> Task :preview:compileTestKotlinDesktop
+> Task :preview:compileDesktopTestJava NO-SOURCE
+> Task :preview:desktopTestClasses
+
+> Task :preview:desktopTest
+
+PublicNavigationSelectionProbe[desktop] > untouchedPublicPrimitivesCompareToggleAndUnrelatedBlur[desktop] STANDARD_OUT
+    PUBLIC_PRIMITIVE_AFTER_TOGGLE=TextRange(9, 9)
+    PUBLIC_PRIMITIVE_EVENTS_TOGGLE=field onValueChange TextRange(0, 0) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9) | field onValueChange TextRange(3, 9) -> TextRange(9, 9) | toggle handler sees TextRange(9, 9)
+    PUBLIC_PRIMITIVE_AFTER_UNRELATED_BLUR=TextRange(9, 9)
+    PUBLIC_PRIMITIVE_EVENTS_BLUR=field onValueChange TextRange(9, 9) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9) | field onValueChange TextRange(3, 9) -> TextRange(9, 9)
+    PUBLIC_PRIMITIVE_AFTER_LAYOUT_ONLY=TextRange(3, 9)
+    PUBLIC_PRIMITIVE_EVENTS_LAYOUT_ONLY=field onValueChange TextRange(9, 9) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9)
+
+PublicNavigationSelectionProbe[desktop] > untouchedPublicPrimitivesCompareToggleAndUnrelatedBlur[desktop] PASSED
+
+BUILD SUCCESSFUL in 22s
+26 actionable tasks: 6 executed, 20 up-to-date

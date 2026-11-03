@@ -1,0 +1,1338 @@
+{
+  "format": "vink-ui-repair-09-evidence-v1",
+  "data_mode": "synthetic",
+  "locale": "vi-VN",
+  "host": "Linux-7.0.0-42-generic-x86_64-with-glibc2.43",
+  "browser": "Google Chrome 156.0.8078.73",
+  "renderer": "leptos-web",
+  "font_context": "fonts.ready; actual font checks in each record; DPR1/root font 200%, not browser zoom",
+  "notes": [
+    "Raw documents are capped at6000px and may show only catalog; complete specimen focus tiles retain scale.",
+    "New adaptive scenario has no before counterpart. Fixed/default keeps its ID and uses a labelled horizontal canvas.",
+    "A captured artifact is inspected only when its individual inspected flag is true."
+  ],
+  "records": [
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "light",
+      "raw_name": "navigation.rail--default--light--390--text200",
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 4747.59375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 17651
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 0
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "before--navigation.rail--default--light--390--text200.png",
+        "sha256": "b275d813e4888f8dad7ef5eff02d585980d50a96afe8caf197e267fb8d04c0aa",
+        "byte_size": 295531,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped",
+        "inspected": true
+      },
+      "artifacts": [
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part1.png",
+          "sha256": "bf4b4e6c54789df1c5b61f9dbac6f4522e1472a7a4d58c57cdd61227dc674092",
+          "byte_size": 56514,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part2.png",
+          "sha256": "6a7849df6e23f156422b67ab8685ff18e66aaf5b032b877d18f8e57ca0322c6b",
+          "byte_size": 41103,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10557,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10557
+          },
+          "tile": 2,
+          "tiles": 6,
+          "inspected": true
+        },
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part3.png",
+          "sha256": "f1ef3e06909e639d32cc4f939375fadef8f66c628018593ac46557c1aa52e935",
+          "byte_size": 16688,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11353,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11353
+          },
+          "tile": 3,
+          "tiles": 6,
+          "inspected": true
+        },
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part4.png",
+          "sha256": "e435cc47e897053ecbfa7e90b1930bf36533e4d4a8635dbb84f8ca8a134f60c4",
+          "byte_size": 9655,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12149,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12149
+          },
+          "tile": 4,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part5.png",
+          "sha256": "7a99c6ca9da09b645c92b4b09bbaf16baae717ed46ca510a4a2cf057695b651d",
+          "byte_size": 9734,
+          "image_pixels": {
+            "width": 369,
+            "height": 796
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12945,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 796,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12945
+          },
+          "tile": 5,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.rail--default--light--390--text200--focus--part6.png",
+          "sha256": "5e847c9dd26135e1c718d61c4bb5c1d72f7469a7c3168721e78a04c6cfb8197d",
+          "byte_size": 11260,
+          "image_pixels": {
+            "width": 369,
+            "height": 793
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 13741,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 793,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 13741
+          },
+          "tile": 6,
+          "tiles": 6,
+          "inspected": false
+        }
+      ],
+      "captured_at": "2026-11-03T13:45:10.385Z",
+      "inspected": false,
+      "geometry": {
+        "outer": 390,
+        "frame": 304.8125,
+        "rail": 220,
+        "main": 82.8125
+      },
+      "phase": "before",
+      "source": {
+        "git_sha": "2829ceacbd291fc3c04b05ca3fcab38e52f3ea79",
+        "dirty": false,
+        "source_fingerprint": "c75c31d337f8f62a9b7697fc94e620b4fe464be6a29b7b616d4f5b7298ea38b4",
+        "source_files": {
+          "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+          "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+          "packages/ui-system/leptos/preview/Cargo.toml": "85f791e1d9a3eb944658801295ed9485f30b374b7d543bcb04ceeb2903fc6fb2",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+          "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "49e6495024f19e5e0bad36c5b98b9df3f3e495a0ec8630198f13b33e82472533",
+          "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+          "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+          "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+          "packages/ui-system/leptos/preview/src/navigation.rs": "b4ba88d0db7cd7feb6f594f89697ea42553793c60518c7a7ec95d5ded5873f50",
+          "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+          "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+          "packages/ui-system/leptos/preview/style/preview.css": "7cc64655fb82c56e458b87cf55f1541e446b23728098c655f4227a552ed91a0b",
+          "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+          "packages/ui-system/leptos/src/catalog.rs": "d857f1457682c60c32c74e9ef531377ca8876ef998212c8c98c1d25ac5be34c0",
+          "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+          "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+          "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+          "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+          "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+          "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+          "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+          "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+          "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+          "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+          "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+          "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+          "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+          "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+          "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+          "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+          "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+          "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+          "packages/ui-system/leptos/style/vink-ui.css": "79f3adbecc4dff300d909e0c1c1a5fa44ffbf13215cd66d975d38e6bcc8d0a27",
+          "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+          "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+          "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+          "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+          "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+          "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+          "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+          "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+          "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+          "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "packages/ui-system/shared/navigation.md": "c1b2a03ad0c8eb41c1d487b89f8adba295d81cdc6a03eacb053f20e8be1f3ada",
+          "packages/ui-system/shared/preview-catalog.json": "f2b3afed1d027784f97b94de4a8208fd5087bec95f4df9882d789e816a9bec93",
+          "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+          "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+          "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+          "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+          "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+          "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+        }
+      },
+      "source_matches_current_ui_files": false
+    },
+    {
+      "catalog_id": "navigation.scaffold",
+      "scenario_id": "default",
+      "theme": "light",
+      "raw_name": "navigation.scaffold--default--light--390--text200",
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 4592.84375
+      },
+      "document_css": {
+        "width": 375,
+        "height": 17496
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9005
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "before--navigation.scaffold--default--light--390--text200.png",
+        "sha256": "99cf547a05558dd3ece362e2b235339e51726d5def08e706b1ed0f13590527e3",
+        "byte_size": 295527,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped",
+        "inspected": true
+      },
+      "artifacts": [
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part1.png",
+          "sha256": "d24455a2b3f64fcd9a12ec390691d624cd494b995167827b21aeb9b85e7e6c81",
+          "byte_size": 56841,
+          "image_pixels": {
+            "width": 369,
+            "height": 770
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part2.png",
+          "sha256": "c5b214a9ef359369e6b71eca1967177ec6ab2c899e6652062eb8a576b463684f",
+          "byte_size": 39688,
+          "image_pixels": {
+            "width": 369,
+            "height": 770
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10531,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10531
+          },
+          "tile": 2,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part3.png",
+          "sha256": "fddbe23c1b8565b119b0ca12f278898b9c1704a57924ddd06055732f55e98c56",
+          "byte_size": 14526,
+          "image_pixels": {
+            "width": 369,
+            "height": 770
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11301,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11301
+          },
+          "tile": 3,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part4.png",
+          "sha256": "de6c3f39865fb3ca3f014afdd59bda540577c14565094669cf0f5fbb26698a95",
+          "byte_size": 9859,
+          "image_pixels": {
+            "width": 369,
+            "height": 770
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12071,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12071
+          },
+          "tile": 4,
+          "tiles": 6,
+          "inspected": true
+        },
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part5.png",
+          "sha256": "80dcf06d0bac96c5cc3f034ffd793a4452480fc36ad53890fc499e01a6884ba3",
+          "byte_size": 9438,
+          "image_pixels": {
+            "width": 369,
+            "height": 770
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12841,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 770,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12841
+          },
+          "tile": 5,
+          "tiles": 6,
+          "inspected": false
+        },
+        {
+          "path": "before--navigation.scaffold--default--light--390--text200--focus--part6.png",
+          "sha256": "a6ac27c07f0994af1a09af95a0ec3396e59a2515c130fc3e7f52de6c284d6436",
+          "byte_size": 11341,
+          "image_pixels": {
+            "width": 369,
+            "height": 768
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 13611,
+            "width": 369,
+            "height": 768,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 768,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 13611
+          },
+          "tile": 6,
+          "tiles": 6,
+          "inspected": false
+        }
+      ],
+      "captured_at": "2026-11-03T13:45:13.043Z",
+      "inspected": false,
+      "geometry": {
+        "outer": 390,
+        "frame": 304.8125,
+        "rail": 220,
+        "main": 82.8125
+      },
+      "phase": "before",
+      "source": {
+        "git_sha": "2829ceacbd291fc3c04b05ca3fcab38e52f3ea79",
+        "dirty": false,
+        "source_fingerprint": "c75c31d337f8f62a9b7697fc94e620b4fe464be6a29b7b616d4f5b7298ea38b4",
+        "source_files": {
+          "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+          "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+          "packages/ui-system/leptos/preview/Cargo.toml": "85f791e1d9a3eb944658801295ed9485f30b374b7d543bcb04ceeb2903fc6fb2",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+          "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "49e6495024f19e5e0bad36c5b98b9df3f3e495a0ec8630198f13b33e82472533",
+          "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+          "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+          "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+          "packages/ui-system/leptos/preview/src/navigation.rs": "b4ba88d0db7cd7feb6f594f89697ea42553793c60518c7a7ec95d5ded5873f50",
+          "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+          "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+          "packages/ui-system/leptos/preview/style/preview.css": "7cc64655fb82c56e458b87cf55f1541e446b23728098c655f4227a552ed91a0b",
+          "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+          "packages/ui-system/leptos/src/catalog.rs": "d857f1457682c60c32c74e9ef531377ca8876ef998212c8c98c1d25ac5be34c0",
+          "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+          "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+          "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+          "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+          "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+          "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+          "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+          "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+          "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+          "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+          "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+          "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+          "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+          "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+          "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+          "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+          "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+          "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+          "packages/ui-system/leptos/style/vink-ui.css": "79f3adbecc4dff300d909e0c1c1a5fa44ffbf13215cd66d975d38e6bcc8d0a27",
+          "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+          "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+          "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+          "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+          "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+          "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+          "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+          "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+          "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+          "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "packages/ui-system/shared/navigation.md": "c1b2a03ad0c8eb41c1d487b89f8adba295d81cdc6a03eacb053f20e8be1f3ada",
+          "packages/ui-system/shared/preview-catalog.json": "f2b3afed1d027784f97b94de4a8208fd5087bec95f4df9882d789e816a9bec93",
+          "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+          "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+          "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+          "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+          "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+          "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+        }
+      },
+      "source_matches_current_ui_files": false
+    },
+    {
+      "catalog_id": "navigation.rail",
+      "scenario_id": "default",
+      "theme": "light",
+      "raw_name": "navigation.rail--default--light--390--text200",
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 2336.28125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 15240
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 0
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "after--navigation.rail--default--light--390--text200.png",
+        "sha256": "3d6226f46cd69f705668455ded11ebac89ea8e45407bef19b3540bf196b9a574",
+        "byte_size": 295592,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped",
+        "inspected": true
+      },
+      "artifacts": [
+        {
+          "path": "after--navigation.rail--default--light--390--text200--focus--part1.png",
+          "sha256": "33de6ae279c864d8381e070fb93117de4cb9062566ba7d1f446251050e60a95b",
+          "byte_size": 59599,
+          "image_pixels": {
+            "width": 369,
+            "height": 788
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 788,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 788,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 3,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.rail--default--light--390--text200--focus--part2.png",
+          "sha256": "ece5b6ca8181edd97d0636ea3e50fced7ac957c4ddaacdfbac271e51200d936a",
+          "byte_size": 47596,
+          "image_pixels": {
+            "width": 369,
+            "height": 788
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10549,
+            "width": 369,
+            "height": 788,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 788,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10549
+          },
+          "tile": 2,
+          "tiles": 3,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.rail--default--light--390--text200--focus--part3.png",
+          "sha256": "73be27741491d057f40dbfea744992fe8345e9a6971467ade6fe1412df044860",
+          "byte_size": 31542,
+          "image_pixels": {
+            "width": 369,
+            "height": 786
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11337,
+            "width": 369,
+            "height": 786,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 786,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11337
+          },
+          "tile": 3,
+          "tiles": 3,
+          "inspected": true
+        }
+      ],
+      "captured_at": "2026-11-03T14:15:43.293Z",
+      "inspected": false,
+      "geometry": {
+        "outer": 390,
+        "frame": 304.8125,
+        "canvas": 304.8125,
+        "rail": 220
+      },
+      "phase": "after",
+      "source": {
+        "git_sha": "fef2a540711b7ec720d66e24251723bb35738cfb",
+        "dirty": false,
+        "source_fingerprint": "c56e3aeb1f042ba02344571e5a6b690206195e9c542794e73c914794a41ed2cb",
+        "source_files": {
+          "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+          "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+          "packages/ui-system/leptos/preview/Cargo.toml": "ddb27353ef0bd1d4b0ec36b5ca1c280885b514cc5e1b684f268e9b1ba455cb3e",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+          "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "0a7616e418cbf3b94d710183eda9fe5625d03e41c2107393a4770b934dc4b7b2",
+          "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+          "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+          "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+          "packages/ui-system/leptos/preview/src/navigation.rs": "1157c275ad589261129c0c4f41d69a3408eaf086c0ba02b4e1bc239fad0ea1b1",
+          "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+          "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+          "packages/ui-system/leptos/preview/style/preview.css": "171e1a3e79c2b38be673175230d9c42d9bdbcc6a8752ec51fbdf024ddbd08081",
+          "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+          "packages/ui-system/leptos/src/catalog.rs": "99738df2f386cd21b627e226aa8e6d6b112c1935abd99aba4eaa5ac64778a4d4",
+          "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+          "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+          "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+          "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+          "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+          "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+          "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+          "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+          "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+          "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+          "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+          "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+          "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+          "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+          "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+          "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+          "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+          "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+          "packages/ui-system/leptos/style/vink-ui.css": "097f630eb523499e44e01693e63671156eac980e405728fa0e034a8d8b9866f6",
+          "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+          "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+          "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+          "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+          "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+          "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+          "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+          "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+          "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+          "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "packages/ui-system/shared/navigation.md": "1bcf5b108511b8e3cb4abdf0b64d96313d5ea986b705458d4496fb0679a37c10",
+          "packages/ui-system/shared/preview-catalog.json": "664eff73f1210c4e149d72bd8699a3ba0b2226376f1e8a86add34a15bb061416",
+          "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+          "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+          "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+          "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+          "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+          "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+        }
+      },
+      "source_matches_current_ui_files": true
+    },
+    {
+      "catalog_id": "navigation.scaffold",
+      "scenario_id": "default",
+      "theme": "light",
+      "raw_name": "navigation.scaffold--default--light--390--text200",
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 3400.28125
+      },
+      "document_css": {
+        "width": 375,
+        "height": 16304
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 9005
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "after--navigation.scaffold--default--light--390--text200.png",
+        "sha256": "808303ae11d2422d57285ae0fb8e772c29cd9411cd040b91494ad247e51a5cc1",
+        "byte_size": 295564,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped",
+        "inspected": true
+      },
+      "artifacts": [
+        {
+          "path": "after--navigation.scaffold--default--light--390--text200--focus--part1.png",
+          "sha256": "b6b82ef67d68198c179e3bd99406191f8256971b9299faa296063d5ecd37c7cb",
+          "byte_size": 67999,
+          "image_pixels": {
+            "width": 369,
+            "height": 857
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--default--light--390--text200--focus--part2.png",
+          "sha256": "3ce5a9ba6722947b04325d80baedd91fc6751003954370b98cedd7d6a5344621",
+          "byte_size": 58463,
+          "image_pixels": {
+            "width": 369,
+            "height": 857
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10618,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10618
+          },
+          "tile": 2,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--default--light--390--text200--focus--part3.png",
+          "sha256": "635bfa0a5ac515f7e6ca62ed975e12314285850246cf64fa527ac08599cb78ff",
+          "byte_size": 49526,
+          "image_pixels": {
+            "width": 369,
+            "height": 857
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11475,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 857,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11475
+          },
+          "tile": 3,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--default--light--390--text200--focus--part4.png",
+          "sha256": "367e5ca63d128826807ebcdd03a80da12a80ceea96e85dea34ad787e7c67ffc0",
+          "byte_size": 38567,
+          "image_pixels": {
+            "width": 369,
+            "height": 855
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12332,
+            "width": 369,
+            "height": 855,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 855,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12332
+          },
+          "tile": 4,
+          "tiles": 4,
+          "inspected": true
+        }
+      ],
+      "captured_at": "2026-11-03T14:15:45.857Z",
+      "inspected": false,
+      "geometry": {
+        "outer": 390,
+        "frame": 304.8125,
+        "canvas": 1100,
+        "rail": 220,
+        "main": 878
+      },
+      "phase": "after",
+      "source": {
+        "git_sha": "fef2a540711b7ec720d66e24251723bb35738cfb",
+        "dirty": false,
+        "source_fingerprint": "c56e3aeb1f042ba02344571e5a6b690206195e9c542794e73c914794a41ed2cb",
+        "source_files": {
+          "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+          "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+          "packages/ui-system/leptos/preview/Cargo.toml": "ddb27353ef0bd1d4b0ec36b5ca1c280885b514cc5e1b684f268e9b1ba455cb3e",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+          "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "0a7616e418cbf3b94d710183eda9fe5625d03e41c2107393a4770b934dc4b7b2",
+          "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+          "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+          "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+          "packages/ui-system/leptos/preview/src/navigation.rs": "1157c275ad589261129c0c4f41d69a3408eaf086c0ba02b4e1bc239fad0ea1b1",
+          "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+          "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+          "packages/ui-system/leptos/preview/style/preview.css": "171e1a3e79c2b38be673175230d9c42d9bdbcc6a8752ec51fbdf024ddbd08081",
+          "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+          "packages/ui-system/leptos/src/catalog.rs": "99738df2f386cd21b627e226aa8e6d6b112c1935abd99aba4eaa5ac64778a4d4",
+          "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+          "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+          "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+          "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+          "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+          "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+          "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+          "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+          "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+          "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+          "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+          "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+          "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+          "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+          "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+          "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+          "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+          "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+          "packages/ui-system/leptos/style/vink-ui.css": "097f630eb523499e44e01693e63671156eac980e405728fa0e034a8d8b9866f6",
+          "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+          "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+          "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+          "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+          "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+          "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+          "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+          "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+          "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+          "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "packages/ui-system/shared/navigation.md": "1bcf5b108511b8e3cb4abdf0b64d96313d5ea986b705458d4496fb0679a37c10",
+          "packages/ui-system/shared/preview-catalog.json": "664eff73f1210c4e149d72bd8699a3ba0b2226376f1e8a86add34a15bb061416",
+          "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+          "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+          "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+          "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+          "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+          "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+        }
+      },
+      "source_matches_current_ui_files": true
+    },
+    {
+      "catalog_id": "navigation.scaffold",
+      "scenario_id": "adaptive",
+      "theme": "light",
+      "raw_name": "navigation.scaffold--adaptive--light--390--text200",
+      "requested_theme": "Sáng",
+      "effective_theme": "light",
+      "surface": "#fffaff",
+      "root_font_size": "32px",
+      "dpr": 1,
+      "bounds_css": {
+        "x": 15.59375,
+        "y": 9773.765625,
+        "width": 343.8125,
+        "height": 3208.0625
+      },
+      "document_css": {
+        "width": 375,
+        "height": 31701
+      },
+      "readiness": "fonts.ready + two animation frames",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "viewport_css": {
+        "width": 390,
+        "height": 900
+      },
+      "scroll_css": {
+        "x": 0,
+        "y": 0
+      },
+      "padding_css": 12,
+      "capture_mode": "specimen",
+      "raw_artifact": {
+        "path": "after--navigation.scaffold--adaptive--light--390--text200.png",
+        "sha256": "07a99cab4d545183d4a3251e8999933c661e8e7d1fc12574e18751de4ffc1774",
+        "byte_size": 295460,
+        "image_pixels": {
+          "width": 390,
+          "height": 6000
+        },
+        "capture_mode": "document-capped",
+        "inspected": false
+      },
+      "artifacts": [
+        {
+          "path": "after--navigation.scaffold--adaptive--light--390--text200--focus--part1.png",
+          "sha256": "ebac6f3e7616c0baa31db578520a8b716256b532f9ad6859b4e7c76bef18e2dc",
+          "byte_size": 62285,
+          "image_pixels": {
+            "width": 369,
+            "height": 809
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 9761,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 9761
+          },
+          "tile": 1,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--adaptive--light--390--text200--focus--part2.png",
+          "sha256": "4ef3c3bb6047512342bf646d06b7c979fd1100acaddd0039c13e12dd000bc1ee",
+          "byte_size": 57188,
+          "image_pixels": {
+            "width": 369,
+            "height": 809
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 10570,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 10570
+          },
+          "tile": 2,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--adaptive--light--390--text200--focus--part3.png",
+          "sha256": "578a8ff820e62b1fac1c5dc7fd735c302295289aa22bd97a406ae44adb07a67d",
+          "byte_size": 54525,
+          "image_pixels": {
+            "width": 369,
+            "height": 809
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 11379,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 809,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 11379
+          },
+          "tile": 3,
+          "tiles": 4,
+          "inspected": false
+        },
+        {
+          "path": "after--navigation.scaffold--adaptive--light--390--text200--focus--part4.png",
+          "sha256": "31087808bec16263908dacc997c320c396cf3e823281826103e2d8a4c422de57",
+          "byte_size": 36041,
+          "image_pixels": {
+            "width": 369,
+            "height": 806
+          },
+          "clip_css": {
+            "x": 3,
+            "y": 12188,
+            "width": 369,
+            "height": 806,
+            "scale": 1
+          },
+          "viewport_clip_css": {
+            "x": 3,
+            "y": 0,
+            "width": 369,
+            "height": 806,
+            "scale": 1
+          },
+          "scroll_css": {
+            "x": 0,
+            "y": 12188
+          },
+          "tile": 4,
+          "tiles": 4,
+          "inspected": true
+        }
+      ],
+      "captured_at": "2026-11-03T14:10:22.241Z",
+      "inspected": false,
+      "geometry": {
+        "outer": 390,
+        "frame": 305,
+        "requested": "adaptive",
+        "effective": "bar",
+        "rail": 0,
+        "main": 302.8125,
+        "pageOverflow": false,
+        "frameOverflow": false
+      },
+      "phase": "after-adaptive-new-scenario",
+      "source": {
+        "git_sha": "2829ceacbd291fc3c04b05ca3fcab38e52f3ea79",
+        "dirty": true,
+        "source_fingerprint": "c56e3aeb1f042ba02344571e5a6b690206195e9c542794e73c914794a41ed2cb",
+        "source_files": {
+          "packages/ui-system/leptos/Cargo.toml": "003779fa0619b3470054fed67cd78654a6072b60448b1c3d649fb5104a5648b2",
+          "packages/ui-system/leptos/README.md": "e1ba53cd47940d78a11191a5a453bd932a8196963929e4c7d463911285225d52",
+          "packages/ui-system/leptos/preview/Cargo.toml": "ddb27353ef0bd1d4b0ec36b5ca1c280885b514cc5e1b684f268e9b1ba455cb3e",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+          "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+          "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "0a7616e418cbf3b94d710183eda9fe5625d03e41c2107393a4770b934dc4b7b2",
+          "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+          "packages/ui-system/leptos/preview/src/components.rs": "15296241c461dbf67041ea35a46c70807e8fc9228c4c6986f79085857c5e1f9e",
+          "packages/ui-system/leptos/preview/src/lib.rs": "802cc8c635774f461da4f4f32e06c8ae07430b762a93fb24fbeff8e77097ee13",
+          "packages/ui-system/leptos/preview/src/navigation.rs": "1157c275ad589261129c0c4f41d69a3408eaf086c0ba02b4e1bc239fad0ea1b1",
+          "packages/ui-system/leptos/preview/src/screens.rs": "83b4bec8ad945cd34ba83c95feb96b15e92c51fda4aba09d78dd1b27de880d32",
+          "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+          "packages/ui-system/leptos/preview/style/preview.css": "171e1a3e79c2b38be673175230d9c42d9bdbcc6a8752ec51fbdf024ddbd08081",
+          "packages/ui-system/leptos/src/action.rs": "3ad73ba9ce58dec00c57de71e42b22993116f917f7cc15173241f177ac49a6d3",
+          "packages/ui-system/leptos/src/catalog.rs": "99738df2f386cd21b627e226aa8e6d6b112c1935abd99aba4eaa5ac64778a4d4",
+          "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+          "packages/ui-system/leptos/src/field.rs": "78a8e86fc7b496a99d545d675e3b151043fa023736b295860262cbc69df15258",
+          "packages/ui-system/leptos/src/icons.rs": "c8c82cbc0008d867b3572a6ba30e5990d26ecdaf276cdc7bccfde3ced460434f",
+          "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+          "packages/ui-system/leptos/src/identity_vectors.rs": "6a4f9ef742394bcedbca146f8fbeca4dd089b723672d3ea2d3a5510d50b0ad43",
+          "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+          "packages/ui-system/leptos/src/lib.rs": "908a24d0dc1e576565bceefaef92f1ac12ddb55d750753c44419a55119878b1c",
+          "packages/ui-system/leptos/src/media.rs": "d49738d1548ad7b863992dc41172f735ad01f91a705780a5d72fd7387daf6d8a",
+          "packages/ui-system/leptos/src/navigation.rs": "7dcb1ad8f48b115f6e3ffd97ffbf73b989fcfbca2355d1d4e0e2c00b5e297348",
+          "packages/ui-system/leptos/src/navigation_vectors.rs": "7b9d1823fb0943bd2970181ce0970089cdb595f425371786bd6de89a9d8f7957",
+          "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+          "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+          "packages/ui-system/leptos/src/state_vectors.rs": "9a97aeac91af9fbfc3bc8060733146a58d4561e409a3824376674b740f988ed2",
+          "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+          "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+          "packages/ui-system/leptos/src/tokens.rs": "eec7a53001fe46e123e0e017ab4def05f1917075cfb26af764e887d696ad4dec",
+          "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+          "packages/ui-system/leptos/style/tokens.css": "d467f66d2eed244908411514caf0fd7472e03e68bc009e8ec3f9c22ec3812547",
+          "packages/ui-system/leptos/style/vink-ui.css": "097f630eb523499e44e01693e63671156eac980e405728fa0e034a8d8b9866f6",
+          "packages/ui-system/shared/README.md": "7a257eea3c92fba03d1f8c63db7b47708e50571a35d283cbcb3cc9dc244a05d3",
+          "packages/ui-system/shared/api-coverage.json": "c79d2883a4fdc8a49ed5b88e1bf576875b877622dcdcc8ad3c0ac843402f9456",
+          "packages/ui-system/shared/compatibility.md": "b4170da214e02d70c076f5b574ac8c629a45fb690bde2739048d86eac893b6ba",
+          "packages/ui-system/shared/components.md": "5ccae7d7ca844573de191408220a07dd145e33d2d045c35087e1b9a6a6f1ebbf",
+          "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+          "packages/ui-system/shared/fixtures/identity.json": "917153b586590ffe4a8956bb5ed21e8b2bfdc2901bbd3120a7d09d0d310cea2f",
+          "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+          "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+          "packages/ui-system/shared/icons.json": "54ef5665f4b2cd819f371a1d85db815184de354fa54616cb25adb47136002cd9",
+          "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "packages/ui-system/shared/navigation.md": "1bcf5b108511b8e3cb4abdf0b64d96313d5ea986b705458d4496fb0679a37c10",
+          "packages/ui-system/shared/preview-catalog.json": "664eff73f1210c4e149d72bd8699a3ba0b2226376f1e8a86add34a15bb061416",
+          "packages/ui-system/shared/states.md": "5155470f8cbd3c343d97a5df425a077792274336d9046e001a32ac80a765b97f",
+          "packages/ui-system/shared/tokens.json": "7771a63e66d5f5416f0694bce05f064e3c36864b520485a43a91973d335dba5e",
+          "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+          "packages/vink-patterns/leptos/Cargo.toml": "f0205db50c858d50dbf6c000ce65571aae4673462e0a95c952c74e28554a9ed2",
+          "packages/vink-patterns/leptos/patterns.css": "76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111",
+          "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
+        }
+      },
+      "source_matches_current_ui_files": true
+    }
+  ],
+  "tested_head": "fef2a540711b7ec720d66e24251723bb35738cfb",
+  "build_artifacts": {
+    "target/ui-preview/leptos/pkg/vink_ui_preview_bg.wasm": "23235a033776352a2afa66236ce061e8542aadafe0af157fa7135d4ee5ce5ffb",
+    "target/ui-preview/leptos/pkg/vink_ui_preview.js": "00c9a85813beda08a8a62b4939649b5c08818b417c2f9188579fffd825220c77",
+    "target/ui-preview/leptos/vink-ui.css": "097f630eb523499e44e01693e63671156eac980e405728fa0e034a8d8b9866f6",
+    "target/ui-preview/leptos/preview.css": "171e1a3e79c2b38be673175230d9c42d9bdbcc6a8752ec51fbdf024ddbd08081"
+  }
+}

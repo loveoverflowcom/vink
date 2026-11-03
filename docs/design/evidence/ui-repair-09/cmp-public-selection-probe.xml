@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vink.ui.preview.PublicNavigationSelectionProbe" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-03T14:11:20.779Z" hostname="pd-cantos" time="2.573">
+  <properties/>
+  <testcase name="untouchedPublicPrimitivesCompareToggleAndUnrelatedBlur[desktop]" classname="vink.ui.preview.PublicNavigationSelectionProbe" time="2.573"/>
+  <system-out><![CDATA[PUBLIC_PRIMITIVE_AFTER_TOGGLE=TextRange(9, 9)
+PUBLIC_PRIMITIVE_EVENTS_TOGGLE=field onValueChange TextRange(0, 0) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9) | field onValueChange TextRange(3, 9) -> TextRange(9, 9) | toggle handler sees TextRange(9, 9)
+PUBLIC_PRIMITIVE_AFTER_UNRELATED_BLUR=TextRange(9, 9)
+PUBLIC_PRIMITIVE_EVENTS_BLUR=field onValueChange TextRange(9, 9) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9) | field onValueChange TextRange(3, 9) -> TextRange(9, 9)
+PUBLIC_PRIMITIVE_AFTER_LAYOUT_ONLY=TextRange(3, 9)
+PUBLIC_PRIMITIVE_EVENTS_LAYOUT_ONLY=field onValueChange TextRange(9, 9) -> TextRange(41, 41) | field onValueChange TextRange(41, 41) -> TextRange(3, 9)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
