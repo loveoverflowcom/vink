@@ -222,7 +222,11 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     }
                     on:click=move |event: leptos::ev::MouseEvent| {
                         #[cfg(feature = "hydrate")]
-                        if let Some(dialog) = profile.get_untracked() {
+                        // Keyboard activation of a radio dispatches a click with (0, 0).
+                        // Only the dialog/backdrop itself can be an outside click; bubbled
+                        // control clicks must not dismiss the utility or steal their focus.
+                        if event.target() == event.current_target()
+                            && let Some(dialog) = profile.get_untracked() {
                             let rect = dialog.get_bounding_client_rect();
                             let (x, y) = (f64::from(event.client_x()), f64::from(event.client_y()));
                             if x < rect.left() || x > rect.right() || y < rect.top() || y > rect.bottom() {
@@ -239,7 +243,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                             "Đóng"
                         </vink_ui::Button>
                     </header>
-                    <AccountStatus />
+                    <AccountStatus id="overlay-account" />
                     <ThemePicker group="overlay-theme" />
                     <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal id="open-me" on_press=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
                         "Mở trang Tôi"

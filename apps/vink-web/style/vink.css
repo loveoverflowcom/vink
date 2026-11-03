@@ -85,13 +85,13 @@ a {
 .vk-profile-menu {
   position: fixed;
   inset: auto;
-  left: calc(var(--vk-ui-rail-width) + 16px);
-  bottom: 24px;
+  left: calc(var(--vk-ui-rail-width) + var(--vk-space-4));
+  bottom: var(--vk-space-4);
   margin: 0;
-  width: min(360px, calc(100vw - var(--vk-ui-rail-width) - 32px));
-  max-height: calc(100dvh - 48px);
+  width: min(26rem, calc(100vw - var(--vk-ui-rail-width) - 2 * var(--vk-space-4)));
+  max-height: calc(100dvh - 2 * var(--vk-space-4));
   overflow-y: auto;
-  padding: var(--vk-space-6);
+  padding: var(--vk-space-4);
   border: 0;
   border-radius: var(--vk-radius-xl);
   background: var(--vk-surface-container);
@@ -100,11 +100,40 @@ a {
 }
 
 .vk-profile-menu::backdrop { background: transparent; }
+.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-4); }
+.vk-profile-menu > * { flex-shrink: 0; }
 .vk-profile-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--vk-space-2); }
-.vk-profile-heading h2 { margin: 0; font-family: var(--vk-font-reading); }
-.vk-account-status { display: flex; gap: var(--vk-space-3); align-items: center; margin-block: var(--vk-space-6); }
+.vk-profile-heading h2 { margin: 0; font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); }
+.vk-preference-region {
+  min-width: 0;
+  display: grid;
+  gap: var(--vk-space-4);
+  padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
+  border: 1px solid var(--vk-outline-variant);
+  border-radius: var(--vk-radius-lg);
+  background: var(--vk-surface-container-low);
+}
+.vk-preference-region h2 { margin: 0; }
+.vk-account-status { display: flex; gap: var(--vk-space-3); align-items: flex-start; }
+.vk-account-status > div { min-width: 0; }
 .vk-account-status p { margin: 0; overflow-wrap: anywhere; }
-.vk-me { max-width: 42rem; padding-block: var(--vk-space-6); }
+/* Only the app's appearance composition decorates the existing native radio targets. */
+.vk-appearance-region label {
+  width: 100%;
+  gap: var(--vk-space-2);
+  padding: var(--vk-space-2);
+  border: 2px solid var(--vk-outline-variant);
+  border-radius: var(--vk-radius-md);
+}
+.vk-appearance-region label:hover { border-color: var(--vk-primary); }
+.vk-appearance-region label:has(:checked) {
+  border-color: var(--vk-primary);
+  background: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+.vk-appearance-region label:focus-within { outline: 3px solid var(--vk-focus); outline-offset: 2px; }
+.vk-me { max-width: var(--vk-measure); display: grid; gap: var(--vk-space-6); padding-block: var(--vk-space-6); }
+.vk-me > h1 { margin: 0; }
 .vk-main {
   flex: 1;
   width: 100%;

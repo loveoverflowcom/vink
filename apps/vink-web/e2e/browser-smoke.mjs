@@ -605,18 +605,20 @@ async function brandAssets(page) {
   const blockedImport = `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`;
   const errorsBefore = page.errors.length;
   await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
-  for (const theme of ['light', 'dark']) {
-    await page.eval(`localStorage.setItem('vink.ui.theme', '${theme}')`);
+  for (const [theme, system] of [['light', 'light'], ['dark', 'light'], ['system', 'dark'], ['system', 'light']]) {
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: system }] });
+    await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
     await page.goto(`${args.base}/toi`);
-    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && document.documentElement.dataset.theme === '${theme}'`), `${theme} bootstrap selects the stored theme without hydration`);
+    const selected = theme === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${theme}'`;
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${selected}`), `${theme}/${system} bootstrap selects the preference without hydration`);
     await assertBrand(page, theme);
-    await page.capture(`brand-before-hydration-${theme}`);
+    await page.capture(`brand-before-hydration-${theme}${theme === 'system' ? '-' + system : ''}`);
   }
   await page.send('Network.setBlockedURLs', { urls: [] });
-  for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + 2 && Date.now() < deadline;) await sleep(50);
+  for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + 4 && Date.now() < deadline;) await sleep(50);
   const blocked = page.errors.splice(errorsBefore);
-  const onlyBlocked = blocked.length === 2 && blocked.every((e) => e === blockedImport);
-  check(onlyBlocked, `the blocked bundle caused only its two rejected hydration imports${onlyBlocked ? '' : `: ${JSON.stringify(blocked)}`}`);
+  const onlyBlocked = blocked.length === 4 && blocked.every((e) => e === blockedImport);
+  check(onlyBlocked, `the blocked bundle caused only its four rejected hydration imports${onlyBlocked ? '' : `: ${JSON.stringify(blocked)}`}`);
   await page.eval(`localStorage.removeItem('vink.ui.theme')`);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after brand bootstrap check');
@@ -627,6 +629,8 @@ async function textContrast(page, theme, surface = 'shell') {
     desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
     explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
+    me: ['#me-title', '#page-account h2', '#page-account .vk-ui-type-label', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
+    account: ['#profile-title', '#overlay-account h2', '#overlay-account .vk-ui-type-label', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
   }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked) span', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
@@ -651,6 +655,84 @@ async function textContrast(page, theme, surface = 'shell') {
   })()`);
   writeFileSync(join(dirname(args.state), `${surface}-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
   check(pairs.every(p => p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.map(p => p.ratio)).toFixed(2)})`);
+}
+
+async function accountAppearance(page) {
+  console.log('shared account presentation and bounded appearance overlay:');
+  await page.viewport(1440);
+  await openProfile(page);
+  check(await page.eval(`(() => {
+    const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
+    const labels = group => [...document.querySelectorAll('#' + group + ' label')].map(el => el.textContent).join('|');
+    return new Set(ids).size === ids.length &&
+      document.querySelector('#page-account').textContent === document.querySelector('#overlay-account').textContent &&
+      labels('page-theme') === 'Sáng|Tối|Hệ thống' && labels('page-theme') === labels('overlay-theme') &&
+      ['page-theme', 'overlay-theme'].every(group => {
+        const el = document.getElementById(group);
+        return el.tagName === 'FIELDSET' && el.querySelector('legend') &&
+          el.getAttribute('aria-describedby') === group + '-help' &&
+          el.querySelectorAll('input[type=radio]:checked').length === 1;
+      }) && !document.querySelector('#page-account img, #overlay-account img');
+  })()`), 'page and overlay share truthful account content, named native radio groups and unique IDs');
+  await chooseTheme(page, 'system');
+  await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
+  await page.key('ArrowRight');
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native arrow key updates both appearance views through the single owner');
+  check(await page.eval(`(() => { const target = document.activeElement.closest('label'), style = getComputedStyle(target); return target.matches(':has(:checked)') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 3 && document.activeElement.matches(':focus-visible'); })()`), 'keyboard selection retains a visible focus outline and the native checked marker');
+  await page.key('Escape');
+  await chooseTheme(page, 'dark', 'page-theme');
+  await openProfile(page);
+  check(await page.eval(`document.activeElement?.value === 'dark' && document.activeElement?.name === 'overlay-theme'`), 'page theme changes are selected and focused when the overlay opens');
+  await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#overlay-theme input[value="' + value + '"]').click(); })()`);
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'dark' && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle both views on the last choice without dismissing the overlay');
+  await assertBrand(page, 'dark');
+  await page.key('Escape');
+
+  for (const { width, rail, height } of [
+    { width: 1440, rail: 'expanded', height: 900 },
+    { width: 1024, rail: 'compact', height: 900 },
+    { width: 834, rail: 'compact', height: 900 },
+    { width: 1440, rail: 'expanded', height: 360 },
+    { width: 1440, rail: 'compact', height: 360 },
+  ]) {
+    await page.viewport(width, height);
+    if ((await page.eval(RAIL_WIDTH)) !== (rail === 'expanded' ? 220 : 96)) await page.click('#navigation-toggle');
+    for (const theme of ['system', 'light', 'dark']) {
+      for (const scale of [100, 200]) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
+        await openProfile(page);
+        await chooseTheme(page, theme);
+        const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
+        check(await page.eval(`(() => {
+          const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
+          return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
+            r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight &&
+            dialog.scrollWidth <= dialog.clientWidth && document.documentElement.scrollWidth <= innerWidth &&
+            document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true';
+        })()`), `${scenario}: modal stays beside the rail, within the viewport, without internal horizontal overflow`);
+        if (height === 900 && width === 1440 && scale === 100 && theme !== 'system') await textContrast(page, theme, 'account');
+        await page.eval(`document.querySelector('#profile-close').focus()`);
+        await page.key('Tab', SHIFT);
+        check(await page.eval(`(() => {
+          const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
+          return el.id === 'open-me' && r.top >= d.top && r.bottom <= d.bottom && r.height >= 44;
+        })()`), `${scenario}: Shift+Tab reaches and reveals the final action`);
+        if (await page.eval(`document.querySelector('#profile-menu').scrollHeight > document.querySelector('#profile-menu').clientHeight`)) await page.capture(`account-overlay-${scenario}-bottom`);
+        await page.key('Tab');
+        check(await page.eval(`(() => {
+          const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
+          return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom;
+        })()`), `${scenario}: Tab reveals the close action at the start`);
+        await page.eval(`document.querySelector('#profile-menu').scrollTop = 0`);
+        await page.capture(`account-overlay-${scenario}`);
+        await page.key('Escape');
+        check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
+      }
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize = ''; localStorage.removeItem('vink.ui.rail')`);
+  await page.viewport(1440);
+  await page.reload();
 }
 
 async function adaptiveShell(page) {
@@ -741,6 +823,16 @@ async function adaptiveShell(page) {
   await openProfile(page);
   await page.click('#profile-close');
   check(await page.eval(`!${PROFILE_OPEN}`), 'explicit close works');
+  await page.eval(`(() => {
+    // Close and reopen in the same task, before the native queued close event is dispatched.
+    document.querySelector('#profile-trigger').click();
+    document.querySelector('#profile-close').click();
+    document.querySelector('#profile-trigger').click();
+  })()`);
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  check(await page.eval(`${PROFILE_OPEN} && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true'`), 'stale close events leave the reopened overlay and its expanded state intact');
+  await page.key('Escape');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'false'`), 'reopened overlay still dismisses and restores focus');
   await openProfile(page);
   await page.click('#open-me');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
@@ -783,14 +875,21 @@ async function adaptiveShell(page) {
   await page.click('#navigation-toggle');
   check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
   await assertBrand(page, 'dark');
+  await openProfile(page);
+  check(await page.eval(`document.activeElement?.value === 'dark' && document.querySelector('#page-theme input:checked')?.value === 'dark'`), 'storage denial keeps page and overlay on the same session-local choice');
+  await chooseTheme(page, 'system');
+  check(await page.eval(`document.querySelector('#page-theme input:checked')?.value === 'system'`), 'storage-denied system choice updates both views');
+  await page.key('Escape');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
   await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme')`);
   await page.reload();
 
-  for (const width of [1440, 1024, 390, 320]) {
+  await accountAppearance(page);
+
+  for (const width of [1440, 1024, 834, 390, 320]) {
     await page.viewport(width);
-    for (const theme of ['light', 'dark']) {
+    for (const theme of ['system', 'light', 'dark']) {
       if (width >= 760) {
         await openProfile(page);
         await chooseTheme(page, theme);
@@ -799,11 +898,22 @@ async function adaptiveShell(page) {
       } else {
         await chooseTheme(page, theme, 'page-theme');
       }
+      if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
         await bottomNavigationGeometry(page, `shell ${width}px/${scale}%/${theme}`);
         await page.capture(`${width}-me-${theme}-text${scale}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
+        check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
+        check(await page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].every(el => [...el.textContent.matchAll(/\\S+/g)].every(word => {
+          const range = document.createRange(); range.setStart(el.firstChild, word.index); range.setEnd(el.firstChild, word.index + word[0].length);
+          return range.getClientRects().length === 1;
+        }))`), `${width}px/${scale}% ${theme}: appearance labels keep Vietnamese words intact`);
+        if (width < 760 && scale === 200) {
+          await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
+          await page.capture(`${width}-me-${theme}-text${scale}-appearance`);
+          await page.eval(`scrollTo(0, 0)`);
+        }
       }
       await page.eval(`document.documentElement.style.fontSize = ''`);
     }
@@ -855,6 +965,10 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
   await chooseTheme(page, 'dark');
   await page.capture('1280-editor-dirty-overlay-dark');
+  await page.eval(`history.back()`);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes appearance before dirty editor navigation');
+  check(await page.eval(`location.pathname === '${editorPath}' && !document.querySelector('[data-testid=leave-editor]').open`), 'Back from appearance keeps the dirty editor without opening a second dialog');
+  await openProfile(page);
   await page.key('Escape');
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after appearance utility');
