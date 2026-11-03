@@ -7,7 +7,10 @@ hệ thống. **Lát cắt 1** (#49, nền `develop@8045d45`) thêm core cấu t
 và adapter PostgreSQL. **D2T-02b** thêm HTTP API v1 + contract fixtures
 ([contract](../../services/vink-app/contracts/http/v1/README.md#discussion-d2t-02b)): đọc, gửi, gỡ
 của chính mình, bật/tắt; không có route kiểm duyệt. Production chưa có auth authority nên lệnh
-ghi trả `401`; chưa có UI hay authority kiểm duyệt nên không bình luận nào thành công khai. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
+ghi trả `401`. **D2T-02c** thêm authority kiểm duyệt: grant trong database do lệnh vận hành
+`vink-app moderator` cấp/thu hồi, kiểm lại trong transaction của từng quyết định, tự né bình luận
+của mình và tác phẩm của mình, lý do bắt buộc khi từ chối/gỡ (người viết thấy lý do từ chối),
+hàng đợi + route kiểm duyệt. Chưa có UI. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
 [#43](https://github.com/loveoverflowcom/vink/issues/43).
 
 ## HOW: từ lệnh tới hàng trong database
@@ -67,10 +70,10 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 | D2T-INV-01 — #41 | `structure.apply`, `rootIsRoot`/`canonicalContext`/`noCycles` | `reply_placement`, `root_placement`, `DiscussionThread`; enumeration 20^4 và trace replay | `the_database_alone_rejects_a_third_tier_and_cross_scope_references` | NOT_RUN | Model chưa có removal |
 | D2T-INV-02 — #41 | Một thread là assumption | `decide_submission` (target tra trong thread), `CommentPlacement::from_stored` | Cùng test: cross-thread root, context khác root, đổi thread bị chặn | NOT_RUN | Chưa tenant; work binding qua `discussion_threads.work_id` unique |
 | D2T-INV-03 — COM-03, COM-07, INV-05 | Chưa có | `authorize_mode_change`, `DiscussionSettings::change_mode`, actor bắt buộc ở application | `closing_waits_for_an_in_flight_submission_and_vice_versa`, `the_work_author_toggles_comments_but_has_no_power_over_others`, `a_withdrawn_work_closes_its_discussion…` | NOT_RUN | Auth authority thật (D-05), ban/suspension, lệnh rút bài thật |
-| D2T-INV-04 — COM-02, MOD-02 | Chưa có | `lifecycle`, `visibility::view` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection` | NOT_RUN | Cache/SSR/notification chưa tồn tại; sửa bình luận chặn theo D-08 |
+| D2T-INV-04 — COM-02, MOD-02/04 | Chưa có | `lifecycle`, `visibility::view`; lý do chỉ cho `OwnRejected` | `a_new_comment_is_private_until_approved…`, `sql_visibility_filters_match_the_domain_projection`, `rejection_reasons_reach_only_their_writer…` | NOT_RUN | Cache/SSR/notification chưa tồn tại; sửa bình luận chặn theo D-08 |
 | D2T-INV-05 — PUB-03 | Chưa có | `remove_by_author`, `root_listing`, `reply_context` | `hidden_roots_anchor_public_replies_and_hidden_contexts_degrade`; SET NULL context ở test toàn vẹn | NOT_RUN | Purge/retention, restore, quote/snippet |
 | D2T-INV-06 — COM-01/04 | Chưa có | `CommandKey`, `PayloadDigest`, `decide_submission` (receipt trước mọi gate) | `concurrent_retries_with_one_key_create_exactly_one_comment`, idempotency trong test pending | NOT_RUN | Retention receipt, endpoint trạng thái lệnh |
-| D2T-INV-07 — MOD-02, INV-07 | Chưa có | `CommentState::decide/remove_by_*`, `ModerationVersion` | `moderation_is_version_bound_audited_and_cannot_revive_removed_comments` | NOT_RUN | Authority kiểm duyệt thật, worker/job fencing |
+| D2T-INV-07 — MOD-02, INV-07, COM-08 | Chưa có | `ModerationAction::apply`, `authorize_moderation` (grant + tự né), `ModerationVersion` | `moderation_is_version_bound_audited…`, `moderation_authority_is_a_revocable_grant_rechecked_at_commit` (thu hồi đang chạy vs quyết định đang chạy), `moderators_recuse_from_their_own_comments_and_their_own_works`, `the_http_moderation_api_keeps_every_outcome_distinct` | NOT_RUN | Worker/job fencing, appeal/mở lại, cảnh báo backlog |
 | D2T-INV-08 — COM-06 | Chưa có | Chưa có reaction | — | NOT_RUN | Desired-state set/remove, cardinality |
 | D2T-INV-09 — #41 | Chưa có | `PageCursor`, `PageLimit`, `PREVIEW_REPLIES` | `pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page` (ties theo ID) | NOT_RUN | Ranking “Nổi bật”, epoch/snapshot, benchmark |
 | D2T-INV-10 — #45 | Chưa có | Không đổi client | — | NOT_RUN | Ack theo actor/session/draft ở consumer |

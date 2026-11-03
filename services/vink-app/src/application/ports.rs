@@ -5,10 +5,11 @@ use std::future::Future;
 use time::OffsetDateTime;
 
 use super::discussion::{
-    Guarded, ModerationAction, NewComment, ReplyPage, RootPage, SubmitOutcome,
+    Guarded, ModerationAction, ModerationQueue, NewComment, ReplyPage, RootPage, SubmitOutcome,
 };
 use super::{PublicWork, PublicWorkSummary};
 use crate::domain::discussion::lifecycle::{LifecycleError, ModerationVersion, Transition};
+use crate::domain::discussion::moderation::ModerationReason;
 use crate::domain::discussion::page::{PageCursor, PageLimit};
 use crate::domain::discussion::settings::{
     CommentsMode, ModeChange, SettingsError, SettingsGeneration,
@@ -113,15 +114,26 @@ pub trait DiscussionStore: Send + Sync {
         mode: CommentsMode,
     ) -> impl Future<Output = Result<Guarded<ModeChange, SettingsError>, StoreError>> + Send;
 
-    /// `CommentState::decide`/`remove_by_moderation` on the locked comment row, with an audit row.
-    /// `moderator` comes from a [`super::discussion::ModeratorGrant`], never from a request.
+    /// In one transaction: the actor's active grant under a share lock (a revocation waits or
+    /// wins), `authorize_moderation` (grant + recusal), then `ModerationAction::apply` on the
+    /// locked comment row and an audit row naming the grant and reason. A non-moderator learns
+    /// nothing about the comment (`Denied(NotModerator)` before any lookup).
     fn moderate_comment(
         &self,
-        moderator: PrincipalId,
+        actor: PrincipalId,
         comment_id: CommentId,
         expected: ModerationVersion,
         action: ModerationAction,
+        reason: Option<&ModerationReason>,
     ) -> impl Future<Output = Result<Guarded<Transition, LifecycleError>, StoreError>> + Send;
+
+    /// Pending, present comments oldest first; `None` when `actor` holds no active grant.
+    fn moderation_queue(
+        &self,
+        actor: PrincipalId,
+        after: Option<PageCursor>,
+        limit: PageLimit,
+    ) -> impl Future<Output = Result<Option<ModerationQueue>, StoreError>> + Send;
 
     fn root_page(
         &self,

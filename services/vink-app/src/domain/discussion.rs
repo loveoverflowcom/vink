@@ -27,6 +27,7 @@
 
 pub mod body;
 pub mod lifecycle;
+pub mod moderation;
 pub mod page;
 pub mod policy;
 pub mod settings;

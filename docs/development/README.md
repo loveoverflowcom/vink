@@ -194,7 +194,10 @@ Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy �
 Identity, chờ readiness trên socket rồi mới chạy App; dừng App thì Identity được SIGTERM. Với lệnh
 local, xtask đặt `VINK_IDENTITY_CALLER_UID`/`VINK_IDENTITY_SERVER_UID` bằng uid của bạn nếu chưa đặt.
 
-Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed`. Mã thoát: `0` thành công,
+Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed` và
+`moderator grant <principal-uuid> <ghi chú> | revoke <principal-uuid> | list`: lệnh vận hành duy
+nhất cấp/thu hồi quyền kiểm duyệt bình luận (dùng `DATABASE_URL`; không có route HTTP nào làm việc
+này, quyền sở hữu tác phẩm không bao giờ kéo theo quyền kiểm duyệt). Mã thoát: `0` thành công,
 `1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
 hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
 

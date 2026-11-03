@@ -6,9 +6,9 @@
 //! inside its transaction and reports which decision it applied; this module only maps that to a
 //! result. Comment and thread IDs are generated here, never taken from the client.
 //!
-//! HTTP API v1 exposes every use case except moderation (D2T-02b). Writes need a server-resolved
-//! principal, which production cannot produce until D-05, and no moderation authority issues a
-//! [`ModeratorGrant`]: nothing a user submits can become public yet.
+//! HTTP API v1 exposes every use case (D2T-02b/c). Writes need a server-resolved principal, which
+//! production cannot produce until D-05. Moderation authority is an active grant created by an
+//! operator and rechecked by the store at commit; it is never derived from work ownership.
 
 use time::OffsetDateTime;
 
@@ -18,6 +18,8 @@ use crate::domain::discussion::body::{BodyError, CommentBody};
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
 };
+pub use crate::domain::discussion::moderation::ModerationAction;
+use crate::domain::discussion::moderation::{ModerationReason, ReasonError, decision_reason};
 use crate::domain::discussion::page::{PageCursor, PageError, PageLimit};
 use crate::domain::discussion::policy::Denied;
 use crate::domain::discussion::settings::{
@@ -76,34 +78,40 @@ pub enum Guarded<T, E> {
     Decided(Result<T, E>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ModerationAction {
-    Approve,
-    Reject,
-    Remove,
-}
-
-/// A moderation authority fact decided on the server. No resolver or route issues one yet; the
-/// work's author never obtains one through work ownership (COM-08).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ModeratorGrant(PrincipalId);
-
-impl ModeratorGrant {
-    /// Only a moderation authority adapter may call this, after checking its own records.
-    pub const fn from_authority(moderator: PrincipalId) -> Self {
-        Self(moderator)
-    }
-
-    pub const fn moderator(self) -> PrincipalId {
-        self.0
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Untrusted moderation request. The moderator is the authenticated actor; whether they may
+/// decide is answered by the store inside the decision's transaction.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModerateComment {
     pub comment_id: CommentId,
     pub expected_version: i64,
     pub action: ModerationAction,
+    /// Required for reject/remove and shown to the comment's writer (MOD-04).
+    pub reason: Option<String>,
+}
+
+/// A pending comment as a moderator reviews it. Shows the text and its writer's display name;
+/// `can_decide` is false where this moderator must recuse.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueueItem {
+    pub comment_id: CommentId,
+    pub work_id: WorkId,
+    /// Title of the current public snapshot; `None` when the work is not public.
+    pub work_title: Option<String>,
+    pub is_root: bool,
+    pub writer: AuthorName,
+    pub body: String,
+    pub created_at: OffsetDateTime,
+    pub version: ModerationVersion,
+    pub can_decide: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModerationQueue {
+    /// All pending, present comments; the backlog size, not the page size.
+    pub pending_total: i64,
+    /// Oldest first.
+    pub items: Vec<QueueItem>,
+    pub next: Option<PageCursor>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -158,6 +166,8 @@ pub struct CommentItem {
     pub context: ReplyContext,
     /// Display name of the replied-to writer, present only when `context` is a public reply.
     pub context_author: Option<String>,
+    /// The moderator's reason, only on the viewer's own rejected comment (MOD-04).
+    pub rejection_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -206,6 +216,8 @@ pub enum DiscussionInput {
     Page(#[from] PageError),
     #[error("expected version must be >= 1")]
     ExpectedVersion,
+    #[error("reason: {0}")]
+    Reason(#[from] ReasonError),
 }
 
 impl DiscussionInput {
@@ -216,6 +228,7 @@ impl DiscussionInput {
             Self::Page(PageError::Limit) => "limit",
             Self::Page(PageError::Cursor) => "cursor",
             Self::ExpectedVersion => "expected_version",
+            Self::Reason(_) => "reason",
         }
     }
 }
@@ -232,15 +245,21 @@ pub enum DiscussionError {
     NotCommentWriter,
     #[error("moderation authority required")]
     NotModerator,
+    /// The moderator wrote the comment or owns the work.
+    #[error("moderator must recuse from this comment")]
+    Recused,
     #[error("comments are closed for this work")]
     CommentsClosed,
     #[error("reply target is not available")]
     TargetUnavailable,
     #[error("command key was already used for a different comment")]
     KeyReused,
-    /// The settings generation or moderation version moved on; nothing was written.
-    #[error("conflict; current version is {current}")]
+    /// The comments settings generation moved on; nothing was written.
+    #[error("conflict; current generation is {current}")]
     Conflict { current: i64 },
+    /// The comment's moderation version moved on; nothing was written.
+    #[error("moderation conflict; current version is {current}")]
+    ModerationConflict { current: i64 },
     #[error("comment was removed")]
     Removed,
     #[error("invalid input: {0}")]
@@ -266,13 +285,15 @@ fn denied(denied: Denied) -> DiscussionError {
         // Like drafts, a work the actor does not own is indistinguishable from a missing one.
         Denied::NotWorkAuthor | Denied::Hidden => DiscussionError::NotFound,
         Denied::NotCommentWriter => DiscussionError::NotCommentWriter,
+        Denied::NotModerator => DiscussionError::NotModerator,
+        Denied::Recused => DiscussionError::Recused,
     }
 }
 
 fn lifecycle(error: LifecycleError) -> DiscussionError {
     match error {
         LifecycleError::Removed => DiscussionError::Removed,
-        LifecycleError::Stale { current } => DiscussionError::Conflict {
+        LifecycleError::Stale { current } => DiscussionError::ModerationConflict {
             current: current.get(),
         },
         LifecycleError::VersionExhausted => DiscussionError::Internal,
@@ -412,26 +433,47 @@ where
         }
     }
 
-    /// A moderation decision bound to the version the moderator reviewed (MOD-02).
+    /// The pending queue, oldest first. Only an actor with an active grant may read it.
+    pub async fn moderation_queue(
+        &self,
+        actor: Option<PrincipalId>,
+        after: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<ModerationQueue, DiscussionError> {
+        let actor = actor.ok_or(DiscussionError::Unauthenticated)?;
+        let (after, limit) = page(after, limit)?;
+        self.store
+            .moderation_queue(actor, after, limit)
+            .await?
+            .ok_or(DiscussionError::NotModerator)
+    }
+
+    /// A moderation decision bound to the version the moderator reviewed (MOD-02). The store
+    /// rechecks the actor's grant and recusal in the same transaction as the write.
     pub async fn moderate_comment(
         &self,
-        grant: Option<ModeratorGrant>,
+        actor: Option<PrincipalId>,
         command: ModerateComment,
     ) -> Result<CommentState, DiscussionError> {
-        let grant = grant.ok_or(DiscussionError::NotModerator)?;
+        let actor = actor.ok_or(DiscussionError::Unauthenticated)?;
         let expected = ModerationVersion::new(command.expected_version)
             .ok_or(DiscussionInput::ExpectedVersion)?;
+        let reason: Option<ModerationReason> =
+            decision_reason(command.action, command.reason.as_deref())
+                .map_err(DiscussionInput::from)?;
         match self
             .store
             .moderate_comment(
-                grant.moderator(),
+                actor,
                 command.comment_id,
                 expected,
                 command.action,
+                reason.as_ref(),
             )
             .await?
         {
-            Guarded::NotFound | Guarded::Denied(_) => Err(DiscussionError::NotFound),
+            Guarded::NotFound => Err(DiscussionError::NotFound),
+            Guarded::Denied(reason) => Err(denied(reason)),
             Guarded::Decided(Ok(Transition::Changed(state) | Transition::Unchanged(state))) => {
                 Ok(state)
             }

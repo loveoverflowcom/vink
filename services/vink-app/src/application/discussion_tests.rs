@@ -14,6 +14,7 @@ use crate::domain::discussion::body::{BodyError, CommentBody};
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
 };
+use crate::domain::discussion::moderation::{ModerationReason, ReasonError};
 use crate::domain::discussion::page::{PageCursor, PageError, PageLimit};
 use crate::domain::discussion::policy::Denied;
 use crate::domain::discussion::settings::{
@@ -27,7 +28,14 @@ enum Call {
     Submit(PrincipalId, NewComment),
     Remove(PrincipalId, WorkId, CommentId),
     Mode(PrincipalId, WorkId, SettingsGeneration, CommentsMode),
-    Moderate(PrincipalId, CommentId, ModerationVersion, ModerationAction),
+    Moderate(
+        PrincipalId,
+        CommentId,
+        ModerationVersion,
+        ModerationAction,
+        Option<String>,
+    ),
+    Queue(PrincipalId),
     Roots(WorkId, Option<PrincipalId>, Option<PageCursor>, PageLimit),
 }
 
@@ -81,15 +89,27 @@ impl DiscussionStore for Script {
 
     async fn moderate_comment(
         &self,
-        moderator: PrincipalId,
+        actor: PrincipalId,
         comment_id: CommentId,
         expected: ModerationVersion,
         action: ModerationAction,
+        reason: Option<&ModerationReason>,
     ) -> Result<Guarded<Transition, LifecycleError>, StoreError> {
+        let reason = reason.map(|reason| reason.as_str().to_string());
         self.record(
-            Call::Moderate(moderator, comment_id, expected, action),
+            Call::Moderate(actor, comment_id, expected, action, reason),
             self.moderation,
         )
+    }
+
+    async fn moderation_queue(
+        &self,
+        actor: PrincipalId,
+        _: Option<PageCursor>,
+        _: PageLimit,
+    ) -> Result<Option<ModerationQueue>, StoreError> {
+        // `None`: the store found no active grant for this actor.
+        self.record(Call::Queue(actor), Some(None))
     }
 
     async fn root_page(
@@ -309,18 +329,48 @@ async fn work_ownership_grants_no_power_over_other_peoples_comments() {
             expected
         );
     }
-    // No grant, no moderation: the work's author has no path to review comments.
+    // Moderation needs an actor and a reason before the store is asked anything; the store then
+    // answers whether this actor holds a grant or must recuse.
     let vink = app(Script::default());
-    let command = ModerateComment {
+    let remove = ModerateComment {
         comment_id: comment(),
         expected_version: 1,
         action: ModerationAction::Remove,
+        reason: Some("Spam".into()),
     };
     assert_eq!(
-        vink.moderate_comment(None, command).await,
-        Err(DiscussionError::NotModerator)
+        vink.moderate_comment(None, remove.clone()).await,
+        Err(DiscussionError::Unauthenticated)
+    );
+    let unexplained = ModerateComment {
+        reason: None,
+        ..remove.clone()
+    };
+    assert_eq!(
+        vink.moderate_comment(Some(actor()), unexplained).await,
+        Err(DiscussionError::Invalid(DiscussionInput::Reason(
+            ReasonError::Required
+        )))
     );
     assert!(calls(&vink).is_empty());
+    for (denied, expected) in [
+        (Denied::NotModerator, DiscussionError::NotModerator),
+        (Denied::Recused, DiscussionError::Recused),
+    ] {
+        let vink = app(Script {
+            moderation: Some(Guarded::Denied(denied)),
+            ..Script::default()
+        });
+        assert_eq!(
+            vink.moderate_comment(Some(actor()), remove.clone()).await,
+            Err(expected)
+        );
+    }
+    assert_eq!(
+        vink.moderation_queue(Some(actor()), None, None).await,
+        Err(DiscussionError::NotModerator)
+    );
+    assert_eq!(calls(&vink), vec![Call::Queue(actor())]);
 }
 
 #[tokio::test]
@@ -349,18 +399,19 @@ async fn mode_and_moderation_conflicts_report_the_current_version() {
         Err(DiscussionError::NotFound)
     );
 
-    let grant = ModeratorGrant::from_authority(PrincipalId::from_uuid(Uuid::from_u128(9)));
+    let moderator = PrincipalId::from_uuid(Uuid::from_u128(9));
     let moderate = ModerateComment {
         comment_id: comment(),
         expected_version: 1,
         action: ModerationAction::Approve,
+        reason: None,
     };
     for (decided, expected) in [
         (
             Err(LifecycleError::Stale {
                 current: version(4),
             }),
-            Err(DiscussionError::Conflict { current: 4 }),
+            Err(DiscussionError::ModerationConflict { current: 4 }),
         ),
         (Err(LifecycleError::Removed), Err(DiscussionError::Removed)),
     ] {
@@ -368,14 +419,19 @@ async fn mode_and_moderation_conflicts_report_the_current_version() {
             moderation: Some(Guarded::Decided(decided)),
             ..Script::default()
         });
-        assert_eq!(vink.moderate_comment(Some(grant), moderate).await, expected);
+        assert_eq!(
+            vink.moderate_comment(Some(moderator), moderate.clone())
+                .await,
+            expected
+        );
         assert_eq!(
             calls(&vink),
             vec![Call::Moderate(
-                grant.moderator(),
+                moderator,
                 comment(),
                 version(1),
-                ModerationAction::Approve
+                ModerationAction::Approve,
+                None
             )]
         );
     }

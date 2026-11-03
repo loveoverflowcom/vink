@@ -16,15 +16,18 @@ use uuid::Uuid;
 use super::PgStore;
 use super::postgres::classify;
 use crate::application::discussion::{
-    AuthorName, CommentItem, Guarded, ModerationAction, NewComment, ReplyPage, RootEntry, RootItem,
-    RootPage, SubmitOutcome,
+    AuthorName, CommentItem, Guarded, ModerationAction, ModerationQueue, NewComment, QueueItem,
+    ReplyPage, RootEntry, RootItem, RootPage, SubmitOutcome,
 };
 use crate::application::ports::{DiscussionStore, StoreError};
 use crate::domain::discussion::lifecycle::{
-    CommentState, Decision, LifecycleError, ModerationVersion, Removal, Review, Transition,
+    CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
+use crate::domain::discussion::moderation::{GrantNote, ModerationReason};
 use crate::domain::discussion::page::{PREVIEW_REPLIES, PageCursor, PageLimit};
-use crate::domain::discussion::policy::{authorize_mode_change, authorize_writer_removal};
+use crate::domain::discussion::policy::{
+    Denied, authorize_mode_change, authorize_moderation, authorize_writer_removal,
+};
 use crate::domain::discussion::settings::{
     CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
 };
@@ -38,6 +41,58 @@ use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::ids::{CommentId, PrincipalId, ThreadId, WorkId};
 
 const SUBMIT: &str = "submit_comment";
+
+const fn action_code(action: ModerationAction) -> &'static str {
+    match action {
+        ModerationAction::Approve => "approve",
+        ModerationAction::Reject => "reject",
+        ModerationAction::Remove => "remove",
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct QueueRow {
+    id: Uuid,
+    work_id: Uuid,
+    work_title: Option<String>,
+    is_root: bool,
+    author_id: Uuid,
+    display_name: String,
+    body: Option<String>,
+    created_at: OffsetDateTime,
+    moderation_version: i64,
+    owner_id: Uuid,
+}
+
+impl QueueRow {
+    fn item(self, moderator: PrincipalId) -> Result<QueueItem, StoreError> {
+        let writer = PrincipalId::from_uuid(self.author_id);
+        let can_decide = authorize_moderation(
+            moderator,
+            true,
+            writer,
+            PrincipalId::from_uuid(self.owner_id),
+        )
+        .is_ok();
+        Ok(QueueItem {
+            comment_id: CommentId::from_uuid(self.id),
+            work_id: WorkId::from_uuid(self.work_id),
+            work_title: self.work_title,
+            is_root: self.is_root,
+            writer: AuthorName {
+                id: writer,
+                display_name: self.display_name,
+            },
+            body: self
+                .body
+                .ok_or_else(|| integrity("pending comment without text", self.id))?,
+            created_at: self.created_at,
+            version: ModerationVersion::new(self.moderation_version)
+                .ok_or_else(|| integrity("stored version", self.moderation_version))?,
+            can_decide,
+        })
+    }
+}
 
 fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
     let error = StoreError::Integrity(format!("{what}: {detail}"));
@@ -156,6 +211,7 @@ struct ItemRow {
     context_removal: Option<String>,
     context_version: Option<i64>,
     context_author_name: Option<String>,
+    last_reason: Option<String>,
     public_replies: i64,
 }
 
@@ -219,13 +275,19 @@ impl ItemRow {
                 ReplyContext::Root | ReplyContext::Unavailable => None,
             },
             context,
+            // The moderator's reason reaches only the writer, only while the comment is rejected.
+            rejection_reason: (seen == CommentView::OwnRejected)
+                .then(|| self.last_reason.clone())
+                .flatten(),
         })
     }
 }
 
 /// Columns shared by root and reply reads. `$viewer` is the reading principal or NULL.
 const ITEM_COLUMNS: &str = "c.root_id, c.id, c.author_id, a.display_name, c.body, c.review, \
-     c.removal, c.moderation_version, c.created_at, c.reply_to_id, c.replied_to_reply";
+     c.removal, c.moderation_version, c.created_at, c.reply_to_id, c.replied_to_reply, \
+     (SELECT d.reason FROM comment_moderation_decisions d WHERE d.comment_id = c.id \
+       ORDER BY d.version DESC LIMIT 1) AS last_reason";
 
 /// Public replies of root `c`; equals `visibility::view(..) == Public` for each reply.
 const PUBLIC_REPLIES: &str = "(SELECT count(*) FROM comments r WHERE r.root_id = c.id \
@@ -574,28 +636,53 @@ impl DiscussionStore for PgStore {
 
     async fn moderate_comment(
         &self,
-        moderator: PrincipalId,
+        actor: PrincipalId,
         comment_id: CommentId,
         expected: ModerationVersion,
         action: ModerationAction,
+        reason: Option<&ModerationReason>,
     ) -> Result<Guarded<Transition, LifecycleError>, StoreError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
-        let row: Option<StateRow> = sqlx::query_as(
-            "SELECT review, removal, moderation_version FROM comments WHERE id = $1 FOR UPDATE",
+        // Authority at commit: a revocation (UPDATE) waits for this share lock, or this read sees
+        // it committed. Checked before the comment lookup so non-moderators learn nothing.
+        let grant: Option<Uuid> = sqlx::query_scalar(
+            "SELECT id FROM discussion_moderator_grants
+              WHERE principal_id = $1 AND revoked_at IS NULL FOR SHARE",
+        )
+        .bind(actor.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+        let Some(grant) = grant else {
+            return Ok(Guarded::Denied(Denied::NotModerator));
+        };
+        let row: Option<(Uuid, String, Option<String>, i64, Uuid)> = sqlx::query_as(
+            "SELECT c.author_id, c.review, c.removal, c.moderation_version, w.owner_id
+               FROM comments c
+               JOIN discussion_threads t ON t.id = c.thread_id
+               JOIN works w ON w.id = t.work_id
+              WHERE c.id = $1
+              FOR UPDATE OF c",
         )
         .bind(comment_id.as_uuid())
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
-        let Some(row) = row else {
+        let Some((writer, raw_review, raw_removal, version, work_author)) = row else {
             return Ok(Guarded::NotFound);
         };
-        let current = row.state()?;
-        let (decided, code) = match action {
-            ModerationAction::Approve => (current.decide(expected, Decision::Approve), "approve"),
-            ModerationAction::Reject => (current.decide(expected, Decision::Reject), "reject"),
-            ModerationAction::Remove => (current.remove_by_moderation(expected), "remove"),
-        };
+        if let Err(denied) = authorize_moderation(
+            actor,
+            true,
+            PrincipalId::from_uuid(writer),
+            PrincipalId::from_uuid(work_author),
+        ) {
+            return Ok(Guarded::Denied(denied));
+        }
+        let decided = action.apply(
+            state(&raw_review, raw_removal.as_deref(), version)?,
+            expected,
+        );
         if let Ok(Transition::Changed(next)) = decided {
             sqlx::query(
                 "UPDATE comments SET review = $2, removal = $3, moderation_version = $4,
@@ -610,19 +697,83 @@ impl DiscussionStore for PgStore {
             .await
             .map_err(classify)?;
             sqlx::query(
-                "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id)
-                 VALUES ($1, $2, $3, $4)",
+                "INSERT INTO comment_moderation_decisions
+                        (comment_id, version, action, moderator_id, grant_id, reason)
+                 VALUES ($1, $2, $3, $4, $5, $6)",
             )
             .bind(comment_id.as_uuid())
             .bind(next.version().get())
-            .bind(code)
-            .bind(moderator.as_uuid())
+            .bind(action_code(action))
+            .bind(actor.as_uuid())
+            .bind(grant)
+            .bind(reason.map(ModerationReason::as_str))
             .execute(&mut *tx)
             .await
             .map_err(classify)?;
             tx.commit().await.map_err(classify)?;
         }
         Ok(Guarded::Decided(decided))
+    }
+
+    async fn moderation_queue(
+        &self,
+        actor: PrincipalId,
+        after: Option<PageCursor>,
+        limit: PageLimit,
+    ) -> Result<Option<ModerationQueue>, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let moderator: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM discussion_moderator_grants
+                             WHERE principal_id = $1 AND revoked_at IS NULL)",
+        )
+        .bind(actor.as_uuid())
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(classify)?;
+        if !moderator {
+            return Ok(None);
+        }
+        let pending_total: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM comments WHERE review = 'pending' AND removal IS NULL",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(classify)?;
+        let (after_at, after_id) = page_bounds(after);
+        let rows: Vec<QueueRow> = sqlx::query_as(
+            "SELECT c.id, t.work_id, rv.title AS work_title, c.kind = 'root' AS is_root,
+                    c.author_id, a.display_name, c.body, c.created_at, c.moderation_version,
+                    w.owner_id
+               FROM comments c
+               JOIN discussion_threads t ON t.id = c.thread_id
+               JOIN works w ON w.id = t.work_id
+               JOIN principals a ON a.id = c.author_id
+               LEFT JOIN publications p ON p.work_id = w.id
+               LEFT JOIN revisions rv ON rv.id = p.revision_id
+              WHERE c.review = 'pending' AND c.removal IS NULL
+                AND ($1::timestamptz IS NULL OR (c.created_at, c.id) > ($1, $2))
+              ORDER BY c.created_at, c.id
+              LIMIT $3",
+        )
+        .bind(after_at)
+        .bind(after_id)
+        .bind(i64::from(limit.get()) + 1)
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+        tx.commit().await.map_err(classify)?;
+        let (rows, next) = paged(rows, usize::from(limit.get()), |row| {
+            (row.created_at, row.id)
+        });
+        let items = rows
+            .into_iter()
+            .map(|row| row.item(actor))
+            .collect::<Result<_, _>>()?;
+        Ok(Some(ModerationQueue {
+            pending_total,
+            items,
+            next,
+        }))
     }
 
     async fn root_page(
@@ -814,4 +965,93 @@ fn target_facts(thread_id: ThreadId, row: TargetRow) -> Result<TargetFacts, Stor
         placement,
         state: state(&row.review, row.removal.as_deref(), row.moderation_version)?,
     })
+}
+
+/// Result of the operator's grant command.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GrantOutcome {
+    Granted(Uuid),
+    /// The principal already holds this active grant; nothing was written.
+    AlreadyActive(Uuid),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModeratorRecord {
+    pub grant_id: Uuid,
+    pub principal: PrincipalId,
+    pub display_name: String,
+    pub note: String,
+    pub granted_at: OffsetDateTime,
+}
+
+/// Operator command: makes `principal` a comment moderator. Not reachable from HTTP; the binary's
+/// `moderator grant` subcommand calls it with the runtime credential.
+pub async fn grant_moderator(
+    pool: &PgPool,
+    principal: PrincipalId,
+    note: &GrantNote,
+) -> Result<GrantOutcome, StoreError> {
+    let inserted: Option<Uuid> = sqlx::query_scalar(
+        "INSERT INTO discussion_moderator_grants (id, principal_id, note) VALUES ($1, $2, $3)
+         ON CONFLICT (principal_id) WHERE revoked_at IS NULL DO NOTHING
+         RETURNING id",
+    )
+    .bind(Uuid::now_v7())
+    .bind(principal.as_uuid())
+    .bind(note.as_str())
+    .fetch_optional(pool)
+    .await
+    .map_err(classify)?;
+    if let Some(id) = inserted {
+        return Ok(GrantOutcome::Granted(id));
+    }
+    let active: Uuid = sqlx::query_scalar(
+        "SELECT id FROM discussion_moderator_grants WHERE principal_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(principal.as_uuid())
+    .fetch_one(pool)
+    .await
+    .map_err(classify)?;
+    Ok(GrantOutcome::AlreadyActive(active))
+}
+
+/// Operator command: ends `principal`'s active grant. Decisions already committed keep naming it;
+/// a decision still in flight either commits first or sees the revocation. `None`: nothing active.
+pub async fn revoke_moderator(
+    pool: &PgPool,
+    principal: PrincipalId,
+) -> Result<Option<Uuid>, StoreError> {
+    sqlx::query_scalar(
+        "UPDATE discussion_moderator_grants SET revoked_at = now()
+          WHERE principal_id = $1 AND revoked_at IS NULL
+         RETURNING id",
+    )
+    .bind(principal.as_uuid())
+    .fetch_optional(pool)
+    .await
+    .map_err(classify)
+}
+
+pub async fn active_moderators(pool: &PgPool) -> Result<Vec<ModeratorRecord>, StoreError> {
+    let rows: Vec<(Uuid, Uuid, String, String, OffsetDateTime)> = sqlx::query_as(
+        "SELECT g.id, g.principal_id, p.display_name, g.note, g.granted_at
+           FROM discussion_moderator_grants g JOIN principals p ON p.id = g.principal_id
+          WHERE g.revoked_at IS NULL
+          ORDER BY g.granted_at, g.id",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(classify)?;
+    Ok(rows
+        .into_iter()
+        .map(
+            |(grant_id, principal, display_name, note, granted_at)| ModeratorRecord {
+                grant_id,
+                principal: PrincipalId::from_uuid(principal),
+                display_name,
+                note,
+                granted_at,
+            },
+        )
+        .collect())
 }

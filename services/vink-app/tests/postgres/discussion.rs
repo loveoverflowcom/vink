@@ -6,16 +6,18 @@ use std::time::Duration;
 
 use sqlx::Row;
 use vink_app::application::discussion::{
-    DiscussionError, ModerateComment, ModerationAction, ModeratorGrant, OwnStatus, RootEntry,
-    RootPage, SetCommentsMode, SubmitComment,
+    DiscussionError, ModerateComment, ModerationAction, OwnStatus, RootEntry, RootPage,
+    SetCommentsMode, SubmitComment,
 };
 use vink_app::domain::discussion::lifecycle::{CommentState, Review};
+use vink_app::domain::discussion::moderation::GrantNote;
 use vink_app::domain::discussion::page::PREVIEW_REPLIES;
 use vink_app::domain::discussion::settings::CommentsMode;
 use vink_app::domain::discussion::visibility::{
     CommentView, ReplyContext, RootListing, root_listing, view,
 };
 use vink_app::domain::ids::CommentId;
+use vink_app::persistence::{GrantOutcome, active_moderators, grant_moderator, revoke_moderator};
 
 use super::*;
 
@@ -28,14 +30,19 @@ async fn discussion(pool: &PgPool) -> Vink<PgStore> {
         .execute(pool)
         .await
         .unwrap();
+    let note = GrantNote::parse("Kiểm duyệt viên của bộ test").unwrap();
+    let granted = grant_moderator(pool, PrincipalId::from_uuid(MODERATOR), &note)
+        .await
+        .unwrap();
+    assert!(matches!(granted, GrantOutcome::Granted(_)));
     vink
 }
 
-fn grant() -> Option<ModeratorGrant> {
-    Some(ModeratorGrant::from_authority(PrincipalId::from_uuid(
-        MODERATOR,
-    )))
+fn moderator() -> Option<PrincipalId> {
+    Some(PrincipalId::from_uuid(MODERATOR))
 }
+
+const REASON: &str = "Vi phạm quy tắc cộng đồng (dữ liệu kiểm thử).";
 
 fn key() -> String {
     format!("k-{}", Uuid::now_v7().simple())
@@ -71,12 +78,14 @@ async fn moderate(
     expected_version: i64,
     action: ModerationAction,
 ) -> Result<CommentState, DiscussionError> {
+    let reason = (action != ModerationAction::Approve).then(|| REASON.to_string());
     vink.moderate_comment(
-        grant(),
+        moderator(),
         ModerateComment {
             comment_id,
             expected_version,
             action,
+            reason,
         },
     )
     .await
@@ -473,11 +482,12 @@ async fn the_work_author_toggles_comments_but_has_no_power_over_others(pool: PgP
     // ...nor moderate them: there is no grant through ownership.
     assert_eq!(
         vink.moderate_comment(
-            None,
+            author(),
             ModerateComment {
                 comment_id: approved,
                 expected_version: 2,
                 action: ModerationAction::Remove,
+                reason: Some(REASON.into()),
             },
         )
         .await,
@@ -643,7 +653,7 @@ async fn moderation_is_version_bound_audited_and_cannot_revive_removed_comments(
     // A second moderator acting on version 1 loses; a repeated decision is a no-op.
     assert_eq!(
         moderate(&vink, id, 1, ModerationAction::Reject).await,
-        Err(DiscussionError::Conflict { current: 2 })
+        Err(DiscussionError::ModerationConflict { current: 2 })
     );
     assert_eq!(
         moderate(&vink, id, 2, ModerationAction::Approve).await,
@@ -669,9 +679,11 @@ async fn moderation_is_version_bound_audited_and_cannot_revive_removed_comments(
     for viewer in [None, other(), author()] {
         assert!(listed_ids(&roots(&vink, viewer).await).is_empty());
     }
-    let audit: Vec<(i64, String, Uuid)> = sqlx::query_as(
-        "SELECT version, action, moderator_id FROM comment_moderation_decisions
-          WHERE comment_id = $1 ORDER BY version",
+    let audit: Vec<(i64, String, Uuid, Option<String>, bool)> = sqlx::query_as(
+        "SELECT d.version, d.action, d.moderator_id, d.reason, g.principal_id = d.moderator_id
+           FROM comment_moderation_decisions d
+           JOIN discussion_moderator_grants g ON g.id = d.grant_id
+          WHERE d.comment_id = $1 ORDER BY d.version",
     )
     .bind(id.as_uuid())
     .fetch_all(&pool)
@@ -680,8 +692,14 @@ async fn moderation_is_version_bound_audited_and_cannot_revive_removed_comments(
     assert_eq!(
         audit,
         vec![
-            (2, "approve".to_string(), MODERATOR),
-            (3, "remove".to_string(), MODERATOR)
+            (2, "approve".to_string(), MODERATOR, None, true),
+            (
+                3,
+                "remove".to_string(),
+                MODERATOR,
+                Some(REASON.to_string()),
+                true
+            )
         ]
     );
     let error = sqlx::query("UPDATE comment_moderation_decisions SET action = 'approve'")
@@ -1154,6 +1172,490 @@ async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
         format!("{base}/roots/not-a-uuid/replies"),
     ] {
         let (status, _, _) = call(&app, "GET", &path, None, None, None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
+    }
+}
+
+async fn decide(
+    vink: &Vink<PgStore>,
+    actor: Option<PrincipalId>,
+    comment_id: CommentId,
+    expected_version: i64,
+    action: ModerationAction,
+) -> Result<CommentState, DiscussionError> {
+    let reason = (action != ModerationAction::Approve).then(|| REASON.to_string());
+    vink.moderate_comment(
+        actor,
+        ModerateComment {
+            comment_id,
+            expected_version,
+            action,
+            reason,
+        },
+    )
+    .await
+}
+
+async fn review_of(pool: &PgPool, id: CommentId) -> (String, i64) {
+    sqlx::query_as("SELECT review, moderation_version FROM comments WHERE id = $1")
+        .bind(id.as_uuid())
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn moderation_authority_is_a_revocable_grant_rechecked_at_commit(pool: PgPool) {
+    let vink = Arc::new(discussion(&pool).await);
+    let mod_id = PrincipalId::from_uuid(MODERATOR);
+    let note = GrantNote::parse("lặp lại").unwrap();
+    let active = active_moderators(&pool).await.unwrap();
+    assert_eq!(active.len(), 1);
+    assert_eq!(
+        grant_moderator(&pool, mod_id, &note).await.unwrap(),
+        GrantOutcome::AlreadyActive(active[0].grant_id),
+        "granting twice keeps one active grant"
+    );
+    assert_eq!(
+        grant_moderator(&pool, PrincipalId::from_uuid(Uuid::now_v7()), &note).await,
+        Err(vink_app::application::ports::StoreError::UnknownPrincipal)
+    );
+
+    // Without a grant nobody learns anything about comments, not even whether one exists.
+    let first = post(&vink, other(), None, "Chờ duyệt một").await;
+    for target in [first, CommentId::from_uuid(Uuid::now_v7())] {
+        assert_eq!(
+            decide(&vink, other(), target, 1, ModerationAction::Approve).await,
+            Err(DiscussionError::NotModerator)
+        );
+    }
+    assert_eq!(
+        vink.moderation_queue(author(), None, None).await,
+        Err(DiscussionError::NotModerator)
+    );
+
+    // A revocation in flight holds the grant row: the decision waits, then sees it revoked.
+    let mut revoking = pool.begin().await.unwrap();
+    sqlx::query(
+        "UPDATE discussion_moderator_grants SET revoked_at = now()
+          WHERE principal_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(MODERATOR)
+    .execute(&mut *revoking)
+    .await
+    .unwrap();
+    let deciding = {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move {
+            decide(&vink, moderator(), first, 1, ModerationAction::Approve).await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        !deciding.is_finished(),
+        "decision must wait for the revocation"
+    );
+    revoking.rollback().await.unwrap();
+    // Rolled back: the grant is still active, so the waiting decision now applies.
+    assert_eq!(deciding.await.unwrap().unwrap().review(), Review::Approved);
+
+    // A REAL decision in flight (paused on its comment row after taking the grant share lock)
+    // makes the operator's revocation wait; the decision commits under the authority it had.
+    let second = post(&vink, other(), None, "Chờ duyệt hai").await;
+    let mut pauser = pool.begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM comments WHERE id = $1 FOR UPDATE")
+        .bind(second.as_uuid())
+        .execute(&mut *pauser)
+        .await
+        .unwrap();
+    let deciding = {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move {
+            decide(&vink, moderator(), second, 1, ModerationAction::Reject).await
+        })
+    };
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(!deciding.is_finished(), "decision is paused on its comment");
+    let revoke = {
+        let pool = pool.clone();
+        tokio::spawn(
+            async move { revoke_moderator(&pool, PrincipalId::from_uuid(MODERATOR)).await },
+        )
+    };
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        !revoke.is_finished(),
+        "revocation must wait for the in-flight decision"
+    );
+    pauser.rollback().await.unwrap();
+    assert_eq!(deciding.await.unwrap().unwrap().review(), Review::Rejected);
+    assert!(revoke.await.unwrap().unwrap().is_some());
+
+    // Revoked: no queue, no decisions; the revoked grant cannot be revived, only re-granted.
+    let third = post(&vink, other(), None, "Chờ duyệt ba").await;
+    assert_eq!(
+        decide(&vink, moderator(), third, 1, ModerationAction::Approve).await,
+        Err(DiscussionError::NotModerator)
+    );
+    assert_eq!(review_of(&pool, third).await, ("pending".into(), 1));
+    assert_eq!(
+        vink.moderation_queue(moderator(), None, None).await,
+        Err(DiscussionError::NotModerator)
+    );
+    assert_eq!(revoke_moderator(&pool, mod_id).await.unwrap(), None);
+    let error = sqlx::query("UPDATE discussion_moderator_grants SET revoked_at = NULL")
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    assert!(constraint(error).contains("only be revoked once"));
+    assert!(matches!(
+        grant_moderator(&pool, mod_id, &note).await.unwrap(),
+        GrantOutcome::Granted(_)
+    ));
+    assert_eq!(
+        decide(&vink, moderator(), third, 1, ModerationAction::Approve)
+            .await
+            .unwrap()
+            .review(),
+        Review::Approved
+    );
+    // Each decision names the grant that authorized it.
+    let grants: i64 =
+        sqlx::query_scalar("SELECT count(DISTINCT grant_id) FROM comment_moderation_decisions")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(grants, 2);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn moderators_recuse_from_their_own_comments_and_their_own_works(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    // The work's author is ALSO a moderator: ownership still grants nothing over its discussion.
+    let note = GrantNote::parse("Tác giả kiêm kiểm duyệt").unwrap();
+    grant_moderator(
+        &pool,
+        PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR),
+        &note,
+    )
+    .await
+    .unwrap();
+    let readers = post(&vink, other(), None, "Của bạn đọc").await;
+    let moderators_own = post(&vink, moderator(), None, "Của kiểm duyệt viên").await;
+
+    assert_eq!(
+        decide(&vink, author(), readers, 1, ModerationAction::Remove).await,
+        Err(DiscussionError::Recused)
+    );
+    assert_eq!(
+        decide(
+            &vink,
+            moderator(),
+            moderators_own,
+            1,
+            ModerationAction::Approve
+        )
+        .await,
+        Err(DiscussionError::Recused)
+    );
+    for id in [readers, moderators_own] {
+        assert_eq!(review_of(&pool, id).await, ("pending".into(), 1));
+    }
+    let queue = vink
+        .moderation_queue(moderator(), None, None)
+        .await
+        .unwrap();
+    let flags: Vec<_> = queue
+        .items
+        .iter()
+        .map(|i| (i.comment_id, i.can_decide))
+        .collect();
+    assert_eq!(flags, vec![(readers, true), (moderators_own, false)]);
+    let authors_view = vink.moderation_queue(author(), None, None).await.unwrap();
+    assert!(authors_view.items.iter().all(|item| !item.can_decide));
+    assert_eq!(
+        decide(&vink, moderator(), readers, 1, ModerationAction::Approve)
+            .await
+            .unwrap()
+            .review(),
+        Review::Approved
+    );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn rejection_reasons_reach_only_their_writer_and_are_required_in_sql(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let id = post(&vink, other(), None, "Tác giả thật là anh X ở phố Y.").await;
+    assert_eq!(
+        vink.moderate_comment(
+            moderator(),
+            ModerateComment {
+                comment_id: id,
+                expected_version: 1,
+                action: ModerationAction::Reject,
+                reason: None,
+            },
+        )
+        .await
+        .map(|_| ()),
+        Err(DiscussionError::Invalid(
+            vink_app::application::discussion::DiscussionInput::Reason(
+                vink_app::domain::discussion::moderation::ReasonError::Required
+            )
+        ))
+    );
+    decide(&vink, moderator(), id, 1, ModerationAction::Reject)
+        .await
+        .unwrap();
+    let own = roots(&vink, other()).await;
+    let RootEntry::Comment(item) = &own.roots[0].entry else {
+        panic!("own rejected comment expected")
+    };
+    assert_eq!(item.view, CommentView::OwnRejected);
+    assert_eq!(item.rejection_reason.as_deref(), Some(REASON));
+    for viewer in [None, author(), moderator()] {
+        let page = roots(&vink, viewer).await;
+        assert!(page.roots.is_empty());
+        assert!(!format!("{page:?}").contains(REASON));
+    }
+    // Reversed on review: public again, and the old reason is no longer shown to anyone.
+    decide(&vink, moderator(), id, 2, ModerationAction::Approve)
+        .await
+        .unwrap();
+    let RootEntry::Comment(item) = &roots(&vink, other()).await.roots[0].entry else {
+        panic!("public comment expected")
+    };
+    assert_eq!(
+        (item.view, item.rejection_reason.as_deref()),
+        (CommentView::Public, None)
+    );
+
+    // The schema itself refuses unexplained or unauthorized decisions.
+    for (statement, expected) in [
+        (
+            "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id, grant_id)
+             SELECT $1, 9, 'reject', $2, id FROM discussion_moderator_grants LIMIT 1",
+            "comment_moderation_decisions_reason_required",
+        ),
+        (
+            "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id)
+             VALUES ($1, 9, 'approve', $2)",
+            "comment_moderation_decisions_grant_required",
+        ),
+    ] {
+        let error = sqlx::query(statement)
+            .bind(id.as_uuid())
+            .bind(MODERATOR)
+            .execute(&pool)
+            .await
+            .unwrap_err();
+        assert_eq!(constraint(error), expected);
+    }
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn the_queue_lists_pending_present_comments_oldest_first(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let mut pending = Vec::new();
+    for n in 0..5 {
+        pending.push(post(&vink, other(), None, &format!("Chờ {n}")).await);
+    }
+    let approved = published(&vink, other(), None, "Đã duyệt").await;
+    let withdrawn = post(&vink, other(), None, "Tự gỡ").await;
+    vink.remove_own_comment(other(), sample_work(), withdrawn)
+        .await
+        .unwrap();
+
+    let mut seen = Vec::new();
+    let mut cursor: Option<String> = None;
+    loop {
+        let queue = vink
+            .moderation_queue(moderator(), cursor.as_deref(), Some(2))
+            .await
+            .unwrap();
+        assert_eq!(queue.pending_total, 5);
+        for item in &queue.items {
+            assert_eq!(item.work_title.as_deref(), Some(dev_seed::SAMPLE_TITLE));
+            assert_eq!(item.version.get(), 1);
+            assert!(item.is_root);
+        }
+        seen.extend(queue.items.iter().map(|item| item.comment_id));
+        match queue.next {
+            Some(next) => cursor = Some(next.encode()),
+            None => break,
+        }
+    }
+    assert_eq!(seen, pending);
+    assert!(!seen.contains(&approved) && !seen.contains(&withdrawn));
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn the_http_moderation_api_keeps_every_outcome_distinct(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let app = app(&pool).await;
+    let queue = "/api/v1/moderation/comments";
+    let origin = Some(ORIGIN);
+    let code = |body: &str| json(body)["error"]["code"].as_str().unwrap().to_string();
+    let target = post(&vink, other(), None, "Chờ người duyệt qua HTTP").await;
+    let decisions = format!("{queue}/{target}/decisions");
+    let reject = Some(json!({"expected_version": 1, "action": "reject", "reason": REASON}));
+
+    let (status, _, _) = call(&app, "GET", queue, None, None, None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        queue,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "not_moderator")
+    );
+    let (status, cache, body) = call(&app, "GET", queue, Some(MODERATOR), None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    let listed = json(&body);
+    assert_eq!(listed["pending_total"], 1);
+    assert_eq!(listed["items"][0]["comment_id"], target.to_string());
+    assert_eq!(listed["items"][0]["can_decide"], true);
+
+    let (status, _, _) = call(&app, "POST", &decisions, None, origin, reject.clone()).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &decisions,
+        Some(MODERATOR),
+        None,
+        reject.clone(),
+    )
+    .await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "forbidden")
+    );
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &decisions,
+        Some(dev_seed::SAMPLE_AUTHOR),
+        origin,
+        reject.clone(),
+    )
+    .await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "not_moderator")
+    );
+    for (request, field) in [
+        (json!({"expected_version": 1, "action": "reject"}), "reason"),
+        (
+            json!({"expected_version": 0, "action": "approve"}),
+            "expected_version",
+        ),
+        (json!({"expected_version": 1, "action": "restore"}), "body"),
+        (
+            json!({"expected_version": 1, "action": "approve", "moderator_id": MODERATOR}),
+            "body",
+        ),
+    ] {
+        let (status, _, body) = call(
+            &app,
+            "POST",
+            &decisions,
+            Some(MODERATOR),
+            origin,
+            Some(request),
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert_eq!(json(&body)["error"]["field"], field, "{body}");
+    }
+    let (status, cache, body) = call(
+        &app,
+        "POST",
+        &decisions,
+        Some(MODERATOR),
+        origin,
+        reject.clone(),
+    )
+    .await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    assert_eq!(
+        json(&body),
+        json!({"comment_id": target.to_string(), "review": "rejected", "removed": false, "version": 2})
+    );
+    let (status, _, body) = call(&app, "POST", &decisions, Some(MODERATOR), origin, reject).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "version_conflict")
+    );
+    assert_eq!(json(&body)["error"]["current_version"], 2);
+    // The writer reads the reason on their own rejected comment, through the public API.
+    let page = format!("/api/v1/works/{}/discussion", dev_seed::SAMPLE_WORK);
+    let (_, _, body) = call(
+        &app,
+        "GET",
+        &page,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(
+        json(&body)["roots"][0]["root"]["comment"]["rejection_reason"],
+        REASON
+    );
+
+    let remove = Some(json!({"expected_version": 2, "action": "remove", "reason": REASON}));
+    let (status, _, body) = call(&app, "POST", &decisions, Some(MODERATOR), origin, remove).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body)["removed"], true);
+    let approve = Some(json!({"expected_version": 3, "action": "approve"}));
+    let (status, _, body) = call(&app, "POST", &decisions, Some(MODERATOR), origin, approve).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "comment_removed")
+    );
+
+    let own = post(&vink, moderator(), None, "Kiểm duyệt viên tự viết").await;
+    let own_path = format!("{queue}/{own}/decisions");
+    let approve = Some(json!({"expected_version": 1, "action": "approve"}));
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &own_path,
+        Some(MODERATOR),
+        origin,
+        approve.clone(),
+    )
+    .await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "moderator_recused")
+    );
+    for path in [
+        format!("{queue}/{}/decisions", Uuid::now_v7()),
+        format!("{queue}/not-a-uuid/decisions"),
+    ] {
+        let (status, _, _) = call(
+            &app,
+            "POST",
+            &path,
+            Some(MODERATOR),
+            origin,
+            approve.clone(),
+        )
+        .await;
         assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
     }
 }

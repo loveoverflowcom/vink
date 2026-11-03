@@ -124,6 +124,8 @@ pub struct CommentDto {
     pub created_at: String,
     pub reply_to: Option<ReplyTo>,
     pub can_remove: bool,
+    /// Moderator's reason, only on the viewer's own rejected comment.
+    pub rejection_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -171,6 +173,44 @@ pub struct CommentsSettingsRequest {
     pub comments_open: bool,
 }
 
+/// Pending comments for a moderator, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationQueue {
+    pub pending_total: i64,
+    pub items: Vec<QueueEntry>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QueueEntry {
+    pub comment_id: String,
+    pub work_id: String,
+    pub work_title: Option<String>,
+    pub kind: String,
+    pub author_display_name: String,
+    pub body: String,
+    pub created_at: String,
+    pub version: i64,
+    pub can_decide: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationDecisionRequest {
+    pub expected_version: i64,
+    /// `approve`, `reject` or `remove`.
+    pub action: String,
+    /// Required for `reject` and `remove`; shown to the comment's writer.
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationDecision {
+    pub comment_id: String,
+    pub review: String,
+    pub removed: bool,
+    pub version: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -201,6 +241,8 @@ pub enum ApiError {
     TargetUnavailable,
     /// The same command key was sent with another payload: a client defect, not user input.
     KeyReused,
+    /// A moderation decision on a removed comment.
+    CommentRemoved,
     Invalid {
         field: Option<String>,
     },
@@ -226,6 +268,7 @@ impl ApiError {
             },
             (409, Some("comments_closed")) => Self::CommentsClosed,
             (409, Some("target_unavailable")) => Self::TargetUnavailable,
+            (409, Some("comment_removed")) => Self::CommentRemoved,
             (422, Some("idempotency_key_reused")) => Self::KeyReused,
             (422, _) => Self::Invalid {
                 field: body.and_then(|b| b.field),
@@ -299,6 +342,18 @@ mod tests {
         let _: CommentsSettingsRequest = round_trip("discussion.settings.request.json");
         let settings: CommentsSettings = round_trip("discussion.settings.response.json");
         assert!(!settings.comments_open);
+        let replies: ReplyList = round_trip("discussion.replies.json");
+        assert!(
+            replies
+                .replies
+                .iter()
+                .any(|reply| reply.rejection_reason.is_some())
+        );
+        let queue: ModerationQueue = round_trip("moderation.queue.json");
+        assert!(queue.items.iter().any(|item| !item.can_decide));
+        let decision: ModerationDecisionRequest = round_trip("moderation.decision.request.json");
+        assert_eq!(decision.action, "reject");
+        let _: ModerationDecision = round_trip("moderation.decision.response.json");
     }
 
     #[test]
@@ -316,6 +371,14 @@ mod tests {
                 ApiError::KeyReused,
             ),
             ("error.not_comment_writer.json", 403, ApiError::Forbidden),
+            ("error.not_moderator.json", 403, ApiError::Forbidden),
+            ("error.moderator_recused.json", 403, ApiError::Forbidden),
+            ("error.comment_removed.json", 409, ApiError::CommentRemoved),
+            (
+                "error.moderation_conflict.json",
+                409,
+                ApiError::VersionConflict { current_version: 2 },
+            ),
             (
                 "error.discussion_conflict.json",
                 409,

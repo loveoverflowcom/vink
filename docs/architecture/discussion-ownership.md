@@ -72,7 +72,13 @@ không tạo bản thứ hai; cùng khóa nhưng nội dung khác bị từ ch�
 | Gửi bình luận/phản hồi khi đang bật | Có (như người đọc) | — | — | Có, nếu đã xác thực |
 | Gỡ bình luận | Chỉ bình luận của chính mình | Có, bình luận của mình | Có, gắn version | Không |
 | Sửa bình luận | Không (kể cả của người khác) | Chưa mở: D-08 chặn sửa công khai trong pilot | — | Không |
-| Duyệt/từ chối | Không | Không | Có, gắn version | Không |
+| Duyệt/từ chối | Không | Không | Có, gắn version; tự né bình luận của mình và tác phẩm của mình | Không |
+
+**Người kiểm duyệt** là principal có grant đang hiệu lực, do operator cấp bằng
+`vink-app moderator grant` và thu hồi bằng `revoke`. Mỗi quyết định kiểm lại grant trong chính
+transaction ghi (khóa chia sẻ), nên lệnh thu hồi commit trước thì thắng, lệnh đang chạy dở thì chờ.
+Tác giả tác phẩm dù có grant vẫn **tự né** mọi bình luận trên tác phẩm của mình (mặc định, cần
+chủ sản phẩm xác nhận), để quyền kiểm duyệt không thành đường vòng vi phạm COM-08.
 
 **Ngữ nghĩa “tắt” mặc định (cần chủ sản phẩm xác nhận):** tắt là **ngừng nhận bình luận và
 phản hồi mới**; bình luận đã duyệt vẫn đọc được, không bị xóa hay đổi trạng thái, và bật lại
@@ -104,8 +110,8 @@ luận công khai cho pilot, không phải tính năng đang có:
 
 | Trách nhiệm | Vink phải cung cấp hoặc chốt phạm vi |
 | --- | --- |
-| Tiền kiểm và quyết định người duyệt | Authority kiểm duyệt thật, hàng đợi duyệt có version, audit, màn vận hành, tuổi case và cảnh báo backlog (COM-02, MOD-02/03) |
-| Báo cáo, lý do, khiếu nại | Tiếp nhận report, lý do có thể hành động, appeal idempotent, quyền mở lại và lịch sử quyết định (MOD-04) |
+| Tiền kiểm và quyết định người duyệt | **Đã có (D2T-02c):** grant kiểm duyệt do operator cấp/thu hồi, kiểm lại trong transaction quyết định; tự né bình luận của mình/tác phẩm của mình; hàng đợi có version và `pending_total`; audit append-only gắn grant và lý do. **Còn thiếu:** màn vận hành (UI), cảnh báo tuổi case/backlog, người trực (MOD-03) |
+| Báo cáo, lý do, khiếu nại | **Đã có:** lý do bắt buộc khi từ chối/gỡ, người viết thấy lý do từ chối. **Còn thiếu:** report, appeal idempotent, mở lại bình luận đã gỡ, thông báo khi bị gỡ (MOD-04) |
 | Chống lạm dụng | Rate limit, chống spam, khóa/ban có authority và audit |
 | Thông báo reply/mention/kết quả duyệt | Outbox/inbox, dedupe, read state; pending/đã gỡ không lọt qua thông báo |
 | Xóa, thu hồi, riêng tư | Rút bài chặn đọc/ghi thảo luận ngay; retention/purge; quote/preview/cache theo PUB-03/D-12 |
@@ -113,12 +119,12 @@ luận công khai cho pilot, không phải tính năng đang có:
 
 ## 6. Rollout và rollback
 
-1. **D2T-02a/02b (PR hiện tại):** domain + application + migration/adapter PostgreSQL, rồi HTTP
-   API v1 + contract fixtures (đọc, gửi, gỡ của mình, bật/tắt; không có route kiểm duyệt). Ở
-   production mọi lệnh ghi trả `401` vì chưa có auth authority; chưa có UI và authority kiểm duyệt
-   nên không bình luận nào thành công khai.
-2. **Trước khi mở ghi production:** auth authority thật (D-05), authority kiểm duyệt và màn
-   duyệt, UI (#45), giới hạn tần suất. Thiếu auth là blocker, không thay bằng
+1. **D2T-02a/b/c (PR hiện tại):** domain + application + migration/adapter PostgreSQL, HTTP API
+   v1 + contract fixtures (đọc, gửi, gỡ của mình, bật/tắt), rồi authority + hàng đợi + route kiểm
+   duyệt. Ở production mọi lệnh ghi (kể cả kiểm duyệt) trả `401` vì chưa có auth authority; chưa
+   có UI.
+2. **Trước khi mở ghi production:** auth authority thật (D-05), màn duyệt và người trực
+   (MOD-03), report/appeal (MOD-04), UI (#45), giới hạn tần suất. Thiếu auth là blocker, không thay bằng
    tài khoản fixture.
 3. **Rollback trước khi có dữ liệu thật:** gỡ route; migration giữ nguyên (không sửa migration
    đã áp dụng). Sau khi có dữ liệu: tắt ghi bằng cách đóng chế độ hoặc gỡ route, giữ dữ liệu

@@ -918,6 +918,7 @@ fn failure(error: &ApiError) -> Failure {
         | ApiError::CommentsClosed
         | ApiError::TargetUnavailable
         | ApiError::KeyReused
+        | ApiError::CommentRemoved
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }

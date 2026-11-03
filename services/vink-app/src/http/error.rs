@@ -27,6 +27,13 @@ pub enum ApiError {
     TargetUnavailable,
     KeyReused,
     NotCommentWriter,
+    NotModerator,
+    ModeratorRecused,
+    CommentRemoved,
+    /// The comment's moderation version moved past `expected_version`.
+    ModerationConflict {
+        current_version: i64,
+    },
     DependencyUnavailable,
     Internal,
 }
@@ -36,12 +43,17 @@ impl ApiError {
         match self {
             Self::Validation { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
-            Self::Forbidden | Self::NotCommentWriter => StatusCode::FORBIDDEN,
+            Self::Forbidden
+            | Self::NotCommentWriter
+            | Self::NotModerator
+            | Self::ModeratorRecused => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
             | Self::DiscussionConflict { .. }
             | Self::CommentsClosed
-            | Self::TargetUnavailable => StatusCode::CONFLICT,
+            | Self::TargetUnavailable
+            | Self::CommentRemoved
+            | Self::ModerationConflict { .. } => StatusCode::CONFLICT,
             Self::KeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
@@ -103,6 +115,31 @@ impl ApiError {
                 "not_comment_writer",
                 "only the comment's writer can remove it".to_string(),
                 None,
+                None,
+            ),
+            Self::NotModerator => (
+                "not_moderator",
+                "an active moderator grant is required".to_string(),
+                None,
+                None,
+            ),
+            Self::ModeratorRecused => (
+                "moderator_recused",
+                "a moderator cannot decide on their own comment or on comments of their own work"
+                    .to_string(),
+                None,
+                None,
+            ),
+            Self::CommentRemoved => (
+                "comment_removed",
+                "the comment was removed; no decision applies".to_string(),
+                None,
+                None,
+            ),
+            Self::ModerationConflict { current_version } => (
+                "version_conflict",
+                "the comment changed since expected_version; nothing was written".to_string(),
+                Some(*current_version),
                 None,
             ),
             Self::DependencyUnavailable => (
@@ -187,12 +224,12 @@ impl From<DiscussionError> for ApiError {
             },
             DiscussionError::Invalid(invalid) => invalid.into(),
             DiscussionError::Unavailable => Self::DependencyUnavailable,
-            // No v1 endpoint moderates, so these cannot arise from a v1 request; a future
-            // moderation API defines its own codes instead of reusing these silently.
-            DiscussionError::NotModerator | DiscussionError::Removed => {
-                tracing::error!(%error, "moderation outcome reached a v1 discussion route");
-                Self::Internal
-            }
+            DiscussionError::NotModerator => Self::NotModerator,
+            DiscussionError::Recused => Self::ModeratorRecused,
+            DiscussionError::Removed => Self::CommentRemoved,
+            DiscussionError::ModerationConflict { current } => Self::ModerationConflict {
+                current_version: current,
+            },
             DiscussionError::Internal => Self::Internal,
         }
     }

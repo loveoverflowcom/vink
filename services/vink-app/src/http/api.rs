@@ -9,12 +9,13 @@ use tower_http::set_header::SetResponseHeaderLayer;
 
 use super::contract::{
     CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft, DraftCard, DraftList,
-    PageQuery, Publication, RemovedCommentResponse, ReplyList, SaveDraftRequest,
-    SavedDraftResponse, SubmitCommentRequest, SubmittedCommentResponse, WorkCard, WorkList,
+    ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse, PageQuery,
+    Publication, RemovedCommentResponse, ReplyList, SaveDraftRequest, SavedDraftResponse,
+    SubmitCommentRequest, SubmittedCommentResponse, WorkCard, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
-use crate::application::discussion::{SetCommentsMode, SubmitComment};
+use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
 use crate::domain::discussion::settings::CommentsMode;
 use crate::domain::ids::{CommentId, WorkId};
 
@@ -41,6 +42,12 @@ pub fn routes(state: AppState) -> Router<AppState> {
             delete(remove_comment),
         )
         .route("/works/{work_id}/discussion/settings", put(set_settings))
+        // Moderation (D2T-02c): authority is the actor's active grant, rechecked at commit.
+        .route("/moderation/comments", get(get_moderation_queue))
+        .route(
+            "/moderation/comments/{comment_id}/decisions",
+            post(decide_comment),
+        )
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
@@ -299,4 +306,46 @@ async fn set_settings(
         )
         .await?;
     Ok(Json(CommentsSettings::from(settings)))
+}
+
+async fn get_moderation_queue(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    query: Result<Query<PageQuery>, QueryRejection>,
+) -> Result<Json<ModerationQueueResponse>, ApiError> {
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let query = page_query(query)?;
+    let queue = state
+        .vink
+        .moderation_queue(actor, query.cursor.as_deref(), query.limit)
+        .await?;
+    Ok(Json(ModerationQueueResponse::from(&queue)))
+}
+
+async fn decide_comment(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<ModerationDecisionRequest>, JsonRejection>,
+) -> Result<Json<ModerationDecisionResponse>, ApiError> {
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let comment_id = comment_id(&raw)?;
+    let body = json_body(body)?;
+    let decided = state
+        .vink
+        .moderate_comment(
+            actor,
+            ModerateComment {
+                comment_id,
+                expected_version: body.expected_version,
+                action: body.action.into(),
+                reason: body.reason,
+            },
+        )
+        .await?;
+    Ok(Json(ModerationDecisionResponse::new(comment_id, decided)))
 }

@@ -5,9 +5,11 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::application::discussion::{
-    CommentItem, OwnStatus, ReplyPage, RootEntry, RootItem, RootPage, SubmittedComment,
+    CommentItem, ModerationAction, ModerationQueue, OwnStatus, ReplyPage, RootEntry, RootItem,
+    RootPage, SubmittedComment,
 };
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
+use crate::domain::discussion::lifecycle::{CommentState, Review};
 use crate::domain::discussion::settings::DiscussionSettings;
 use crate::domain::discussion::visibility::{CommentView, ReplyContext};
 use crate::domain::document::DocumentData;
@@ -132,6 +134,8 @@ pub struct CommentView1 {
     pub reply_to: Option<ReplyTo>,
     /// Only the comment's writer may remove it.
     pub can_remove: bool,
+    /// The moderator's reason, only on the viewer's own rejected comment.
+    pub rejection_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -184,6 +188,57 @@ pub struct RemovedCommentResponse {
 pub struct CommentsSettingsRequest {
     pub expected_generation: i64,
     pub comments_open: bool,
+}
+
+/// Pending comments for a moderator, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ModerationQueueResponse {
+    pub pending_total: i64,
+    pub items: Vec<QueueEntry>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct QueueEntry {
+    pub comment_id: String,
+    pub work_id: String,
+    pub work_title: Option<String>,
+    /// `root` or `reply`.
+    pub kind: &'static str,
+    pub author_display_name: String,
+    pub body: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// Send back as `expected_version` with the decision.
+    pub version: i64,
+    /// False where this moderator must recuse (own comment or own work).
+    pub can_decide: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModerationActionDto {
+    Approve,
+    Reject,
+    Remove,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ModerationDecisionRequest {
+    pub expected_version: i64,
+    pub action: ModerationActionDto,
+    #[serde(default)]
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ModerationDecisionResponse {
+    pub comment_id: String,
+    /// `pending`, `approved` or `rejected`.
+    pub review: &'static str,
+    pub removed: bool,
+    pub version: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -301,6 +356,7 @@ impl CommentView1 {
             created_at: item.created_at,
             reply_to,
             can_remove: viewer == Some(item.author.id),
+            rejection_reason: item.rejection_reason.clone(),
         }
     }
 }
@@ -371,6 +427,55 @@ impl RemovedCommentResponse {
         Self {
             comment_id: comment_id.to_string(),
             status: own_status(status),
+        }
+    }
+}
+
+impl From<ModerationActionDto> for ModerationAction {
+    fn from(action: ModerationActionDto) -> Self {
+        match action {
+            ModerationActionDto::Approve => Self::Approve,
+            ModerationActionDto::Reject => Self::Reject,
+            ModerationActionDto::Remove => Self::Remove,
+        }
+    }
+}
+
+impl From<&ModerationQueue> for ModerationQueueResponse {
+    fn from(queue: &ModerationQueue) -> Self {
+        Self {
+            pending_total: queue.pending_total,
+            items: queue
+                .items
+                .iter()
+                .map(|item| QueueEntry {
+                    comment_id: item.comment_id.to_string(),
+                    work_id: item.work_id.to_string(),
+                    work_title: item.work_title.clone(),
+                    kind: if item.is_root { "root" } else { "reply" },
+                    author_display_name: item.writer.display_name.clone(),
+                    body: item.body.clone(),
+                    created_at: item.created_at,
+                    version: item.version.get(),
+                    can_decide: item.can_decide,
+                })
+                .collect(),
+            next_cursor: queue.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl ModerationDecisionResponse {
+    pub fn new(comment_id: CommentId, state: CommentState) -> Self {
+        Self {
+            comment_id: comment_id.to_string(),
+            review: match state.review() {
+                Review::Pending => "pending",
+                Review::Approved => "approved",
+                Review::Rejected => "rejected",
+            },
+            removed: !state.is_present(),
+            version: state.version().get(),
         }
     }
 }
@@ -551,6 +656,7 @@ mod tests {
         use uuid::Uuid;
 
         const AT: OffsetDateTime = datetime!(2026-11-03 08:00:00 UTC);
+        const REASON: &str = "Bình luận nêu danh tính đời thực của người khác. Hãy viết lại mà không kèm tên hoặc địa chỉ.";
 
         fn cid(n: u64) -> CommentId {
             CommentId::parse(&format!("0192f3a1-0000-7000-8000-{n:012}")).unwrap()
@@ -583,6 +689,7 @@ mod tests {
                 created_at: AT,
                 context,
                 context_author: context_author.map(Into::into),
+                rejection_reason: None,
             }
         }
 
@@ -655,15 +762,29 @@ mod tests {
                 "discussion.get.json",
                 &DiscussionPage::new(work(), &page, Some(viewer().id)),
             );
-            let replies = ReplyPage {
-                replies: vec![item(
-                    5,
-                    CommentView::Public,
-                    lan,
-                    "Đọc lại vẫn thấy hay.",
+            let rejected = CommentItem {
+                rejection_reason: Some(REASON.into()),
+                ..item(
+                    9,
+                    CommentView::OwnRejected,
+                    viewer(),
+                    "Tác giả thật là anh X ở phố Y.",
                     ReplyContext::Root,
                     None,
-                )],
+                )
+            };
+            let replies = ReplyPage {
+                replies: vec![
+                    item(
+                        5,
+                        CommentView::Public,
+                        lan,
+                        "Đọc lại vẫn thấy hay.",
+                        ReplyContext::Root,
+                        None,
+                    ),
+                    rejected,
+                ],
                 next: None,
             };
             assert_matches(
@@ -794,8 +915,84 @@ mod tests {
             )));
             assert_eq!(invalid.status().as_u16(), 422);
             assert_eq!(invalid.envelope().error.field, Some("body"));
-            for unreachable in [DiscussionError::NotModerator, DiscussionError::Removed] {
-                assert_eq!(ApiError::from(unreachable), ApiError::Internal);
+        }
+
+        #[test]
+        fn moderation_messages_and_errors_match_fixtures() {
+            use crate::application::discussion::{ModerationQueue, QueueItem};
+            use crate::domain::discussion::lifecycle::{ModerationVersion, Review};
+
+            let title = Some("[Mẫu] Mưa trên phố cũ".to_string());
+            let queue = ModerationQueue {
+                pending_total: 7,
+                items: vec![
+                    QueueItem {
+                        comment_id: cid(10),
+                        work_id: work(),
+                        work_title: title.clone(),
+                        is_root: true,
+                        writer: person(2, "Minh"),
+                        body: "Đoạn hai hơi dài, nhưng khổ cuối rất đẹp.".into(),
+                        created_at: AT,
+                        version: ModerationVersion::FIRST,
+                        can_decide: true,
+                    },
+                    QueueItem {
+                        comment_id: cid(11),
+                        work_id: work(),
+                        work_title: title,
+                        is_root: false,
+                        writer: person(7, "Kiểm duyệt viên"),
+                        body: "Mình cũng thấy vậy.".into(),
+                        created_at: AT,
+                        version: ModerationVersion::FIRST,
+                        can_decide: false,
+                    },
+                ],
+                next: Some(PageCursor::after(AT, cid(11))),
+            };
+            assert_matches(
+                "moderation.queue.json",
+                &ModerationQueueResponse::from(&queue),
+            );
+            let request: ModerationDecisionRequest = parse("moderation.decision.request.json");
+            assert_eq!(request.action, ModerationActionDto::Reject);
+            assert_eq!(request.reason.as_deref(), Some(REASON));
+            let rejected =
+                CommentState::restore(Review::Rejected, None, ModerationVersion::new(2).unwrap());
+            assert_matches(
+                "moderation.decision.response.json",
+                &ModerationDecisionResponse::new(cid(10), rejected),
+            );
+            // The moderator is the authenticated actor, never a body field.
+            let mut raw = fixture("moderation.decision.request.json");
+            raw["moderator_id"] = Value::from("22222222-2222-4222-8222-222222222222");
+            assert!(serde_json::from_value::<ModerationDecisionRequest>(raw).is_err());
+            let mut raw = fixture("moderation.decision.request.json");
+            raw["action"] = Value::from("restore");
+            assert!(serde_json::from_value::<ModerationDecisionRequest>(raw).is_err());
+
+            for (name, error, status) in [
+                (
+                    "error.not_moderator.json",
+                    DiscussionError::NotModerator,
+                    403,
+                ),
+                (
+                    "error.moderator_recused.json",
+                    DiscussionError::Recused,
+                    403,
+                ),
+                ("error.comment_removed.json", DiscussionError::Removed, 409),
+                (
+                    "error.moderation_conflict.json",
+                    DiscussionError::ModerationConflict { current: 2 },
+                    409,
+                ),
+            ] {
+                let error = ApiError::from(error);
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
             }
         }
     }
