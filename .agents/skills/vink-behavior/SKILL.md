@@ -69,6 +69,6 @@ If replaying model traces against code, call the actual production decision seam
 events/inputs, not precomputed expected states. Compare exact observed outcomes to the model;
 a second handwritten reducer merely compares two models. Label synthetic shell assumptions.
 
-Retain real PostgreSQL concurrency tests, pinned Discourse integration and browser checks for
+Retain real PostgreSQL concurrency tests and browser checks for
 their own boundaries. Report model simulation, bounded checking and implementation conformance
 separately, with limits. A PASS neither promotes a draft model nor establishes runtime acceptance.

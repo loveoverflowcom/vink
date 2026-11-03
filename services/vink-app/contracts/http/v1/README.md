@@ -6,8 +6,8 @@ skeleton; not a stable public API. Consumers keep their own types: the web app's
 the provider serializes its responses and compares them field-for-field; the consumer decodes
 every fixture and must keep every field.
 
-Only the endpoints below exist. Moderation, publish/withdraw, Discourse and account endpoints
-do not.
+Only the endpoints below exist. Moderation, publish/withdraw, discussion (comments) and account
+endpoints do not. Discussion is Vink-owned (no Discourse); its use cases exist below HTTP only.
 
 ## Conventions
 
@@ -72,7 +72,7 @@ migrations, otherwise `503` with `checks.database` (`ok`/`unavailable`) and `che
 (`current`/`pending_migrations`/`diverged`/`unknown`; `diverged` means an unfinished, edited or
 unknown applied migration). `checks.role` is `restricted`, `privileged` (the database role can
 change schema or roles) or `unknown`; in the production profile `privileged` is `503`. It also
-reports `integrations.discourse` and `integrations.ai_moderation` as `not_implemented`,
+reports `integrations.ai_moderation` as `not_implemented`,
 `integrations.jobs` as `none` and `integrations.identity` as `not_configured`, `no_authority`,
 `available` or `unavailable` — informational: public reading does not depend on Identity, so
 Identity never makes the App not ready.

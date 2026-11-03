@@ -141,6 +141,6 @@ Chưa đặt KPI tăng trưởng hay tỷ lệ duyệt tự động cố định
 2. Tác phẩm nhiều chương có phải lý do chính để người dùng chọn Vink trong bản đầu, hay có thể mở ở public beta?
 3. MVP chỉ cần nháp riêng và xuất bản công khai, hay nhóm góp ý kín là bắt buộc?
 4. Tạp Chí do một nhóm biên tập tuyển chọn, có cộng đồng đề cử, hay kết hợp cả hai? AI chỉ hỗ trợ đến đâu?
-5. Trong beta, phần thảo luận nâng cao có được chuyển sang giao diện Discourse để giảm khối lượng phát triển không?
+5. ~~Trong beta, phần thảo luận nâng cao có được chuyển sang giao diện Discourse để giảm khối lượng phát triển không?~~ Đã trả lời 03/11/2026: không; Vink tự sở hữu bình luận ([ADR ownership](../docs/architecture/discussion-ownership.md)).
 
 Các mặc định đề xuất và điều kiện đổi hướng nằm trong [Architecture Decisions](../docs/architecture/decisions.md). Tài liệu vision này là tổng hợp và đề xuất từ tài liệu người dùng, không phải báo cáo khảo sát thị trường; nguồn đầu vào được ghi ở [Sources](../docs/references/sources.md).

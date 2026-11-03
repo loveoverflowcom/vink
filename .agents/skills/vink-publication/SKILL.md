@@ -18,7 +18,7 @@ Implemented so far: `revisions` are immutable rows (a trigger rejects UPDATE) wi
 `content_hash`, and `publications` is a per-work pointer constrained to a revision of the same
 work. Public reads go only through that pointer. No command creates revisions or moves the
 pointer yet; only the local development seed does. Moderation, publish intent, withdrawal,
-curation, outbox and Discourse are not implemented.
+curation and outbox are not implemented. Discussion is a Vink-owned module (no Discourse).
 
 ## Keep independent facts independent
 
@@ -42,8 +42,8 @@ silently transfer r1's magazine selection. Preserve these as separate observable
    Pointer, audit/receipt and outbox commit together; reject a stale command without effects.
 4. Keep draft saves separate. A new edit cannot mutate a submitted snapshot or the current
    public revision. Repeated commands need a defined replay/conflict result.
-5. Dispatch remote effects after commit and expose their status separately. If Discourse is
-   unavailable, public literary content can remain readable while discussion is unavailable.
+5. Dispatch remote effects after commit and expose their status separately. If discussion is
+   unavailable, public literary content can remain readable while discussion reports the outage.
 
 Use the same guard at every server entrypoint, including Leptos server functions if present.
 Typed witnesses can prevent an accidental bypass in code, but durable authority still needs
@@ -75,8 +75,8 @@ is lost. Require a verified external key or lookup/reconciliation strategy befor
 Desired state and generation must survive crashes. Check stale publish/withdraw events and
 the case where a timed-out request is still executing remotely. Describe whether the target
 enforces generation fencing or only eventual reconciliation; do not promise the stronger case.
-Pre-publication comment gates belong in Discourse across every enabled create/edit path.
-After-create webhooks cannot supply that guarantee.
+Pre-publication comment gates belong in Vink's discussion module across every enabled
+create/edit path: new comments are pending until a versioned decision; edits stay blocked (D-08).
 
 Withdrawal closes Vink public access and curation according to the selected policy. Keep
 remote cleanup pending until direct access, snippets/copies and caches in scope are checked;
@@ -93,4 +93,4 @@ Choose only relevant scenarios; follow the
 [verification guide](../vink-engineering/references/verification.md).
 
 Report snapshot/generation scope, guard or transition changed, tested failure points and the
-remaining database, Discourse, cache or browser evidence. No audio/QC/storage pipeline is implied.
+remaining database, cache or browser evidence. No audio/QC/storage pipeline is implied.

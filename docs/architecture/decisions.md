@@ -1,12 +1,17 @@
 # Các quyết định và lộ trình kiến trúc Vink
 
-**Phiên bản:** 0.2 · **Ngày:** 30/10/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này.
+**Phiên bản:** 0.3 · **Ngày:** 30/10/2026, cập nhật 03/11/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này; mục được chủ sản phẩm chốt ghi rõ ngày và phạm vi.
 
 ## 1. Ba quyết định ảnh hưởng lớn nhất
 
 ### Quyết định 1 — Ai sở hữu tác phẩm?
 
-**Đề xuất:** Vink sở hữu Work/Chapter/Revision/Publication trong PostgreSQL; Discourse sở hữu thảo luận.
+**Đề xuất:** Vink sở hữu Work/Chapter/Revision/Publication trong PostgreSQL.
+
+**Đã chốt 03/11/2026 (chủ sản phẩm, phần thảo luận):** Vink cũng sở hữu bình luận bằng Rust
+core và PostgreSQL của App. Discourse chỉ là nguồn tham khảo thiết kế, API, kiểm duyệt và trải
+nghiệm cộng đồng; không là dependency runtime hay nơi lưu bình luận
+([ADR ownership](discussion-ownership.md)). Các đoạn dưới đây giữ lý do lịch sử của phần nội dung.
 
 Lợi ích là làm chủ bản nháp song song với bản công khai, quyền xuất bản, tuyển chọn và export. Chi phí là Vink phải xây một màn vận hành tác phẩm riêng và chịu trách nhiệm về revision schema, backup, migration. Đây là lý do chọn B; không dựa trên khẳng định rằng Discourse tuyệt đối không thể mở rộng.
 
@@ -14,13 +19,13 @@ Chỉ chọn A nếu ưu tiên kiểm chứng cộng đồng nhanh hơn các kh�
 
 ### Quyết định 2 — Frontend riêng tới mức nào trong beta?
 
-**Đề xuất:** Vink tự làm đọc, soạn, publication và phần bình luận thiết yếu; staff giữ Discourse Admin cho việc cộng đồng. Thảo luận nâng cao có thể dùng UI Discourse nếu chủ sản phẩm chấp nhận trải nghiệm đó và các đường truy cập đã được bảo vệ.
+**Đề xuất:** Vink tự làm đọc, soạn, publication và bình luận hai tầng. Theo quyết định 03/11/2026, không có Discourse Admin: Vink phải tự cung cấp màn kiểm duyệt bình luận tối thiểu, báo cáo và khiếu nại trước khi mở bình luận công khai cho pilot.
 
-Không đặt mục tiêu tái tạo toàn bộ profile, notifications, search, badge và history của Discourse trong Leptos ngay. Nếu yêu cầu trải nghiệm hoàn toàn thống nhất từ đầu, phải đưa toàn bộ phần UI/API đó vào kế hoạch và chấp nhận khối lượng lớn hơn.
+Không đặt mục tiêu tái tạo toàn bộ profile, notifications, search, badge và history kiểu diễn đàn trong Leptos ngay. Nếu yêu cầu trải nghiệm hoàn toàn thống nhất từ đầu, phải đưa toàn bộ phần UI/API đó vào kế hoạch và chấp nhận khối lượng lớn hơn.
 
 ### Quyết định 3 — Ai là nguồn xác thực?
 
-**Đề xuất:** Vink có principal và session độc lập; khảo sát một auth authority được duy trì, rồi dùng DiscourseConnect nếu Vink là cổng đăng nhập chính. Native auth riêng và dùng Discourse làm nguồn auth là hai phương án thay thế cần so bằng thời gian vận hành và UX thực tế.
+**Đề xuất:** Vink có principal và session độc lập; khảo sát một auth authority được duy trì, với native auth riêng là phương án thay thế cần so bằng thời gian vận hành và UX thực tế. Từ 03/11/2026 không còn bridge DiscourseConnect hay dùng Discourse làm nguồn auth.
 
 Không dùng chung bảng session/password với Cantos. Liên thông audio chưa đòi hỏi SSO; một handoff có sự đồng ý và tài khoản được xác minh có thể đi trước hệ thống đăng nhập chung. Cantos Identity hiện không phải OIDC provider sẵn có cho Vink. [C6]
 
@@ -29,22 +34,23 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | ID | Nội dung | Trạng thái | Mặc định đề xuất / điều cần chứng minh |
 | --- | --- | --- | --- |
 | D-01 | PostgreSQL, database nghiệp vụ độc lập Cantos | Ràng buộc đầu vào | Giữ nguyên trong mọi phương án |
-| D-02 | Hybrid và Vink sở hữu content | Đề xuất ưu tiên | Chốt sau khi tính đủ admin, auth, moderation bridge |
+| D-02 | Vink sở hữu content; thảo luận do Vink sở hữu (Rust core + PostgreSQL App) | Content: đề xuất ưu tiên. Thảo luận: **đã chốt 03/11/2026** | Discourse chỉ là tham khảo; Vink tự xây tiền kiểm, report/appeal, chống lạm dụng, thông báo trước khi mở công khai |
 | D-03 | Một Rust app + worker, chia module trước | Đề xuất | Không tách microservices theo tên nghiệp vụ |
 | D-04 | Leptos SSR + JavaScript editor | Cần spike | Giữ nếu editor/SSR đạt; có thể đổi frontend mà giữ API/domain |
-| D-05 | Auth authority và DiscourseConnect | Cần spike + lựa chọn | Một Vink principal ổn định, session độc lập; verify linking/ban/logout |
+| D-05 | Auth authority | Cần spike + lựa chọn | Một Vink principal ổn định, session độc lập; verify linking/ban/logout. Không còn DiscourseConnect |
 | D-06 | Nháp riêng + public publication | Đề xuất pilot | Nhóm kín/unlisted/shared editing để sau |
 | D-07 | AI hỗ trợ từ MVP | Ưu tiên đầu vào | Pilot có người duyệt; auto-approval theo nhóm được đánh giá |
 | D-08 | Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh | Cần spike | Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot |
 | D-09 | Tạp Chí chỉ hiện snapshot còn là publication hiện hành | Đề xuất pilot | Bản mới làm tuyển chọn tạm ngừng, chờ biên tập xác nhận lại |
 | D-10 | Một phần trước, nhiều chương cơ bản ở beta | Cần lựa chọn sản phẩm | Nếu nhiều chương là điểm khác biệt ngày đầu, nâng WR-04 thành Must — Pilot |
 | D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
-| D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc ngay; remote cleanup có trạng thái riêng; không báo hoàn tất trước khi xác minh |
+| D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner; cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh |
+| D-13 | Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác | **Đã chốt 03/11/2026** | Quyền bật/tắt tách khỏi quyền kiểm duyệt hệ thống; ngữ nghĩa “tắt” mặc định là ngừng nhận bình luận mới, xem [ADR](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm) |
 
-Khảo sát discussion hai tầng D2T-01: [so sánh ownership](discussion-ownership.md) giữ D-02
-ở trạng thái trên; [core/registry cấu trúc](../development/discussion-core.md) không bật
-comment store/API và không chọn Vink thay Discourse. Một owner write/moderation duy nhất phải
-được chọn có chủ đích trước persistence #43; các quyết định auth/moderation/withdrawal vẫn mở.
+Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md) ghi quyết định
+03/11/2026 chọn Vink làm owner duy nhất ghi/kiểm duyệt bình luận; [core/registry](../development/discussion-core.md)
+ghi phần đã hiện thực và gap. D-05, D-08 và D-12 vẫn mở: thiếu auth authority thật vẫn chặn
+ghi bình luận production, tiền kiểm cần authority kiểm duyệt và màn vận hành.
 
 ## 3. Không dùng một state enum cho toàn bộ vòng đời
 
@@ -106,34 +112,38 @@ Pilot chưa mở kho phiên bản công khai. Lịch sử revision và quyết �
 | INV-03 | Callback cũ/sai hash không thắng decision hoặc generation mới | Model + worker lease/version tests |
 | INV-04 | Curation không tự chuyển sang revision mới; mất quyền hiển thị thì không được đọc qua tuyển tập | Model + query/UI tests |
 | INV-05 | Client không chọn thay identity hoặc quyền người khác | Auth/API integration tests; không chỉ model giả định actor hợp lệ |
-| INV-06 | Một subject có một mapping discussion hữu hiệu; retry không tạo thread ngoài kiểm soát | Unique constraint + Discourse crash/reconcile test |
-| INV-07 | Publish event cũ không khôi phục nội dung đã rút | Subject generation + remote fencing hoặc cơ chế có phạm vi bảo đảm được công bố |
+| INV-06 | Một subject có một thread discussion hữu hiệu; retry không tạo thread ngoài kiểm soát | Unique constraint + PostgreSQL concurrent/retry test |
+| INV-07 | Publish event cũ không khôi phục nội dung đã rút | Subject generation kiểm tại commit; projection/cache có fencing hoặc kiểm quyền khi đọc |
 | INV-08 | Nháp riêng không lọt vào public DTO/cache/provider ngoài scope | Review data flow + integration/browser tests |
 
 **Tiến triển cần điều kiện vận hành:** PendingAI phải được worker/watchdog đẩy tiếp khi retry/deadline hết; HumanReview phải có người phụ trách và khung xử lý được thông báo. Một queue có dữ liệu không chứng minh rằng người dùng sẽ được giải quyết. Thời gian chờ là chỉ số cần đo trong pilot.
 
-Quint phân biệt safety và liveness; liveness thường cần temporal properties và giả định fairness. Model chỉ có giá trị trong phạm vi đã mô tả và phương pháp chạy được ghi lại. Không dùng câu “đã chứng minh không bao giờ lỗi” cho code, PostgreSQL hay Discourse chỉ vì simulation PASS. [T8], [C8]
+Quint phân biệt safety và liveness; liveness thường cần temporal properties và giả định fairness. Model chỉ có giá trị trong phạm vi đã mô tả và phương pháp chạy được ghi lại. Không dùng câu “đã chứng minh không bao giờ lỗi” cho code hay PostgreSQL chỉ vì simulation PASS. [T8], [C8]
 
 ## 5. Quyết định về thu hồi và đồng bộ cần viết rõ
 
-**Mặc định đề xuất cho pilot:** rút bài đóng ngay public read ở Vink, đồng thời yêu cầu ẩn thread tương ứng khỏi người đọc thông thường và dừng replies mới. Mapping được giữ dưới dạng tombstone/trạng thái thu hồi để tiếp tục đối soát. Không chỉ unlink hoặc xóa mapping.
+**Mặc định đề xuất cho pilot:** rút bài đóng ngay public read ở Vink, kể cả thảo luận của tác
+phẩm: vì thảo luận nay cùng owner và cùng database (quyết định 03/11/2026), đường đọc/ghi bình
+luận kiểm trạng thái publication hiện hành tại thời điểm đọc và tại commit, không chờ event.
+Bình luận được giữ nguyên để đối soát và khôi phục theo policy; không xóa hàng loạt.
 
-Tiêu đề, Post đầu tiên, excerpt, trích dẫn trong replies và cache là các bề mặt khác nhau. MVP nên hạn chế sao chép nội dung sang Discourse, nhưng vẫn cần policy cho các bản sao đã tồn tại. Đóng hoặc unlist topic không tự được coi như thu hồi quyền đọc.
+Excerpt, trích dẫn trong replies, preview, thông báo đã gửi và cache là các bề mặt khác nhau,
+cần policy riêng. Projection/cache phải kiểm quyền hiện hành khi đọc hoặc bị vô hiệu theo
+generation; xóa một bản cache không tự chứng minh mọi bản sao đã được thu hồi.
 
-Nếu Discourse không phản hồi, giao diện tác giả phải phân biệt “đã rút khỏi Vink” với “đang thu hồi thảo luận/bản sao”. Không báo thao tác đã hoàn tất trên mọi hệ thống trước khi kiểm chứng. Thời hạn thu hồi remote và xử lý khi quá hạn cần chủ sản phẩm chốt trước public beta.
-
-Nếu sản phẩm yêu cầu không có khoảng chờ đọc được ở remote, phải bổ sung cổng kiểm quyền đồng bộ/fail-closed tại đường đọc Discourse và thử cả direct URL/cache. Event bất đồng bộ đơn thuần không đáp ứng yêu cầu đó.
-
-Mỗi subject cần generation tăng dần và desired state bền vững. Worker điều phối theo subject, đọc lại desired state trước side effect và đối soát sau. Local lock không ngăn một HTTP request cũ đã timeout tiếp tục chạy bên đích. Muốn bảo đảm mạnh INV-07, endpoint/plugin đích cần nhận generation và từ chối lệnh cũ; nếu không làm được, phải ghi đúng giới hạn eventual reconciliation và điều chỉnh phạm vi beta.
+Mỗi subject cần generation tăng dần và desired state bền vững. Worker xử lý projection/thông
+báo đọc lại desired state trước side effect và đối soát sau; side effect ra ngoài hệ thống
+(email, push) không được coi là exactly-once. Thời hạn thu hồi các bản sao ngoài Vink và cách xử
+lý khi quá hạn cần chủ sản phẩm chốt trước public beta.
 
 ## 6. Năm thử nghiệm cần làm trước khi chốt stack
 
 | Spike | Câu hỏi cần trả lời | Đầu ra và tiêu chí go/no-go |
 | --- | --- | --- |
 | S-01 Editor + SSR | Leptos và editor có cho trải nghiệm viết tiếng Việt tốt không? | Demo có thơ/tản văn, IME, paste, undo, autosave, hai tab, refresh và mobile; schema round-trip; public HTML/metadata đúng. Nếu không đạt, thử editor/frontend thay thế trước khi xây nhiều màn |
-| S-02 Discourse moderation | Giữ nội dung trước khi công khai ở create/edit được không? | Pin release/plugin; ma trận native/API/Vink/email/import/staff; review action/version; test direct topic. Đường không đạt phải tắt hoặc đổi thiết kế, không coi webhook là đủ |
+| S-02 Tiền kiểm bình luận | ~~Discourse moderation~~ — thay ngày 03/11/2026 bằng tiền kiểm trong module thảo luận Vink | Mọi đường ghi (Web/API/staff) tạo bình luận chờ duyệt; quyết định gắn version; list/count/preview/thông báo không lộ pending; quyết định trễ không thắng; có người trực hàng đợi |
 | S-03 Identity | Map người và quyền mà không mở lỗ hổng đăng thay được không? | Thử signup/verified email, account đã có, đổi email/username, provisioning lỗi, logout/ban, request giả user; quyết định auth authority và authority cho suspension |
-| S-04 Đồng bộ + dữ liệu | Có sống sót qua crash/replay/withdraw/restore không? | PostgreSQL transaction và CAS; topic create mất acknowledgment; publish/withdraw đến sai thứ tự; remote cleanup thất bại; restore và reconcile giữ đúng dữ liệu/quyền |
+| S-04 Đồng bộ + dữ liệu | Có sống sót qua crash/replay/withdraw/restore không? | PostgreSQL transaction và CAS; lệnh ghi bình luận mất acknowledgment; publish/withdraw đến sai thứ tự; remote cleanup thất bại; restore và reconcile giữ đúng dữ liệu/quyền |
 | S-05 AI + vận hành | Tự động hóa mức nào giảm việc mà không làm hại vòng phản hồi? | Bộ mẫu tiếng Việt, schema output, thử injection/timeout, cost baseline, false positives, tuổi human queue; chốt nhóm auto-approve và cách tắt/đảo quyết định |
 
 Ngày 02/11/2026, theo yêu cầu của người dùng, PostgreSQL được tách theo owner và Identity thành process riêng chưa có authority ([ranh giới PostgreSQL/Identity](identity-postgres-boundaries.md)). Đó là ranh giới kiến trúc, không phải lựa chọn auth authority: D-05 vẫn “Cần spike + lựa chọn”, S-03 chưa hoàn tất.
@@ -156,7 +166,7 @@ Không ấn định số tuần hoặc ngày ra mắt trước khi biết số n
 
 ## 8. Những tài liệu nên viết sau bộ này
 
-Sau review/spikes: ADR content ownership và identity; schema tài liệu editor và migration strategy; API contracts/fixtures; publication/moderation transition rules; plugin compatibility contract; một hoặc hai model Quint tập trung; runbook moderation/backup/restore. Mỗi tài liệu gắn với quyết định đã chốt, tránh sinh đồng thời một bộ đặc tả lớn chưa có cơ sở.
+Sau review/spikes: ADR content ownership và identity; schema tài liệu editor và migration strategy; API contracts/fixtures; publication/moderation transition rules; một hoặc hai model Quint tập trung; runbook moderation/backup/restore. Mỗi tài liệu gắn với quyết định đã chốt, tránh sinh đồng thời một bộ đặc tả lớn chưa có cơ sở.
 
 [C6]: https://github.com/loveoverflowcom/cantos/blob/a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330/services/cantos-server/contracts/auth/identity-auth/v1/README.md
 [C7]: https://github.com/loveoverflowcom/cantos/blob/a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330/docs/decisions/0054-publication-generation-and-access.md

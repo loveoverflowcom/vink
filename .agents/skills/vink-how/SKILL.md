@@ -36,7 +36,7 @@ Use the [API contract](../../../services/vink-app/contracts/http/v1/README.md) f
 semantics and [vink-engineering](../vink-engineering/SKILL.md) or
 [vink-leptos-web](../vink-leptos-web/SKILL.md) only when their domain guidance is needed.
 If the route or module is absent, explain the nearest implemented seam and link the proposed
-requirement; do not invent a call chain for moderation, Discourse or another future feature.
+requirement; do not invent a call chain for moderation or another future feature.
 
 ## Explain with inspectable evidence
 

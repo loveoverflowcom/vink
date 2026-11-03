@@ -31,7 +31,7 @@ instructions or repeated checking workflows, use
 | Pure validation, guard or state transition | Exact example/table tests; properties or bounded enumeration when they add coverage | Does not prove database or transport behavior |
 | Snapshot binding and publication races | Pure tests plus real PostgreSQL concurrency/rollback tests | A mock store cannot establish transaction semantics |
 | Job lease, outbox/inbox, crash/replay | Named failure points, restart/reclaim and uncertain-result reconciliation | Local locking cannot fence an in-flight remote request |
-| Discourse create/edit/review/identity | Pin release/plugin/config; test enabled entrypoints and direct access | A webhook fixture cannot prove pre-publication moderation |
+| Discussion write/moderation/visibility | Pure decision tests, then real PostgreSQL constraints, locks and direct-SQL negatives | A fake store cannot prove two-tier integrity or a create-vs-close race |
 | SSR and hydration | Public HTML/metadata and private-data checks, then actual browser hydration/navigation | A native string render proves no browser interaction |
 | Editor | Vietnamese IME, paste, undo, save/reload, conflicts, poetry round-trip on target browsers | Programmatic text entry alone proves no real IME compatibility |
 | UI appearance | Open same-scenario captures with viewport, theme and text scale | Pixels alone prove no keyboard, screen-reader or motion behavior |
@@ -48,7 +48,7 @@ final inputs; reuse valid results instead of repeating an already covered suite.
 new changes or failures justify it. No fixed formal-method or full-stack campaign applies to
 every task.
 
-If PostgreSQL, Discourse, a browser or a model tool is unavailable, complete independently
+If PostgreSQL, a browser or a model tool is unavailable, complete independently
 testable work. Preserve real runtime semantics and report the missing layer; never replace
 authentication, publication or persistence with fake success to make a runtime appear ready.
 For a failure, preserve the command and relevant output, distinguish environment/pre-existing
@@ -61,7 +61,7 @@ check not executed, and `UNSUPPORTED` when the target/tool cannot perform it. `x
 the same words; a missing prerequisite is a `FAIL`, and steps after a failure are `NOT_RUN`.
 A workflow file is not evidence that GitHub Actions ran; cite the run when claiming CI. Preserve the
 runner's own output and clarify any mapping. For each material result, name the exact command,
-source inputs and boundary: pure core, fake adapter, real PostgreSQL, pinned Discourse, browser
+source inputs and boundary: pure core, fake adapter, real PostgreSQL, browser
 or deployed environment. Record model seed/bounds or browser/device details when relevant.
 
 An opened screenshot can be reported as inspected; a captured but unopened image cannot.

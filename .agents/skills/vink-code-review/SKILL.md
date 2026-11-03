@@ -38,7 +38,7 @@ do not ask again solely because this skill defaults to report-only.
 | Module/framework imports | Domain decisions hidden in handlers/components; abstractions without a consumer; server code leaking into WASM |
 | Drafts, revisions, moderation, publication | WR/PUB/MOD and INV IDs, exact snapshots, current authority, stale decisions, author intent, atomic pointer/outbox |
 | PostgreSQL, workers, external writes | Real constraints/CAS/leases, crash boundaries, uncertain remote results, replay and current desired state |
-| Discourse or identity | Acting principal from session, secrets kept server-side, enabled create/edit paths, pinned plugin/release and direct access |
+| Discussion or identity | Acting principal from session, secrets kept server-side, one Vink discussion owner, premoderation on every write path, work author cannot edit/remove others' comments, DB constraints for two tiers |
 | Public reads, curation, search or cache | Private/withdrawn content through every exposed path; version/access-aware keys; curation bound to its snapshot |
 | Leptos, editor or UI | SSR/hydration parity, IME and unsaved-text loss, stale response handling, semantics/focus, token reuse and inspected output |
 | API contract or fixtures | Provider fixture and every consumer representation changed together; error `code` and status kept distinct |
@@ -63,4 +63,4 @@ Do not turn stylistic preferences or an unselected proposal into requirements. I
 defect is found, say so, then name important coverage limits. Finish with checks actually run
 and material unverified claims, using the
 [verification guide](../vink-engineering/references/verification.md). A green model/build is
-not proof of PostgreSQL, Discourse or browser behavior.
+not proof of PostgreSQL or browser behavior.

@@ -52,7 +52,7 @@ hiện tại nằm ở [docs/development](../../docs/development/README.md) — 
 | UI CMP, Kotlin, Android/iOS hoặc preview native | `vink-cmp-mobile` (+ `vink-ui-fix` khi sửa lỗi) | Tìm đúng library/pattern/host, giữ input/lifecycle; Desktop, native compile và runtime là các bằng chứng riêng |
 | Đổi copy hoặc layout | `vink-ui-design` (+ `vink-leptos-web` nếu đổi component) | Không cần model Quint; mở ảnh ở viewport/theme liên quan, chạy `verify quick` và `verify web` nếu hành vi đổi |
 | Sửa lưu nháp, version, xung đột | `vink-engineering` (+ `vink-leptos-web` cho UI) | CAS cần `verify postgres`; máy trạng thái UI cần unit test và `verify web` |
-| Thiếu Discourse, PostgreSQL hoặc Chrome | Skill đang dùng + [verification](vink-engineering/references/verification.md) | Làm phần độc lập; báo `FAIL`/`NOT_RUN` cho lớp chưa chạy; không báo integration `PASS` |
+| Thiếu PostgreSQL, công cụ model hoặc Chrome | Skill đang dùng + [verification](vink-engineering/references/verification.md) | Làm phần độc lập; báo `FAIL`/`NOT_RUN` cho lớp chưa chạy; không báo integration `PASS` |
 | Revision, moderation, publish, withdraw | `vink-publication` + `vink-engineering` (+ `vink-behavior` khi có race) | Không đổi D-xx thành Accepted; guard kiểm lại tại commit |
 
 Chỉ chọn skill giải quyết câu hỏi đang có, không bắt mọi thay đổi đi qua cả chuỗi. Phần

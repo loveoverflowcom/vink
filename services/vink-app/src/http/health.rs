@@ -27,7 +27,6 @@ async fn live() -> Json<Value> {
 /// Integrations that do not exist yet are reported as such, never as healthy.
 pub fn integrations(identity: &str) -> Value {
     json!({
-        "discourse": "not_implemented",
         "ai_moderation": "not_implemented",
         "jobs": "none",
         "identity": identity,

@@ -90,7 +90,7 @@ model Quint và trace replay. Chưa nối request/store/API, chưa chọn discus
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch
   sử migration trùng migration nhúng; thiếu là `pending_migrations`, checksum lệch/version lạ/dở
-  dang là `diverged`). Discourse và AI moderation được báo `not_implemented`.
+  dang là `diverged`). AI moderation được báo `not_implemented`; không còn mục Discourse (thảo luận do Vink sở hữu).
 - PostgreSQL có owner tại [services/postgres](../../services/postgres/README.md): một container,
   database `vink` (App) và `vink_identity` (Identity, chưa có bảng), mỗi owner một role
   migrator và một role runtime do `provision.sh` tạo/kiểm. App chạy bằng role runtime (DML, không

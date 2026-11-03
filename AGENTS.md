@@ -37,15 +37,19 @@ scoped style/dependency guards and opt-in Android debug/iOS simulator diagnostic
 the CMP specimens with Desktop (`:diagnostics`); these are not native product apps. Target
 readiness and runtime limits live in `docs/development/ui-system-qualification-evidence.md`.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
-No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider or job
-exists; production authentication is NOT_IMPLEMENTED. The app has an unwired pure two-tier
-discussion structure core and a scoped Quint model/trace replay (`services/vink-app/behavior`);
-these add no comment write/read API or discussion owner. Inspect actual
+No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
+production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,
+[ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
+(structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
+paging), application use cases and a PostgreSQL adapter/migration with real-database tests, plus a
+scoped structural Quint model/trace replay (`services/vink-app/behavior`). No HTTP route, UI or
+moderation authority calls the discussion use cases yet, so nobody can post a comment. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
-- [Tech stack](docs/architecture/tech-stack.md) recommends Hybrid B: Vink owns literary content
-  in PostgreSQL; Discourse owns discussion. Leptos SSR/Axum and a background worker are proposed.
+- [Tech stack](docs/architecture/tech-stack.md): Vink owns literary content and, since 03/11/2026,
+  discussion in PostgreSQL. Discourse is a design reference only: never a runtime dependency,
+  comment store, auth source or plugin target. Leptos SSR/Axum and a background worker are proposed.
 - [Decision log](docs/architecture/decisions.md) owns open D-01–D-12 decisions, INV-01–INV-08
   and S-01–S-05 spikes. Importing documents or passing a check does not accept a proposal.
 - Distinguish proposed, implemented and verified. A scoped prototype may explore a decision
@@ -61,12 +65,14 @@ The following boundaries guide work within the selected scope:
 
 - Vink is independent of Cantos: PostgreSQL for Vink business data; no shared Turso store,
   password store, cookies or session tables. Audio adaptation needs its own consent and scope.
-- Keep domain decisions independent of Axum, SQLx, Leptos, Discourse and AI provider SDKs.
+- Keep domain decisions independent of Axum, SQLx, Leptos and AI provider SDKs.
   Application code orchestrates; adapters perform I/O; UI renders facts and submits intents.
 - Keep private working drafts, immutable submitted revisions, moderation decisions, publication
   and curation distinct. Recheck current authority and version at durable commit boundaries.
-- In Hybrid work, integrate with Discourse through owned API/event contracts, not cross-database
-  writes. Discourse credentials and server secrets must stay out of browser bundles and HTML.
+- Discussion is the App's `discussion` module: one writer/moderation owner, two tiers (root + flat
+  replies), premoderation, work author toggles comments but never edits/removes others' comments.
+  Do not add a Discourse adapter, sync outbox or parallel comment store. Secrets stay out of
+  browser bundles and HTML.
 - Preserve Vietnamese Unicode, IME composition, paragraph/poem structure and unsaved text.
   Material 3 Expressive should support a calm reader and editor; Vink has its own visual identity.
 - AI results are untrusted input. Do not turn manuscript text into tool instructions or send
@@ -88,8 +94,7 @@ to validate documentation or skills.
 
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual
-boundary needed by the claim: real PostgreSQL for transactions, pinned Discourse for its gates,
-and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
+boundary needed by the claim: real PostgreSQL for transactions and a browser for hydration/editor interactions. Quint evidence is separate from code/I/O evidence.
 Use [the verification guide](.agents/skills/vink-engineering/references/verification.md) for scope
 and result reporting; never present an unavailable runtime check as passed.
 

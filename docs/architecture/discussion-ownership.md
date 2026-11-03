@@ -1,205 +1,136 @@
 # Ownership của thảo luận hai tầng
 
-**Ngày:** 03/11/2026 · **Trạng thái:** Đề xuất có phạm vi; chưa Accepted.
-**Work item:** D2T-01, [#41](https://github.com/loveoverflowcom/vink/issues/41).
-**Baseline khảo sát:** `develop@8045d45e554e0a01f11fd252ac681f8eb9d33a56`.
+**Ngày:** 03/11/2026 · **Trạng thái:** **Đã chốt** phần owner bởi chủ sản phẩm ngày 03/11/2026.
+**Work item:** D2T-01 [#41](https://github.com/loveoverflowcom/vink/issues/41), D2T-02
+[#43](https://github.com/loveoverflowcom/vink/issues/43).
+**Baseline khảo sát trước quyết định:** `develop@8045d45e554e0a01f11fd252ac681f8eb9d33a56`;
+quyết định áp lên `develop@31a62b1` (sau [#49](https://github.com/loveoverflowcom/vink/pull/49)).
 
-Tài liệu này so sánh owner trước khi triển khai persistence, không chuyển ownership production.
-[D-02](decisions.md) vẫn là **Đề xuất ưu tiên**: Vink sở hữu tác phẩm, Discourse sở hữu
-thảo luận. Chưa có discussion backend, kho comments, auth authority hay integration Discourse
-được xác minh tại baseline. Việc thêm core Rust thuần không thay đổi những giới hạn đó.
+## 1. Quyết định
 
-## 1. Câu hỏi và phạm vi PR đầu
+1. **Vink tự xây hệ thống bình luận** bằng Rust core thuần và PostgreSQL của App. Module
+   `discussion` trong `vink-app` là owner duy nhất ghi, đọc và kiểm duyệt bình luận.
+2. **Discourse chỉ là nguồn tham khảo** về thiết kế, API, kiểm duyệt và trải nghiệm cộng đồng.
+   Discourse không là dependency runtime, nơi lưu bình luận, nguồn xác thực hay plugin cần
+   triển khai. Không có adapter, outbox đồng bộ hay mapping sang Discourse.
+3. **Tác giả tác phẩm bật/tắt bình luận trên từng tác phẩm**, độc lập với quyền kiểm duyệt của
+   hệ thống.
+4. **Tác giả tác phẩm không sửa, xóa hay duyệt bình luận của người khác.**
+5. **Giữ hai tầng:** bình luận gốc và một danh sách phản hồi phẳng; `reply_to` chỉ giữ ngữ cảnh.
 
-Người đọc trả lời một bình luận trong tác phẩm. Giao diện chỉ có bình luận gốc và một danh sách
-phản hồi phẳng. Trả lời một reply vẫn thêm một reply cùng cấp; `reply_to` giữ ngữ cảnh, không
-tạo thêm cấp cây. Thread gắn với work/chapter ổn định, không tự đổi khi xuất bản revision mới.
+Phương án trước đó (Discourse là owner duy nhất) được thay thế. [D-02](decisions.md) ghi phần
+thảo luận là đã chốt; D-13 ghi quyền bật/tắt của tác giả. D-05 (auth authority), D-08 (tiền
+kiểm/sửa công khai) và D-12 (thu hồi) **vẫn mở**: quyết định owner không tự chốt chúng.
 
-Cần trả lời hai câu hỏi riêng:
+## 2. Bố trí: module-first trong `vink-app`
 
-1. Hệ thống nào có quyền ghi comments/reactions và áp quyết định moderation cuối cùng?
-2. Nếu Vink giữ quyền đó, module trong app có đủ không, hay cần process riêng?
+Thảo luận là module trong App hiện có, dùng database `vink` và role runtime/migrator của App.
+Không thêm process, cluster hay database mới. Ranh giới trong code:
 
-PR đầu có thể xây và kiểm **core cấu trúc thuần, nằm trong owner hiện có `vink-app`**: kiểu ID,
-root/reply, chuẩn hóa target và kiểm tham chiếu cùng thread/root. Đây là seam để application
-thật sử dụng về sau, không phải reducer thứ hai chỉ dùng cho test. Core nhận facts/input tường
-minh; không tự tải database, gọi Discourse, đọc đồng hồ, sinh ID hay nhận quyền từ client.
+| Lớp | Vị trí | Trách nhiệm |
+| --- | --- | --- |
+| Domain thuần | `services/vink-app/src/domain/discussion.rs` và `domain/discussion/` | Cấu trúc hai tầng, nội dung bình luận, trạng thái kiểm duyệt/hiện diện, chế độ bình luận của tác phẩm, quyền, hiển thị theo người xem, idempotency, phân trang |
+| Application | `services/vink-app/src/application/discussion.rs` | Xác thực actor, validate input bằng domain, ánh xạ kết quả; port `DiscussionStore` |
+| Persistence | `services/vink-app/src/persistence/discussion.rs` và migration | Khóa/transaction, ràng buộc toàn vẹn độc lập Rust, nạp facts rồi gọi quyết định thuần |
 
-Vị trí của lát cắt là `services/vink-app/src/domain/discussion.rs`: `DiscussionThread` giữ
-placements riêng, `create_root`/`create_reply` tra target ID trong chính thread. Chưa có request
-production nào gọi core. Không có bodies, visibility, moderation, auth hay reactions trong
-lát cắt này; unit tests và bounded enumeration chỉ kiểm những luật cấu trúc đã hiện thực.
+Domain không import Axum, SQLx, Leptos, đồng hồ hệ thống hay sinh ID ẩn. Adapter nạp facts
+trong transaction rồi gọi đúng hàm quyết định production; fake store của test application gọi
+cùng hàm đó, không viết lại luật.
 
-**Không mở comment write store/API trong PR này.** Chưa tạo bảng comments, endpoint gửi bình
-luận, worker moderation hoặc luồng public read. Kết quả core hợp lệ chỉ nói về cấu trúc trong
-phạm vi facts được cung cấp, không có nghĩa actor đã được xác thực, comment đã commit hoặc
-nội dung được phép công khai. Chọn owner vẫn là prerequisite của
-[#43](https://github.com/loveoverflowcom/vink/issues/43), không được suy ra từ vị trí file Rust.
+**Khi nào tách process `vink-discussion`:** chỉ khi đo được contention/scaling hoặc lỗi lan
+truyền cần isolation. Khi đó service sở hữu database/schema, migrations, contracts và roles
+riêng, không đọc/ghi chéo database App; thu hồi tức thời cần đường kiểm quyền đồng bộ, không
+chỉ dựa event. Không tách emoji/sticker thành service; asset thuộc
+[#25](https://github.com/loveoverflowcom/vink/issues/25).
 
-## 2. HOW: một thành công và một lần bị từ chối
-
-Ví dụ dưới đây dùng ký hiệu, không phải HTTP contract đã triển khai:
+## 3. HOW: một thành công và một lần bị từ chối
 
 ```text
-Thread T
-  Root A
-    Reply B: root=A, reply_to=None
-    Reply C: root=A, reply_to=Some(B)
+Tác phẩm W (đã công khai, bình luận đang bật)
+  Root A (của Lan, đã duyệt)
+    Reply B: root=A, reply_to=None      (Minh trả lời A)
+    Reply C: root=A, reply_to=Some(B)   (Hà trả lời B, vẫn cùng cấp với B)
 ```
 
-**Luồng hợp lệ ở core:** tạo A trong T; dùng target A đã được kiểm để tạo B; dùng target B
-đã được kiểm để tạo C. Core chuẩn hóa C về root A và giữ B làm context. B và C cùng cấp cấu
-trúc; không duyệt `reply_to` như cạnh cây. Quy ước cục bộ: trả lời trực tiếp root dùng
-`reply_to=None`, trả lời reply dùng `Some(reply_id)`; không nhận thêm cách mã hóa root ID
-trong context. Đây chưa phải cam kết về representation của provider API.
+**Thành công:** Hà gửi `{target: B, body, command_key}`. Server lấy actor từ session, tải B
+trong thread của W và khóa thread/publication. Quyết định thuần kiểm khóa idempotency, tác
+phẩm còn công khai, bình luận đang bật, B đang hiển thị công khai; chuẩn hóa root = A và
+context = B. C được ghi ở trạng thái **chờ duyệt** cùng receipt trong một transaction. Hà thấy
+C là “đang chờ duyệt”; người khác và tác giả W chưa thấy C.
 
-**Luồng bị từ chối ở core:** yêu cầu thêm C vào T nhưng target B chỉ tồn tại trong thread U,
-hoặc dùng lại ID đã có. Core trả lỗi, không có trạng thái mới được chấp nhận. Root không là
-input của lệnh reply: target trong T tự chọn root, nên không có tham số context/root giả để
-ghi chéo hai root. Các test phải gọi đúng
-seam production và kiểm trạng thái không đổi; dữ liệu expected không được đưa thẳng vào reducer.
-Trường hợp self-reference/root trỏ reply cũng cần negative scenario tại chính ranh giới này.
+**Bị từ chối:** tác giả W tắt bình luận (generation 1 → 2) đúng lúc Hà gửi một bình luận mới.
+Hai transaction tranh cùng khóa hàng thread: nếu tắt commit trước, lệnh của Hà thấy `Closed` và
+không ghi gì; nếu lệnh của Hà commit trước, bình luận đã tồn tại và vẫn chờ duyệt. Không có trạng
+thái nửa vời. Hà gửi lại cùng `command_key` sau khi mất phản hồi sẽ nhận lại đúng bình luận cũ,
+không tạo bản thứ hai; cùng khóa nhưng nội dung khác bị từ chối.
 
-**Race chưa được core cấu trúc giải quyết:** server tải B khi còn quyền, sau đó tác phẩm bị
-rút hoặc actor bị khóa trước commit. Application/owner cuối cùng phải đọc lại authority và
-access/version facts theo cơ chế transaction/fencing đã chọn. Đưa một snapshot hợp lệ vào
-hàm thuần không chứng minh write muộn đã bị chặn. PostgreSQL, direct Discourse, cache/SSR và
-notification cần kiểm riêng; trước khi có các gate này không bật gửi bình luận.
+## 4. Quyền của tác giả tác phẩm
 
-## 3. Phương án A: Discourse là owner duy nhất
+| Hành động | Tác giả tác phẩm | Người viết bình luận | Người kiểm duyệt (authority hệ thống) | Người khác |
+| --- | --- | --- | --- | --- |
+| Bật/tắt bình luận của tác phẩm | Có | Không | Không qua quyền này | Không |
+| Gửi bình luận/phản hồi khi đang bật | Có (như người đọc) | — | — | Có, nếu đã xác thực |
+| Gỡ bình luận | Chỉ bình luận của chính mình | Có, bình luận của mình | Có, gắn version | Không |
+| Sửa bình luận | Không (kể cả của người khác) | Chưa mở: D-08 chặn sửa công khai trong pilot | — | Không |
+| Duyệt/từ chối | Không | Không | Có, gắn version | Không |
 
-- **Trải nghiệm:** Vink render hai tầng và context từ projection; Discourse sở hữu comment,
-  revision, reaction được chọn, review/flag và mutation tương ứng. Rust giữ policy/validation,
-  mapping và adapter, không được gọi proxy là owner dữ liệu Discourse.
-- **Ranh giới:** Vink giữ subject → thread mapping, identity mapping và projection tối thiểu;
-  không lưu một kho comments có quyền ghi cạnh tranh. Browser không quyết định actor hoặc
-  root. Mọi tích hợp qua API/event có owner, không ghi chéo SQL vào Discourse.
-- **Commit và recovery:** publication Vink và discussion Discourse không cùng transaction.
-  Outbox/inbox, idempotency tại đích hoặc lookup/reconcile, subject generation và receipt phải
-  xử lý cả tạo thành công nhưng mất ack. Local lock không fence được HTTP request cũ ở đích.
-- **Tương thích và vận hành:** cần pin Discourse/plugin/config, bảo vệ mọi cửa đang bật
-  (Vink/native/API, staff/system; tắt email/import nếu không hỗ trợ), giữ direct access trong
-  phạm vi tiền kiểm/thu hồi. Vẫn vận hành hai hệ và bridge identity, nhưng tận dụng được staff
-  tools nếu chúng thực sự đáp ứng nhu cầu.
-- **Bằng chứng hiện có:** đây là hướng ưu tiên trong [tech stack](tech-stack.md), chưa phải
-  kết quả runtime của Vink. S-02/S-03/S-04 chưa hoàn tất.
-- **Bất định lớn nhất và phép thử phân biệt:** trên release/plugin pinned, thử create/edit
-  pending qua từng cửa đang bật, reply-to-reply, direct read sau withdrawal, mất ack và replay
-  generation cũ. Chỉ giữ phương án nếu các gate đạt và lợi ích staff tools bù được bridge.
-- **Rút lui:** khi chưa có dữ liệu, bỏ adapter thử nghiệm không cần migrate comments. Sau khi
-  có dữ liệu, tắt write tại một owner rồi export/đối soát theo kế hoạch chuyển owner ở mục 6;
-  không cho Vink nhận write song song để che lỗi Discourse. Bài công khai vẫn đọc được, phần
-  thảo luận báo gián đoạn trung thực theo COM-04.
+**Ngữ nghĩa “tắt” mặc định (cần chủ sản phẩm xác nhận):** tắt là **ngừng nhận bình luận và
+phản hồi mới**; bình luận đã duyệt vẫn đọc được, không bị xóa hay đổi trạng thái, và bật lại
+không mất gì. Tác giả không dùng “tắt” để ẩn bình luận của người khác. Nếu sản phẩm muốn “tắt”
+cũng ẩn toàn bộ thảo luận, đó là thay đổi trong `CommentsMode` và đường đọc, cần ghi lại ở đây.
+Tác phẩm mới công khai mặc định **bật** bình luận (vẫn tiền kiểm).
 
-## 4. Phương án B: Vink/Rust sở hữu comments và moderation
+Thay đổi chế độ dùng `expected_generation`: cùng chế độ là không đổi (an toàn khi gửi lại),
+khác chế độ với generation cũ bị từ chối để tab cũ không đè lựa chọn mới hơn.
 
-- **Trải nghiệm:** Vink kiểm soát trực tiếp hai tầng, revision, visibility, reactions và
-  review. Discourse không còn là nơi ghi cùng một bình luận hoặc áp quyết định cạnh tranh.
-- **Ranh giới:** domain thuần → application → persistence/API/event adapters thuộc owner.
-  Subject/thread mapping, actor facts, revision/generation và idempotency có contract rõ.
-  Không dùng DTO thay domain value; không tạo package contracts nghiệp vụ toàn cục.
-- **Commit và recovery:** mutation + command receipt + outbox ghi cùng transaction của owner
-  khi được thiết kế như vậy; database cần constraints và concurrency tests độc lập với Rust.
-  Cùng command/payload chỉ một hiệu ứng, khác payload bị từ chối; timeout là uncertain, không
-  tự tạo lại. Presence cấu trúc, visibility và moderation là các trục riêng.
-- **Tương thích và vận hành:** giảm bridge comments nhưng Vink phải xây/vận hành phần cộng đồng
-  từng kỳ vọng ở Discourse. Đây là thay đổi phạm vi D-02 và COM-01/02/04, không chỉ đổi một
-  adapter. COM-03, MOD-02..05, PUB-03 và INV-05..08 vẫn giữ các bảo đảm liên quan.
-- **Bằng chứng hiện có:** yêu cầu hai tầng và khảo sát Rust-owned core trong #41; kiến trúc
-  app/worker và PostgreSQL theo owner đã có. Chưa có evidence cho comment transactions,
-  moderation runtime, notification, hiệu năng hoặc đội vận hành các trách nhiệm mới.
-- **Bất định lớn nhất và phép thử phân biệt:** làm một vertical slice được giới hạn sau khi
-  chọn owner: pending → human decision đúng revision → đọc được phép → tombstone/withdraw;
-  cố tình mất ack, race quyền và callback cũ. Review cả khả năng staff xử lý report/appeal và
-  backlog, không chỉ latency hoặc test graph hai tầng.
-- **Rút lui:** trước persistence có thể bỏ hoặc sửa core mà không migrate dữ liệu. Sau
-  persistence, tắt write khi có lỗi không đồng nghĩa chuyển authority về Discourse; phải có
-  mapping/export/retention và verification đã chuẩn bị trước. Giữ nguồn canonical để phục hồi.
+## 5. Bất biến được hiện thực ở lát D2T-02a
 
-### Trách nhiệm phải thay thế nếu rời Discourse
+ID và mapping đầy đủ ở [registry](../development/discussion-core.md#registry-traceability-của-41).
+Tóm tắt phần lát này chịu trách nhiệm:
 
-Đây là khoảng trống cần có owner và bằng chứng trước pilot, không phải các tính năng đang có
-trong Vink. Không được âm thầm giảm yêu cầu để đạt một core demo:
+- Hai tầng được giữ ở **cả Rust và database**: discriminator bất biến, FK ghép tới root cùng
+  thread, context chỉ trỏ reply cùng root, trigger chặn đổi placement. Test ghi SQL trực tiếp.
+- Hai trục **hiện diện** (còn/đã gỡ bởi người viết/kiểm duyệt) và **kiểm duyệt**
+  (chờ/duyệt/từ chối) tách nhau; hiển thị công khai là kết quả của cả hai cộng quyền đọc tác phẩm.
+- Root đã gỡ/ẩn nhưng còn phản hồi hiển thị trở thành điểm neo không có nội dung/danh tính;
+  context bị ẩn hiển thị “không còn hiển thị”, không gọi mọi trường hợp là “tác giả đã xóa”.
+- Gỡ bởi người viết xóa nội dung khỏi database; gỡ bởi kiểm duyệt giữ nội dung cho audit nhưng
+  không đường đọc nào trả về.
 
-| Trách nhiệm | Vink phải cung cấp hoặc chốt phạm vi thay thế |
+## Trách nhiệm phải tự xây
+
+Rời Discourse nghĩa là Vink tự sở hữu các trách nhiệm dưới đây. Chúng là gap trước khi mở bình
+luận công khai cho pilot, không phải tính năng đang có:
+
+| Trách nhiệm | Vink phải cung cấp hoặc chốt phạm vi |
 | --- | --- |
-| Tiền kiểm, sửa và quyết định người duyệt | Giữ pending khỏi mọi bề mặt; review queue, version guard, quyền staff/system, audit và công cụ vận hành theo COM-02/MOD-02 |
-| Báo cáo, lý do, khiếu nại | Tiếp nhận report, xử lý abuse, giải thích và appeal có idempotency; người phụ trách, quyền mở lại và lịch sử quyết định theo MOD-03/04 |
-| Chống lạm dụng và quyền cộng đồng | Rate limits, chống spam, suspension/ban, audit; trust signals nếu còn dùng phải có nguồn, policy và khả năng sửa sai |
-| Thông báo reply/mention/review | Nguồn sự kiện, dedupe, read state và fan-out theo quyền; pending/withdrawn không lọt body/snippet/danh tính qua notification |
-| Xóa, thu hồi, lịch sử và riêng tư | Tombstone không cascade mất replies ngang cấp; retention/purge, quote/context/cache/search và direct reads tuân PUB-03/D-12 |
-| Khả năng phục hồi | Export/import IDs, account/thread mappings, backup/restore, reconciliation, metrics/cảnh báo và người vận hành; không replay mù side effects cũ |
+| Tiền kiểm và quyết định người duyệt | Authority kiểm duyệt thật, hàng đợi duyệt có version, audit, màn vận hành, tuổi case và cảnh báo backlog (COM-02, MOD-02/03) |
+| Báo cáo, lý do, khiếu nại | Tiếp nhận report, lý do có thể hành động, appeal idempotent, quyền mở lại và lịch sử quyết định (MOD-04) |
+| Chống lạm dụng | Rate limit, chống spam, khóa/ban có authority và audit |
+| Thông báo reply/mention/kết quả duyệt | Outbox/inbox, dedupe, read state; pending/đã gỡ không lọt qua thông báo |
+| Xóa, thu hồi, riêng tư | Rút bài chặn đọc/ghi thảo luận ngay; retention/purge; quote/preview/cache theo PUB-03/D-12 |
+| Phục hồi | Backup/restore database App gồm receipts; đối soát; không replay mù hiệu ứng cũ |
 
-## 5. Module-first hay process riêng là lựa chọn triển khai của B
+## 6. Rollout và rollback
 
-**Khuyến nghị cho core đầu tiên:** đặt trong app hiện có, giữ seam thuần và không thêm process.
-Điều này phù hợp D-03; không ngầm chọn B làm authority. Nếu A được chọn, chỉ các luật đã được
-kiểm tương thích mới dùng trong policy/projection của adapter, không dùng core để override
-quyết định Discourse.
-
-| Bố trí | Lợi ích cụ thể | Chi phí/rủi ro | Bằng chứng cần trước khi đổi |
-| --- | --- | --- | --- |
-| Module trong `vink-app`, worker hiện có | Dùng một composition root, gọi nội bộ, ít deploy/contract mạng; authority app-local dễ kiểm tại commit | Scale/deploy/fault domain còn chung; cần bảo vệ boundary trong code | Baseline cho thử nghiệm; chưa có tải hoặc failure case buộc tách |
-| Process `vink-discussion` riêng | Có thể cô lập tải ghi/worker, lỗi hoặc lịch deploy discussion | Thêm network auth, compatibility, retry, observability, vận hành và ranh giới nhất quán với publication/access | Đo được contention/scaling hoặc lỗi lan truyền cần isolation; chỉ rõ process mới giải quyết gì, cost và runbook rollback |
-
-Nếu sau này chọn process riêng: service sở hữu contracts, migrations, database/schema và
-runtime/migrator roles tách quyền; không đọc/ghi trực tiếp App hoặc Identity DB. Có thể dùng
-container PostgreSQL hiện có với database/roles độc lập nếu phù hợp, không mặc định thêm
-cluster/container. Event bất đồng bộ từ App không bảo đảm withdrawal tức thời; phải chốt
-đường authority/fencing và phạm vi nhất quán trước khi bật write. Emoji/sticker là asset và
-renderer theo [#25](https://github.com/loveoverflowcom/vink/issues/25), không cần emoji service.
-
-## 6. Rollout, migration và rollback an toàn
-
-1. **PR nền tảng:** core/model/tests chạy với input hữu hạn, không bật I/O comments. Không có
-   dữ liệu discussion để migrate; rollback code không đổi owner hoặc dữ liệu production.
-2. **Trước #43:** chọn chính xác một owner, cập nhật D-02 và requirement bị ảnh hưởng có chủ
-   đích; chốt contract, authority/read/write gates và trách nhiệm vận hành. D-05/D-08/D-12
-   không tự Accepted theo quyết định này. Thiếu auth authority thật vẫn chặn API write production.
-3. **Pilot:** thêm adapter/schema chỉ cho owner đã chọn; kiểm boundary thật rồi mới mở luồng
-   gửi có giới hạn. Có cách tắt write mà không giả ack thành công; không chuyển ngầm sang owner
-   khác khi lỗi. Quyền đọc và thu hồi hiện tại luôn thắng cache/projection cũ.
-4. **Nếu chuyển owner sau khi có dữ liệu:** kiểm inventory và export có version; bảo toàn IDs,
-   subject/account mapping, Unicode, context/tombstones, review/audit và retention. Dừng writer
-   cũ, xử lý lệnh uncertain/outbox đang bay, đối soát điểm chốt; import và kiểm quyền/đếm/hash
-   phù hợp trước khi bật writer mới. Shadow read/projection không có quyền quyết định hay ghi.
-5. **Sau khi writer mới đã nhận dữ liệu:** rollback cần đối soát delta bằng migration ngược đã
-   thử hoặc phục hồi về điểm nhất quán có chính sách dữ liệu rõ; không đổi route về snapshot
-   cũ rồi mất comments/decisions mới. Nếu chưa có đường phục hồi đáng tin, tắt write và giữ
-   trạng thái gián đoạn, ưu tiên bảo toàn nguồn canonical thay vì dual-write.
-
-## 7. Quyết định còn mở và evidence cần chốt
-
-**Câu hỏi trước persistence:** giữ **A, Discourse là discussion write/moderation owner duy
-nhất**, hay chọn **B, Vink là owner duy nhất**, chấp nhận đầy đủ trách nhiệm thay thế ở mục 4?
-Nếu chọn B, khởi đầu module-first; chỉ tách process khi có bằng chứng ở mục 5. Quyết định phải
-ghi người/quyền quyết định, phạm vi, ngày và evidence; merge core hoặc proof PASS không thay
-cho lựa chọn này.
-
-Hiện giữ D-02 là hướng ưu tiên; khảo sát B theo #41 bằng các lát thuần có thể đảo ngược. Kết
-quả S-02 không đạt trên những cửa bắt buộc, hoặc chi phí bridge cao hơn lợi ích staff tools
-được quan sát, là lý do xem lại A. Ngược lại, thiếu khả năng vận hành review/report/appeal/abuse
-ở Vink là lý do chưa mở B, dù model cấu trúc đã đạt.
-
-| Lát/evidence | Có thể làm độc lập ở PR đầu | Điều chưa được nghiệm thu |
-| --- | --- | --- |
-| Cấu trúc hai tầng | Rust seam thuần, positive/negative cases cho D2T-INV-01/02 và normalization | Same-scope theo facts không chứng minh auth, tenant isolation hoặc constraint DB |
-| Model/proof/conformance | Model hữu hạn, harness gọi code thật, trace replay/guard sensitivity nếu runner đã triển khai; ghi riêng lệnh, version, bounds và kết quả | Không suy từ simulation sang exhaustive proof, từ model sang PostgreSQL/Discourse/browser hoặc từ PASS sang Accepted |
-| Owner và persistence | So sánh và ghi gate trong tài liệu này | Acceptance chọn một owner của #41 vẫn mở; #43 chưa được mở persistence bằng sự tồn tại của core |
-| Vòng đời và giao diện | Ghi rõ gap trong registry/traceability do #41 sở hữu | Các phần chưa có của D2T-INV-03..11; auth, moderation/withdrawal, idempotency, reaction/ranking, assets, UI và I/O cần các PR tiếp theo |
-
-Không lập một oracle hay registry invariant thứ hai ở ADR này. Kết quả từng check thuộc tài
-liệu evidence của implementation; tài liệu ownership không tự ghi PASS cho Kani, Quint,
-PostgreSQL, Discourse hay browser.
+1. **D2T-02a (lát hiện tại):** domain + application + migration/adapter PostgreSQL và test thật.
+   Chưa có HTTP route/UI gọi các use case, nên không người dùng nào ghi được bình luận.
+2. **Trước khi mở ghi production:** auth authority thật (D-05), authority kiểm duyệt và màn
+   duyệt, API v1 + contract fixtures, giới hạn tần suất. Thiếu auth là blocker, không thay bằng
+   tài khoản fixture.
+3. **Rollback trước khi có dữ liệu thật:** gỡ route; migration giữ nguyên (không sửa migration
+   đã áp dụng). Sau khi có dữ liệu: tắt ghi bằng cách đóng chế độ hoặc gỡ route, giữ dữ liệu
+   canonical; không chuyển ngầm sang hệ khác, không dual-write.
+4. **Đổi owner sau này** cần ADR mới, export có version giữ ID/Unicode/context/tombstone/audit,
+   dừng writer cũ, đối soát lệnh chưa rõ kết quả rồi mới bật writer mới.
 
 ## Nguồn và quan hệ tài liệu
 
-- [#41 và comment bàn giao](https://github.com/loveoverflowcom/vink/issues/41#issuecomment-6598966340):
-  yêu cầu hai tầng, một owner, phân biệt SSOT và các loại bằng chứng.
-- [#43](https://github.com/loveoverflowcom/vink/issues/43): prerequisite ownership và phạm vi
-  PostgreSQL/API; DDL comments chỉ áp dụng nếu chọn B.
-- [Requirements](../../prd/requirements.md): COM-01..06, MOD-02..05, PUB-03.
-- [Decision log](decisions.md): D-02/03/05/08/12, INV-05..08, S-02/03/04.
-- [Tech stack](tech-stack.md): Hybrid và các trách nhiệm/boundary Discourse đang được đề xuất.
-- [Ranh giới PostgreSQL/Identity](identity-postgres-boundaries.md) và
-  [development](../development/README.md): hiện trạng owner, code và verification thực tế.
+- [#41](https://github.com/loveoverflowcom/vink/issues/41),
+  [#43](https://github.com/loveoverflowcom/vink/issues/43): yêu cầu hai tầng, D2T-INV-01..11,
+  PostgreSQL/API.
+- Quyết định của chủ sản phẩm ngày 03/11/2026 trong phiên triển khai D2T-02a.
+- [Requirements](../../prd/requirements.md): COM-01..08, MOD-02..05, PUB-03.
+- [Decision log](decisions.md): D-02, D-05, D-08, D-12, D-13; [tech stack](tech-stack.md) §9.
+- Lịch sử so sánh Discourse/Vink trước quyết định nằm trong Git history của tài liệu này
+  (`develop@31a62b1`).
