@@ -228,14 +228,22 @@ import DTO, service hay fixture. `DraftMetadata`/nhãn UTC được composition 
   `aria-disabled` (vẫn focus được) và số request thực.
 - Hai gallery đăng ký `screen.explore`, `screen.reader`, `screen.desk`, `screen.editor`,
   `screen.me`, `composition.feedback`; mỗi màn có trạng thái áp dụng ở catalog. Fixtures chỉ ở
-  consumer preview. Web `screenPatterns` kiểm giữ chữ qua theme/resize, Sharing không có form,
-  pending/auth/uncertain không submit, sample intent không claim saved/sent. CMP
-  `ScreenPreviewTest` kiểm controlled TextFieldValue + selection qua theme/pending/uncertain;
-  `ScreenCaptureTest` chụp consumer riêng ở 360/834/1280dp, mật độ 1, font scale 1/2,
+  consumer preview. Web `screenPatterns` kiểm callback thật của reader/composition, giữ
+  text/focus/selection qua local status/theme/resize, pending/auth/uncertain không submit,
+  sample intent không claim saved/sent và không gọi mạng. `meSelection` kiểm radio Tôi:
+  Hệ thống mặc định, một lựa chọn, keyboard/focus, giữ qua resize/OS theme, reset khi remount,
+  không đổi host theme hay storage. CMP `ScreenPreviewTest` kiểm các recipe và
+  controlled TextFieldValue, selection/focus, callback/blocked states và radio Tôi qua
+  keyboard/recomposition/remount. `ScreenCaptureTest` chụp consumer riêng ở 360/834/1280dp;
+  thêm Tôi (default/auth-required/long), reader feedback và composition feedback
+  (default/pending/error/uncertain) tại 320/390dp × light/dark × font scale 1/2.
+  Web `captures` giữ raw gallery và specimen tiles cùng ma trận hẹp đó. CMP có mật độ 1,
   padding 16dp, OS inset 0; `ParticipantsTest` kiểm khử trùng người theo stable key/thứ tự, không bịa người thiếu ID.
 - `CaptureTest` CMP và `preview-smoke` Leptos render các kịch bản vào captures; ảnh cần mở mới là
   bằng chứng thị giác. Native compile/common test không phải native screen runtime. Kết quả chạy
-  thuộc evidence, không được suy từ hàng coverage này. #14 B/C vẫn chưa có backend.
+  thuộc evidence, không được suy từ hàng coverage này. UI bình luận thật thuộc #45,
+  chưa nối vào discussion API và chưa có auth authority. Feedback intent và quyền
+  tác giả bật/tắt bình luận là hai trục độc lập; recipe không nghiệm thu quan hệ này.
 
 ## Qualification UIS-06 (#24)
 

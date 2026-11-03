@@ -988,6 +988,45 @@ async function reflow(page) {
   check(fonts, 'self-hosted Be Vietnam Pro 400/600 and Literata load');
 }
 
+async function meSelection(page) {
+  const radios = '#sample-theme input[type=radio]';
+  const selected = value => page.eval(`document.querySelectorAll('${radios}:checked').length === 1
+    && document.querySelector('${radios}:checked').value === ${JSON.stringify(value)}`);
+  const preferences = await page.eval(`JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } })`);
+  for (const scenario of ['default', 'auth-required', 'long']) {
+    await page.open('screen.me', scenario);
+    await page.capture(`screen.me--${scenario}--selection-initial`);
+    check(await selected('system'), `screen.me/${scenario}: exactly one System radio selected initially`);
+    check(await page.eval(`document.querySelector('#sample-theme').getAttribute('role') === 'radiogroup'
+      && document.querySelector('#sample-theme legend').textContent === 'Giao diện'
+      && document.querySelectorAll('${radios}').length === 3`), 'sample theme keeps native radio group semantics');
+    const host = await page.eval(`document.querySelector('.vk-ui').dataset.theme`);
+    for (const value of ['light', 'dark', 'system']) {
+      await page.click(`${radios}[value=${value}]`);
+      check(await selected(value), `screen.me/${scenario}: selecting ${value} leaves exactly one radio checked`);
+    }
+    // Native arrow navigation wraps System → Light → Dark → System, keeping focus
+    // on the newly selected radio rather than recreating the group.
+    for (const value of ['light', 'dark', 'system']) {
+      await page.key('ArrowDown');
+      check(await selected(value) && await page.eval(`document.activeElement === document.querySelector('${radios}[value=${value}]')`), `screen.me/${scenario}: keyboard ${value} selection keeps focus`);
+    }
+    check(await page.eval(`document.querySelector('.vk-ui').dataset.theme === ${JSON.stringify(host)}`), 'sample selection does not change the host theme');
+    await page.click(`${radios}[value=dark]`);
+    await page.eval(`window.meRadio = document.querySelector('${radios}[value=dark]')`);
+    await page.emulate('prefers-color-scheme', 'dark');
+    await page.viewport(390);
+    check(await selected('dark') && await page.eval(`document.activeElement === meRadio && meRadio === document.querySelector('${radios}[value=dark]')`), 'OS theme and resize preserve local selection, node and focus');
+    await page.open('screen.explore');
+    await page.eval(`document.querySelector('#sample-public-search').value = 'tìm mẫu'; document.querySelector('#sample-public-search').dispatchEvent(new Event('input', { bubbles: true }))`);
+    await page.open('screen.me', scenario);
+    check(await selected('system'), 'remount resets the sample to System independently of search');
+  }
+  check(await page.eval(`JSON.stringify({ local: { ...localStorage }, session: { ...sessionStorage } })`) === preferences, 'sample theme changes write no local/session preference');
+  await page.emulate('prefers-color-scheme', 'light');
+  await page.viewport(1440);
+}
+
 async function screenPatterns(page) {
   const text = 'Góp ý chưa gửi\n\n  giữ nguyên khổ thơ. Tiếng Việt: Ỗ Ữ Đường, Ỗ Ữ.';
   const intentCount = () => page.eval(`[...document.querySelectorAll('[data-testid=event-log] li')].filter(n => n.textContent.includes('feedback → submit intent (sample)')).length`);
@@ -1159,6 +1198,29 @@ async function captures(page) {
       await page.capture(`${entry.id}--long--light--${width}--text200`);
     }
   }
+  // Screen repairs: preserve raw gallery evidence and complete specimen tiles at
+  // the actual narrow viewport, so a tall gallery cannot hide the controls.
+  for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
+    await page.choose('theme', label);
+    for (const scale of [100, 200]) {
+      await page.choose('scale', `${scale}%`);
+      for (const width of [320, 390]) {
+        await page.viewport(width);
+        for (const [entry, scenario] of [
+          ...['default', 'auth-required', 'long'].map(s => ['screen.me', s]),
+          ['screen.reader', 'feedback'],
+          ...['default', 'pending', 'error', 'uncertain'].map(s => ['composition.feedback', s]),
+        ]) {
+          await page.open(entry, scenario);
+          const name = `${entry}--${scenario}--${theme}--${width}--text${scale}`;
+          await page.capture(name);
+          page.contexts[name].specimen = await captureSpecimen(page, {
+            catalog_id: entry, scenario_id: scenario, theme, raw_name: name,
+          }, args.out);
+        }
+      }
+    }
+  }
   await page.choose('scale', '100%');
   await page.viewport(1440);
 }
@@ -1174,6 +1236,7 @@ try {
   await page.send('Page.navigate', { url: args.base });
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted');
   await structure(page);
+  await meSelection(page);
   await themes(page);
   await forcedColors(page);
   await densityAndMotion(page);
