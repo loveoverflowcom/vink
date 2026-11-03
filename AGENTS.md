@@ -37,8 +37,10 @@ scoped style/dependency guards and opt-in Android debug/iOS simulator diagnostic
 the CMP specimens with Desktop (`:diagnostics`); these are not native product apps. Target
 readiness and runtime limits live in `docs/development/ui-system-qualification-evidence.md`.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
-No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider, job
-or executable behavior model exists; production authentication is NOT_IMPLEMENTED. Inspect actual
+No auth authority, login/session, publish/moderation workflow, Discourse plugin, AI provider or job
+exists; production authentication is NOT_IMPLEMENTED. The app has an unwired pure two-tier
+discussion structure core and a scoped Quint model/trace replay (`services/vink-app/behavior`);
+these add no comment write/read API or discussion owner. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
@@ -79,8 +81,10 @@ Use authorization already granted in the conversation; a skill adds no requireme
 Do not infer permission to push, post messages or publish from a local editing task.
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
-quick|postgres|web` are the implemented lanes, used by CI as well; `specs/behavior` and a
-behavior lane do not exist. Do not add a runner merely to validate documentation or skills.
+quick|discussion|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
+only the structural D2T-01 model and real core replay, not the entire comment lifecycle;
+`specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
+to validate documentation or skills.
 
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual

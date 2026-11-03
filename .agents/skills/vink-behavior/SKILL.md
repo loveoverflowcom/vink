@@ -11,9 +11,13 @@ description: >-
 Use [requirements](../../../prd/requirements.md) and
 [the decision log](../../../docs/architecture/decisions.md) to locate the relevant rule,
 INV ID and decision status. Inspect the real implementation separately. The foundation
-proposes Quint, but the repository ships no catalog, model or behavior lane. Current stateful
-code is small and tested at its own boundary: draft CAS in `tests/postgres.rs`, the desk save
-state machine in `apps/vink-web/src/desk_state.rs`.
+proposes Quint. The scoped two-tier creation model and generated traces live in
+`services/vink-app/behavior/discussion`; `verify discussion` checks that model and replays
+its inputs through the real Rust structural core. It does not cover discussion lifecycle,
+auth or I/O; the D2T-INV registry and gaps are in `docs/development/discussion-core.md`.
+There is no generic behavior or Kani lane. Other stateful code keeps its own boundary tests:
+draft CAS in `tests/postgres.rs`, the desk save state machine in
+`apps/vink-web/src/desk_state.rs`.
 
 ## Classify before choosing a change
 

@@ -1,0 +1,376 @@
+{
+  "format": "vink-discussion-conformance-v1",
+  "quint_version": "0.33.1",
+  "scenarios": [
+    {
+      "name": "chain_and_rejections",
+      "steps": [
+        {
+          "command": {
+            "op": "root",
+            "id": 1,
+            "target": 0
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 2,
+            "target": 1
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 3,
+            "target": 3
+          },
+          "outcome": "missing",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 3,
+            "target": 4
+          },
+          "outcome": "missing",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 1,
+            "target": 4
+          },
+          "outcome": "duplicate",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 3,
+            "target": 2
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 1,
+              "reply_to": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 4,
+            "target": 3
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 1,
+              "reply_to": 2
+            },
+            {
+              "id": 4,
+              "root": 1,
+              "reply_to": 3
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "root",
+            "id": 2,
+            "target": 0
+          },
+          "outcome": "duplicate",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 1,
+              "reply_to": 2
+            },
+            {
+              "id": 4,
+              "root": 1,
+              "reply_to": 3
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 1,
+            "target": 4
+          },
+          "outcome": "duplicate",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 1,
+              "reply_to": 2
+            },
+            {
+              "id": 4,
+              "root": 1,
+              "reply_to": 3
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 2,
+            "target": 2
+          },
+          "outcome": "duplicate",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 1,
+              "reply_to": 2
+            },
+            {
+              "id": 4,
+              "root": 1,
+              "reply_to": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "separate_roots",
+      "steps": [
+        {
+          "command": {
+            "op": "root",
+            "id": 1,
+            "target": 0
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "root",
+            "id": 2,
+            "target": 0
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 2,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 3,
+            "target": 2
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 2,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 2,
+              "reply_to": null
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 4,
+            "target": 3
+          },
+          "outcome": "created",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 2,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 2,
+              "reply_to": null
+            },
+            {
+              "id": 4,
+              "root": 2,
+              "reply_to": 3
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "reply",
+            "id": 3,
+            "target": 1
+          },
+          "outcome": "duplicate",
+          "state": [
+            {
+              "id": 1,
+              "root": 1,
+              "reply_to": null
+            },
+            {
+              "id": 2,
+              "root": 2,
+              "reply_to": null
+            },
+            {
+              "id": 3,
+              "root": 2,
+              "reply_to": null
+            },
+            {
+              "id": 4,
+              "root": 2,
+              "reply_to": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

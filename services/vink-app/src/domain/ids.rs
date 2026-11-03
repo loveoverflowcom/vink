@@ -55,6 +55,14 @@ id_type!(
     /// Identity of one immutable revision snapshot.
     RevisionId
 );
+id_type!(
+    /// Discussion scope. Its binding to a work/chapter belongs to the future owner adapter.
+    ThreadId
+);
+id_type!(
+    /// Stable identity of a root comment or a flat reply, not a tree path.
+    CommentId
+);
 
 impl WorkId {
     /// Time-ordered identifier for a newly created work.
@@ -78,6 +86,8 @@ mod tests {
             assert_eq!(PrincipalId::parse(raw), None);
             assert_eq!(WorkId::parse(raw), None);
             assert_eq!(RevisionId::parse(raw), None);
+            assert_eq!(ThreadId::parse(raw), None);
+            assert_eq!(CommentId::parse(raw), None);
         }
     }
 

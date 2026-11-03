@@ -197,6 +197,17 @@ Khi một route, thao tác hoặc assertion đổi, cập nhật hàng liên qua
 [vink-maintain-verification](../../.agents/skills/vink-maintain-verification/SKILL.md) hướng dẫn
 phân biệt tài liệu cũ, thiếu coverage và lỗi sản phẩm. Không cần cập nhật theo lịch cố định.
 
+## Core cấu trúc discussion D2T-01 (#41, lát cắt 1)
+
+Thêm ngày 03/11/2026 trên nền `8045d45`; không có route hay khả năng gửi bình luận mới.
+Owner và registry/gap: [core hai tầng](discussion-core.md),
+[ADR ownership còn mở](../architecture/discussion-ownership.md).
+
+| Điểm vào | Assertion có trong code/runner | Giới hạn |
+| --- | --- | --- |
+| `DiscussionThread::create_root/create_reply` | [Unit tests](../../services/vink-app/src/domain/discussion.rs): root A, reply B/C/D cùng root; context canonical; nhiều root; foreign/missing target; duplicate/self-reference, reject atomic và 20^4 chuỗi lệnh | State thuần, append-only, chưa restore/removal/auth/body/store/request/API; ID và thread/work binding bền vững phải kiểm tại owner thật |
+| Model → trace → core | [Behavior owner](../../services/vink-app/behavior/discussion/README.md): Quint typecheck/scenarios/simulation/mutation/drift; `quint_generated_inputs_replay_against_the_production_creation_seam` chỉ feed command input rồi so outcome/state | Một thread, bốn ID, bounds/seed hữu hạn. Chưa Kani hoặc model checking; không proof PostgreSQL, Discourse hay UI |
+
 ## Adoption UIS-05 (#23)
 
 Đối chiếu 03/11/2026 trên nền `25e3d10` + diff PR UIS-05. Mapping của năm route → composition →

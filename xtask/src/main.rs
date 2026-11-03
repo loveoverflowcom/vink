@@ -5,6 +5,7 @@
 //! failure with a fix hint, never as a pass.
 
 mod checks;
+mod discussion;
 mod doctor;
 mod env;
 mod identity;
@@ -43,11 +44,12 @@ usage: cargo xtask <command>
   dev                    build, migrate, start Identity if VINK_IDENTITY_SOCKET is set,
                          serve on VINK_BIND (Ctrl-C to stop)
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
+  verify discussion      pinned Quint structural checks, generated trace drift and Rust replay
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
-  verify all             quick, postgres and web in order
+  verify all             quick, discussion, postgres and web in order
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
   ui-preview leptos|cmp|android|ios build|verify|run
@@ -88,9 +90,13 @@ fn main() -> ExitCode {
         ] => finish(ui_preview::run(&env, renderer, action)),
         ["verify", lane] => match *lane {
             "quick" => verify(&[Lane::Quick], &env),
+            "discussion" => verify(&[Lane::Discussion], &env),
             "postgres" => verify(&[Lane::Postgres], &env),
             "web" => verify(&[Lane::Web], &env),
-            "all" => verify(&[Lane::Quick, Lane::Postgres, Lane::Web], &env),
+            "all" => verify(
+                &[Lane::Quick, Lane::Discussion, Lane::Postgres, Lane::Web],
+                &env,
+            ),
             _ => usage(),
         },
         _ => usage(),
@@ -396,6 +402,7 @@ fn dev(env: &env::Env) -> Result<(), String> {
 #[derive(Clone, Copy)]
 enum Lane {
     Quick,
+    Discussion,
     Postgres,
     Web,
 }
@@ -405,6 +412,7 @@ fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
     for lane in lanes {
         let ok = match lane {
             Lane::Quick => quick(&mut report),
+            Lane::Discussion => discussion::verify(&mut report),
             Lane::Postgres => postgres(&mut report, env),
             Lane::Web => web::verify(&mut report, env),
         };
