@@ -9,7 +9,7 @@
 // theme change is a CSS change and never reconfigures or recreates the view.
 
 import { history, defaultKeymap, historyKeymap, insertNewline } from '@codemirror/commands';
-import { EditorState } from '@codemirror/state';
+import { EditorSelection, EditorState } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 
 export interface EditorOptions {
@@ -36,6 +36,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
     throw new Error('A Vink editor is already mounted in this host');
   }
   const handle = { destroyed: false } as EditorHandle;
+  let focusSelection = EditorSelection.single(0);
   handle.view = new EditorView({
     parent: host,
     state: EditorState.create({
@@ -51,6 +52,7 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         // can adopt that transient caret. Mouse selection still chooses its intended point.
         EditorView.domEventHandlers({
           focus(_event, view) {
+            view.dispatch({ selection: focusSelection });
             view.focus();
             return false;
           },
@@ -69,6 +71,12 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           return { top: sticky.getBoundingClientRect().height + 16 };
         }),
         EditorView.updateListener.of((update) => {
+          // Focusing the shell after a dialog closes can move the browser's DOM
+          // caret into the blurred editor. Keep the last focused selection and
+          // map it through edits; that incidental caret is not a writer intent.
+          focusSelection = update.view.hasFocus
+            ? update.state.selection
+            : focusSelection.map(update.changes);
           if (update.docChanged && !handle.destroyed) options.onChange();
         }),
       ],

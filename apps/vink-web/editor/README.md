@@ -27,6 +27,12 @@ của runtime để khôi phục selection từ state trước khi trình duyệ
 `contenteditable`. Không tạo view mới, sửa nội dung hay ghi thêm lịch sử undo. Browser smoke
 kiểm cả Tab và native blur/focus sau đổi theme/rail; đây vẫn là input mô phỏng trên Chrome.
 
+Khi dialog đóng trong lúc resize, fallback focus vào shell có thể đưa DOM caret
+vào đầu editor đã blur. Cầu giữ selection cuối của editor đang focus, map qua
+document changes và khôi phục khi focus trở lại; caret phát sinh khi blur không
+ghi đè lựa chọn này. Regression `shellWithDirtyEditor` giữ nguyên kiểm selection
+sau mobile resize, EditorView/text/undo và không phát draft writes.
+
 `cargo xtask build` (và `dev`, `verify web`) chạy `npm ci --ignore-scripts` khi
 `package-lock.json` đổi so với lần cài trước, rồi `node scripts/build.mjs` để type-check bằng
 TypeScript và bundle bằng esbuild vào `target/site/pkg/vink-editor.js`. Phiên bản package được pin
