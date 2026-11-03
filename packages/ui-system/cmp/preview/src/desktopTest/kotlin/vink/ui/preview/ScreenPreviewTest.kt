@@ -6,6 +6,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -62,16 +63,18 @@ class ScreenPreviewTest {
             val field = onNode(hasSetTextAction())
             field.performTextReplacement(text)
             field.performTextInputSelection(TextRange(4, 9))
-            onNodeWithText("Gửi nhận xét").performScrollTo().performClick()
+            // Invoke the action without a pointer moving focus: this isolates the local
+            // status update from the platform's normal selection collapse on input blur.
+            onNodeWithText("Gửi nhận xét").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { it() }
             onNodeWithTag("sample-result").assertTextEquals("Mẫu · Intent gửi nhận xét, chưa gửi hoặc lưu.")
             runOnIdle { assertEquals(listOf("feedback → submit intent (sample)"), events); dark = !dark }
-            field.assertTextContains(text)
+            field.assertTextContains(text).assertIsFocused()
             assertEquals(TextRange(4, 9), field.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
             if (sample == "error") {
                 onNodeWithText("Chưa tải/lưu được. Chữ đang viết được giữ nguyên; hãy thử lại.").assertExists()
-                onNodeWithText("Thử lại").performScrollTo().performClick()
+                onNodeWithText("Thử lại").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { it() }
                 onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đã yêu cầu tải lại; không gọi dịch vụ.")
-                field.assertTextContains(text)
+                field.assertTextContains(text).assertIsFocused()
                 assertEquals(TextRange(4, 9), field.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
             }
         }
