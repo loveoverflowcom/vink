@@ -27,6 +27,9 @@ use vink_app::persistence::{PgStore, SchemaState, schema_state};
 
 const ORIGIN: &str = "http://127.0.0.1:3000";
 
+#[path = "postgres/discussion.rs"]
+mod discussion;
+
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))
 }
