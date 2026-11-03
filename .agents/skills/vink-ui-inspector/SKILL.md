@@ -20,6 +20,11 @@ nghĩa là đơn vị kiểm tra. Chỉ cần dùng bảng đầy đủ khi ph�
 [quy trình Chat](../vink-ui-design/references/chat-workflow.md) cho công cụ và mức bằng chứng.
 Đọc các reference tương ứng trong checkout hiện hành.
 
+Nếu nhận run từ Drive hoặc bundle capture, đọc
+[contract evidence](../vink-ui-capture/references/evidence-contract.md), pin run_id,
+build và variant trước khi so. Giữ gap/authority/inspection status của manifest;
+không coi upload VERIFIED là design PASS hay recipe mẫu là màn sản phẩm thật.
+
 ## 1. Khóa phạm vi đủ dùng
 
 Ghi surface/route, vùng user hỏi, nguồn ảnh/code, viewport/theme/locale/text scale

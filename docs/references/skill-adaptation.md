@@ -113,3 +113,20 @@ bao phủ màn mới, chỉ phác thảo, hướng đã chọn, sửa nhỏ và 
 kiểm hành vi agent; link/metadata hay một lượt mô phỏng không chứng minh UI đã
 render, không bảo đảm mọi lần gọi model sẽ tuân thủ. Quy ước và ví dụ trong skills
 không hoàn tất UX-01/UX-03 hay bất kỳ spike/decision sản phẩm nào.
+
+## UI capture và Drive handoff (03/11/2026)
+
+Đầu vào là draft người dùng cung cấp, file
+`vink_ui_capture_drive_sudolang_2026-11-03.md`, và các locator Drive trong đó.
+Đã đối chiếu source `develop` tại `204d319`, catalog/token, runner Web/preview và
+đọc lại CURRENT DESIGN/implementation folder qua connector. Chỉ xác nhận locator,
+parent và nội dung manifest thiết kế; lần tạo skills không chạy capture/upload.
+
+Thêm [vink-ui-capture](../../.agents/skills/vink-ui-capture/SKILL.md) cho bundle
+hiện trạng và [vink-ui-evidence-drive](../../.agents/skills/vink-ui-evidence-drive/SKILL.md)
+cho upload/resume + canonical index. Contract dùng chung giữ navigation, component,
+preview và tokens để [inspector](../../.agents/skills/vink-ui-inspector/SKILL.md)
+review ở bước sau. Điều chỉnh draft để phân biệt local identity fixture với auth,
+CMP off-screen/recipe với app native, metadata verification với toàn vẹn byte;
+không tự chọn v5, không suy reference current từ tên phiên bản và không bắt audit
+hay sửa UI trong một yêu cầu chỉ thu thập bằng chứng.
