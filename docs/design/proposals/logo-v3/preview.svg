@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 775" role="img" aria-label="Vink logo v3 — light and dark comparison and small size test">
+<title>Vink — Logo v3 light/dark preview</title>
+<defs><linearGradient id="Link" x1="38" y1="30" x2="223" y2="229" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c88aeb"/><stop offset="0.56" stop-color="#8653bc"/><stop offset="1" stop-color="#6846a5"/></linearGradient>
+<linearGradient id="Lquill" x1="84" y1="34" x2="174" y2="124" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#d9a5f2"/><stop offset="0.6" stop-color="#b77bdc"/><stop offset="1" stop-color="#ae6bd0"/></linearGradient><linearGradient id="Dink" x1="38" y1="30" x2="223" y2="229" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e8c7ff"/><stop offset="0.56" stop-color="#c49ae8"/><stop offset="1" stop-color="#a87bd9"/></linearGradient>
+<linearGradient id="Dquill" x1="84" y1="34" x2="174" y2="124" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f1d5ff"/><stop offset="0.6" stop-color="#d8b0f3"/><stop offset="1" stop-color="#c995e5"/></linearGradient><g id="markL"><path d="M 224 58
+ C 201 68 187 60 169 49
+ C 144 33 118 33 101 39
+ C 63 50 36 80 29 117
+ C 17 168 38 209 83 229
+ C 125 249 171 236 195 217
+ C 211 204 223 194 233 188
+ L 245 134
+ C 230 151 214 159 199 167
+ C 189 194 173 208 147 216
+ C 116 226 88 211 71 192
+ C 49 169 49 142 59 115
+ C 72 77 106 57 140 61
+ C 165 65 183 83 202 78
+ C 215 75 221 65 224 58 Z M 216 179 C 222 168 235 151 242 138 C 238 153 228 172 219 183 Z
+ M 211 183 a 5.2 5.2 0 1 0 10.4 0 a 5.2 5.2 0 1 0 -10.4 0 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#Link)" fill-rule="evenodd"/><path d="M 32 129
+ C 36 86 62 52 101 39
+ C 132 31 157 38 179 51
+ C 197 62 213 66 224 58
+ C 221 77 204 91 184 95
+ C 164 97 150 85 129 80
+ C 92 72 56 90 32 129 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#Lquill)" fill-rule="evenodd"/></g><g id="markD"><path d="M 224 58
+ C 201 68 187 60 169 49
+ C 144 33 118 33 101 39
+ C 63 50 36 80 29 117
+ C 17 168 38 209 83 229
+ C 125 249 171 236 195 217
+ C 211 204 223 194 233 188
+ L 245 134
+ C 230 151 214 159 199 167
+ C 189 194 173 208 147 216
+ C 116 226 88 211 71 192
+ C 49 169 49 142 59 115
+ C 72 77 106 57 140 61
+ C 165 65 183 83 202 78
+ C 215 75 221 65 224 58 Z M 216 179 C 222 168 235 151 242 138 C 238 153 228 172 219 183 Z
+ M 211 183 a 5.2 5.2 0 1 0 10.4 0 a 5.2 5.2 0 1 0 -10.4 0 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#Dink)" fill-rule="evenodd"/><path d="M 32 129
+ C 36 86 62 52 101 39
+ C 132 31 157 38 179 51
+ C 197 62 213 66 224 58
+ C 221 77 204 91 184 95
+ C 164 97 150 85 129 80
+ C 92 72 56 90 32 129 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#Dquill)" fill-rule="evenodd"/></g><g id="markLS"><path d="M 224 58
+ C 201 68 187 60 169 49
+ C 144 33 118 33 101 39
+ C 63 50 36 80 29 117
+ C 17 168 38 209 83 229
+ C 125 249 171 236 195 217
+ C 211 204 223 194 233 188
+ L 245 134
+ C 230 151 214 159 199 167
+ C 189 194 173 208 147 216
+ C 116 226 88 211 71 192
+ C 49 169 49 142 59 115
+ C 72 77 106 57 140 61
+ C 165 65 183 83 202 78
+ C 215 75 221 65 224 58 Z M 216 179 C 222 168 235 151 242 138 C 238 153 228 172 219 183 Z
+ M 211 183 a 5.2 5.2 0 1 0 10.4 0 a 5.2 5.2 0 1 0 -10.4 0 Z" fill="url(#Link)" fill-rule="evenodd"/><path d="M 32 129
+ C 36 86 62 52 101 39
+ C 132 31 157 38 179 51
+ C 197 62 213 66 224 58
+ C 221 77 204 91 184 95
+ C 164 97 150 85 129 80
+ C 92 72 56 90 32 129 Z" fill="url(#Lquill)" fill-rule="evenodd"/></g><g id="markDS"><path d="M 224 58
+ C 201 68 187 60 169 49
+ C 144 33 118 33 101 39
+ C 63 50 36 80 29 117
+ C 17 168 38 209 83 229
+ C 125 249 171 236 195 217
+ C 211 204 223 194 233 188
+ L 245 134
+ C 230 151 214 159 199 167
+ C 189 194 173 208 147 216
+ C 116 226 88 211 71 192
+ C 49 169 49 142 59 115
+ C 72 77 106 57 140 61
+ C 165 65 183 83 202 78
+ C 215 75 221 65 224 58 Z M 216 179 C 222 168 235 151 242 138 C 238 153 228 172 219 183 Z
+ M 211 183 a 5.2 5.2 0 1 0 10.4 0 a 5.2 5.2 0 1 0 -10.4 0 Z" fill="url(#Dink)" fill-rule="evenodd"/><path d="M 32 129
+ C 36 86 62 52 101 39
+ C 132 31 157 38 179 51
+ C 197 62 213 66 224 58
+ C 221 77 204 91 184 95
+ C 164 97 150 85 129 80
+ C 92 72 56 90 32 129 Z" fill="url(#Dquill)" fill-rule="evenodd"/></g></defs>
+<rect width="1200" height="775" rx="28" fill="#F8F5FB"/>
+<text x="62" y="72" fill="#422353" font-size="22" font-weight="700" font-family="Arial,sans-serif">VINK / VIỆT INK</text>
+<text x="62" y="128" fill="#24142F" font-size="45" font-weight="700" font-family="Arial,sans-serif">Vòng mực, nét viết</text>
+<text x="62" y="163" fill="#756381" font-size="20" font-family="Arial,sans-serif">V3 · 2 đường Bézier chính · Light &amp; Dark · SVG thuần</text>
+<rect x="62" y="198" width="525" height="365" rx="30" fill="#FFFAFF" stroke="#E7D9EF" stroke-width="2"/>
+<rect x="613" y="198" width="525" height="365" rx="30" fill="#17121D"/>
+<use href="#markL" transform="translate(101 244) scale(0.93)"/>
+<use href="#markD" transform="translate(654 244) scale(0.93)"/>
+<text x="337" y="375" font-size="72" fill="#321A45" font-weight="700" font-family="Georgia,serif">Vink</text>
+<text x="890" y="375" font-size="72" fill="#F5ECFA" font-weight="700" font-family="Georgia,serif">Vink</text>
+<text x="96" y="534" font-size="16" fill="#654477" font-family="Arial,sans-serif">LIGHT · #FFFAFF</text>
+<text x="647" y="534" font-size="16" fill="#C4ACD7" font-family="Arial,sans-serif">DARK · #17121D</text>
+<text x="62" y="615" fill="#321A45" font-size="22" font-weight="700" font-family="Arial,sans-serif">Silhouette check</text>
+<rect x="62" y="644" width="525" height="92" rx="18" fill="#F0E7F8"/><rect x="613" y="644" width="525" height="92" rx="18" fill="#241B30"/>
+<use href="#markLS" transform="translate(104 674) scale(0.125)"/><use href="#markLS" transform="translate(169 673) scale(0.17)"/><use href="#markL" transform="translate(246 660) scale(0.25)"/><use href="#markL" transform="translate(345 648) scale(0.33)"/>
+<use href="#markDS" transform="translate(655 674) scale(0.125)"/><use href="#markDS" transform="translate(720 673) scale(0.17)"/><use href="#markD" transform="translate(797 660) scale(0.25)"/><use href="#markD" transform="translate(896 648) scale(0.33)"/>
+</svg>

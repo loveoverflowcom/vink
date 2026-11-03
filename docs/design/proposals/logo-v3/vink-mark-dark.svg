@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" role="img" aria-label="Vink brand mark: feather curled into ink ring and fountain pen nib">
+<title>Vink — Việt Ink</title>
+<desc>Thick organic ink circle, quill feather sweep, integrated fountain pen nib. Minimal scalable vector with transparent background.</desc>
+<defs><linearGradient id="ink" x1="38" y1="30" x2="223" y2="229" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#e8c7ff"/><stop offset="0.56" stop-color="#c49ae8"/><stop offset="1" stop-color="#a87bd9"/></linearGradient>
+<linearGradient id="quill" x1="84" y1="34" x2="174" y2="124" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#f1d5ff"/><stop offset="0.6" stop-color="#d8b0f3"/><stop offset="1" stop-color="#c995e5"/></linearGradient></defs>
+<path d="M 224 58
+ C 201 68 187 60 169 49
+ C 144 33 118 33 101 39
+ C 63 50 36 80 29 117
+ C 17 168 38 209 83 229
+ C 125 249 171 236 195 217
+ C 211 204 223 194 233 188
+ L 245 134
+ C 230 151 214 159 199 167
+ C 189 194 173 208 147 216
+ C 116 226 88 211 71 192
+ C 49 169 49 142 59 115
+ C 72 77 106 57 140 61
+ C 165 65 183 83 202 78
+ C 215 75 221 65 224 58 Z M 216 179 C 222 168 235 151 242 138 C 238 153 228 172 219 183 Z
+ M 211 183 a 5.2 5.2 0 1 0 10.4 0 a 5.2 5.2 0 1 0 -10.4 0 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#ink)" fill-rule="evenodd"/>
+<path d="M 32 129
+ C 36 86 62 52 101 39
+ C 132 31 157 38 179 51
+ C 197 62 213 66 224 58
+ C 221 77 204 91 184 95
+ C 164 97 150 85 129 80
+ C 92 72 56 90 32 129 Z M 57 112 C 87 72 114 58 145 62 C 165 64 182 76 203 76 C 183 81 165 70 144 68 C 115 65 88 79 57 112 Z" fill="url(#quill)" fill-rule="evenodd"/>
+</svg>
