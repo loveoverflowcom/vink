@@ -120,7 +120,8 @@ a {
 /* Only the app's appearance composition decorates the existing native radio targets. */
 .vk-appearance-region label {
   width: 100%;
-  padding: var(--vk-space-2) var(--vk-space-3);
+  gap: var(--vk-space-2);
+  padding: var(--vk-space-2);
   border: 2px solid var(--vk-outline-variant);
   border-radius: var(--vk-radius-md);
 }

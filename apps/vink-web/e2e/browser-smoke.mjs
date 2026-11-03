@@ -905,6 +905,10 @@ async function adaptiveShell(page) {
         await page.capture(`${width}-me-${theme}-text${scale}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
+        check(await page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].every(el => [...el.textContent.matchAll(/\\S+/g)].every(word => {
+          const range = document.createRange(); range.setStart(el.firstChild, word.index); range.setEnd(el.firstChild, word.index + word[0].length);
+          return range.getClientRects().length === 1;
+        }))`), `${width}px/${scale}% ${theme}: appearance labels keep Vietnamese words intact`);
         if (width < 760 && scale === 200) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
           await page.capture(`${width}-me-${theme}-text${scale}-appearance`);

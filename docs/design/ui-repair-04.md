@@ -40,7 +40,7 @@ bubble từ con như click ngoài. Bản sửa chỉ kiểm tọa độ khi targ
 dialog/backdrop. `accountAppearance` kiểm lựa chọn, focus-visible và modal vẫn mở,
 nên mất focus sẽ làm browser check FAIL; không làm lỏng oracle theo lỗi.
 
-## LayoutSpec r1 — trình bày trong chat trước patch
+## LayoutSpec r1/r2 — trình bày trong chat trước patch tương ứng
 
 ```text
 Screen #me — /toi
@@ -84,6 +84,11 @@ từ [tokens.json](../../packages/ui-system/shared/tokens.json). Không đổi t
 chung, logo, primitive UI system, CMP hay recipe preview. CSS mới chỉ scope vào
 composition tài khoản/giao diện do app sở hữu.
 
+R2: ảnh cuộn tại 320px/200% phát hiện khoảng radio/padding làm “Sáng”, “thống”
+tách giữa từ dù container không tràn ngang (`UI-REPAIR-04-REFLOW-01`, P2). Giảm
+gap/padding ngang hàng radio về `--vk-space-2`, giữ target và cỡ chữ. Browser
+assertion dùng DOM Range trên từng từ để kiểm điều này độc lập với CSS literal.
+
 ## Kiểm chứng
 
 Owner code: [appearance.rs](../../apps/vink-web/src/appearance.rs),
@@ -115,7 +120,8 @@ Raw ảnh/`contexts.json` ở `target/verify-web/screenshots/`; contact sheets �
 Ảnh 200% của trang dài cho cuộn chính, không ép Giao diện phải nằm trong viewport
 đầu. Browser smoke còn chụp riêng vùng lựa chọn khi cuộn tới ở mobile 200%.
 System resolve theo OS sáng trong ma trận; OS tối và first paint trước hydration
-được kiểm riêng. Log và SHA của lần kiểm cuối được dẫn trong PR; ảnh không tự là
+được kiểm riêng. Ảnh bổ sung mobile 200% dẫn tới R2 ở trên; bằng chứng trước R2
+không xác nhận layout radio cuối. Log và SHA của lần kiểm cuối được dẫn trong PR; ảnh không tự là
 bằng chứng keyboard, persist, zoom trình duyệt hay screen reader.
 
 Lịch sử gate được giữ đúng: lần gọi web không cấu hình là FAIL prerequisites,
