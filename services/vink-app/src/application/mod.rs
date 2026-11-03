@@ -1,6 +1,7 @@
 //! Use cases. Application code authenticates the actor, validates input through the domain and
 //! delegates I/O to the ports in [`ports`]; it imports no HTTP, SQL or Leptos types.
 
+pub mod discussion;
 pub mod ports;
 
 use time::OffsetDateTime;
@@ -122,10 +123,7 @@ pub struct Vink<S> {
     store: S,
 }
 
-impl<S> Vink<S>
-where
-    S: DraftStore + PublicationStore,
-{
+impl<S> Vink<S> {
     pub fn new(store: S) -> Self {
         Self { store }
     }
@@ -133,7 +131,12 @@ where
     pub fn store(&self) -> &S {
         &self.store
     }
+}
 
+impl<S> Vink<S>
+where
+    S: DraftStore + PublicationStore,
+{
     pub async fn public_works(&self) -> Result<Vec<PublicWorkSummary>, ReadError> {
         Ok(self.store.list_publications(HOME_LIMIT).await?)
     }
@@ -207,3 +210,7 @@ where
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "discussion_tests.rs"]
+mod discussion_tests;
