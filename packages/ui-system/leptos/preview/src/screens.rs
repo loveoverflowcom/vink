@@ -57,6 +57,7 @@ pub fn specimen(id: &str, scenario: &str) -> Option<AnyView> {
 fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
     let input = RwSignal::new(fixture::READING.to_string());
     let search = RwSignal::new(String::new());
+    let theme = RwSignal::new("system".to_string());
     let title = RwSignal::new(
         if scenario == "long" {
             fixture::LONG_TITLE
@@ -172,7 +173,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 <Text>"Chưa có thông tin tài khoản"</Text>
                 <Text tone=TextTone::Muted>"Vink chưa mở đăng nhập."</Text>
                 <RadioGroup id="sample-theme" legend="Giao diện" options=vec![ChoiceOption::new("light", "Sáng"), ChoiceOption::new("dark", "Tối"), ChoiceOption::new("system", "Hệ thống")]
-                    value=Signal::derive(move || Some(search.get())) on_change=move |v: String| search.set(v) />
+                    value=Signal::derive(move || Some(theme.get())) on_change=move |v: String| theme.set(v) />
             }.into_any(),
             _ => view! {
                 <RecentFeedback items=comments() />

@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.*
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -19,6 +21,56 @@ import vink.ui.*
 @OptIn(ExperimentalTestApi::class)
 class ScreenPreviewTest {
     private val fonts = PreviewFonts.load()
+
+    @Test
+    fun meThemeIsLocalHasOneSelectionAndResetsOnlyOnRemount() = runComposeUiTest {
+        var scenario by mutableStateOf("default")
+        var mount by mutableStateOf(0)
+        var dark by mutableStateOf(false)
+        val preferences = VinkPreferences()
+        val events = mutableListOf<String>()
+        val radio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+        fun assertSelection(label: String) {
+            onAllNodes(radio).assertCountEquals(3)
+            onAllNodes(radio and isSelected()).assertCountEquals(1)
+            onNode(hasText(label) and radio).assertIsSelected()
+        }
+        setContent {
+            CompositionLocalProvider(LocalPreviewLog provides { events.add(it) }) {
+                VinkTheme(preferences, systemDark = dark, fonts = fonts.fonts) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        key(scenario, mount) { ScreenRecipe("screen.me", scenario) }
+                    }
+                }
+            }
+        }
+        for (sample in listOf("default", "auth-required", "long")) {
+            runOnIdle { scenario = sample }
+            assertSelection("Hệ thống")
+            for (label in listOf("Sáng", "Tối", "Hệ thống")) {
+                onNode(hasText(label) and radio).performScrollTo().performClick()
+                assertSelection(label)
+            }
+            for ((label, key) in listOf("Sáng" to Key.Enter, "Tối" to Key.Spacebar, "Hệ thống" to Key.Enter)) {
+                onNode(hasText(label) and radio).performScrollTo()
+                    .performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+                    .performKeyInput { pressKey(key) }
+                    .assertIsFocused()
+                assertSelection(label)
+            }
+            onNode(hasText("Tối") and radio).performClick()
+                .performSemanticsAction(SemanticsActions.RequestFocus) { it() }
+            runOnIdle { dark = !dark }
+            assertSelection("Tối")
+            onNode(hasText("Tối") and radio).assertIsFocused()
+            runOnIdle { mount++ }
+            assertSelection("Hệ thống")
+        }
+        runOnIdle {
+            assertEquals(ThemePreference.System, preferences.theme)
+            assertEquals(emptyList(), events)
+        }
+    }
 
     @Test
     fun feedbackKeepsTextAndSelectionAcrossThemePendingErrorAndUncertain() = runComposeUiTest {

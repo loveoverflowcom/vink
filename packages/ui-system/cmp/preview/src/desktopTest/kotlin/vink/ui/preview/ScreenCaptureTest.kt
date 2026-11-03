@@ -26,12 +26,13 @@ class ScreenCaptureTest {
         val contexts = mutableListOf<String>()
         val entries = VinkCatalog.entries.filter { it.family == "screen" || it.id == "composition.feedback" }
         for (entry in entries) {
-            val feedback = entry.id in listOf("screen.reader", "composition.feedback")
-            val widths = listOf(360, 834, 1280) + if (feedback) listOf(320, 390) else emptyList()
+            val focused = entry.id in listOf("screen.me", "screen.reader", "composition.feedback")
+            val widths = listOf(360, 834, 1280) + if (focused) listOf(320, 390) else emptyList()
             for (width in widths) {
                 for (theme in listOf(ThemePreference.Light, ThemePreference.Dark)) {
                     for (scale in listOf(1f, 2f)) {
                         val scenarios = when {
+                            width in listOf(320, 390) && entry.id == "screen.me" -> listOf("default", "auth-required", "long")
                             width in listOf(320, 390) && entry.id == "screen.reader" -> listOf("feedback")
                             width in listOf(320, 390) && entry.id == "composition.feedback" -> listOf("default", "pending", "error", "uncertain")
                             scale == 2f && entry.scenarios.any { it.id == "long" } -> listOf("long")
