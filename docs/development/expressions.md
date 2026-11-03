@@ -23,7 +23,8 @@ giữ D2T-INV; D2T-INV-11 dẫn tới registry EMO dưới đây, không copy lu
 Chọn crate thuần `vink-expressions` vì Web WASM thực sự gọi policy và Kani biên dịch cùng source;
 đặt trong service sẽ kéo sai dependency vào browser. Generated contract CMP dùng lại manifest,
 không nhận là Rust FFI/Kani proof của Kotlin. Thêm service/DB không giải quyết việc phát asset
-chỉ đọc; không chọn phương án đó. Engine JS quản lý DOM/network, không giữ policy thứ hai.
+chỉ đọc; không chọn phương án đó. Engine JS quản lý DOM/network, không giữ policy thứ hai. Host đọc lại media/foreground và
+geometry đồng bộ trước activation và callback load; không chỉ dựa vào notification có thể đến muộn.
 
 Software là backend tham chiếu của pilot, **chưa có bằng chứng nhanh nhất**. Worker/WebGL2/WebGPU
 không được ship trong bundle. Full benchmark/thiết bị và quyết định backend cuối vẫn thuộc #25.
@@ -72,7 +73,8 @@ Nguồn tĩnh có Git revision; animation có content-addressed snapshot, **khô
 `generate.mjs` kiểm hash/size, trùng ID/Unicode, nguồn/license/attribution, resource path có hash;
 SVG không có script/event/DTD/entity/external URL; Lottie vector-only không có ảnh/font/expression.
 JSON tối đa 512KB, SVG 64KB, canvas tối đa 192×192; không ingest `.lottie` archive trong pilot này.
-Nhãn Việt do Vink viết; artwork không thay đổi. NOTICE + từng license được self-host.
+Nhãn Việt do Vink viết; artwork không thay đổi. `.gitattributes` giữ nguyên whitespace của
+SVG upstream, còn validator vẫn kiểm byte theo SHA-256. NOTICE + từng license được self-host.
 
 `@lottiefiles/dotlottie-web@0.82.1`, npm integrity và JS/WASM SHA-256 được pin; source revision
 `2f3693a1d5b9d6936027bc892fa4f9d1cd16d2bb`. Build chỉ export `DotLottie`, thay hai default WASM
@@ -81,7 +83,7 @@ font hay arbitrary user URL. Hỏng WASM chỉ retry buffered cùng origin. Buil
 fallback không thoát sang CDN. `build.json` ghi byte thô; đây không phải benchmark transfer/FPS.
 
 Tiny wasm-bindgen bridge được ship cùng app, controller chỉ tải trên route pilot; engine/WASM
-chỉ tải sau admission từ activation. Không tuyên bố toàn feature +0KB: Rust/catalog/glue/CSS
+chỉ tải sau admission từ activation qua event người dùng tin cậy (`isTrusted`). Không tuyên bố toàn feature +0KB: Rust/catalog/glue/CSS
 vẫn có overhead. Reader/Explore không yêu cầu engine, WASM hoặc controller route.
 
 ## Registry EMO — một model lifecycle
@@ -116,7 +118,8 @@ parser tổng quát, DOM, network, ThorVG, browser GC, native Kotlin, SQL hay hi
   native product app, không FFI. Android/iOS runtime, TalkBack/VoiceOver, native lifecycle NOT_RUN.
 - Benchmark: so Software/Worker/WebGL2, thiết bị mobile có tên, cold/warm/compressed transfer,
   latency percentiles, CPU/GPU/frame time và heap/worker memory sau dispose vẫn NOT_RUN.
-- Browser smoke kiểm DOM/resource teardown, không chứng minh heap GC; OS IME, screen reader và
+- Browser có ca inject host fact mới mà chưa phát notification để kiểm callback load; ca ẩn tab
+riêng dùng visibility thật của Chrome. Browser smoke kiểm DOM/resource teardown, không chứng minh heap GC; OS IME, screen reader và
   đa browser/device thật cần phiên riêng. Không có production CSP mới trong lát này.
 
 Không dùng “Closes #25”. Kết quả lệnh, SHA, ảnh đã mở và giới hạn từng lớp phải được ghi ở PR;

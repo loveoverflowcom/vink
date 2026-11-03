@@ -51,7 +51,7 @@ usage: cargo xtask <command>
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
   verify web             SSR + hydration + desk interactions in headless Chrome
-  verify all             quick, discussion, postgres and web in order
+  verify all             quick, discussion, expressions, postgres and web in order
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
   ui-preview leptos|cmp|android|ios build|verify|run

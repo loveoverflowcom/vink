@@ -133,6 +133,28 @@ export async function expressionPilot(page, args, check) {
     await page.eval(`new Promise(r => setTimeout(r, 200))`);
     check(await page.eval(`!document.querySelector('canvas')`), 'late load after route exit cannot resurrect a disposed player');
 
+    // Inject a newer host fact without delivering its notification, to exercise the exact
+    // load-callback race. The separate tab test below still uses real Chrome visibility.
+    await open();
+    const releaseFacts = await holdAnimations();
+    await click(0);
+    await page.waitFor(`${phase(0)} === 'loading'`, 'load pending before late host fact');
+    await page.eval(`(() => {
+      const cell = document.querySelector('[data-expression-index="0"]');
+      window.__staleFactProbe = { played: false, observer: new MutationObserver(() => {
+        if (cell.dataset.phase === 'playing') window.__staleFactProbe.played = true;
+      }) };
+      window.__staleFactProbe.observer.observe(cell, { attributes: true, attributeFilter: ['data-phase'] });
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    })()`);
+    try {
+      await releaseFacts();
+      await page.waitFor(`${active} === 0 && ${phase(0)} === 'static'`, 'load callback rechecks newer hidden fact');
+      check(await page.eval(`!window.__staleFactProbe.played && !document.querySelector('canvas')`), 'load callback cannot play on stale facts when the host notification is delayed');
+    } finally {
+      await page.eval(`window.__staleFactProbe.observer.disconnect(); delete window.__staleFactProbe; delete document.visibilityState;`);
+    }
+
     // Offscreen and real tab visibility both cancel; neither return resumes automatically.
     await page.viewport(1440, 700);
     await open(); await click(0);

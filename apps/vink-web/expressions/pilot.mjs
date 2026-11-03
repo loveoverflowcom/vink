@@ -80,6 +80,11 @@ export function mountPilot(root, decide) {
       const on = (type, listener) => { handle.events.push([type, listener]); player.addEventListener(type, listener); };
       on('load', () => {
         if (!current(index, generation)) return;
+        // Media/visibility notifications may be queued behind this load callback. Supply
+        // fresh synchronous host facts before Rust admits the first frame.
+        facts();
+        reportVisibility(index);
+        if (!current(index, generation)) return;
         clearTimeout(handle.timer);
         if (dispatch('ready', index, generation).action === 'play') {
           // Bound even a broken/missing completion signal; a slot cannot leak indefinitely.
@@ -101,11 +106,17 @@ export function mountPilot(root, decide) {
     dispatch('reduced', 0, 0, reduced.matches || !!root.closest('[data-motion="reduce"]'));
     dispatch('foreground', 0, 0, document.visibilityState === 'visible' && !root.closest('[data-active="false"]'));
   }
+  function reportVisibility(index) {
+    const cell = cells[index], bounds = cell.getBoundingClientRect();
+    const visible = bounds.width > 0 && bounds.height > 0 && bounds.bottom > 0 && bounds.right > 0 && bounds.top < innerHeight && bounds.left < innerWidth && getComputedStyle(cell).visibility !== 'hidden';
+    dispatch('visible', index, 0, visible);
+  }
   cells.forEach((cell, index) => {
     const button = cell.querySelector('button');
     listen(button, 'click', event => {
       if (!event.isTrusted) return;
       facts(); // refresh synchronous host facts before asking for admission
+      reportVisibility(index);
       const decision = dispatch('activate', index);
       if (decision.action === 'load') start(index, decision.generation);
     });
