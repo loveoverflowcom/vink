@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="vink.ui.preview.NavigationPreviewTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-11-03T14:14:06.481Z" hostname="pd-cantos" time="6.374">
+  <properties/>
+  <testcase name="overlayIsTheOnlyModalAndBackClosesItBeforeLeaving[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="3.361"/>
+  <testcase name="layoutChangesKeepTheContentMounted[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.288"/>
+  <testcase name="deepLinksRoundTripAndNeverLeaveTheApp[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.012"/>
+  <testcase name="railSpecimenHasNoCompetingPageAndKeepsItsWidths[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.073"/>
+  <testcase name="adaptiveEditorContextYieldsToManualPreferenceButHidesCompactBar[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.297"/>
+  <testcase name="adaptiveSpecimenMeasuresItsFrameAndKeepsDraftAndOverlayAcrossResize[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.968"/>
+  <testcase name="dirtyTextHoldsBackAndNavigationUntilThePersonChooses[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.004"/>
+  <testcase name="toggleExpandsAndCollapsesWithoutLosingThePageOrSelection[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.841"/>
+  <testcase name="bottomBarKeepsTheLockedOrderAndNavigatesByKey[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.524"/>
+  <testcase name="backClosesTheOverlayFirstAndIntentsAddNoDuplicateEntries[desktop]" classname="vink.ui.preview.NavigationPreviewTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

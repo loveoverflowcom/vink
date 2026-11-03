@@ -2,6 +2,10 @@ package vink.ui.preview
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,6 +39,7 @@ import vink.ui.VinkAdaptiveScaffold
 import vink.ui.VinkBottomNavigation
 import vink.ui.VinkButton
 import vink.ui.VinkDialog
+import vink.ui.VinkDimens
 import vink.ui.VinkFixture
 import vink.ui.VinkIconButton
 import vink.ui.VinkNavUtility
@@ -250,11 +255,12 @@ private fun Shell(
     long: Boolean = false,
     primary: List<NavDestination> = if (long) listOf(exploreLong, deskLong) else listOf(explore, desk),
     height: Int = 460,
+    railOnly: Boolean = false,
+    adaptive: Boolean = false,
     page: @Composable () -> Unit = {},
 ) {
     val log = LocalPreviewLog.current
     var preference by remember { mutableStateOf<RailPreference?>(null) }
-    val layout = NavLayout.resolve(window, context, preference)
     val navigate: (String) -> Unit = { key ->
         val route = when (key) {
             "explore" -> Route.Explore()
@@ -263,53 +269,69 @@ private fun Shell(
         }
         log("điều hướng → $key: ${host.navigate(route).name}")
     }
-    Box(Modifier.fillMaxWidth().height(height.dp).testTag("nav-shell:${layout.id}")) {
-        VinkAdaptiveScaffold(
-            layout = layout,
-            rail = {
-                VinkNavigationRail(
-                    expanded = layout.railExpanded,
-                    onToggle = {
-                        layout.nextPreference?.let {
-                            preference = it
-                            log("toggle → ${it.value} (giữ ${host.current.label()})")
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("nav-frame")) {
+        val measured = maxWidth
+        val effectiveWindow = if (adaptive) WindowClass.fromDp(measured.value.toDouble()) else window
+        val layout = NavLayout.resolve(effectiveWindow, context, preference)
+        val rail: @Composable () -> Unit = {
+            VinkNavigationRail(
+                expanded = layout.railExpanded,
+                onToggle = {
+                    layout.nextPreference?.let {
+                        preference = it
+                        log("toggle → ${it.value} (giữ ${host.current.label()})")
+                    }
+                },
+                destinations = primary,
+                selected = host.current.key,
+                onNavigate = navigate,
+                expandLabel = "Mở rộng điều hướng",
+                collapseLabel = "Thu gọn điều hướng",
+                modifier = Modifier.testTag("nav-rail"),
+                brand = { Brand() },
+                account = { compact ->
+                    VinkNavUtility(
+                        label = if (long) "Tôi và giao diện của tôi" else "Tôi",
+                        icon = IconName.Person,
+                        open = host.overlays.isOpen(PROFILE),
+                        current = host.current is Route.Me,
+                        compact = compact,
+                        modifier = Modifier.testTag("nav-profile-trigger"),
+                        onOpen = {
+                            log(
+                                when (val r = host.overlays.open(PROFILE)) {
+                                    OpenResult.Ok -> "Tôi → mở lớp phủ"
+                                    is OpenResult.Busy -> "Tôi → từ chối: ${r.active} đang mở"
+                                },
+                            )
+                        },
+                    )
+                },
+            )
+        }
+        val canvasWidth = if (railOnly) {
+            if (layout.railExpanded) VinkDimens.SizeRailExpanded else VinkDimens.SizeRailCompact
+        } else if (adaptive || window == WindowClass.Compact) measured
+        else maxOf(measured, (if (window == WindowClass.Expanded) WindowClass.DP.second else WindowClass.DP.first).dp)
+        Column {
+            Hint("Yêu cầu: ${if (railOnly) "rail riêng" else if (adaptive) "adaptive" else window.id} · hiệu lực: ${layout.id} · frame: ${measured.value} dp")
+            // The constrained viewport scrolls a fixed stress canvas; adaptive uses measured dp.
+            Box(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).testTag("nav-canvas-scroll")) {
+                Box(Modifier.width(canvasWidth).height(height.dp).testTag("nav-shell:${layout.id}")) {
+                    if (railOnly) rail() else VinkAdaptiveScaffold(
+                        layout = layout,
+                        rail = rail,
+                        bar = {
+                            VinkBottomNavigation(primary + me, host.current.key, navigate, Modifier.testTag("nav-bottom"))
+                        },
+                        topBar = { VinkTopBar(brand = { Brand() }) },
+                    ) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            VinkText("Trang hiện tại: ${host.current.label()}", role = TypeRole.Title, modifier = Modifier.testTag("nav-route"))
+                            page()
                         }
-                    },
-                    destinations = primary,
-                    selected = host.current.key,
-                    onNavigate = navigate,
-                    expandLabel = "Mở rộng điều hướng",
-                    collapseLabel = "Thu gọn điều hướng",
-                    modifier = Modifier.testTag("nav-rail"),
-                    brand = { Brand() },
-                    account = { compact ->
-                        VinkNavUtility(
-                            label = if (long) "Tôi và giao diện của tôi" else "Tôi",
-                            icon = IconName.Person,
-                            open = host.overlays.isOpen(PROFILE),
-                            current = host.current is Route.Me,
-                            compact = compact,
-                            modifier = Modifier.testTag("nav-profile-trigger"),
-                            onOpen = {
-                                log(
-                                    when (val r = host.overlays.open(PROFILE)) {
-                                        OpenResult.Ok -> "Tôi → mở lớp phủ"
-                                        is OpenResult.Busy -> "Tôi → từ chối: ${r.active} đang mở"
-                                    },
-                                )
-                            },
-                        )
-                    },
-                )
-            },
-            bar = {
-                VinkBottomNavigation(primary + me, host.current.key, navigate, Modifier.testTag("nav-bottom"))
-            },
-            topBar = { VinkTopBar(brand = { Brand() }) },
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                VinkText("Trang hiện tại: ${host.current.label()}", role = TypeRole.Title, modifier = Modifier.testTag("nav-route"))
-                page()
+                    }
+                }
             }
         }
     }
@@ -379,7 +401,7 @@ fun NavigationSpecimen(id: String, scenario: String): Boolean {
                 when (scenario) {
                     "compact" -> "Rail 96dp: icon trên, nhãn dưới; nút Mở rộng vẫn hiển thị thường trực."
                     "reader" -> "Trang đọc thuộc Khám phá: Khám phá được chọn, không có đích Trang đọc."
-                    "long-labels" -> "Nhãn dài xuống dòng trong rail 96dp, không cắt chữ."
+                    "long-labels" -> "Stress rail 96dp với nhãn dài: chữ lớn có thể tách từ; dùng Mở rộng để đọc trong rail 220dp. Không coi đây là PASS khả năng đọc."
                     "guest" -> "Host cấp danh sách theo capability thật; thư viện không tự thêm hay ẩn đích."
                     else -> "Rail 220dp: thương hiệu → nút thu/mở → Khám phá → Bàn viết; Tôi ở chân."
                 },
@@ -388,6 +410,7 @@ fun NavigationSpecimen(id: String, scenario: String): Boolean {
                 host,
                 window = if (scenario in setOf("compact", "long-labels")) WindowClass.Medium else WindowClass.Expanded,
                 long = scenario == "long-labels",
+                railOnly = true,
                 primary = when (scenario) {
                     "guest" -> listOf(explore)
                     "long-labels" -> listOf(exploreLong, deskLong)
@@ -417,12 +440,13 @@ fun NavigationSpecimen(id: String, scenario: String): Boolean {
             val (window, context) = when (scenario) {
                 "medium", "toggle" -> WindowClass.Medium to NavContext()
                 "compact" -> WindowClass.Compact to NavContext()
-                "editor" -> WindowClass.Expanded to NavContext(compactRail = true, hideBar = true)
+                "editor", "adaptive-editor" -> WindowClass.Expanded to NavContext(compactRail = true, hideBar = true)
                 else -> WindowClass.Expanded to NavContext()
             }
-            if (scenario == "editor") remember { host.stack[0] = Route.Editor("ban-nhap-mau") }
+            if (scenario == "editor" || scenario == "adaptive-editor") remember { host.stack[0] = Route.Editor("ban-nhap-mau") }
             Hint(
                 when (scenario) {
+                    "adaptive", "adaptive-editor" -> "Khung thích ứng theo bề rộng frame dp; giữ chữ, vùng chọn và lớp phủ khi đổi cỡ."
                     "medium" -> "Cửa sổ vừa: mặc định rail 96dp."
                     "compact" -> "Cửa sổ hẹp: thanh dưới; preference rail không áp."
                     "editor" -> "Đang viết: rail 96dp trên cửa sổ rộng; trên cửa sổ hẹp thanh dưới ẩn. Bàn viết được chọn."
@@ -431,9 +455,11 @@ fun NavigationSpecimen(id: String, scenario: String): Boolean {
                     else -> "Cửa sổ rộng: rail 220dp."
                 },
             )
-            Shell(host, window, context, height = if (scenario == "short") 260 else 460) {
-                if (scenario == "toggle" || scenario == "editor") Draft(host)
+            if (!scenario.startsWith("adaptive")) Hint("Khung ép cố định để kiểm variant; cuộn ngang để xem canvas khi không vừa. Dùng adaptive để kiểm reflow.")
+            Shell(host, window, context, height = if (scenario == "short") 260 else 460, adaptive = scenario.startsWith("adaptive")) {
+                if (scenario == "toggle" || scenario == "editor" || scenario.startsWith("adaptive")) Draft(host)
             }
+            if (scenario.startsWith("adaptive")) Profile(host)
         }
         "navigation.overlay" -> {
             if (scenario != "default") remember { host.overlays.open(PROFILE) }

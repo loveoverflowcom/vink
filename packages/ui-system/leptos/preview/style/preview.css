@@ -635,7 +635,14 @@ body {
   background-color: var(--vk-surface-container);
 }
 
-/* UIS-04 navigation specimens: a fixed-layout scaffold inside its own frame. */
+/* UIS-04: rail specimens stand alone; fixed canvases scroll within a named region.
+   Adaptive specimens measure this viewport, never the outer browser window. */
+.vkp-shell-viewport { min-inline-size: 0; overflow-x: auto; }
+.vkp-shell-viewport:focus-visible { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); }
+.vkp-shell-meta { margin: 0; }
+.vkp-rail-only { inline-size: max-content; }
+.vkp-rail-only .vk-ui-rail { position: relative; }
+
 .vkp-shell-frame {
   position: relative;
   border: 1px solid var(--vk-outline-variant);

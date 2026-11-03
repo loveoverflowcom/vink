@@ -1,5 +1,8 @@
 package vink.ui.preview
 
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTextInputSelection
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -132,6 +135,7 @@ class NavigationPreviewTest {
         waitForIdle()
         val draft = onNode(hasSetTextActionTag("nav-draft"), useUnmergedTree = true)
         onNodeWithTag("nav-rail").assertWidthIsEqualTo(96.dp)
+        onNodeWithTag("nav-frame").performScrollTo()
         onNode(hasContentDescription("Mở rộng điều hướng")).tap()
         onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
         onNode(hasContentDescription("Thu gọn điều hướng")).tap()
@@ -152,6 +156,7 @@ class NavigationPreviewTest {
             onNode(hasText(label) and hasAnyAncestor(hasTestTag("nav-bottom")), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
         }
         assertEquals(x.sorted(), x, "Khám phá → Bàn viết → Tôi")
+        onNodeWithTag("nav-frame").performScrollTo()
         onNode(hasText("Bàn viết") and hasAnyAncestor(hasTestTag("nav-bottom")), useUnmergedTree = true).tap()
         onNode(hasText("Trang hiện tại: Bàn viết")).assertExists()
     }
@@ -170,6 +175,83 @@ class NavigationPreviewTest {
         onNode(hasText("Trang hiện tại: Khám phá")).assertExists()
         onNodeWithTag("nav-back-outside").tap()
         assertTrue(model.log.first().endsWith("Back → Exit"), model.log.first())
+    }
+
+    @Test
+    fun railSpecimenHasNoCompetingPageAndKeepsItsWidths() = runComposeUiTest {
+        var scenario by mutableStateOf("default")
+        setContent {
+            VinkTheme(VinkPreferences(), systemDark = false, fonts = fonts.fonts) {
+                Column(Modifier.width(320.dp)) { NavigationSpecimen("navigation.rail", scenario) }
+            }
+        }
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
+        onNodeWithTag("nav-route").assertDoesNotExist()
+        scenario = "compact"
+        waitForIdle()
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(96.dp)
+        onNodeWithTag("nav-route").assertDoesNotExist()
+    }
+
+    @Test
+    fun adaptiveSpecimenMeasuresItsFrameAndKeepsDraftAndOverlayAcrossResize() = runComposeUiTest {
+        var width by mutableStateOf(900.dp)
+        setContent {
+            VinkTheme(VinkPreferences(), systemDark = false, fonts = fonts.fonts) {
+                Column(Modifier.width(width)) { NavigationSpecimen("navigation.scaffold", "adaptive") }
+            }
+        }
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
+        val draft = onNode(hasSetTextActionTag("nav-draft"), useUnmergedTree = true)
+        val before = "Chữ riêng chưa lưu: đường về, mưa và gió."
+        draft.performTextReplacement(before)
+        draft.performTextInputSelection(TextRange(3, 9))
+        waitForIdle()
+        fun assertSelection(expected: TextRange, stage: String) = assertEquals(expected, draft.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange], stage)
+        assertSelection(TextRange(3, 9), "after explicit selection")
+        width = 650.dp
+        waitForIdle()
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(96.dp)
+        assertSelection(TextRange(3, 9), "after medium resize")
+        onNode(hasContentDescription("Mở rộng điều hướng")).performClick()
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
+        // Public OutlinedTextField collapses a focused range on blur before onToggle;
+        // an independent primitive probe reproduces this with an unrelated button too.
+        // The frame must retain that native caret, not restore the constructor selection.
+        assertSelection(TextRange(9), "after pointer blur + toggle")
+        onNodeWithTag("nav-profile-trigger").performClick()
+        onNodeWithText("Chưa có thông tin tài khoản. Vink chưa mở đăng nhập.").assertExists()
+        width = 320.dp
+        waitForIdle()
+        onNodeWithTag("nav-rail").assertDoesNotExist()
+        onNodeWithTag("nav-bottom").assertExists()
+        onNodeWithText("Chưa có thông tin tài khoản. Vink chưa mở đăng nhập.").assertExists()
+        onNodeWithTag("nav-close").performClick()
+        assertSelection(TextRange(9), "after modal focus return")
+        width = 900.dp
+        waitForIdle()
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
+        val after = draft.fetchSemanticsNode().config
+        assertEquals(before, after[SemanticsProperties.EditableText].text)
+        assertEquals(TextRange(9), after[SemanticsProperties.TextSelectionRange])
+    }
+
+    @Test
+    fun adaptiveEditorContextYieldsToManualPreferenceButHidesCompactBar() = runComposeUiTest {
+        var width by mutableStateOf(900.dp)
+        setContent {
+            VinkTheme(VinkPreferences(), systemDark = false, fonts = fonts.fonts) {
+                Column(Modifier.width(width)) { NavigationSpecimen("navigation.scaffold", "adaptive-editor") }
+            }
+        }
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(96.dp)
+        onNode(hasContentDescription("Mở rộng điều hướng")).performClick()
+        onNodeWithTag("nav-rail").assertWidthIsEqualTo(220.dp)
+        width = 320.dp
+        waitForIdle()
+        onNodeWithTag("nav-rail").assertDoesNotExist()
+        onNodeWithTag("nav-bottom").assertDoesNotExist()
+        onNode(hasText("Trang hiện tại: Đang viết ban-nhap-mau")).assertExists()
     }
 
     private fun hasSetTextActionTag(tag: String) = androidx.compose.ui.test.hasSetTextAction() and (hasTestTag(tag) or hasAnyAncestor(hasTestTag(tag)))

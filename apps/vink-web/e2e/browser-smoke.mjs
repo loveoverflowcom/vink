@@ -224,14 +224,25 @@ class Page {
   }
 
   async click(selector) {
-    const point = await this.eval(`(() => {
-      const el = document.querySelector(${JSON.stringify(selector)});
-      if (!el) return null;
-      el.scrollIntoView({ block: 'center' });
-      const r = el.getBoundingClientRect();
-      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-    })()`);
-    if (!point) throw new Error(`no element ${selector}`);
+    // A committed CodeMirror input can still have a queued selection scroll. Resolve a fresh
+    // node and hit-test after layout; retry geometry only, never dispatch a second activation.
+    let point;
+    for (let attempt = 0; attempt < 12; attempt++) {
+      point = await this.eval(`(async () => {
+        const el = document.querySelector(${JSON.stringify(selector)});
+        if (!el) throw new Error('Missing click target: ' + ${JSON.stringify(selector)});
+        el.scrollIntoView({ block: 'center', behavior: 'instant' });
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const current = document.querySelector(${JSON.stringify(selector)});
+        if (!current) return null;
+        const r = current.getBoundingClientRect();
+        const x = r.x + r.width / 2, y = r.y + r.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return r.width > 0 && r.height > 0 && hit && current.contains(hit) ? { x, y } : null;
+      })()`);
+      if (point) break;
+    }
+    if (!point) throw new Error(`click target stayed outside the pointer hit area: ${selector}`);
     for (const type of ['mousePressed', 'mouseReleased']) {
       await this.send('Input.dispatchMouseEvent', { type, x: point.x, y: point.y, button: 'left', clickCount: 1 });
     }
