@@ -58,10 +58,13 @@ Quy ước bố cục do `vink-layout-spec` sở hữu. Design, Fix, Inspector, 
 prototype và prompt dùng nó theo phạm vi; LayoutSpec không gọi ngược các workflow.
 Audit không cần thiết kế mới; thay đổi backend/tài liệu không cần đặc tả UI.
 
-Có thể gọi bằng `$vink-work-item`, `$vink-code-review`, `$vink-prompt`… trong môi trường hỗ trợ
-repo skills, hoặc yêu cầu agent đọc trực tiếp file `SKILL.md` tương ứng. Các mục `agents/openai.yaml`
+Có thể gọi bằng `$vink-work-item`, `$vink-code-review`, `$vink-prompt`… trong Codex, hoặc
+`/vink-work-item`, `/vink-code-review`… trong Claude Code (qua [.claude/skills](../../.claude/skills), mỗi
+mục là symlink tới thư mục ở đây; Claude Code đọc [CLAUDE.md](../../CLAUDE.md) import `AGENTS.md`),
+hoặc yêu cầu agent đọc trực tiếp file `SKILL.md` tương ứng. Các mục `agents/openai.yaml`
 cung cấp tên hiển thị và prompt mẫu; không yêu cầu plugin Cantos hay dịch vụ ngoài. Đây là bản
-canonical duy nhất: runtime khác nên tham chiếu thư mục này thay vì chép thêm một bộ.
+canonical duy nhất: runtime khác nên tham chiếu thư mục này (symlink) thay vì chép thêm một bộ; thêm skill mới thì
+tạo thêm symlink cùng tên trong `.claude/skills`.
 `cargo xtask verify quick` kiểm frontmatter, `agents/openai.yaml`, danh sách ở bảng trên và link.
 
 Nguồn, commit Cantos, draft bổ sung và lý do chọn từng skill nằm tại
