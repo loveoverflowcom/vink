@@ -1,8 +1,12 @@
 # D2T-03 — phạm vi triển khai và bằng chứng
 
-Issue #45; base `develop@14c33c95f6ddc77e2990f37b741841df942ea3c5`, branch
-`codex/discussion-ui`. Kết quả dưới đây thuộc worktree triển khai ngày 03/11/2026,
-trước tích hợp `develop@27927c4` và trước full gates do người review thực hiện.
+Issue #45; branch `codex/discussion-ui`, đã tích hợp `develop@27927c462244f2a70e36a686a37c8c95690775b6`.
+Source kiểm local cuối: `0f46f817160c2507861e0c508cfd3dbb4c1b008b`.
+Cây source tương ứng trên GitHub: [`c09eeeb8`](https://github.com/loveoverflowcom/vink/commit/c09eeeb8d55b1ddf4bbfc6b4aa21ead9ac6b43ff);
+cả hai có Git tree `7b6b9f653d03d88901ba5966b3c65126ad2589be`. Commit tài liệu
+sau đó chỉ cập nhật LayoutSpec/evidence; kết quả local và sidecar giữ SHA gốc.
+Checkpoint triển khai ban đầu `c6222a7` xuất phát từ `develop@14c33c9`; bảng checkpoint
+bên dưới là lịch sử, không thay kết quả kiểm cuối.
 [LayoutSpec](../design/discussion-ui.md) đã được trình bày trước sửa UI.
 
 Web reader đọc discussion anonymous khi SSR; browser tải projection riêng qua API
@@ -18,7 +22,50 @@ physical attempt. Late ACK không xóa text mới; mất ACK chỉ đối soát 
 bị thu hồi mất tên đã cache, vẫn giữ text; draft có root ngoài page hiện tại có vùng
 khôi phục riêng. PUT/DELETE fence các read cũ; refresh trong lúc read được xếp lại
 khi cần cập nhật sau submit. Deadline HTTP 30 giây là outcome chưa rõ; transport
-thuộc feature owner, không thuộc button/ô trả lời có thể được thu gọn.
+thuộc feature owner, không thuộc button/ô trả lời có thể được thu gọn. Nhánh ngoài
+page giữ cả receipt sau khi ACK xóa chữ đã gửi; editor chỉ được giữ khi còn chữ
+hoặc một lần gửi chưa rõ kết quả.
+
+## Kết quả kiểm cuối
+
+Rust 1.99.1, Chrome 156.0.8078.80, PostgreSQL 17.11, macOS ARM64; CMP dùng JDK
+21.0.7. Cargo local dùng `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=2`,
+`CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_NET_OFFLINE=true`.
+Socket/loopback tests được chạy với quyền cho IPC cục bộ và database dùng một lần.
+
+| Kết quả trên source `0f46f817` | Boundary | Giới hạn |
+| --- | --- | --- |
+| PASS — `cargo xtask verify quick`, 8/8 | Tokens/drift, fmt, clippy SSR/hydrate/preview, doctests, unit/contract, source boundaries; Web 45 tests, Rust patterns 2 | Không DB/browser/model proof |
+| PASS — `cargo xtask verify web`, 7/7, main + restart | Server/PostgreSQL thật, LocalFixture POST commit → mất ACK → keyed replay → own-pending, SSR privacy, close/reopen CAS, own DELETE; save/conflict/export/SIGTERM/restart | LocalFixture không phải production auth; CDP input không phải OS IME |
+| PASS — `cargo xtask ui-preview leptos verify`, `VINK_UI_FOCUS_CAPTURE=1` | Renderer, callbacks/focus/selection, mọi scenario reflow ở 320/390/834/1024/1440 và 100/200%; 761 raw contexts cùng specimen tiles | Gallery không persistence |
+| PASS — `cargo xtask ui-preview cmp verify` | Common/Desktop, 78 tests, 639 PNG | JVM off-screen, không native product |
+| PASS — mutation sensitivity ở controller production | Tạm giữ physical-attempt cũ nhưng giữ nguyên payload/key: test FAIL tại `!complete(old_ack)`; khôi phục đúng SHA-256 rồi full quick PASS | Một negative control của Rust consumer, không Kani/Quint |
+
+`postgres`/`discussion` không chạy lại local vì lát này không đổi domain/SQL/model;
+CI của PR chạy các lane hiện hành, kết quả head cuối và link run nằm trong PR.
+Model core/lifecycle không là proof/conformance của consumer D2T-03.
+
+Giữ log FAIL trước khi sửa: hết disk khi build archive, sandbox chặn Unix socket,
+fixture no-hydration để WASM preload không có consumer, oracle Tab của reader cũ,
+và helper DOM-focus đua selection CodeMirror. Đã đối chiếu network/input trace,
+dùng native Tab có sẵn trong harness, kiểm hẹp restart 10/10 rồi chạy full Web.
+Giữ nguyên deadline, exact append/export và focus-ring assertions; production
+editor không đổi trong lát này.
+
+Web product lane giữ 874 captures, mọi sidecar pin `0f46f817`; 29 ảnh discussion
+tách PostgreSQL/LocalFixture khỏi intercepted contract fixtures. Đã mở 15 ảnh Web,
+10 CMP và 10 Leptos tiles chứa pattern mới; 2 tile header bổ sung không tính vào
+coverage pattern. Mẫu đã xem không còn finding thị giác cần sửa; không khẳng định
+đã mở mọi ảnh hoặc nghiệm thu screen reader/OS IME/FPS từ ảnh tĩnh.
+
+CMP discussion dùng canvas nội dung 5000/10000 px ở density 1, preview font scale
+1/2, OS insets 0; đây không phải chiều cao viewport native. Consumer sidecar không
+có SHA. Provenance ngoài sidecar ghi run source `4418f2b`, các input CMP/shared/
+fonts không đổi so với `0f46f817`; không gán fingerprint riêng của font test cho
+consumer. Leptos có source guard/fingerprint và kiểm source không đổi. Log, traces,
+manifest, SHA-256 và danh sách ảnh đã mở được giữ trong evidence của task.
+
+## Checkpoint triển khai trước tích hợp
 
 | Kết quả thực thi tại lượt triển khai | Boundary | Giới hạn |
 | --- | --- | --- |
@@ -54,10 +101,11 @@ theme/build. Ảnh phải được mở để được gọi là inspected.
 - API chưa có ranking, context lookup ngoài page, reports/appeals hay rate limits.
   Paging không phải snapshot; refresh thay projection đã tải, không realtime thu hồi
   mọi nội dung khi không có invalidation source.
-- CMP có pattern và các scenario cùng catalog IDs, không có native product/service
-  consumer. Common/Desktop/native compile/runtime, OS IME, screen reader, safe-area,
-  lifecycle và performance chưa được nghiệm thu ở lượt này.
+- CMP có pattern và các scenario cùng catalog IDs, Common/Desktop đã kiểm như bảng
+  cuối; chưa có native product/service consumer. Android/iOS, OS IME, screen reader,
+  safe-area và native lifecycle NOT_RUN; long-thread/motion/memory budgets chưa qualified.
 - Quint hiện tại vẫn là model core/lifecycle #41. Chưa có model interleavings consumer,
-  Kani, mutation sensitivity hoặc conformance model → controller cho D2T-03.
+  Kani hoặc conformance model → controller cho D2T-03. Negative control local nêu
+  trên không thay các lane đó.
 - Draft trong bộ nhớ trang, không phải persistence/recovery qua reload. Không lưu text
   vào storage chung; đổi route/scope không chuyển text sang tác phẩm hoặc actor khác.

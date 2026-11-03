@@ -22,6 +22,7 @@ Screen #reader
         Region #reply-pagination — cursor thật, lỗi cục bộ
         Region #reply-composer — một composer/root, target đổi không mất chữ
     Region #root-pagination — cursor thật hoặc điểm kết thúc
+    Region #reply-recovery — nhánh ngoài page giữ text/lần gửi chưa rõ; receipt đã nhận có status riêng
 ```
 
 `ReaderHeader`, `FeedbackComposer`, `FeedbackItem`/`FeedbackThread` và pattern
@@ -69,6 +70,6 @@ double-submit, closed policy và lost ACK. Pattern projection chia sẻ scenario
 Web/CMP; CMP không có service consumer/native app. Quint hiện tại chỉ sở hữu core;
 không gọi test Rust consumer là model-check/Kani. Browser, persistence, OS IME,
 screen reader, responsive/theme screenshots và native runtime cần evidence riêng.
-PR #56 đã merge tại `27927c4` để sửa editor selection/resize; tích hợp base mới và chạy gate là bước bàn giao tiếp theo, không sửa oracle của smoke để che lỗi.
+PR #56 đã merge tại `27927c4` để sửa editor selection/resize; base đã tích hợp. Kết quả quick/Web/hai preview và giới hạn ở [evidence](../development/discussion-ui-evidence.md).
 
 Discussion HTTP có deadline 30 giây cho mỗi transport attempt. Timeout/abort giữ outcome chưa rõ và snapshot/key; timer bị hủy cùng feature owner. Thu ô trả lời chỉ đổi trình bày, không hủy transport. Scope đã được kiểm ở controller; production chưa có luồng đổi account/session để nghiệm thu runtime.
