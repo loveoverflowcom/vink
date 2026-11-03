@@ -244,6 +244,7 @@ import DTO, service hay fixture. `DraftMetadata`/nhãn UTC được composition 
   thuộc evidence, không được suy từ hàng coverage này. UI bình luận thật thuộc #45,
   chưa nối vào discussion API và chưa có auth authority. Feedback intent và quyền
   tác giả bật/tắt bình luận là hai trục độc lập; recipe không nghiệm thu quan hệ này.
+  Bằng chứng và giới hạn lần kiểm UI-REPAIR-12/13 ở [repair report](../design/ui-repair-12-13.md).
 
 ## Qualification UIS-06 (#24)
 
