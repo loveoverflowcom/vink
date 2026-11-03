@@ -32,6 +32,9 @@ vào đầu editor đã blur. Cầu giữ selection cuối của editor đang fo
 document changes và khôi phục khi focus trở lại; caret phát sinh khi blur không
 ghi đè lựa chọn này. Regression `shellWithDirtyEditor` giữ nguyên kiểm selection
 sau mobile resize, EditorView/text/undo và không phát draft writes.
+Khôi phục thêm ở animation frame sau focus để qua caret tạm của native dialog;
+keydown, mousedown, document edit, lần focus mới hoặc destroy hủy callback cũ.
+Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện có.
 
 `cargo xtask build` (và `dev`, `verify web`) chạy `npm ci --ignore-scripts` khi
 `package-lock.json` đổi so với lần cài trước, rồi `node scripts/build.mjs` để type-check bằng

@@ -37,6 +37,10 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
   }
   const handle = { destroyed: false } as EditorHandle;
   let focusSelection = EditorSelection.single(0);
+  let focusEpoch = 0;
+  let restoringFocus = false;
+  let pointerDown = false;
+  const cancelFocusRestore = () => { focusEpoch++; restoringFocus = false; };
   handle.view = new EditorView({
     parent: host,
     state: EditorState.create({
@@ -52,10 +56,27 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
         // can adopt that transient caret. Mouse selection still chooses its intended point.
         EditorView.domEventHandlers({
           focus(_event, view) {
+            if (pointerDown) { view.focus(); return false; }
+            const epoch = ++focusEpoch;
+            restoringFocus = true;
             view.dispatch({ selection: focusSelection });
             view.focus();
+            // Native dialog focus restoration can queue a caret change after
+            // focus. Restore after it settles, unless a new input supersedes us.
+            requestAnimationFrame(() => {
+              if (handle.destroyed || epoch !== focusEpoch) return;
+              if (view.hasFocus) {
+                view.dispatch({ selection: focusSelection });
+                view.focus();
+              }
+              restoringFocus = false;
+            });
             return false;
           },
+          mousedown() { pointerDown = true; cancelFocusRestore(); return false; },
+          mouseup() { pointerDown = false; return false; },
+          blur() { pointerDown = false; return false; },
+          keydown() { cancelFocusRestore(); return false; },
         }),
         EditorView.contentAttributes.of({
           'aria-labelledby': options.labelledBy,
@@ -74,7 +95,8 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
           // Focusing the shell after a dialog closes can move the browser's DOM
           // caret into the blurred editor. Keep the last focused selection and
           // map it through edits; that incidental caret is not a writer intent.
-          focusSelection = update.view.hasFocus
+          if (update.docChanged) cancelFocusRestore();
+          focusSelection = update.view.hasFocus && !restoringFocus
             ? update.state.selection
             : focusSelection.map(update.changes);
           if (update.docChanged && !handle.destroyed) options.onChange();
