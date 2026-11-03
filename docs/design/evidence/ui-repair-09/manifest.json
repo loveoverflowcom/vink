@@ -1334,5 +1334,51 @@
     "target/ui-preview/leptos/pkg/vink_ui_preview.js": "00c9a85813beda08a8a62b4939649b5c08818b417c2f9188579fffd825220c77",
     "target/ui-preview/leptos/vink-ui.css": "097f630eb523499e44e01693e63671156eac980e405728fa0e034a8d8b9866f6",
     "target/ui-preview/leptos/preview.css": "171e1a3e79c2b38be673175230d9c42d9bdbcc6a8752ec51fbdf024ddbd08081"
-  }
+  },
+  "cmp_artifacts": [
+    {
+      "path": "cmp-after--navigation.rail--default--light--narrow.png",
+      "sha256": "7c4ce5fd91310f9889fab124fbe07a3f66fda2a8166b8d050439f58724af21f4",
+      "width": 360,
+      "height": 5200,
+      "capture_mode": "offscreen",
+      "renderer": "CMP Desktop",
+      "inspected": false,
+      "context": "cmp-contexts.json",
+      "context_gap": null
+    },
+    {
+      "path": "cmp-after--navigation.scaffold--default--light--narrow.png",
+      "sha256": "422d33611dd5a65786a73fd8e11a46c8317bf4bbdd6b0dc2bae5312e6372cfae",
+      "width": 360,
+      "height": 5200,
+      "capture_mode": "offscreen",
+      "renderer": "CMP Desktop",
+      "inspected": false,
+      "context": "cmp-contexts.json",
+      "context_gap": null
+    },
+    {
+      "path": "cmp-before--navigation.rail--default--light--narrow.png",
+      "sha256": "d2d971fab22fb4e613da081e56c8927fc55fca02fbb95814669ad80eb13c2ecb",
+      "width": 360,
+      "height": 5200,
+      "capture_mode": "offscreen",
+      "renderer": "CMP Desktop",
+      "inspected": false,
+      "context": null,
+      "context_gap": "Baseline full contexts export was not copied; same named fixture, dimensions from PNG, baseline command PASS retained separately."
+    },
+    {
+      "path": "cmp-before--navigation.scaffold--default--light--narrow.png",
+      "sha256": "87bb1d8c8108ef83ee3a5f6473b37aabfa83a88e0673cb9131f0b61f768a9764",
+      "width": 360,
+      "height": 5200,
+      "capture_mode": "offscreen",
+      "renderer": "CMP Desktop",
+      "inspected": false,
+      "context": null,
+      "context_gap": "Baseline full contexts export was not copied; same named fixture, dimensions from PNG, baseline command PASS retained separately."
+    }
+  ]
 }
