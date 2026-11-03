@@ -212,6 +212,7 @@ class Page {
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
+        editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label') })) },
       };
@@ -307,22 +308,26 @@ class Page {
 
 /** Holds draft saves (PUT) until released or failed; every other request continues. */
 class SaveGate {
-  constructor(page) {
+  constructor(page, stage = 'Request') {
     this.page = page;
+    this.stage = stage;
+    this.enabled = false;
     this.held = [];
     page.cdp.listeners.push((message) => {
-      if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+      if (!this.enabled || message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
       const { requestId, request } = message.params;
-      if (request.method === 'PUT') this.held.push(requestId);
+      if (request.method === 'PUT' && (stage === 'Request' || message.params.responseStatusCode !== undefined || message.params.responseErrorReason)) this.held.push(requestId);
       else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
     });
   }
 
   enable() {
-    return this.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: 'Request' }] });
+    this.enabled = true;
+    return this.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: this.stage }] });
   }
 
   disable() {
+    this.enabled = false;
     return this.page.send('Fetch.disable');
   }
 
@@ -625,7 +630,7 @@ async function brandAssets(page) {
 }
 
 async function textContrast(page, theme, surface = 'shell') {
-  const selectors = {
+  const selectors = surface.startsWith('editor-') ? ['[data-testid=save-status]', '#preview', '#export', '#save', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]', '.vk-editor-help'] : {
     desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
     explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
@@ -647,6 +652,7 @@ async function textContrast(page, theme, surface = 'shell') {
     return ${JSON.stringify(selectors)}.map(selector => {
       const el = document.querySelector(selector);
       if (!el) throw new Error('missing contrast target: ' + selector);
+      if (el.dataset.state === 'disabled') return { selector, exempt: 'disabled control' };
       const foreground = getComputedStyle(el).color;
       const bg = background(el);
       const [a, b] = [luminance(foreground), luminance(bg)].sort((a, b) => b - a);
@@ -654,7 +660,7 @@ async function textContrast(page, theme, surface = 'shell') {
     });
   })()`);
   writeFileSync(join(dirname(args.state), `${surface}-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
-  check(pairs.every(p => p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.map(p => p.ratio)).toFixed(2)})`);
+  check(pairs.every(p => p.exempt || p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.filter(p => !p.exempt).map(p => p.ratio)).toFixed(2)}; disabled controls exempt)`);
 }
 
 async function accountAppearance(page) {
@@ -1579,11 +1585,239 @@ async function publicReading(page) {
   await page.eval(`document.documentElement.removeAttribute('data-theme')`);
 }
 
+// UI-REPAIR-05: real editor/session and real CAS writes; Fetch only holds/fails transport.
+async function editorChrome(page) {
+  console.log('editor chrome: reflow, save races and recovery:');
+  await page.viewport(1440);
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`document.querySelector('#create-draft') && document.documentElement.dataset.hydrated === 'true'`, 'desk for editor chrome');
+  await page.click('#create-draft');
+  await page.waitFor(EDITOR_READY, 'chrome draft');
+  const workId = await page.eval(`location.pathname.split('/').pop()`);
+  const title = 'Những ngày mưa ở khuỷu đường cũ — '.repeat(6).slice(0, 200);
+  const poem = Array.from({ length: 8 }, (_, i) => `Khổ ${i + 1} — Sáng nay trời đổ mưa rào,\n  ngõ nhỏ ướt mềm từng viên gạch cũ.\nNgười về còn nhớ tiếng Việt không?`).join('\n\n');
+  await page.typeAtEnd('#draft-title', title);
+  await page.typeInBody(poem);
+  await page.click('#save');
+  await page.waitStatus('saved');
+  const live = `window.__chromeEditor === document.querySelector('.cm-editor') && document.querySelectorAll('.cm-editor').length === 1`;
+  await page.eval(`window.__chromeEditor = document.querySelector('.cm-editor')`);
+  const geometry = async state => {
+    await page.eval(`document.activeElement?.blur()`);
+    for (const width of [1440, 1024, 834, 390, 320]) {
+      for (const scale of [100, 200]) {
+        for (const theme of ['light', 'dark']) {
+          await page.viewport(width);
+          await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; scrollTo(0, 0)`);
+          await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
+          // Measure settled theme colours, without waiting for the pending indicator's loop.
+          await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+          const scenario = `editor-${state}-${width}-${scale}-${theme}`;
+          if (width === 1440 && scale === 100) await textContrast(page, theme, `editor-${state}`);
+          check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && ${live}`), `${scenario}: no overflow and one live EditorView`);
+          check(await page.eval(`(() => {
+            const toolbar = document.querySelector('#editor-toolbar'), t = toolbar.getBoundingClientRect();
+            return [...toolbar.querySelectorAll('button')].every(button => {
+              const r = button.getBoundingClientRect(), label = button.querySelector('.vk-ui-button__label');
+              return r.width >= 44 && r.height >= 44 && r.left >= t.left && r.right <= t.right && label.scrollWidth <= label.clientWidth + 1;
+            }) && document.querySelector('[data-testid=save-status]').textContent.trim().length > 0;
+          })()`), `${scenario}: status text and all toolbar targets fit`);
+          if (width <= 834 || scale === 200) check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), `${scenario}: toolbar stays in document flow`);
+          await page.capture(scenario);
+          if (width <= 390 && scale === 200) {
+            await page.eval(`document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
+            await page.capture(`${scenario}-title`);
+            await page.eval(`document.querySelector('[data-testid=editor-body]').scrollIntoView({block:'start'})`);
+            await page.capture(`${scenario}-writing`);
+          }
+          if (state === 'failed' || state === 'conflict') {
+            const recovery = state === 'failed' ? '[data-testid=save-failed]' : '[data-testid=conflict]';
+            await page.eval(`document.querySelector('${recovery}').scrollIntoView({block:'start'})`);
+            check(await page.eval(`(() => {
+              const r = document.querySelector('${recovery}');
+              return [...r.querySelectorAll('button')].every(b => { const t = b.getBoundingClientRect(); return t.width >= 44 && t.height >= 44 && t.left >= 0 && t.right <= innerWidth; });
+            })()`), `${scenario}: persistent recovery remains reachable`);
+            await page.capture(`${scenario}-recovery`);
+          }
+        }
+      }
+    }
+    await page.viewport(1440);
+    await page.eval(`document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'; scrollTo(0,0)`);
+  };
+  await geometry('clean');
+  await page.typeInBody('\n\nChữ mới e\u0302\u0301 — chưa lưu.');
+  await geometry('dirty');
+  await page.eval(`document.querySelector('.vk-editor-help summary').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('.vk-editor-help').open && ${live}`), 'keyboard opens writing help without remounting the text');
+  await page.key('Enter');
+  check(await page.eval(`!document.querySelector('.vk-editor-help').open`), 'keyboard closes optional writing help');
+  // Native Tab order follows the visible secondary actions, Save, title and body.
+  await page.eval(`document.querySelector('#preview').focus()`);
+  for (const id of ['export', 'save', 'draft-title']) {
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement.id === '${id}'`), `editor Tab reaches ${id}`);
+  }
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.classList.contains('cm-content')`), 'editor Tab reaches the text box');
+  const gate = new SaveGate(page);
+  await gate.enable();
+  await page.click('#save');
+  const first = await gate.next();
+  await page.waitStatus('saving');
+  await page.eval(`document.querySelector('#save').click(); document.querySelector('#save').click()`);
+  await page.key('s', page.mod);
+  await page.typeInBody(' Gõ tiếp khi chờ.');
+  await geometry('saving');
+  check(gate.held.length === 0, 'double click and save shortcut cannot dispatch another pending PUT');
+  await gate.release(first);
+  await page.waitStatus('unsaved');
+  check((await page.draft(workId)).document.blocks.at(-1).lines.at(-1) === 'Chữ mới ế — chưa lưu.', 'ack only persisted its snapshot, not newer typing');
+  await page.click('#save');
+  await gate.fail(await gate.next());
+  await page.waitStatus('failed');
+  await geometry('failed');
+  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ')`), 'lost response copy never promises a definite failure');
+  await page.click('#retry-save');
+  await gate.release(await gate.next());
+  await page.waitStatus('saved');
+  check((await page.draft(workId)).document.blocks.at(-1).lines.at(-1).endsWith('Gõ tiếp khi chờ.'), 'deliberate retry saves the current text after reconciliation');
+  await gate.disable();
+
+  // Response stage: server has really committed. A retry must GET and enter conflict, with
+  // no second PUT even when that first reconciliation itself fails (403 here).
+  const responseGate = new SaveGate(page, 'Response');
+  await responseGate.enable();
+  await page.typeInBody(' Đã tới máy chủ.');
+  await page.click('#save');
+  const response = await responseGate.next();
+  const committed = await page.draft(workId);
+  check(committed.document.blocks.at(-1).lines.at(-1).endsWith('Đã tới máy chủ.'), 'held response belongs to a real committed save');
+  await responseGate.fail(response);
+  await responseGate.disable();
+  await page.waitStatus('failed');
+  let writes = 0, denyRead = true;
+  const listener = message => {
+    if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+    const { requestId, request } = message.params;
+    if (request.method === 'PUT') writes++;
+    if (request.method === 'GET' && denyRead) {
+      denyRead = false;
+      page.send('Fetch.fulfillRequest', { requestId, responseCode: 403, body: Buffer.from(JSON.stringify({ error: { code: 'forbidden', message: 'fixture' } })).toString('base64'), responseHeaders: [{ name: 'content-type', value: 'application/json' }] }).catch(() => {});
+    } else page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+  };
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: 'Request' }] });
+  await page.click('#retry-save');
+  await page.waitFor(`document.querySelector('[data-testid=save-failed]')?.textContent.includes('bị từ chối')`, 'failed reconciliation remains visible');
+  check(writes === 0, 'failed reconciliation cannot write');
+  await page.typeInBody(' Chữ còn trên trang.');
+  await page.click('#retry-save');
+  await page.waitStatus('conflict');
+  check(writes === 0, 'retry after a failed reconciliation still reads before writing');
+  await page.send('Fetch.disable');
+  page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
+  await geometry('conflict');
+  check((await page.draft(workId)).version === committed.version, 'unknown outcome never blindly replays an already committed save');
+
+  // Dialogs use current unsaved text and retain focus/scroll/body through close and reopen.
+  for (const kind of ['preview', 'leave']) {
+    await page.click(kind === 'preview' ? '#preview' : '.vk-editor-heading__back');
+    const dialog = kind === 'preview' ? '#draft-preview' : '#leave-editor';
+    await page.waitFor(`document.querySelector('${dialog}').open`, `${kind} dialog`);
+    if (kind === 'preview') check(await page.eval(`document.querySelector('#draft-preview').textContent.includes('Chữ còn trên trang.')`), 'preview reads unsaved text during conflict');
+    for (const width of [1440, 1024, 834, 390, 320]) for (const scale of [100, 200]) for (const theme of ['light', 'dark']) {
+      await page.viewport(width);
+      await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; document.querySelector('${dialog}').scrollTop = 0`);
+      await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+      await page.capture(`editor-${kind}-${width}-${scale}-${theme}`);
+      check(await page.eval(`(() => { const d = document.querySelector('${dialog}'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && d.scrollWidth <= d.clientWidth + 1 && ${live}; })()`), `${kind} ${width}/${scale}/${theme}: dialog fits and text view survives`);
+      await page.eval(`document.querySelector('${dialog} .vk-ui-dialog__title').focus()`);
+      await page.key('Tab');
+      check(await page.eval(`document.activeElement.id === '${kind === 'preview' ? 'preview-close' : 'leave-stay'}'`), `${kind}: Tab reaches the safe action`);
+      await page.capture(`editor-${kind}-${width}-${scale}-${theme}-actions`);
+      check(await page.eval(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()`), `${kind} ${width}/${scale}/${theme}: keyboard reveals safe action`);
+    }
+    await page.key('Escape');
+    await page.waitFor(`!document.querySelector('${dialog}').open`, `${kind} closed`);
+  }
+  await page.viewport(1440, 360);
+  await page.eval(`document.documentElement.style.fontSize=''; scrollTo(0,0)`);
+  check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), 'short desktop leaves writing viewport clear');
+  await page.capture('editor-short-desktop-1440');
+  await page.viewport(390, 420);
+  await page.typeInBody('');
+  await page.lineStart();
+  check(await page.eval(`(() => { const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`), 'reduced mobile viewport keeps the active caret visible without fixed controls');
+  await page.capture('editor-short-mobile-390');
+  await page.viewport(1440);
+  await page.eval(`document.documentElement.dataset.theme = 'light'; document.querySelector('#draft-title').focus(); document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
+  check(await page.eval(`document.querySelector('#draft-title').getBoundingClientRect().top >= document.querySelector('#editor-toolbar').getBoundingClientRect().bottom`), 'sticky toolbar does not hide the focused title');
+  await page.capture('editor-sticky-title-1440');
+  await page.click('#keep-mine');
+  await page.waitStatus('saved');
+  await page.reload();
+  await page.waitFor(EDITOR_READY, 'chrome editor reloaded');
+  check((await page.draft(workId)).title === title && (await page.draft(workId)).document.blocks.length === 9, 'long title and poetry survive explicit recovery and reload');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'clean editor leaves before Forward scenario');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.pathname === '/ban-viet/${workId}' && ${EDITOR_READY}`, 'Back reopens the clean editor');
+  await page.typeInBody(' Chữ mới trước nút Tiến.');
+  await page.eval(`history.forward()`);
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'Forward is held while dirty');
+  check(await page.eval(`location.pathname === '/ban-viet/${workId}'`), 'Forward restores the editor URL before the router leaves');
+  await page.click('#leave-stay');
+  check((await page.body()).endsWith('Chữ mới trước nút Tiến.'), 'Stay after Forward keeps the local text');
+  await page.click('#save');
+  await page.waitStatus('saved');
+
+  // A pre-write GET is not a PUT already in flight: discard cancels that future mutation.
+  const beforeDiscard = await page.draft(workId);
+  await gate.enable();
+  await page.typeInBody(' Chữ bỏ khi đang đối chiếu.');
+  await page.click('#save');
+  await gate.fail(await gate.next());
+  await page.waitStatus('failed');
+  await gate.disable();
+  let heldRead = null, postDiscardWrites = 0;
+  const holdRead = message => {
+    if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+    const { requestId, request } = message.params;
+    if (request.method === 'GET') heldRead = requestId;
+    else {
+      if (request.method === 'PUT') postDiscardWrites++;
+      page.send('Fetch.continueRequest', { requestId }).catch(() => {});
+    }
+  };
+  page.cdp.listeners.push(holdRead);
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: `*/api/v1/drafts/${workId}`, requestStage: 'Request' }] });
+  await page.click('#retry-save');
+  const deadline = Date.now() + 10000;
+  while (!heldRead && Date.now() < deadline) await sleep(50);
+  check(heldRead !== null, 'reconciliation GET is pending before navigation');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave while reconciliation is pending');
+  await page.click('#leave-save');
+  await page.click('#leave-discard');
+  await page.waitFor(`document.activeElement.id === 'discard-back'`, 'safe discard confirmation during reconciliation');
+  await page.click('#discard-confirm');
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'discard left the editor');
+  await page.send('Fetch.continueRequest', { requestId: heldRead });
+  await sleep(700);
+  check(postDiscardWrites === 0 && await page.eval(`location.pathname === '/ban-viet'`), 'late reconciliation cannot start PUT or navigate after discard');
+  await page.send('Fetch.disable');
+  page.cdp.listeners = page.cdp.listeners.filter(item => item !== holdRead);
+  check((await page.draft(workId)).version === beforeDiscard.version, 'discard before PUT leaves the server version unchanged');
+}
+
 async function mainPhase(page) {
   await serverHtml();
   await adaptiveShell(page);
   await draftDashboard(page);
   await publicReading(page);
+  await editorChrome(page);
 
   console.log('reader in the browser:');
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
@@ -1874,7 +2108,7 @@ try {
   if (activePage) {
     try {
       await activePage.capture('failure');
-      console.error('browser context:', await activePage.eval(`({ path: location.pathname, preferences: { ...document.documentElement.dataset }, active: document.activeElement?.outerHTML, selection: getSelection().toString(), view: document.querySelector('.cm-editor')?.__vinkView, status: document.querySelector('[data-testid=save-status]')?.dataset.status, errors: ${JSON.stringify(activePage.errors)} })`));
+      console.error('browser context:', await activePage.eval(`({ path: location.pathname, preferences: { ...document.documentElement.dataset }, active: { tag: document.activeElement?.tagName, id: document.activeElement?.id }, selectionLength: getSelection().toString().length, view: document.querySelector('.cm-editor')?.__vinkView, status: document.querySelector('[data-testid=save-status]')?.dataset.status, errors: ${JSON.stringify(activePage.errors)} })`));
     } catch { /* Preserve the original failure if the page itself crashed. */ }
   }
   console.error(`browser-smoke: FAIL ${error.message}`);

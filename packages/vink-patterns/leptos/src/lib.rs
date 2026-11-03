@@ -133,7 +133,7 @@ pub fn EditorToolbar(
             <p class="vk-save-status" role="status" aria-live="polite" data-testid="save-status" data-status=move || status_token.get()>
                 {move || status.get()}
             </p>
-            <Stack direction=Direction::Row gap=Space::S2 wrap=true>{children()}</Stack>
+            <div class="vk-editor-toolbar__actions">{children()}</div>
         </div>
     }
 }

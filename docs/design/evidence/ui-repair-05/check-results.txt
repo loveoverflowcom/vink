@@ -1,0 +1,65 @@
+UI-REPAIR-05 · 03/11/2026 · develop base 0fc8c04b29a4a4de7c57b17ad34981949abfc865
+Rust 1.99.1; Node 26.12.0; Chrome 156.0.8078.79 headless macOS; PostgreSQL 17.11 local scratch at 127.0.0.1:55435
+
+Source SHA-256 (tested files):
+a84ed4716f2bb7f90a2c950c08522a1a8f7875dca957324d1e9c363f989202a7  apps/vink-web/src/pages/desk.rs
+c8a859c7d307ecd677d7e1304f43e6502d960787eb90e9032ac1d7263aba19fa  apps/vink-web/style/vink.css
+872ee2eefd9fca2c76cc1038a2dba134d47834af13b7eee3750e8a0865c7e153  apps/vink-web/e2e/browser-smoke.mjs
+1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8  packages/vink-patterns/leptos/src/lib.rs
+76970138d9ff19002e07dfab0e1dab5f5c62a13e465c7919153cfae4b7e15111  packages/vink-patterns/leptos/patterns.css
+
+quick-final
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)
+
+web-final
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview
+  PASS  server stops gracefully on SIGTERM
+  PASS  confirmed draft survives server restart (browser reload), export
+
+preview-r1
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: headless Chrome scenarios and captures
+
+Browser counterexamples:
+  ok  failed reconciliation preserves the unknown outcome
+  ok  keyboard opens writing help without remounting the text
+  ok  double click and save shortcut cannot dispatch another pending PUT
+  ok  ack only persisted its snapshot, not newer typing
+  ok  failed reconciliation cannot write
+  ok  retry after a failed reconciliation still reads before writing
+  ok  unknown outcome never blindly replays an already committed save
+  ok  Forward restores the editor URL before the router leaves
+  ok  Stay after Forward keeps the local text
+  ok  late reconciliation cannot start PUT or navigate after discard
+  ok  discard before PUT leaves the server version unchanged
+
+Contrast (disabled controls exempt; pending is measured):
+editor-clean-contrast-dark: min 7.57:1
+editor-clean-contrast-light: min 5.40:1
+editor-conflict-contrast-dark: min 7.57:1
+editor-conflict-contrast-light: min 5.03:1
+editor-dirty-contrast-dark: min 7.57:1
+editor-dirty-contrast-light: min 5.40:1
+editor-failed-contrast-dark: min 7.57:1
+editor-failed-contrast-light: min 5.03:1
+editor-saving-contrast-dark: min 7.57:1
+editor-saving-contrast-light: min 5.40:1
+
+263 editor captures, 33 opened contact sheets; selected originals and contexts.json in this directory.
+NOT_RUN: real OS IME, software keyboard/mobile device, Safari/Firefox, screen reader, Word/Docs paste.

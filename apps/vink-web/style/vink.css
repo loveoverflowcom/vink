@@ -278,6 +278,8 @@ a {
 
 /* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
 
+.vk-desk--editor { max-width: calc(var(--vk-measure) + 2 * var(--vk-space-6)); margin-inline: auto; container: vk-editor-page / inline-size; }
+
 .vk-editor-heading {
   display: flex;
   flex-wrap: wrap;
@@ -311,9 +313,14 @@ a {
   gap: var(--vk-space-6);
 }
 
-/* Sticks below the viewport top while writing; the surface ring hides text scrolling past its
-   rounded corners. Narrow screens keep it in the flow (see the media query below). */
-.vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; box-shadow: 0 0 0 var(--vk-space-2) var(--vk-surface); }
+/* Stick only where there is room for a single row and the writing viewport remains useful.
+   rem breakpoints also release the toolbar when text is enlarged. CodeMirror measures the
+   actual sticky height; narrow/short windows keep all controls in the document flow. */
+@media (min-height: 40rem) {
+  @container vk-editor-page (min-width: 44rem) {
+    .vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; box-shadow: 0 0 0 var(--vk-space-2) var(--vk-surface); }
+  }
+}
 
 /* Focus moved by keyboard is not hidden under the sticky toolbar. */
 .vk-editor :is(input, button) {
@@ -325,6 +332,15 @@ a {
   flex-direction: column;
   gap: var(--vk-space-6);
 }
+
+.vk-editor-paper > .vk-ui-field { margin: 0; padding-bottom: var(--vk-space-6); border-bottom: 1px solid var(--vk-outline-variant); }
+.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-title-size); line-height: var(--vk-type-title-line-height); }
+.vk-editor-help { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
+.vk-editor-help summary { min-height: var(--vk-size-hit-target); padding-block: var(--vk-space-3); cursor: pointer; }
+.vk-editor-help p { margin: 0 0 var(--vk-space-3); }
+.vk-desk--editor .vk-notice__actions { margin-top: var(--vk-space-2); }
+.vk-desk--editor .vk-notice__actions > .vk-ui-action { flex: 0 1 auto; min-width: 0; }
+.vk-desk--editor .vk-notice__actions .vk-ui-button__label { overflow-wrap: normal; }
 
 .vk-field {
   display: flex;
@@ -410,6 +426,8 @@ a {
   background: var(--vk-outline);
 }
 
+.vk-save-status { line-height: var(--vk-type-label-line-height); }
+
 .vk-save-status[data-status="saved"]::before {
   background: var(--vk-success);
 }
@@ -457,6 +475,20 @@ a {
 
 .vk-preview {
   margin: var(--vk-space-6) 0;
+}
+
+/* Page-owned dialog sizing; keep the shared modal, focus and dismiss policies. */
+#draft-preview { inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-space-6)), calc(100% - 2 * var(--vk-space-3))); }
+#draft-preview .vk-preview { margin-block: var(--vk-space-4); }
+#draft-preview .vk-preview h2 { overflow-wrap: anywhere; }
+:is(#draft-preview, #leave-editor) .vk-dialog__body { margin-bottom: var(--vk-space-4); overflow-wrap: break-word; }
+:is(#draft-preview, #leave-editor) .vk-ui-dialog__panel { padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); }
+:is(#draft-preview, #leave-editor) .vk-ui-button__label { overflow-wrap: normal; }
+
+@media (max-width: 40rem) {
+  #leave-editor { inline-size: calc(100% - 2 * var(--vk-space-3)); }
+  #leave-editor :is(.vk-dialog__actions, .vk-dialog__recovery) > .vk-ui-action { flex: 1 1 100%; min-width: 0; }
+  #leave-editor .vk-ui-button { width: 100%; }
 }
 
 
