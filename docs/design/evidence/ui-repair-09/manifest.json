@@ -9,7 +9,8 @@
   "notes": [
     "Raw documents are capped at6000px and may show only catalog; complete specimen focus tiles retain scale.",
     "New adaptive scenario has no before counterpart. Fixed/default keeps its ID and uses a labelled horizontal canvas.",
-    "A captured artifact is inspected only when its individual inspected flag is true."
+    "A captured artifact is inspected only when its individual inspected flag is true.",
+    "Source equality flags compare the recorded after inputs with comparison_head, before integrating PR54 screen fixtures; later CI requalifies the final PR head. Navigation owners are unchanged by PR54."
   ],
   "records": [
     {
@@ -314,7 +315,7 @@
           "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
         }
       },
-      "source_matches_current_ui_files": false
+      "source_matches_comparison_head_ui_files": false
     },
     {
       "catalog_id": "navigation.scaffold",
@@ -618,7 +619,7 @@
           "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
         }
       },
-      "source_matches_current_ui_files": false
+      "source_matches_comparison_head_ui_files": false
     },
     {
       "catalog_id": "navigation.rail",
@@ -832,7 +833,7 @@
           "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
         }
       },
-      "source_matches_current_ui_files": true
+      "source_matches_comparison_head_ui_files": true
     },
     {
       "catalog_id": "navigation.scaffold",
@@ -1077,7 +1078,7 @@
           "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
         }
       },
-      "source_matches_current_ui_files": true
+      "source_matches_comparison_head_ui_files": true
     },
     {
       "catalog_id": "navigation.scaffold",
@@ -1325,7 +1326,7 @@
           "packages/vink-patterns/leptos/src/lib.rs": "1cfde2bd15fa01d90803336be9997afdf13a8e6ccb72d6071b88f1d0fad64bd8"
         }
       },
-      "source_matches_current_ui_files": true
+      "source_matches_comparison_head_ui_files": true
     }
   ],
   "tested_head": "fef2a540711b7ec720d66e24251723bb35738cfb",
@@ -1380,5 +1381,6 @@
       "context": null,
       "context_gap": "Baseline full contexts export was not copied; same named fixture, dimensions from PNG, baseline command PASS retained separately."
     }
-  ]
+  ],
+  "comparison_head": "fef2a540711b7ec720d66e24251723bb35738cfb"
 }
