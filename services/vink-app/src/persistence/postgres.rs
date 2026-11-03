@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::application::ports::{DraftStore, PublicationStore, SaveOutcome, StoreError};
 use crate::application::{PublicWork, PublicWorkSummary};
 use crate::domain::document::{Document, DocumentData, Title};
-use crate::domain::draft::{DraftSummary, DraftVersion, WorkingDraft};
+use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
 
 #[derive(Debug, Clone)]
@@ -165,9 +165,7 @@ impl DraftStore for PgStore {
         &self,
         owner: PrincipalId,
         work_id: WorkId,
-        expected: DraftVersion,
-        title_value: &Title,
-        document_value: &Document,
+        change: &DraftChange,
     ) -> Result<SaveOutcome, StoreError> {
         // Owner and version are part of the UPDATE predicate, so the check and the write are one
         // atomic statement; a concurrent save that commits first makes this one match no row.
@@ -180,9 +178,9 @@ impl DraftStore for PgStore {
         )
         .bind(work_id.as_uuid())
         .bind(owner.as_uuid())
-        .bind(expected.get())
-        .bind(title_value.as_str())
-        .bind(Json(document_value.to_data()))
+        .bind(change.expected_version().get())
+        .bind(change.title().as_str())
+        .bind(Json(change.document().to_data()))
         .fetch_optional(&self.pool)
         .await
         .map_err(classify)?;

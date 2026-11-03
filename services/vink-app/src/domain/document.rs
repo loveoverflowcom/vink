@@ -2,7 +2,7 @@
 //!
 //! A document is a list of blocks; a block is a list of lines. Prose paragraphs are one-line
 //! blocks and poem stanzas are multi-line blocks, so stanza breaks and line breaks survive
-//! save → store → render. This is the bootstrap schema for the textarea desk, not the long-term
+//! save → store → render. This is the bootstrap schema for the desk, not the long-term
 //! editor decision (S-01). Lines are normalized to Unicode NFC so that visually identical
 //! Vietnamese text typed as precomposed or combining marks stores and hashes the same way.
 
@@ -27,7 +27,12 @@ pub struct BlockData {
     pub lines: Vec<String>,
 }
 
-/// A validated, NFC-normalized document.
+/// A validated, NFC-normalized document. Only the raw [`DocumentData`] shape deserializes;
+/// callers must use [`Document::parse`] to cross that trust boundary.
+/// ```compile_fail
+/// use vink_app::domain::document::Document;
+/// let document: Document = serde_json::from_str(r#"{"schema_version":2,"blocks":[]}"#).unwrap();
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
     blocks: Vec<Vec<String>>,
@@ -114,6 +119,10 @@ impl Document {
 }
 
 /// A work title. Working drafts may be untitled; revisions require a title.
+/// ```compile_fail
+/// use vink_app::domain::document::Title;
+/// let title: Title = serde_json::from_str(r#""a\nb""#).unwrap();
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Title(String);
 
@@ -234,6 +243,28 @@ mod tests {
             Title::parse(&"ơ".repeat(MAX_TITLE_CHARS + 1)),
             Err(TitleError::TooLong)
         );
+    }
+
+    #[test]
+    fn empty_drafts_and_exact_size_limits_remain_valid() {
+        assert_eq!(Document::parse(data(&[])).unwrap(), Document::empty());
+        let at_limit = "đ".repeat(MAX_DOCUMENT_CHARS);
+        assert_eq!(
+            Document::parse(data(&[&[&at_limit]])).unwrap().first_line(),
+            Some(at_limit.as_str())
+        );
+        let title_at_limit = "Đ".repeat(MAX_TITLE_CHARS);
+        assert_eq!(
+            Title::parse(&title_at_limit).unwrap().as_str(),
+            title_at_limit
+        );
+    }
+
+    #[test]
+    fn prose_paragraphs_tabs_and_case_are_preserved() {
+        let input = data(&[&["\tĐầu ngõ đợi ai?  "], &["Đoạn văn sau."]]);
+        assert_eq!(Document::parse(input.clone()).unwrap().to_data(), input);
+        assert_ne!(Title::parse("Đ").unwrap(), Title::parse("đ").unwrap());
     }
 
     #[test]

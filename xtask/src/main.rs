@@ -403,7 +403,7 @@ fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
 
 fn quick(report: &mut Report) -> bool {
     let root = root();
-    let steps: [(&str, &[&str]); 5] = [
+    let steps: [(&str, &[&str]); 6] = [
         ("fmt", &["fmt", "--all", "--", "--check"]),
         (
             "clippy server (workspace, ssr)",
@@ -450,6 +450,10 @@ fn quick(report: &mut Report) -> bool {
                 "-D",
                 "warnings",
             ],
+        ),
+        (
+            "literary core type-boundary doctests",
+            &["test", "--locked", "-p", "vink-app", "--doc"],
         ),
         (
             "unit + contract tests (no database)",

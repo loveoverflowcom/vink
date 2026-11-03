@@ -1,3 +1,18 @@
+//! Nominal identities: a principal, work and revision cannot substitute for one another.
+//! Raw text is parsed at its boundary; SQL UUIDs are already structurally valid. No UUID
+//! version restriction is imposed (existing fixtures use v4 and new works use v7).
+//!
+//! ```compile_fail
+//! use vink_app::domain::ids::{PrincipalId, WorkId};
+//! let actor = PrincipalId::parse("11111111-1111-4111-8111-111111111111").unwrap();
+//! let work: WorkId = actor;
+//! ```
+//! ```compile_fail
+//! use vink_app::domain::ids::{RevisionId, WorkId};
+//! let work = WorkId::parse("33333333-3333-4333-8333-333333333333").unwrap();
+//! let revision: RevisionId = work;
+//! ```
+
 use uuid::Uuid;
 
 macro_rules! id_type {
@@ -45,5 +60,33 @@ impl WorkId {
     /// Time-ordered identifier for a newly created work.
     pub fn generate() -> Self {
         Self(Uuid::now_v7())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn malformed_external_ids_are_rejected_for_every_kind() {
+        for raw in [
+            "",
+            "not-a-uuid",
+            "../33333333",
+            "33333333-3333-4333-8333-33333333333g",
+        ] {
+            assert_eq!(PrincipalId::parse(raw), None);
+            assert_eq!(WorkId::parse(raw), None);
+            assert_eq!(RevisionId::parse(raw), None);
+        }
+    }
+
+    #[test]
+    fn existing_uuid_values_round_trip_without_a_new_version_policy() {
+        let raw = "33333333-3333-4333-8333-333333333333";
+        let id = WorkId::parse(raw).unwrap();
+        assert_eq!(id.to_string(), raw);
+        assert_eq!(WorkId::from_uuid(id.as_uuid()), id);
+        assert_eq!(WorkId::generate().as_uuid().get_version_num(), 7);
     }
 }
