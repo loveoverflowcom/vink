@@ -661,6 +661,18 @@
       "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
       "symbol": "RecentFeedback",
       "entry": "composition.feedback"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "DiscussionThread",
+      "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "DiscussionThread",
+      "entry": "composition.feedback"
     }
   ],
   "style_exceptions": [

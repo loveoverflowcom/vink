@@ -1308,7 +1308,7 @@ async function captures(page) {
         for (const [entry, scenario] of [
           ...['default', 'auth-required', 'long'].map(s => ['screen.me', s]),
           ['screen.reader', 'feedback'],
-          ...['default', 'pending', 'error', 'uncertain'].map(s => ['composition.feedback', s]),
+          ...['default', 'pending', 'error', 'uncertain', 'sharing-open', 'sharing-closed', 'discussion-flat', 'discussion-anchor'].map(s => ['composition.feedback', s]),
         ]) {
           await page.open(entry, scenario);
           const name = `${entry}--${scenario}--${theme}--${width}--text${scale}`;

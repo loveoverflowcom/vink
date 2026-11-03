@@ -17,8 +17,9 @@ fixture adapter → :patterns (CMP common) → :ui → semantic tokens
 | `WorkCard`, `WorkByline`, `ReaderHeader` | Tiêu đề, tác giả được cấp, metadata UTC, đích đọc do host cấp |
 | `DraftResume`, `DraftRow` (Web), `DraftMetadata` | Tiêu đề/version/thời điểm từ card; không tải manuscript |
 | `EditorToolbar` | Slot trạng thái và hành động; không sở hữu body hay save state |
-| `FeedbackComposer` | Giá trị controlled và intent; Chỉ chia sẻ không có form phê bình |
+| `FeedbackComposer` | Giá trị controlled; intent độc lập với comments mode; Closed giữ input và chặn gửi, Pending vẫn đúng trạng thái transport |
 | `FeedbackItem`/`FeedbackThread`, `ParticipantSummary` | Chỉ người được trả về, khử trùng theo key theo thứ tự đầu; không suy tổng số |
+| `DiscussionThread` | Root/neo + một danh sách replies phẳng; status/context được cấp; phát reply/remove intents, không quyết định authority |
 | `RecentFeedback` | Mẫu ghi rõ, không gọi là nhận xét mới nhất khi chưa có timestamp có thẩm quyền |
 
 `Author.key = None` khi API chưa cấp author ID. Không dùng display name hoặc work ID thay identity;
@@ -26,9 +27,12 @@ initials vẫn từ tên thật được cấp, tone trung tính. Không suy pro
 feedback/count hay publication từ draft. `href` được renderer kiểm allow-list.
 
 Leptos nhận `Signal`/callback; CMP nhận `TextFieldValue`/callback để giữ selection/composition.
-Consumer giữ request identity, actor/work/revision/session và cách bỏ phản hồi muộn. Hiện chưa có
-feedback transport: mẫu chỉ ghi intent, không có acknowledgment để giả thành công. Khi #14 B/C có
-owner/contract thật, adapter mới được nối ở app; không thêm provider vào package này.
+Consumer giữ request identity, actor/work/revision/session và cách bỏ phản hồi muộn. Web reader
+có adapter thật tại `apps/vink-web/src/pages/discussion.rs` và controller `discussion_state.rs`;
+production auth chưa có, chỉ LocalFixture có marker host để kiểm ghi cục bộ. Gallery và CMP vẫn
+là mẫu, không có acknowledgment để giả thành công. Không thêm provider vào package này.
+`composition.feedback` dùng cùng scenario IDs `sharing-open`, `sharing-closed`, `discussion-flat`,
+`discussion-anchor` ở hai gallery; đây là projection mẫu, không phải proof Rust/Quint hoặc native integration.
 
 Các recipe `screen.explore`, `screen.reader`, `screen.desk`, `screen.editor`, `screen.me`,
 `composition.feedback` dùng cùng ID/kịch bản trong catalog và `fixtures/foundation.json` cho

@@ -9,13 +9,14 @@
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
+const BUILD_SHA = process.env.GITHUB_SHA ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const PUBLISHED_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const INDENTED_LINE = '    đã theo mưa về rất lâu.';
 const DRAFT_ONLY_LINE = 'Khổ đang viết dở — chưa công khai.';
@@ -196,7 +197,7 @@ class Page {
     return this.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   }
 
-  async capture(name) {
+  async capture(name, evidence = {}) {
     await this.eval(`document.fonts.ready`);
     const { data } = await this.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const dir = join(dirname(args.state), 'screenshots');
@@ -220,7 +221,7 @@ class Page {
     })()`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
-    contexts[name] = context;
+    contexts[name] = { ...context, evidence: { build: BUILD_SHA, ...evidence } };
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
   }
 
@@ -282,7 +283,13 @@ class Page {
 
   /** Focuses CodeMirror, uses the platform document-end shortcut and inserts committed text. */
   async typeInBody(text) {
-    await this.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
+    // Enter through native Tab, whose focus/selection events settle before document-end.
+    // Direct DOM focus can leave Chrome's transient caret at zero while CodeMirror is
+    // restoring its selection, racing the next synthetic key only a millisecond later.
+    if (!await this.eval(`document.activeElement?.classList.contains('cm-content')`)) {
+      await this.eval(`document.querySelector('#draft-title').focus()`);
+      await this.tabToBody();
+    }
     await this.key(this.mac ? 'ArrowDown' : 'End', this.mod);
     if (text) await this.send('Input.insertText', { text });
   }
@@ -615,13 +622,16 @@ async function brandAssets(page) {
       check((await fetch(`${args.base}${icon.src}`)).ok, `${theme} manifest icon ${icon.src} exists`);
     }
   }
-  // Suppress only this app's hydration bundle to inspect the real server document
-  // with CSS + appearance bootstrap. Restore it before any interaction checks.
+  // Suppress both hydration assets to inspect the real server document with CSS +
+  // appearance bootstrap. Leaving the WASM preload active while its JS consumer is
+  // blocked strands an unconsumed fetch across these rapid navigations, stalling
+  // the next document's same-URL fetch even after its DOM has finished loading.
+  // Restore both assets before the unchanged hydration/interaction assertions.
   // Leptos's hydration script does not catch its `import()`, so each blocked document reports
   // exactly that rejected import; account for those here and keep any other error.
   const blockedImport = `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`;
   const errorsBefore = page.errors.length;
-  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
+  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
   for (const [theme, system] of [['light', 'light'], ['dark', 'light'], ['system', 'dark'], ['system', 'light']]) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: system }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
@@ -1585,8 +1595,21 @@ async function publicReading(page) {
   // Keyboard scrolling and the page end must clear the measured fixed bar, also after text grows.
   await page.viewport(320);
   await page.eval(`document.documentElement.style.fontSize = '200%'; document.querySelector('#reader-return').focus()`);
+  // Discussion follows the reading body in DOM order. Traverse its actual controls
+  // (including an unavailable-state retry) before checking the fixed navigation.
+  const feedbackStops = await page.eval(`(() => {
+    window.__readerFeedbackTabStops = [...document.querySelectorAll('#feedback-region a[href], #feedback-region button, #feedback-region input, #feedback-region select, #feedback-region textarea, #feedback-region [tabindex]')]
+      .filter(el => el.getClientRects().length && el.tabIndex >= 0 && !el.disabled);
+    return window.__readerFeedbackTabStops.map(el => el.id || el.getAttribute('aria-label') || el.textContent.trim());
+  })()`);
+  check(feedbackStops.length > 0, 'reader exposes its feedback recovery or composer controls to the keyboard');
+  for (const [index, label] of feedbackStops.entries()) {
+    await page.key('Tab');
+    check(await page.eval(`document.activeElement === window.__readerFeedbackTabStops[${index}] && document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), `Tab reaches reader feedback control ${label} with a visible focus ring`);
+  }
+  await page.eval(`delete window.__readerFeedbackTabStops`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/"]:focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), 'Tab reaches bottom Explore with a visible focus ring from the reader return link');
+  check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/"]:focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), 'Tab reaches bottom Explore with a visible focus ring after the reader feedback controls');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/ban-viet"]:focus-visible')`), 'Tab reaches Bàn viết at 320px / 200%');
   await page.key('Tab');
@@ -1913,6 +1936,7 @@ async function editorChrome(page) {
 async function mainPhase(page) {
   await serverHtml();
   await expressionPilot(page, args, check);
+  await discussionReadingAndWrites(page);
   await adaptiveShell(page);
   await draftDashboard(page);
   await publicReading(page);
@@ -2155,6 +2179,157 @@ async function mainPhase(page) {
   const kept = await page.draft(workId);
   const text = kept.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
   writeFileSync(args.state, JSON.stringify({ workId, title: kept.title, text, version: kept.version }));
+}
+
+/** Real local fixture identity + scratch PostgreSQL writes. Rendering fixtures used below
+ * have a separate label and never substitute for persistence/auth/moderation evidence. */
+async function discussionReadingAndWrites(page) {
+  console.log('D2T-03: anonymous SSR, local discussion writes and exact keyed reconciliation:');
+  const endpoint = `${args.base}/api/v1/works/${SAMPLE_WORK}/discussion`;
+  const wirePattern = `${args.base}/api/v1/works/*/discussion`;
+  await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#discussion-mode-toggle') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'local fixture discussion readiness');
+  check(await page.eval(`!!document.querySelector('meta[name="vink-local-discussion-fixture"]') && document.querySelector('#comments-mode').textContent.includes('Mẫu định danh cục bộ')`), 'fixture readiness is labelled and supplied by the trusted host');
+  const text = 'D2T-03 [Mẫu] Đọc khổ thơ\n\n  Tiếng Việt 👩‍💻 🌧️';
+  const newer = ' Chữ mới sau khi gửi.';
+  await page.typeAtEnd('#root-composer', text);
+  const held = [];
+  const waitHeld = async count => {
+    const deadline = Date.now() + 10_000;
+    while (held.length < count) {
+      if (Date.now() > deadline) throw new Error(`timed out waiting for discussion response ${count}`);
+      await sleep(50);
+    }
+  };
+  const listener = message => {
+    if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+    if (decodeURIComponent(new URL(message.params.request.url).pathname) !== new URL(`${endpoint}/comments`).pathname) {
+      page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
+      return;
+    }
+    if (message.params.request.method === 'POST') held.push(message.params);
+    else page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
+  };
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: `${wirePattern}/comments`, requestStage: 'Response' }] });
+  let commentId;
+  try {
+    await page.click('#root-composer-send');
+    await page.waitFor('document.querySelector("#root-composer-send")?.getAttribute("aria-disabled")==="true"', 'pending send blocks a second activation');
+    await waitHeld(1);
+    check(held[0].responseStatusCode === 201, 'the real server committed a new pending comment before the response is lost');
+    await page.typeAtEnd('#root-composer', newer);
+    await page.click('#root-composer-send');
+    check(held.length === 1, 'double activation starts only one command');
+    await page.send('Fetch.failRequest', { requestId: held[0].requestId, errorReason: 'ConnectionClosed' });
+    await page.waitFor(`document.querySelector('#feedback-region').textContent.includes('Đối soát lần gửi trước') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'lost ACK is uncertain, never falsely failed or public');
+    await page.eval(`[...document.querySelectorAll('#feedback-region button')].find(b=>b.textContent==='Đối soát lần gửi trước').click()`);
+    await waitHeld(2);
+    const first = JSON.parse(held[0].request.postData), replay = JSON.parse(held[1].request.postData);
+    check(JSON.stringify(first) === JSON.stringify(replay) && held[1].responseStatusCode === 200, 'reconciliation replays exactly the same key/body/target; server returns the original receipt');
+    await page.send('Fetch.continueRequest', { requestId: held[1].requestId });
+    await page.waitFor(`document.querySelector('[data-testid=discussion-receipt]')?.textContent.includes('Đang chờ duyệt') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'accepted-for-review receipt');
+    check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)}`), 'late success keeps all newly typed text');
+    const own = await (await fetch(endpoint)).json();
+    const matches = own.roots.filter(root => root.root.kind === 'comment' && root.root.comment.body === text.trim());
+    check(matches.length === 1 && matches[0].root.comment.visibility === 'own_pending', 'keyed replay persisted exactly one own-pending comment in real PostgreSQL');
+    commentId = matches[0].root.comment.comment_id;
+    const publicHtml = await (await fetch(`${args.base}/tac-pham/${SAMPLE_WORK}`)).text();
+    check(!publicHtml.includes('D2T-03 [Mẫu] Đọc khổ thơ') && !publicHtml.includes('own_pending') && !publicHtml.includes('own_rejected'), 'public SSR and hydration payload exclude fixture viewer-private comments');
+  } finally {
+    await page.send('Fetch.disable');
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
+  }
+  await page.click('#discussion-mode-toggle');
+  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author closes comments with generation CAS');
+  check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer-send').getAttribute('aria-disabled')==='true' && !!document.querySelector('#comment-${commentId}')`), 'closing preserves draft and readable own projection while blocking new sends');
+  const closed = await (await fetch(endpoint)).json();
+  check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
+  await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
+  await page.click('#discussion-mode-toggle');
+  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author reopens the same thread');
+  await page.click(`#remove-comment-${commentId}`);
+  await page.waitFor(`!document.querySelector('#comment-${commentId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
+
+  console.log('D2T-03: labelled provider fixture projection for flat contexts and responsive states:');
+  const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.get.json', import.meta.url), 'utf8'));
+  fixture.work_id = SAMPLE_WORK;
+  const rootId = fixture.roots[0].root.comment.comment_id;
+  const replyId = fixture.roots[0].preview[0].comment_id;
+  let currentFixture = structuredClone(fixture);
+  let replyRequest;
+  const fixtureListener = message => {
+    if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
+    const path = decodeURIComponent(new URL(message.params.request.url).pathname);
+    if (message.params.request.method === 'POST' && path === new URL(`${endpoint}/comments`).pathname) { replyRequest = message.params.requestId; return; }
+    if (message.params.request.method !== 'GET' || path !== new URL(endpoint).pathname) {
+      page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
+      return;
+    }
+    page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 200,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify(currentFixture)).toString('base64'),
+    }).catch(() => {});
+  };
+  page.cdp.listeners.push(fixtureListener);
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: wirePattern, requestStage: 'Request' }, { urlPattern: `${wirePattern}/comments`, requestStage: 'Request' }] });
+  try {
+    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
+    await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#reply-to-${replyId}')`, 'contract fixture projection');
+    await page.click(`#reply-to-${replyId}`);
+    await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
+    check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
+    await captureDiscussionMatrix(page, 'contract-fixture-flat', `#comment-${rootId}`, 'intercepted-provider-contract-fixture-no-persistence');
+    await page.click(`#reply-composer-${rootId}-send`);
+    const deadline = Date.now() + 10_000;
+    while (!replyRequest) {
+      if (Date.now() > deadline) throw new Error('timed out waiting for held fixture reply intent');
+      await sleep(50);
+    }
+    await page.typeAtEnd(`#reply-composer-${rootId}`, ' Gõ tiếp khi đang gửi.');
+    await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent==='Thu ô trả lời · Giữ chữ').click()`);
+    await page.waitFor(`!document.querySelector('#reply-composer-${rootId}')`, 'reply composer collapsed');
+    await page.click(`#reply-to-${replyId}`);
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}-send')?.dataset.state==='pending'`, 'feature-owned transport survives composer collapse');
+    await page.send('Fetch.fulfillRequest', { requestId: replyRequest, responseCode: 201,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+      body: Buffer.from(JSON.stringify({ comment_id: '0192f3a1-0000-7000-8000-000000000099', status: 'pending', replayed: false })).toString('base64'),
+    });
+    await page.waitFor(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Gõ tiếp khi đang gửi.') && document.querySelector('#reply-composer-${rootId}-send')?.dataset.state!=='pending'`, 'held fixture reply acknowledgment completes after collapse without losing newer text');
+    check(true, 'intercepted fixture only: collapse/reopen does not cancel the feature transport or strand Sending');
+    currentFixture = structuredClone(fixture);
+    currentFixture.roots[0].preview = currentFixture.roots[0].preview.filter(comment => comment.comment_id !== replyId);
+    currentFixture.roots[0].preview[0].reply_to = { kind: 'unavailable' };
+    await page.click('#discussion-refresh');
+    await page.waitFor(`!document.querySelector('#comment-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'context revocation fixture refresh');
+    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context keeps peer replies and draft, neutralizes cached target identity and blocks stale send');
+    await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({ block: 'center', behavior: 'instant' })`);
+    await page.capture('discussion-contract-fixture-context-revoked', { scenario: 'D2T-03-context', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+  } finally {
+    await page.send('Fetch.disable');
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);
+    await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
+    await page.viewport(1280);
+  }
+}
+
+async function captureDiscussionMatrix(page, name, anchor, boundary) {
+  for (const theme of ['light', 'dark']) {
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
+    for (const width of [320, 390, 834, 1024, 1440]) {
+      await page.viewport(width);
+      await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
+      check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1 && document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0`), `${name}/${theme}/${width}: reflows without a third reply tier`);
+      await page.capture(`discussion-${name}-${width}-${theme}`, { scenario: 'D2T-03-responsive', boundary, build: BUILD_SHA, textScale: 100 });
+      if (width <= 390) {
+        await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
+        check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`), `${name}/${theme}/${width}/200%: text reflows`);
+        await page.capture(`discussion-${name}-${width}-200-${theme}`, { scenario: 'D2T-03-large-text', boundary, build: BUILD_SHA, textScale: 200 });
+      }
+    }
+  }
+  await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
+  await page.viewport(1280);
 }
 
 async function afterRestartPhase(page) {

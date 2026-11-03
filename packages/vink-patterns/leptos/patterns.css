@@ -54,6 +54,15 @@
 }
 .vk-feedback-item { padding-block: var(--vk-space-4); border-bottom: 1px solid var(--vk-outline-variant); overflow-wrap: anywhere; }
 .vk-feedback-composer { display: grid; gap: var(--vk-space-3); }
+.vk-discussion-thread { min-width: 0; }
+.vk-discussion-comment { min-width: 0; scroll-margin-block: var(--vk-space-6); }
+.vk-discussion-comment:focus { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
+.vk-discussion-replies { list-style: none; padding: 0 0 0 var(--vk-space-3); margin: 0; border-inline-start: 1px solid var(--vk-outline-variant); }
+.vk-discussion-replies > li { min-width: 0; }
+.vk-discussion-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.vk-discussion-context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-discussion-status { color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
+.vk-discussion-actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
 @media (max-width: 759px) {
   /* A complete literary title can be long: use the title hierarchy on narrow readers,
      retaining rem-based text enlargement and the same semantic H1. */

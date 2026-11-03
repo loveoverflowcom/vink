@@ -1,6 +1,11 @@
 # Compatibility và nguồn authoring
 
-Token source hiện hành 0.4.0, catalog 0.5.1. Package nội bộ chưa phát hành registry.
+Token source hiện hành 0.4.0, catalog 0.5.2. Package nội bộ chưa phát hành registry.
+
+D2T-03 bổ sung `DiscussionThread` ở Leptos/CMP và bốn scenario trong entry
+`composition.feedback`. `FeedbackComposer.comments_closed`/`commentsClosed` optional giữ
+callsite cũ; sửa lỗi Sharing ẩn input. Intent không quyết định quyền bình luận. Pattern chỉ
+nhận view facts, consumer giữ transport/authority; CMP chưa có service consumer/native app.
 
 UI-REPAIR-06/07 bổ sung slot thao tác optional cho `StatePanel`: Leptos `children`,
 CMP `actions`. Typed recovery giữ thứ tự trước slot, caller vẫn sở hữu link/disabled/

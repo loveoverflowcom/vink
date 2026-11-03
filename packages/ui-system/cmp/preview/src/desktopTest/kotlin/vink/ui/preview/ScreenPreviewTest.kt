@@ -23,6 +23,26 @@ class ScreenPreviewTest {
     private val fonts = PreviewFonts.load()
 
     @Test
+    fun sharingOpenAndClosedKeepTheSameTextFieldAndSelection() = runComposeUiTest {
+        val original = TextFieldValue("Chỉ chia sẻ vẫn có thể nhận xét\n\n  Giữ khổ thơ", TextRange(4, 9))
+        var value by mutableStateOf(original)
+        var closed by mutableStateOf(false)
+        var presses = 0
+        setContent {
+            VinkTheme(VinkPreferences(), fonts = fonts.fonts) {
+                FeedbackComposer(FeedbackIntent.Sharing, value, { value = it }, ActionState.Enabled, { presses++ }, commentsClosed = closed)
+            }
+        }
+        onNode(hasSetTextAction()).assertExists()
+        onNodeWithText("Gửi nhận xét").performClick()
+        runOnIdle { assertEquals(1, presses); closed = true }
+        onNodeWithText("Gửi nhận xét").assertIsNotEnabled().performClick()
+        runOnIdle { assertEquals(1, presses); assertEquals(original, value); closed = false }
+        onNodeWithText("Gửi nhận xét").assertIsEnabled()
+        runOnIdle { assertEquals(original, value) }
+    }
+
+    @Test
     fun meThemeIsLocalHasOneSelectionAndResetsOnlyOnRemount() = runComposeUiTest {
         var scenario by mutableStateOf("default")
         var mount by mutableStateOf(0)
