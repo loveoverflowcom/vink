@@ -1404,8 +1404,9 @@
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   gap: var(--vk-space-1);
-  min-block-size: max(var(--vk-size-bottom-bar), 5rem);
-  padding: var(--vk-space-2) max(var(--vk-space-2), env(safe-area-inset-right)) calc(var(--vk-space-2) + env(safe-area-inset-bottom)) max(var(--vk-space-2), env(safe-area-inset-left));
+  /* Content determines growth at large text sizes; the minimum is a touch/shell size. */
+  min-block-size: var(--vk-size-bottom-bar);
+  padding: var(--vk-space-1) max(var(--vk-space-2), env(safe-area-inset-right)) calc(var(--vk-space-1) + env(safe-area-inset-bottom)) max(var(--vk-space-2), env(safe-area-inset-left));
   background: var(--vk-surface-container-low);
   z-index: 5;
 }
@@ -1414,9 +1415,10 @@
   flex-direction: column;
   justify-content: center;
   gap: var(--vk-space-1);
-  padding: var(--vk-space-2) 0;
+  padding: var(--vk-space-1) 0;
   text-align: center;
   font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
 }
 
 /* Bar layouts: the rail leaves, the top bar and (unless hidden) the bottom bar appear. The

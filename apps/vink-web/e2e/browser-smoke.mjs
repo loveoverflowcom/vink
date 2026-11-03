@@ -68,6 +68,26 @@ function check(condition, message) {
   console.log(`  ok  ${message}`);
 }
 
+async function bottomNavigationGeometry(page, scenario) {
+  if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
+  await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
+  await page.waitFor(`Math.abs(parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) - document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height) < 1`, 'bottom bar resize clearance');
+  check(await page.eval(`(() => {
+    const bar = document.querySelector('.vk-ui-bottom-nav'), b = bar.getBoundingClientRect();
+    const links = [...bar.querySelectorAll('a')];
+    return links.map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi' && links.every(a => {
+      const r = a.getBoundingClientRect(), label = a.querySelector('.vk-ui-nav-item__label');
+      const l = label.getBoundingClientRect(), range = document.createRange();
+      range.selectNodeContents(label);
+      return r.width >= 44 && r.height >= 44 && r.left >= b.left && r.right <= b.right &&
+        r.top >= b.top && r.bottom <= b.bottom && label.scrollWidth <= label.clientWidth + 1 &&
+        l.height <= parseFloat(getComputedStyle(label).lineHeight) * 2 + 1 &&
+        [...range.getClientRects()].every(t => t.left >= r.left - 1 && t.right <= r.right + 1 && t.top >= r.top && t.bottom <= r.bottom);
+    });
+  })()`), `${scenario}: all three labels fit in at most two lines inside targets >=44px`);
+  check(await page.eval(`document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height <= innerHeight * 0.18`), `${scenario}: bottom navigation leaves at least 82% of viewport height for the page`);
+}
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class Cdp {
@@ -181,7 +201,19 @@ class Page {
     const dir = join(dirname(args.state), 'screenshots');
     mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, `${name}.png`), Buffer.from(data, 'base64'));
-    const context = await this.eval(`({ route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY, theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent })`);
+    const context = await this.eval(`(() => {
+      const geometry = selector => {
+        const el = document.querySelector(selector);
+        if (!el || !el.getClientRects().length) return null;
+        const r = el.getBoundingClientRect(), style = getComputedStyle(el);
+        return { x: r.x, y: r.y, width: r.width, height: r.height, fontSize: style.fontSize, lineHeight: style.lineHeight };
+      };
+      return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
+        theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
+        reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
+        navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label') })) },
+      };
+    })()`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
     contexts[name] = context;
@@ -765,8 +797,13 @@ async function adaptiveShell(page) {
       } else {
         await chooseTheme(page, theme, 'page-theme');
       }
-      await page.capture(`${width}-me-${theme}`);
-      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px ${theme}: no horizontal overflow`);
+      for (const scale of [100, 200]) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        await bottomNavigationGeometry(page, `shell ${width}px/${scale}%/${theme}`);
+        await page.capture(`${width}-me-${theme}-text${scale}`);
+        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
+      }
+      await page.eval(`document.documentElement.style.fontSize = ''`);
     }
   }
   await page.viewport(1024);
@@ -1046,10 +1083,14 @@ async function publicReading(page) {
   const captureReal = async surface => {
     for (const theme of ['light', 'dark']) {
       await setPublicTheme(theme);
-      for (const width of [1440, 390]) {
+      for (const width of surface === 'reader' ? [1440, 834, 390, 320] : [1440, 390]) {
         await page.viewport(width);
-        await page.eval(`scrollTo(0, 0)`);
-        await page.capture(`${surface}-real-${width}-${theme}`);
+        for (const scale of surface === 'reader' ? [100, 200] : [100]) {
+          await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+          await bottomNavigationGeometry(page, `${surface} real ${width}px/${scale}%/${theme}`);
+          await page.capture(`${surface}-real-${width}-${scale}-${theme}`);
+        }
+        await page.eval(`document.documentElement.style.fontSize = ''`);
       }
     }
     await page.viewport(1440);
@@ -1189,6 +1230,12 @@ async function publicReading(page) {
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && getComputedStyle(document.querySelector('.vk-reader .vk-block')).whiteSpace === 'pre-wrap'`), `reader preserves lines and reflows at ${width}px/${scale}%/${theme}`);
+        check(await page.eval(`(() => {
+          const title = document.querySelector('#reader-header h1'), body = document.querySelector('.vk-reader .vk-document');
+          return title.textContent === ${JSON.stringify(publication.title)} && (innerWidth >= 760 ||
+            parseFloat(getComputedStyle(title).fontSize) <= parseFloat(getComputedStyle(body).fontSize) * 1.4);
+        })()`), `reader keeps the complete H1 with a modest narrow hierarchy at ${width}px/${scale}%/${theme}`);
+        await bottomNavigationGeometry(page, `reader ${width}px/${scale}%/${theme}`);
         await page.capture(`reader-${width}-${scale}-${theme}`);
         if (width === 320 && scale === 200) {
           await page.eval(`document.querySelector('.vk-reader .vk-document').scrollIntoView({ block: 'start' })`);
@@ -1197,6 +1244,53 @@ async function publicReading(page) {
       }
     }
   }
+  // Keyboard scrolling and the page end must clear the measured fixed bar, also after text grows.
+  await page.viewport(320);
+  await page.eval(`document.documentElement.style.fontSize = '200%'; document.querySelector('#reader-return').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/"]:focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), 'Tab reaches bottom Explore with a visible focus ring from the reader return link');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/ban-viet"]:focus-visible')`), 'Tab reaches Bàn viết at 320px / 200%');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#bottom-navigation a[href="/toi"]:focus-visible')`), 'Tab reaches Tôi at 320px / 200%');
+  await page.eval(`document.querySelector('#reader-return').focus(); document.querySelector('#reader-return').scrollIntoView({block: 'end'})`);
+  check(await page.eval(`document.querySelector('#reader-return').getBoundingClientRect().bottom < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'focused reader return link clears the fixed bottom navigation');
+  await page.eval(`scrollTo(0, document.body.scrollHeight)`);
+  check(await page.eval(`document.querySelector('.vk-footer').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'reader end is reachable above bottom navigation');
+  check(await page.eval(`(() => {
+    const title = document.querySelector('#reader-header h1'), range = document.createRange(), selection = getSelection();
+    range.selectNodeContents(title); selection.removeAllRanges(); selection.addRange(range);
+    const complete = selection.toString() === ${JSON.stringify(publication.title)} && getComputedStyle(title).userSelect !== 'none';
+    selection.removeAllRanges(); return complete;
+  })()`), 'the complete long Vietnamese H1 remains selectable');
+
+  // These labelled HTTP fixtures use the real Reader components, with no storage/publication writes.
+  for (const variant of ['empty', 'unbroken']) {
+    const sample = variant === 'empty' ? { ...publication, document: { schema_version: 1, blocks: [] } }
+      : { ...publication, title: '[Mẫu kiểm tra] ' + 'đêm'.repeat(60) };
+    answers.set(publicationPath, { status: 200, body: sample });
+    await page.eval(`document.documentElement.style.fontSize = ''`);
+    await page.viewport(1440);
+    await openCollection();
+    await page.waitFor(`document.querySelector('.vk-public-row__link')`, 'collection before reader edge case');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('#reader-header h1')?.textContent === ${JSON.stringify(sample.title)} && document.querySelectorAll('.vk-reader .vk-block').length === ${sample.document.blocks.length}`, `reader ${variant} fixture`);
+    await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'prefers-reduced-motion', value: 'reduce' }] });
+    for (const theme of ['light', 'dark']) {
+      await setPublicTheme(theme);
+      for (const width of variant === 'empty' ? [1440, 834, 390, 320] : [390, 320]) {
+        await page.viewport(width);
+        for (const scale of variant === 'empty' ? [100, 200] : [200]) {
+          await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0); document.fonts.ready`);
+          await bottomNavigationGeometry(page, `reader ${variant} ${width}px/${scale}%/${theme}`);
+          check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && document.querySelector('#reader-header h1').scrollWidth <= document.querySelector('#reader-header h1').clientWidth && document.querySelector('#reader-header h1').textContent === ${JSON.stringify(sample.title)}`), `reader ${variant} keeps full title without overflow at ${width}px/${scale}%/${theme}, reduced motion`);
+          await page.capture(`reader-${variant}-${width}-${scale}-${theme}`);
+        }
+      }
+    }
+  }
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
+  answers.set(publicationPath, { status: 200, body: publication });
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(1440);
   for (const status of [404, 503]) {
