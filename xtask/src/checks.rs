@@ -98,6 +98,16 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
         if !yaml.contains(&format!("${name}")) {
             problems.push(format!("{name}: default_prompt must invoke `${name}`"));
         }
+        if !root
+            .join(".claude/skills")
+            .join(&name)
+            .join("SKILL.md")
+            .is_file()
+        {
+            problems.push(format!(
+                "{name}: Claude Code cannot load it; add symlink .claude/skills/{name} -> ../../.agents/skills/{name}"
+            ));
+        }
         if !index.contains(&format!("]({name}/SKILL.md)")) {
             problems.push(format!("{name}: not listed in .agents/skills/README.md"));
         }
