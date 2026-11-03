@@ -4,7 +4,8 @@ Use actual manifests, commands and CI from the current checkout. The implemented
 `cargo xtask verify quick|discussion|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. `discussion` covers only the structural D2T-01 Quint model and real Rust replay;
-there is no generic behavior or Kani lane. Do not claim lifecycle or I/O verification from it.
+there is no generic behavior or Kani lane. Do not claim lifecycle or I/O verification from it:
+the D2T-02a lifecycle has pure tests in `quick` and PostgreSQL tests in `postgres`.
 
 Find route-level scenarios and existing assertions in the
 [feature map](../../../../docs/development/feature-map.md), then confirm the relevant source.
@@ -19,6 +20,7 @@ instructions or repeated checking workflows, use
 | Docs, skills, metadata only | `quick` (repository checks) or a diff/link review | No app run needed |
 | Domain, application, contract, config, `desk_state` | `quick` | Add a focused unit or fixture test |
 | D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
+| Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |
 | SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
 | Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
 | Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |
@@ -31,7 +33,7 @@ instructions or repeated checking workflows, use
 | Pure validation, guard or state transition | Exact example/table tests; properties or bounded enumeration when they add coverage | Does not prove database or transport behavior |
 | Snapshot binding and publication races | Pure tests plus real PostgreSQL concurrency/rollback tests | A mock store cannot establish transaction semantics |
 | Job lease, outbox/inbox, crash/replay | Named failure points, restart/reclaim and uncertain-result reconciliation | Local locking cannot fence an in-flight remote request |
-| Discourse create/edit/review/identity | Pin release/plugin/config; test enabled entrypoints and direct access | A webhook fixture cannot prove pre-publication moderation |
+| Discussion write/moderation/visibility | Pure decision tests, then real PostgreSQL constraints, locks and direct-SQL negatives | A fake store cannot prove two-tier integrity or a create-vs-close race |
 | SSR and hydration | Public HTML/metadata and private-data checks, then actual browser hydration/navigation | A native string render proves no browser interaction |
 | Editor | Vietnamese IME, paste, undo, save/reload, conflicts, poetry round-trip on target browsers | Programmatic text entry alone proves no real IME compatibility |
 | UI appearance | Open same-scenario captures with viewport, theme and text scale | Pixels alone prove no keyboard, screen-reader or motion behavior |
@@ -48,7 +50,7 @@ final inputs; reuse valid results instead of repeating an already covered suite.
 new changes or failures justify it. No fixed formal-method or full-stack campaign applies to
 every task.
 
-If PostgreSQL, Discourse, a browser or a model tool is unavailable, complete independently
+If PostgreSQL, a browser or a model tool is unavailable, complete independently
 testable work. Preserve real runtime semantics and report the missing layer; never replace
 authentication, publication or persistence with fake success to make a runtime appear ready.
 For a failure, preserve the command and relevant output, distinguish environment/pre-existing
@@ -61,7 +63,7 @@ check not executed, and `UNSUPPORTED` when the target/tool cannot perform it. `x
 the same words; a missing prerequisite is a `FAIL`, and steps after a failure are `NOT_RUN`.
 A workflow file is not evidence that GitHub Actions ran; cite the run when claiming CI. Preserve the
 runner's own output and clarify any mapping. For each material result, name the exact command,
-source inputs and boundary: pure core, fake adapter, real PostgreSQL, pinned Discourse, browser
+source inputs and boundary: pure core, fake adapter, real PostgreSQL, browser
 or deployed environment. Record model seed/bounds or browser/device details when relevant.
 
 An opened screenshot can be reported as inspected; a captured but unopened image cannot.

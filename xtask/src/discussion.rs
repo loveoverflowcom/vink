@@ -1,4 +1,5 @@
-//! The structural D2T-01 model and real Rust seam share one local/CI command.
+//! The structural D2T-01 and lifecycle D2T-02 models and their real Rust seams share one
+//! local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
 
 use std::process::Command;
@@ -28,12 +29,15 @@ pub fn verify(report: &mut Report) -> bool {
     }
     let mut model = Command::new("node");
     model.current_dir(&dir).arg("verify.mjs");
-    if !report.step("discussion: Quint structural model and trace drift", || {
-        process::run(
-            &mut model,
-            "verify the structural model and generated traces",
-        )
-    }) {
+    if !report.step(
+        "discussion: Quint structure/lifecycle models and trace drift",
+        || {
+            process::run(
+                &mut model,
+                "verify the discussion models and generated traces",
+            )
+        },
+    ) {
         return false;
     }
     let mut replay = cargo(&root);
@@ -43,14 +47,16 @@ pub fn verify(report: &mut Report) -> bool {
         "-p",
         "vink-app",
         "--lib",
+        "--",
         "domain::discussion::tests",
+        "domain::discussion::lifecycle_replay",
     ]);
     report.step(
-        "discussion: production Rust structural tests and trace replay",
+        "discussion: production Rust structural tests and trace replays",
         || {
             process::run(
                 &mut replay,
-                "replay model inputs through the real Rust creation seam",
+                "replay model inputs through the real Rust decisions",
             )
         },
     )

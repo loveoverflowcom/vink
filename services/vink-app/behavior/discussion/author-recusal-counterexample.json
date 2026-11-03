@@ -1,0 +1,100 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "lifecycle.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedRecusalStep",
+    "--max-steps=3",
+    "--max-samples=1",
+    "--invariant=writeAuthority",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "grant",
+        "actor": 1,
+        "id": 0,
+        "target": 0,
+        "expected": 0,
+        "value": ""
+      },
+      "outcome": "granted",
+      "mode": "open",
+      "generation": 1,
+      "grants": [
+        1
+      ],
+      "comments": []
+    },
+    {
+      "command": {
+        "op": "submit",
+        "actor": 2,
+        "id": 1,
+        "target": 0,
+        "expected": 0,
+        "value": ""
+      },
+      "outcome": "created",
+      "mode": "open",
+      "generation": 1,
+      "grants": [
+        1
+      ],
+      "comments": [
+        {
+          "id": 1,
+          "writer": 2,
+          "target": null,
+          "review": "pending",
+          "removal": "none",
+          "version": 1,
+          "views": [
+            "unavailable",
+            "unavailable",
+            "own_pending",
+            "unavailable"
+          ]
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "moderate",
+        "actor": 1,
+        "id": 1,
+        "target": 0,
+        "expected": 1,
+        "value": "remove"
+      },
+      "outcome": "changed",
+      "mode": "open",
+      "generation": 1,
+      "grants": [
+        1
+      ],
+      "comments": [
+        {
+          "id": 1,
+          "writer": 2,
+          "target": null,
+          "review": "pending",
+          "removal": "moderation",
+          "version": 2,
+          "views": [
+            "unavailable",
+            "unavailable",
+            "unavailable",
+            "unavailable"
+          ]
+        }
+      ]
+    }
+  ]
+}

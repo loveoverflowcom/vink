@@ -71,6 +71,21 @@ impl WorkId {
     }
 }
 
+impl ThreadId {
+    /// Proposed identity for a work's discussion thread. The store keeps the existing thread when
+    /// one is already bound to the work, so a generated ID is a candidate, not an assertion.
+    pub fn generate() -> Self {
+        Self(Uuid::now_v7())
+    }
+}
+
+impl CommentId {
+    /// Server-chosen identity for a new comment; clients never pick comment identities.
+    pub fn generate() -> Self {
+        Self(Uuid::now_v7())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

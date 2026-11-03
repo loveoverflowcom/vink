@@ -1,10 +1,16 @@
 # Tech stack và kiến trúc Vink
 
-**Phiên bản:** 0.2 · **Ngày:** 30/10/2026 · **Trạng thái:** Khuyến nghị có điều kiện, chưa chốt phiên bản dependency hay topology production.
+**Phiên bản:** 0.3 · **Ngày:** 30/10/2026, cập nhật 03/11/2026 · **Trạng thái:** Khuyến nghị có điều kiện, chưa chốt phiên bản dependency hay topology production.
+
+> **Cập nhật 03/11/2026 — owner thảo luận:** chủ sản phẩm chọn **Vink tự sở hữu bình luận**
+> bằng Rust core và PostgreSQL của App ([ADR ownership](discussion-ownership.md)).
+> Discourse chỉ là nguồn tham khảo về thiết kế, API, kiểm duyệt và trải nghiệm cộng đồng;
+> không là dependency runtime, nơi lưu bình luận, nguồn xác thực hay plugin cần triển khai.
+> Phần so sánh A/B/C bên dưới được giữ làm lịch sử lựa chọn.
 
 ## 1. Khuyến nghị chính
 
-Ưu tiên **B — Hybrid**, với Vink sở hữu nội dung văn học và Discourse sở hữu thảo luận. Khởi đầu bằng **một ứng dụng Rust có các module rõ ràng**, chạy Leptos SSR và Axum, cùng một worker nền. Không cần tách BFF, Literary API, Curation và Moderation thành bốn dịch vụ mạng.
+Vink sở hữu **cả nội dung văn học lẫn thảo luận** (hướng C ở mục 2, áp dụng cho bình luận theo quyết định 03/11/2026). Khởi đầu bằng **một ứng dụng Rust có các module rõ ràng**, chạy Leptos SSR và Axum, cùng một worker nền. Không cần tách BFF, Literary API, Curation và Moderation thành bốn dịch vụ mạng.
 
 Stack đề xuất:
 
@@ -16,10 +22,9 @@ Stack đề xuất:
 | Nghiệp vụ | Các module Rust thuần cho revision, publication, moderation policy, curation | Tách quy tắc khỏi HTTP, SQL và AI provider |
 | Persistence Vink | PostgreSQL + SQLx + migrations có phiên bản | Giao dịch, ràng buộc và truy vấn do Vink sở hữu |
 | Job Vink | PostgreSQL jobs + transactional outbox/inbox | Khởi điểm ít thành phần, có thể gắn việc gửi job vào giao dịch nghiệp vụ |
-| Community | Discourse + plugin tích hợp nhỏ về phạm vi | Thảo luận, báo cáo, review queue và công cụ quản trị cộng đồng |
-| Phụ thuộc Discourse | Rails/Ember, PostgreSQL và Redis theo bản triển khai được pin | Theo topology mà Discourse hỗ trợ, giữ khả năng nâng cấp |
+| Thảo luận | Module `discussion` trong `vink-app`: Rust core thuần + PostgreSQL của App | Một owner ghi/kiểm duyệt; bình luận gốc + một danh sách phản hồi phẳng; tác giả bật/tắt bình luận theo tác phẩm |
 | AI | Adapter provider + worker giới hạn quyền | Đổi model mà không đổi luật xuất bản |
-| Xác thực | Vink principal/session độc lập; giải pháp auth và bridge DiscourseConnect cần chốt | Tránh ghép session/password với Cantos |
+| Xác thực | Vink principal/session độc lập; auth authority cần chốt (D-05) | Tránh ghép session/password với Cantos |
 | Xác minh | Rust/integration tests + contract fixtures + cargo xtask nhỏ + Quint có chọn lọc | Kiểm cả quy tắc và hành vi tại ranh giới thực tế |
 
 Đây là đề xuất kiến trúc. Khả năng cụ thể của Leptos SSR/Axum, SQLx và editor có nguồn chính thức [T1], [T4], [T5]; việc chúng đáp ứng trải nghiệm Vink phải được thử nghiệm.
@@ -36,7 +41,7 @@ Stack đề xuất:
 
 Không khẳng định B luôn rẻ hơn C. Nếu cuối cùng chỉ dùng Discourse cho một ô bình luận đơn giản và phải thay gần hết moderation UI, chi phí bridge có thể không còn hợp lý. Ngược lại, nếu dùng thật sự review queue, flags, staff tools và cộng đồng thảo luận, B có lý do mạnh để tồn tại.
 
-**Điều kiện giữ B:** có người phụ trách nâng Discourse/plugin; editor đạt trải nghiệm cần thiết; tiền kiểm và xử lý sửa bình luận được kiểm chứng; Vink chấp nhận làm màn quản trị tác phẩm tối thiểu.
+**Kết quả 03/11/2026:** thảo luận theo hướng C — Vink sở hữu bình luận, replies và quyết định kiểm duyệt bình luận; nội dung văn học vẫn ở Vink như B. Vink nhận trách nhiệm tự xây tiền kiểm, báo cáo/khiếu nại, chống lạm dụng và thông báo (danh sách ở [ADR ownership](discussion-ownership.md#trách-nhiệm-phải-tự-xây)). Không vận hành Discourse; phần trên là lý do lịch sử của lựa chọn.
 
 ## 3. Những gì thực sự học từ Cantos
 
@@ -60,37 +65,34 @@ UI System, cách đặt trạng thái và công cụ xtask là tài liệu tham 
 ```mermaid
 flowchart TB
     Browser["Trình duyệt"] --> App["Vink app: Leptos SSR + Axum"]
-    App --> VDB[("PostgreSQL Vink")]
-    App --> Discourse["Discourse API và Admin"]
+    App --> VDB[("PostgreSQL Vink: tác phẩm + thảo luận")]
+    App --> Identity["vink-identity (process riêng)"]
+    Identity --> IDB[("PostgreSQL Identity")]
     Worker["Rust worker"] --> VDB
     Worker --> AI["AI provider"]
-    Worker --> Discourse
-    Discourse --> DDB[("PostgreSQL Discourse")]
-    Discourse --> Redis[("Redis Discourse")]
-    Discourse -->|"Webhook đã xác minh"| App
 ```
 
 App và worker dùng chung code application/persistence thuộc Vink; worker nhận job có kiểu và gửi kết quả qua luật chuyển trạng thái. Worker không được tự đặt con trỏ xuất bản tùy theo văn bản do model trả về.
 
-SSR chạy trong server có thể gọi application service nội bộ. Không cần vòng HTTP quay lại chính mình. Browser chỉ nhận DTO công khai và gọi endpoint được phân quyền; domain không import kiểu dữ liệu Discourse, HTTP hoặc AI SDK.
+SSR chạy trong server có thể gọi application service nội bộ. Không cần vòng HTTP quay lại chính mình. Browser chỉ nhận DTO công khai và gọi endpoint được phân quyền; domain không import kiểu dữ liệu HTTP, SQL hoặc AI SDK.
 
 ## 5. Quyền sở hữu dữ liệu
 
 | Dữ liệu/hành vi | Chủ sở hữu | Bản sao hoặc ánh xạ được phép |
 | --- | --- | --- |
-| Work, nội dung chương, bản nháp, revision, publication | Vink | Discourse chỉ giữ link và đoạn giới thiệu được phép công khai |
-| Quyết định duyệt tác phẩm, appeal, curation | Vink | Dashboard Vink; link sang discussion nếu cần ngữ cảnh |
-| Bình luận, replies, flags, reviewables, trust signals của diễn đàn | Discourse | Vink giữ mapping và cache/projection tối thiểu cần cho UI |
-| Định danh ứng dụng, bút danh và hồ sơ tác giả Vink | Vink | Discourse account được map theo ID bất biến |
+| Work, nội dung chương, bản nháp, revision, publication | Vink | Không có bản sao ở hệ thảo luận ngoài |
+| Quyết định duyệt tác phẩm, appeal, curation | Vink | Dashboard Vink |
+| Bình luận, replies, quyết định kiểm duyệt bình luận, trạng thái bật/tắt bình luận theo tác phẩm | Vink (module `discussion`, database App) | Projection/cache chỉ là bản dựng lại được, không có quyền ghi |
+| Định danh ứng dụng, bút danh và hồ sơ tác giả Vink | Vink | Subject của auth authority được map theo ID bất biến |
 | Credential và bằng chứng đăng nhập | Auth authority được chọn | Vink nhận identity fact/session; không đồng bộ password |
-| Lưu tác phẩm, theo dõi tác giả | Vink trong phạm vi sản phẩm văn học | Không tạo thêm bản tương đương ở Discourse nếu chưa cần |
+| Lưu tác phẩm, theo dõi tác giả | Vink trong phạm vi sản phẩm văn học | Một owner, không bản sao cạnh tranh |
 | Thông báo về duyệt/xuất bản | Vink | Có thể tổng hợp vào một inbox UI sau |
-| Thông báo reply/mention Discourse | Discourse | BFF có thể đọc/tổng hợp; trạng thái đã đọc vẫn có owner rõ |
+| Thông báo reply/mention | Vink (chưa triển khai) | Phát từ outbox của thảo luận; trạng thái đã đọc có owner rõ |
 | Audio và trạng thái sản xuất Cantos tương lai | Cantos | Vink lưu liên kết, snapshot nguồn và quyền chuyển thể |
 
-Axum không đọc/ghi trực tiếp bảng lõi Discourse. Plugin Discourse cũng không kết nối SQL vào database Vink. Tích hợp qua API, event và contract có phiên bản.
-
-Hai database **có thể** dùng chung một PostgreSQL instance nếu phiên bản, cấu hình, extensions, tài nguyên và backup tương thích; vẫn dùng database/role riêng và không có quyền ghi chéo. Đây không phải mặc định bắt buộc: quy trình cài đặt Discourse cần được tôn trọng trước khi tối ưu hạ tầng. Cùng instance tạo miền lỗi và lịch nâng cấp chung. [D14]
+Không có database Discourse trong topology. App và Identity giữ database/role riêng trên cùng
+cluster PostgreSQL ([ranh giới](identity-postgres-boundaries.md)); không có quyền ghi chéo. Tách
+thảo luận thành process riêng chỉ khi có bằng chứng isolation/scaling theo ADR ownership.
 
 ## 6. Mô hình nội dung ở mức định hướng
 
@@ -100,7 +102,7 @@ Luồng khái niệm: Work quản lý tác phẩm; Chapter/body chứa các revi
 
 Mỗi kết quả duyệt gắn với đúng `revision_id`, `content_hash`, phiên bản policy và phiên bản quyết định. Revision mới, callback muộn, quyết định người duyệt và thao tác rút bài không được vô tình ghi đè nhau. Metadata công khai như tiêu đề, tóm tắt và nội dung cũng phải thuộc phạm vi snapshot hoặc chính sách kiểm duyệt đã xác định.
 
-**Thread thảo luận gắn với work/chapter ổn định**, không gắn khóa duy nhất với mỗi lần xuất bản. `discussion_links` ánh xạ subject Vink sang topic Discourse. Chuyển từ revision 1 sang revision 2 không tạo một thread mới hoặc làm mất bình luận cũ; UI có thể chỉ ra phiên bản ngữ cảnh khi cần.
+**Thread thảo luận gắn với work/chapter ổn định**, không gắn khóa duy nhất với mỗi lần xuất bản. Bảng `discussion_threads` của Vink giữ đúng một thread cho mỗi tác phẩm (chapter khi có requirement). Chuyển từ revision 1 sang revision 2 không tạo một thread mới hoặc làm mất bình luận cũ; UI có thể chỉ ra phiên bản ngữ cảnh khi cần.
 
 ### Vì sao không dùng Topic/Post làm nguồn tác phẩm chính?
 
@@ -143,69 +145,59 @@ M3 Expressive là design system do Vink triển khai qua semantic tokens và com
 | Vị trí minh họa | Vai trò |
 | --- | --- |
 | `apps/vink-web` | View Leptos và DTO/client theo nhu cầu UI |
-| `services/vink-app` | Axum, server SSR composition, application modules, persistence/Discourse adapters |
+| `services/vink-app` | Axum, server SSR composition, application modules (gồm `discussion`), persistence adapters |
 | `services/vink-app/contracts` | Schema API do Vink cung cấp, fixtures, ví dụ lỗi và versioning |
 | `services/vink-worker` hoặc binary thứ hai cùng package | Worker moderation, outbox, reconcile; tách process để không giữ request chờ AI |
 | `packages/editor` | Editor JavaScript, bridge document schema, build và tests chuyên biệt |
-| `plugins/discourse-vink` | Plugin mở rộng đúng những điểm được integration spike chứng minh cần thiết |
 | `specs/behavior` và `xtask` | Các model được chấp nhận và lệnh verify nhỏ, có phạm vi rõ |
 
-**Hiện thực ở skeleton (30/10/2026):** đã có `apps/vink-web`, `services/vink-app` (worker là binary thứ hai cùng package), `services/vink-app/contracts/http/v1` và `xtask`; `packages/editor`, `plugins/discourse-vink` và `specs/behavior` chưa tồn tại. Chi tiết và lý do ở [docs/development](../development/README.md). Đây là giả định bootstrap, không chốt D-03/D-04.
+**Hiện thực ở skeleton (30/10/2026):** đã có `apps/vink-web`, `services/vink-app` (worker là binary thứ hai cùng package), `services/vink-app/contracts/http/v1` và `xtask`; `packages/editor` và `specs/behavior` chưa tồn tại; không có plugin Discourse theo quyết định 03/11/2026. Chi tiết và lý do ở [docs/development](../development/README.md). Đây là giả định bootstrap, không chốt D-03/D-04.
 
 Domain rules không phụ thuộc Axum, SQLx, Leptos hay SDK model. Application layer điều phối; adapters thực hiện I/O. `vink-app` là composition root, phụ thuộc view package và application core. `vink-web` không import service crate; SSR nhận facade qua interface/context do composition root cung cấp. Nếu app và worker cần dùng chung core, dùng binary thứ hai cùng package hoặc một thư viện server-only có owner rõ. Browser build chỉ chứa view/client types, không link persistence/secrets. Tách domain crate chỉ khi có consumer hoặc lợi ích kiểm chứng thực tế.
 
 API công khai bắt đầu bằng JSON có schema/error model rõ. Mỗi provider giữ canonical schema và fixtures; mỗi consumer sở hữu kiểu dữ liệu cần dùng và kiểm tra drift. Không cần gRPC/Protobuf cho mọi API, không tạo contracts crate toàn cục Vink–Cantos. Leptos server functions là transport adapter cho use case, không tạo luật nghiệp vụ thứ hai cạnh REST. Bài học ownership đến từ ADR 0046; bố trí Vink là đề xuất riêng. [C1]
 
-## 9. Tích hợp Discourse theo phạm vi hữu hạn
+## 9. Thảo luận do Vink sở hữu
 
-MVP chỉ tích hợp những khả năng có nhu cầu rõ: tạo và đọc thảo luận của một tác phẩm, gửi phản hồi, báo cáo, xem trạng thái chờ và xử lý review. Các chức năng như inbox hợp nhất, badge, full-text search liên hệ thống, chat hoặc giao diện lịch sử chỉnh sửa không tự xuất hiện trong Leptos chỉ vì Discourse có sẵn.
+Quyết định 03/11/2026 ([ADR ownership](discussion-ownership.md)): module `discussion` trong
+`vink-app` là owner duy nhất ghi, đọc và kiểm duyệt bình luận. Discourse không chạy trong hệ
+thống; chỉ được đọc như tài liệu tham khảo. Các bài học dưới đây vẫn áp dụng, nay do Vink tự bảo đảm:
 
-Plugin Ruby nên **nhỏ về trách nhiệm**: bảo vệ điểm ghi cần thiết, phát event hoặc cung cấp endpoint tích hợp hẹp. Chưa ước lượng bằng số dòng. Adapter Rust chịu mapping, retry, kiểm tra schema/version; Discourse vẫn sở hữu trạng thái bình luận.
+- **Hai tầng:** bình luận gốc và một danh sách phản hồi phẳng; `reply_to` giữ ngữ cảnh, không
+  thêm cấp. Server tải target trong đúng thread rồi chuẩn hóa root, không nhận root do client gửi.
+- **Tiền kiểm ở mọi đường ghi:** bình luận mới ở trạng thái chờ duyệt, không lộ qua list, đếm,
+  preview, cache hay thông báo. Sửa bình luận công khai bị chặn cả UI/API cho tới khi có gate
+  giữ bản đã duyệt (D-08). Không có đường email/import.
+- **Quyết định kiểm duyệt gắn version:** quyết định chỉ áp đúng bình luận và version đã xem;
+  quyết định trễ hoặc trùng không ghi đè quyết định mới hơn và không hồi sinh bình luận đã gỡ.
+- **Quyền tác giả tác phẩm tách khỏi kiểm duyệt:** tác giả bật/tắt bình luận trên tác phẩm của
+  mình; không sửa, xóa hay duyệt bình luận của người khác. Người viết bình luận gỡ được bình
+  luận của chính mình. Quyền kiểm duyệt đến từ authority hệ thống, không suy từ quyền sở hữu tác phẩm.
+- **Idempotency và mất phản hồi:** lệnh ghi mang khóa idempotency; cùng khóa cùng nội dung trả
+  kết quả đã có, khác nội dung bị từ chối. Timeout là kết quả chưa rõ, đối soát trước khi gửi lại.
+- **Outbox cho hiệu ứng sau commit:** thông báo, projection, ranking đọc từ outbox/inbox bền
+  vững; outbox không biến side effect ngoài thành exactly-once.
 
-### Hai nơi giữ cổng công khai
-
-- **Tác phẩm:** application Vink giữ revision chưa được duyệt khỏi public read. Worker chỉ tạo kết quả; Vink kiểm điều kiện để áp dụng.
-- **Bình luận:** Discourse phải giữ nội dung ở trạng thái chưa public trước khi chờ worker. Review queue có API nhưng chỉ chứa các đối tượng đã được đưa vào pending hoặc flagged. [D3]
-
-`post_created`/`post_edited` webhook không thay một cổng trước khi công khai. Code hiện được đọc cho thấy create qua `NewPostManager`, update qua `PostRevisor`, import và email có đường xử lý khác. `review_every_post` cũng không đồng nghĩa mọi nội dung đều bị giữ trước xuất bản. Những đường đang bật phải được thử trên release pin. [D4], [D5], [D6], [D12], [D13], [D17]
-
-**Mặc định pilot đề xuất:** tiền kiểm bình luận mới; chỉ mở sửa bình luận công khai khi chứng minh được chính sách giữ bản đã duyệt hoặc ẩn bản sửa một cách nhất quán. Nếu chưa đạt, chặn thao tác sửa ở cả UI và API, đồng thời cho tác giả yêu cầu người duyệt xử lý. Tắt email-in, import tự phục vụ và các đường chưa được đưa vào phạm vi. Ngoại lệ staff/system phải có mục đích và audit; không đăng bình luận người dùng bằng quyền staff để né gate.
-
-### Review API phải xử lý cạnh tranh
-
-Adapter đọc reviewable hiện tại, action được phép và version, rồi thực hiện action tương ứng. Không hard-code tất cả loại reviewable thành `approve_post`; khi xung đột version phải đọc lại và quyết định lại. Quyết định người duyệt hoặc nội dung mới hơn không bị callback AI cũ ghi đè. [D3], [D7], [D8]
-
-Không phản chiếu toàn bộ tác phẩm vào Post đầu tiên. Pilot nên ưu tiên link và metadata công khai tối thiểu; chỉ thêm excerpt nếu có nhu cầu. Khi rút bài, Vink chặn public read của mình ngay và yêu cầu ẩn thread khỏi người đọc thông thường, dừng replies mới. Phải xử lý cả title, Post đầu tiên, excerpt, trích dẫn trong replies và cache theo policy; đóng topic/unlist/unlink không được coi là đã thu hồi quyền đọc.
-
-Nếu Discourse lỗi, hiển thị riêng trạng thái “đã rút khỏi Vink” và “đang thu hồi thảo luận/bản sao”; chưa báo hoàn tất toàn bộ. Giữ mapping/tombstone để đối soát và tái xuất bản đúng thread. Nếu cần thu hồi tức thì ở mọi hệ thống, phải bổ sung cổng đọc kiểm quyền tương ứng và chứng minh bằng spike; gửi event bất đồng bộ không tạo bảo đảm đó. Thời hạn remote cleanup và cách xử lý khi quá hạn thuộc D-12, cần chốt trước beta.
-
-### Publication và discussion không chung một transaction
-
-Giao dịch PostgreSQL Vink ghi publication pointer và outbox cùng lúc. Worker provision topic, ghi mapping và retry/reconcile khi thất bại. Một bài đã xuất bản vẫn đọc được khi Discourse lỗi; phần thảo luận thể hiện đang chuẩn bị hoặc tạm gián đoạn.
-
-Outbox không tự mang lại exactly-once ở Discourse. Tình huống “API đã tạo topic nhưng worker chết trước khi ghi nhận” cần một external key được server đích xử lý duy nhất hoặc cơ chế lookup/reconcile đã kiểm chứng. Unique constraint trên bảng mapping Vink chỉ bảo vệ bảng đó. Không dùng retry mù với create API.
-
-Ngoài chống trùng, cần generation/sequence tăng dần theo subject, desired state bền vững và điều phối side effect theo subject. Publish event cũ không được hồi sinh thread đã rút hoặc ghi đè excerpt mới. Local lock không chặn được HTTP request cũ đã timeout nhưng còn chạy ở Discourse; muốn bảo đảm mạnh, endpoint/plugin đích phải từ chối generation cũ. Nếu chỉ có reconciliation cuối cùng, ghi rõ giới hạn đó và phạm vi beta tương ứng.
-
-Webhook được xác minh chữ ký trên payload thô, giới hạn kích thước/loại event rồi ghi inbox bền vững. Delivery có thể trùng, trễ hoặc mất sau retry; đối soát review queue/mapping định kỳ phải sửa được trạng thái lệch. Payload có thể chứa dữ liệu chỉ staff được thấy, nên không chuyển thẳng sang browser hoặc log nguyên văn. [D11]
+Mẫu Discourse đáng tham khảo khi thiết kế: hàng đợi review có version, lý do gỡ, flag/report,
+trust level và rate limit. Mỗi chức năng được đưa vào phạm vi phải có requirement, owner và kiểm
+chứng riêng ở Vink; không suy ra chúng đã có vì Discourse có.
 
 ## 10. Identity và liên thông tài khoản
 
-**Vink sở hữu principal của ứng dụng không đồng nghĩa phải tự viết hệ thống mật khẩu.** Dùng `vink_user_id` ổn định cho dữ liệu văn học, tách khỏi username, email, Discourse user ID và subject của nhà cung cấp đăng nhập.
+**Vink sở hữu principal của ứng dụng không đồng nghĩa phải tự viết hệ thống mật khẩu.** Dùng `vink_user_id` ổn định cho dữ liệu văn học và thảo luận, tách khỏi username, email và subject của nhà cung cấp đăng nhập.
 
 | Hướng xác thực | Đánh đổi | Đề xuất sử dụng |
 | --- | --- | --- |
 | Auth provider độc lập được duy trì, Vink giữ session ứng dụng | Có thêm dependency nhưng giảm phần credential lifecycle tự xây | Ưu tiên khảo sát nếu Vink độc lập là mục tiêu dài hạn |
 | Native auth do Vink quản lý | Kiểm soát UX và hạ tầng, nhưng phải làm verify/reset/session/security lifecycle | Chỉ chọn khi có người chịu trách nhiệm; học Cantos nhưng không mặc định sao chép |
-| Discourse làm nguồn xác thực ban đầu | Có thể giảm auth tự xây, nhưng nội dung Vink phụ thuộc thêm vào community engine | Phương án beta nếu ưu tiên tốc độ và chấp nhận coupling |
 
-Nếu Vink là nơi đăng nhập chính, DiscourseConnect là bridge khả thi: protocol dùng chữ ký, nonce và external ID ổn định. Đây là SSO riêng của Discourse, không phải một OIDC provider cho cả hệ sinh thái. Provisioning, verified email, logout, ban và đổi tên vẫn cần mapping được kiểm chứng. [D9]
+Discourse/DiscourseConnect không còn là phương án xác thực vì Discourse không chạy trong hệ
+thống. Liên kết Vink–Cantos tương lai cần người dùng chứng minh quyền sở hữu ở cả hai phía,
+không tự gộp theo email trùng.
 
-DiscourseConnect có hành vi liên kết tài khoản hiện có theo email trong một số tình huống. Vì vậy không chỉ đặt external ID rồi coi account linking đã an toàn: cần thử onboarding tài khoản mới/cũ, email đã xác minh và đổi email trước beta. Liên kết Vink–Cantos tương lai cần người dùng chứng minh quyền sở hữu ở cả hai phía, không tự gộp theo email trùng.
+Browser Vink dùng cookie HttpOnly/Secure với CSRF/Origin policy phù hợp topology. Chọn một authority cho trạng thái khóa tài khoản; ghi bình luận kiểm lại trạng thái đó tại commit.
 
-Browser Vink dùng cookie HttpOnly/Secure với CSRF/Origin policy phù hợp topology. Cookie session của Vink và Discourse là hai phiên riêng; tắt tính năng đăng nhập native của Discourse không tự đồng bộ toàn bộ logout hoặc suspension. Chọn một authority cho trạng thái khóa tài khoản và kiểm cả request đi trực tiếp vào Discourse.
-
-Khi BFF gọi API thay người dùng, danh tính Discourse được lấy từ session và mapping server-side. Key kiểu All Users có khả năng hành động thay nhiều tài khoản; không nhận `Api-Username` tùy ý từ browser. Tách credential cho user actions, provisioning và moderation, dùng quyền tối thiểu có thể đáp ứng từng chức năng. Không đưa key vào bundle WASM, HTML SSR hay mã JavaScript. [D10]
+Người thực hiện mọi lệnh thảo luận được lấy từ session server-side; không nhận user ID, role hay tên hiển thị từ browser. Quyền kiểm duyệt là authority riêng, tách khỏi quyền sở hữu tác phẩm. Không đưa secret vào bundle WASM, HTML SSR hay mã JavaScript.
 
 Cantos Identity xác minh email/password và cung cấp authentication facts qua RPC riêng; Cantos Server tạo và quản lý application sessions. Hệ thống này chưa cung cấp SSO/OIDC dùng ngay cho Vink. Không chia sẻ password store, cookie, session table hoặc database. Nếu sau này cần một hệ thống đăng nhập chung, đó là ADR tích hợp riêng. [C6]
 
@@ -223,7 +215,7 @@ PostgreSQL `FOR UPDATE SKIP LOCKED` có thể hỗ trợ nhiều consumer lấy 
 
 Claim job trong transaction ngắn rồi giải phóng khóa trước khi gọi AI/network. Khi worker chết, watchdog có thể thu hồi lease; kết quả trả muộn chỉ được ghi nếu lease/revision/decision version còn hợp lệ. Retry lỗi tạm thời có backoff và giới hạn; nội dung mơ hồ hoặc lỗi hết ngân sách chuyển human review.
 
-Redis là phụ thuộc của Discourse, không phải lý do bắt Vink dùng chung queue/cache. Chỉ thêm broker hoặc Redis cho Vink khi có nhu cầu throughput, fan-out hoặc độ trễ được đo rõ. Không thêm vector database vì có AI moderation; tác vụ phân loại nội dung không tự đòi hỏi vector search.
+Chỉ thêm broker hoặc Redis cho Vink khi có nhu cầu throughput, fan-out hoặc độ trễ được đo rõ. Không thêm vector database vì có AI moderation; tác vụ phân loại nội dung không tự đòi hỏi vector search.
 
 ### Tìm kiếm tiếng Việt
 
@@ -237,15 +229,15 @@ Thử cả truy vấn có/không dấu, bút danh, lỗi gõ, tên trùng và n�
 
 ## 12. Vận hành và chi phí
 
-SSR cần server runtime; không coi một static hosting bundle là triển khai SSR hoàn chỉnh. Một VPS/container cho app và worker là ứng viên pilot; reverse proxy/CDN có thể đứng trước nội dung công khai. Discourse theo đường cài đặt và phiên bản được hỗ trợ. Chưa cần Kubernetes hay nhiều vùng triển khai trước khi có yêu cầu cụ thể.
+SSR cần server runtime; không coi một static hosting bundle là triển khai SSR hoàn chỉnh. Một VPS/container cho app và worker là ứng viên pilot; reverse proxy/CDN có thể đứng trước nội dung công khai. Chưa cần Kubernetes hay nhiều vùng triển khai trước khi có yêu cầu cụ thể.
 
-Giữ cấu hình/secrets tách theo môi trường, staging có dữ liệu thử và plugin version pin. App Rust, plugin Discourse và schema contract phải có ma trận tương thích; nâng Discourse chạy lại các tình huống integration quan trọng trước rollout.
+Giữ cấu hình/secrets tách theo môi trường, staging có dữ liệu thử. App Rust và schema contract có ma trận tương thích với consumer; migration thảo luận chạy lại các tình huống integration quan trọng trước rollout.
 
-Backup cần bao phủ hai database, cấu hình cần phục hồi và assets. Restore phải kiểm tra publication pointers, account/thread mappings, job đang chạy và outbox còn chờ; không phát lại mù các side effect cũ. RPO/RTO, retention và mục tiêu hiệu suất được đo/chốt trước public beta, chưa có số cam kết trong bộ tài liệu này.
+Backup cần bao phủ database App và Identity, cấu hình cần phục hồi và assets. Restore phải kiểm tra publication pointers, account/thread mappings, receipt lệnh thảo luận, job đang chạy và outbox còn chờ; không phát lại mù các side effect cũ. RPO/RTO, retention và mục tiêu hiệu suất được đo/chốt trước public beta, chưa có số cam kết trong bộ tài liệu này.
 
-Theo dõi tối thiểu: lỗi public read, autosave thất bại, tuổi job/human queue, webhook lag, backlog outbox, xung đột version, số topic trùng, số quyết định bị người duyệt đảo và chi phí AI theo mục đích. Trace ID nối app–worker–adapter; logs tránh chứa toàn văn nháp hoặc secrets.
+Theo dõi tối thiểu: lỗi public read, autosave thất bại, tuổi job/human queue, backlog outbox, xung đột version, tuổi hàng đợi duyệt bình luận, số quyết định bị người duyệt đảo và chi phí AI theo mục đích. Trace ID nối app–worker–adapter; logs tránh chứa toàn văn nháp hoặc secrets.
 
-Ước tính chi phí nên gồm **hạ tầng + model + giờ người duyệt + giờ duy trì plugin/bridge**. Chi phí model phụ thuộc lượng bài/bình luận, độ dài, model/policy, retry và tỷ lệ chuyển người. Chưa chọn provider, chưa quote giá hoặc hứa một thời gian phản hồi cố định.
+Ước tính chi phí nên gồm **hạ tầng + model + giờ người duyệt tác phẩm và bình luận**. Chi phí model phụ thuộc lượng bài/bình luận, độ dài, model/policy, retry và tỷ lệ chuyển người. Chưa chọn provider, chưa quote giá hoặc hứa một thời gian phản hồi cố định.
 
 ## 13. Verification vừa đủ và có bằng chứng
 
@@ -253,9 +245,9 @@ Theo dõi tối thiểu: lỗi public read, autosave thất bại, tuổi job/hu
 | --- | --- | --- |
 | Pure domain | Không đăng nhầm revision, không vượt quyền, tách curation | Unit/property tests và một số model Quint |
 | PostgreSQL | Constraint, transaction/CAS, job lease, concurrent publish/withdraw | Integration tests trên PostgreSQL thực |
-| Discourse | Create/edit gate, review actions, account mapping, direct access | Integration suite trên release và plugin được pin |
+| Thảo luận | Hai tầng, tiền kiểm, quyền tác giả/kiểm duyệt, idempotency, thu hồi | Rust core + PostgreSQL thực + API/browser |
 | Web/editor | IME, paste, autosave, thơ, SSR/hydration, accessibility | Browser tests và kiểm tra thực tế trên thiết bị mục tiêu |
-| Failure recovery | AI timeout, webhook trùng/mất, topic-create crash, restore | Kịch bản lỗi có kết quả và log quan sát |
+| Failure recovery | AI timeout, mất phản hồi lệnh ghi, job trùng/đảo thứ tự, restore | Kịch bản lỗi có kết quả và log quan sát |
 
 Quint phù hợp để mô hình hóa safety properties như “bản chưa duyệt không công khai”, “callback cũ không thắng quyết định mới” và “tuyển chọn ghim đúng revision”. Liveness như “không chờ mãi” cần mô hình thời gian/scheduler và giả định tiến triển; không chỉ thêm một boolean invariant. Model checking và sampled simulation có phạm vi khác nhau. [T8]
 
@@ -263,9 +255,9 @@ Quint phù hợp để mô hình hóa safety properties như “bản chưa duy�
 
 ## 14. Khi nào thay đổi stack?
 
-- **Giữ A trong một pilot tạm thời** nếu cần kiểm chứng cộng đồng ngay và chưa đủ người vận hành integration. Ghi rõ phần tác phẩm đó sẽ cần export/migrate nếu sau này chuyển owner.
-- **Giữ B** khi Discourse đóng góp thực sự cho thảo luận và moderation, trong khi Vink làm chủ trải nghiệm sáng tác.
-- **Thu hẹp hoặc bỏ Discourse để tiến tới C** nếu chi phí bridge lớn hơn lợi ích quan sát được, hoặc sản phẩm chỉ cần tập tính năng cộng đồng rất nhỏ. Phải có kế hoạch export comments, IDs, quyền truy cập và xử lý lịch sử review.
+- **Thảo luận đã chọn C (03/11/2026).** Xem lại chỉ khi chi phí tự vận hành kiểm duyệt,
+  báo cáo, khiếu nại và chống lạm dụng vượt khả năng đội sau khi đo trong pilot. Đổi owner khi
+  đã có dữ liệu cần ADR mới, export có version, đối soát và không dual-write.
 - **Đổi frontend, giữ Axum/PostgreSQL** nếu editor và tốc độ phát triển là điểm nghẽn. Ownership và contracts không phụ thuộc Leptos; đây là lý do để giữ boundary rõ từ đầu.
 
 Không cần chốt mọi version trong vision. Sau các spike, ghi release/tag, dependency lockfile, model/provider config và ma trận tương thích vào ADR thực thi. Các quyết định cần chốt và tiêu chí go/no-go nằm trong [decisions.md](decisions.md).

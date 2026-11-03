@@ -1,0 +1,28 @@
+{
+  "pending_total": 7,
+  "items": [
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000010",
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "work_title": "[Mẫu] Mưa trên phố cũ",
+      "kind": "root",
+      "author_display_name": "Minh",
+      "body": "Đoạn hai hơi dài, nhưng khổ cuối rất đẹp.",
+      "created_at": "2026-11-03T08:00:00Z",
+      "version": 1,
+      "can_decide": true
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000011",
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "work_title": "[Mẫu] Mưa trên phố cũ",
+      "kind": "reply",
+      "author_display_name": "Kiểm duyệt viên",
+      "body": "Mình cũng thấy vậy.",
+      "created_at": "2026-11-03T08:00:00Z",
+      "version": 1,
+      "can_decide": false
+    }
+  ],
+  "next_cursor": "c1.1793692800000000.0192f3a1000070008000000000000011"
+}

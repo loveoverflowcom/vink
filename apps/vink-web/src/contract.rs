@@ -77,6 +77,140 @@ pub struct SavedDraft {
     pub updated_at: String,
 }
 
+/// Root page of a work's discussion (two tiers: roots + one flat reply list per root).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiscussionPage {
+    pub work_id: String,
+    pub settings: CommentsSettings,
+    pub viewer_is_work_author: bool,
+    pub roots: Vec<RootThread>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentsSettings {
+    pub comments_open: bool,
+    pub generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RootThread {
+    pub root: RootView,
+    pub public_replies: i64,
+    pub preview: Vec<CommentDto>,
+    pub preview_next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RootView {
+    Comment {
+        comment: CommentDto,
+    },
+    /// Hidden root kept for its public replies: render a neutral placeholder, no author.
+    Anchor {
+        comment_id: String,
+        created_at: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentDto {
+    pub comment_id: String,
+    /// `public`, `own_pending` or `own_rejected`; kept as text so a new value is not a crash.
+    pub visibility: String,
+    pub author_display_name: String,
+    pub body: String,
+    pub created_at: String,
+    pub reply_to: Option<ReplyTo>,
+    pub can_remove: bool,
+    /// Moderator's reason, only on the viewer's own rejected comment.
+    pub rejection_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ReplyTo {
+    Root,
+    Reply {
+        comment_id: String,
+        author_display_name: String,
+    },
+    /// Shown as “a comment that is no longer visible”, never as deleted by its writer.
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReplyList {
+    pub replies: Vec<CommentDto>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubmitCommentRequest {
+    pub target_id: Option<String>,
+    pub body: String,
+    /// Generated once per composed comment and reused on every retry of it.
+    pub command_key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SubmittedComment {
+    pub comment_id: String,
+    pub status: String,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemovedComment {
+    pub comment_id: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentsSettingsRequest {
+    pub expected_generation: i64,
+    pub comments_open: bool,
+}
+
+/// Pending comments for a moderator, oldest first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationQueue {
+    pub pending_total: i64,
+    pub items: Vec<QueueEntry>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct QueueEntry {
+    pub comment_id: String,
+    pub work_id: String,
+    pub work_title: Option<String>,
+    pub kind: String,
+    pub author_display_name: String,
+    pub body: String,
+    pub created_at: String,
+    pub version: i64,
+    pub can_decide: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationDecisionRequest {
+    pub expected_version: i64,
+    /// `approve`, `reject` or `remove`.
+    pub action: String,
+    /// Required for `reject` and `remove`; shown to the comment's writer.
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModerationDecision {
+    pub comment_id: String,
+    pub review: String,
+    pub removed: bool,
+    pub version: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -101,6 +235,14 @@ pub enum ApiError {
     VersionConflict {
         current_version: i64,
     },
+    /// The work's author closed comments.
+    CommentsClosed,
+    /// The reply target is missing or no longer public.
+    TargetUnavailable,
+    /// The same command key was sent with another payload: a client defect, not user input.
+    KeyReused,
+    /// A moderation decision on a removed comment.
+    CommentRemoved,
     Invalid {
         field: Option<String>,
     },
@@ -124,6 +266,10 @@ impl ApiError {
                 Some(current_version) => Self::VersionConflict { current_version },
                 None => Self::Unexpected { status },
             },
+            (409, Some("comments_closed")) => Self::CommentsClosed,
+            (409, Some("target_unavailable")) => Self::TargetUnavailable,
+            (409, Some("comment_removed")) => Self::CommentRemoved,
+            (422, Some("idempotency_key_reused")) => Self::KeyReused,
             (422, _) => Self::Invalid {
                 field: body.and_then(|b| b.field),
             },
@@ -170,6 +316,83 @@ mod tests {
         let _: DraftList = round_trip("drafts.list.json");
         let _: Draft = round_trip("draft.get.json");
         let _: SavedDraft = round_trip("draft.save.response.json");
+    }
+
+    #[test]
+    fn decodes_discussion_fixtures() {
+        let page: DiscussionPage = round_trip("discussion.get.json");
+        assert!(
+            page.roots
+                .iter()
+                .any(|r| matches!(r.root, RootView::Anchor { .. }))
+        );
+        let contexts: Vec<_> = page
+            .roots
+            .iter()
+            .flat_map(|r| r.preview.iter().filter_map(|c| c.reply_to.clone()))
+            .collect();
+        assert!(contexts.contains(&ReplyTo::Root));
+        assert!(contexts.contains(&ReplyTo::Unavailable));
+        assert!(contexts.iter().any(|c| matches!(c, ReplyTo::Reply { .. })));
+        let _: ReplyList = round_trip("discussion.replies.json");
+        let request: SubmitCommentRequest = round_trip("discussion.comment.submit.request.json");
+        assert!(request.target_id.is_some());
+        let _: SubmittedComment = round_trip("discussion.comment.submit.response.json");
+        let _: RemovedComment = round_trip("discussion.comment.remove.response.json");
+        let _: CommentsSettingsRequest = round_trip("discussion.settings.request.json");
+        let settings: CommentsSettings = round_trip("discussion.settings.response.json");
+        assert!(!settings.comments_open);
+        let replies: ReplyList = round_trip("discussion.replies.json");
+        assert!(
+            replies
+                .replies
+                .iter()
+                .any(|reply| reply.rejection_reason.is_some())
+        );
+        let queue: ModerationQueue = round_trip("moderation.queue.json");
+        assert!(queue.items.iter().any(|item| !item.can_decide));
+        let decision: ModerationDecisionRequest = round_trip("moderation.decision.request.json");
+        assert_eq!(decision.action, "reject");
+        let _: ModerationDecision = round_trip("moderation.decision.response.json");
+    }
+
+    #[test]
+    fn classifies_discussion_error_fixtures() {
+        let cases = [
+            ("error.comments_closed.json", 409, ApiError::CommentsClosed),
+            (
+                "error.target_unavailable.json",
+                409,
+                ApiError::TargetUnavailable,
+            ),
+            (
+                "error.idempotency_key_reused.json",
+                422,
+                ApiError::KeyReused,
+            ),
+            ("error.not_comment_writer.json", 403, ApiError::Forbidden),
+            ("error.not_moderator.json", 403, ApiError::Forbidden),
+            ("error.moderator_recused.json", 403, ApiError::Forbidden),
+            ("error.comment_removed.json", 409, ApiError::CommentRemoved),
+            (
+                "error.moderation_conflict.json",
+                409,
+                ApiError::VersionConflict { current_version: 2 },
+            ),
+            (
+                "error.discussion_conflict.json",
+                409,
+                ApiError::VersionConflict { current_version: 3 },
+            ),
+        ];
+        for (name, status, expected) in cases {
+            let envelope = round_trip::<ErrorEnvelope>(name);
+            assert_eq!(
+                ApiError::from_response(status, Some(envelope)),
+                expected,
+                "{name}"
+            );
+        }
     }
 
     #[test]

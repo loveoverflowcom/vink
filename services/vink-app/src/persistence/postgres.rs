@@ -26,7 +26,7 @@ impl PgStore {
 
 /// Connection-level failures are retryable unavailability; anything else is an integrity error.
 /// sqlx error text carries no bound parameters, so manuscript text never reaches the log.
-fn classify(error: sqlx::Error) -> StoreError {
+pub(super) fn classify(error: sqlx::Error) -> StoreError {
     let classified = classify_inner(error);
     match &classified {
         StoreError::Unavailable(detail) => tracing::warn!(%detail, "postgres unavailable"),
@@ -37,8 +37,18 @@ fn classify(error: sqlx::Error) -> StoreError {
 }
 
 fn classify_inner(error: sqlx::Error) -> StoreError {
+    // A resolved principal without a Vink record, caught by the FK of the row it would own.
     if let sqlx::Error::Database(db) = &error
-        && db.constraint() == Some("works_owner_id_fkey")
+        && matches!(
+            db.constraint(),
+            Some(
+                "works_owner_id_fkey"
+                    | "comments_author_id_fkey"
+                    | "discussion_command_receipts_actor_id_fkey"
+                    | "comment_moderation_decisions_moderator_id_fkey"
+                    | "discussion_moderator_grants_principal_id_fkey"
+            )
+        )
     {
         return StoreError::UnknownPrincipal;
     }

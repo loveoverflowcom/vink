@@ -5,7 +5,7 @@ chiếu: `develop` tại `65bd6008692bbece8387c75f0c8efb9c644dbb51`,
 [CSS](../../../../apps/vink-web/style/vink.css) và
 [Bàn viết](../../../../apps/vink-web/src/pages/desk.rs). Kiểm lại source hiện hành
 khi dùng. Bàn viết có danh sách/tạo nháp, editor lưu thủ công và conflict; chưa
-có nguồn phản hồi/Discourse. Dashboard dưới không là mô tả màn đang chạy.
+có nguồn phản hồi/bình luận. Dashboard dưới không là mô tả màn đang chạy.
 
 ## A. Dashboard Bàn viết mới và prototype
 

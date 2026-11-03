@@ -3,6 +3,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
 use super::contract::{ErrorBody, ErrorEnvelope};
+use crate::application::discussion::{DiscussionError, DiscussionInput};
 use crate::application::{DraftError, InvalidInput, ReadError};
 
 /// Outcome classes of HTTP API v1. Messages are for developers; clients branch on `code`.
@@ -18,6 +19,21 @@ pub enum ApiError {
     VersionConflict {
         current_version: i64,
     },
+    /// The comments settings moved past `expected_generation`.
+    DiscussionConflict {
+        current_version: i64,
+    },
+    CommentsClosed,
+    TargetUnavailable,
+    KeyReused,
+    NotCommentWriter,
+    NotModerator,
+    ModeratorRecused,
+    CommentRemoved,
+    /// The comment's moderation version moved past `expected_version`.
+    ModerationConflict {
+        current_version: i64,
+    },
     DependencyUnavailable,
     Internal,
 }
@@ -27,9 +43,18 @@ impl ApiError {
         match self {
             Self::Validation { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::Unauthenticated => StatusCode::UNAUTHORIZED,
-            Self::Forbidden => StatusCode::FORBIDDEN,
+            Self::Forbidden
+            | Self::NotCommentWriter
+            | Self::NotModerator
+            | Self::ModeratorRecused => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
-            Self::VersionConflict { .. } => StatusCode::CONFLICT,
+            Self::VersionConflict { .. }
+            | Self::DiscussionConflict { .. }
+            | Self::CommentsClosed
+            | Self::TargetUnavailable
+            | Self::CommentRemoved
+            | Self::ModerationConflict { .. } => StatusCode::CONFLICT,
+            Self::KeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -56,6 +81,64 @@ impl ApiError {
             Self::VersionConflict { current_version } => (
                 "version_conflict",
                 "the draft changed since expected_version; nothing was written".to_string(),
+                Some(*current_version),
+                None,
+            ),
+            Self::DiscussionConflict { current_version } => (
+                "version_conflict",
+                "the comments settings changed since the expected generation; nothing was written"
+                    .to_string(),
+                Some(*current_version),
+                None,
+            ),
+            Self::CommentsClosed => (
+                "comments_closed",
+                "the work's author closed comments; nothing was written".to_string(),
+                None,
+                None,
+            ),
+            Self::TargetUnavailable => (
+                "target_unavailable",
+                "the reply target is missing, hidden or not public; nothing was written"
+                    .to_string(),
+                None,
+                None,
+            ),
+            Self::KeyReused => (
+                "idempotency_key_reused",
+                "command_key was already used for a different comment; nothing was written"
+                    .to_string(),
+                None,
+                Some("command_key"),
+            ),
+            Self::NotCommentWriter => (
+                "not_comment_writer",
+                "only the comment's writer can remove it".to_string(),
+                None,
+                None,
+            ),
+            Self::NotModerator => (
+                "not_moderator",
+                "an active moderator grant is required".to_string(),
+                None,
+                None,
+            ),
+            Self::ModeratorRecused => (
+                "moderator_recused",
+                "a moderator cannot decide on their own comment or on comments of their own work"
+                    .to_string(),
+                None,
+                None,
+            ),
+            Self::CommentRemoved => (
+                "comment_removed",
+                "the comment was removed; no decision applies".to_string(),
+                None,
+                None,
+            ),
+            Self::ModerationConflict { current_version } => (
+                "version_conflict",
+                "the comment changed since expected_version; nothing was written".to_string(),
                 Some(*current_version),
                 None,
             ),
@@ -114,6 +197,40 @@ impl From<ReadError> for ApiError {
             ReadError::NotFound => Self::NotFound,
             ReadError::Unavailable => Self::DependencyUnavailable,
             ReadError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<DiscussionInput> for ApiError {
+    fn from(error: DiscussionInput) -> Self {
+        Self::Validation {
+            field: error.field(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<DiscussionError> for ApiError {
+    fn from(error: DiscussionError) -> Self {
+        match error {
+            DiscussionError::Unauthenticated => Self::Unauthenticated,
+            DiscussionError::NotFound => Self::NotFound,
+            DiscussionError::NotCommentWriter => Self::NotCommentWriter,
+            DiscussionError::CommentsClosed => Self::CommentsClosed,
+            DiscussionError::TargetUnavailable => Self::TargetUnavailable,
+            DiscussionError::KeyReused => Self::KeyReused,
+            DiscussionError::Conflict { current } => Self::DiscussionConflict {
+                current_version: current,
+            },
+            DiscussionError::Invalid(invalid) => invalid.into(),
+            DiscussionError::Unavailable => Self::DependencyUnavailable,
+            DiscussionError::NotModerator => Self::NotModerator,
+            DiscussionError::Recused => Self::ModeratorRecused,
+            DiscussionError::Removed => Self::CommentRemoved,
+            DiscussionError::ModerationConflict { current } => Self::ModerationConflict {
+                current_version: current,
+            },
+            DiscussionError::Internal => Self::Internal,
         }
     }
 }

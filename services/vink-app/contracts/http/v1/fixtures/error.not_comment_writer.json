@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "not_comment_writer",
+    "message": "only the comment's writer can remove it"
+  }
+}

@@ -1,5 +1,9 @@
 # Vink — Việt Ink
 
+> **Lưu trữ lịch sử.** Định hướng dùng Discourse làm community engine dưới đây đã bị thay thế
+> ngày 03/11/2026: Vink tự sở hữu bình luận bằng Rust core và PostgreSQL; Discourse chỉ là nguồn
+> tham khảo. Xem [ADR ownership](../../architecture/discussion-ownership.md).
+
 **Mạng xã hội văn học và sáng tác dành cho người Việt.**
 
 Vink là không gian để viết, đọc, học hỏi, chia sẻ và góp ý tác phẩm. Sản phẩm hướng tới một cộng đồng hiện đại, trẻ trung và có chiều sâu, ưu tiên chất lượng nội dung hơn số lượng bài đăng hay tương tác ảo.

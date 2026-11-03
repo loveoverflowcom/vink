@@ -13,9 +13,10 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 [Ranh giới literary core](literary-domain-core.md) lần theo raw save → `DraftChange` đã validate
 → owner/version CAS, phân biệt working draft với immutable revision và public pointer.
 
-[Core bình luận hai tầng](discussion-core.md) ghi lát cắt cấu trúc thuần D2T-01, registry,
-model Quint và trace replay. Chưa nối request/store/API, chưa chọn discussion owner;
-[ADR ownership](../architecture/discussion-ownership.md) vẫn là đề xuất.
+[Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
+PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
+[ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
+đọc/gửi/gỡ/bật-tắt; chưa có UI hay authority kiểm duyệt, và production trả `401` cho lệnh ghi.
 
 ## Skeleton làm được gì
 
@@ -90,7 +91,7 @@ model Quint và trace replay. Chưa nối request/store/API, chưa chọn discus
   [services/vink-app/contracts/http/v1](../../services/vink-app/contracts/http/v1/README.md).
 - `/health/live` (tiến trình còn phục vụ) tách khỏi `/health/ready` (database tới được và lịch
   sử migration trùng migration nhúng; thiếu là `pending_migrations`, checksum lệch/version lạ/dở
-  dang là `diverged`). Discourse và AI moderation được báo `not_implemented`.
+  dang là `diverged`). AI moderation được báo `not_implemented`; không còn mục Discourse (thảo luận do Vink sở hữu).
 - PostgreSQL có owner tại [services/postgres](../../services/postgres/README.md): một container,
   database `vink` (App) và `vink_identity` (Identity, chưa có bảng), mỗi owner một role
   migrator và một role runtime do `provision.sh` tạo/kiểm. App chạy bằng role runtime (DML, không
@@ -195,7 +196,10 @@ Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy �
 Identity, chờ readiness trên socket rồi mới chạy App; dừng App thì Identity được SIGTERM. Với lệnh
 local, xtask đặt `VINK_IDENTITY_CALLER_UID`/`VINK_IDENTITY_SERVER_UID` bằng uid của bạn nếu chưa đặt.
 
-Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed`. Mã thoát: `0` thành công,
+Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed` và
+`moderator grant <principal-uuid> <ghi chú> | revoke <principal-uuid> | list`: lệnh vận hành duy
+nhất cấp/thu hồi quyền kiểm duyệt bình luận (dùng `DATABASE_URL`; không có route HTTP nào làm việc
+này, quyền sở hữu tác phẩm không bao giờ kéo theo quyền kiểm duyệt). Mã thoát: `0` thành công,
 `1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
 hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
 
@@ -328,15 +332,15 @@ riêng; không dùng `--all-features`.
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
-| `discussion` | Cấu trúc root/flat reply D2T-01, reject atomic, immutable placements, Quint simulation/negative control, fixture drift và replay qua `DiscussionThread` | Không Kani/exhaustive model checking, auth, lifecycle, transaction/API/UI; model một thread không chứng minh work/tenant binding |
+| `discussion` | Cấu trúc root/flat reply D2T-01 (replay qua `DiscussionThread`); vòng đời bình luận, chế độ bật/tắt và authority kiểm duyệt D2T-02 (replay qua `decide_submission`, `authorize_*`, `change_mode`, `ModerationAction::apply`, `view`); Quint simulation, negative control, fixture drift | Không Kani/exhaustive model checking, auth authority, khóa/transaction/API/UI; model một thread/một tác phẩm không chứng minh work/tenant binding |
 | `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime; Identity: migrations/readiness thật, binary thật trên Unix socket với role đã provision (config sai thoát 2, migrate runtime bị từ chối, migrate hai lần, migrator/App database bị từ chối, contract 200/501/400/413/404/503, uid khác và thiếu caller là 401, header giả không đổi kết quả, role migrator là `privileged` 503, mất kết nối tự phục hồi, sai database/schema là not ready, header gửi dở bị đóng và không giữ được SIGTERM, socket cũ/instance thứ hai, log không lộ credential); App + Identity thật cùng chạy: không credential `401`, credential `401` (chưa authority), Identity dừng thì chỉ request có credential `503`, đọc công khai/SSR vẫn `200`, restart độc lập, App bằng role migrator `503 privileged`, socket do user khác phục vụ không được tin; backup/restore từng owner bằng `pg_dump`/`pg_restore` vào database khác khớp dữ liệu và lịch sử | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
 | `web` | Bundle `/pkg/` không chứa URL database, tên biến credential hay password local; Khám phá/reader: public HTML và metadata trước JS, save riêng không đổi publication, 404/503, link thật, list không N+1, states riêng, reflow 320–1440px/root text 100/200% và contrast hai theme; Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart; điều hướng (UIS-04): toggle có tên/`aria-expanded`, ≥44px không bị che khi thu, link thật không phải tab, skip link focus main, click phím bổ trợ để trình duyệt xử lý, route lạ 404 không sáng đích, bấm dồn dập chỉ còn đích cuối, Back khi Tôi mở chỉ đóng Tôi rồi Back sau mới rời | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 | `ui-preview leptos verify` | Catalog ID đúng thứ tự, link kịch bản chính xác, không ID trùng và mọi `aria-describedby` trỏ tới phần tử có thật, Sáng/Tối/Hệ thống và đổi OS không reload, scope lồng nhau (cả Hệ thống trong Tối, recipe giải theo scope), mật độ gọn giữ 44px, vòng lặp chạy/dừng theo scope/OS/preference; component: click/Enter/Space gọi đúng một lần, disabled/pending không lần nào, pending giữ bề rộng/focus, Button mặc định không gửi form, focus ring 3px, target ≥48px, link tab mới có `rel`, URL script không thành link/ảnh, chip Space/Tab, caret giữa chữ và composition (`imeSetComposition`) giữ qua controlled value, nhãn/gợi ý/lỗi/required/read-only/disabled, giá trị `0`, Enter tìm và nút xóa trả focus, checkbox một target, radio phím mũi tên, ảnh AVIF hỏng/URL lạ → initials, màu avatar theo key khớp golden vectors khi đảo thứ tự, nhóm không bịa số, byline đọc tên một lần, tương phản chữ đã resolve ≥4.5 hai theme (control disabled được miễn); tìm không dấu, không tràn ngang 320–1440px ở chữ 100/200%, font tự host tải được, không lỗi console; trạng thái (UIS-03): vùng/intent/announce, snackbar theo đồng hồ tiêm, 8 recipe playground (không chỉ báo trước 300ms, retry một lần giữ chữ, refresh giữ focus/cuộn, huỷ trung tính, uncertain/conflict không saved hay replay, hết phiên giữ chữ), dialog focus/Tab/Escape/bấm ngoài/trả focus, vòng lặp dừng khi giảm/không hoạt động/tab ẩn thật; điều hướng (UIS-04): thứ tự, link thật, dispatch một lần theo key, reader thuộc Khám phá, host cấp đích, toggle 96→220→96 bằng chuột/Enter/Space giữ trang/chữ/selection, tooltip ngoài rail, skip link bị clip tới khi focus, một modal, Back đóng lớp phủ trước, Escape trả focus; 127 link kịch bản | Chrome khác, thiết bị thật, screen reader, IME hệ điều hành thật, chất lượng thị giác (ảnh phải được người mở) |
 | `ui-preview cmp verify` | Logic common trên JVM (parse, resolve theme, override, tương phản, motion, line-height sp; identity golden vectors, allow-list link/ảnh, nhóm không bịa số); precedence scope trong composition; preview: đăng ký catalog, mọi kịch bản render, control đổi theme + nhật ký, vòng lặp dừng khi giảm, mật độ gọn ≥44, tìm không dấu, WOFF2 đọc được qua Skia; component: nút gọi một lần, disabled/pending không gọi, pending giữ node enabled + `stateDescription`, text field giữ selection qua `TextFieldValue`, nhãn/lỗi trong semantics, checkbox/chip một lần, avatar có tên/ẩn trong byline, AVIF hỏng → `Failed`; trạng thái (UIS-03): vectors chung (cả iOS simulator khi bật native), reducer bỏ double-click/ack muộn, gate chờ độ trễ trên đồng hồ thủ công, retry một lần giữ input, conflict/uncertain không saved hay gửi lại tự động, giảm/không hoạt động/ẩn không vòng lặp, dialog focus an toàn + trả focus, snackbar theo thời lượng, chỉ hành động hợp lệ; điều hướng (UIS-04): vectors chung (cả iOS simulator khi bật native), deep link round-trip và từ chối link ngoài, Back đóng lớp phủ trước rồi pop, chữ chưa lưu giữ Back/điều hướng, đổi khung không remount, toggle giữ selection, thứ tự thanh dưới, một modal; 290 ảnh off-screen | Android/iOS runtime và lifecycle, predictive back/swipe-back, IME, TalkBack/VoiceOver, cửa sổ desktop thật (ảnh là render off-screen), hover |
 
-Không lane nào chứng minh Discourse, AI moderation, xác thực, publish/withdraw, hiệu năng hay
-triển khai. Chỉ có model Quint cấu trúc nhỏ của D2T-01; chưa có model moderation/publication,
-withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests PostgreSQL riêng.
+Không lane nào chứng minh AI moderation, xác thực, publish/withdraw, hiệu năng hay triển khai.
+Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận (D2T-02a) có test domain trong
+`quick` và test PostgreSQL thật trong `postgres`, chưa có model, HTTP hay browser. Draft CAS vẫn có boundary tests PostgreSQL riêng.
 
 ## Lựa chọn bootstrap và điều kiện xem xét lại
 
@@ -361,7 +365,9 @@ withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests Postgr
   process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
 - Gửi duyệt, moderation người/AI, publish intent, publish/withdraw, curation, Tạp Chí
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). Chỉ seed local tạo `publications`.
-- Discourse, outbox, inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào.
+- UI bình luận, route và authority kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, outbox,
+  inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào. Discourse không còn trong
+  phạm vi (Vink sở hữu bình luận).
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
   Undo/redo và composition mô phỏng đã có trong editor CodeMirror, chưa phải bằng chứng IME hệ
   điều hành.
@@ -381,6 +387,7 @@ withdrawal, worker hoặc browser ack. Draft CAS vẫn có boundary tests Postgr
    seam `IdentityResolver`, cookie/CSRF, liên kết principal; thử đổi email, ban, logout.
 3. **WR-03 + PUB-01/02 trên PostgreSQL (nền cho S-04):** tạo revision bất biến từ nháp khi gửi,
    ý định xuất bản, publish transaction ghi con trỏ + audit + outbox, test r1/r2.
-4. **S-02 Discourse:** pin release và plugin, thử cổng tiền kiểm trước khi viết adapter.
+4. **Bình luận:** authority kiểm duyệt + hàng đợi duyệt, model Quint vòng đời, rồi UI hai tầng
+   (#45) trên API v1 đã có; xem [registry](discussion-core.md).
 5. **S-05 AI + vận hành:** bộ mẫu tiếng Việt, schema output và job lease trong worker; giữ
    AI ở chế độ tư vấn cho tới khi MOD-06 có bằng chứng.

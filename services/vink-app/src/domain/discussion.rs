@@ -1,9 +1,14 @@
-//! Two-tier structural decisions for D2T-01. There is no comment body, visibility,
-//! authorization or persistence here. A successful decision is not a durable write.
+//! Two-tier discussion decisions, owned by Vink (owner decision 03/11/2026,
+//! `docs/architecture/discussion-ownership.md`). This file holds the structural seam (D2T-01):
+//! roots, one flat list of replies and context normalization. The submodules hold the other pure
+//! decisions: body text, lifecycle, per-work comments mode, permissions, viewer visibility,
+//! idempotent submission and paging. Nothing here performs I/O; a successful decision is not a
+//! durable write.
 //!
-//! The owning application must obtain current thread/actor facts and the eventual storage
-//! adapter must enforce identity uniqueness and recheck access at commit. This pure aggregate
-//! has no I/O and is not a request handler, cache, public projection or database substitute.
+//! The PostgreSQL adapter loads facts in a transaction and calls these same functions; the
+//! database independently enforces identity uniqueness and the two tiers. [`DiscussionThread`] is
+//! the in-memory aggregate that the Quint trace replay drives; it shares [`reply_placement`]
+//! with the adapter, so both go through one normalization seam.
 //!
 //! A reply target is looked up in this thread, never accepted as a client-supplied root.
 //! Replying to a reply preserves context but does not create another structural level.
@@ -19,6 +24,17 @@
 //! let comment = CommentId::parse("11111111-1111-4111-8111-111111111111").unwrap();
 //! let root: RootCommentId = comment;
 //! ```
+
+pub mod body;
+pub mod lifecycle;
+#[cfg(test)]
+mod lifecycle_replay;
+pub mod moderation;
+pub mod page;
+pub mod policy;
+pub mod settings;
+pub mod submission;
+pub mod visibility;
 
 use super::ids::{CommentId, ThreadId};
 
@@ -78,6 +94,84 @@ impl CommentPlacement {
     pub const fn is_root(self) -> bool {
         matches!(self.position, Position::Root)
     }
+
+    /// Rehydrates a placement the adapter READ from storage. Never call it with request data:
+    /// clients name a target, not a position. It rejects shapes that are impossible in any thread
+    /// (self root, self/root context); that `root_id` really is a root of `thread_id` and that a
+    /// context is a reply of the same root are enforced by the database's composite keys, which
+    /// this row already passed. Run the PostgreSQL suite for that boundary.
+    pub fn from_stored(
+        id: CommentId,
+        thread_id: ThreadId,
+        position: StoredPosition,
+    ) -> Result<Self, StoredPlacementError> {
+        let position = match position {
+            StoredPosition::Root => Position::Root,
+            StoredPosition::Reply { root_id, reply_to } => {
+                if root_id == id || reply_to == Some(id) || reply_to == Some(root_id) {
+                    return Err(StoredPlacementError);
+                }
+                Position::Reply {
+                    root_id: RootCommentId(root_id),
+                    reply_to,
+                }
+            }
+        };
+        Ok(Self {
+            id,
+            thread_id,
+            position,
+        })
+    }
+}
+
+/// Raw position columns of a stored comment, before [`CommentPlacement::from_stored`] checks them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StoredPosition {
+    Root,
+    Reply {
+        root_id: CommentId,
+        reply_to: Option<CommentId>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[error("stored comment placement is not a valid two-tier position")]
+pub struct StoredPlacementError;
+
+/// A new root of `thread_id`. Roots have no context.
+pub const fn root_placement(thread_id: ThreadId, id: CommentId) -> CommentPlacement {
+    CommentPlacement {
+        id,
+        thread_id,
+        position: Position::Root,
+    }
+}
+
+/// The one normalization seam for a reply. `target` must have been looked up by the server in
+/// the server-selected thread (the aggregate below or the adapter under a row lock); a placement
+/// from another thread is `TargetNotFound`. Replying to a reply keeps that reply as context and
+/// its root as the structural parent, so no third tier exists. A direct reply to a root encodes
+/// its context as `None`, never as the root ID.
+pub fn reply_placement(
+    thread_id: ThreadId,
+    id: CommentId,
+    target: CommentPlacement,
+) -> Result<CommentPlacement, StructureError> {
+    if target.thread_id != thread_id {
+        return Err(StructureError::TargetNotFound);
+    }
+    if target.id == id {
+        return Err(StructureError::CommentExists);
+    }
+    Ok(CommentPlacement {
+        id,
+        thread_id,
+        position: Position::Reply {
+            root_id: target.root_id(),
+            reply_to: (!target.is_root()).then_some(target.id),
+        },
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -121,11 +215,7 @@ impl DiscussionThread {
 
     pub fn create_root(&mut self, id: CommentId) -> Result<CommentPlacement, StructureError> {
         self.ensure_new(id)?;
-        let placement = CommentPlacement {
-            id,
-            thread_id: self.id,
-            position: Position::Root,
-        };
+        let placement = root_placement(self.id, id);
         self.comments.push(placement);
         Ok(placement)
     }
@@ -141,14 +231,7 @@ impl DiscussionThread {
         let target = self
             .comment(target_id)
             .ok_or(StructureError::TargetNotFound)?;
-        let placement = CommentPlacement {
-            id,
-            thread_id: self.id,
-            position: Position::Reply {
-                root_id: target.root_id(),
-                reply_to: (!target.is_root()).then_some(target.id),
-            },
-        };
+        let placement = reply_placement(self.id, id, target)?;
         self.comments.push(placement);
         Ok(placement)
     }
@@ -253,6 +336,68 @@ mod tests {
         assert_eq!(state, before);
         assert_eq!(state.comment(root.id()), Some(root));
         assert_eq!(state.comment(reply.id()), Some(reply));
+    }
+
+    #[test]
+    fn the_shared_reply_seam_rejects_foreign_targets_and_self_targets() {
+        let mut state = thread(10);
+        let root = state.create_root(comment(1)).unwrap();
+        let reply = state.create_reply(comment(2), root.id()).unwrap();
+        let foreign = ThreadId::from_uuid(Uuid::from_u128(20));
+
+        assert_eq!(
+            reply_placement(foreign, comment(3), reply),
+            Err(StructureError::TargetNotFound)
+        );
+        assert_eq!(
+            reply_placement(state.id(), reply.id(), reply),
+            Err(StructureError::CommentExists)
+        );
+        let contextual = reply_placement(state.id(), comment(3), reply).unwrap();
+        assert_eq!(contextual.root_id(), root.root_id());
+        assert_eq!(contextual.reply_to(), Some(reply.id()));
+        let direct = reply_placement(state.id(), comment(4), root).unwrap();
+        assert_eq!(
+            direct.reply_to(),
+            None,
+            "a root target is never encoded as context"
+        );
+    }
+
+    #[test]
+    fn stored_positions_round_trip_and_impossible_shapes_are_rejected() {
+        let mut state = thread(10);
+        let root = state.create_root(comment(1)).unwrap();
+        let first = state.create_reply(comment(2), root.id()).unwrap();
+        let second = state.create_reply(comment(3), first.id()).unwrap();
+        for placement in [root, first, second] {
+            let stored = if placement.is_root() {
+                StoredPosition::Root
+            } else {
+                StoredPosition::Reply {
+                    root_id: placement.root_id().as_comment_id(),
+                    reply_to: placement.reply_to(),
+                }
+            };
+            assert_eq!(
+                CommentPlacement::from_stored(placement.id(), state.id(), stored),
+                Ok(placement)
+            );
+        }
+        for (id, root_id, reply_to) in [
+            (comment(5), comment(5), None),
+            (comment(5), comment(1), Some(comment(5))),
+            (comment(5), comment(1), Some(comment(1))),
+        ] {
+            assert_eq!(
+                CommentPlacement::from_stored(
+                    id,
+                    state.id(),
+                    StoredPosition::Reply { root_id, reply_to }
+                ),
+                Err(StoredPlacementError)
+            );
+        }
     }
 
     fn assert_structure(state: &DiscussionThread) {
