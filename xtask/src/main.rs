@@ -249,7 +249,7 @@ fn copy_fonts(from: &Path, to: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Serve committed brand derivatives only; extraction tools and reference/evidence stay off-site.
+/// Serve committed brand assets only; the selected ZIP and review boards stay outside the site.
 fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
     if to.exists() {
         std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
@@ -259,7 +259,7 @@ fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
         let path = entry.map_err(|e| format!("read brand entry: {e}"))?.path();
         if matches!(
             path.extension().and_then(|ext| ext.to_str()),
-            Some("avif" | "svg" | "webmanifest")
+            Some("png" | "svg" | "webmanifest")
         ) {
             std::fs::copy(&path, to.join(path.file_name().expect("brand file name")))
                 .map_err(|e| format!("copy brand {}: {e}", path.display()))?;

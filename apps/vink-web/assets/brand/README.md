@@ -1,34 +1,37 @@
-# Logo Enso Vink — nguồn và rendition
+# Logo Vink — bộ đã chọn ngày 03/11/2026
 
-Nguồn duy nhất: [ảnh đối chiếu light/dark đã chốt trong #10](https://drive.google.com/file/d/1hHQguADQ2tbiNjQ9r8WqMnYUSEnkAyYs/view),
-`vink-enso-feather-v3-light-dark-comparison.png`, 1774 × 887, sửa ngày 01/11/2026.
-SHA-256: `ee10182451ce3b658d5d5160f3011e9334ab1f5fa4388d9cb751bb6076cf6cad`.
-Không dùng `ink-v2` hay hình được tạo lại. Đây là nhận diện Vink/Việt Ink theo hướng
-Enso, không phải tuyên bố biểu tượng tôn giáo chính thức.
+Nguồn hiện hành: [#34](https://github.com/loveoverflowcom/vink/issues/34),
+[ZIP gốc](../../../../docs/design/brand/final-selected/Vink_Logo_Final_Selected_Pack.zip).
+SHA-256: `46acba3f22e5b684a1a72f4518d3de6cce0906f0511ef11472a92a056008eac4`.
+ZIP có 24 tệp; bản trong repo khớp byte với file người dùng cung cấp.
+[Hồ sơ lựa chọn và khác biệt board](../../../../docs/design/brand/final-selected/README.md).
+Logo Enso trích raster của #10/PR #17 là lịch sử, đã được thay trong consumer Web.
 
-Hai nửa 887 × 887 được lưu nguyên trong evidence khi trích. Cùng crop `(80, 80, 800, 800)`
-trong mỗi nửa giữ vòng lông vũ, khoảng hở, giọt mực và ngòi bút. Tách nền mềm bằng khoảng
-cách màu so với trường màu nội suy từ viền ảnh; không xoay, vẽ thêm hay đảo màu.
-AVIF giữ màu/highlight của từng nửa riêng, alpha trong suốt, quality 95 và chroma 4:4:4;
-24/32/48/96/192/512 px đều được xuất trực tiếp từ crop 720 px bằng Lanczos.
+## Asset và cách dùng
 
-SVG là bản vector giản lược bằng VTracer spline, palette rút gọn, bỏ nhiễu nhỏ và halo nền.
-Cặp vector dùng đường bao trích từ nửa light để giữ cấu trúc chung; màu vẫn lấy từ pixel
-của từng nửa. Đây là giản lược có chủ đích, không khẳng định SVG/AVIF lossy khớp từng pixel
-với PNG. AVIF là rendition chính trong shell vì giữ chi tiết/highlight tốt hơn.
+- Sáu `vink-mark-*.svg` và 12 `vink-{light,dark}-{24,32,48,96,192,512}.png`
+  được chép **nguyên byte** từ selected pack. Không crop, vẽ lại, invert, nén lossy hay đổi gradient.
+- Shell rail/header mobile dùng SVG chuẩn Light/Dark, giữ vùng vuông 2,25rem và wordmark
+  Literata hiện có. Chọn theme bằng CSS `data-theme`/`prefers-color-scheme`; preload hai SVG
+  nhỏ trước stylesheet. Chữ/accessible name/focus và dirty guard thuộc shell hiện có.
+- Favicon có JS dùng SVG compact theo preference thật. `favicon.svg` ghép nguyên defs/path
+  của hai bản compact, dùng media query theo OS khi không có JavaScript. Compact lược khe
+  trang trí trên vòng và mở lỗ ngòi cho 16/24/32px; PNG 24/32 trong pack dùng bản compact.
+- Manifest Light/Dark dùng PNG 192/512px và SVG chuẩn dự phòng, `purpose: any`.
+  Chưa có thiết kế safe area maskable, service worker hay app native production.
+- `vink-mark-mono*.svg` được giữ cho bàn giao, chưa có consumer hiện hành.
 
-- Shell giữ vùng mark 2.25rem hiện có, dùng AVIF 96px cho cả DPR 1/2; không đẩy layout khi decode.
-- CSS theo cùng `data-theme`/`prefers-color-scheme` với token owner; không dùng filter invert.
-- Hai SVG riêng làm favicon theo theme. `favicon.svg` có media query cho fallback khi không
-  chạy JavaScript; bootstrap trước stylesheet đồng bộ favicon/manifest với preference thật.
-- Manifest light/dark có AVIF 192/512 cùng SVG dự phòng; không có icon maskable vì chưa thiết kế
-  safe area. Manifest không có nghĩa đã có service worker, offline hay native app.
-- Build chỉ copy `.avif`, `.svg`, `.webmanifest` tới `/pkg/brand/`; không phục vụ ảnh nguồn,
-  script hay provenance. Repository checks đối chiếu hash và đủ sáu kích thước mỗi theme.
+## Build và provenance
 
-`extract.py` là công cụ authoring tùy chọn, không cần khi build app. Dùng Python với Pillow
-12.0.0, numpy 2.3.4, vtracer 0.6.12; truyền đường dẫn PNG đã tải từ Drive và thư mục evidence.
-Script từ chối hash nguồn khác. `provenance.json` ghi crop, kích thước, dung lượng và hash
-của mọi derivative được phục vụ. PNG chỉ ở evidence; xem phạm vi kiểm trong
-[design](../../../../docs/design/README.md#logo-enso-10) và
-[feature map](../../../../docs/development/feature-map.md).
+`cargo xtask build` chỉ copy `.png`, `.svg`, `.webmanifest` trong thư mục này tới
+`/pkg/brand/`, xóa output brand cũ trước khi copy. ZIP/board/tài liệu/provenance không được
+phục vụ trong site. Tên SVG/PNG mới tách cache khỏi `enso-*`; head/CSS dùng cùng tên mới.
+
+`provenance.json` ghi hash/byte của 24 tệp gốc và mọi asset được phục vụ. Repository checks
+kiểm ZIP gốc, hash runtime, đủ 6 SVG/12 PNG và hash các bản chép so với source manifest.
+Không cần CairoSVG/Pillow hoặc công cụ trích raster khi build app. Thay artwork cần đối chiếu
+lại nguồn đã chọn; không chỉ cập nhật hash để hợp thức hóa một bản khác.
+
+Bằng chứng app và giới hạn ở [baseline logo](../../../../docs/design/README.md#logo-final-selected-34)
+và [feature map](../../../../docs/development/feature-map.md). Browser smoke kiểm MIME/decode,
+manifest, theme/first paint trước hydration và giữ các regression editor/navigation hiện có.

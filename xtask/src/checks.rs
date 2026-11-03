@@ -51,9 +51,44 @@ fn brand(root: &Path, problems: &mut Vec<String>) {
             _ => problems.push(format!("{BRAND_DIR}/{name}: missing or SHA-256 differs")),
         }
     }
+    if let Some(record) = record.as_ref() {
+        let reference = record["reference_path"].as_str().unwrap_or_default();
+        match std::fs::read(root.join(reference)) {
+            Ok(bytes)
+                if record["reference_sha256"].as_str() == Some(sha256_hex(&bytes).as_str()) => {}
+            _ => problems.push(format!(
+                "{BRAND_DIR}: selected ZIP is missing or SHA-256 differs"
+            )),
+        }
+        // The selected artwork is copied verbatim; only the composed favicon and manifests
+        // are app-owned derivatives. A new checksum must not silently bless a redrawn logo.
+        for (name, entry) in files {
+            if name.starts_with("vink-")
+                && record["source_files"][name]["sha256"] != entry["sha256"]
+            {
+                problems.push(format!(
+                    "{BRAND_DIR}/{name}: differs from the selected source"
+                ));
+            }
+        }
+    }
+    for name in [
+        "vink-mark-light.svg",
+        "vink-mark-dark.svg",
+        "vink-mark-light-compact.svg",
+        "vink-mark-dark-compact.svg",
+        "vink-mark-mono.svg",
+        "vink-mark-mono-compact.svg",
+    ] {
+        if !files.contains_key(name) {
+            problems.push(format!(
+                "{BRAND_DIR}/{name}: not recorded in provenance.json"
+            ));
+        }
+    }
     for theme in ["light", "dark"] {
         for size in [24, 32, 48, 96, 192, 512] {
-            let name = format!("enso-{theme}-{size}.avif");
+            let name = format!("vink-{theme}-{size}.png");
             if !files.contains_key(&name) {
                 problems.push(format!(
                     "{BRAND_DIR}/{name}: not recorded in provenance.json"

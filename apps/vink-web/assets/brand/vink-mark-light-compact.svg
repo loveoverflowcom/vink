@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Vink — vòng mực và ngòi bút">
+<title>Vink — circular refinement v4</title>
+<defs><linearGradient id="vink-ink-light" x1="166" y1="28" x2="88" y2="228" gradientUnits="userSpaceOnUse"><stop stop-color="#D7A5EF"/><stop offset=".52" stop-color="#A76BCC"/><stop offset="1" stop-color="#70429B"/></linearGradient></defs>
+<path fill="url(#vink-ink-light)" fill-rule="evenodd" d="M 128 24 A 104 104 0 0 0 24 128 A 104 104 0 0 0 128 232 A 104 104 0 0 0 218.0666 180 C 220.0666 176.5359 220.66 174.98 221.5 171.5 L 232 128 C 218 137 207 142 199 144 C 195 145 191.7298 145.8749 190.0197 150.5733 A 66 66 0 0 1 128 194 A 66 66 0 0 1 62 128 A 66 66 0 0 1 128 62 C 150 62 164 85 189 84 C 210 83 226 69 232 52 C 212 61 195 49 176 37 C 160 27 144 24 128 24 Z M 232 128 L 208.1492 159.9201 A 6 6 0 1 1 205.0691 157.3681 Z"/>
+</svg>

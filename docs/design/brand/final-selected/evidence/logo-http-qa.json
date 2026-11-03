@@ -1,0 +1,42 @@
+[
+  {
+    "file": "vink-mark-light.svg",
+    "content_type": "image/svg+xml",
+    "last_modified": "Tue, 03 Nov 2026 04:57:07 GMT",
+    "cache_control": null,
+    "conditional_status": 200,
+    "bytes_match_source": true
+  },
+  {
+    "file": "vink-mark-dark-compact.svg",
+    "content_type": "image/svg+xml",
+    "last_modified": "Tue, 03 Nov 2026 04:57:07 GMT",
+    "cache_control": null,
+    "conditional_status": 200,
+    "bytes_match_source": true
+  },
+  {
+    "file": "vink-light-512.png",
+    "content_type": "image/png",
+    "last_modified": "Tue, 03 Nov 2026 04:57:07 GMT",
+    "cache_control": null,
+    "conditional_status": 200,
+    "bytes_match_source": true
+  },
+  {
+    "file": "manifest-dark.webmanifest",
+    "content_type": "application/manifest+json",
+    "last_modified": "Tue, 03 Nov 2026 04:57:07 GMT",
+    "cache_control": null,
+    "conditional_status": 200,
+    "bytes_match_source": true
+  },
+  {
+    "file": "favicon.svg",
+    "content_type": "image/svg+xml",
+    "last_modified": "Tue, 03 Nov 2026 04:57:07 GMT",
+    "cache_control": null,
+    "conditional_status": 200,
+    "bytes_match_source": true
+  }
+]

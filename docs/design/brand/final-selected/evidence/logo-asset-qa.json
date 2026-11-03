@@ -1,0 +1,53 @@
+{
+  "checks": [
+    {
+      "size": 24,
+      "alphaEqual": true
+    },
+    {
+      "size": 32,
+      "alphaEqual": true
+    },
+    {
+      "size": 48,
+      "alphaEqual": true
+    },
+    {
+      "size": 96,
+      "alphaEqual": true
+    },
+    {
+      "size": 192,
+      "alphaEqual": true
+    },
+    {
+      "size": 512,
+      "alphaEqual": true
+    },
+    {
+      "size": 24,
+      "alphaEqual": true
+    },
+    {
+      "size": 32,
+      "alphaEqual": true
+    },
+    {
+      "size": 48,
+      "alphaEqual": true
+    },
+    {
+      "size": 96,
+      "alphaEqual": true
+    },
+    {
+      "size": 192,
+      "alphaEqual": true
+    },
+    {
+      "size": 512,
+      "alphaEqual": true
+    }
+  ],
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36"
+}

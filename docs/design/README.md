@@ -21,7 +21,8 @@ nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner 
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
-| [Cặp logo Enso light/dark chính thức](https://drive.google.com/file/d/1hHQguADQ2tbiNjQ9r8WqMnYUSEnkAyYs/view), quyết định 01/11/2026 ([#10](https://github.com/loveoverflowcom/vink/issues/10)) | Nguồn artwork cho logo; thay hướng vết mực v2 |
+| [Selected pack 03/11/2026](brand/final-selected/README.md), [#34](https://github.com/loveoverflowcom/vink/issues/34) | Nguồn logo hiện hành: SVG/PNG nguyên bản; ZIP và manifest SHA được lưu trong repo |
+| [Logo Enso 01/11/2026](https://github.com/loveoverflowcom/vink/issues/10), PR #17 | Lịch sử đã được selected pack #34 thay thế; không còn là source artwork hiện hành |
 
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
 Khám phá/reader theo v3; palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
@@ -36,10 +37,10 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
   trong ảnh chụp và ZIP v2.3. Thứ tự tab không tự đổi màn khởi động; `/` vẫn là trang công khai.
 - [#7](https://github.com/loveoverflowcom/vink/issues/7) triển khai rail/bar, nhãn Khám phá,
   Tôi và preference Sáng/Tối/Hệ thống; spec và owner ở dưới.
-- **Logo Enso lông vũ + ngòi bút** được trích từ cặp chính thức của
-  [#10](https://github.com/loveoverflowcom/vink/issues/10), thay mark chữ “V”.
-  [Nguồn/crop/rendition](../../apps/vink-web/assets/brand/README.md) giữ provenance của hai
-  theme, AVIF sáu kích thước và SVG giản lược; không dùng lại logo vết mực v2.
+- **Logo vòng mực + ngòi bút selected #34** dùng nguyên SVG Light/Dark của bộ được chọn.
+  [Nguồn và cách dùng](../../apps/vink-web/assets/brand/README.md) giữ 6 SVG, 12 PNG và provenance;
+  [ZIP/board](brand/final-selected/README.md) là hồ sơ lựa chọn. Shell dùng SVG chuẩn, favicon
+  dùng compact; manifest dùng PNG. Enso #10 và các concept trước là lịch sử.
 
 ## Màu và theme
 
@@ -328,6 +329,9 @@ SSR/API, bố cục hữu hạn và phạm vi kiểm chứng. Lớp đọc khôn
 
 ## Logo Enso #10
 
+**Lịch sử:** phần dưới ghi implementation 01/11; asset và hướng nguồn được thay bằng
+[selected pack #34](#logo-final-selected-34) ngày 03/11/2026.
+
 LayoutSpec vùng r1 đã trình bày trước patch ngày 01/11/2026, nền `develop@738e6c6`.
 
 ```text
@@ -354,3 +358,32 @@ khi chặn riêng hydration bundle; `assertBrand` kiểm theme/geometry, kể c�
 storage. `shellWithDirtyEditor` giữ kiểm instance, selection, text, save và brand dirty guard.
 PNG/manifest môi trường do lane web tạo là bằng chứng render; kết quả lần chạy được ghi ở PR,
 không suy ra PASS chỉ từ các assertions tồn tại.
+
+## Logo Final Selected #34
+
+LayoutSpec vùng r1, trình bày trước patch ngày 03/11/2026, nền `develop@cbcbe0d`.
+Nguồn: [selected pack, board và quy tắc trung thực](brand/final-selected/README.md).
+
+```text
+Region #brand — link trang chủ và chữ Vink hiện có
+  Region #brand-mark — SVG chuẩn Light/Dark, khung vuông 2,25rem
+  Region #brand-name — Literata, ẩn như cũ khi rail thu
+Region #head-icons — compact favicon + PNG/SVG trong manifest
+Region #source-record — ZIP nguyên bản + SHA, không phục vụ trong site
+```
+
+Rail mở/thu 220/96px và header mobile dùng cùng mark chuẩn, theo `data-theme`/OS bằng CSS;
+favicon compact theo cùng authority qua bootstrap trước stylesheet, fallback không JS theo OS.
+Giữ frame cố định trước/sau decode, không scale lệch hai trục. Không thay token, wordmark,
+CTA, đường link, accessible name hay editor/dirty guard. Không có consumer logo trong CMP
+product hiện hành; không đưa branding app vào thư viện primitive hoặc mẫu chẩn đoán.
+
+Board có hiệu ứng và hình khối khác SVG/PNG; source production là asset đã chọn nguyên byte,
+board chỉ tham khảo trình bày. Không khẳng định visual parity với board hay nghiệm thu app
+của người dùng. Compact dùng cho 16/24/32px; PNG pack có đủ 24–512px.
+
+Owner: `apps/vink-web/assets/brand` giữ source/provenance, `vink.css` chọn mark theo theme,
+`lib.rs` preload/head, `appearance.rs` đồng bộ favicon/manifest; `xtask` copy PNG/SVG/manifest
+và kiểm SHA. `brandAssets`/`assertBrand` theo tên mới, giữ các kịch bản hydration, reload,
+OS theme, denied storage và editor guard. Kết quả chạy và ảnh được mở ghi ở PR cho đúng HEAD;
+không suy ra PASS từ sự tồn tại của assertions.

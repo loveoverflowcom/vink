@@ -1,10 +1,8 @@
 {
-  "reference_url": "https://drive.google.com/file/d/1hHQguADQ2tbiNjQ9r8WqMnYUSEnkAyYs/view",
-  "reference_sha256": "ee10182451ce3b658d5d5160f3011e9334ab1f5fa4388d9cb751bb6076cf6cad",
-  "reference_size": [
-    1774,
-    887
-  ],
+  "selection": "Vink_Logo_Final_Selected_Pack.zip — #34, 03/11/2026",
+  "reference_issue": "https://github.com/loveoverflowcom/vink/issues/34",
+  "reference_path": "docs/design/brand/final-selected/Vink_Logo_Final_Selected_Pack.zip",
+  "reference_sha256": "46acba3f22e5b684a1a72f4518d3de6cce0906f0511ef11472a92a056008eac4",
   "sizes": [
     24,
     32,
@@ -13,104 +11,194 @@
     192,
     512
   ],
-  "files": {
-    "enso-dark-192.avif": {
-      "sha256": "b8d45e86bdb897c873565d1666a471c6264f422c1e8130efe032b6b4a0002855",
-      "bytes": 27184
+  "source_files": {
+    "README.md": {
+      "sha256": "0c192d0ed92e90838f2bdc0293dfa6c325a50aab4e3aaa22684135750bb14c72",
+      "bytes": 586
     },
-    "enso-dark-24.avif": {
-      "sha256": "983b052d1e533c306098adbd9c0db032b85f55a138980967f064da8301cca085",
-      "bytes": 2048
+    "issue_update.md": {
+      "sha256": "9b594a332fc1ea01336b486f9e9c33bdc112cee500887642c214e9d696b120fc",
+      "bytes": 822
     },
-    "enso-dark-32.avif": {
-      "sha256": "b036e7fa501216f79af15004914929906fd07d702c99d117b655795890aeeee7",
-      "bytes": 2801
+    "preview.html": {
+      "sha256": "a2804ced21d14ddefee882d41124af3c08d520d741be77e60476ef34c2b03fc9",
+      "bytes": 2815
     },
-    "enso-dark-48.avif": {
-      "sha256": "e88f5fd3693479f04f8395a02550a5578318b52efb02aba5a64600dfd635c42a",
-      "bytes": 4623
+    "preview.svg": {
+      "sha256": "4ec86906738764483da1a1a9f6924d3abfb807a26068b94574109b2e6291b163",
+      "bytes": 6161
     },
-    "enso-dark-512.avif": {
-      "sha256": "4b66969fb48d58281662085282da74692f5ef55b1b80218b9327d214cfd92e40",
-      "bytes": 104048
+    "vink-dark-192.png": {
+      "sha256": "eee45ba209e13b2437654d3c5f66b7a0b5d05217a1e1616effef2766286d754c",
+      "bytes": 10207
     },
-    "enso-dark-96.avif": {
-      "sha256": "bfdf8c8a3e19c0ae3362bebfd4367d3e4d53370a98f516e0fac55785b52d346f",
-      "bytes": 10960
+    "vink-dark-24.png": {
+      "sha256": "ab1eecb51ed5049d394a3b0d4479b4e24df91f39b83dd3cb9092bd4b7a700134",
+      "bytes": 852
     },
-    "enso-dark.svg": {
-      "sha256": "9c73bf306ed32d50181ca2952e7f1c1599be0fdd098b1005d152db3ef00f984d",
-      "bytes": 21906
+    "vink-dark-32.png": {
+      "sha256": "696f5158a5da5b924014a05f28f8b47660f3bbfead677fc20b900485e944f98f",
+      "bytes": 1091
     },
-    "enso-light-192.avif": {
-      "sha256": "68da94ec3802462f4889c436e0b8b9114cdde3cebc3633f8d130ec581fda44a3",
-      "bytes": 29828
+    "vink-dark-48.png": {
+      "sha256": "7e4de4a8881d4fffe82e7d9db059af6573e5d3cb84149df8fd9e583dd565d789",
+      "bytes": 1957
     },
-    "enso-light-24.avif": {
-      "sha256": "9716af6e727d23ffa5f469e18ae68d154136e020d999189ff634d6331ca76610",
-      "bytes": 1952
+    "vink-dark-512.png": {
+      "sha256": "16387840c3c4a696d325ec50466b9d28572a8f3ce0437f460d0c286550eb5b82",
+      "bytes": 30912
     },
-    "enso-light-32.avif": {
-      "sha256": "59bcacc0cb76a052858b9401495127f6dd4b5a8129ccca9597337e1715ae70fe",
-      "bytes": 2818
+    "vink-dark-96.png": {
+      "sha256": "9f257bf8e022883b19d6021cf4d0b03b2cef081154b96414c8e0133f2cc07931",
+      "bytes": 4516
     },
-    "enso-light-48.avif": {
-      "sha256": "f52d081f55125f86bbf5159f5f6d1936f9b89fa78716d6e68b7bec6f9ee684bb",
-      "bytes": 4300
+    "vink-final-review-board.png": {
+      "sha256": "b331828830ed1783698390904dc58ee9305a54c6ace5cb0833fba1df6220d18a",
+      "bytes": 1477224
     },
-    "enso-light-512.avif": {
-      "sha256": "d1dbe12c13c0a92b6e24449517cb86860af616a9b37f9a2a6be95cbc6755c05e",
-      "bytes": 105149
+    "vink-light-192.png": {
+      "sha256": "03311fe689495dec420cd3779566cebe0c2c296be8e134cf08b32e6ef71b4cd9",
+      "bytes": 11102
     },
-    "enso-light-96.avif": {
-      "sha256": "4e321dfdbefbe4f09911c3d8efe81d66c9f167d393747d37b492135922c5fe09",
-      "bytes": 11883
+    "vink-light-24.png": {
+      "sha256": "26f70d10e236d7d6fd90fd7a28896658c803a4e1ad8a4731e4fff48f4c4122a2",
+      "bytes": 870
     },
-    "enso-light.svg": {
-      "sha256": "c5d935975cab8e05ccf4e64bc63a32c19e377dcc50858683d0b0fd52ae2ad0d8",
-      "bytes": 21102
+    "vink-light-32.png": {
+      "sha256": "ac7a2d3133b6f7250e115d210414a5ae88fc7d07d460d2a8da5d4ff67b27daa7",
+      "bytes": 1138
     },
-    "favicon.svg": {
-      "sha256": "a8a9b24b8cc5550605a6898869aaa4ffd4df7fe00b38f9aac30527519fc6c722",
-      "bytes": 45262
+    "vink-light-48.png": {
+      "sha256": "d0bb11befbe85b5af0667a6b144e975621e8178cbde6b34ea8e5b85acf0e9ec3",
+      "bytes": 1922
     },
-    "manifest-dark.webmanifest": {
-      "sha256": "5b2b4c690e5524412c3b59c1d63116c12c02666f0d9af5b0bc10af64a5e1d19d",
-      "bytes": 603
+    "vink-light-512.png": {
+      "sha256": "53b7db2e895c7765a1c8014ae38702caf2a509d0831dc8159c03b24ba1601f1d",
+      "bytes": 37197
     },
-    "manifest-light.webmanifest": {
-      "sha256": "4d09c18e04bd98da39a258baeacdc4b67b6d76b00771fe486106366b1dd1e34c",
-      "bytes": 606
+    "vink-light-96.png": {
+      "sha256": "4ab940a06f4a71cc81b268f30dcad850cef5abeeff5654200c8f374b39d971d6",
+      "bytes": 4336
+    },
+    "vink-logo-v4-preview.png": {
+      "sha256": "076aade3326dba66d0a8cc97599bc9a113f471ce17f44da100b8173cb089dff0",
+      "bytes": 120272
+    },
+    "vink-mark-dark-compact.svg": {
+      "sha256": "d9a025b1213ede650d0c0c01d54311da1370a632eefbdb3225522deca46edf74",
+      "bytes": 907
+    },
+    "vink-mark-dark.svg": {
+      "sha256": "0d02990ff6edb89fea3c8b1d07c6945c7b2b4fb906e58c853c1da74d09e6e64a",
+      "bytes": 966
+    },
+    "vink-mark-light-compact.svg": {
+      "sha256": "f9f06839148de2bafd83dc82530c04a9203373ee99a0bf5c4f42753c72af2338",
+      "bytes": 909
+    },
+    "vink-mark-light.svg": {
+      "sha256": "1635afcd2b281fba100d5b5c9ca55eb7a8bf0d4e3e1e2b34582c03debb55fa31",
+      "bytes": 968
+    },
+    "vink-mark-mono-compact.svg": {
+      "sha256": "af69aef4970409036c36cd5736831695906eb29cf5882557e29b07d805e99fd8",
+      "bytes": 662
+    },
+    "vink-mark-mono.svg": {
+      "sha256": "33d73adfa1add44c44beb201445d4681f515447d05016ea1a4991ee26bc7c67f",
+      "bytes": 721
     }
   },
-  "themes": {
-    "light": {
-      "source_half": [
-        0,
-        0,
-        887,
-        887
-      ],
-      "crop_in_half": [
-        80,
-        80,
-        800,
-        800
-      ]
+  "files": {
+    "favicon.svg": {
+      "sha256": "086c28421aec0f33690e21075b2bb09ca36a924420cd82253c48093d456c7798",
+      "bytes": 1684
     },
-    "dark": {
-      "source_half": [
-        887,
-        0,
-        1774,
-        887
-      ],
-      "crop_in_half": [
-        80,
-        80,
-        800,
-        800
-      ]
+    "manifest-dark.webmanifest": {
+      "sha256": "954298bd98bb9c57951596ea47bfa256b4bce1cea950a5ac43c25d8b5ecc0444",
+      "bytes": 604
+    },
+    "manifest-light.webmanifest": {
+      "sha256": "fd91e98b3a18fddf2b538a8a38c05dc76a6c876472113edfb89fe9d4467fb8bc",
+      "bytes": 607
+    },
+    "vink-dark-192.png": {
+      "sha256": "eee45ba209e13b2437654d3c5f66b7a0b5d05217a1e1616effef2766286d754c",
+      "bytes": 10207
+    },
+    "vink-dark-24.png": {
+      "sha256": "ab1eecb51ed5049d394a3b0d4479b4e24df91f39b83dd3cb9092bd4b7a700134",
+      "bytes": 852
+    },
+    "vink-dark-32.png": {
+      "sha256": "696f5158a5da5b924014a05f28f8b47660f3bbfead677fc20b900485e944f98f",
+      "bytes": 1091
+    },
+    "vink-dark-48.png": {
+      "sha256": "7e4de4a8881d4fffe82e7d9db059af6573e5d3cb84149df8fd9e583dd565d789",
+      "bytes": 1957
+    },
+    "vink-dark-512.png": {
+      "sha256": "16387840c3c4a696d325ec50466b9d28572a8f3ce0437f460d0c286550eb5b82",
+      "bytes": 30912
+    },
+    "vink-dark-96.png": {
+      "sha256": "9f257bf8e022883b19d6021cf4d0b03b2cef081154b96414c8e0133f2cc07931",
+      "bytes": 4516
+    },
+    "vink-light-192.png": {
+      "sha256": "03311fe689495dec420cd3779566cebe0c2c296be8e134cf08b32e6ef71b4cd9",
+      "bytes": 11102
+    },
+    "vink-light-24.png": {
+      "sha256": "26f70d10e236d7d6fd90fd7a28896658c803a4e1ad8a4731e4fff48f4c4122a2",
+      "bytes": 870
+    },
+    "vink-light-32.png": {
+      "sha256": "ac7a2d3133b6f7250e115d210414a5ae88fc7d07d460d2a8da5d4ff67b27daa7",
+      "bytes": 1138
+    },
+    "vink-light-48.png": {
+      "sha256": "d0bb11befbe85b5af0667a6b144e975621e8178cbde6b34ea8e5b85acf0e9ec3",
+      "bytes": 1922
+    },
+    "vink-light-512.png": {
+      "sha256": "53b7db2e895c7765a1c8014ae38702caf2a509d0831dc8159c03b24ba1601f1d",
+      "bytes": 37197
+    },
+    "vink-light-96.png": {
+      "sha256": "4ab940a06f4a71cc81b268f30dcad850cef5abeeff5654200c8f374b39d971d6",
+      "bytes": 4336
+    },
+    "vink-mark-dark-compact.svg": {
+      "sha256": "d9a025b1213ede650d0c0c01d54311da1370a632eefbdb3225522deca46edf74",
+      "bytes": 907
+    },
+    "vink-mark-dark.svg": {
+      "sha256": "0d02990ff6edb89fea3c8b1d07c6945c7b2b4fb906e58c853c1da74d09e6e64a",
+      "bytes": 966
+    },
+    "vink-mark-light-compact.svg": {
+      "sha256": "f9f06839148de2bafd83dc82530c04a9203373ee99a0bf5c4f42753c72af2338",
+      "bytes": 909
+    },
+    "vink-mark-light.svg": {
+      "sha256": "1635afcd2b281fba100d5b5c9ca55eb7a8bf0d4e3e1e2b34582c03debb55fa31",
+      "bytes": 968
+    },
+    "vink-mark-mono-compact.svg": {
+      "sha256": "af69aef4970409036c36cd5736831695906eb29cf5882557e29b07d805e99fd8",
+      "bytes": 662
+    },
+    "vink-mark-mono.svg": {
+      "sha256": "33d73adfa1add44c44beb201445d4681f515447d05016ea1a4991ee26bc7c67f",
+      "bytes": 721
     }
+  },
+  "usage": {
+    "shell": "vink-mark-{light,dark}.svg (exact selected SVG)",
+    "favicon": "vink-mark-{light,dark}-compact.svg; favicon.svg combines those paths for no-JS OS theme",
+    "manifest": "selected PNG 192/512 + standard SVG, purpose any",
+    "review_board": "reference presentation only; not pixel-identical to selected SVG/PNG"
   }
 }
