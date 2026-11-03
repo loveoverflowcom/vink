@@ -103,6 +103,10 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
   6000ms (không phải chuyển động: không đổi khi giảm), `size.indicator` 20px và
   `size.edge-progress` 4px; thêm icon `warning`, `help`, `lock`, `block`, `refresh`. Khi nào dùng
   skeleton/arc/thanh, empty/lỗi/banner/snackbar/dialog: [Trạng thái và phản hồi](state-and-feedback.md).
+- UIS-04 (token 0.4.0) đưa kích thước shell #7 vào token: `size.rail-expanded` 220, `size.rail-compact`
+  96 (px Web, dp CMP), `size.nav-item` 52, `size.bottom-bar` 80; thêm icon Material `explore`, `menu`,
+  `menu-open` (thay path SVG nét vẽ tay của shell). Contract shell/điều hướng/lớp phủ:
+  [navigation.md](../../packages/ui-system/shared/navigation.md).
 
 ## Tương phản đo trên app
 
@@ -176,7 +180,12 @@ Shell #shell
 ```
 
 Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc định;
-[shell.rs](../../apps/vink-web/src/shell.rs) giữ rail/bar/dialog;
+[shell.rs](../../apps/vink-web/src/shell.rs) giữ đích Vink (`Destination::for_path` khớp nguyên
+segment như route: `/ban-vietnam`, `/tac-pham/a/b` là NotFound, không sáng đích nào), lớp phủ Tôi
+và chính sách responsive; từ UIS-04 (#22) shell render bằng `AdaptiveScaffold`, `NavigationRail`,
+`BottomNavigation`, `TopBar`, `NavUtility` của UI system, nên ID con của rail suy từ `navigation`
+(`#navigation-toggle`, `#navigation-primary`, `#navigation-account`, `#navigation-tooltip`) thay cho
+`#nav-primary`/`#account-bottom` trong cây trên;
 [appearance.rs](../../apps/vink-web/src/appearance.rs) giữ preference và initials;
 [me.rs](../../apps/vink-web/src/pages/me.rs) giữ `/toi`. CSS dùng palette/role hiện có, không
 thêm palette hay logo. `initials` ủy quyền cho `vink_ui::identity::initials` (UIS-02,
@@ -192,7 +201,9 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
   tài khoản chưa có được nói rõ. Không có nút đăng nhập/đăng xuất giả hay bộ đếm thành viên.
 - Overlay native `dialog` neo cạnh chân rail, nền trong suốt và ngoài dialog inert; focus vào
   radio đang chọn, Tab giữ bên trong, Escape/Đóng/bấm ngoài trả trigger. Resize về mobile đóng
-  overlay và focus main đang hiển thị; route, scroll và editor được giữ.
+  overlay và focus main đang hiển thị; route, scroll và editor được giữ. Một `OverlayLayer` giữ một
+  modal hoạt động; Back/Forward khi Tôi mở chỉ đóng Tôi (guard đẩy URL trang về), lần Back sau mới
+  tới guard editor. Sự kiện `close` đến muộn của lần đóng trước không đóng lớp phủ vừa mở lại.
 - Đổi theme/rail, mở/đóng overlay chỉ đổi preference/DOM shell, không lưu hay gọi guard. Nút
   Mở trang Tôi đóng overlay trước khi gọi `NavigationGuard.navigate`; link và back/forward dùng
   guard PR 02. Lưu lỗi/xung đột/treo giữ nguyên đường xuất và xác nhận rời không lưu.

@@ -1,32 +1,70 @@
-//! Adaptive navigation, independent of the route's lifetime and draft/save state.
+//! Vink's adaptive shell: its destinations, the Tôi utility overlay and the responsive policy,
+//! rendered with the UI system's navigation primitives (shared/navigation.md). Independent of the
+//! route's lifetime and of draft/save state: changing the frame never remounts `#noi-dung`.
 
 use leptos::html;
 use leptos::prelude::*;
 use leptos_router::hooks::use_location;
+use vink_ui::{
+    AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination,
+    NavLayout, NavUtility, NavigationRail, OverlayLayer, TopBar, WindowClass,
+};
 
-use crate::appearance::{AccountStatus, Appearance, Rail, ThemePicker};
+use crate::appearance::{AccountStatus, Appearance, ThemePicker};
 use crate::navigation::use_navigation_guard;
 
-#[derive(Clone, Copy)]
-enum IconKind {
+/// The Tôi overlay's id in the overlay layer and the DOM.
+const PROFILE: &str = "profile-menu";
+
+/// Vink's destinations. Reader pages belong to Khám phá, the editor to Bàn viết. Order is a
+/// navigation policy: it never changes the launch route `/`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Destination {
     Explore,
-    Write,
-    Person,
-    Rail,
+    Desk,
+    Me,
 }
 
-#[component]
-fn Icon(kind: IconKind) -> impl IntoView {
-    let path = match kind {
-        IconKind::Explore => "m16 8-3 5-5 3 3-5 5-3ZM12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z",
-        IconKind::Write => "m15 5 4 4M4 20l4-1L20 7a2.8 2.8 0 0 0-4-4L4 15v5Z",
-        IconKind::Person => "M20 21v-2a7 7 0 0 0-14 0v2M13 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
-        IconKind::Rail => "M9 3v18M3 3h18v18H3V3Zm10 6 3 3-3 3",
-    };
-    view! {
-        <svg class="vk-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d=path />
-        </svg>
+impl Destination {
+    /// The destination a routed path belongs to, matched by whole segments like the router's
+    /// routes in `lib.rs`; anything the router renders as NotFound marks none.
+    pub fn for_path(path: &str) -> Option<Self> {
+        match segments(path)[..] {
+            [] | ["tac-pham", _] => Some(Self::Explore),
+            ["ban-viet"] | ["ban-viet", _] => Some(Self::Desk),
+            ["toi"] => Some(Self::Me),
+            _ => None,
+        }
+    }
+
+    const fn key(self) -> &'static str {
+        match self {
+            Self::Explore => "explore",
+            Self::Desk => "desk",
+            Self::Me => "me",
+        }
+    }
+
+    fn nav(self) -> NavDestination {
+        let (label, icon, href) = match self {
+            Self::Explore => ("Khám phá", IconName::Explore, "/"),
+            Self::Desk => ("Bàn viết", IconName::Edit, "/ban-viet"),
+            Self::Me => ("Tôi", IconName::Person, "/toi"),
+        };
+        NavDestination::new(self.key(), label, icon, href)
+    }
+}
+
+fn segments(path: &str) -> Vec<&str> {
+    path.split('/').filter(|part| !part.is_empty()).collect()
+}
+
+/// The open draft editor: focused work, so the rail defaults to compact and the bar hides.
+fn editor_context(path: &str) -> NavContext {
+    let editor = matches!(segments(path)[..], ["ban-viet", _]);
+    NavContext {
+        compact_rail: editor,
+        hide_bar: editor,
     }
 }
 
@@ -41,182 +79,176 @@ fn Brand(#[prop(optional)] mobile: bool) -> impl IntoView {
 }
 
 #[component]
-fn PrimaryLinks() -> impl IntoView {
-    let location = use_location();
-    view! {
-        <a href="/" aria-current=move || {
-            let path = location.pathname.get();
-            (path == "/" || path.starts_with("/tac-pham/")).then_some("page")
-        }>
-            <Icon kind=IconKind::Explore /><span>"Khám phá"</span>
-        </a>
-        <a href="/ban-viet" aria-current=move || location.pathname.get().starts_with("/ban-viet").then_some("page")>
-            <Icon kind=IconKind::Write /><span>"Bàn viết"</span>
-        </a>
-    }
-}
-
-#[component]
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
     let location = use_location();
-    let editor = Memo::new(move |_| location.pathname.get().starts_with("/ban-viet/"));
-    let desktop = RwSignal::new(true);
-    let expanded = move || {
-        appearance.rail.get().map_or_else(
-            || desktop.get() && !editor.get(),
-            |rail| rail == Rail::Expanded,
-        )
-    };
+    let current = Memo::new(move |_| location.pathname.with(|path| Destination::for_path(path)));
+    let context = Memo::new(move |_| location.pathname.with(|path| editor_context(path)));
+    // The server renders the desktop frame's labels; CSS already sizes the rail before hydration.
+    let window_class = RwSignal::new(WindowClass::Expanded);
+    let layout = Memo::new(move |_| {
+        NavLayout::resolve(window_class.get(), context.get(), appearance.rail.get())
+    });
+    let overlays = RwSignal::new(OverlayLayer::default());
+    let profile_open = Memo::new(move |_| overlays.with(|layer| layer.is_open(PROFILE)));
     let profile = NodeRef::<html::Dialog>::new();
     let trigger = NodeRef::<html::Button>::new();
-    let bottom = NodeRef::<html::Nav>::new();
-    let open = RwSignal::new(false);
     let page_scroll = StoredValue::new(0.0);
-    let tooltip = RwSignal::new(false);
-    let close = move || close_profile(profile, trigger, open, page_scroll);
+    let close = move |reason| close_profile(reason, overlays, profile, trigger, page_scroll);
     let navigation = use_navigation_guard();
+    // Back/forward and real navigations close the overlay before the editor's check runs.
+    let overlay_closer = navigation.set_overlay(close);
+    on_cleanup(move || navigation.clear_overlay(overlay_closer));
 
     #[cfg(feature = "hydrate")]
     {
         let listener = window_event_listener(leptos::ev::resize, move |_| {
-            desktop.set(viewport_width() >= 1100.0);
-            if viewport_width() < 760.0 && open.get_untracked() {
-                close();
+            let class = WindowClass::from_css_px(viewport_width());
+            window_class.set(class);
+            if class == WindowClass::Compact {
+                close(CloseReason::Resize);
             }
         });
-        let escape = window_event_listener(leptos::ev::keydown, move |event| {
-            if event.key() == "Escape" {
-                tooltip.set(false);
-            }
-        });
-        on_cleanup(move || {
-            listener.remove();
-            escape.remove();
-        });
-        Effect::new(move |_| {
-            desktop.set(viewport_width() >= 1100.0);
-            observe_bottom_bar(bottom);
-        });
+        on_cleanup(move || listener.remove());
+        Effect::new(move |_| window_class.set(WindowClass::from_css_px(viewport_width())));
     }
-    #[cfg(not(feature = "hydrate"))]
-    let _ = (desktop, bottom);
+
+    let active =
+        move |destination: Destination| Signal::derive(move || current.get() == Some(destination));
+    let primary = move || {
+        [Destination::Explore, Destination::Desk]
+            .into_iter()
+            .map(|destination| (destination.nav(), active(destination)))
+            .collect::<Vec<_>>()
+    };
+    let open_profile = Callback::new(move |()| {
+        #[cfg(feature = "hydrate")]
+        if let Some(dialog) = profile.get_untracked()
+            && overlays
+                .try_update(|layer| layer.open(PROFILE))
+                .is_some_and(|opened| opened.is_ok())
+        {
+            page_scroll.set_value(window().scroll_y().unwrap_or_default());
+            if dialog.show_modal().is_ok() {
+                // Focus the selected appearance choice, not an unrelated action.
+                use wasm_bindgen::JsCast;
+                if let Ok(Some(input)) = dialog.query_selector("input:checked")
+                    && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()
+                {
+                    let _ = input.focus();
+                }
+                restore_scroll(page_scroll);
+            } else {
+                overlays.update(|layer| {
+                    layer.close(PROFILE, CloseReason::Dismiss);
+                });
+            }
+        }
+    });
+    let toggle = Callback::new(move |()| {
+        // A click can arrive before the pending resize event updates the reactive layout.
+        // Toggle the rail the person actually sees now.
+        #[cfg(feature = "hydrate")]
+        let shown = NavLayout::resolve(
+            WindowClass::from_css_px(viewport_width()),
+            context.get_untracked(),
+            appearance.rail.get_untracked(),
+        );
+        #[cfg(not(feature = "hydrate"))]
+        let shown = layout.get_untracked();
+        if let Some(next) = shown.next_preference() {
+            appearance.set_rail(next);
+        }
+    });
 
     view! {
-        <div id="shell" class="vk-shell" data-editor=move || editor.get().to_string()>
-            <a class="vk-skip-link" href="#noi-dung">"Bỏ qua tới nội dung"</a>
-            <aside id="navigation" class="vk-rail" aria-label="Không gian Vink">
-                <Brand />
-                <div class="vk-rail-toggle">
-                    <button
-                        type="button"
-                        class="vk-icon-button"
-                        data-testid="rail-toggle"
-                        aria-label=move || if expanded() { "Thu gọn điều hướng" } else { "Mở rộng điều hướng" }
-                        aria-expanded=move || expanded().to_string()
-                        aria-controls="navigation"
-                        aria-describedby=move || tooltip.get().then_some("rail-tooltip")
-                        on:click=move |_| {
-                            // A click can arrive before the pending resize event updates the
-                            // reactive label. Toggle the width the person actually sees now.
-                            #[cfg(feature = "hydrate")]
-                            let expanded_now = appearance.rail.get_untracked().map_or_else(
-                                || viewport_width() >= 1100.0 && !editor.get_untracked(),
-                                |rail| rail == Rail::Expanded,
-                            );
-                            #[cfg(not(feature = "hydrate"))]
-                            let expanded_now = expanded();
-                            appearance.set_rail(if expanded_now { Rail::Compact } else { Rail::Expanded });
-                            tooltip.set(false);
-                        }
-                        on:mouseenter=move |_| tooltip.set(true)
-                        on:mouseleave=move |_| tooltip.set(false)
-                        on:focus=move |_| tooltip.set(true)
-                        on:blur=move |_| tooltip.set(false)
-                    >
-                        <Icon kind=IconKind::Rail />
-                    </button>
-                </div>
-                <nav id="nav-primary" class="vk-nav" aria-label="Điều hướng chính"><PrimaryLinks /></nav>
-                <div id="account-bottom" class="vk-account-bottom">
-                    <button
-                        class="vk-account-trigger"
-                        type="button"
-                        data-testid="profile-trigger"
-                        node_ref=trigger
-                        aria-haspopup="dialog"
-                        aria-controls="profile-menu"
-                        aria-expanded=move || open.get().to_string()
-                        aria-current=move || (location.pathname.get() == "/toi").then_some("page")
-                        on:click=move |_| {
-                            #[cfg(feature = "hydrate")]
-                            if let Some(dialog) = profile.get_untracked() {
-                                page_scroll.set_value(window().scroll_y().unwrap_or_default());
-                                if dialog.show_modal().is_ok() {
-                                    open.set(true);
-                                    // Focus the selected appearance choice, not an unrelated action.
-                                    use wasm_bindgen::JsCast;
-                                    if let Ok(Some(input)) = dialog.query_selector("input:checked")
-                                        && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()
-                                    {
-                                        let _ = input.focus();
-                                    }
-                                    restore_scroll(page_scroll);
-                                }
-                            }
-                        }
-                    ><Icon kind=IconKind::Person /><span>"Tôi"</span></button>
-                </div>
-            </aside>
-            <div class="vk-shell-content">
-                <header class="vk-mobile-header"><Brand mobile=true /></header>
-                {children()}
-            </div>
-            <nav id="bottom-navigation" class="vk-bottom-nav" aria-label="Điều hướng mobile" node_ref=bottom>
-                <PrimaryLinks />
-                <a href="/toi" aria-current=move || (location.pathname.get() == "/toi").then_some("page")>
-                    <Icon kind=IconKind::Person /><span>"Tôi"</span>
-                </a>
-            </nav>
-            // Outside the rail's scrolling/container-query boundary, so it cannot be clipped.
-            <span id="rail-tooltip" role="tooltip" class="vk-tooltip" hidden=move || !tooltip.get()>
-                {move || if expanded() { "Thu gọn điều hướng" } else { "Mở rộng điều hướng" }}
-            </span>
-            <dialog
-                id="profile-menu"
-                class="vk-profile-menu"
-                aria-labelledby="profile-title"
-                data-testid="profile-menu"
-                node_ref=profile
-                on:keydown=move |event| trap_profile_tab(event, profile)
-                on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); close(); }
-                on:close=move |_| open.set(false)
-                on:click=move |event: leptos::ev::MouseEvent| {
-                    #[cfg(feature = "hydrate")]
-                    if let Some(dialog) = profile.get_untracked() {
-                        let rect = dialog.get_bounding_client_rect();
-                        let (x, y) = (f64::from(event.client_x()), f64::from(event.client_y()));
-                        if x < rect.left() || x > rect.right() || y < rect.top() || y > rect.bottom() {
-                            close();
+        <AdaptiveScaffold
+            id="shell"
+            main_id="noi-dung"
+            skip_label="Bỏ qua tới nội dung"
+            context=context
+            rail=move || view! {
+                <NavigationRail
+                    id="navigation"
+                    label="Không gian Vink"
+                    nav_label="Điều hướng chính"
+                    expanded=Signal::derive(move || layout.get().rail_expanded())
+                    expand_label="Mở rộng điều hướng"
+                    collapse_label="Thu gọn điều hướng"
+                    on_toggle=toggle
+                    destinations=primary()
+                    brand=|| view! { <Brand /> }
+                    account=move || view! {
+                        <NavUtility
+                            id="profile-trigger"
+                            label="Tôi"
+                            icon=IconName::Person
+                            controls=PROFILE
+                            expanded=profile_open
+                            current=active(Destination::Me)
+                            on_open=open_profile
+                            node_ref=trigger
+                        />
+                    }
+                />
+            }
+            top_bar=|| view! { <TopBar brand=|| view! { <Brand mobile=true /> } /> }
+            bar=move || view! {
+                <BottomNavigation
+                    id="bottom-navigation"
+                    label="Điều hướng mobile"
+                    destinations=[Destination::Explore, Destination::Desk, Destination::Me]
+                        .into_iter()
+                        .map(|destination| (destination.nav(), active(destination)))
+                        .collect()
+                />
+            }
+            overlays=move || view! {
+                <dialog
+                    id=PROFILE
+                    class="vk-profile-menu"
+                    aria-labelledby="profile-title"
+                    data-testid="profile-menu"
+                    node_ref=profile
+                    on:keydown=move |event| trap_profile_tab(event, profile)
+                    on:cancel=move |event: leptos::ev::Event| { event.prevent_default(); close(CloseReason::Escape); }
+                    // A close the shell did not ask for still releases the overlay layer. The
+                    // event is queued, so one from an earlier close can arrive after a reopen:
+                    // only a dialog that is closed now releases it.
+                    on:close=move |_| {
+                        if profile.get_untracked().is_none_or(|dialog| !dialog.open()) {
+                            overlays.update(|layer| { layer.close(PROFILE, CloseReason::Dismiss); });
                         }
                     }
-                    #[cfg(not(feature = "hydrate"))]
-                    let _ = event;
-                }
-            >
-                <header class="vk-profile-heading">
-                    <h2 id="profile-title">"Tôi"</h2>
-                    <button type="button" class="vk-button vk-button--text" aria-label="Đóng Tôi" data-testid="profile-close" on:click=move |_| close()>
-                        "Đóng"
+                    on:click=move |event: leptos::ev::MouseEvent| {
+                        #[cfg(feature = "hydrate")]
+                        if let Some(dialog) = profile.get_untracked() {
+                            let rect = dialog.get_bounding_client_rect();
+                            let (x, y) = (f64::from(event.client_x()), f64::from(event.client_y()));
+                            if x < rect.left() || x > rect.right() || y < rect.top() || y > rect.bottom() {
+                                close(CloseReason::Outside);
+                            }
+                        }
+                        #[cfg(not(feature = "hydrate"))]
+                        let _ = event;
+                    }
+                >
+                    <header class="vk-profile-heading">
+                        <h2 id="profile-title">"Tôi"</h2>
+                        <button type="button" class="vk-button vk-button--text" aria-label="Đóng Tôi" data-testid="profile-close" on:click=move |_| { close(CloseReason::Dismiss); }>
+                            "Đóng"
+                        </button>
+                    </header>
+                    <AccountStatus />
+                    <ThemePicker group="overlay-theme" />
+                    <button type="button" class="vk-button vk-button--tonal" data-testid="open-me" on:click=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
+                        "Mở trang Tôi"
                     </button>
-                </header>
-                <AccountStatus />
-                <ThemePicker group="overlay-theme" />
-                <button type="button" class="vk-button vk-button--tonal" data-testid="open-me" on:click=move |_| { close(); navigation.navigate("/toi"); }>
-                    "Mở trang Tôi"
-                </button>
-            </dialog>
-        </div>
+                </dialog>
+            }
+        >
+            {children()}
+        </AdaptiveScaffold>
     }
 }
 
@@ -259,39 +291,50 @@ fn trap_profile_tab(event: leptos::ev::KeyboardEvent, profile: NodeRef<html::Dia
     let _ = (event, profile);
 }
 
+/// Closes the Tôi overlay if it is the active one and returns whether it did. Focus follows the
+/// overlay contract; this shell's `#noi-dung` outlives routes, so it is also where a starting
+/// navigation leaves focus.
 fn close_profile(
+    reason: CloseReason,
+    overlays: RwSignal<OverlayLayer>,
     profile: NodeRef<html::Dialog>,
     trigger: NodeRef<html::Button>,
-    open: RwSignal<bool>,
     page_scroll: StoredValue<f64>,
-) {
+) -> bool {
+    let closed = overlays
+        .try_update(|layer| layer.close(PROFILE, reason))
+        .flatten();
+    let Some(closed) = closed else {
+        return false;
+    };
     if let Some(dialog) = profile.get_untracked() {
         dialog.close();
     }
-    open.set(false);
     #[cfg(feature = "hydrate")]
     {
-        if let Some(trigger) = trigger.get_untracked()
-            && trigger.is_connected()
-            && trigger.get_bounding_client_rect().width() > 0.0
-        {
-            let options = web_sys::FocusOptions::new();
-            options.set_prevent_scroll(true);
-            let _ = trigger.focus_with_options(&options);
-        } else {
-            use wasm_bindgen::JsCast;
-            if let Some(main) = document().get_element_by_id("noi-dung")
-                && let Ok(main) = main.dyn_into::<web_sys::HtmlElement>()
-            {
-                let options = web_sys::FocusOptions::new();
-                options.set_prevent_scroll(true);
-                let _ = main.focus_with_options(&options);
+        use wasm_bindgen::JsCast;
+        let visible = trigger.get_untracked().filter(|trigger| {
+            trigger.is_connected() && trigger.get_bounding_client_rect().width() > 0.0
+        });
+        let options = web_sys::FocusOptions::new();
+        options.set_prevent_scroll(true);
+        match (closed.reason.focus_return(visible.is_some()), visible) {
+            (vink_ui::FocusReturn::Trigger, Some(trigger)) => {
+                let _ = trigger.focus_with_options(&options);
+            }
+            _ => {
+                if let Some(main) = document().get_element_by_id("noi-dung")
+                    && let Ok(main) = main.dyn_into::<web_sys::HtmlElement>()
+                {
+                    let _ = main.focus_with_options(&options);
+                }
             }
         }
         restore_scroll(page_scroll);
     }
     #[cfg(not(feature = "hydrate"))]
-    let _ = (trigger, page_scroll);
+    let _ = (closed, trigger, page_scroll);
+    true
 }
 
 #[cfg(feature = "hydrate")]
@@ -308,29 +351,60 @@ fn viewport_width() -> f64 {
         .unwrap_or_default()
 }
 
-/// The bar can grow with text size and safe area. Reserve its measured height rather than a
-/// fixed pixel guess. Observe once, dispose with the shell; no route/editor remount is involved.
-#[cfg(feature = "hydrate")]
-fn observe_bottom_bar(bottom: NodeRef<html::Nav>) {
-    use send_wrapper::SendWrapper;
-    use wasm_bindgen::{JsCast, closure::Closure};
-    let Some(bottom) = bottom.get_untracked() else {
-        return;
-    };
-    let measured = bottom.clone();
-    let callback = Closure::<dyn FnMut()>::new(move || {
-        if let Some(root) = document().document_element()
-            && let Ok(root) = root.dyn_into::<web_sys::HtmlElement>()
-        {
-            let height = measured.get_bounding_client_rect().height();
-            let _ = root
-                .style()
-                .set_property("--vk-bottom-height", &format!("{height}px"));
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn readers_belong_to_explore_editors_to_desk_and_unknown_routes_to_none() {
+        for (path, expected) in [
+            ("/", Some(Destination::Explore)),
+            (
+                "/tac-pham/33333333-3333-4333-8333-333333333333",
+                Some(Destination::Explore),
+            ),
+            ("/ban-viet", Some(Destination::Desk)),
+            ("/ban-viet/", Some(Destination::Desk)),
+            ("/ban-viet/abc", Some(Destination::Desk)),
+            ("/toi", Some(Destination::Me)),
+            // Prefixes and deeper paths are NotFound, not a lit tab.
+            ("/ban-vietnam", None),
+            ("/toi/khac", None),
+            ("/tac-pham", None),
+            ("/tac-pham/a/b", None),
+            ("/kham-pha", None),
+        ] {
+            assert_eq!(Destination::for_path(path), expected, "{path}");
         }
-    });
-    if let Ok(observer) = web_sys::ResizeObserver::new(callback.as_ref().unchecked_ref()) {
-        observer.observe(&bottom);
-        let observer = SendWrapper::new((observer, callback));
-        on_cleanup(move || observer.take().0.disconnect());
+    }
+
+    #[test]
+    fn only_the_open_editor_is_focused_work() {
+        assert_eq!(
+            editor_context("/ban-viet/abc"),
+            NavContext {
+                compact_rail: true,
+                hide_bar: true
+            }
+        );
+        for path in ["/", "/ban-viet", "/toi", "/tac-pham/a", "/ban-vietnam/x"] {
+            assert_eq!(editor_context(path), NavContext::default(), "{path}");
+        }
+    }
+
+    #[test]
+    fn destinations_keep_the_locked_order_and_real_hrefs() {
+        let hrefs: Vec<_> = [Destination::Explore, Destination::Desk, Destination::Me]
+            .into_iter()
+            .map(|d| (d.nav().label, d.nav().href))
+            .collect();
+        assert_eq!(
+            hrefs,
+            [
+                ("Khám phá".to_string(), "/".to_string()),
+                ("Bàn viết".to_string(), "/ban-viet".to_string()),
+                ("Tôi".to_string(), "/toi".to_string()),
+            ]
+        );
     }
 }

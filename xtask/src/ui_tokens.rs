@@ -66,6 +66,10 @@ pub fn run(root: &Path, check: bool) -> Result<(), String> {
         crate::ui_states::generate(&source.version, &read(crate::ui_states::STATES)?, policy)
             .map_err(|problems| invalid(&problems))?,
     );
+    outputs.extend(
+        crate::ui_navigation::generate(&source.version, &read(crate::ui_navigation::NAVIGATION)?)
+            .map_err(|problems| invalid(&problems))?,
+    );
     let fonts_dir = root.join(crate::checks::FONTS_DIR);
     let missing: Vec<String> = source
         .fonts
@@ -2208,11 +2212,16 @@ struct Icons {
     icons: Vec<Icon>,
 }
 
+/// The transparent frame most Material Icons files start with.
+const DEFAULT_FRAME: &str = "M0 0h24v24H0z";
+/// The only other frame spelling an upstream file in the registry uses (e.g. `menu_open`).
+const FRAMES: [&str; 2] = [DEFAULT_FRAME, "M0 0h24v24H0V0z"];
+
 /// Material Icons files share this exact wrapper; rebuilding it lets the generator compare the
 /// recorded upstream SHA-256 without vendoring the SVG files.
-fn upstream_svg(path: &str) -> String {
+fn upstream_svg(frame: &str, path: &str) -> String {
     format!(
-        "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24\" viewBox=\"0 0 24 24\" width=\"24\"><path d=\"M0 0h24v24H0z\" fill=\"none\"/><path d=\"{path}\"/></svg>"
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" height=\"24\" viewBox=\"0 0 24 24\" width=\"24\"><path d=\"{frame}\" fill=\"none\"/><path d=\"{path}\"/></svg>"
     )
 }
 
@@ -2265,7 +2274,16 @@ fn parse_icons(text: &str, license_exists: impl Fn(&str) -> bool) -> Result<Icon
         {
             problems.push(format!("{at}: `path` is SVG path data"));
         }
-        let digest: String = Sha256::digest(upstream_svg(&path).as_bytes())
+        // An optional `frame` records a differently spelled transparent frame in the upstream
+        // file; it never reaches the rendered icon.
+        let frame = item
+            .get("frame")
+            .and_then(Value::as_str)
+            .unwrap_or(DEFAULT_FRAME);
+        if !FRAMES.contains(&frame) {
+            problems.push(format!("{at}: `frame` is a known Material Icons frame"));
+        }
+        let digest: String = Sha256::digest(upstream_svg(frame, &path).as_bytes())
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect();
@@ -2698,11 +2716,11 @@ mod tests {
         let root = crate::root();
         let (tokens, catalog, fixtures) = sources();
         let (icons, identity) = asset_sources();
-        let assets = generate_assets("0.3.0", &icons, &identity, |_| true).unwrap();
+        let assets = generate_assets("0.4.0", &icons, &identity, |_| true).unwrap();
         let version = parse_tokens(&tokens).ok().map(|s| s.version);
         assert_eq!(
             version.as_deref(),
-            Some("0.3.0"),
+            Some("0.4.0"),
             "update the asset version above"
         );
         let states = std::fs::read_to_string(root.join(crate::ui_states::STATES)).unwrap();
@@ -2711,12 +2729,16 @@ mod tests {
             min_visible: 500,
             slow: 8000,
         };
-        let states = crate::ui_states::generate("0.3.0", &states, policy).unwrap();
+        let states = crate::ui_states::generate("0.4.0", &states, policy).unwrap();
+        let navigation =
+            std::fs::read_to_string(root.join(crate::ui_navigation::NAVIGATION)).unwrap();
+        let navigation = crate::ui_navigation::generate("0.4.0", &navigation).unwrap();
         for (path, text) in generate(&tokens, &catalog, &fixtures)
             .unwrap()
             .into_iter()
             .chain(assets)
             .chain(states)
+            .chain(navigation)
         {
             let current = std::fs::read_to_string(root.join(path)).unwrap_or_default();
             assert!(

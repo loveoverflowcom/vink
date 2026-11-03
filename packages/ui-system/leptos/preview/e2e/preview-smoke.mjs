@@ -776,6 +776,81 @@ async function states(page, cdp) {
   check(announced.length <= 2 && !announced.some((t) => t.startsWith('REPEAT:')), `the region status changes once per state (${JSON.stringify(announced)})`);
 }
 
+async function navigation(page) {
+  const width = (selector) => page.eval(`Math.round(document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect().width)`);
+  const toggle = '#nav-rail-toggle';
+  const route = () => page.eval(`document.querySelector('[data-testid=nav-route]').textContent`);
+  const current = (scope) => page.eval(`[...document.querySelectorAll(${JSON.stringify(scope + ' [aria-current=page]')})].map((a) => a.dataset.destination)`);
+  const labels = (scope) => page.eval(`[...document.querySelectorAll(${JSON.stringify(scope + ' .vk-ui-nav-item__label')})].map((s) => s.textContent).join('|')`);
+
+  await page.open('navigation.rail');
+  check((await labels('#nav-rail-primary')) === 'Khám phá|Bàn viết' && (await labels('#nav-rail-account')) === 'Tôi', 'rail: Khám phá → Bàn viết, Tôi at the foot');
+  check((await width('#nav-rail')) === 220 && JSON.stringify(await current('#nav-rail')) === '["explore"]', 'expanded rail is 220px with Khám phá current');
+  check(await page.eval(`document.querySelectorAll('#specimen [role=tab], #specimen [role=tablist]').length === 0 && [...document.querySelectorAll('#nav-rail-primary a')].every((a) => a.getAttribute('href').startsWith('/'))`), 'destinations are real links, not tabs');
+  await page.click('#nav-rail-primary a[data-destination=desk]');
+  await page.settle();
+  check((await route()).includes('desk') && JSON.stringify(await current('#nav-rail')) === '["desk"]' && (await page.log()).includes('điều hướng → desk'), 'a plain click dispatches the destination key once; the host moves aria-current');
+  await page.open('navigation.rail', 'reader');
+  check(JSON.stringify(await current('#nav-rail')) === '["explore"]', 'a reader page belongs to Khám phá');
+  await page.open('navigation.rail', 'guest');
+  check((await labels('#nav-rail-primary')) === 'Khám phá', 'the rail renders only the destinations the host grants');
+  await page.open('navigation.bottom-bar');
+  check((await labels('#nav-bottom')) === 'Khám phá|Bàn viết|Tôi', 'bottom bar: Khám phá → Bàn viết → Tôi');
+  await page.open('navigation.scaffold', 'editor');
+  check(await page.eval(`(() => { const s = document.querySelector('#nav-shell'); return s.hasAttribute('data-hide-bar') && s.hasAttribute('data-compact-rail') && s.dataset.layout === 'rail:compact'; })()`), 'editor context: compact rail, bar hidden');
+
+  // Toggle 96 → 220 → 96 on the same page, with text, caret selection and route kept.
+  await page.open('navigation.scaffold', 'toggle');
+  check(await page.eval(`(() => { const s = document.querySelector('#nav-shell .vk-ui-skip-link'); const hidden = getComputedStyle(s).clipPath !== 'none'; s.focus(); const shown = getComputedStyle(s).clipPath === 'none' && s.getBoundingClientRect().width > 44; s.blur(); return hidden && shown; })()`), 'the skip link stays clipped until it has focus');
+  await page.eval(`(() => { const t = document.getElementById('nav-draft'); t.focus(); t.setSelectionRange(5, 12); })()`);
+  const text = await page.eval(`document.getElementById('nav-draft').value`);
+  const before = await route();
+  const compact = await page.eval(`(() => { const b = document.querySelector('${toggle}'); const r = b.getBoundingClientRect(); return { w: r.width, h: r.height, label: b.getAttribute('aria-label'), expanded: b.getAttribute('aria-expanded'), icon: b.querySelector('[data-icon]').dataset.icon }; })()`);
+  check((await width('#nav-rail')) === 96 && compact.w >= 44 && compact.h >= 44 && compact.label === 'Mở rộng điều hướng' && compact.expanded === 'false' && compact.icon === 'menu', 'compact rail keeps a named ≥44px expand control');
+  await page.capture('navigation.scaffold--toggle--light--1440--96');
+  await page.click(toggle);
+  await page.settle();
+  check((await width('#nav-rail')) === 220 && (await page.eval(`document.querySelector('${toggle}').getAttribute('aria-label')`)) === 'Thu gọn điều hướng', 'pointer toggle expands to 220px and renames the action');
+  await page.capture('navigation.scaffold--toggle--light--1440--220');
+  await page.eval(`document.querySelector('${toggle}').focus()`);
+  await page.key('Enter');
+  check((await width('#nav-rail')) === 96, 'Enter on the toggle collapses back to 96px');
+  await page.key('Space');
+  check((await width('#nav-rail')) === 220, 'Space toggles too');
+  await page.key('Space');
+  await page.capture('navigation.scaffold--toggle--light--1440--96-again');
+  check((await route()) === before && (await page.eval(`(() => { const t = document.getElementById('nav-draft'); return [t.value, t.selectionStart, t.selectionEnd]; })()`)).join('|') === `${text}|5|12`, 'toggling keeps the page, the text and its selection');
+  const toggles = ((await page.log()).match(/toggle →/g) ?? []).length;
+  check(toggles >= 4, `each activation dispatched once (${toggles} toggles logged)`);
+
+  // Tooltip: focus/hover, outside the rail, Escape hides it.
+  await page.eval(`document.querySelector('${toggle}').blur(); document.querySelector('${toggle}').focus()`);
+  await page.settle();
+  check(await page.eval(`(() => { const t = document.getElementById('nav-rail-tooltip'); const r = t.getBoundingClientRect(); return !t.hidden && r.left >= document.getElementById('nav-rail').getBoundingClientRect().right && t.textContent === document.querySelector('${toggle}').getAttribute('aria-label'); })()`), 'focus shows the tooltip outside the rail with the same name');
+  await page.key('Escape');
+  check(await page.eval(`document.getElementById('nav-rail-tooltip').hidden`), 'Escape hides the tooltip');
+
+  // Overlay layer: one modal, Back closes it before leaving.
+  await page.open('navigation.overlay', 'busy');
+  await page.waitFor(`document.getElementById('nav-profile')?.open`, 'Tôi overlay open');
+  await page.click('[data-testid=nav-second] button');
+  await page.settle();
+  check((await page.log()).includes('từ chối: nav-profile đang mở'), 'a second modal is refused while Tôi is open');
+  await page.click('[data-testid=nav-back] button');
+  await page.waitFor(`!document.getElementById('nav-profile').open`, 'Back closes the overlay');
+  check((await page.log()).includes('Back → đóng lớp phủ trước') && (await route()).includes('explore'), 'Back closes the overlay first and stays on the page');
+  await page.click('[data-testid=nav-back-outside] button');
+  await page.settle();
+  check((await page.log()).includes('host rời màn'), 'the next Back goes to the host');
+  await page.open('navigation.overlay');
+  await page.click('#nav-profile-trigger');
+  await page.waitFor(`document.getElementById('nav-profile')?.open`, 'Tôi overlay opens from the rail');
+  check(await page.eval(`document.getElementById('nav-profile-trigger').getAttribute('aria-expanded') === 'true'`), 'the utility reports its open overlay');
+  await page.key('Escape');
+  await page.waitFor(`!document.getElementById('nav-profile').open`, 'Escape closes Tôi');
+  check(await page.eval(`document.getElementById('nav-profile-trigger').getAttribute('aria-expanded') === 'false' && document.activeElement?.id === 'nav-profile-trigger'`), 'Escape closes Tôi and returns focus to its trigger');
+}
+
 async function search(page) {
   const type = async (text) => {
     await page.eval(`(() => { const i = document.querySelector('.vkp-search input'); i.value = ${JSON.stringify(text)}; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -857,12 +932,24 @@ async function captures(page) {
     await page.open(entry, scenario);
     await page.capture(`${entry}--${scenario}--light--390`);
   }
-  for (const entry of catalog.entries.filter((e) => e.family === 'state')) {
+  for (const entry of catalog.entries.filter((e) => e.family === 'state' || e.family === 'navigation')) {
     for (const scenario of entry.scenarios.slice(1)) {
       await page.open(entry.id, scenario.id);
       await page.capture(`${entry.id}--${scenario.id}--light--390`);
     }
   }
+  // UIS-04 at the widths their frames are about, and long labels at 200% text.
+  for (const [entry, scenario, width, scale] of [
+    ['navigation.overlay', 'open', 1440, '100%'], ['navigation.scaffold', 'short', 834, '100%'],
+    ['navigation.rail', 'long-labels', 834, '200%'], ['navigation.bottom-bar', 'long-labels', 320, '200%'],
+  ]) {
+    await page.choose('scale', scale);
+    await page.viewport(width);
+    await page.open(entry, scenario);
+    await page.capture(`${entry}--${scenario}--light--${width}${scale === '200%' ? '--text200' : ''}`);
+  }
+  await page.choose('scale', '100%');
+  await page.viewport(390);
   // Transitions: the state after the recipe's first step, with any overlay open.
   for (const [scenario, prepare] of [
     ['loading-error-retry', ['playground-step']],
@@ -920,6 +1007,7 @@ try {
   await densityAndMotion(page);
   await components(page);
   await states(page, cdp);
+  await navigation(page);
   await search(page);
   await reflow(page);
   await captures(page);

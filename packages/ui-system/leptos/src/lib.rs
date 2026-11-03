@@ -20,6 +20,9 @@ pub mod identity;
 pub mod identity_vectors;
 pub mod layout;
 pub mod media;
+pub mod navigation;
+#[rustfmt::skip]
+pub mod navigation_vectors;
 pub mod root;
 pub mod state;
 #[rustfmt::skip]
@@ -52,6 +55,11 @@ pub use layout::{
 pub use media::{
     AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind, AvatarSize, Icon, IconSize,
     ImageFrame, ImageState, Person,
+};
+pub use navigation::{
+    AdaptiveScaffold, BottomNavigation, CloseReason, Closed, FocusReturn, NavContext,
+    NavDestination, NavItem, NavLayout, NavUtility, NavigationRail, OverlayBusy, OverlayLayer,
+    RailPreference, TopBar, WindowClass,
 };
 pub use root::{ThemeScope, UiRoot};
 pub use state::{

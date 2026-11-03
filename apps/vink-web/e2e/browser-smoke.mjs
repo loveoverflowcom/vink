@@ -35,6 +35,7 @@ const CTRL = 2;
 const META = 4;
 const SHIFT = 8;
 const KEYS = {
+  Enter: { code: 'Enter', keyCode: 13, text: '\r' },
   Escape: { code: 'Escape', keyCode: 27 },
   Tab: { code: 'Tab', keyCode: 9 },
   End: { code: 'End', keyCode: 35 },
@@ -213,9 +214,10 @@ class Page {
 
   /** A key press as the browser receives it from the keyboard. */
   async key(name, modifiers = 0) {
-    const { code, keyCode } = KEYS[name];
-    for (const type of ['rawKeyDown', 'keyUp']) {
-      await this.send('Input.dispatchKeyEvent', { type, key: name, code, modifiers, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
+    const { code, keyCode, text } = KEYS[name];
+    // A key that types text (Enter) needs `keyDown` with that text to activate links/buttons.
+    for (const type of [text ? 'keyDown' : 'rawKeyDown', 'keyUp']) {
+      await this.send('Input.dispatchKeyEvent', { type, key: name, code, modifiers, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode, ...(text && type === 'keyDown' ? { text } : {}) });
     }
     // Give native selectionchange and CodeMirror's focus observer a rendering opportunity
     // before the next synthetic input, as between separate human key/pointer actions.
@@ -514,11 +516,11 @@ async function serverHtml() {
   }
 }
 
-const RAIL_WIDTH = `Math.round(document.querySelector('.vk-rail').getBoundingClientRect().width)`;
+const RAIL_WIDTH = `Math.round(document.querySelector('.vk-ui-rail').getBoundingClientRect().width)`;
 const PROFILE_OPEN = `document.querySelector('[data-testid=profile-menu]').open`;
 
 async function openProfile(page) {
-  await page.click('[data-testid=profile-trigger]');
+  await page.click('#profile-trigger');
   await page.waitFor(PROFILE_OPEN, 'Tôi overlay');
 }
 
@@ -585,7 +587,7 @@ async function textContrast(page, theme, surface = 'shell') {
     desk: ['.vk-resume__title', '.vk-resume .vk-draft-meta', '.vk-resume__action', '.vk-desk-heading .vk-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
     explore: ['.vk-explore__title', '.vk-explore__heading p', '#public-scope', '.vk-public-row__title', '.vk-public-row__author', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt .vk-button', '.vk-reading-note'],
     reader: ['#reader-return', '.vk-reader__title', '.vk-reader__byline', '.vk-reader .vk-eyebrow', '.vk-reader .vk-block'],
-  }[surface] ?? ['.vk-nav a', '.vk-account-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'];
+  }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-muted', '#profile-menu .vk-theme-choice:has(:checked) span', '#profile-menu .vk-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -616,23 +618,26 @@ async function adaptiveShell(page) {
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration');
   await brandAssets(page);
-  check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('.vk-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
+  check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('#navigation-primary a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
   check((await page.eval(RAIL_WIDTH)) === 220, 'desktop defaults to a 220px rail');
-  await page.click('[data-testid=rail-toggle]');
+  check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); return b.getAttribute('aria-expanded') === 'true' && b.getAttribute('aria-label') === 'Thu gọn điều hướng' && b.getAttribute('aria-controls') === 'navigation'; })()`), 'expanded rail toggle names the collapse it performs');
+  check(await page.eval(`document.querySelectorAll('[role=tablist], [role=tab]').length === 0 && [...document.querySelectorAll('#navigation-primary a, .vk-ui-bottom-nav a')].every(a => a.getAttribute('href')?.startsWith('/'))`), 'route destinations are real links, not tabs');
+  await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact rail is 96px');
-  check(await page.eval(`getComputedStyle(document.querySelector('.vk-nav a')).flexDirection === 'column'`), 'compact rail places icons above labels');
+  check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); const r = b.getBoundingClientRect(); const rail = document.querySelector('.vk-ui-rail').getBoundingClientRect(); return location.pathname === '/' && b.getAttribute('aria-expanded') === 'false' && b.getAttribute('aria-label') === 'Mở rộng điều hướng' && r.width >= 44 && r.height >= 44 && r.left >= rail.left && r.right <= rail.right && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#navigation-toggle'); })()`), 'compact rail keeps a visible, unobstructed >=44px expand control on the same page');
+  check(await page.eval(`getComputedStyle(document.querySelector('#navigation-primary a')).flexDirection === 'column'`), 'compact rail places icons above labels');
   await page.key('Escape');
   check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape dismisses the rail tooltip');
-  await page.eval(`document.querySelector('[data-testid=rail-toggle]').blur()`);
-  await page.eval(`document.querySelector('[data-testid=rail-toggle]').focus()`);
+  await page.eval(`document.querySelector('#navigation-toggle').blur()`);
+  await page.eval(`document.querySelector('#navigation-toggle').focus()`);
   check(await page.eval(`!document.querySelector('[role=tooltip]').hidden`), 'focus exposes the rail tooltip');
   await page.key('Escape');
-  await page.eval(`document.querySelector('[data-testid=rail-toggle]').blur()`);
+  await page.eval(`document.querySelector('#navigation-toggle').blur()`);
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1000, y: 20 });
-  const hover = await page.eval(`(() => { const r = document.querySelector('[data-testid=rail-toggle]').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
+  const hover = await page.eval(`(() => { const r = document.querySelector('#navigation-toggle').getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; })()`);
   await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...hover });
   await page.waitFor(`!document.querySelector('[role=tooltip]').hidden`, 'hover tooltip');
-  check(await page.eval(`(() => { const r = document.querySelector('[role=tooltip]').getBoundingClientRect(); return r.left >= document.querySelector('.vk-rail').getBoundingClientRect().right && r.right <= innerWidth; })()`), 'hover tooltip is outside the scrolling rail and within the viewport');
+  check(await page.eval(`(() => { const r = document.querySelector('[role=tooltip]').getBoundingClientRect(); return r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right && r.right <= innerWidth; })()`), 'hover tooltip is outside the scrolling rail and within the viewport');
   await page.capture('1440-rail-tooltip-light');
   await page.key('Escape');
   check(await page.eval(`document.querySelector('[role=tooltip]').hidden`), 'Escape also dismisses a hover tooltip without trigger focus');
@@ -640,13 +645,37 @@ async function adaptiveShell(page) {
   check((await page.eval(RAIL_WIDTH)) === 96, 'rail preference survives reload');
   await page.viewport(1024);
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact preference survives resize');
-  await page.click('[data-testid=rail-toggle]');
+  await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 220, 'manual expanded preference overrides tablet default');
   await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.reload();
   check((await page.eval(RAIL_WIDTH)) === 96, 'tablet defaults to a compact rail');
   await page.viewport(1440);
   await page.waitFor(`${RAIL_WIDTH} === 220`, 'desktop contextual default');
+  await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`location.pathname === '/' && document.activeElement?.id === 'noi-dung'`), 'skip link moves focus to main without a route change');
+  check(await page.eval(`(() => {
+    let defaultPrevented = null;
+    const record = (event) => { defaultPrevented = event.defaultPrevented; event.preventDefault(); };
+    addEventListener('click', record, { once: true });
+    document.querySelector('#navigation-primary a[href="/ban-viet"]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true, metaKey: true, button: 0 }));
+    return defaultPrevented === false && location.pathname === '/';
+  })()`), 'modifier click on a destination is left to the browser (new tab/window), not routed');
+  for (const path of ['/ban-vietnam', '/tac-pham/a/b', '/toi/khac']) {
+    const response = await fetch(`${args.base}${path}`);
+    check(response.status === 404 && (await response.text()).includes('Không tìm thấy trang này.'), `${path} is a 404 page on the server`);
+    await page.goto(`${args.base}${path}`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, `${path} NotFound`);
+    check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
+  }
+  await page.goto(`${args.base}/`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration after unknown routes');
+  await page.eval(`(() => { for (const href of ['/ban-viet', '/', '/ban-viet']) document.querySelector('#navigation-primary a[href="' + href + '"]').click(); })()`);
+  await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=create-draft]')`, 'rapid navigations settle on the last intent');
+  check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'back to Khám phá');
 
   await openProfile(page);
   check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
@@ -660,26 +689,35 @@ async function adaptiveShell(page) {
   await textContrast(page, 'dark');
   await page.capture('1440-overlay-dark');
   await page.key('Escape');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'Escape closes Tôi and restores trigger focus');
   await page.reload();
   check(await page.eval(`document.documentElement.dataset.theme === 'dark'`), 'theme preference survives reload');
   await assertBrand(page, 'dark');
   await openProfile(page);
   await page.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 1400, y: 20, button: 'left', clickCount: 1 });
   await page.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 1400, y: 20, button: 'left', clickCount: 1 });
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.dataset.testid === 'profile-trigger'`), 'outside click closes Tôi and restores focus');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), 'outside click closes Tôi and restores focus');
   await openProfile(page);
   await page.click('[data-testid=profile-close]');
   check(await page.eval(`!${PROFILE_OPEN}`), 'explicit close works');
   await openProfile(page);
   await page.click('[data-testid=open-me]');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
-  check(await page.eval(`document.querySelector('[data-testid=profile-trigger]').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
+  check(await page.eval(`document.querySelector('#profile-trigger').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
+  await openProfile(page);
+  await page.eval(`history.back()`);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes Tôi');
+  await sleep(200);
+  check(await page.eval(`location.pathname === '/toi' && document.activeElement?.id === 'profile-trigger'`), 'Back closes the overlay before leaving the page and restores trigger focus');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.pathname === '/'`, 'the next Back leaves the page');
+  await page.eval(`history.forward()`);
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'forward returns to Tôi');
   await openProfile(page);
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
   check(await page.eval(`location.pathname === '/toi' && document.activeElement?.id === 'noi-dung'`), 'resize retains route and moves focus to the visible main');
-  check(await page.eval(`[...document.querySelectorAll('.vk-bottom-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
+  check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
 
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
   await chooseTheme(page, 'system', 'page-theme');
@@ -701,7 +739,7 @@ async function adaptiveShell(page) {
   await page.reload();
   await chooseTheme(page, 'dark', 'page-theme');
   await page.viewport(1440);
-  await page.click('[data-testid=rail-toggle]');
+  await page.click('#navigation-toggle');
   check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
   await assertBrand(page, 'dark');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
@@ -728,15 +766,15 @@ async function adaptiveShell(page) {
   await page.capture('320-me-dark-text200');
   check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
-  await page.waitFor(`parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--vk-bottom-height')) === document.querySelector('.vk-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
-  check(await page.eval(`document.querySelector('.vk-footer').getBoundingClientRect().bottom <= document.querySelector('.vk-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
+  await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
+  check(await page.eval(`document.querySelector('.vk-footer').getBoundingClientRect().bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), 'bottom bar clears the end of page content at 320px / 200% text');
   await page.capture('320-me-dark-text200-bottom');
-  await page.click('.vk-bottom-nav a[href="/ban-viet"]');
+  await page.click('.vk-ui-bottom-nav a[href="/ban-viet"]');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=create-draft]')`, 'mobile desk destination');
   await page.capture('320-desk-dark-text200');
-  await page.click('.vk-bottom-nav a[href="/"]');
+  await page.click('.vk-ui-bottom-nav a[href="/"]');
   await page.waitFor(`location.pathname === '/'`, 'mobile discovery destination');
-  await page.click('.vk-bottom-nav a[href="/toi"]');
+  await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
   await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
@@ -751,9 +789,9 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   };
   page.cdp.listeners.push(listener);
   check((await page.eval(RAIL_WIDTH)) === 96, 'desktop editor defaults to compact');
-  await page.click('[data-testid=rail-toggle]');
+  await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 220, 'manual preference can expand the editor rail');
-  await page.click('[data-testid=rail-toggle]');
+  await page.click('#navigation-toggle');
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
   await openProfile(page);
@@ -772,7 +810,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
       await openProfile(page);
       await page.click('[data-testid=open-me]');
     } else {
-      await page.click(`.vk-nav a[href="${destination}"]`);
+      await page.click(`#navigation-primary a[href="${destination}"]`);
     }
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, `dirty guard to ${destination}`);
     check(await page.eval(`!${PROFILE_OPEN} && location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
@@ -781,7 +819,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await openProfile(page);
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
-  check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
+  check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
   await page.capture('390-editor-dirty-dark');
   await page.click('.vk-mobile-brand');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'mobile brand uses guard');
@@ -962,7 +1000,7 @@ async function draftDashboard(page) {
   await page.click('[data-testid=create-draft]');
   const late = await gate.next('posts');
   const finishedBefore = gate.finishedPosts;
-  await page.click('.vk-nav a[href="/"]');
+  await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`location.pathname === '/'`, 'leave while create is pending');
   await page.send('Fetch.continueRequest', { requestId: late });
   const lateDeadline = Date.now() + 10000;
@@ -1010,7 +1048,7 @@ async function publicReading(page) {
   check(await page.eval(`document.activeElement.matches('.vk-public-row__link:focus-visible')`), 'read link has visible keyboard focus');
   await page.click('.vk-public-row__link');
   await page.waitFor(`document.querySelector('.vk-reader')?.textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`, 'real reader from collection');
-  check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/#work-${SAMPLE_WORK}' && document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and returns to the opened row');
+  check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/#work-${SAMPLE_WORK}' && document.querySelector('#navigation-primary a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and returns to the opened row');
   await captureReal('reader');
   await page.click('#reader-return');
   await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row')`, 'return to real collection');
@@ -1078,7 +1116,7 @@ async function publicReading(page) {
   const openCollection = async () => {
     await page.goto(`${args.base}/toi`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'utility hydration before public client read');
-    const nav = await page.eval(`innerWidth < 760`) ? '.vk-bottom-nav a[href="/"]' : '.vk-nav a[href="/"]';
+    const nav = await page.eval(`innerWidth < 760`) ? '.vk-ui-bottom-nav a[href="/"]' : '#navigation-primary a[href="/"]';
     await page.click(nav);
   };
   holdList = true;
@@ -1190,7 +1228,7 @@ async function mainPhase(page) {
   await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration');
   check(true, 'page hydrated');
-  check(await page.eval(`document.querySelector('.vk-nav a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader belongs to the Khám phá destination');
+  check(await page.eval(`document.querySelector('#navigation-primary a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader belongs to the Khám phá destination');
   const blocks = await page.eval(`[...document.querySelectorAll('.vk-block')].map((b) => b.textContent)`);
   check(blocks.length === 2, 'two stanzas render as two blocks');
   check(blocks[1].split('\n').length === 4 && blocks[1].includes(INDENTED_LINE), 'line breaks and indentation survive rendering');
@@ -1205,7 +1243,7 @@ async function mainPhase(page) {
 
   console.log('client navigation and draft creation:');
   await page.eval(`window.__vinkNavigation = 'kept'`);
-  await page.click('.vk-nav a[href="/ban-viet"]');
+  await page.click('#navigation-primary a[href="/ban-viet"]');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=create-draft]')`, 'desk list');
   check(await page.eval(`window.__vinkNavigation === 'kept'`), 'navigation stayed in the hydrated app (no full reload)');
   await page.click('[data-testid=create-draft]');
@@ -1386,7 +1424,7 @@ async function mainPhase(page) {
 
     console.log('persistent failure: export, explicit discard, late acknowledgement:');
     await page.typeInBody(' Mất kết nối.');
-    await page.click('.vk-nav a[href="/"]');
+    await page.click('#navigation-primary a[href="/"]');
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog');
     await page.click('[data-testid=leave-save]');
     await gate.fail(await gate.next());
@@ -1404,7 +1442,7 @@ async function mainPhase(page) {
     check(await page.eval(`document.activeElement?.dataset.testid === 'discard-back'`), 'confirmation focuses “Quay lại”, not the loss');
     await page.click('[data-testid=discard-confirm]');
     await page.waitFor(`location.pathname === '/'`, 'left without saving');
-    await page.click('.vk-nav a[href="/ban-viet"]');
+    await page.click('#navigation-primary a[href="/ban-viet"]');
     await page.waitFor(`document.querySelector('a[href="/ban-viet/${SAMPLE_WORK}"]')`, 'desk list');
     await page.click(`a[href="/ban-viet/${SAMPLE_WORK}"]`);
     await page.waitFor(`location.pathname === '/ban-viet/${SAMPLE_WORK}' && ${EDITOR_READY}`, 'another draft');

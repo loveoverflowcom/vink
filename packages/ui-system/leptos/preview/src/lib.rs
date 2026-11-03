@@ -3,12 +3,14 @@
 //! Region IDs follow the LayoutSpec in packages/ui-system/README.md: `#catalog-nav`,
 //! `#preview-controls`, `#specimen`, `#inspector`. Preferences live in memory only; the preview
 //! reads no storage and calls no service. The URL hash (`#<entry>/<scenario>`) is the exact,
-//! shareable scenario link. Fixtures and the clock are fixed by `shared/fixtures`.
+//! shareable scenario link. Fixtures and the clock are fixed by `shared/fixtures`. Navigation
+//! specimens dispatch into an in-memory route; the app's router is checked by the Web smoke.
 
 // Deeply nested specimen views exceed the default type-query depth.
 #![recursion_limit = "256"]
 
 mod components;
+mod navigation;
 mod states;
 
 use leptos::prelude::*;
@@ -21,7 +23,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 37] = [
+pub const REGISTERED: [&str; 43] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -58,6 +60,12 @@ pub const REGISTERED: [&str; 37] = [
     "state.status",
     "state.dialog",
     "state.playground",
+    "navigation.rail",
+    "navigation.bottom-bar",
+    "navigation.top-bar",
+    "navigation.scaffold",
+    "navigation.overlay",
+    "navigation.adapter",
     "composition.nested",
 ];
 

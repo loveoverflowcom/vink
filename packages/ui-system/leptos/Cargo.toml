@@ -16,7 +16,7 @@ unicode-normalization = "0.1.26"
 
 # Browser-only adapters (Page Visibility, performance clock) of the UIS-03 feedback components.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3.106", features = ["Document", "Performance", "VisibilityState", "Window"] }
+web-sys = { version = "0.3.106", features = ["CssStyleDeclaration", "Document", "DomRect", "Element", "HtmlElement", "Performance", "ResizeObserver", "VisibilityState", "Window"] }
 
 [dev-dependencies]
 # String rendering in tests only.

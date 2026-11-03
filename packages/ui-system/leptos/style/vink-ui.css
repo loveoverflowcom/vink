@@ -1220,3 +1220,239 @@
   font-family: var(--vk-type-code-font);
   color: var(--vk-on-surface);
 }
+
+/* ---------------------------------------------------------------------------------------------
+ * UIS-04 shell and navigation (shared/navigation.md). These styles carry their own type and focus
+ * ring, so a host shell can render them under document-level tokens (`<html data-theme>`) before
+ * adopting UiRoot. Breakpoints are the #7 shell's CSS px (760/1100): media queries cannot read
+ * custom properties. `data-layout="auto"` resolves NavLayout here, before hydration, from the
+ * viewport, `data-compact-rail` and the host's `:root[data-rail]`; any other value is explicit.
+ */
+
+.vk-ui-scaffold {
+  --vk-ui-rail-width: var(--vk-size-rail-compact);
+  min-block-size: 100dvh;
+}
+
+@media (min-width: 1100px) {
+  .vk-ui-scaffold[data-layout="auto"]:not([data-compact-rail]) { --vk-ui-rail-width: var(--vk-size-rail-expanded); }
+}
+
+:root[data-rail="expanded"] .vk-ui-scaffold[data-layout="auto"],
+.vk-ui-scaffold[data-layout="rail:expanded"] { --vk-ui-rail-width: var(--vk-size-rail-expanded); }
+:root[data-rail="compact"] .vk-ui-scaffold[data-layout="auto"] { --vk-ui-rail-width: var(--vk-size-rail-compact); }
+
+.vk-ui-scaffold :focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+
+/* Clipped until focused, wherever the scaffold sits (viewport or a preview frame) and at any
+ * text size; focus shows it at the scaffold's top-left corner. */
+.vk-ui-skip-link {
+  position: absolute;
+  inset-inline-start: var(--vk-space-4);
+  inset-block-start: var(--vk-space-3);
+  z-index: 10;
+  padding: var(--vk-space-2) var(--vk-space-4);
+  border-radius: var(--vk-radius-full);
+  background: var(--vk-primary);
+  color: var(--vk-on-primary);
+}
+
+/* A 1px box, not only clipped: clipped text would still widen the page's scrollable area. */
+.vk-ui-skip-link:not(:focus) {
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.vk-ui-scaffold__content {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 100dvh;
+  min-inline-size: 0;
+  margin-inline-start: var(--vk-ui-rail-width);
+}
+
+.vk-ui-rail {
+  box-sizing: border-box;
+  position: fixed;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--vk-ui-rail-width);
+  block-size: 100dvh;
+  /* Short or landscape windows scroll the rail, so the toggle and account stay reachable. */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vk-space-6);
+  padding: var(--vk-space-6) 12px;
+  background: var(--vk-surface-container-low);
+  container: vk-ui-rail / inline-size;
+  z-index: 5;
+}
+
+.vk-ui-rail__brand { padding-inline: var(--vk-space-2); }
+.vk-ui-rail__toggle { align-self: start; }
+.vk-ui-rail__primary { display: flex; flex-direction: column; gap: var(--vk-space-2); }
+.vk-ui-rail__account { margin-block-start: auto; }
+.vk-ui-rail__account .vk-ui-nav-item { inline-size: 100%; }
+
+.vk-ui-rail-toggle {
+  display: inline-grid;
+  place-items: center;
+  box-sizing: border-box;
+  inline-size: var(--vk-density-control-height);
+  block-size: var(--vk-density-control-height);
+  padding: 0;
+  border: 0;
+  border-radius: var(--vk-radius-full);
+  color: var(--vk-on-surface-variant);
+  background: transparent;
+  cursor: pointer;
+}
+
+.vk-ui-rail-toggle:hover { background: var(--vk-state-hover); }
+
+.vk-ui-nav-item {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-3);
+  min-block-size: var(--vk-size-nav-item);
+  min-inline-size: 0;
+  padding: var(--vk-space-3);
+  border: 0;
+  border-radius: var(--vk-radius-xl);
+  background: transparent;
+  color: var(--vk-on-surface-variant);
+  font: inherit;
+  font-weight: 600;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+
+.vk-ui-nav-item .vk-ui-icon { flex: 0 0 var(--vk-size-icon); }
+.vk-ui-nav-item__label { overflow-wrap: anywhere; min-inline-size: 0; }
+.vk-ui-nav-item:hover { background: var(--vk-state-hover); }
+
+.vk-ui-nav-item[aria-current="page"],
+.vk-ui-nav-utility[aria-expanded="true"] {
+  background: var(--vk-primary-container);
+  color: var(--vk-on-primary-container);
+}
+
+/* Compact rail: icon above label, centred. */
+@container vk-ui-rail (max-width: 100px) {
+  .vk-ui-rail__brand { display: flex; justify-content: center; padding: 0; }
+  .vk-ui-rail__toggle { align-self: center; }
+  .vk-ui-rail .vk-ui-nav-item {
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--vk-space-1);
+    padding: var(--vk-space-3) 0;
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+}
+
+/* Anchored beside the toggle by the component (measured rect), outside the rail's containment. */
+.vk-ui-tooltip {
+  position: fixed;
+  inset-inline-start: calc(var(--vk-ui-tooltip-x, var(--vk-ui-rail-width)) + 12px);
+  inset-block-start: var(--vk-ui-tooltip-y, 6rem);
+  transform: translateY(-50%);
+  max-inline-size: min(20rem, 60vw);
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border-radius: var(--vk-radius-sm);
+  background: var(--vk-inverse-surface);
+  color: var(--vk-inverse-on-surface);
+  font-size: 0.875rem;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.vk-ui-tooltip[hidden] { display: none; }
+
+.vk-ui-top-bar,
+.vk-ui-bottom-nav { display: none; }
+
+.vk-ui-top-bar {
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vk-space-2);
+  min-block-size: max(64px, 4rem);
+  padding: var(--vk-space-3) var(--vk-space-4);
+}
+
+.vk-ui-bottom-nav {
+  box-sizing: border-box;
+  position: fixed;
+  inset: auto 0 0;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--vk-space-1);
+  min-block-size: max(var(--vk-size-bottom-bar), 5rem);
+  padding: var(--vk-space-2) max(var(--vk-space-2), env(safe-area-inset-right)) calc(var(--vk-space-2) + env(safe-area-inset-bottom)) max(var(--vk-space-2), env(safe-area-inset-left));
+  background: var(--vk-surface-container-low);
+  z-index: 5;
+}
+
+.vk-ui-bottom-nav .vk-ui-nav-item {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--vk-space-1);
+  padding: var(--vk-space-2) 0;
+  text-align: center;
+  font-size: 0.8125rem;
+}
+
+/* Bar layouts: the rail leaves, the top bar and (unless hidden) the bottom bar appear. The
+ * measured `--vk-ui-bar-height` keeps the end of the content and focused controls clear. */
+@media (max-width: 759px) {
+  .vk-ui-scaffold[data-layout="auto"] .vk-ui-rail { display: none; }
+  .vk-ui-scaffold[data-layout="auto"] .vk-ui-scaffold__content { margin-inline-start: 0; padding-block-end: calc(var(--vk-ui-bar-height, max(var(--vk-size-bottom-bar), 5rem)) + 28px); }
+  .vk-ui-scaffold[data-layout="auto"] .vk-ui-top-bar { display: flex; }
+  .vk-ui-scaffold[data-layout="auto"] .vk-ui-bottom-nav { display: grid; }
+  .vk-ui-scaffold[data-layout="auto"][data-hide-bar] .vk-ui-bottom-nav { display: none; }
+  .vk-ui-scaffold[data-layout="auto"][data-hide-bar] .vk-ui-scaffold__content { padding-block-end: 0; }
+  .vk-ui-scaffold[data-layout="auto"]:not([data-hide-bar]) .vk-ui-scaffold__content :is(a, button, input, select, textarea, [tabindex]) {
+    scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 16px);
+  }
+}
+
+/* Explicit layouts (previews, tests) live inside their frame instead of the viewport. */
+.vk-ui-scaffold:not([data-layout="auto"]) {
+  position: relative;
+  display: flex;
+  min-block-size: var(--vk-ui-scaffold-height, 100dvh);
+}
+
+.vk-ui-scaffold:not([data-layout="auto"]) .vk-ui-rail {
+  position: sticky;
+  flex: none;
+  block-size: var(--vk-ui-scaffold-height, 100dvh);
+}
+
+.vk-ui-scaffold:not([data-layout="auto"]) .vk-ui-scaffold__content {
+  flex: 1;
+  min-block-size: 0;
+  margin-inline-start: 0;
+}
+
+.vk-ui-scaffold:is([data-layout="bar"], [data-layout="bar:hidden"]) { flex-direction: column; }
+.vk-ui-scaffold:is([data-layout="bar"], [data-layout="bar:hidden"]) .vk-ui-rail { display: none; }
+.vk-ui-scaffold:is([data-layout="bar"], [data-layout="bar:hidden"]) .vk-ui-top-bar { display: flex; }
+.vk-ui-scaffold[data-layout="bar"] .vk-ui-bottom-nav { display: grid; position: sticky; }
+
+@media (prefers-reduced-motion: reduce) {
+  .vk-ui-nav-item { transition: none; }
+}
+
+:where([data-motion="reduce"]) .vk-ui-nav-item { transition: none; }
