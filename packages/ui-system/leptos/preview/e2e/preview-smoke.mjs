@@ -1088,22 +1088,59 @@ async function reflow(page) {
 }
 
 async function screenPatterns(page) {
-  await page.open('composition.feedback');
-  await page.eval(`document.querySelector('#sample-feedback').focus(); document.querySelector('#sample-feedback').select()`);
-  await page.send('Input.insertText', { text: 'Góp ý chưa gửi\n\n  giữ nguyên khổ thơ.' });
-  const typed = await page.eval(`document.querySelector('#sample-feedback').value`);
-  await page.click('.vk-feedback-composer button');
-  check(await page.eval(`document.querySelector('[data-testid=sample-result]').textContent.includes('chưa gửi hoặc lưu') && document.querySelector('#sample-feedback').value === ${JSON.stringify(typed)}`), 'sample feedback dispatches an intent and preserves text without claiming success');
-  await page.choose('theme', 'Tối');
-  await page.viewport(320);
-  check(await page.eval(`document.querySelector('#sample-feedback').value === ${JSON.stringify(typed)}`), 'feedback draft survives theme and resize');
+  const text = 'Góp ý chưa gửi\n\n  giữ nguyên khổ thơ. Tiếng Việt: Ỗ Ữ Đường, Ỗ Ữ.';
+  const intentCount = () => page.eval(`[...document.querySelectorAll('[data-testid=event-log] li')].filter(n => n.textContent.includes('feedback → submit intent (sample)')).length`);
+  const requests = [];
+  await page.send('Network.enable');
+  const listener = event => {
+    if (event.sessionId === page.sessionId && event.method === 'Network.requestWillBeSent') requests.push(event.params.request.url);
+  };
+  page.cdp.listeners.push(listener);
+  for (const [entry, scenario] of [['screen.reader', 'feedback'], ['composition.feedback', 'default'], ['composition.feedback', 'error']]) {
+    await page.open(entry, scenario);
+    await page.eval(`document.fonts.ready`);
+    await page.eval(`(() => { const field = document.querySelector('.vk-feedback-composer textarea'); field.focus(); field.select(); })()`);
+    await page.send('Input.insertText', { text });
+    await page.eval(`window.feedbackField = document.querySelector('.vk-feedback-composer textarea'); feedbackField.setSelectionRange(4, 9); window.feedbackButton = document.querySelector('.vk-feedback-composer button')`);
+    const count = await intentCount();
+    requests.length = 0;
+    // DOM click leaves the input focused so the local status update is tested without a
+    // pointer moving focus. Enter/Space below separately exercise actual keyboard activation.
+    await page.eval(`feedbackButton.click()`);
+    await page.settle();
+    check(await intentCount() === count + 1, `${entry}/${scenario}: one local intent per submit`);
+    check(await page.eval(`document.querySelector('[data-testid=sample-result]').textContent.includes('chưa gửi hoặc lưu')
+      && document.activeElement === feedbackField && feedbackField === document.querySelector('.vk-feedback-composer textarea')
+      && feedbackField.value === ${JSON.stringify(text)} && feedbackField.selectionStart === 4 && feedbackField.selectionEnd === 9`), `${entry}/${scenario}: local status preserves the input node, text, focus and selection`);
+    check(requests.length === 0, `${entry}/${scenario}: sample submit issues no network request`);
+    if (scenario === 'error') {
+      check(await page.eval(`document.querySelector('.vk-ui-notice').textContent.includes('Chưa tải/lưu được')`), 'error notice remains after a sample intent');
+      await page.eval(`[...document.querySelectorAll('[data-screen] button')].find(n => n.textContent === 'Thử lại').click()`);
+      await page.settle();
+      check(await page.eval(`document.querySelector('[data-testid=sample-result]').textContent.includes('không gọi dịch vụ') && feedbackField.value === ${JSON.stringify(text)} && document.activeElement === feedbackField && feedbackField.selectionStart === 4 && feedbackField.selectionEnd === 9`), 'sample retry keeps text, focus and selection without claiming a save');
+    }
+    for (const key of ['Enter', 'Space']) {
+      await page.eval(`feedbackButton.focus()`);
+      const before = await intentCount();
+      await page.key(key);
+      check(await intentCount() === before + 1 && await page.eval(`document.activeElement === feedbackButton && feedbackField.value === ${JSON.stringify(text)} && feedbackField.selectionStart === 4 && feedbackField.selectionEnd === 9`), `${entry}/${scenario}: ${key} emits once and keeps button focus and draft selection`);
+    }
+    check(requests.length === 0, `${entry}/${scenario}: keyboard and retry issue no network request`);
+    await page.eval(`feedbackField.focus(); document.querySelector('input[name=theme][data-label="Tối"]').click()`);
+    await page.viewport(320);
+    check(await page.eval(`document.activeElement === feedbackField && feedbackField === document.querySelector('.vk-feedback-composer textarea') && feedbackField.value === ${JSON.stringify(text)} && feedbackField.selectionStart === 4 && feedbackField.selectionEnd === 9`), `${entry}/${scenario}: theme and resize preserve input focus/selection`);
+  }
   for (const state of ['pending', 'auth-required', 'uncertain']) {
     await page.open('composition.feedback', state);
-    await page.eval(`document.querySelector('.vk-feedback-composer button').click()`);
+    const count = await intentCount();
+    await page.eval(`document.querySelector('.vk-feedback-composer button').focus(); document.querySelector('.vk-feedback-composer button').click()`);
+    await page.key('Enter');
+    await page.key('Space');
     check(await page.eval(`document.querySelector('.vk-feedback-composer button').getAttribute('aria-disabled') === 'true' && !document.querySelector('[data-testid=sample-result]').textContent`), `feedback ${state} cannot submit`);
+    check(await intentCount() === count, `feedback ${state} emits no local intent`);
   }
-  await page.open('composition.feedback', 'sharing');
-  check(await page.eval(`!document.querySelector('.vk-feedback-composer textarea, .vk-feedback-composer button')`), 'Sharing offers no criticism form or fake action');
+  page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener), 1);
+  await page.send('Network.disable');
   await page.choose('theme', 'Sáng');
   await page.viewport(1440);
 }

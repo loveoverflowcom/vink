@@ -1,7 +1,13 @@
 package vink.ui.preview
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import kotlin.test.Test
@@ -37,14 +43,61 @@ class ScreenPreviewTest {
     }
 
     @Test
-    fun sharingDoesNotAskForCriticism() = runComposeUiTest {
+    fun recipesAcknowledgeOnlyLocalIntentsAndKeepDrafts() = runComposeUiTest {
+        var entry by mutableStateOf("screen.reader")
+        var scenario by mutableStateOf("feedback")
+        var dark by mutableStateOf(false)
+        val events = mutableListOf<String>()
+        val text = "Góp ý chưa gửi\n\n  giữ nguyên khổ thơ. Tiếng Việt: Ỗ Ữ Đường, Ỗ Ữ."
         setContent {
-            VinkTheme(VinkPreferences(), fonts = fonts.fonts) {
-                FeedbackComposer(FeedbackIntent.Sharing, TextFieldValue("giữ riêng"), {}, ActionState.Enabled, {})
+            CompositionLocalProvider(LocalPreviewLog provides { events.add(it) }) {
+                VinkTheme(VinkPreferences(), systemDark = dark, fonts = fonts.fonts) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        key(entry, scenario) { ScreenRecipe(entry, scenario) }
+                    }
+                }
             }
         }
-        onNodeWithText("Tác giả chỉ chia sẻ bài viết này.").assertExists()
-        onNodeWithText("Gửi nhận xét").assertDoesNotExist()
-        onAllNodes(hasSetTextAction()).assertCountEquals(0)
+        for ((id, sample) in listOf("screen.reader" to "feedback", "composition.feedback" to "default", "composition.feedback" to "error")) {
+            runOnIdle { entry = id; scenario = sample; events.clear() }
+            val field = onNode(hasSetTextAction())
+            field.performTextReplacement(text)
+            field.performTextInputSelection(TextRange(4, 9))
+            // Invoke the action without a pointer moving focus: this isolates the local
+            // status update from the platform's normal selection collapse on input blur.
+            onNodeWithText("Gửi nhận xét").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { it() }
+            onNodeWithTag("sample-result").assertTextEquals("Mẫu · Intent gửi nhận xét, chưa gửi hoặc lưu.")
+            runOnIdle { assertEquals(listOf("feedback → submit intent (sample)"), events); dark = !dark }
+            field.assertTextContains(text).assertIsFocused()
+            assertEquals(TextRange(4, 9), field.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
+            if (sample == "error") {
+                onNodeWithText("Chưa tải/lưu được. Chữ đang viết được giữ nguyên; hãy thử lại.").assertExists()
+                onNodeWithText("Thử lại").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) { it() }
+                onNodeWithTag("sample-result").assertTextEquals("Mẫu · Đã yêu cầu tải lại; không gọi dịch vụ.")
+                field.assertTextContains(text).assertIsFocused()
+                assertEquals(TextRange(4, 9), field.fetchSemanticsNode().config[SemanticsProperties.TextSelectionRange])
+            }
+        }
+    }
+
+    @Test
+    fun blockedRecipeStatesEmitNoIntentOrAcknowledgment() = runComposeUiTest {
+        var scenario by mutableStateOf("pending")
+        val events = mutableListOf<String>()
+        setContent {
+            CompositionLocalProvider(LocalPreviewLog provides { events.add(it) }) {
+                VinkTheme(VinkPreferences(), fonts = fonts.fonts) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        key(scenario) { ScreenRecipe("composition.feedback", scenario) }
+                    }
+                }
+            }
+        }
+        for (sample in listOf("pending", "auth-required", "uncertain")) {
+            runOnIdle { scenario = sample }
+            onNodeWithText("Gửi nhận xét").performScrollTo().performClick()
+            onNodeWithTag("sample-result").assertTextEquals("")
+            runOnIdle { assertEquals(emptyList(), events) }
+        }
     }
 }
