@@ -155,6 +155,7 @@ struct ItemRow {
     context_review: Option<String>,
     context_removal: Option<String>,
     context_version: Option<i64>,
+    context_author_name: Option<String>,
     public_replies: i64,
 }
 
@@ -212,6 +213,11 @@ impl ItemRow {
                 .clone()
                 .ok_or_else(|| integrity("present comment without text", self.id))?,
             created_at: self.created_at,
+            // Only a public context may name its writer.
+            context_author: match context {
+                ReplyContext::Reply(_) => self.context_author_name.clone(),
+                ReplyContext::Root | ReplyContext::Unavailable => None,
+            },
             context,
         })
     }
@@ -643,7 +649,7 @@ impl DiscussionStore for PgStore {
         let (after_at, after_id) = page_bounds(after);
         let rows: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                    NULL::bigint AS context_version, {PUBLIC_REPLIES} AS public_replies
+                    NULL::bigint AS context_version, NULL::text AS context_author_name, {PUBLIC_REPLIES} AS public_replies
                FROM comments c JOIN principals a ON a.id = c.author_id
               WHERE c.thread_id = $1 AND c.kind = 'root'
                 AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
@@ -666,7 +672,7 @@ impl DiscussionStore for PgStore {
         let root_ids: Vec<Uuid> = rows.iter().map(|row| row.id).collect();
         let previews: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, x.review AS context_review, x.removal AS context_removal,
-                    x.moderation_version AS context_version, 0::bigint AS public_replies
+                    x.moderation_version AS context_version, xa.display_name AS context_author_name, 0::bigint AS public_replies
                FROM unnest($1::uuid[]) AS parent(id)
               CROSS JOIN LATERAL (
                     SELECT c.* FROM comments c
@@ -675,6 +681,7 @@ impl DiscussionStore for PgStore {
                      LIMIT $3) c
                JOIN principals a ON a.id = c.author_id
                LEFT JOIN comments x ON x.id = c.reply_to_id
+               LEFT JOIN principals xa ON xa.id = x.author_id
               ORDER BY c.root_id, c.created_at, c.id"
         )))
         .bind(&root_ids)
@@ -743,7 +750,7 @@ impl DiscussionStore for PgStore {
         let viewer_id = viewer.map(|viewer| viewer.as_uuid());
         let root: Option<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, NULL::text AS context_review, NULL::text AS context_removal,
-                    NULL::bigint AS context_version, {PUBLIC_REPLIES} AS public_replies
+                    NULL::bigint AS context_version, NULL::text AS context_author_name, {PUBLIC_REPLIES} AS public_replies
                FROM comments c JOIN principals a ON a.id = c.author_id
               WHERE c.id = $1 AND c.thread_id = $2 AND c.kind = 'root'"
         )))
@@ -762,10 +769,11 @@ impl DiscussionStore for PgStore {
         let (after_at, after_id) = page_bounds(after);
         let rows: Vec<ItemRow> = sqlx::query_as(AssertSqlSafe(format!(
             "SELECT {ITEM_COLUMNS}, x.review AS context_review, x.removal AS context_removal,
-                    x.moderation_version AS context_version, 0::bigint AS public_replies
+                    x.moderation_version AS context_version, xa.display_name AS context_author_name, 0::bigint AS public_replies
                FROM comments c
                JOIN principals a ON a.id = c.author_id
                LEFT JOIN comments x ON x.id = c.reply_to_id
+               LEFT JOIN principals xa ON xa.id = x.author_id
               WHERE c.root_id = $1 AND c.kind = 'reply' AND {VISIBLE_TO_VIEWER}
                 AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
               ORDER BY c.created_at, c.id

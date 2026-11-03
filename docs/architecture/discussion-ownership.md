@@ -113,10 +113,12 @@ luận công khai cho pilot, không phải tính năng đang có:
 
 ## 6. Rollout và rollback
 
-1. **D2T-02a (lát hiện tại):** domain + application + migration/adapter PostgreSQL và test thật.
-   Chưa có HTTP route/UI gọi các use case, nên không người dùng nào ghi được bình luận.
+1. **D2T-02a/02b (PR hiện tại):** domain + application + migration/adapter PostgreSQL, rồi HTTP
+   API v1 + contract fixtures (đọc, gửi, gỡ của mình, bật/tắt; không có route kiểm duyệt). Ở
+   production mọi lệnh ghi trả `401` vì chưa có auth authority; chưa có UI và authority kiểm duyệt
+   nên không bình luận nào thành công khai.
 2. **Trước khi mở ghi production:** auth authority thật (D-05), authority kiểm duyệt và màn
-   duyệt, API v1 + contract fixtures, giới hạn tần suất. Thiếu auth là blocker, không thay bằng
+   duyệt, UI (#45), giới hạn tần suất. Thiếu auth là blocker, không thay bằng
    tài khoản fixture.
 3. **Rollback trước khi có dữ liệu thật:** gỡ route; migration giữ nguyên (không sửa migration
    đã áp dụng). Sau khi có dữ liệu: tắt ghi bằng cách đóng chế độ hoặc gỡ route, giữ dữ liệu

@@ -4,9 +4,15 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::application::discussion::{
+    CommentItem, OwnStatus, ReplyPage, RootEntry, RootItem, RootPage, SubmittedComment,
+};
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
+use crate::domain::discussion::settings::DiscussionSettings;
+use crate::domain::discussion::visibility::{CommentView, ReplyContext};
 use crate::domain::document::DocumentData;
 use crate::domain::draft::{DraftSummary, WorkingDraft};
+use crate::domain::ids::{CommentId, PrincipalId, WorkId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct WorkList {
@@ -71,6 +77,113 @@ pub struct SavedDraftResponse {
     pub version: i64,
     #[serde(with = "time::serde::rfc3339")]
     pub updated_at: OffsetDateTime,
+}
+
+/// Root page of a work's discussion, as seen by one viewer (never shared-cacheable).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DiscussionPage {
+    pub work_id: String,
+    pub settings: CommentsSettings,
+    pub viewer_is_work_author: bool,
+    pub roots: Vec<RootThread>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct CommentsSettings {
+    pub comments_open: bool,
+    pub generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RootThread {
+    pub root: RootView,
+    pub public_replies: i64,
+    pub preview: Vec<CommentView1>,
+    pub preview_next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RootView {
+    Comment {
+        comment: CommentView1,
+    },
+    /// A hidden root kept for its public replies: no text, author or reason.
+    Anchor {
+        comment_id: String,
+        #[serde(with = "time::serde::rfc3339")]
+        created_at: OffsetDateTime,
+    },
+}
+
+/// One readable comment. Named `CommentView1` to keep the wire type apart from the domain's
+/// `CommentView` projection it is built from.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CommentView1 {
+    pub comment_id: String,
+    /// `public`, `own_pending` or `own_rejected`.
+    pub visibility: &'static str,
+    pub author_display_name: String,
+    pub body: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// `None` on roots.
+    pub reply_to: Option<ReplyTo>,
+    /// Only the comment's writer may remove it.
+    pub can_remove: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ReplyTo {
+    Root,
+    Reply {
+        comment_id: String,
+        author_display_name: String,
+    },
+    Unavailable,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ReplyList {
+    pub replies: Vec<CommentView1>,
+    pub next_cursor: Option<String>,
+}
+
+/// `?cursor=&limit=` of both discussion lists. Unknown query parameters are ignored.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct PageQuery {
+    pub cursor: Option<String>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SubmitCommentRequest {
+    pub target_id: Option<String>,
+    pub body: String,
+    pub command_key: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SubmittedCommentResponse {
+    pub comment_id: String,
+    pub status: &'static str,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RemovedCommentResponse {
+    pub comment_id: String,
+    pub status: &'static str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommentsSettingsRequest {
+    pub expected_generation: i64,
+    pub comments_open: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -141,6 +254,123 @@ impl From<&SavedDraft> for SavedDraftResponse {
             work_id: saved.work_id.to_string(),
             version: saved.version.get(),
             updated_at: saved.updated_at,
+        }
+    }
+}
+
+pub const fn own_status(status: OwnStatus) -> &'static str {
+    match status {
+        OwnStatus::Pending => "pending",
+        OwnStatus::Approved => "approved",
+        OwnStatus::Rejected => "rejected",
+        OwnStatus::Removed => "removed",
+    }
+}
+
+impl From<DiscussionSettings> for CommentsSettings {
+    fn from(settings: DiscussionSettings) -> Self {
+        Self {
+            comments_open: settings.accepts_new_comments(),
+            generation: settings.generation().get(),
+        }
+    }
+}
+
+impl CommentView1 {
+    fn new(item: &CommentItem, viewer: Option<PrincipalId>, is_root: bool) -> Self {
+        let reply_to = (!is_root).then(|| match (item.context, &item.context_author) {
+            (ReplyContext::Root, _) => ReplyTo::Root,
+            (ReplyContext::Reply(id), Some(name)) => ReplyTo::Reply {
+                comment_id: id.to_string(),
+                author_display_name: name.clone(),
+            },
+            // A context without a public writer name is reported as unavailable, never guessed.
+            (ReplyContext::Reply(_), None) | (ReplyContext::Unavailable, _) => ReplyTo::Unavailable,
+        });
+        Self {
+            comment_id: item.id.to_string(),
+            visibility: match item.view {
+                CommentView::Public => "public",
+                CommentView::OwnPending => "own_pending",
+                CommentView::OwnRejected => "own_rejected",
+                // The store never lists unavailable comments; keep the mapping total.
+                CommentView::Unavailable => "unavailable",
+            },
+            author_display_name: item.author.display_name.clone(),
+            body: item.body.clone(),
+            created_at: item.created_at,
+            reply_to,
+            can_remove: viewer == Some(item.author.id),
+        }
+    }
+}
+
+fn replies(items: &[CommentItem], viewer: Option<PrincipalId>) -> Vec<CommentView1> {
+    items
+        .iter()
+        .map(|item| CommentView1::new(item, viewer, false))
+        .collect()
+}
+
+impl RootThread {
+    fn new(root: &RootItem, viewer: Option<PrincipalId>) -> Self {
+        Self {
+            root: match &root.entry {
+                RootEntry::Comment(item) => RootView::Comment {
+                    comment: CommentView1::new(item, viewer, true),
+                },
+                RootEntry::Anchor { id, created_at } => RootView::Anchor {
+                    comment_id: id.to_string(),
+                    created_at: *created_at,
+                },
+            },
+            public_replies: root.public_replies,
+            preview: replies(&root.preview, viewer),
+            preview_next_cursor: root.preview_next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl DiscussionPage {
+    pub fn new(work_id: WorkId, page: &RootPage, viewer: Option<PrincipalId>) -> Self {
+        Self {
+            work_id: work_id.to_string(),
+            settings: page.settings.into(),
+            viewer_is_work_author: page.viewer_is_work_author,
+            roots: page
+                .roots
+                .iter()
+                .map(|root| RootThread::new(root, viewer))
+                .collect(),
+            next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl ReplyList {
+    pub fn new(page: &ReplyPage, viewer: Option<PrincipalId>) -> Self {
+        Self {
+            replies: replies(&page.replies, viewer),
+            next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl From<&SubmittedComment> for SubmittedCommentResponse {
+    fn from(submitted: &SubmittedComment) -> Self {
+        Self {
+            comment_id: submitted.comment_id.to_string(),
+            status: own_status(submitted.status),
+            replayed: submitted.replayed,
+        }
+    }
+}
+
+impl RemovedCommentResponse {
+    pub fn new(comment_id: CommentId, status: OwnStatus) -> Self {
+        Self {
+            comment_id: comment_id.to_string(),
+            status: own_status(status),
         }
     }
 }
@@ -308,6 +538,265 @@ mod tests {
         for (name, error, status) in cases {
             assert_eq!(error.status().as_u16(), status, "{name}");
             assert_matches(name, &error.envelope());
+        }
+    }
+
+    mod discussion {
+        use super::*;
+        use crate::application::discussion::{AuthorName, DiscussionError, DiscussionInput};
+        use crate::domain::discussion::body::BodyError;
+        use crate::domain::discussion::page::PageCursor;
+        use crate::domain::discussion::settings::{CommentsMode, SettingsGeneration};
+        use time::macros::datetime;
+        use uuid::Uuid;
+
+        const AT: OffsetDateTime = datetime!(2026-11-03 08:00:00 UTC);
+
+        fn cid(n: u64) -> CommentId {
+            CommentId::parse(&format!("0192f3a1-0000-7000-8000-{n:012}")).unwrap()
+        }
+
+        fn person(n: u128, name: &str) -> AuthorName {
+            AuthorName {
+                id: PrincipalId::from_uuid(Uuid::from_u128(n)),
+                display_name: name.into(),
+            }
+        }
+
+        fn viewer() -> AuthorName {
+            person(99, "Bạn đọc")
+        }
+
+        fn item(
+            n: u64,
+            view: CommentView,
+            author: AuthorName,
+            body: &str,
+            context: ReplyContext,
+            context_author: Option<&str>,
+        ) -> CommentItem {
+            CommentItem {
+                id: cid(n),
+                view,
+                author,
+                body: body.into(),
+                created_at: AT,
+                context,
+                context_author: context_author.map(Into::into),
+            }
+        }
+
+        #[test]
+        fn discussion_page_and_replies_match_fixtures() {
+            let lan = person(1, "Lan Anh");
+            let minh = person(2, "Minh");
+            let page = RootPage {
+                settings: DiscussionSettings::INITIAL,
+                viewer_is_work_author: false,
+                roots: vec![
+                    RootItem {
+                        entry: RootEntry::Comment(item(
+                            1,
+                            CommentView::Public,
+                            lan.clone(),
+                            "Khổ cuối đọc mà nghe mưa thật 🌧️",
+                            ReplyContext::Root,
+                            None,
+                        )),
+                        public_replies: 4,
+                        preview: vec![
+                            item(
+                                2,
+                                CommentView::Public,
+                                minh.clone(),
+                                "Mình thích nhịp lục bát ở đây.",
+                                ReplyContext::Root,
+                                None,
+                            ),
+                            item(
+                                3,
+                                CommentView::Public,
+                                person(3, "Hà"),
+                                "Đồng ý,\nnhất là câu “mái ngói rêu xanh”.",
+                                ReplyContext::Reply(cid(2)),
+                                Some("Minh"),
+                            ),
+                            item(
+                                4,
+                                CommentView::OwnPending,
+                                viewer(),
+                                "Cảm ơn hai bạn 👩\u{200d}💻",
+                                ReplyContext::Unavailable,
+                                None,
+                            ),
+                        ],
+                        preview_next: Some(PageCursor::after(AT, cid(4))),
+                    },
+                    RootItem {
+                        entry: RootEntry::Anchor {
+                            id: cid(6),
+                            created_at: AT,
+                        },
+                        public_replies: 1,
+                        preview: vec![item(
+                            7,
+                            CommentView::Public,
+                            minh,
+                            "Vẫn muốn giữ đoạn này.",
+                            ReplyContext::Root,
+                            None,
+                        )],
+                        preview_next: None,
+                    },
+                ],
+                next: Some(PageCursor::after(AT, cid(6))),
+            };
+            assert_matches(
+                "discussion.get.json",
+                &DiscussionPage::new(work(), &page, Some(viewer().id)),
+            );
+            let replies = ReplyPage {
+                replies: vec![item(
+                    5,
+                    CommentView::Public,
+                    lan,
+                    "Đọc lại vẫn thấy hay.",
+                    ReplyContext::Root,
+                    None,
+                )],
+                next: None,
+            };
+            assert_matches(
+                "discussion.replies.json",
+                &ReplyList::new(&replies, Some(viewer().id)),
+            );
+        }
+
+        #[test]
+        fn the_work_author_never_gets_can_remove_on_others_comments() {
+            let item = item(
+                1,
+                CommentView::Public,
+                person(1, "Lan Anh"),
+                "x",
+                ReplyContext::Root,
+                None,
+            );
+            let work_author = Some(PrincipalId::from_uuid(Uuid::from_u128(42)));
+            assert!(!CommentView1::new(&item, work_author, true).can_remove);
+            assert!(!CommentView1::new(&item, None, true).can_remove);
+            assert!(CommentView1::new(&item, Some(item.author.id), true).can_remove);
+            // A public context without its writer's name is shown as unavailable, never guessed.
+            let nameless = CommentItem {
+                context: ReplyContext::Reply(cid(2)),
+                ..item
+            };
+            assert_eq!(
+                CommentView1::new(&nameless, None, false).reply_to,
+                Some(ReplyTo::Unavailable)
+            );
+        }
+
+        #[test]
+        fn command_messages_match_fixtures() {
+            let submitted = SubmittedComment {
+                comment_id: cid(8),
+                status: OwnStatus::Pending,
+                replayed: false,
+            };
+            assert_matches(
+                "discussion.comment.submit.response.json",
+                &SubmittedCommentResponse::from(&submitted),
+            );
+            assert_matches(
+                "discussion.comment.remove.response.json",
+                &RemovedCommentResponse::new(cid(8), OwnStatus::Removed),
+            );
+            let closed = DiscussionSettings::restore(
+                CommentsMode::Closed,
+                SettingsGeneration::new(2).unwrap(),
+            );
+            assert_matches(
+                "discussion.settings.response.json",
+                &CommentsSettings::from(closed),
+            );
+            let request: SubmitCommentRequest = parse("discussion.comment.submit.request.json");
+            assert_eq!(request.target_id, Some(cid(2).to_string()));
+            let settings: CommentsSettingsRequest = parse("discussion.settings.request.json");
+            assert_eq!(
+                (settings.expected_generation, settings.comments_open),
+                (1, false)
+            );
+            // A client cannot name an actor, a root or a role.
+            for (name, field) in [
+                ("discussion.comment.submit.request.json", "author_id"),
+                ("discussion.comment.submit.request.json", "root_id"),
+                ("discussion.settings.request.json", "owner_id"),
+            ] {
+                let mut raw = fixture(name);
+                raw[field] = Value::from("22222222-2222-4222-8222-222222222222");
+                let rejected = if name.contains("settings") {
+                    serde_json::from_value::<CommentsSettingsRequest>(raw).is_err()
+                } else {
+                    serde_json::from_value::<SubmitCommentRequest>(raw).is_err()
+                };
+                assert!(rejected, "{name} accepted {field}");
+            }
+        }
+
+        #[test]
+        fn discussion_error_envelopes_match_fixtures() {
+            let cases = [
+                (
+                    "error.comments_closed.json",
+                    DiscussionError::CommentsClosed,
+                    409,
+                ),
+                (
+                    "error.target_unavailable.json",
+                    DiscussionError::TargetUnavailable,
+                    409,
+                ),
+                (
+                    "error.idempotency_key_reused.json",
+                    DiscussionError::KeyReused,
+                    422,
+                ),
+                (
+                    "error.not_comment_writer.json",
+                    DiscussionError::NotCommentWriter,
+                    403,
+                ),
+                (
+                    "error.discussion_conflict.json",
+                    DiscussionError::Conflict { current: 3 },
+                    409,
+                ),
+                ("error.not_found.json", DiscussionError::NotFound, 404),
+                (
+                    "error.unauthenticated.json",
+                    DiscussionError::Unauthenticated,
+                    401,
+                ),
+                (
+                    "error.dependency_unavailable.json",
+                    DiscussionError::Unavailable,
+                    503,
+                ),
+            ];
+            for (name, error, status) in cases {
+                let error = ApiError::from(error);
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
+            }
+            let invalid = ApiError::from(DiscussionError::Invalid(DiscussionInput::Body(
+                BodyError::Empty,
+            )));
+            assert_eq!(invalid.status().as_u16(), 422);
+            assert_eq!(invalid.envelope().error.field, Some("body"));
+            for unreachable in [DiscussionError::NotModerator, DiscussionError::Removed] {
+                assert_eq!(ApiError::from(unreachable), ApiError::Internal);
+            }
         }
     }
 }

@@ -41,9 +41,11 @@ No auth authority, login/session, publish/moderation workflow, AI provider or jo
 production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
-paging), application use cases and a PostgreSQL adapter/migration with real-database tests, plus a
-scoped structural Quint model/trace replay (`services/vink-app/behavior`). No HTTP route, UI or
-moderation authority calls the discussion use cases yet, so nobody can post a comment. Inspect actual
+paging), application use cases, a PostgreSQL adapter/migration with real-database tests, HTTP API
+v1 discussion routes with contract fixtures (read, submit, remove own, author toggle; no
+moderation route), plus a scoped structural Quint model/trace replay (`services/vink-app/behavior`).
+Production writes answer `401` (no auth authority); no UI or moderation authority exists, so no
+submitted comment can become public. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.

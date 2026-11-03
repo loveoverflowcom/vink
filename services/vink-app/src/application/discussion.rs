@@ -6,8 +6,9 @@
 //! inside its transaction and reports which decision it applied; this module only maps that to a
 //! result. Comment and thread IDs are generated here, never taken from the client.
 //!
-//! No HTTP route calls these methods yet, and no moderation authority issues a [`ModeratorGrant`]:
-//! writing is unreachable for users until D-05 (auth) and a moderation authority exist.
+//! HTTP API v1 exposes every use case except moderation (D2T-02b). Writes need a server-resolved
+//! principal, which production cannot produce until D-05, and no moderation authority issues a
+//! [`ModeratorGrant`]: nothing a user submits can become public yet.
 
 use time::OffsetDateTime;
 
@@ -155,6 +156,8 @@ pub struct CommentItem {
     pub body: String,
     pub created_at: OffsetDateTime,
     pub context: ReplyContext,
+    /// Display name of the replied-to writer, present only when `context` is a public reply.
+    pub context_author: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

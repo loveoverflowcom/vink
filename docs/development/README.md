@@ -15,8 +15,8 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 
 [Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
 PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
-[ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026); chưa có HTTP route/UI
-hay authority kiểm duyệt nên chưa ai gửi được bình luận.
+[ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
+đọc/gửi/gỡ/bật-tắt; chưa có UI hay authority kiểm duyệt, và production trả `401` cho lệnh ghi.
 
 ## Skeleton làm được gì
 
@@ -360,7 +360,7 @@ Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận 
   process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
 - Gửi duyệt, moderation người/AI, publish intent, publish/withdraw, curation, Tạp Chí
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). Chỉ seed local tạo `publications`.
-- API/UI bình luận, authority và màn kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, outbox,
+- UI bình luận, route và authority kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, outbox,
   inbox, job, reconciliation (D-08, S-02, S-04). Worker chưa có job nào. Discourse không còn trong
   phạm vi (Vink sở hữu bình luận).
 - Autosave, bản khôi phục cục bộ, paste từ Word/Docs, IME thật trên thiết bị (WR-01/WR-02, S-01).
@@ -382,7 +382,7 @@ Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận 
    seam `IdentityResolver`, cookie/CSRF, liên kết principal; thử đổi email, ban, logout.
 3. **WR-03 + PUB-01/02 trên PostgreSQL (nền cho S-04):** tạo revision bất biến từ nháp khi gửi,
    ý định xuất bản, publish transaction ghi con trỏ + audit + outbox, test r1/r2.
-4. **Bình luận D2T-02b/D2T-03:** HTTP API v1 + contract fixtures cho use case thảo luận, authority
-   kiểm duyệt và hàng đợi duyệt, rồi UI hai tầng (#45); xem [registry](discussion-core.md).
+4. **Bình luận:** authority kiểm duyệt + hàng đợi duyệt, model Quint vòng đời, rồi UI hai tầng
+   (#45) trên API v1 đã có; xem [registry](discussion-core.md).
 5. **S-05 AI + vận hành:** bộ mẫu tiếng Việt, schema output và job lease trong worker; giữ
    AI ở chế độ tư vấn cho tới khi MOD-06 có bằng chứng.

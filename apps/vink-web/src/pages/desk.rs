@@ -913,7 +913,12 @@ fn failure(error: &ApiError) -> Failure {
         ApiError::Forbidden => Failure::Forbidden,
         ApiError::NotFound => Failure::NotFound,
         ApiError::Invalid { .. } => Failure::Invalid,
-        ApiError::VersionConflict { .. } | ApiError::Unexpected { .. } => Failure::Unexpected,
+        // Draft routes never answer the discussion codes; treat them like any unexpected reply.
+        ApiError::VersionConflict { .. }
+        | ApiError::CommentsClosed
+        | ApiError::TargetUnavailable
+        | ApiError::KeyReused
+        | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }
 

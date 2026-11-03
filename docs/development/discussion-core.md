@@ -1,11 +1,13 @@
-# Bình luận hai tầng — core, application và PostgreSQL (D2T-01, D2T-02a)
+# Bình luận hai tầng — core, application, PostgreSQL và HTTP (D2T-01, D2T-02a/b)
 
 **Owner:** Vink, module `discussion` trong `vink-app` — quyết định của chủ sản phẩm ngày
 03/11/2026 ([ADR ownership](../architecture/discussion-ownership.md)). Discourse không chạy trong
 hệ thống. **Lát cắt 1** (#49, nền `develop@8045d45`) thêm core cấu trúc và replay Quint.
 **Lát D2T-02a** (nền `develop@31a62b1`) thêm domain vòng đời, use case application, migration
-và adapter PostgreSQL. Chưa có HTTP route, UI hay authority kiểm duyệt: người dùng chưa gửi được
-bình luận. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
+và adapter PostgreSQL. **D2T-02b** thêm HTTP API v1 + contract fixtures
+([contract](../../services/vink-app/contracts/http/v1/README.md#discussion-d2t-02b)): đọc, gửi, gỡ
+của chính mình, bật/tắt; không có route kiểm duyệt. Production chưa có auth authority nên lệnh
+ghi trả `401`; chưa có UI hay authority kiểm duyệt nên không bình luận nào thành công khai. Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
 [#43](https://github.com/loveoverflowcom/vink/issues/43).
 
 ## HOW: từ lệnh tới hàng trong database
@@ -93,7 +95,11 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
    SQL với projection domain trên mọi trạng thái × người xem. Chạy với superuser của harness;
    ràng buộc/trigger áp cho mọi role.
 5. **Kani NOT_RUN:** release 0.68.0 cần `nightly-2026-08-21`, máy giữ duy nhất Rust stable 1.99.1.
-   **Apalache/model checking, HTTP/API, browser NOT_RUN** vì chưa có route/UI.
+   **Apalache/model checking và browser NOT_RUN** vì chưa có lane/UI.
+6. **HTTP (`quick` + `postgres`):** fixture tests hai phía (provider serialize so field-for-field,
+   consumer `vink-web` decode giữ đủ field và phân loại mã lỗi), và
+   `the_http_api_keeps_every_discussion_outcome_distinct` qua router thật trên PostgreSQL: thứ tự
+   xác thực → Origin → body, `no-store`, 201/200 replay, 422 theo field, 403/404/409 theo mã.
 
 Nguồn toolchain Kani: [release 0.68.0](https://github.com/model-checking/kani/releases/tag/kani-0.68.0),
 [compiler pin](https://github.com/model-checking/kani/blob/kani-0.68.0/rust-toolchain.toml).

@@ -956,3 +956,204 @@ async fn a_withdrawn_work_closes_its_discussion_but_writers_keep_control_of_thei
         Err(DiscussionError::Unauthenticated)
     );
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let app = app(&pool).await;
+    let base = format!("/api/v1/works/{}/discussion", dev_seed::SAMPLE_WORK);
+    let comments = format!("{base}/comments");
+    let writer = Some(dev_seed::OTHER_PRINCIPAL);
+    let work_author = Some(dev_seed::SAMPLE_AUTHOR);
+    let origin = Some(ORIGIN);
+    let submit = |target: Option<String>, body: &str, key: &str| {
+        Some(json!({"target_id": target, "body": body, "command_key": key}))
+    };
+    let code = |body: &str| json(body)["error"]["code"].as_str().unwrap().to_string();
+    let field = |body: &str| json(body)["error"]["field"].as_str().map(str::to_string);
+
+    // Anyone reads a public work's discussion; nothing here may be shared-cached.
+    let (status, cache, body) = call(&app, "GET", &base, None, None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    let page = json(&body);
+    assert_eq!(
+        page["settings"],
+        json!({"comments_open": true, "generation": 1})
+    );
+    assert_eq!(page["roots"], json!([]));
+
+    // Authentication, then Origin, then the body.
+    let first = submit(None, "Đọc xong muốn đọc lại 📖", "http-key-0001");
+    let (status, _, body) = call(&app, "POST", &comments, None, origin, first.clone()).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::UNAUTHORIZED, "unauthenticated")
+    );
+    let (status, _, body) = call(&app, "POST", &comments, writer, None, first.clone()).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "forbidden")
+    );
+
+    let (status, cache, body) = call(&app, "POST", &comments, writer, origin, first.clone()).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::CREATED, Some("no-store"))
+    );
+    let created = json(&body);
+    assert_eq!(
+        (created["status"].as_str(), created["replayed"].as_bool()),
+        (Some("pending"), Some(false))
+    );
+    let root_id = created["comment_id"].as_str().unwrap().to_string();
+    // A retry after a lost response replays with 200; the same key with new text is refused.
+    let (status, _, body) = call(&app, "POST", &comments, writer, origin, first).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body)["comment_id"], root_id.as_str());
+    assert_eq!(json(&body)["replayed"], true);
+    let changed = submit(None, "Nội dung khác", "http-key-0001");
+    let (status, _, body) = call(&app, "POST", &comments, writer, origin, changed).await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        (code(&body), field(&body)),
+        ("idempotency_key_reused".into(), Some("command_key".into()))
+    );
+    for (request, expected_field) in [
+        (
+            submit(Some("không-phải-id".into()), "x", "http-key-0002"),
+            "target_id",
+        ),
+        (submit(None, "  \n ", "http-key-0003"), "body"),
+        (submit(None, "x", "ngắn"), "command_key"),
+        (
+            Some(
+                json!({"body": "x", "command_key": "http-key-0004", "target_id": null, "author_id": dev_seed::SAMPLE_AUTHOR}),
+            ),
+            "body",
+        ),
+    ] {
+        let (status, _, body) = call(&app, "POST", &comments, writer, origin, request).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert_eq!(field(&body).as_deref(), Some(expected_field), "{body}");
+    }
+
+    // Pending: only its writer sees it; the work's author sees nothing and may not remove it.
+    let (_, _, body) = call(&app, "GET", &base, writer, None, None).await;
+    let own = &json(&body)["roots"][0]["root"]["comment"];
+    assert_eq!(
+        (own["visibility"].as_str(), own["can_remove"].as_bool()),
+        (Some("own_pending"), Some(true))
+    );
+    let (_, _, body) = call(&app, "GET", &base, work_author, None, None).await;
+    assert_eq!(json(&body)["roots"], json!([]));
+    assert_eq!(json(&body)["viewer_is_work_author"], true);
+    let root_path = format!("{comments}/{root_id}");
+    let (status, _, _) = call(&app, "DELETE", &root_path, work_author, origin, None).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    let root = CommentId::parse(&root_id).unwrap();
+    moderate(&vink, root, 1, ModerationAction::Approve)
+        .await
+        .unwrap();
+    let (_, _, body) = call(&app, "GET", &base, work_author, None, None).await;
+    let public = &json(&body)["roots"][0]["root"]["comment"];
+    assert_eq!(
+        (
+            public["visibility"].as_str(),
+            public["can_remove"].as_bool()
+        ),
+        (Some("public"), Some(false))
+    );
+    assert_eq!(public["reply_to"], Value::Null);
+    let (status, _, body) = call(&app, "DELETE", &root_path, work_author, origin, None).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::FORBIDDEN, "not_comment_writer")
+    );
+
+    // Replies: flat under the root, with context; an unknown target is a conflict, not a 404.
+    let reply = submit(Some(root_id.clone()), "Cảm ơn bạn đã đọc.", "http-key-0005");
+    let (status, _, _) = call(&app, "POST", &comments, work_author, origin, reply).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let ghost = submit(
+        Some(Uuid::now_v7().to_string()),
+        "Trả lời ai?",
+        "http-key-0006",
+    );
+    let (status, _, body) = call(&app, "POST", &comments, writer, origin, ghost).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "target_unavailable")
+    );
+    let replies = format!("{base}/roots/{root_id}/replies");
+    let (status, cache, body) = call(&app, "GET", &replies, work_author, None, None).await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::OK, Some("no-store"))
+    );
+    let mine = &json(&body)["replies"][0];
+    assert_eq!(mine["reply_to"], json!({"kind": "root"}));
+    assert_eq!(mine["visibility"], "own_pending");
+    let (_, _, body) = call(&app, "GET", &replies, None, None, None).await;
+    assert_eq!(json(&body)["replies"], json!([]));
+
+    // Settings: only the work's author; a stale tab conflicts; closed blocks new comments.
+    let settings = format!("{base}/settings");
+    let close = Some(json!({"expected_generation": 1, "comments_open": false}));
+    let (status, _, _) = call(&app, "PUT", &settings, writer, origin, close.clone()).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    let (status, _, body) = call(&app, "PUT", &settings, work_author, origin, close).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        json(&body),
+        json!({"comments_open": false, "generation": 2})
+    );
+    let stale = Some(json!({"expected_generation": 1, "comments_open": true}));
+    let (status, _, body) = call(&app, "PUT", &settings, work_author, origin, stale).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "version_conflict")
+    );
+    assert_eq!(json(&body)["error"]["current_version"], 2);
+    let late = submit(None, "Muộn rồi", "http-key-0007");
+    let (status, _, body) = call(&app, "POST", &comments, writer, origin, late).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "comments_closed")
+    );
+
+    // The writer removes their own comment, repeatably; the text is gone from every reader.
+    for _ in 0..2 {
+        let (status, _, body) = call(&app, "DELETE", &root_path, writer, origin, None).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            json(&body),
+            json!({"comment_id": root_id, "status": "removed"})
+        );
+    }
+    let (_, _, body) = call(&app, "GET", &base, None, None, None).await;
+    assert!(!body.contains("Đọc xong muốn đọc lại"));
+
+    // Paging input and identifiers.
+    for (query, expected_field) in [
+        ("?cursor=c9.x", "cursor"),
+        ("?limit=0", "limit"),
+        ("?limit=abc", "query"),
+    ] {
+        let (status, _, body) =
+            call(&app, "GET", &format!("{base}{query}"), None, None, None).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{query}");
+        assert_eq!(field(&body).as_deref(), Some(expected_field), "{query}");
+    }
+    for path in [
+        "/api/v1/works/not-a-uuid/discussion".to_string(),
+        format!("/api/v1/works/{}/discussion", Uuid::now_v7()),
+        format!("{base}/roots/not-a-uuid/replies"),
+    ] {
+        let (status, _, _) = call(&app, "GET", &path, None, None, None).await;
+        assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
+    }
+}

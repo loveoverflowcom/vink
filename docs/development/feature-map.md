@@ -190,17 +190,17 @@ Không phải route của app: hai preview chạy riêng, không gọi service. 
 | Initials của app | `appearance.rs::initials` → `vink_ui::identity::initials` (giữ `•` khi neutral) | `vietnamese_initials_use_first_and_last_words` (`quick`); `verify web` của shell | App hiện chỉ gọi với `None`; tên thật chưa có nguồn |
 
 Chưa có đường đi cho đăng nhập thật, gửi duyệt, moderation, publish/withdraw, tuyển chọn Tạp Chí,
-API/UI bình luận, AI job, export ngoài `.txt` và nhiều chương. Trạng thái chi tiết và điều kiện làm tiếp
+UI và kiểm duyệt bình luận, AI job, export ngoài `.txt` và nhiều chương. Trạng thái chi tiết và điều kiện làm tiếp
 ở [giới hạn skeleton](README.md) và [S-01–S-05](../architecture/decisions.md).
 
 Khi một route, thao tác hoặc assertion đổi, cập nhật hàng liên quan cùng source owner;
 [vink-maintain-verification](../../.agents/skills/vink-maintain-verification/SKILL.md) hướng dẫn
 phân biệt tài liệu cũ, thiếu coverage và lỗi sản phẩm. Không cần cập nhật theo lịch cố định.
 
-## Bình luận hai tầng D2T-01/D2T-02a (#41, #43)
+## Bình luận hai tầng D2T-01/D2T-02a/D2T-02b (#41, #43)
 
-Lát cắt 1 ngày 03/11/2026 trên nền `8045d45`; D2T-02a trên nền `31a62b1`. Chưa có route hay
-khả năng gửi bình luận. Owner và registry/gap: [bình luận hai tầng](discussion-core.md),
+Lát cắt 1 ngày 03/11/2026 trên nền `8045d45`; D2T-02a/b trên nền `31a62b1`. Có route API v1,
+chưa có UI; production trả `401` cho lệnh ghi. Owner và registry/gap: [bình luận hai tầng](discussion-core.md),
 [ADR ownership đã chốt](../architecture/discussion-ownership.md).
 
 | Điểm vào | Assertion có trong code/runner | Giới hạn |
@@ -210,6 +210,7 @@ khả năng gửi bình luận. Owner và registry/gap: [bình luận hai tầng
 | Domain vòng đời (`domain/discussion/*`) | Unit tests từng module (`quick`): body NFC/emoji/bidi, mode generation, lifecycle 4 bước, visibility mọi trạng thái × người xem, quyền tác giả, bảng `decide_submission`, cursor | Thuần; không chứng minh transaction hay transport |
 | Use case `Vink::{submit_comment, remove_own_comment, set_comments_mode, moderate_comment, discussion, replies}` | [discussion_tests.rs](../../services/vink-app/src/application/discussion_tests.rs) với store ghi nhận (`quick`) | Không HTTP route; `ModeratorGrant` chưa có authority cấp |
 | `PgStore` discussion + migration | [tests/postgres/discussion.rs](../../services/vink-app/tests/postgres/discussion.rs) (`postgres`): SQL trực tiếp, khóa tường minh, 8 retry đồng thời, audit, neo/context, keyset ties, SQL ↔ domain | Superuser harness; chưa có lệnh rút bài thật, benchmark hay EXPLAIN |
+| `GET/POST/DELETE/PUT /api/v1/works/{id}/discussion…` ([contract](../../services/vink-app/contracts/http/v1/README.md#discussion-d2t-02b)) | Fixture tests `http::contract::tests::discussion` (provider) và `decodes_discussion_fixtures`/`classifies_discussion_error_fixtures` (`vink-web`) trong `quick`; `the_http_api_keeps_every_discussion_outcome_distinct` qua router trên PostgreSQL (`postgres`) | Resolver test lấy principal từ header; production chưa có auth nên ghi trả 401; chưa browser/UI, chưa rate limit |
 
 ## Adoption UIS-05 (#23)
 
