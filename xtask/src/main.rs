@@ -44,7 +44,7 @@ usage: cargo xtask <command>
   dev                    build, migrate, start Identity if VINK_IDENTITY_SOCKET is set,
                          serve on VINK_BIND (Ctrl-C to stop)
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
-  verify discussion      pinned Quint structural checks, generated trace drift and Rust replay
+  verify discussion      pinned Quint structure/lifecycle checks, trace drift and Rust replays
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)

@@ -11,10 +11,11 @@ description: >-
 Use [requirements](../../../prd/requirements.md) and
 [the decision log](../../../docs/architecture/decisions.md) to locate the relevant rule,
 INV ID and decision status. Inspect the real implementation separately. The foundation
-proposes Quint. The scoped two-tier creation model and generated traces live in
-`services/vink-app/behavior/discussion`; `verify discussion` checks that model and replays
-its inputs through the real Rust structural core. It does not cover discussion lifecycle,
-auth or I/O; the D2T-INV registry and gaps are in `docs/development/discussion-core.md`.
+proposes Quint. The scoped two-tier creation model, the comment lifecycle/mode/moderation
+authority model and their generated traces live in `services/vink-app/behavior/discussion`;
+`verify discussion` checks both and replays their inputs through the real Rust decisions. They
+do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are in
+`docs/development/discussion-core.md`.
 There is no generic behavior or Kani lane. Other stateful code keeps its own boundary tests:
 draft CAS in `tests/postgres.rs`, the desk save state machine in
 `apps/vink-web/src/desk_state.rs`.
@@ -69,6 +70,6 @@ If replaying model traces against code, call the actual production decision seam
 events/inputs, not precomputed expected states. Compare exact observed outcomes to the model;
 a second handwritten reducer merely compares two models. Label synthetic shell assumptions.
 
-Retain real PostgreSQL concurrency tests, pinned Discourse integration and browser checks for
+Retain real PostgreSQL concurrency tests and browser checks for
 their own boundaries. Report model simulation, bounded checking and implementation conformance
 separately, with limits. A PASS neither promotes a draft model nor establishes runtime acceptance.

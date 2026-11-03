@@ -1,8 +1,8 @@
 ---
 name: vink-engineering
 description: >-
-  Implement or refactor Vink domain logic, Axum APIs, PostgreSQL persistence,
-  moderation workers and Discourse adapters. Use for backend, contracts, concurrency
+  Implement or refactor Vink domain logic, Axum APIs, PostgreSQL persistence, the Vink-owned
+  two-tier discussion module and moderation workers. Use for backend, contracts, concurrency
   and verification work; discover actual code and runners before applying the proposed stack.
 ---
 
@@ -19,8 +19,9 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 | Responsibility | Owner today |
 | --- | --- |
 | Pure rules (document v1, title, draft version, revision hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
+| Discussion decisions (two tiers, body, lifecycle, comments mode, permissions, visibility, idempotency, paging) | `services/vink-app/src/domain/discussion.rs` + `domain/discussion/`; [ADR](../../../docs/architecture/discussion-ownership.md), [registry](../../../docs/development/discussion-core.md) |
 | Use cases, actor checks, storage ports | `services/vink-app/src/application/` |
-| SQL, transactions, constraint classification | `services/vink-app/src/persistence/` and `migrations/` |
+| SQL, transactions, constraint classification | `services/vink-app/src/persistence/` (`postgres.rs`, `discussion.rs`) and `migrations/` |
 | Pools, migration lifecycle, schema state, connection-error classes | `packages/store-postgres/` (caller supplies its `Migrator`; no business SQL) |
 | PostgreSQL container, owner databases, migrator/runtime roles | `services/postgres/` (`provision.sh`, runbook) |
 | Authentication facts (no authority yet), Identity migrations, private contract | `services/vink-identity/` and `contracts/rpc/v1/`; never imported by `vink-app` |
@@ -67,7 +68,7 @@ For a small change, a sentence is enough. For several durable claims, use a shor
 ## PostgreSQL and external effects
 
 Use the ownership and transaction rules in
-[tech stack](../../../docs/architecture/tech-stack.md), especially content, jobs and Discourse.
+[tech stack](../../../docs/architecture/tech-stack.md), especially content, jobs and discussion.
 For a persistent change, identify the constraint or conditional write that enforces it under
 concurrency; a read-then-write check outside a transaction does not provide that guarantee.
 `PgStore::save_draft` is the reference pattern: owner and version sit in the UPDATE predicate,
@@ -86,8 +87,14 @@ untrusted and bounded; an AI outage cannot authorize publication.
 
 An outbox is local durability, not remote exactly-once execution. Reconcile uncertain creates,
 bind events to stable subject IDs and generations, and describe the remote fencing actually
-available. Use Discourse API/plugin contracts, never direct writes to its core database.
-Derive acting identity from the server session/mapping; do not trust a browser's `Api-Username`.
+available. Derive acting identity from the server session/mapping; never trust a user ID, role
+or display name sent by the browser.
+
+Discussion is owned by Vink (decision 03/11/2026); Discourse is only a design reference. Do not
+add a Discourse adapter, sync outbox or a second comment store. The adapter loads facts under
+locks and calls the pure decision (`decide_submission`, lifecycle transitions); the database
+independently enforces two tiers with composite keys and immutable placement. A work author
+toggles comments for that work but never edits, removes or moderates others' comments.
 
 Public reads, search and caches need current access checks as well as immutable content keys.
 Account-scoped responses and drafts must not enter shared public caches. Keep keys, cookies,
@@ -102,5 +109,5 @@ owner. Run focused checks while editing and the affected final checks once the c
 Do not demand runtime tests for a documentation-only change.
 
 Report what changed, the owner/requirements affected, checks actually run and their scope,
-and material gaps. A fake adapter, pure test, real database, pinned Discourse and browser run
+and material gaps. A fake adapter, pure test, real database, model run and browser run
 are different evidence. Name any unrun layer and the concrete prerequisite for checking it.

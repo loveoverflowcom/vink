@@ -151,7 +151,12 @@ mod tests {
         let (status, body) = get(&router, "/health/ready").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains(r#""database":"unavailable""#), "{body}");
-        assert!(body.contains(r#""discourse":"not_implemented""#), "{body}");
+        assert!(
+            body.contains(r#""ai_moderation":"not_implemented""#),
+            "{body}"
+        );
+        // Discussion is Vink-owned (03/11/2026); no external forum is a readiness integration.
+        assert!(!body.contains("discourse"), "{body}");
 
         let (status, body) = get(&router, "/api/v1/works").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);

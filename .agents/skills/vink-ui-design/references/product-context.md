@@ -67,12 +67,12 @@ không tự đặt KPI/SLA hoặc biến lượt thích thành thước đo văn
 snapshot seed, Bàn viết soạn bằng CodeMirror 6 với lưu thủ công, version conflict, xem
 trước, tải `.txt` và guard rời trang, pure save-state machine, worker chỉ có lifecycle, CSS Vink và lanes `cargo xtask verify quick|postgres|web`.
 
-**Chưa có:** production auth, lệnh publication/moderation/curation hoàn chỉnh, tích hợp
-Discourse, AI jobs/provider, rich text/WYSIWYG hay autosave. Không gọi editor chữ nguồn
+**Chưa có:** production auth, lệnh publication/moderation/curation hoàn chỉnh, API/UI bình
+luận, AI jobs/provider, rich text/WYSIWYG hay autosave. Không gọi editor chữ nguồn
 hiện tại là S-01 đã hoàn tất. Trạng thái được mô hình hóa không chứng minh luồng người dùng đã chạy.
 
-**Đề xuất cần tiếp tục kiểm chứng:** Hybrid B (Vink sở hữu nội dung, Discourse sở hữu
-thảo luận), JS editor bridge, identity provider, age policy, nhiều chương public beta,
+**Đã chốt 03/11/2026:** Vink sở hữu cả nội dung lẫn bình luận hai tầng; tác giả bật/tắt bình
+luận theo tác phẩm. **Đề xuất cần tiếp tục kiểm chứng:** JS editor bridge, identity provider, age policy, nhiều chương public beta,
 chi tiết moderation/curation và tự động duyệt. Skeleton không chốt các quyết định đó.
 
 **Ngoài phạm vi mặc định:** cộng tác thời gian thực, offline-first, DM, paywall, chi trả

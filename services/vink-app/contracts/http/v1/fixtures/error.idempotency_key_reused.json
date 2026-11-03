@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "idempotency_key_reused",
+    "message": "command_key was already used for a different comment; nothing was written",
+    "field": "command_key"
+  }
+}

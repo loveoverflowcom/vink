@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "moderator_recused",
+    "message": "a moderator cannot decide on their own comment or on comments of their own work"
+  }
+}

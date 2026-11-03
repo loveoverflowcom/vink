@@ -42,8 +42,9 @@ For each viable option, name:
 - Evidence already available, the largest uncertainty and the smallest discriminating check.
 
 Preserve Vink's boundaries: independent PostgreSQL data, pure domain rules, server-owned
-identity, separate draft/revision/publication/curation, and no browser secrets. A proposed
-Discourse integration uses an owned API/event contract, never cross-database writes. Read
+identity, separate draft/revision/publication/curation, and no browser secrets. Discussion is
+Vink-owned ([ADR](../../../docs/architecture/discussion-ownership.md)); Discourse is a design
+reference, never a runtime integration or second comment store. Read
 [vink-publication](../vink-publication/SKILL.md) for lifecycle design and
 [vink-behavior](../vink-behavior/SKILL.md) only when state/race analysis adds value.
 

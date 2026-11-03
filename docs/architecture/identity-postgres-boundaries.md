@@ -3,7 +3,8 @@
 **Ngày:** 02/11/2026 · **Trạng thái:** Người dùng đã yêu cầu tách Identity và PostgreSQL thành
 owner riêng; cấu trúc dưới đây là đề xuất đang triển khai trên nhánh
 `codex/identity-postgres-boundaries` (một PR, ba commit). Đây **không** phải lựa chọn auth
-authority: native password, OIDC, Kanidm hay DiscourseConnect vẫn là quyết định riêng; D-05 và
+authority: native password, OIDC hay Kanidm vẫn là quyết định riêng (DiscourseConnect bị loại
+03/11/2026 vì Vink tự sở hữu bình luận); D-05 và
 S-03 trong [decision log](decisions.md) giữ trạng thái “Cần spike + lựa chọn”.
 
 Base đối chiếu: `develop@5afb00b29c85965dc115718e6ada5a4dcd95399b`. Tham khảo có kiểm chứng:

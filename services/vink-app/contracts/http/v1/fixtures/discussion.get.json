@@ -1,0 +1,91 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "settings": {
+    "comments_open": true,
+    "generation": 1
+  },
+  "viewer_is_work_author": false,
+  "roots": [
+    {
+      "root": {
+        "kind": "comment",
+        "comment": {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000001",
+          "visibility": "public",
+          "author_display_name": "Lan Anh",
+          "body": "Khổ cuối đọc mà nghe mưa thật 🌧️",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": null,
+          "can_remove": false,
+          "rejection_reason": null
+        }
+      },
+      "public_replies": 4,
+      "preview": [
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+          "visibility": "public",
+          "author_display_name": "Minh",
+          "body": "Mình thích nhịp lục bát ở đây.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "root"
+          },
+          "can_remove": false,
+          "rejection_reason": null
+        },
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000003",
+          "visibility": "public",
+          "author_display_name": "Hà",
+          "body": "Đồng ý,\nnhất là câu “mái ngói rêu xanh”.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "reply",
+            "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+            "author_display_name": "Minh"
+          },
+          "can_remove": false,
+          "rejection_reason": null
+        },
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000004",
+          "visibility": "own_pending",
+          "author_display_name": "Bạn đọc",
+          "body": "Cảm ơn hai bạn 👩‍💻",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "unavailable"
+          },
+          "can_remove": true,
+          "rejection_reason": null
+        }
+      ],
+      "preview_next_cursor": "c1.1793692800000000.0192f3a1000070008000000000000004"
+    },
+    {
+      "root": {
+        "kind": "anchor",
+        "comment_id": "0192f3a1-0000-7000-8000-000000000006",
+        "created_at": "2026-11-03T08:00:00Z"
+      },
+      "public_replies": 1,
+      "preview": [
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000007",
+          "visibility": "public",
+          "author_display_name": "Minh",
+          "body": "Vẫn muốn giữ đoạn này.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "root"
+          },
+          "can_remove": false,
+          "rejection_reason": null
+        }
+      ],
+      "preview_next_cursor": null
+    }
+  ],
+  "next_cursor": "c1.1793692800000000.0192f3a1000070008000000000000006"
+}

@@ -61,7 +61,7 @@ status and provenance while updating links and placement.
 Use [the verification guide](../vink-engineering/references/verification.md) to pick the
 `cargo xtask verify` lanes the change needs; the commands are defined in
 [docs/development](../../../docs/development/README.md), not in this skill. Do not install the
-Cantos toolchain or invent gates. Finish focused checks and review the final diff. Keep pure, fake, PostgreSQL, Discourse, model and browser
+Cantos toolchain or invent gates. Finish focused checks and review the final diff. Keep pure, fake, PostgreSQL, model and browser
 evidence distinct. If a dependency is unavailable, deliver the independently verified portion
 and record exactly what remains unverified; keep runtime failures explicit rather than fake.
 

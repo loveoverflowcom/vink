@@ -25,7 +25,8 @@ required. Write the prompt in the user's language and retain exact paths, IDs an
   status from a remembered conversation or an imported research document.
 - Read requirements and D/INV/S IDs nearest the outcome. Keep user decisions, proposals,
   implemented facts and runtime evidence separate. The foundation's Cantos/Discourse source
-  snapshots are research provenance, not the coder's runtime versions.
+  snapshots are research provenance, not the coder's runtime versions; Discourse is not part of
+  Vink's runtime since 03/11/2026.
 - Treat illustrative paths in the stack as proposed until present. Take VERIFY commands from
   [docs/development](../../../docs/development/README.md) (`cargo xtask verify quick|postgres|web`)
   and name the lane each claim needs. If source access is missing, mark the gap and make the
@@ -61,7 +62,7 @@ permission source. Classify stale facts and continue independent work before ask
 decision that materially changes correctness.
 
 The target environment is unknown until the executing agent inspects it. Missing PostgreSQL,
-Discourse, browser or Quint tooling must not produce fake runtime success. Keep model, pure
+browser or Quint tooling must not produce fake runtime success. Keep model, pure
 code and real integration acceptance separate; provide a concrete deferred-check path.
 
 ## Final check

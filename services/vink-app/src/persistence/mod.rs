@@ -4,12 +4,16 @@
 //! row mapping and constraint classification stay here. These wrappers bind that lifecycle to
 //! the App's own migrations, so no other registry reaches the App database.
 
+mod discussion;
 mod postgres;
 
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPool;
 use vink_store_postgres::PoolSettings;
 
+pub use discussion::{
+    GrantOutcome, ModeratorRecord, active_moderators, grant_moderator, revoke_moderator,
+};
 pub use postgres::PgStore;
 pub use vink_store_postgres::{MigrationError, MigrationReport, SchemaState, role_is_privileged};
 

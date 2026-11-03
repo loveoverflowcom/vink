@@ -1,8 +1,8 @@
 //! `vink-worker` — background process entrypoint.
 //!
 //! Scope today: configuration, logging, a database/schema probe and graceful shutdown. No job
-//! kind is registered: moderation, outbox delivery and Discourse reconciliation are not
-//! implemented, and the worker never reports them as running.
+//! kind is registered: moderation and outbox delivery are not implemented, and the worker never
+//! reports them as running. Discussion is Vink-owned; there is no external forum to reconcile.
 
 use std::process::ExitCode;
 use std::time::Duration;
@@ -49,7 +49,6 @@ async fn run(config: Config) -> ExitCode {
         database,
         jobs = "none",
         ai_moderation = "not_implemented",
-        discourse = "not_implemented",
         "vink-worker ready"
     );
     runtime::shutdown_signal().await;

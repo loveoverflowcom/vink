@@ -1,0 +1,310 @@
+//! Replays `behavior/discussion/lifecycle.qnt` scenario inputs through the production decisions.
+//!
+//! Only model INPUTS reach Rust: each command goes into the same pure functions the PostgreSQL
+//! store calls, in the store's order (`persistence/discussion.rs`). The generated state is used
+//! solely as an oracle afterwards. Synthetic shell, labelled: comment rows, the thread's settings
+//! and the active grant set live in memory here, and grant/revoke mirror the operator commands'
+//! idempotent outcomes; their locking and durability belong to the postgres lane.
+
+use std::collections::{BTreeMap, BTreeSet};
+
+use serde::Deserialize;
+use uuid::Uuid;
+
+use super::CommentPlacement;
+use super::lifecycle::{
+    CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
+};
+use super::moderation::ModerationAction;
+use super::policy::{
+    Denied, authorize_mode_change, authorize_moderation, authorize_writer_removal,
+};
+use super::settings::{
+    CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
+};
+use super::submission::{
+    PayloadDigest, SubmissionDecision, SubmissionFacts, TargetFacts, decide_submission,
+};
+use super::visibility::{CommentView, view};
+use crate::domain::ids::{CommentId, PrincipalId, ThreadId};
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Conformance {
+    format: String,
+    quint_version: String,
+    work_author: u128,
+    scenarios: Vec<Scenario>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Scenario {
+    name: String,
+    steps: Vec<Step>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Step {
+    command: Command,
+    outcome: String,
+    mode: String,
+    generation: i64,
+    grants: Vec<u128>,
+    comments: Vec<ExpectedComment>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Command {
+    op: String,
+    actor: u128,
+    id: u128,
+    target: u128,
+    expected: i64,
+    value: String,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct ExpectedComment {
+    id: u128,
+    writer: u128,
+    target: Option<u128>,
+    review: String,
+    removal: String,
+    version: i64,
+    /// What viewers 0 (anonymous), 1, 2 and 3 see.
+    views: Vec<String>,
+}
+
+struct Row {
+    writer: PrincipalId,
+    target: Option<u128>,
+    placement: CommentPlacement,
+    state: CommentState,
+}
+
+struct Shell {
+    thread: ThreadId,
+    work_author: PrincipalId,
+    settings: DiscussionSettings,
+    grants: BTreeSet<u128>,
+    rows: BTreeMap<u128, Row>,
+}
+
+fn principal(id: u128) -> PrincipalId {
+    PrincipalId::from_uuid(Uuid::from_u128(id))
+}
+
+fn comment(id: u128) -> CommentId {
+    CommentId::from_uuid(Uuid::from_u128(id))
+}
+
+fn denied(denied: Denied) -> &'static str {
+    match denied {
+        Denied::NotWorkAuthor => "not_work_author",
+        Denied::NotCommentWriter => "not_comment_writer",
+        Denied::Hidden => "hidden",
+        Denied::NotModerator => "not_moderator",
+        Denied::Recused => "recused",
+    }
+}
+
+fn transition(decided: Result<Transition, LifecycleError>) -> (&'static str, Option<CommentState>) {
+    match decided {
+        Ok(Transition::Changed(next)) => ("changed", Some(next)),
+        Ok(Transition::Unchanged(_)) => ("unchanged", None),
+        Err(LifecycleError::Removed) => ("removed", None),
+        Err(LifecycleError::Stale { .. }) => ("stale", None),
+        Err(LifecycleError::VersionExhausted) => panic!("model versions stay small"),
+    }
+}
+
+impl Shell {
+    fn apply(&mut self, command: &Command) -> &'static str {
+        let actor = principal(command.actor);
+        match command.op.as_str() {
+            "submit" => self.submit(command),
+            "set_mode" => {
+                if let Err(refused) = authorize_mode_change(actor, self.work_author) {
+                    return denied(refused);
+                }
+                let mode = match command.value.as_str() {
+                    "open" => CommentsMode::Open,
+                    "closed" => CommentsMode::Closed,
+                    other => panic!("unknown mode {other}"),
+                };
+                let expected = SettingsGeneration::new(command.expected).unwrap();
+                match self.settings.change_mode(expected, mode) {
+                    Ok(ModeChange::Changed(next)) => {
+                        self.settings = next;
+                        "changed"
+                    }
+                    Ok(ModeChange::Unchanged(_)) => "unchanged",
+                    Err(SettingsError::Stale { .. }) => "stale",
+                    Err(SettingsError::GenerationExhausted) => panic!("small generations"),
+                }
+            }
+            "remove_own" => {
+                let row = self
+                    .rows
+                    .get_mut(&command.id)
+                    .expect("model guards existence");
+                // The work is public throughout, so the store's view is the viewer projection.
+                let actor_view = view(row.writer, row.state, Some(actor));
+                if let Err(refused) = authorize_writer_removal(actor, row.writer, actor_view) {
+                    return denied(refused);
+                }
+                let (outcome, next) = transition(row.state.remove_by_author());
+                row.state = next.unwrap_or(row.state);
+                outcome
+            }
+            "moderate" => {
+                // The store checks the grant before the comment lookup; the same function decides.
+                let holds_grant = self.grants.contains(&command.actor);
+                let row = self
+                    .rows
+                    .get_mut(&command.id)
+                    .expect("model guards existence");
+                if let Err(refused) =
+                    authorize_moderation(actor, holds_grant, row.writer, self.work_author)
+                {
+                    return denied(refused);
+                }
+                let action = match command.value.as_str() {
+                    "approve" => ModerationAction::Approve,
+                    "reject" => ModerationAction::Reject,
+                    "remove" => ModerationAction::Remove,
+                    other => panic!("unknown action {other}"),
+                };
+                let expected = ModerationVersion::new(command.expected).unwrap();
+                let (outcome, next) = transition(action.apply(row.state, expected));
+                row.state = next.unwrap_or(row.state);
+                outcome
+            }
+            "grant" if self.grants.insert(command.actor) => "granted",
+            "grant" => "already_active",
+            "revoke" if self.grants.remove(&command.actor) => "revoked",
+            "revoke" => "not_active",
+            other => panic!("unknown op {other}"),
+        }
+    }
+
+    fn submit(&mut self, command: &Command) -> &'static str {
+        let requested = (command.target != 0).then(|| comment(command.target));
+        let target = self.rows.get(&command.target).map(|row| TargetFacts {
+            placement: row.placement,
+            state: row.state,
+        });
+        let facts = SubmissionFacts {
+            receipt: None,
+            work_public: true,
+            settings: self.settings,
+            target,
+        };
+        let digest = PayloadDigest::from_bytes(&[0; 32]).unwrap();
+        match decide_submission(self.thread, comment(command.id), digest, requested, facts) {
+            SubmissionDecision::Insert(placement) => {
+                assert_eq!(placement.id(), comment(command.id));
+                self.rows.insert(
+                    command.id,
+                    Row {
+                        writer: principal(command.actor),
+                        target: requested.map(|_| command.target),
+                        placement,
+                        state: CommentState::SUBMITTED,
+                    },
+                );
+                "created"
+            }
+            SubmissionDecision::CommentsClosed => "closed",
+            SubmissionDecision::TargetUnavailable => "target_unavailable",
+            other => panic!("unexpected submission decision {other:?}"),
+        }
+    }
+
+    fn observed(&self) -> Vec<ExpectedComment> {
+        self.rows
+            .iter()
+            .map(|(&id, row)| ExpectedComment {
+                id,
+                writer: row.writer.as_uuid().as_u128(),
+                target: row.target,
+                review: match row.state.review() {
+                    Review::Pending => "pending",
+                    Review::Approved => "approved",
+                    Review::Rejected => "rejected",
+                }
+                .into(),
+                removal: match row.state.removal() {
+                    None => "none",
+                    Some(Removal::ByAuthor) => "author",
+                    Some(Removal::ByModeration) => "moderation",
+                }
+                .into(),
+                version: row.state.version().get(),
+                views: [None, Some(1), Some(2), Some(3)]
+                    .into_iter()
+                    .map(|viewer| {
+                        match view(row.writer, row.state, viewer.map(principal)) {
+                            CommentView::Public => "public",
+                            CommentView::OwnPending => "own_pending",
+                            CommentView::OwnRejected => "own_rejected",
+                            CommentView::Unavailable => "unavailable",
+                        }
+                        .into()
+                    })
+                    .collect(),
+            })
+            .collect()
+    }
+}
+
+#[test]
+fn quint_lifecycle_inputs_replay_against_the_production_decisions() {
+    let fixture: Conformance = serde_json::from_str(include_str!(
+        "../../../behavior/discussion/lifecycle-fixtures.json"
+    ))
+    .unwrap();
+    let tool: serde_json::Value =
+        serde_json::from_str(include_str!("../../../behavior/discussion/package.json")).unwrap();
+    assert_eq!(fixture.format, "vink-discussion-lifecycle-conformance-v1");
+    assert_eq!(
+        fixture.quint_version,
+        tool["dependencies"]["@informalsystems/quint"]
+    );
+    let mut outcomes = BTreeSet::new();
+    for scenario in &fixture.scenarios {
+        assert!(!scenario.steps.is_empty(), "{}", scenario.name);
+        let mut shell = Shell {
+            thread: ThreadId::from_uuid(Uuid::from_u128(10)),
+            work_author: principal(fixture.work_author),
+            // A new public work starts open (owner decision 03/11/2026).
+            settings: DiscussionSettings::INITIAL,
+            grants: BTreeSet::new(),
+            rows: BTreeMap::new(),
+        };
+        for (index, step) in scenario.steps.iter().enumerate() {
+            let at = format!("{} step {index}", scenario.name);
+            let outcome = shell.apply(&step.command);
+            assert_eq!(outcome, step.outcome, "{at}");
+            outcomes.insert(outcome);
+            let mode = match shell.settings.mode() {
+                CommentsMode::Open => "open",
+                CommentsMode::Closed => "closed",
+            };
+            assert_eq!(mode, step.mode, "{at}");
+            assert_eq!(shell.settings.generation().get(), step.generation, "{at}");
+            assert_eq!(
+                shell.grants.iter().copied().collect::<Vec<_>>(),
+                step.grants,
+                "{at}"
+            );
+            assert_eq!(shell.observed(), step.comments, "{at}");
+        }
+    }
+    // Non-vacuous: every production refusal and outcome the model distinguishes was replayed.
+    assert_eq!(outcomes.len(), 16, "{outcomes:?}");
+}

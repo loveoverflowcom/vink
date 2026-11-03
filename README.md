@@ -4,7 +4,7 @@
 
 Vink là không gian để viết, đọc, học hỏi, chia sẻ và góp ý tác phẩm. Sản phẩm hướng tới một cộng đồng hiện đại, trẻ trung và có chiều sâu, ưu tiên chất lượng nội dung hơn số lượng bài đăng hay tương tác ảo.
 
-**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.2 là đề xuất để review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Chưa có đăng nhập thật, kiểm duyệt, xuất bản hay Discourse; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
+**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.2 là đề xuất để review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Chưa có đăng nhập thật, kiểm duyệt, xuất bản hay API bình luận; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
 
 ## Trải nghiệm hướng tới
 
@@ -19,9 +19,9 @@ Thiết kế hướng tới **Material 3 Expressive**, giàu cảm xúc, thân t
 
 ## Định hướng kỹ thuật
 
-Phương án ưu tiên để kiểm chứng là **Hybrid**: Vink sở hữu tác phẩm, bản nháp, revision và publication trong **PostgreSQL**; **Discourse** sở hữu thảo luận và dùng PostgreSQL/Redis theo topology được hỗ trợ. **Leptos SSR + Axum** phục vụ giao diện riêng, cùng worker nền cho kiểm duyệt và đồng bộ. Vink cần màn vận hành tác phẩm riêng bên cạnh Discourse Admin.
+Vink sở hữu tác phẩm, bản nháp, revision, publication **và thảo luận** trong **PostgreSQL**. Bình luận hai tầng (bình luận gốc + một danh sách phản hồi phẳng) là module Rust trong app, đã chốt ngày 03/11/2026 ([ADR](docs/architecture/discussion-ownership.md)); Discourse chỉ là nguồn tham khảo thiết kế, không chạy trong hệ thống. **Leptos SSR + Axum** phục vụ giao diện riêng, cùng worker nền cho kiểm duyệt. Vink tự làm màn vận hành tác phẩm và bình luận.
 
-Các lựa chọn này chưa phải ADR Accepted; editor, identity và tích hợp Discourse cần vượt qua các spike trong decision log. Cantos là sản phẩm độc lập, có thể nhận handoff chuyển thể audio về sau với sự đồng ý riêng của tác giả; không dùng chung database, password hay session.
+Ngoài owner thảo luận, các lựa chọn này chưa phải ADR Accepted; editor, identity và tiền kiểm bình luận cần vượt qua các spike trong decision log. Cantos là sản phẩm độc lập, có thể nhận handoff chuyển thể audio về sau với sự đồng ý riêng của tác giả; không dùng chung database, password hay session.
 
 ## Tài liệu
 

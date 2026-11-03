@@ -69,8 +69,8 @@ real consumer and no private data crosses into the browser build.
   rendering and imported rich text; do not trust editor-generated HTML as safe server output.
 - Public content caches need revision identity plus current access/invalidation policy. Keep
   account-scoped data out of shared caches; clear scoped state on logout or account change.
-- Resolve acting Discourse identity on the server. The browser neither supplies a trusted
-  `Api-Username` nor receives the API key. Apply the selected session/CSRF/Origin policy.
+- Resolve the acting principal on the server. The browser never supplies a trusted user ID,
+  role or display name for discussion commands. Apply the selected session/CSRF/Origin policy.
 - Use [vink-publication](../vink-publication/SKILL.md) for gates. A button's enabled state is
   a projection, not permission to publish, moderate or act as another user.
 
