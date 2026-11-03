@@ -1,0 +1,86 @@
+{
+  "version": "v4",
+  "scope": "SVG asset / browser fixture only; no app integration or deployment",
+  "viewBox": [
+    0,
+    0,
+    256,
+    256
+  ],
+  "core_geometry": {
+    "center": [
+      128,
+      128
+    ],
+    "outer_radius": 104,
+    "inner_radius": 66,
+    "radial_width": 38,
+    "circle_scope": "body arcs only; plume and nib are deliberate freeform extensions"
+  },
+  "checks": {
+    "same_standard_geometry_light_dark": true,
+    "one_path_no_embedded_raster_no_filter": true,
+    "same_compact_geometry_light_dark": true,
+    "exact_circular_arcs_raster_tolerance_pass": true
+  },
+  "raster_bounds_2048": {
+    "light": [
+      192,
+      192,
+      1856,
+      1856
+    ],
+    "dark": [
+      192,
+      192,
+      1856,
+      1856
+    ]
+  },
+  "circle_raster_max_error_viewbox_units": {
+    "light": 0.075,
+    "dark": 0.075
+  },
+  "file_sha256": {
+    "vink-mark-mono-compact.svg": "af69aef4970409036c36cd5736831695906eb29cf5882557e29b07d805e99fd8",
+    "comparison.svg": "5316792f2cc294fb6b4a858f1fae2aa25e48066a2b4d173a12156035416fc4ea",
+    "vink-mark-light-compact.svg": "f9f06839148de2bafd83dc82530c04a9203373ee99a0bf5c4f42753c72af2338",
+    "construction.svg": "c9307bcac04de755f23604676525643ba6bb06569636b4312d0f808701e4763e",
+    "vink-mark-mono.svg": "33d73adfa1add44c44beb201445d4681f515447d05016ea1a4991ee26bc7c67f",
+    "vink-mark-dark.svg": "0d02990ff6edb89fea3c8b1d07c6945c7b2b4fb906e58c853c1da74d09e6e64a",
+    "vink-mark-light.svg": "1635afcd2b281fba100d5b5c9ca55eb7a8bf0d4e3e1e2b34582c03debb55fa31",
+    "preview.svg": "4ec86906738764483da1a1a9f6924d3abfb807a26068b94574109b2e6291b163",
+    "vink-mark-dark-compact.svg": "d9a025b1213ede650d0c0c01d54311da1370a632eefbdb3225522deca46edf74"
+  },
+  "browser_fixture": {
+    "engine": "Chromium",
+    "version": "144.0.7559.96",
+    "transport": "in-memory HTML with same SVG bytes as data URIs; local HTTP navigation blocked by environment policy",
+    "results": [
+      {
+        "width": 1280,
+        "images_decoded_both_themes": true,
+        "toggle_changes_all_sources": true,
+        "no_mark_geometry_shift": true,
+        "no_horizontal_overflow": true,
+        "page_errors": []
+      },
+      {
+        "width": 390,
+        "images_decoded_both_themes": true,
+        "toggle_changes_all_sources": true,
+        "no_mark_geometry_shift": true,
+        "no_horizontal_overflow": true,
+        "page_errors": []
+      }
+    ],
+    "not_tested": [
+      "HTTP asset routes / MIME / cache",
+      "real Vink app / hydration / first-paint",
+      "Firefox",
+      "Safari",
+      "Android native launcher / CMP",
+      "screen reader"
+    ]
+  }
+}

@@ -1,3 +1,5 @@
+> **REJECTED / KHÔNG TRIỂN KHAI — 03/11/2026.** Người dùng từ chối V3 vì thân vòng không tròn và các nét lệch/chồng nhau. Giữ thư mục này chỉ làm lịch sử; bản sửa mới ở [logo-v4](../logo-v4/README.md), vẫn chờ review trong [issue #34](https://github.com/loveoverflowcom/vink/issues/34). Nội dung dưới đây là hồ sơ cũ, không phải phê duyệt hiện hành.
+
 # Vink logo v3 — vector proposal / review only
 
 Status: **PROPOSAL**, chưa thay logo production. Source image là biểu tượng vòng mực/ngòi bút được chọn trong cuộc trò chuyện ngày 03/11/2026.
