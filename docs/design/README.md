@@ -18,6 +18,7 @@ nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner 
 
 | Nguồn | Dùng cho |
 | --- | --- |
+| [Current design 02/11](https://drive.google.com/file/d/1cNYQh-iukYP-nP0cphLOGdywROAmtkSr/view), [amendment v4](https://drive.google.com/file/d/1PQeLmEbwkNiFquI-Qgb6gaEV3i0OZWSn/view) | Tham chiếu thị giác Khám phá hiện hành; phạm vi dữ liệu thật và đối chiếu vùng ở [UI-REPAIR-02](ui-repair-02.md) |
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
@@ -25,7 +26,8 @@ nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner 
 | [Logo Enso 01/11/2026](https://github.com/loveoverflowcom/vink/issues/10), PR #17 | Lịch sử đã được selected pack #34 thay thế; không còn là source artwork hiện hành |
 
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
-Khám phá/reader theo v3; palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
+Khám phá theo thị giác v4 trong dữ liệu thật đã có; semantics v3/r2 về đọc/search/return
+giữ hiệu lực. Palette và phần Bàn viết chưa bị thay thế tiếp tục theo v2.3.
 Ảnh tham chiếu không ghi đè quyền của server hay ngữ nghĩa lưu/transport. `source/tokens.css` của
 prototype là nơi lấy giá trị ban đầu; từ nay sửa role trong `tokens.json`, không đồng bộ ngược từ
 prototype. Lavender là palette riêng của Vink do người dùng chọn, không phải thương hiệu Cantos.

@@ -58,25 +58,25 @@ pub fn Home() -> impl IntoView {
         <Link rel="canonical" href=canonical_url("/") />
         <div id="explore" class="vk-explore">
             <header id="explore-heading" class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1>"Khám phá"</Heading>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Headline>"Khám phá"</Heading>
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
-            <div class="vk-discover-grid">
-            <section id="community-stream" aria-labelledby="works-title">
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="works-title">"Tác phẩm công khai"</Heading>
-                <p id="public-scope" class="vk-muted vk-public-scope">
-                    "Tìm theo tiêu đề hoặc tên tác giả trong tối đa 12 tác phẩm mới công khai đã tải, theo ngày đăng. Không tìm toàn bộ thư viện."
-                </p>
+            <div id="discovery-tools" class="vk-discovery-tools">
                 <Form method="get" action="/" noscroll=true attr:role="search" attr:class="vk-public-search" attr:id="public-search">
                     <TextField id="public-query" label="Tìm trong danh sách" name="q" kind=TextKind::Search
+                        help="Tìm tiêu đề, tác giả trong tối đa 12 tác phẩm mới công khai đã tải. Không tìm toàn bộ thư viện."
                         value=query on_input=|_| {} />
                     <div class="vk-public-search__actions">
                         <Button variant=ButtonVariant::Tonal kind=ButtonKind::Submit>"Tìm"</Button>
-                        <Show when=move || !query.get().is_empty()>
-                            <vink_ui::Link href="/" attr:id="clear-public-search" variant=vink_ui::LinkVariant::Standalone>"Xóa tìm kiếm"</vink_ui::Link>
-                        </Show>
                     </div>
+                    <Show when=move || !query.get().is_empty()>
+                        <vink_ui::Link href="/" attr:id="clear-public-search" variant=vink_ui::LinkVariant::Standalone>"Xóa tìm kiếm"</vink_ui::Link>
+                    </Show>
                 </Form>
+            </div>
+            <div class="vk-discover-grid">
+            <section id="community-stream" aria-labelledby="works-title">
+                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="works-title">"Tác phẩm công khai"</Heading>
             <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang tải tác phẩm…"</p> }>
                 {move || {
                     let status = status.clone();
@@ -105,7 +105,7 @@ pub fn Home() -> impl IntoView {
             </section>
             <aside id="context" class="vk-explore-context" aria-label="Gợi ý viết">
                 <section id="writing-prompt" class="vk-writing-prompt" aria-labelledby="prompt-title">
-                    <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S6>
+                    <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S4>
                     <p class="vk-eyebrow">"Một gợi ý để bắt đầu"</p>
                     <h2 id="prompt-title">"Một nơi bạn nhớ"</h2>
                     <p>"Một góc phố, căn phòng hay một người khiến bạn muốn trở về. Bạn sẽ bắt đầu từ chi tiết nào?"</p>
@@ -140,7 +140,7 @@ fn PublicListView(list: WorkList, query: Memo<String>) -> impl IntoView {
                     }.into_any()
                 } else {
                     view! {
-                        <ul class="vk-public-list" role="list" aria-describedby="public-scope">
+                        <ul class="vk-public-list" role="list" aria-describedby="public-query-help">
                             <For each=move || works.clone() key=|work| work.work_id.clone() children=move |work| view! { <WorkCardView work query /> } />
                         </ul>
                         <ListEnd label="Bạn đã xem hết danh sách này." attr:id="feed-end" />

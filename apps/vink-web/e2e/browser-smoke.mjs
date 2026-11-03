@@ -211,6 +211,7 @@ class Page {
       return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
+        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label') })) },
       };
     })()`);
@@ -623,7 +624,7 @@ async function brandAssets(page) {
 async function textContrast(page, theme, surface = 'shell') {
   const selectors = {
     desk: ['#resume h2', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
-    explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-scope', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
+    explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
   }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked) span', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
@@ -1080,6 +1081,63 @@ async function publicReading(page) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
   };
+  const exploreGeometry = async scenario => {
+    await page.eval(`document.fonts.ready`);
+    check(await page.eval(`(() => {
+      const input = document.querySelector('#public-query'), button = document.querySelector('#public-search button[type=submit]');
+      const a = input.getBoundingClientRect(), b = button.getBoundingClientRect();
+      const separated = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+      return document.documentElement.scrollWidth <= innerWidth && a.width >= 100 && a.height >= 44 && b.width >= 44 && b.height >= 44 && separated &&
+        input.labels[0]?.textContent === 'Tìm trong danh sách' && input.getAttribute('aria-describedby') === 'public-query-help' &&
+        document.querySelector('#public-query-help').textContent.includes('tối đa 12') &&
+        document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện');
+    })()`), `${scenario}: labelled search, honest described scope and targets >=44px reflow without overlap`);
+    check(await page.eval(`(() => {
+      const context = document.querySelector('#context').getBoundingClientRect(), stream = document.querySelector('#community-stream').getBoundingClientRect();
+      return context.left >= stream.right || context.top >= stream.bottom;
+    })()`), `${scenario}: context stays beside or after the reading stream`);
+    check(await page.eval(`[...document.querySelectorAll('.vk-public-row')].every(row => {
+      const name = row.querySelector('.vk-ui-byline__name'), date = row.querySelector('time'), title = row.querySelector('h3'), link = row.querySelector('.vk-public-row__link');
+      const n = name.getBoundingClientRect(), d = date.getBoundingClientRect(), t = title.getBoundingClientRect(), a = link.getBoundingClientRect();
+      return parseInt(getComputedStyle(name).fontWeight) >= 600 && Math.abs(n.left - d.left) <= 1 && d.top >= n.bottom - 1 && t.top >= d.bottom &&
+        title.scrollWidth <= title.clientWidth && a.height >= 44 && a.right <= innerWidth && link.getAttribute('href').startsWith('/tac-pham/');
+    })`), `${scenario}: full author/title, aligned date and reachable real reader link`);
+  };
+  const captureNarrowWork = async (state, width, scale, theme) => {
+    if (width > 390 || scale !== 200 || !await page.eval(`!!document.querySelector('.vk-public-row')`)) return;
+    await page.eval(`document.querySelector('.vk-public-row .vk-work-byline').scrollIntoView({ block: 'start' })`);
+    await page.capture(`explore-${state}-byline-${width}-${scale}-${theme}`);
+    await page.eval(`document.querySelector('.vk-public-row__link').focus(); document.querySelector('.vk-public-row__open').scrollIntoView({ block: 'center' })`);
+    check(await page.eval(`(() => {
+      const action = document.querySelector('.vk-public-row__open').getBoundingClientRect();
+      return action.top >= 0 && action.bottom < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top;
+    })()`), `${state} ${width}px/${scale}%/${theme}: the read action remains visible above the fixed bar`);
+    await page.capture(`explore-${state}-read-${width}-${scale}-${theme}`);
+    if (state === 'real') {
+      await page.key('Tab');
+      check(await page.eval(`(() => {
+        const link = document.activeElement, r = link.getBoundingClientRect();
+        return link.matches('#writing-prompt a:focus-visible') && r.top >= 0 && r.bottom <= document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top;
+      })()`), `one-work ${width}px/${scale}%/${theme}: Tab reaches the writing prompt without fixed-bar occlusion`);
+      await page.capture(`explore-${state}-prompt-${width}-${scale}-${theme}`);
+    }
+  };
+  const captureExplore = async state => {
+    for (const theme of ['light', 'dark']) {
+      await setPublicTheme(theme);
+      for (const width of [1440, 1024, 834, 390, 320]) {
+        await page.viewport(width);
+        for (const scale of [100, 200]) {
+          await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+          await exploreGeometry(`${state} ${width}px/${scale}%/${theme}`);
+          await page.capture(`explore-${state}-${width}-${scale}-${theme}`);
+          await captureNarrowWork(state, width, scale, theme);
+        }
+      }
+    }
+    await page.eval(`document.documentElement.style.fontSize = ''`);
+    await page.viewport(1440);
+  };
   const captureReal = async surface => {
     for (const theme of ['light', 'dark']) {
       await setPublicTheme(theme);
@@ -1099,7 +1157,8 @@ async function publicReading(page) {
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row__link')`, 'real Explore hydration');
   check(await page.eval(`document.querySelectorAll('.vk-public-row').length === 1 && document.querySelector('.vk-public-row__link').getAttribute('href') === '/tac-pham/${SAMPLE_WORK}'`), 'one real publication is shown once, with its exact reader link');
-  await captureReal('explore');
+  await captureExplore('real');
+  check(await page.eval(`document.querySelector('.vk-public-row h3').getBoundingClientRect().bottom < innerHeight && document.querySelector('#feed-end')`), 'one public work is readable in the first desktop viewport with an honest endpoint');
   await page.eval(`window.__publicNavigation = 'kept'; document.querySelector('.vk-public-row__link').focus()`);
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#writing-prompt a:focus-visible')`), 'keyboard moves from the real read link to the secondary writing action');
@@ -1190,7 +1249,7 @@ async function publicReading(page) {
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'finite public fixture collection');
   check(publicationRequests === 0, 'Explore never fetches full manuscripts to populate cards (no N+1)');
   check(await page.eval(`new Set([...document.querySelectorAll('.vk-public-row__link')].map(a => a.href)).size === 12 && document.querySelector('#feed-end') && document.querySelector('.vk-public-row time').getAttribute('datetime') === '2026-11-01T08:30:00Z'`), 'all 12 distinct public fields/links and the finite endpoint are rendered');
-  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore select') && document.querySelector('#public-scope').textContent.includes('Không tìm toàn bộ thư viện')`), 'search discloses its finite scope without fabricated metadata, filters or social actions');
+  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore select') && document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện')`), 'search discloses its finite scope without fabricated metadata, filters or social actions');
   const loadedRequests = listRequests;
   await searchPublic('duong ve');
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1`, 'unaccented public title match');
@@ -1202,6 +1261,16 @@ async function publicReading(page) {
   await page.waitFor(`document.querySelector('[data-testid=public-no-results]')`, 'filtered public miss');
   check(await page.eval(`!document.querySelector('[data-testid=public-empty], [data-testid=public-unavailable], #feed-end')`), 'no-results is separate from empty, unavailable and the end of a visible list');
   check(listRequests === loadedRequests && publicationRequests === 0, 'search uses loaded public cards without new list or manuscript requests');
+  await captureExplore('no-results');
+  await page.eval(`document.querySelector('#public-query').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the compact GET search action');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#clear-public-search:focus-visible') && document.activeElement.getBoundingClientRect().height >= 44`), 'keyboard reaches a full-sized clear-search link');
+  await page.key('Enter');
+  await page.waitFor(`!location.search && document.querySelectorAll('.vk-public-row').length === 12`, 'keyboard clear restores loaded items and URL');
+  // Keep the existing same-fixture matrix names for before/after comparison.
+  await searchPublic('không có tác phẩm này');
   await page.click('#clear-public-search');
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'clear restores all loaded public cards');
   for (const theme of ['light', 'dark']) {
@@ -1211,8 +1280,9 @@ async function publicReading(page) {
       await page.viewport(width);
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
-        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `Explore reflows at ${width}px/${scale}%/${theme}`);
+        await exploreGeometry(`Explore ${width}px/${scale}%/${theme}`);
         await page.capture(`explore-${width}-${scale}-${theme}`);
+        await captureNarrowWork('loaded', width, scale, theme);
       }
     }
   }
@@ -1313,16 +1383,13 @@ async function publicReading(page) {
     await openCollection();
     await page.waitFor(`document.querySelector('[data-testid=public-${state}]')`, `Explore ${state}`);
     check(await page.eval(`!document.querySelector('[data-testid=public-${state === 'empty' ? 'unavailable' : 'empty'}]') && document.querySelector('#writing-prompt a').getAttribute('href') === '/ban-viet'`), `${state} is distinct and keeps a truthful participation route`);
-    for (const theme of ['light', 'dark']) {
-      await setPublicTheme(theme);
-      for (const width of [1440, 320]) {
-        await page.viewport(width);
-        await page.eval(`scrollTo(0, 0)`);
-        check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${state} reflows at ${width}px/${theme}`);
-        await page.capture(`explore-${state}-${width}-${theme}`);
-      }
-    }
+    await captureExplore(state);
   }
+  answers.set('/api/v1/works', { status: 200, body: { works: cards.slice(0, 3) } });
+  await openCollection();
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 3`, 'several public works');
+  await captureExplore('several');
+  check(await page.eval(`document.querySelector('#feed-end') && new Set([...document.querySelectorAll('.vk-public-row')].map(row => row.dataset.workId)).size === 3`), 'low-content list has three unique works and its endpoint, without filler');
   await page.send('Fetch.disable');
   page.cdp.listeners = page.cdp.listeners.filter(l => l !== listener);
   if (gateError) throw gateError;

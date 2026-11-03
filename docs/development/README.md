@@ -20,7 +20,7 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 - PostgreSQL 17 với migration có phiên bản: `principals`, `works`, `working_drafts` (bản nháp có
   owner và version), `revisions` (snapshot bất biến, có `content_hash`, trigger chặn UPDATE) và
   `publications` (con trỏ công khai, chỉ trỏ tới revision của chính tác phẩm).
-- Khám phá `/` theo lớp đọc v3 ([#9](https://github.com/loveoverflowcom/vink/issues/9)): luồng
+- Khám phá `/` theo mật độ v4 trong [lớp đọc hiện có](../design/ui-repair-02.md) ([#9](https://github.com/loveoverflowcom/vink/issues/9)): luồng
   tối đa 12 tác phẩm mới công khai, tên tác giả/ngày UTC, điểm dừng và gợi ý bắt đầu viết;
   tìm tiêu đề/tên tác giả có/không dấu trong danh sách đã tải, giữ truy vấn/vị trí qua reader,
   reload và lịch sử URL; phân biệt loading/rỗng/không kết quả/unavailable. Không spotlight hay tương tác thiếu chủ dữ liệu. Xem
