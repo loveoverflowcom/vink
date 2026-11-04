@@ -14,6 +14,9 @@ Trang này ghi lựa chọn, nguồn và bằng chứng; khi giá trị trong `t
 nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner map, renderer và preview:
 [UI system](../../packages/ui-system/README.md).
 
+Quy tắc trả focus khi quay lại từ bước xác nhận bỏ chữ trong editor và ảnh đối chiếu
+nằm ở [UI-REVIEW-18](ui-review-18.md).
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

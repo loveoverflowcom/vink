@@ -1860,6 +1860,16 @@ async function editorChrome(page) {
       await page.capture(`editor-${kind}-${width}-${scale}-${theme}-actions`);
       check(await page.eval(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()`), `${kind} ${width}/${scale}/${theme}: keyboard reveals safe action`);
     }
+    if (kind === 'leave') {
+      await page.click('#leave-discard');
+      await page.waitFor(`document.activeElement.id === 'discard-back'`, 'safe discard confirmation');
+      await page.key('Enter');
+      await page.waitFor(`document.activeElement.id === 'leave-discard'`, 'focus returns to discard trigger');
+      check(await page.eval(`(() => { const r = document.activeElement.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()`), 'return from confirmation reveals the focused trigger');
+      await page.capture('editor-discard-return-320-200-dark');
+      await page.key('Tab');
+      check(await page.eval(`document.activeElement === document.body || document.querySelector('#leave-editor').contains(document.activeElement)`), 'Tab cannot focus a background control after returning from confirmation');
+    }
     await page.key('Escape');
     await page.waitFor(`!document.querySelector('${dialog}').open`, `${kind} closed`);
   }
@@ -1931,6 +1941,27 @@ async function editorChrome(page) {
   await page.send('Fetch.disable');
   page.cdp.listeners = page.cdp.listeners.filter(item => item !== holdRead);
   check((await page.draft(workId)).version === beforeDiscard.version, 'discard before PUT leaves the server version unchanged');
+
+  // The save can settle while the confirmation is open, removing its original trigger.
+  await page.click('#create-draft');
+  await page.waitFor(EDITOR_READY, 'draft for confirmation focus after ACK');
+  await page.typeInBody('Chữ đang chờ xác nhận.');
+  await gate.enable();
+  await page.click('#save');
+  const pendingAck = await gate.next();
+  await page.waitStatus('saving');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave while save is pending');
+  await page.click('#leave-discard');
+  await page.waitFor(`document.activeElement.id === 'discard-back'`, 'confirmation before ACK');
+  await gate.release(pendingAck);
+  await page.waitStatus('saved');
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement.id === 'leave-stay'`, 'focus falls back to Stay after ACK removes discard');
+  check(await page.eval(`!document.querySelector('#leave-discard')`), 'settled save removes the discard action');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#leave-editor').open`, 'stay after ACK');
+  await gate.disable();
 }
 
 async function mainPhase(page) {
