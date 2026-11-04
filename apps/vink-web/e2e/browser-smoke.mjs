@@ -2258,7 +2258,16 @@ async function discussionReadingAndWrites(page) {
   const replyId = fixture.roots[0].preview[0].comment_id;
   let currentFixture = structuredClone(fixture);
   let replyRequest;
+  let failRead = true;
   let failNextPage = false;
+  const readCursors = [];
+  const nextRootId = '0192f3a1-0000-7000-8000-000000000098';
+  const nextRoot = structuredClone(fixture.roots[0]);
+  nextRoot.root.comment.comment_id = nextRootId;
+  nextRoot.root.comment.body = '[Mẫu] Nhận xét ở trang kế.';
+  nextRoot.preview = [];
+  nextRoot.public_replies = 0;
+  nextRoot.preview_next_cursor = null;
   const fixtureListener = message => {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
     const path = decodeURIComponent(new URL(message.params.request.url).pathname);
@@ -2267,7 +2276,9 @@ async function discussionReadingAndWrites(page) {
       page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
       return;
     }
-    if (failNextPage && new URL(message.params.request.url).searchParams.has('cursor')) {
+    const cursor = new URL(message.params.request.url).searchParams.get('cursor');
+    readCursors.push(cursor);
+    if (failRead || (failNextPage && cursor !== null)) {
       page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 503,
         responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
         body: Buffer.from(JSON.stringify({ error: { code: 'unavailable', message: 'fixture outage' } })).toString('base64'),
@@ -2276,14 +2287,24 @@ async function discussionReadingAndWrites(page) {
     }
     page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 200,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
-      body: Buffer.from(JSON.stringify(currentFixture)).toString('base64'),
+      body: Buffer.from(JSON.stringify(cursor === null ? currentFixture : { ...currentFixture, roots: [nextRoot], next_cursor: null })).toString('base64'),
     }).catch(() => {});
   };
   page.cdp.listeners.push(fixtureListener);
   await page.send('Fetch.enable', { patterns: [{ urlPattern: wirePattern, requestStage: 'Request' }, { urlPattern: `${wirePattern}/comments`, requestStage: 'Request' }] });
   try {
-    await page.goto(`${args.base}/tac-pham/${SAMPLE_WORK}`);
-    await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#reply-to-${replyId}')`, 'contract fixture projection');
+    // Client navigation exercises the initial resource error without changing SSR or the DB.
+    await page.goto(`${args.base}/`);
+    await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('a[href="/tac-pham/${SAMPLE_WORK}"]')`, 'reader link for initial-read failure');
+    await page.click(`a[href="/tac-pham/${SAMPLE_WORK}"]`);
+    await page.waitFor(`document.querySelector('#discussion-load-retry')`, 'initial discussion read failed');
+    const failedInitialReads = readCursors.length;
+    check(failedInitialReads === 1, 'one failed initial GET exposes the retry button');
+    await page.capture('discussion-contract-fixture-initial-error', { scenario: 'D2T-03-load-retry', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    failRead = false;
+    await page.click('#discussion-load-retry');
+    await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
+    check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
     await page.click(`#reply-to-${replyId}`);
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
@@ -2313,11 +2334,17 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context keeps peer replies and draft, neutralizes cached target identity and blocks stale send');
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({ block: 'center', behavior: 'instant' })`);
     await page.capture('discussion-contract-fixture-context-revoked', { scenario: 'D2T-03-context', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    failRead = true;
+    await page.click('#discussion-refresh');
+    await page.waitFor(`document.querySelector('#comments-mode').textContent.includes('Chưa làm mới được') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'refresh failure uses read-specific copy');
+    check(await page.eval(`!document.querySelector('#comments-mode').textContent.includes('chưa rõ kết quả') && !!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'failed refresh preserves loaded comments and draft without implying an unknown write');
+    failRead = false;
     currentFixture = structuredClone(fixture);
     currentFixture.next_cursor = 'next-root-cursor';
     await page.click('#discussion-refresh');
     await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'root pagination control');
     failNextPage = true;
+    const beforePaging = readCursors.length;
     await page.click('#root-pagination button');
     await page.waitFor(`document.querySelector('#root-pagination [role=status]')?.textContent.includes('Chưa tải thêm được')`, 'next-page failure is reported at its control');
     check(await page.eval(`!document.querySelector('#comments-mode').textContent.includes('Chưa tải thêm được') && !document.querySelector('#comments-mode').textContent.includes('Chưa rõ kết quả') && document.querySelectorAll('.vk-discussion-comment').length>=3`), 'next-page failure stays beside its control, keeps loaded comments and does not claim an unknown write');
@@ -2325,8 +2352,9 @@ async function discussionReadingAndWrites(page) {
     await page.capture('discussion-contract-fixture-next-page-error', { scenario: 'D2T-03-paging', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
     failNextPage = false;
     await page.click('#root-pagination button');
-    await page.waitFor(`document.querySelector('#root-pagination') && !document.querySelector('#root-pagination [role=status]')?.textContent`, 'retry refetches the same cursor and clears the local error');
-    check(true, 'intercepted fixture only: retrying the failed next page performs a real new request and clears its local status');
+    await page.waitFor(`document.querySelector('#comment-${nextRootId}') && !document.querySelector('#root-pagination') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'retry appends the returned page and reaches the authoritative end');
+    check(JSON.stringify(readCursors.slice(beforePaging)) === JSON.stringify(['next-root-cursor', 'next-root-cursor']), 'failed page and its retry each issue one GET with the same cursor');
+    check(await page.eval(`!!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'successful paging keeps prior comments and draft');
   } finally {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);

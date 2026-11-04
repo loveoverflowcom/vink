@@ -282,12 +282,16 @@ impl DiscussionController {
     }
 }
 
-/// A failed read of an additional page. The loaded list is still valid, so it does not talk
-/// about unknown write outcomes or ask the reader to reload before another attempt.
-pub fn page_read_message(error: &ApiError) -> &'static str {
+/// Failed reads keep the loaded projection and never imply an unknown write outcome.
+pub fn read_error_message(error: &ApiError, append: bool) -> &'static str {
     match error {
-        ApiError::NotFound => error_message(error),
-        _ => "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại.",
+        ApiError::Unauthenticated | ApiError::Forbidden | ApiError::NotFound => {
+            error_message(error)
+        }
+        _ if append => "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại.",
+        _ => {
+            "Chưa làm mới được nhận xét. Phần đã tải và bản đang soạn vẫn giữ nguyên; bạn có thể thử lại."
+        }
     }
 }
 

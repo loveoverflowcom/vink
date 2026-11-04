@@ -136,3 +136,14 @@ Ghi nhận, chưa sửa (P3, cần owner quyết): nhãn “Nhận xét” lặp
 lệch vào trong ~13px so với thân bình luận do padding nút văn bản; composer chưa có thẻ nền và CTA
 chưa căn phải như Design; thân bình luận gốc ở desktop chưa thụt theo tên như Design. Đây là khác
 biệt trình bày so với mẫu, không phải lỗi dữ liệu hay mất chữ.
+
+### Review bổ sung trước tích hợp — 04/11/2026
+
+Rà từ head PR #60 `c5606c7` trên base `eb41d4b`: lỗi làm mới cả vùng vẫn dùng
+thông báo kết quả ghi chưa rõ, còn assertion retry kết thúc ngay lúc xóa lỗi cũ,
+trước khi biết request hoàn tất. Bản sửa dùng copy riêng cho đọc/làm mới và giữ
+lý do phiên/quyền. Browser smoke nay kiểm GET mới sau lỗi đọc ban đầu qua điều
+hướng client, refresh lỗi giữ danh sách/chữ, hai GET phân trang dùng cùng cursor,
+và nhận xét trang kế chỉ xuất hiện sau response thành công. Fixture mạng vẫn không
+thay bằng chứng persistence hoặc auth production; kết quả chạy gắn với head cuối
+được ghi trong PR, không suy PASS từ các assertion vừa thêm.

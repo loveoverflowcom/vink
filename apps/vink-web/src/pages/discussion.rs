@@ -74,9 +74,9 @@ impl ViewState {
             self.page.roots.clear();
             self.replies.clear();
         } else if append {
-            self.page_error = Some(crate::discussion_state::page_read_message(error).into());
+            self.page_error = Some(crate::discussion_state::read_error_message(error, true).into());
         } else {
-            self.error = Some(crate::discussion_state::error_message(error).into());
+            self.error = Some(crate::discussion_state::read_error_message(error, false).into());
         }
     }
 }
@@ -581,7 +581,7 @@ fn read_replies(
                         }
                         s.reply_errors.insert(
                             root,
-                            crate::discussion_state::page_read_message(&error).into(),
+                            crate::discussion_state::read_error_message(&error, true).into(),
                         );
                     }
                 }
@@ -866,7 +866,8 @@ mod tests {
         assert_eq!(state.page.roots.len(), loaded);
         assert!(!state.unavailable);
         state.fail_roots_read(false, &ApiError::Network);
-        assert!(state.error.is_some());
+        let refresh_error = state.error.as_deref().unwrap();
+        assert!(refresh_error.contains("Chưa làm mới được") && !refresh_error.contains("chưa rõ"));
         state.fail_roots_read(true, &ApiError::NotFound);
         assert!(state.unavailable && state.page.roots.is_empty());
         assert!(
@@ -885,8 +886,20 @@ mod tests {
             crate::contract::ApiError::Unexpected { status: 500 },
         ] {
             assert_eq!(
-                crate::discussion_state::page_read_message(&error),
+                crate::discussion_state::read_error_message(&error, true),
                 "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại."
+            );
+            let refresh = crate::discussion_state::read_error_message(&error, false);
+            assert!(refresh.contains("Chưa làm mới được") && !refresh.contains("chưa rõ"));
+        }
+        for error in [
+            crate::contract::ApiError::Unauthenticated,
+            crate::contract::ApiError::Forbidden,
+            crate::contract::ApiError::NotFound,
+        ] {
+            assert_eq!(
+                crate::discussion_state::read_error_message(&error, true),
+                crate::discussion_state::error_message(&error)
             );
         }
     }
