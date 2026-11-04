@@ -18,6 +18,14 @@ rust-version = "1.99"
 license = "UNLICENSED"
 publish = false
 
+# Every member opts in with `[lints] workspace = true`; `cargo xtask verify quick` rejects a
+# manifest that does not. No crate needs `unsafe`, so none may contain it, including code that
+# macros expand into the crate. Owner-local Kani manifests repeat these lints because they
+# compile production sources outside this workspace.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
+
 [workspace.dependencies]
 leptos = "0.8.22"
 leptos_meta = "0.8.7"

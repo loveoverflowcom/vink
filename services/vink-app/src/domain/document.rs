@@ -33,6 +33,14 @@ pub struct BlockData {
 /// use vink_app::domain::document::Document;
 /// let document: Document = serde_json::from_str(r#"{"schema_version":2,"blocks":[]}"#).unwrap();
 /// ```
+/// Lawful twin (stable rustdoc does not check `compile_fail` error codes): the raw shape
+/// deserializes and only [`Document::parse`] turns it into a document.
+/// ```
+/// use vink_app::domain::document::{Document, DocumentData};
+/// let data: DocumentData = serde_json::from_str(r#"{"schema_version":1,"blocks":[]}"#).unwrap();
+/// let document: Document = Document::parse(data).unwrap();
+/// assert_eq!(document, Document::empty());
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Document {
     blocks: Vec<Vec<String>>,
@@ -122,6 +130,13 @@ impl Document {
 /// ```compile_fail
 /// use vink_app::domain::document::Title;
 /// let title: Title = serde_json::from_str(r#""a\nb""#).unwrap();
+/// ```
+/// Lawful twin: the same raw text must pass [`Title::parse`], which rejects the line break.
+/// ```
+/// use vink_app::domain::document::Title;
+/// let raw: String = serde_json::from_str(r#""a\nb""#).unwrap();
+/// assert!(Title::parse(&raw).is_err());
+/// let _title: Title = Title::parse("Mưa").unwrap();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Title(String);

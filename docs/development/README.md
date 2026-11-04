@@ -180,12 +180,13 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle preview Leptos (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ loopback ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy [preview-smoke](../../packages/ui-system/leptos/preview/e2e/preview-smoke.mjs) trong Chrome headless và ghi ảnh + `contexts.json` | Build, wasm-bindgen, Node/Chrome thiếu hoặc một assertion lỗi |
 | `VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify` | Giữ smoke/matrix raw hiện có; thêm 36 capture specimen chọn lọc (6 entry × light/dark × 390/1440 text100, 390 text200), `focus-manifest.json` và PNG `--focus[--partN]`. Clip theo geometry, padding 12 CSS px; specimen cao chia tile cân bằng, tối đa 4096px và không quá chiều cao viewport (mặc định 900px), không thu ảnh. Cuộn trong viewport thật, không dùng CDP resize ngầm. Kiểm PNG/bounds/ảnh không trắng, phục hồi viewport/scroll/focus và source fingerprint | Cùng prerequisite với preview; identity/theme/clip/PNG/restore hoặc source đổi trong lúc chụp |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
-| `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json` và phiên bản pin của runtime editor | Một bước lỗi |
+| `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json`, phiên bản pin của runtime editor, mọi crate kế thừa lint workspace (`unsafe_code = "forbid"`) và mỗi doctest `compile_fail` có lawful twin | Một bước lỗi |
 | `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
-| `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production | Thiếu Node/npm, sai tool version, model/test/drift hoặc negative control không phát hiện lỗi |
+| `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production; trước khi chạy, đòi filter test chọn đúng hai test replay có tên | Thiếu Node/npm, sai tool version, model/test/drift, negative control không phát hiện lỗi hoặc test replay không được chọn |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
-| `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A) | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
-| `cargo xtask verify all` | `quick`, `discussion`, `expressions`, `postgres`, `web` theo thứ tự | Lane đầu tiên lỗi |
+| `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A); test replay có tên phải được chọn | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
+| `cargo xtask verify kani` | Kiểm `cargo-kani` đúng pin rồi chạy từng manifest Kani owner-local ([mục Kani](#kani)); đòi tổng kết khớp đúng số `#[kani::proof]` trong file harness | Thiếu/sai version verifier, harness lỗi hoặc số harness được kiểm khác số khai báo |
+| `cargo xtask verify all` | `quick`, `discussion`, `expressions`, `postgres`, `web` theo thứ tự (không gồm `kani`, cần verifier cài riêng) | Lane đầu tiên lỗi |
 
 Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thiếu dependency là `FAIL`,
 không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó chạy (biến môi trường thật được
@@ -197,8 +198,8 @@ chạy cùng runner cấu trúc như local. Job Web còn chạy preview Leptos v
 Các job giữ bundle qua artifact 14 ngày theo workflow. `ui-cmp-macos` chạy cùng lane và JDK 17
 trên macOS để giữ regression font Desktop; Linux `ui-cmp` vẫn là gate của lỗi font
 [PR 08](../design/ui-repair-08.md). Android/iOS diagnostic vẫn cần
-môi trường native riêng. Không có lane Kani hoặc generic behavior. Cấu hình CI không tự
-là bằng chứng một run đã PASS.
+môi trường native riêng. Job `kani` cài verifier pin rồi gọi `cargo xtask verify kani`. Không có
+lane generic behavior. Cấu hình CI không tự là bằng chứng một run đã PASS.
 
 Binary `vink-identity` nhận `serve` (mặc định) và `migrate`, cùng quy ước mã thoát; cấu hình
 `VINK_IDENTITY_*` ở [README của service](../../services/vink-identity/README.md). Khi `.env` có
@@ -336,23 +337,55 @@ vòng HTTP về chính server. `vink-web` không phụ thuộc `vink-app`, SQLx 
 `hydrate` chỉ chứa view, DTO và fetch client. `verify quick` kiểm các import bị cấm trong
 `domain`/`application`, dependency của `vink-web` và của `packages/*`, việc `vink-app` và
 `vink-identity` không import nhau, SQL của Identity không chạm bảng App, và file được track không
-có private key hay URL PostgreSQL mang password không phải giá trị local dùng một lần. Hai feature `ssr` và `hydrate` là hai build
-riêng; không dùng `--all-features`.
+có private key hay URL PostgreSQL mang password không phải giá trị local dùng một lần. Mọi crate
+kế thừa `[workspace.lints]` không ghi đè: `unsafe_code = "forbid"` chặn cả `unsafe` do macro sinh
+vào crate; manifest Kani biên dịch source ngoài workspace nên lặp lại lint này. Ranh giới type
+(`compile_fail` doctest) phải kèm một doctest "Lawful twin" biên dịch được với cùng setup, vì
+rustdoc stable bỏ qua mã lỗi của `compile_fail`: import sai cũng "không biên dịch" và PASS rỗng.
+Hai feature `ssr` và `hydrate` là hai build riêng; không dùng `--all-features`.
 
 ## Bằng chứng theo ranh giới
 
 | Lane | Chứng minh | Không chứng minh |
 | --- | --- | --- |
 | `quick` | Tìm tiêu đề NFC/NFD/Đ/đ và guard tạo/đối chiếu kết quả; luật document/title/version/hash; config; máy trạng thái lưu (phản hồi cũ, một request đang bay, xung đột); fixtures provider/consumer; outage PostgreSQL → readiness `503`, API `dependency_unavailable`, Khám phá/reader `503`; private route `401` khi không có authority | Transaction PostgreSQL, trình duyệt |
-| `discussion` | Cấu trúc root/flat reply D2T-01 (replay qua `DiscussionThread`); vòng đời bình luận, chế độ bật/tắt và authority kiểm duyệt D2T-02 (replay qua `decide_submission`, `authorize_*`, `change_mode`, `ModerationAction::apply`, `view`); Quint simulation, negative control, fixture drift | Không Kani/exhaustive model checking, auth authority, khóa/transaction/API/UI; model một thread/một tác phẩm không chứng minh work/tenant binding |
+| `discussion` | Cấu trúc root/flat reply D2T-01 (replay qua `DiscussionThread`); vòng đời bình luận, chế độ bật/tắt và authority kiểm duyệt D2T-02 (replay qua `decide_submission`, `authorize_*`, `change_mode`, `ModerationAction::apply`, `view`); Quint simulation, negative control, fixture drift; test replay có tên bắt buộc được chọn | Không exhaustive model checking (Kani ở lane riêng), auth authority, khóa/transaction/API/UI; model một thread/một tác phẩm không chứng minh work/tenant binding |
+| `kani` | Mỗi quyết định thuần trên toàn miền input: refined scalar với mọi `i64`/`Option<u32>`, quyết định kiểm duyệt ràng version và +1 không wrap, gỡ là terminal, chế độ ràng generation, projection người xem không lộ bình luận ẩn (kể cả tổ hợp storage không transition nào tạo); policy biểu cảm theo bounds ở [expressions](expressions.md) | Chuỗi nhiều bước (Quint), khóa/transaction/I/O, auth authority, Unicode của body/lý do, code ngoài `src/domain` của App |
 | `postgres` | Vòng đời migration dùng chung: pending/current/diverged (checksum, version lạ, dở dang), chạy lại no-op, chỉ owner ghi lịch sử, phiên bị ngắt là unavailable; provisioning thật: DB cũ do một superuser tạo được nhận quyền mà dữ liệu/ID/Unicode/con trỏ/lịch sử không đổi, chạy lại không đổi password, `--check` bắt quyền thừa; runtime không DDL/TEMP/ghi lịch sử, không kết nối DB owner khác khi chỉ đổi dbname; migrate bằng runtime bị từ chối (thoát 1); migrator không tạo DB/role; migrate database mới; lưu có điều kiện; 8 lần lưu đồng thời chỉ 1 thắng; actor khác không đọc/ghi/liệt kê được; NFC, dòng, khổ, thụt lề qua database; đọc công khai trả snapshot chứ không trả nháp; revision không UPDATE được; con trỏ không trỏ sang tác phẩm khác; HTTP 401/403/404/409/422; HTML reader không chứa nháp; config sai thoát 2; worker start/stop bằng role runtime; Identity: migrations/readiness thật, binary thật trên Unix socket với role đã provision (config sai thoát 2, migrate runtime bị từ chối, migrate hai lần, migrator/App database bị từ chối, contract 200/501/400/413/404/503, uid khác và thiếu caller là 401, header giả không đổi kết quả, role migrator là `privileged` 503, mất kết nối tự phục hồi, sai database/schema là not ready, header gửi dở bị đóng và không giữ được SIGTERM, socket cũ/instance thứ hai, log không lộ credential); App + Identity thật cùng chạy: không credential `401`, credential `401` (chưa authority), Identity dừng thì chỉ request có credential `503`, đọc công khai/SSR vẫn `200`, restart độc lập, App bằng role migrator `503 privileged`, socket do user khác phục vụ không được tin; backup/restore từng owner bằng `pg_dump`/`pg_restore` vào database khác khớp dữ liệu và lịch sử | Hành vi trình duyệt, IME thật; Compose/container (chạy thủ công, xem [bằng chứng](identity-postgres-verification.md)); PostgreSQL managed không có superuser |
 | `web` | Bundle `/pkg/` không chứa URL database, tên biến credential hay password local; Khám phá/reader: public HTML và metadata trước JS, save riêng không đổi publication, 404/503, link thật, list không N+1, states riêng, reflow 320–1440px/root text 100/200% và contrast hai theme; Dashboard: resume/list không N+1, fixtures 100 row/rỗng/lỗi/401, tìm/sort/retry, POST commit thật rồi mất ack và GET đối chiếu, phản hồi tạo muộn không điều hướng; HTML có nội dung trước JavaScript; hydration không lỗi console; shell 220/96, thứ tự rail/bar, theme + reload + hệ thống + storage denied, overlay bàn phím/Escape/outside/resize/restore-focus, bottom clearance 320px/chữ 200%; trang đọc tải Be Vietnam Pro và Literata tự host, file font trả `font/woff2`, không tải runtime editor; điều hướng client không tải lại trang; CodeMirror mount từ `/pkg/vink-editor.js`, không còn textarea; tạo, gõ, lưu (nút, Ctrl+S), reload; xung đột với tab khác giữ nội dung và cho lưu đè có chủ ý; cùng một EditorView giữ selection/undo/redo qua đổi theme, xem trước và hộp thoại; brand/link/back bị giữ khi chưa lưu, Escape ở lại; lưu rồi rời chỉ sau ack; hủy khi đang lưu thì ack muộn không điều hướng; lỗi lưu → tải bản đang viết → rời mà không lưu, ack muộn không điều hướng hay đánh dấu nháp khác đã lưu; nội dung tệp `.txt`; SIGTERM thoát 0; dữ liệu còn sau restart; điều hướng (UIS-04): toggle có tên/`aria-expanded`, ≥44px không bị che khi thu, link thật không phải tab, skip link focus main, click phím bổ trợ để trình duyệt xử lý, route lạ 404 không sáng đích, bấm dồn dập chỉ còn đích cuối, Back khi Tôi mở chỉ đóng Tôi rồi Back sau mới rời | IME hệ điều hành thật (chỉ `Input.insertText`/`imeSetComposition`), bàn phím/thiết bị mobile thật, screen reader, nhiều trình duyệt, paste từ Word/Docs |
 | `ui-preview leptos verify` | Catalog ID đúng thứ tự, link kịch bản chính xác, không ID trùng và mọi `aria-describedby` trỏ tới phần tử có thật, Sáng/Tối/Hệ thống và đổi OS không reload, scope lồng nhau (cả Hệ thống trong Tối, recipe giải theo scope), mật độ gọn giữ 44px, vòng lặp chạy/dừng theo scope/OS/preference; component: click/Enter/Space gọi đúng một lần, disabled/pending không lần nào, pending giữ bề rộng/focus, Button mặc định không gửi form, focus ring 3px, target ≥48px, link tab mới có `rel`, URL script không thành link/ảnh, chip Space/Tab, caret giữa chữ và composition (`imeSetComposition`) giữ qua controlled value, nhãn/gợi ý/lỗi/required/read-only/disabled, giá trị `0`, Enter tìm và nút xóa trả focus, checkbox một target, radio phím mũi tên, ảnh AVIF hỏng/URL lạ → initials, màu avatar theo key khớp golden vectors khi đảo thứ tự, nhóm không bịa số, byline đọc tên một lần, tương phản chữ đã resolve ≥4.5 hai theme (control disabled được miễn); tìm không dấu, không tràn ngang 320–1440px ở chữ 100/200%, font tự host tải được, không lỗi console; trạng thái (UIS-03): vùng/intent/announce, snackbar theo đồng hồ tiêm, 8 recipe playground (không chỉ báo trước 300ms, retry một lần giữ chữ, refresh giữ focus/cuộn, huỷ trung tính, uncertain/conflict không saved hay replay, hết phiên giữ chữ), dialog focus/Tab/Escape/bấm ngoài/trả focus, vòng lặp dừng khi giảm/không hoạt động/tab ẩn thật; điều hướng (UIS-04): thứ tự, link thật, dispatch một lần theo key, reader thuộc Khám phá, host cấp đích, toggle 96→220→96 bằng chuột/Enter/Space giữ trang/chữ/selection, tooltip ngoài rail, skip link bị clip tới khi focus, một modal, Back đóng lớp phủ trước, Escape trả focus; link của mọi kịch bản trong catalog hiện hành | Chrome khác, thiết bị thật, screen reader, IME hệ điều hành thật, chất lượng thị giác (ảnh phải được người mở) |
 | `ui-preview cmp verify` | Logic common trên JVM (parse, resolve theme, override, tương phản, motion, line-height sp; identity golden vectors, allow-list link/ảnh, nhóm không bịa số); precedence scope trong composition; preview: đăng ký catalog, mọi kịch bản render, control đổi theme + nhật ký, vòng lặp dừng khi giảm, mật độ gọn ≥44, tìm không dấu, WOFF2 đọc được qua Skia; component: nút gọi một lần, disabled/pending không gọi, pending giữ node enabled + `stateDescription`, text field giữ selection qua `TextFieldValue`, nhãn/lỗi trong semantics, checkbox/chip một lần, avatar có tên/ẩn trong byline, AVIF hỏng → `Failed`; trạng thái (UIS-03): vectors chung (cả iOS simulator khi bật native), reducer bỏ double-click/ack muộn, gate chờ độ trễ trên đồng hồ thủ công, retry một lần giữ input, conflict/uncertain không saved hay gửi lại tự động, giảm/không hoạt động/ẩn không vòng lặp, dialog focus an toàn + trả focus, snackbar theo thời lượng, chỉ hành động hợp lệ; điều hướng (UIS-04): vectors chung (cả iOS simulator khi bật native), deep link round-trip và từ chối link ngoài, Back đóng lớp phủ trước rồi pop, chữ chưa lưu giữ Back/điều hướng, đổi khung không remount, toggle giữ selection, thứ tự thanh dưới, một modal; ảnh off-screen theo catalog và các fixture có chủ đích | Android/iOS runtime và lifecycle, predictive back/swipe-back, IME, TalkBack/VoiceOver, cửa sổ desktop thật (ảnh là render off-screen), hover |
 
 Không lane nào chứng minh AI moderation, xác thực, publish/withdraw, hiệu năng hay triển khai.
-Chỉ có model Quint cấu trúc nhỏ của D2T-01; vòng đời bình luận (D2T-02a) có test domain trong
-`quick` và test PostgreSQL thật trong `postgres`, chưa có model, HTTP hay browser. Draft CAS vẫn có boundary tests PostgreSQL riêng.
+Model Quint của thảo luận phủ cấu trúc D2T-01 và vòng đời D2T-02 ([owner](../../services/vink-app/behavior/discussion/README.md));
+HTTP và browser có lane riêng. Draft CAS vẫn có boundary tests PostgreSQL riêng.
+
+## Kani
+
+Kani là kiểm riêng: **xtask không tự cài hay đổi toolchain**. Pin `cargo-kani 0.67.0` với compiler
+bundled `nightly-2025-11-21` ([release 0.67.0](https://github.com/model-checking/kani/releases/tag/kani-0.67.0)).
+Cài một lần rồi chạy từ repo root:
+
+```sh
+cargo install --locked kani-verifier --version 0.67.0 && cargo kani setup
+cargo xtask verify kani
+```
+
+Lane kiểm version rồi chạy từng manifest owner-local. Mỗi manifest biên dịch đúng source
+production, không chép luật và không đổi toolchain 1.99.1 của workspace. Kani tự nó thoát 0 khi
+không tìm thấy harness, nên lane đòi dòng tổng kết khớp **đúng số `#[kani::proof]`** trong file
+harness với 0 failure: module harness bị compile-out là FAIL, không phải PASS rỗng. Job CI `kani`
+cài bản pin rồi gọi cùng lệnh. Thiếu verifier là FAIL/NOT_RUN, không thay bằng unit test.
+
+| Manifest | Harness và bounds | Không chứng minh |
+| --- | --- | --- |
+| [`packages/expressions/kani`](../../packages/expressions/kani/README.md) | 6 event/3 player/cap 0..3 (unwind 12 + covers), callback/facts (8), 4 Unicode input đầy đủ (40); giữ unwinding assertions | Xem [expressions](expressions.md) |
+| [`services/vink-app/kani`](../../services/vink-app/kani/README.md) gắn `src/domain`; harness ở [`proofs.rs`](../../services/vink-app/src/domain/discussion/proofs.rs) | 5 harness không vòng lặp (không cần unwind), 6 `cover!` phải SATISFIED: refined scalar; quyết định kiểm duyệt (MOD-02, D2T-INV-07); người viết tự gỡ; chế độ bình luận (COM-07); projection người xem, đích/ngữ cảnh trả lời và gỡ hộ trả `Hidden` (D2T-INV-04/05, COM-08) | Chuỗi nhiều bước và tuần tự hóa (Quint), khóa/transaction/I/O (`postgres`), auth authority, chuỗi Unicode, `CommentPlacement`/paging cursor |
+
+Negative control khi đổi harness: tạm bỏ `!state.is_present()` trong `visibility::view` làm
+`viewer_projection_never_reveals_a_hidden_comment` FAIL; cho version wrap (`wrapping_add`) trong
+`CommentState::decide` làm harness kiểm duyệt FAIL; thay `#[cfg(kani)] mod proofs` bằng cfg luôn
+sai làm lane FAIL vì Kani không kiểm harness nào.
 
 ## Lựa chọn bootstrap và điều kiện xem xét lại
 
@@ -426,17 +459,8 @@ replay input qua Rust production. Không sửa model thảo luận; `verify disc
 riêng. Muốn cập nhật output sau review nguồn dùng `node packages/expressions/generate.mjs --write`;
 fixture model dùng `node packages/expressions/behavior/verify.mjs --write` sau khi dependency được cài.
 
-Kani là kiểm riêng, **không bị tự cài hoặc tự đổi toolchain bởi xtask**. Pin `cargo-kani 0.67.0`
-và compiler bundled `nightly-2025-11-21`; từ repo root:
-
-```sh
-cargo kani --version
-cargo kani --manifest-path packages/expressions/kani/Cargo.toml
-```
-
-Manifest compatibility trỏ đúng source production, không đổi toolchain 1.99.1 của workspace.
-Ba harness: 6 event/3 player/cap 0..3 (unwind 12 + covers), callback/facts (8), 4 Unicode input
-đầy đủ (40). Giữ unwinding assertions. Toolchain thiếu phải ghi NOT_RUN, không thay bằng unit test.
+Ba harness Kani của policy chạy qua `cargo xtask verify kani` cùng manifest của App; cài đặt,
+bounds và giới hạn ở [mục Kani](#kani).
 
 `web` gọi `expressionPilot` trong `e2e/expressions-smoke.mjs`: no-JS/SSR/hydration, network tĩnh,
 keyboard/touch, one-shot, cap 2/idempotency, delayed-load/unmount, motion/visibility, missing

@@ -7,6 +7,36 @@
 //! newer one and nothing restores a removed comment (D2T-INV-07). Removal is terminal in this
 //! slice; restore and appeal reopening need their own reviewed transitions. Editing does not
 //! exist: D-08 keeps public edits blocked until an edit gate is proven.
+//!
+//! A raw number is not a version and a state's axes are not writable fields; request JSON goes
+//! through [`ModerationVersion::new`], and only transitions advance a state:
+//! ```compile_fail
+//! use vink_app::domain::discussion::lifecycle::ModerationVersion;
+//! let version: ModerationVersion = serde_json::from_str("0").unwrap();
+//! ```
+//! ```compile_fail
+//! use vink_app::domain::discussion::lifecycle::ModerationVersion;
+//! let version = ModerationVersion(0);
+//! ```
+//! ```compile_fail
+//! use vink_app::domain::discussion::lifecycle::{CommentState, Review};
+//! let mut state = CommentState::SUBMITTED;
+//! state.review = Review::Approved;
+//! ```
+//! Lawful twin of the three blocks (stable rustdoc does not check `compile_fail` error codes):
+//! ```
+//! use vink_app::domain::discussion::lifecycle::{
+//!     CommentState, Decision, ModerationVersion, Review, Transition,
+//! };
+//! let raw: i64 = serde_json::from_str("0").unwrap();
+//! assert_eq!(ModerationVersion::new(raw), None);
+//! let state = CommentState::SUBMITTED;
+//! let Ok(Transition::Changed(approved)) = state.decide(ModerationVersion::FIRST, Decision::Approve)
+//! else {
+//!     panic!("a pending comment at its current version can be approved");
+//! };
+//! assert_eq!(approved.review(), Review::Approved);
+//! ```
 
 /// Version of a comment's moderation/presence state. Starts at 1 and advances on every change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

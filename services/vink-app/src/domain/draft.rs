@@ -8,6 +8,13 @@ use super::ids::WorkId;
 /// use vink_app::domain::draft::DraftVersion;
 /// let version: DraftVersion = serde_json::from_str("0").unwrap();
 /// ```
+/// Lawful twin (stable rustdoc does not check `compile_fail` error codes):
+/// ```
+/// use vink_app::domain::draft::DraftVersion;
+/// let raw: i64 = serde_json::from_str("0").unwrap();
+/// assert_eq!(DraftVersion::new(raw), None);
+/// let _first: DraftVersion = DraftVersion::new(1).unwrap();
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DraftVersion(i64);
 
@@ -51,6 +58,21 @@ impl DraftVersion {
 ///     DraftVersion::FIRST, Title::parse("").unwrap(), Document::empty(),
 /// );
 /// change.expected_version = DraftVersion::FIRST;
+/// ```
+/// Lawful twin of the three blocks above: the same imports, raw shape and constructor compile
+/// when validated values go in, so each block fails only at its own bypass.
+/// ```
+/// use vink_app::domain::document::{Document, DocumentData, SCHEMA_VERSION, Title};
+/// use vink_app::domain::draft::{DraftChange, DraftVersion};
+/// let data = DocumentData {
+///     schema_version: SCHEMA_VERSION,
+///     blocks: vec![],
+/// };
+/// let change = DraftChange::new(
+///     DraftVersion::FIRST, Title::parse("").unwrap(), Document::parse(data).unwrap(),
+/// );
+/// assert_eq!(change.expected_version(), DraftVersion::FIRST);
+/// let _: serde_json::Value = serde_json::from_str("{}").unwrap();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DraftChange {

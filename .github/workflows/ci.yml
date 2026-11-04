@@ -57,6 +57,20 @@ jobs:
           node-version: 24
       - run: cargo xtask verify expressions
 
+  kani:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install the pinned Rust toolchain (rust-toolchain.toml)
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # xtask never installs verifiers. Same pin as xtask/src/kani.rs; `setup` fetches the
+      # matching release bundle and its nightly compiler.
+      - name: Install the pinned Kani verifier
+        run: cargo install --locked kani-verifier --version 0.67.0 && cargo kani setup
+      - run: cargo xtask verify kani
+
   postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 30

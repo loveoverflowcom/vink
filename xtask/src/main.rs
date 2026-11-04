@@ -10,6 +10,7 @@ mod doctor;
 mod env;
 mod expressions;
 mod identity;
+mod kani;
 mod pgurl;
 mod process;
 mod provision;
@@ -47,6 +48,8 @@ usage: cargo xtask <command>
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
   verify expressions     Noto manifest, Quint lifecycle/negative control and Rust replay
   verify discussion      pinned Quint structure/lifecycle checks, trace drift and Rust replays
+  verify kani            owner-local Kani harnesses (expressions policy, discussion core);
+                         needs the pinned cargo-kani, which xtask never installs
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
@@ -94,6 +97,7 @@ fn main() -> ExitCode {
             "quick" => verify(&[Lane::Quick], &env),
             "expressions" => verify(&[Lane::Expressions], &env),
             "discussion" => verify(&[Lane::Discussion], &env),
+            "kani" => verify(&[Lane::Kani], &env),
             "postgres" => verify(&[Lane::Postgres], &env),
             "web" => verify(&[Lane::Web], &env),
             "all" => verify(
@@ -414,6 +418,8 @@ enum Lane {
     Quick,
     Discussion,
     Expressions,
+    /// Not part of `verify all`: it needs a separately installed, pinned verifier.
+    Kani,
     Postgres,
     Web,
 }
@@ -425,6 +431,7 @@ fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
             Lane::Quick => quick(&mut report),
             Lane::Discussion => discussion::verify(&mut report),
             Lane::Expressions => expressions::verify(&mut report),
+            Lane::Kani => kani::verify(&mut report),
             Lane::Postgres => postgres(&mut report, env),
             Lane::Web => web::verify(&mut report, env),
         };

@@ -44,7 +44,8 @@ EMO-01A adds a 16-asset Google Noto manifest in `packages/expressions`, generate
 lookup contracts, a pure Rust admission/generation policy consumed by the isolated Web route
 `/thu-nghiem/bieu-cam`, and a self-hosted dotLottie Software renderer loaded only after activation.
 Expression lifecycle Quint simulation/trace replay has its own `verify expressions` lane;
-owner-local Kani harnesses use 0.67.0 against the production source. CMP is contract/Unicode
+owner-local Kani 0.67.0 harnesses check that policy and the App's pure discussion core against
+production source (`verify kani`, pinned verifier installed separately). CMP is contract/Unicode
 fallback only; no native animation renderer, composer integration, durable stickers/reactions or
 backend performance qualification is implied. [Expression scope](docs/development/expressions.md)
 records provenance, licensing, model/proof bounds and remaining acceptance.
@@ -102,11 +103,14 @@ Use authorization already granted in the conversation; a skill adds no requireme
 Do not infer permission to push, post messages or publish from a local editing task.
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
-quick|discussion|expressions|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
+quick|discussion|expressions|kani|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
 the structural D2T-01 and lifecycle D2T-02 Quint models and replays their inputs through the real
-pure decisions; locking, transactions and I/O stay in `postgres`;
-`expressions` verifies its isolated playback model and Rust replay; `specs/behavior` and a generic behavior/Kani lane do not exist. Do not add a runner merely
-to validate documentation or skills.
+pure decisions (the lane fails if a named replay test is not selected); locking, transactions and
+I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
+runs the owner-local manifests and requires every declared harness to verify. Every crate inherits
+`unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable
+rustdoc ignores its error code. `specs/behavior` and a generic behavior lane do not exist. Do not
+add a runner merely to validate documentation or skills.
 
 For documentation/skill changes, check the diff, relative links, YAML metadata and referenced
 files. For behavior changes, use the cheapest meaningful regression and then the actual

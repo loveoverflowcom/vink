@@ -5,6 +5,19 @@
 //! Keyset paging is not a snapshot: a comment approved later, or committed late with an earlier
 //! timestamp, can land before a cursor already handed out. Clients refresh to see such comments;
 //! nothing here promises a gap-free stream across requests.
+//!
+//! A client number is not a page size; only [`PageLimit::new`] bounds it:
+//! ```compile_fail
+//! use vink_app::domain::discussion::page::PageLimit;
+//! let limit = PageLimit(10_000);
+//! ```
+//! Lawful twin (stable rustdoc does not check `compile_fail` error codes):
+//! ```
+//! use vink_app::domain::discussion::page::{MAX_PAGE, PageLimit};
+//! assert!(PageLimit::new(Some(10_000)).is_err());
+//! assert_eq!(PageLimit::new(Some(10)).unwrap().get(), 10);
+//! assert!(PageLimit::DEFAULT.get() <= MAX_PAGE);
+//! ```
 
 use time::OffsetDateTime;
 use uuid::Uuid;

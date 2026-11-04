@@ -9,6 +9,9 @@ publish.workspace = true
 
 # Renders facts and dispatches intents only: no storage, routes, session, API or service crates.
 # Features come from the consumer (`ssr` / `hydrate` / `csr` on leptos); this crate adds none.
+[lints]
+workspace = true
+
 [dependencies]
 leptos.workspace = true
 # NFC and combining-mark classes for avatar initials (avatar-identity-v1).

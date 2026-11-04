@@ -11,5 +11,7 @@ path = "../src/lib.rs"
 
 [workspace]
 
+# Repeats the workspace lints: this manifest compiles production sources outside the workspace.
 [lints.rust]
+unsafe_code = "forbid"
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

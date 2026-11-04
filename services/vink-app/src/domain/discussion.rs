@@ -24,6 +24,18 @@
 //! let comment = CommentId::parse("11111111-1111-4111-8111-111111111111").unwrap();
 //! let root: RootCommentId = comment;
 //! ```
+//! Lawful twin (stable rustdoc does not check `compile_fail` error codes): the same imports and
+//! IDs compile, and a placement exists only after a thread decision.
+//! ```
+//! use vink_app::domain::discussion::{CommentPlacement, DiscussionThread, RootCommentId};
+//! use vink_app::domain::ids::{CommentId, ThreadId};
+//! let comment = CommentId::parse("11111111-1111-4111-8111-111111111111").unwrap();
+//! let thread = ThreadId::parse("22222222-2222-4222-8222-222222222222").unwrap();
+//! let _: serde_json::Value = serde_json::from_str("{}").unwrap();
+//! let placement: CommentPlacement = DiscussionThread::new(thread).create_root(comment).unwrap();
+//! let root: RootCommentId = placement.root_id();
+//! assert_eq!(root.as_comment_id(), comment);
+//! ```
 
 pub mod body;
 pub mod lifecycle;
@@ -32,6 +44,8 @@ mod lifecycle_replay;
 pub mod moderation;
 pub mod page;
 pub mod policy;
+#[cfg(kani)]
+mod proofs;
 pub mod settings;
 pub mod submission;
 pub mod visibility;

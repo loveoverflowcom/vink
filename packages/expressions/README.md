@@ -13,7 +13,7 @@ reference/persistence ở #43. [HOW/WHY, LayoutSpec, registry và giới hạn](
   Admission đồng thời giữ reservation trong một owner; release/cancel/dispose không đếm âm.
 - `behavior/`: Quint canonical, trace replay vào Rust, negative control thiếu guard.
 - `kani/`: manifest độc lập trỏ **đúng thư viện production**, tương thích compiler Kani;
-  không sao chép reducer. Lệnh/version/bounds nằm trong [development guide](../../docs/development/README.md#biểu-cảm-google-noto-emo-01a).
+  không sao chép reducer. Lệnh/version/bounds nằm trong [development guide](../../docs/development/README.md#kani).
 
 Google hiện phát animation qua CDN `latest`, không công bố commit bất biến trong endpoint đó.
 Revision animation của pilot là **snapshot nội dung**: Last-Modified 16/09/2026, hash từng file và
