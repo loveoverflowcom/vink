@@ -12,6 +12,16 @@
 //! let work = WorkId::parse("33333333-3333-4333-8333-333333333333").unwrap();
 //! let revision: RevisionId = work;
 //! ```
+//! Lawful twin of both blocks: stable rustdoc ignores a `compile_fail` error code, so a typo in
+//! their setup would also "fail to compile". The same setup must compile, leaving the
+//! substitution as the only error.
+//! ```
+//! use vink_app::domain::ids::{PrincipalId, RevisionId, WorkId};
+//! let actor = PrincipalId::parse("11111111-1111-4111-8111-111111111111").unwrap();
+//! let work = WorkId::parse("33333333-3333-4333-8333-333333333333").unwrap();
+//! let (_actor, _work): (PrincipalId, WorkId) = (actor, work);
+//! let _revision: RevisionId = RevisionId::from_uuid(work.as_uuid());
+//! ```
 
 use uuid::Uuid;
 

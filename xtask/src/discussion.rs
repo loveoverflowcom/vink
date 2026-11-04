@@ -7,6 +7,15 @@ use std::process::Command;
 use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
+const FILTERS: [&str; 2] = [
+    "domain::discussion::tests",
+    "domain::discussion::lifecycle_replay",
+];
+/// The tests that feed model inputs to production code. Their absence fails the lane.
+const REPLAYS: [&str; 2] = [
+    "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",
+    "domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions",
+];
 
 pub fn verify(report: &mut Report) -> bool {
     let root = crate::root();
@@ -40,22 +49,18 @@ pub fn verify(report: &mut Report) -> bool {
     ) {
         return false;
     }
-    let mut replay = cargo(&root);
-    replay.args([
-        "test",
-        "--locked",
-        "-p",
-        "vink-app",
-        "--lib",
-        "--",
-        "domain::discussion::tests",
-        "domain::discussion::lifecycle_replay",
-    ]);
+    let replay = || {
+        let mut command = cargo(&root);
+        command.args(["test", "--locked", "-p", "vink-app", "--lib", "--"]);
+        command.args(FILTERS);
+        command
+    };
     report.step(
         "discussion: production Rust structural tests and trace replays",
         || {
+            process::require_tests(&mut replay(), "discussion replays", &REPLAYS)?;
             process::run(
-                &mut replay,
+                &mut replay(),
                 "replay model inputs through the real Rust decisions",
             )
         },

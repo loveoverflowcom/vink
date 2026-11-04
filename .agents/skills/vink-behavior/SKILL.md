@@ -16,7 +16,9 @@ authority model and their generated traces live in `services/vink-app/behavior/d
 `verify discussion` checks both and replays their inputs through the real Rust decisions. They
 do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are in
 `docs/development/discussion-core.md`.
-There is no generic behavior or Kani lane. Other stateful code keeps its own boundary tests:
+`verify kani` checks single discussion decisions (version/generation arithmetic, viewer projection)
+over whole input domains; it is no sequence or race proof. There is no generic behavior lane.
+Other stateful code keeps its own boundary tests:
 draft CAS in `tests/postgres.rs`, the desk save state machine in
 `apps/vink-web/src/desk_state.rs`.
 

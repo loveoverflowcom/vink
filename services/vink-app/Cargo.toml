@@ -8,6 +8,9 @@ license.workspace = true
 publish.workspace = true
 default-run = "vink-app"
 
+[lints]
+workspace = true
+
 [dependencies]
 vink-web = { path = "../../apps/vink-web", features = ["ssr"] }
 vink-store-postgres = { path = "../../packages/store-postgres" }

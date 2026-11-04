@@ -19,6 +19,35 @@ pub fn run(command: &mut Command, label: &str) -> Result<(), String> {
     }
 }
 
+/// Requires each named test in what `command` (a `cargo test ... --` invocation with its filters)
+/// selects. A filter that matches nothing still exits 0, so a renamed or deleted replay test would
+/// otherwise turn its step into a vacuous PASS.
+pub fn require_tests(command: &mut Command, label: &str, names: &[&str]) -> Result<(), String> {
+    println!("==> {label}: required tests are selected");
+    let output = command
+        .arg("--list")
+        .output()
+        .map_err(|e| format!("{label}: cannot start {:?}: {e}", command.get_program()))?;
+    if !output.status.success() {
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+        return Err(format!(
+            "{label}: listing tests exited with {}",
+            output.status
+        ));
+    }
+    let listed = String::from_utf8_lossy(&output.stdout);
+    let missing: Vec<&str> = names
+        .iter()
+        .copied()
+        .filter(|name| !listed.lines().any(|line| line == format!("{name}: test")))
+        .collect();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!("{label}: not selected: {}", missing.join(", ")))
+    }
+}
+
 /// Ordered PASS/FAIL results; steps after a failure are not run.
 #[derive(Default)]
 pub struct Report {

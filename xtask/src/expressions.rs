@@ -4,6 +4,8 @@ use std::path::Path;
 use std::process::Command;
 const WEB: &str = "apps/vink-web/expressions";
 const MODEL: &str = "packages/expressions/behavior";
+/// Feeds model inputs to the production policy. Its absence fails the lane.
+const REPLAY: &str = "tests::quint_inputs_replay_through_the_real_policy";
 
 pub fn check(root: &Path) -> Result<(), String> {
     crate::doctor::node_version()?;
@@ -58,10 +60,16 @@ pub fn verify(report: &mut Report) -> bool {
     ) {
         return false;
     }
-    let mut replay = cargo(&root);
-    replay.args(["test", "--locked", "-p", "vink-expressions", "--lib"]);
+    let replay = || {
+        let mut command = cargo(&root);
+        command.args(["test", "--locked", "-p", "vink-expressions", "--lib", "--"]);
+        command
+    };
     report.step(
         "expressions: production Rust policy and trace replay",
-        || process::run(&mut replay, "expression production seam"),
+        || {
+            process::require_tests(&mut replay(), "expression replay", &[REPLAY])?;
+            process::run(&mut replay(), "expression production seam")
+        },
     )
 }

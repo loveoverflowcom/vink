@@ -1,0 +1,27 @@
+# Isolated compiler compatibility surface for Kani: exactly the production `src/domain` module of
+# vink-app (see lib.rs), without the App's HTTP, SQL or Leptos dependencies. No rule is copied.
+[package]
+name = "vink-domain-proof"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.91"
+publish = false
+
+[lib]
+path = "lib.rs"
+
+# Versions match the workspace Cargo.lock; only the domain's own imports are listed.
+[dependencies]
+serde = { version = "=1.0.229", features = ["derive"] }
+sha2 = "=0.11.1"
+thiserror = "=2.0.21"
+time = "=0.3.55"
+unicode-normalization = "=0.1.26"
+uuid = { version = "=1.29.0", features = ["v7"] }
+
+[workspace]
+
+# Repeats the workspace lints: this manifest compiles production sources outside the workspace.
+[lints.rust]
+unsafe_code = "forbid"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

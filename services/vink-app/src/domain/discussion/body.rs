@@ -10,6 +10,13 @@
 //! use vink_app::domain::discussion::body::CommentBody;
 //! let body: CommentBody = serde_json::from_str("\"x\"").unwrap();
 //! ```
+//! Lawful twin (stable rustdoc does not check `compile_fail` error codes):
+//! ```
+//! use vink_app::domain::discussion::body::CommentBody;
+//! let raw: String = serde_json::from_str("\"x\"").unwrap();
+//! let body: CommentBody = CommentBody::parse(&raw).unwrap();
+//! assert_eq!(body.as_str(), "x");
+//! ```
 
 use unicode_normalization::UnicodeNormalization;
 

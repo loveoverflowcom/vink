@@ -4,6 +4,31 @@
 //! Closing stops new roots and replies at the commit boundary. Approved comments stay readable
 //! and reopening restores writing without data changes. A new public work starts open; comments
 //! remain premoderated. Both meanings were confirmed by the product owner on 03/11/2026.
+//!
+//! A raw number is not a generation and the mode is not a writable field:
+//! ```compile_fail
+//! use vink_app::domain::discussion::settings::SettingsGeneration;
+//! let generation = SettingsGeneration(0);
+//! ```
+//! ```compile_fail
+//! use vink_app::domain::discussion::settings::{CommentsMode, DiscussionSettings};
+//! let mut settings = DiscussionSettings::INITIAL;
+//! settings.mode = CommentsMode::Closed;
+//! ```
+//! Lawful twin (stable rustdoc does not check `compile_fail` error codes):
+//! ```
+//! use vink_app::domain::discussion::settings::{
+//!     CommentsMode, DiscussionSettings, ModeChange, SettingsGeneration,
+//! };
+//! assert_eq!(SettingsGeneration::new(0), None);
+//! let settings = DiscussionSettings::INITIAL;
+//! let Ok(ModeChange::Changed(closed)) =
+//!     settings.change_mode(SettingsGeneration::FIRST, CommentsMode::Closed)
+//! else {
+//!     panic!("the author closes comments at the current generation");
+//! };
+//! assert_eq!(closed.mode(), CommentsMode::Closed);
+//! ```
 
 /// Monotonic version of a thread's settings, bumped only by an actual mode change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

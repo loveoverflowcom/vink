@@ -1,5 +1,6 @@
 //! Cheap repository checks: skill metadata, relative Markdown links, layer boundaries, the
-//! served font assets against their provenance record and the editor runtime's pinned packages.
+//! served font assets against their provenance record, the editor runtime's pinned packages and
+//! the safety lints every crate inherits.
 
 use std::path::{Path, PathBuf};
 
@@ -20,6 +21,7 @@ pub fn run(root: &Path) -> Result<(), String> {
     editor_packages(root, &mut problems);
     crate::ui_qualification::check(root, &mut problems);
     secrets(root, &mut problems);
+    safety(root, &mut problems);
     if problems.is_empty() {
         println!("==> repository checks: ok");
         Ok(())
@@ -730,6 +732,93 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
+/// No crate needs `unsafe`, so the workspace forbids it once, including code macros expand into
+/// a crate. Every member must inherit those lints unchanged, and every owner-local Kani manifest,
+/// which compiles production sources outside the workspace, repeats the forbid. A `compile_fail`
+/// doctest needs a lawful twin with the same setup: stable rustdoc ignores its error code, so a
+/// broken import or a renamed constructor would also "fail to compile" and pass.
+fn safety(root: &Path, problems: &mut Vec<String>) {
+    let workspace = read(&root.join("Cargo.toml")).unwrap_or_default();
+    if !table(&workspace, "workspace.lints.rust")
+        .into_iter()
+        .any(forbids_unsafe)
+    {
+        problems
+            .push("Cargo.toml: [workspace.lints.rust] must set unsafe_code = \"forbid\"".into());
+    }
+    let members = workspace_members(&workspace);
+    if members.is_empty() {
+        problems.push("Cargo.toml: no [workspace] members found".into());
+    }
+    for member in members {
+        let path = format!("{member}/Cargo.toml");
+        let manifest = read(&root.join(&path)).unwrap_or_default();
+        if let Some(problem) = member_lints(&manifest) {
+            problems.push(format!("{path}: {problem}"));
+        }
+        let mut files = Vec::new();
+        rust_files(&root.join(&member).join("src"), &mut files);
+        for file in files {
+            let text = read(&file).unwrap_or_default();
+            if text.contains("```compile_fail") && !text.contains("Lawful twin") {
+                problems.push(format!(
+                    "{}: a compile_fail doctest needs a \"Lawful twin\" doctest with the same setup",
+                    rel(root, &file)
+                ));
+            }
+        }
+    }
+    for (manifest, _) in crate::kani::MANIFESTS {
+        let text = read(&root.join(manifest)).unwrap_or_default();
+        if !table(&text, "lints.rust").into_iter().any(forbids_unsafe) {
+            problems.push(format!(
+                "{manifest}: [lints.rust] must repeat unsafe_code = \"forbid\""
+            ));
+        }
+    }
+}
+
+fn forbids_unsafe(line: &str) -> bool {
+    line.replace(' ', "") == "unsafe_code=\"forbid\""
+}
+
+fn member_lints(manifest: &str) -> Option<&'static str> {
+    let inherits = table(manifest, "lints")
+        .into_iter()
+        .any(|line| line.replace(' ', "") == "workspace=true");
+    let overrides = manifest
+        .lines()
+        .any(|line| line.trim_start().starts_with("[lints."));
+    (!inherits || overrides).then_some(
+        "must inherit the workspace lints: `[lints] workspace = true`, no [lints.*] table",
+    )
+}
+
+/// Settings of the TOML table `[name]` up to the next header, without blanks and comments.
+fn table<'a>(text: &'a str, name: &str) -> Vec<&'a str> {
+    let header = format!("[{name}]");
+    text.lines()
+        .map(str::trim)
+        .skip_while(|line| *line != header)
+        .skip(1)
+        .take_while(|line| !line.starts_with('['))
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .collect()
+}
+
+fn workspace_members(workspace: &str) -> Vec<String> {
+    let Some((_, rest)) = workspace.split_once("members = [") else {
+        return Vec::new();
+    };
+    rest.split(']')
+        .next()
+        .unwrap_or_default()
+        .split(',')
+        .map(|entry| entry.trim().trim_matches('"').to_string())
+        .filter(|entry| !entry.is_empty())
+        .collect()
+}
+
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -747,6 +836,32 @@ fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn members_must_inherit_the_workspace_lints_unchanged() {
+        let ok = "[package]\nname = \"a\"\n\n[lints]\nworkspace = true\n\n[dependencies]\n";
+        assert_eq!(member_lints(ok), None);
+        assert!(member_lints("[package]\nname = \"a\"\n").is_some());
+        assert!(member_lints("[lints]\nworkspace = false\n").is_some());
+        let overridden = "[lints]\nworkspace = true\n[lints.rust]\nunsafe_code = \"allow\"\n";
+        assert!(member_lints(overridden).is_some());
+        // A setting under another table is not the lints opt-in.
+        assert!(member_lints("[package]\nworkspace = true\n[lints]\n").is_some());
+    }
+
+    #[test]
+    fn the_workspace_member_list_and_forbid_are_read_from_their_tables() {
+        let workspace = "[workspace]\nmembers = [\n    \"apps/a\",\n    \"xtask\",\n]\n\n\
+            [workspace.lints.rust]\n# no crate needs it\nunsafe_code = \"forbid\"\n[x]\n";
+        assert_eq!(workspace_members(workspace), ["apps/a", "xtask"]);
+        assert!(
+            table(workspace, "workspace.lints.rust")
+                .into_iter()
+                .any(forbids_unsafe)
+        );
+        assert!(!table(workspace, "x").into_iter().any(forbids_unsafe));
+        assert!(!forbids_unsafe("unsafe_code = \"deny\""));
+    }
 
     #[test]
     fn finds_inline_link_targets() {

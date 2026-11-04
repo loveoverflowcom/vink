@@ -1,12 +1,13 @@
 # Verification scope and evidence
 
 Use actual manifests, commands and CI from the current checkout. The implemented lanes are
-`cargo xtask verify quick|discussion|expressions|postgres|web|all`; what each covers, its prerequisites and its limits
+`cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. `discussion` covers the structural D2T-01 and lifecycle D2T-02 Quint models and real Rust replay;
-there is no generic behavior or Kani lane. `expressions` checks the isolated EMO lifecycle model
-and production policy replay; its owner-local Kani manifest is run separately. Neither model
-lane verifies locking or I/O: PostgreSQL evidence remains in `postgres`, browser in `web`.
+there is no generic behavior lane. `expressions` checks the isolated EMO lifecycle model
+and production policy replay. `kani` (not in `all`; needs the pinned verifier) runs the
+owner-local manifests for the expression policy and the App's pure discussion core. No model or
+proof lane verifies locking or I/O: PostgreSQL evidence remains in `postgres`, browser in `web`.
 
 Find route-level scenarios and existing assertions in the
 [feature map](../../../../docs/development/feature-map.md), then confirm the relevant source.
@@ -23,7 +24,8 @@ instructions or repeated checking workflows, use
 | D2T-01 structural core/model/trace fixture | `quick` + `discussion` | Generated model state is oracle only; replay command inputs through production Rust |
 | Discussion lifecycle, schema or adapter (D2T-02a) | `quick` + `postgres` | Direct-SQL negatives and explicit-lock races; a recording store proves only use-case wiring |
 | SQL, migration, transaction, ownership, seed | `quick` + `postgres` | A fake store is not evidence of PostgreSQL semantics |
-| Expression catalog/policy/model | `quick` + `expressions` (+ `web` for the adapter) | Kani bounds/toolchain and CMP contract checks are separate; see the development guide |
+| Expression catalog/policy/model | `quick` + `expressions` + `kani` (+ `web` for the adapter) | CMP contract checks are separate; see the development guide |
+| Discussion lifecycle/settings/visibility arithmetic or refined scalar | `quick` + `discussion` + `kani` | Kani covers single decisions over whole input domains; sequences stay in Quint, races in `postgres` |
 | Leptos view, route, SSR, hydration, desk interaction | `quick` + `web` (+ `postgres` if data access changed) | Also open captures for visual claims |
 | Worker or process lifecycle | `quick` + `postgres` | The lane starts/stops the worker and checks config exit codes |
 
@@ -33,6 +35,7 @@ instructions or repeated checking workflows, use
 | --- | --- | --- |
 | Docs, skills, metadata, path moves | Diff/whitespace review, local links, YAML and referenced-file validation | Does not exercise an app |
 | Pure validation, guard or state transition | Exact example/table tests; properties or bounded enumeration when they add coverage | Does not prove database or transport behavior |
+| Type boundary (no raw constructor, deserialization or field write) | `compile_fail` doctest plus a compiling lawful twin with the same setup | Stable rustdoc ignores `compile_fail` error codes; without the twin a broken import also passes |
 | Snapshot binding and publication races | Pure tests plus real PostgreSQL concurrency/rollback tests | A mock store cannot establish transaction semantics |
 | Job lease, outbox/inbox, crash/replay | Named failure points, restart/reclaim and uncertain-result reconciliation | Local locking cannot fence an in-flight remote request |
 | Discussion write/moderation/visibility | Pure decision tests, then real PostgreSQL constraints, locks and direct-SQL negatives | A fake store cannot prove two-tier integrity or a create-vs-close race |
