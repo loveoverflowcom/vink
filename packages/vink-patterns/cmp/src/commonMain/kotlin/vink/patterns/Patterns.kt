@@ -11,8 +11,9 @@ import vink.ui.*
 data class Author(val name: String, val key: String?, val publishedAt: String)
 data class DraftSummary(val title: String, val version: Long, val updatedAt: String, val href: String)
 data class Feedback(val id: String, val person: Person, val text: String, val context: String, val href: String)
-enum class FeedbackIntent(val label: String) {
-    Unspecified("Nhận xét"), Sharing("Chỉ chia sẻ"), Impressions("Muốn nghe cảm nhận"), Technique("Xin góp ý kỹ thuật")
+/** `Unspecified` has no label: the host heading names the form and the field label repeats it. */
+enum class FeedbackIntent(val label: String?) {
+    Unspecified(null), Sharing("Chỉ chia sẻ"), Impressions("Muốn nghe cảm nhận"), Technique("Xin góp ý kỹ thuật")
 }
 
 fun participants(items: List<Feedback>): List<Person> = items.map { it.person }.filter { !it.key.isNullOrEmpty() }.distinctBy { it.key }
@@ -98,7 +99,7 @@ fun FeedbackThread(items: List<Feedback>, onNavigate: (String) -> Unit) {
 @Composable
 fun FeedbackComposer(intent: FeedbackIntent, value: TextFieldValue, onInput: (TextFieldValue) -> Unit, state: ActionState, onSubmit: () -> Unit, commentsClosed: Boolean = false) {
     Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
-        VinkText(intent.label, role = TypeRole.Label)
+        intent.label?.let { VinkText(it, role = TypeRole.Label) }
         VinkTextArea(if (intent == FeedbackIntent.Technique) "Góp ý kỹ thuật có ngữ cảnh" else "Nhận xét của bạn", value, onInput)
         VinkButton("Gửi nhận xét", onSubmit, state = if (state is ActionState.Pending) state else if (commentsClosed) ActionState.Disabled("Tác giả đã tắt bình luận. Bản đang soạn được giữ lại.") else state)
     }

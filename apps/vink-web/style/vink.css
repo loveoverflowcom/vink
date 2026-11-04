@@ -268,6 +268,8 @@ a {
 .vk-discussion-reply-composer { margin-inline-start: var(--vk-space-3); min-width: 0; }
 .vk-discussion-recovered { border-block-start: 1px solid var(--vk-outline-variant); padding-block: var(--vk-space-4); }
 .vk-discussion-tools-note { font-size: var(--vk-type-caption-size); }
+.vk-discussion-pagination { display: grid; justify-items: start; gap: var(--vk-space-2); margin-block: var(--vk-space-4); min-width: 0; }
+.vk-discussion-pagination > p { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .vk-reader__header { overflow-wrap: anywhere; margin-bottom: var(--vk-space-8); }
 
 .vk-document {

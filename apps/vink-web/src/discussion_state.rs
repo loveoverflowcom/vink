@@ -282,6 +282,19 @@ impl DiscussionController {
     }
 }
 
+/// Failed reads keep the loaded projection and never imply an unknown write outcome.
+pub fn read_error_message(error: &ApiError, append: bool) -> &'static str {
+    match error {
+        ApiError::Unauthenticated | ApiError::Forbidden | ApiError::NotFound => {
+            error_message(error)
+        }
+        _ if append => "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại.",
+        _ => {
+            "Chưa làm mới được nhận xét. Phần đã tải và bản đang soạn vẫn giữ nguyên; bạn có thể thử lại."
+        }
+    }
+}
+
 pub fn error_message(error: &ApiError) -> &'static str {
     match error {
         ApiError::Unauthenticated => {

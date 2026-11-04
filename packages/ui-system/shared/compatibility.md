@@ -7,6 +7,11 @@ D2T-03 bổ sung `DiscussionThread` ở Leptos/CMP và bốn scenario trong entr
 callsite cũ; sửa lỗi Sharing ẩn input. Intent không quyết định quyền bình luận. Pattern chỉ
 nhận view facts, consumer giữ transport/authority; CMP chưa có service consumer/native app.
 
+UI-REVIEW-17 F3 đổi `FeedbackIntent::label()` thành `Option<&str>` ở Leptos và
+`FeedbackIntent.label` thành `String?` ở CMP: `Unspecified` không thêm nhãn intent
+hoặc phần tử rỗng; nhãn textarea vẫn có. Ba intent có tên giữ nguyên nhãn. Mọi
+consumer trong repository dùng renderer đã cập nhật; token, catalog và DTO không đổi.
+
 UI-REPAIR-06/07 bổ sung slot thao tác optional cho `StatePanel`: Leptos `children`,
 CMP `actions`. Typed recovery giữ thứ tự trước slot, caller vẫn sở hữu link/disabled/
 effect; mọi callsite cũ giữ hành vi khi bỏ slot. Không đổi token, catalog ID hay DTO.
