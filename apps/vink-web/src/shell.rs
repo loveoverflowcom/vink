@@ -123,6 +123,18 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     };
     let open_profile = Callback::new(move |()| {
         #[cfg(feature = "hydrate")]
+        if current.get_untracked() == Some(Destination::Me) {
+            // The canonical page already owns these settings. Keep route/disclosure state
+            // intact and move straight to its existing native radio, with visible focus.
+            use wasm_bindgen::JsCast;
+            if let Ok(Some(input)) = document().query_selector("#page-theme input:checked")
+                && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()
+            {
+                let _ = input.focus();
+            }
+            return;
+        }
+        #[cfg(feature = "hydrate")]
         if let Some(dialog) = profile.get_untracked()
             && overlays
                 .try_update(|layer| layer.open(PROFILE))
@@ -179,16 +191,23 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     destinations=primary()
                     brand=|| view! { <Brand /> }
                     account=move || view! {
-                        <NavUtility
-                            id="profile-trigger"
-                            label="Tôi"
-                            icon=IconName::Person
-                            controls=PROFILE
-                            expanded=profile_open
-                            current=active(Destination::Me)
-                            on_open=open_profile
-                            node_ref=trigger
-                        />
+                        <Show when=move || current.get() == Some(Destination::Me)
+                            fallback=move || view! {
+                                <NavUtility
+                                    id="profile-trigger"
+                                    label="Tôi"
+                                    icon=IconName::Person
+                                    controls=PROFILE
+                                    expanded=profile_open
+                                    current=active(Destination::Me)
+                                    on_open=open_profile
+                                    node_ref=trigger
+                                />
+                            }>
+                            <vink_ui::NavItem destination=Destination::Me.nav() active=active(Destination::Me)
+                                on_navigate=Callback::new(move |_: String| open_profile.run(()))
+                                attr:id="profile-trigger" attr:aria-controls="page-theme" />
+                        </Show>
                     }
                 />
             }
@@ -238,10 +257,9 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     }
                 >
                     <header class="vk-profile-heading">
-                        <h2 id="profile-title">"Tôi"</h2>
-                        <vink_ui::Button variant=vink_ui::ButtonVariant::Text id="profile-close" on_press=move |_| { close(CloseReason::Dismiss); }>
-                            "Đóng"
-                        </vink_ui::Button>
+                        <h2 id="profile-title">"Tùy chọn"</h2>
+                        <vink_ui::IconButton icon=IconName::Close label="Đóng tùy chọn" id="profile-close"
+                            on_press=Callback::new(move |()| { close(CloseReason::Dismiss); }) />
                     </header>
                     <AccountStatus id="overlay-account" />
                     <ThemePicker group="overlay-theme" />

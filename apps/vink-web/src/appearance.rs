@@ -105,31 +105,34 @@ pub fn initials(display_name: Option<&str>) -> String {
     vink_ui::identity::initials(display_name).unwrap_or_else(|| "•".into())
 }
 
+// The R2 recipe only decorates this app composition; the shared RadioGroup still owns
+// native inputs, keyboard behavior, controlled checked state and fieldset/legend semantics.
 #[component]
 pub(crate) fn ThemePicker(group: &'static str) -> impl IntoView {
     let appearance = expect_context::<Appearance>();
     let title = format!("{group}-title");
     let labelled_by = title.clone();
+    let help = format!("{group}-help");
     view! {
         <section class="vk-preference-region vk-appearance-region" aria-labelledby=labelled_by>
             <vink_ui::Heading id=title level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Giao diện"</vink_ui::Heading>
-            <vink_ui::RadioGroup id=group legend="Chế độ màu"
-                options=vec![vink_ui::ChoiceOption::new("light", "Sáng"), vink_ui::ChoiceOption::new("dark", "Tối"), vink_ui::ChoiceOption::new("system", "Hệ thống")]
-                help="Chỉ áp dụng trên thiết bị này. Hệ thống theo giao diện của thiết bị."
-                value=Signal::derive(move || Some(appearance.theme.get().value().to_string()))
-                on_change=move |value: String| appearance.set_theme(Theme::parse(&value)) />
-            <script inner_html=THEME_PICKER_BOOTSTRAP></script>
+            <div class="vk-appearance-region__choices">
+                <vink_ui::RadioGroup id=group legend="Chế độ màu"
+                    options=vec![vink_ui::ChoiceOption::new("light", "Sáng"), vink_ui::ChoiceOption::new("dark", "Tối"), vink_ui::ChoiceOption::new("system", "Hệ thống")]
+                    value=Signal::derive(move || Some(appearance.theme.get().value().to_string()))
+                    on_change=move |value: String| appearance.set_theme(Theme::parse(&value))
+                    attr:aria-describedby=help.clone() />
+                <script inner_html=THEME_PICKER_BOOTSTRAP></script>
+            </div>
+            <p id=help.clone() class="vk-ui-field__help">"Chỉ áp dụng trên thiết bị này. Hệ thống theo giao diện thiết bị."</p>
         </section>
     }
 }
 
 #[component]
 pub(crate) fn AccountStatus(id: &'static str) -> impl IntoView {
-    let title = format!("{id}-title");
-    let labelled_by = title.clone();
     view! {
-        <section id=id class="vk-preference-region" aria-labelledby=labelled_by>
-            <vink_ui::Heading id=title level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Tài khoản"</vink_ui::Heading>
+        <section id=id class="vk-preference-region" aria-label="Tài khoản">
             <div class="vk-account-status">
                 <vink_ui::Avatar kind=vink_ui::AvatarKind::Account decorative=true />
                 <div>
