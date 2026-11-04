@@ -4,6 +4,8 @@ pub(crate) mod me;
 
 pub use desk::{DeskIndex, DraftEditor};
 
+use std::sync::Arc;
+
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
 use leptos_router::components::Form;
@@ -64,7 +66,7 @@ pub fn Home() -> impl IntoView {
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
             <div id="discovery-tools" class="vk-discovery-tools">
-                <Form method="get" action="/" noscroll=true attr:role="search" attr:class="vk-public-search" attr:id="public-search">
+                <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search">
                     <TextField id="public-query" label="Tìm trong danh sách" name="q" kind=TextKind::Search
                         help="Tìm tiêu đề, tác giả trong tối đa 12 tác phẩm mới công khai đã tải. Không tìm toàn bộ thư viện."
                         value=query on_input=|_| {} />
@@ -302,6 +304,12 @@ fn Unavailable(
             </StatePanel>
         </div>
     }
+}
+
+/// HTML omits an unnamed submitter from a GET query; `leptos::form::form_data_from_event` appends
+/// it as an empty pair, turning `?q=…` into `?q=…&=`. Drop that pair before the router navigates.
+fn drop_unnamed_submitter(data: &leptos::web_sys::FormData) {
+    data.delete("");
 }
 
 /// The recovery control can unmount as its state resolves. Focus an enduring field/heading
