@@ -209,19 +209,32 @@ a {
 #community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
 
 .vk-discovery-tools { container-type: inline-size; max-width: 40rem; margin-bottom: var(--vk-space-8); }
-.vk-public-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--vk-space-1) var(--vk-space-2); }
-/* Keep the shared field's label, native control and described help, arranged with the GET action. */
+.vk-public-search { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--vk-space-1) 0; }
+/* The clear anchor shares the native input's grid area; the field keeps its label/help
+ * and native GET name. Reserve its space even when the committed query is empty. */
 .vk-public-search > .vk-ui-field { display: contents; }
 .vk-public-search .vk-ui-field__label { grid-column: 1 / -1; grid-row: 1; }
-.vk-public-search .vk-ui-field__control { grid-column: 1; grid-row: 2; }
-.vk-public-search__actions { grid-column: 2; grid-row: 2; }
-.vk-public-search .vk-ui-field__help { grid-column: 1 / -1; grid-row: 4; }
-#clear-public-search { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
+.vk-public-search .vk-ui-field__control { grid-column: 1 / 3; grid-row: 2; }
+.vk-public-search .vk-ui-input { padding-inline-end: calc(var(--vk-size-hit-target) + var(--vk-space-2)); }
+.vk-public-search__actions { grid-column: 3; grid-row: 2; margin-inline-start: var(--vk-space-2); }
+.vk-public-search .vk-ui-field__help { grid-column: 1 / -1; grid-row: 3; }
+.vk-public-search #clear-public-search {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  justify-content: center;
+  z-index: 1;
+  inline-size: var(--vk-size-hit-target);
+  min-block-size: var(--vk-size-hit-target);
+  margin-inline-end: var(--vk-space-1);
+  border-radius: var(--vk-radius-full);
+}
+.vk-public-search #clear-public-search:hover { background: var(--vk-state-hover); }
+.vk-public-search #clear-public-search:focus-visible { outline: 2px solid var(--vk-focus-ring); outline-offset: -2px; }
 @container (max-width: 18rem) {
-  .vk-public-search .vk-ui-field__control { grid-column: 1 / -1; }
-  .vk-public-search__actions { grid-column: 1 / -1; grid-row: 3; }
-  #clear-public-search { grid-row: 4; }
-  .vk-public-search .vk-ui-field__help { grid-row: 5; }
+  .vk-public-search { grid-template-columns: minmax(0, 1fr) auto; }
+  .vk-public-search__actions { grid-column: 1 / -1; grid-row: 3; margin-inline-start: 0; }
+  .vk-public-search .vk-ui-field__help { grid-row: 4; }
 }
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
@@ -371,7 +384,7 @@ a {
   gap: var(--vk-space-6);
 }
 
-.vk-editor-paper > .vk-ui-field { margin: 0; padding-bottom: var(--vk-space-6); border-bottom: 1px solid var(--vk-outline-variant); }
+.vk-editor-paper > .vk-ui-field { margin: 0; }
 .vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-title-size); line-height: var(--vk-type-title-line-height); }
 .vk-editor-help { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
 .vk-editor-help summary { min-height: var(--vk-size-hit-target); padding-block: var(--vk-space-3); cursor: pointer; }
