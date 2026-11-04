@@ -7,9 +7,9 @@ use leptos_meta::{Meta, Title};
 use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
-    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind, Heading,
-    HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind, SearchField, Select,
-    StatePanel, TextField, Tone, TypeRole,
+    ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind,
+    FieldVariant, Heading, HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind,
+    SearchField, Select, StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
@@ -698,6 +698,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             </Show>
             <div class="vk-editor-paper">
                 <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
+                    variant=FieldVariant::FloatingTonal
                     placeholder="Chưa đặt tên" autocomplete="off" value=title
                     on_focus=move |_| last_field.set_value(Field::Title)
                     on_input=move |input: vink_ui::TextInput| {

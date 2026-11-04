@@ -1677,8 +1677,51 @@ async function draftDashboard(page) {
   await page.eval(`document.documentElement.removeAttribute('data-theme')`);
 }
 
+// Native browser submission is a separate boundary from the hydrated router's Form handler.
+async function nativeExploreSearch(page) {
+  console.log('Explore native GET with page JavaScript disabled:');
+  const enter = async () => {
+    // A native GET replaces this execution context. Wait for its SSR result below,
+    // rather than Page.key's animation-frame evaluation in the departing document.
+    for (const type of ['keyDown', 'keyUp']) {
+      await page.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, ...(type === 'keyDown' ? { text: '\r' } : {}) });
+    }
+  };
+  await page.send('Emulation.setScriptExecutionDisabled', { value: true });
+  try {
+    await page.goto(`${args.base}/?q=old&q=duplicate&unused=1`);
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && document.querySelector('#public-search').method === 'get' && document.querySelector('#public-query').name === 'q'`), 'unhydrated SSR retains the real GET form and named input');
+    await page.eval(`window.__nativeSearchDocument = true; document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()`);
+    await page.send('Input.insertText', { text: 'mua tren pho cu' });
+    await enter();
+    await page.waitFor(`location.search === '?q=mua+tren+pho+cu' && document.querySelectorAll('.vk-public-row').length === 1 && window.__nativeSearchDocument === undefined`, 'native Enter performs a new SSR GET with one q');
+    check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && JSON.stringify([...new URL(location.href).searchParams.keys()]) === '["q"]'`), 'native GET replaces duplicate/obsolete parameters without an empty submitter pair');
+    await page.eval(`document.querySelector('#clear-public-search').focus()`);
+    await enter();
+    await page.waitFor(`!location.search && document.querySelector('#public-query')?.value === '' && document.querySelectorAll('.vk-public-row').length === 1`, 'native clear anchor navigates to / without submitting');
+    check(true, 'keyboard clear navigates to / with page JavaScript still disabled');
+    await page.eval(`document.querySelector('#public-query').focus()`);
+    await page.send('Input.insertText', { text: 'không có tác phẩm này' });
+    // The usual click helper waits for page rAF callbacks, which disabled page JS cannot run.
+    const point = await page.eval(`(() => {
+      const button = document.querySelector('#public-search button[type=submit]');
+      button.scrollIntoView({ block: 'center' });
+      const r = button.getBoundingClientRect();
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+    })()`);
+    for (const type of ['mousePressed', 'mouseReleased']) {
+      await page.send('Input.dispatchMouseEvent', { type, ...point, button: 'left', clickCount: 1 });
+    }
+    await page.waitFor(`document.querySelector('[data-testid=public-no-results]') && new URL(location.href).searchParams.get('q') === 'không có tác phẩm này'`, 'native submit button renders the SSR no-results state');
+    check(true, 'native submit button returns the correct SSR no-results state');
+  } finally {
+    await page.send('Emulation.setScriptExecutionDisabled', { value: false });
+  }
+}
+
 async function publicReading(page) {
   console.log('public Explore and quiet reader: real navigation, then explicitly labelled HTTP fixtures:');
+  await nativeExploreSearch(page);
   const searchPublic = async query => {
     await page.eval(`document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()`);
     await page.send('Input.insertText', { text: query });
@@ -1696,7 +1739,12 @@ async function publicReading(page) {
       const input = document.querySelector('#public-query'), button = document.querySelector('#public-search button[type=submit]');
       const a = input.getBoundingClientRect(), b = button.getBoundingClientRect();
       const separated = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+      const clear = document.querySelector('#clear-public-search'), c = clear?.getBoundingClientRect();
+      const integrated = !clear || (clear.tagName === 'A' && clear.getAttribute('href') === '/' && clear.getAttribute('aria-label') === 'Xóa tìm kiếm' &&
+        c.width >= 44 && c.height >= 44 && c.left >= a.left && c.right <= a.right && c.top >= a.top && c.bottom <= a.bottom &&
+        parseFloat(getComputedStyle(input).paddingInlineEnd) >= a.right - c.left);
       return document.documentElement.scrollWidth <= innerWidth && a.width >= 100 && a.height >= 44 && b.width >= 44 && b.height >= 44 && separated &&
+        integrated &&
         input.labels[0]?.textContent === 'Tìm trong danh sách' && input.getAttribute('aria-describedby') === 'public-query-help' &&
         document.querySelector('#public-query-help').textContent.includes('tối đa 12') &&
         document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện');
@@ -1765,6 +1813,14 @@ async function publicReading(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row__link')`, 'real Explore hydration');
+  await page.eval(`window.__queryInput = document.querySelector('#public-query'); window.__querySubmits = 0; document.querySelector('#public-search').addEventListener('submit', () => window.__querySubmits++); window.__queryInput.focus()`);
+  await page.send('Input.imeSetComposition', { text: 'd', selectionStart: 1, selectionEnd: 1 });
+  await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
+  await page.key('Enter');
+  check(await page.eval(`!location.search && window.__querySubmits === 0 && window.__queryInput === document.querySelector('#public-query')`), 'IME composition Enter does not submit or remount the public input (CDP simulation)');
+  await page.send('Input.insertText', { text: 'đ' });
+  await page.eval(`document.querySelector('#public-query').select()`);
+  await page.send('Input.insertText', { text: '' });
   check(await page.eval(`document.querySelectorAll('.vk-public-row').length === 1 && document.querySelector('.vk-public-row__link').getAttribute('href') === '/tac-pham/${SAMPLE_WORK}'`), 'one real publication is shown once, with its exact reader link');
   await captureExplore('real');
   check(await page.eval(`document.querySelector('.vk-public-row h3').getBoundingClientRect().bottom < innerHeight && document.querySelector('#feed-end')`), 'one public work is readable in the first desktop viewport with an honest endpoint');
@@ -1885,9 +1941,14 @@ async function publicReading(page) {
   await searchPublic('không có tác phẩm này');
   await page.eval(`document.querySelector('#public-query').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the compact GET search action');
+  check(await page.eval(`(() => {
+    const clear = document.activeElement, style = getComputedStyle(clear), input = document.querySelector('#public-query');
+    return clear.matches('#clear-public-search:focus-visible') && clear.getBoundingClientRect().height >= 44 &&
+      style.outlineWidth === '2px' && style.outlineOffset === '-2px' && style.boxShadow === 'none' && !input.matches(':focus');
+  })()`), 'keyboard reaches the integrated full-sized clear link with its own single inset focus perimeter');
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#clear-public-search:focus-visible') && document.activeElement.getBoundingClientRect().height >= 44`), 'keyboard reaches a full-sized clear-search link');
+  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the compact GET search action after clear');
+  await page.key('Tab', SHIFT);
   await page.key('Enter');
   await page.waitFor(`!location.search && document.querySelectorAll('.vk-public-row').length === 12`, 'keyboard clear restores loaded items and URL');
   // Keep the existing same-fixture matrix names for before/after comparison.
@@ -2061,11 +2122,26 @@ async function editorChrome(page) {
   const workId = await page.eval(`location.pathname.split('/').pop()`);
   const title = 'Những ngày mưa ở khuỷu đường cũ — '.repeat(6).slice(0, 200);
   const poem = Array.from({ length: 8 }, (_, i) => `Khổ ${i + 1} — Sáng nay trời đổ mưa rào,\n  ngõ nhỏ ướt mềm từng viên gạch cũ.\nNgười về còn nhớ tiếng Việt không?`).join('\n\n');
-  await page.typeAtEnd('#draft-title', title);
+  await page.eval(`window.__titleInput = document.querySelector('#draft-title'); window.__titleInput.focus()`);
+  check(await page.eval(`window.__titleInput.closest('.vk-ui-field--floating') && window.__titleInput.name === 'title' && window.__titleInput.maxLength === 200 && window.__titleInput.labels[0].textContent === 'Tiêu đề'`), 'editor title consumes the shared FloatingTonal contract with the same native name, limit and label');
+  await page.send('Input.imeSetComposition', { text: 'd', selectionStart: 1, selectionEnd: 1 });
+  await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
+  await page.send('Input.insertText', { text: 'đ' });
+  check(await page.eval(`window.__titleInput === document.querySelector('#draft-title') && window.__titleInput.value === 'đ' && window.__titleInput.selectionStart === 1 && window.__titleInput.selectionEnd === 1`), 'title composition commits once with a stable input and caret (CDP simulation)');
+  // CDP renderer key events do not invoke macOS browser-menu accelerators for native inputs.
+  // Exercise the browser's real editing history through its undo/redo editing commands.
+  for (const [command, modifiers, expected] of [['undo', page.mod, ''], ['redo', page.mod | SHIFT, 'đ']]) {
+    await page.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'z', code: 'KeyZ', modifiers, commands: [command] });
+    await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'z', code: 'KeyZ', modifiers });
+    check(await page.eval(`window.__titleInput.value === ${JSON.stringify(expected)}`), `native title ${command} restores the correct composition history (CDP editing command)`);
+  }
+  await page.eval(`window.__titleInput.select()`);
+  await page.send('Input.insertText', { text: title });
+  check(await page.eval(`window.__titleInput === document.querySelector('#draft-title') && window.__titleInput.value.length === 200 && document.activeElement === window.__titleInput && window.__titleInput.selectionStart === 200`), 'filled 200-character title keeps native input identity, focus and horizontal caret position');
   await page.typeInBody(poem);
   await page.click('#save');
   await page.waitStatus('saved');
-  const live = `window.__chromeEditor === document.querySelector('.cm-editor') && document.querySelectorAll('.cm-editor').length === 1`;
+  const live = `window.__chromeEditor === document.querySelector('.cm-editor') && document.querySelectorAll('.cm-editor').length === 1 && window.__titleInput === document.querySelector('#draft-title') && window.__titleInput.value === ${JSON.stringify(title)}`;
   await page.eval(`window.__chromeEditor = document.querySelector('.cm-editor')`);
   const geometry = async state => {
     await page.eval(`document.activeElement?.blur()`);

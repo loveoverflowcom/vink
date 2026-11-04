@@ -54,6 +54,7 @@ pub fn Home() -> impl IntoView {
     let status = ResponseStatus::capture();
     let params = use_query_map();
     let query = Memo::new(move |_| params.read().get("q").unwrap_or_default());
+    let composing = StoredValue::new(false);
     view! {
         <Title text="Khám phá — Vink" />
         <Meta
@@ -67,16 +68,25 @@ pub fn Home() -> impl IntoView {
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
             <div id="discovery-tools" class="vk-discovery-tools">
-                <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search">
+                <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search"
+                    on:compositionstart=move |_| composing.set_value(true)
+                    on:compositionend=move |_| composing.set_value(false)
+                    on:keydown=move |event: leptos::ev::KeyboardEvent| {
+                        if event.key() == "Enter" && (composing.get_value() || event.is_composing() || event.key_code() == 229) {
+                            event.prevent_default();
+                        }
+                    }>
                     <TextField id="public-query" label="Tìm trong danh sách" name="q" kind=TextKind::Search
                         help="Tìm tiêu đề, tác giả trong tối đa 12 tác phẩm mới công khai đã tải. Không tìm toàn bộ thư viện."
                         value=query on_input=|_| {} />
+                    <Show when=move || !query.get().is_empty()>
+                        <vink_ui::Link href="/" attr:id="clear-public-search" attr:aria-label="Xóa tìm kiếm" variant=vink_ui::LinkVariant::Standalone>
+                            <Icon name=IconName::Close />
+                        </vink_ui::Link>
+                    </Show>
                     <div class="vk-public-search__actions">
                         <Button variant=ButtonVariant::Tonal kind=ButtonKind::Submit>"Tìm"</Button>
                     </div>
-                    <Show when=move || !query.get().is_empty()>
-                        <vink_ui::Link href="/" attr:id="clear-public-search" variant=vink_ui::LinkVariant::Standalone>"Xóa tìm kiếm"</vink_ui::Link>
-                    </Show>
                 </Form>
             </div>
             <div class="vk-discover-grid">
