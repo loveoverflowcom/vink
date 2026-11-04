@@ -978,9 +978,39 @@
   gap: var(--vk-space-2) var(--vk-space-3);
 }
 
+/* Primary recovery: with no typed action, the caller's leading standalone link (a GET recovery
+ * that must work before hydration) takes the filled emphasis typed action 0 would have. Later
+ * links stay secondary. Same container/content roles and state layer as a filled Button. */
+.vk-ui-panel__actions > .vk-ui-link--standalone:first-child {
+  position: relative;
+  justify-content: center;
+  max-inline-size: 100%;
+  padding: var(--vk-density-control-padding) var(--vk-space-6);
+  border-radius: var(--vk-radius-full);
+  background-color: var(--vk-action-primary-container);
+  color: var(--vk-action-primary-content);
+  text-align: center;
+}
+
+.vk-ui-panel__actions > .vk-ui-link--standalone:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-color: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+
+.vk-ui-panel__actions > .vk-ui-link--standalone:first-child:hover { text-decoration-line: none; }
+.vk-ui-panel__actions > .vk-ui-link--standalone:first-child:hover::after { opacity: 0.08; }
+.vk-ui-panel__actions > .vk-ui-link--standalone:first-child:active::after { opacity: 0.12; }
+
 /* Large text inside a narrow panel still needs room for whole Vietnamese words. */
 @container vk-state-panel (max-width: 16rem) {
-  .vk-ui-panel__actions .vk-ui-button { padding-inline: var(--vk-space-3); }
+  .vk-ui-panel__actions .vk-ui-button,
+  .vk-ui-panel__actions > .vk-ui-link--standalone:first-child { padding-inline: var(--vk-space-3); }
 }
 
 .vk-ui-panel__code {

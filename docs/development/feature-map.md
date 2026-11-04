@@ -33,6 +33,8 @@ trên nền `0fc8c04`; [LayoutSpec và bằng chứng UI-REPAIR-05](../design/ui
 State/recovery và focus capture đối chiếu ngày 03/11/2026 trên nền `8045d45`;
 [UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi source fingerprint và kết quả
 từng renderer/host, tách ảnh nguyên bản, specimen và ảnh native.
+CTA chính của panel recovery Explore/Reader đối chiếu ngày 04/11/2026 trên nền `c6aa486`;
+[UI-REVIEW-19](../design/ui-review-19-recovery-views.md).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với

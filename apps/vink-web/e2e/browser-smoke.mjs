@@ -1065,12 +1065,15 @@ async function captureRecovery(page, state, selector) {
                 const range=document.createRange();range.setStart(node,word.index);range.setEnd(node,word.index+word.segment.length);
                 if(new Set([...range.getClientRects()].map(rect=>Math.round(rect.top))).size>1) brokenWords.push(word.segment);
               }
+              // The first recovery carries the panel's primary emphasis, link or button alike.
+              const background=getComputedStyle(el).backgroundColor;
+              const primary=${index}!==0 || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(background);
               return {ok:!!el.closest(${JSON.stringify(selector)}) && r.height>=44 && r.top>=0 && r.bottom<=limit+1
-                && document.documentElement.scrollWidth<=innerWidth && wordCount>0 && !brokenWords.length,
-                rect:r.toJSON(),limit,scrollWidth:document.documentElement.scrollWidth,wordCount,brokenWords};
+                && document.documentElement.scrollWidth<=innerWidth && wordCount>0 && !brokenWords.length && primary,
+                rect:r.toJSON(),limit,scrollWidth:document.documentElement.scrollWidth,wordCount,brokenWords,background};
             })()`);
             if (!geometry.ok) await page.capture(`recovery-failure-${state}-${width}-${scale}-${theme}`);
-            check(geometry.ok, `${state} ${width}/${scale}/${theme}: recovery ${index + 1} is reachable above navigation without horizontal overflow${geometry.ok ? '' : JSON.stringify(geometry)}`);
+            check(geometry.ok, `${state} ${width}/${scale}/${theme}: recovery ${index + 1} is reachable above navigation without horizontal overflow${index === 0 ? ' and carries primary emphasis' : ''}${geometry.ok ? '' : JSON.stringify(geometry)}`);
           }
           await page.capture(`recovery-${state}-${width}-${scale}-${theme}`);
         }
@@ -1691,6 +1694,7 @@ async function publicReading(page) {
     await page.waitFor(`document.querySelector('[data-testid=public-${state}]')`, `Explore ${state}`);
     check(await page.eval(`!document.querySelector('[data-testid=public-${state === 'empty' ? 'unavailable' : 'empty'}]') && document.querySelector('#writing-prompt a').getAttribute('href') === '/ban-viet'`), `${state} is distinct and keeps a truthful participation route`);
     check(await page.eval(`document.querySelector('[data-testid=public-${state}] .vk-ui-panel__actions a')?.getAttribute('href') === ${JSON.stringify(state === 'empty' ? '/ban-viet' : '/')}`), `${state} keeps its real recovery link inside the panel`);
+    if (state === 'unavailable') check(await page.eval(`document.querySelectorAll('[data-testid=public-unavailable] .vk-ui-panel__actions a').length === 1 && document.querySelector('[data-testid=public-unavailable] .vk-ui-panel__actions a').id === 'retry-public'`), 'Explore outage offers only the reload, not a same-route return that neither leaves nor refetches');
     await captureExplore(state);
     await captureRecovery(page, `explore-${state}`, `[data-testid=public-${state}]`);
   }
