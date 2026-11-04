@@ -145,5 +145,8 @@ trước khi biết request hoàn tất. Bản sửa dùng copy riêng cho đọ
 lý do phiên/quyền. Browser smoke nay kiểm GET mới sau lỗi đọc ban đầu qua điều
 hướng client, refresh lỗi giữ danh sách/chữ, hai GET phân trang dùng cùng cursor,
 và nhận xét trang kế chỉ xuất hiện sau response thành công. Fixture mạng vẫn không
-thay bằng chứng persistence hoặc auth production; kết quả chạy gắn với head cuối
+thay bằng chứng persistence hoặc auth production. Lượt browser đầu của review mới
+bắt được mẫu chặn URL chưa bao phủ query cursor: sửa wildcard và đếm request của
+cả lần lỗi lẫn retry, tránh dùng phản hồi lỗi từ server thật cho cursor giả làm
+bằng chứng 503 fixture. Kết quả chạy gắn với head cuối
 được ghi trong PR, không suy PASS từ các assertion vừa thêm.

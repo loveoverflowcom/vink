@@ -2291,7 +2291,7 @@ async function discussionReadingAndWrites(page) {
     }).catch(() => {});
   };
   page.cdp.listeners.push(fixtureListener);
-  await page.send('Fetch.enable', { patterns: [{ urlPattern: wirePattern, requestStage: 'Request' }, { urlPattern: `${wirePattern}/comments`, requestStage: 'Request' }] });
+  await page.send('Fetch.enable', { patterns: [{ urlPattern: `${wirePattern}*`, requestStage: 'Request' }] });
   try {
     // Client navigation exercises the initial resource error without changing SSR or the DB.
     await page.goto(`${args.base}/`);
@@ -2347,6 +2347,7 @@ async function discussionReadingAndWrites(page) {
     const beforePaging = readCursors.length;
     await page.click('#root-pagination button');
     await page.waitFor(`document.querySelector('#root-pagination [role=status]')?.textContent.includes('Chưa tải thêm được')`, 'next-page failure is reported at its control');
+    check(JSON.stringify(readCursors.slice(beforePaging)) === JSON.stringify(['next-root-cursor']), 'the failed cursor GET is intercepted as 503 rather than reaching the real server with a fixture cursor');
     check(await page.eval(`!document.querySelector('#comments-mode').textContent.includes('Chưa tải thêm được') && !document.querySelector('#comments-mode').textContent.includes('Chưa rõ kết quả') && document.querySelectorAll('.vk-discussion-comment').length>=3`), 'next-page failure stays beside its control, keeps loaded comments and does not claim an unknown write');
     await page.eval(`document.querySelector('#root-pagination').scrollIntoView({ block: 'center', behavior: 'instant' })`);
     await page.capture('discussion-contract-fixture-next-page-error', { scenario: 'D2T-03-paging', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
