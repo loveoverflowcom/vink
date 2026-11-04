@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|appearance|first-paint
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -40,6 +40,7 @@ const KEYS = {
   Enter: { code: 'Enter', keyCode: 13, text: '\r' },
   Escape: { code: 'Escape', keyCode: 27 },
   Tab: { code: 'Tab', keyCode: 9 },
+  Space: { code: 'Space', keyCode: 32, key: ' ', text: ' ' },
   End: { code: 'End', keyCode: 35 },
   Home: { code: 'Home', keyCode: 36 },
   ArrowDown: { code: 'ArrowDown', keyCode: 40 },
@@ -212,6 +213,7 @@ class Page {
       };
       return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
+        appearance: { effectiveTheme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: document.documentElement.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
@@ -221,7 +223,7 @@ class Page {
     })()`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
-    contexts[name] = { ...context, evidence: { build: BUILD_SHA, ...evidence } };
+    contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, ...evidence } };
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
   }
 
@@ -262,10 +264,10 @@ class Page {
 
   /** A key press as the browser receives it from the keyboard. */
   async key(name, modifiers = 0) {
-    const { code, keyCode, text } = KEYS[name];
+    const { code, keyCode, text, key = name } = KEYS[name];
     // A key that types text (Enter) needs `keyDown` with that text to activate links/buttons.
     for (const type of [text ? 'keyDown' : 'rawKeyDown', 'keyUp']) {
-      await this.send('Input.dispatchKeyEvent', { type, key: name, code, modifiers, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode, ...(text && type === 'keyDown' ? { text } : {}) });
+      await this.send('Input.dispatchKeyEvent', { type, key, code, modifiers, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode, ...(text && type === 'keyDown' ? { text } : {}) });
     }
     // Give native selectionchange and CodeMirror's focus observer a rendering opportunity
     // before the next synthetic input, as between separate human key/pointer actions.
@@ -786,8 +788,8 @@ async function chooseTheme(page, value, group = 'overlay-theme') {
   await page.click(`label:has(input[name="${group}"][value="${value}"])`);
   await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
   // Token colours switch at once; nav background transitions take 160ms. Contrast samples
-  // describe the settled theme, separately from those transient animation frames.
-  await page.eval(`Promise.all(document.getAnimations().map(a => a.finished.catch(() => {})))`);
+  // describe the settled theme. A pending save may also have a lawful infinite loading arc.
+  await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
   await assertBrand(page, value);
 }
 
@@ -888,7 +890,11 @@ async function textContrast(page, theme, surface = 'shell') {
 async function accountAppearance(page) {
   console.log('shared account presentation and bounded appearance overlay:');
   await page.viewport(1440);
-  await openProfile(page);
+  await page.goto(`${args.base}/toi`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Tôi route for the appearance matrix');
+  await page.eval(`document.querySelector('#profile-trigger').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`, 'keyboard opens the utility and focuses its selected native radio');
   check(await page.eval(`(() => {
     const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
     const labels = group => [...document.querySelectorAll('#' + group + ' label')].map(el => el.textContent).join('|');
@@ -907,6 +913,11 @@ async function accountAppearance(page) {
   await page.key('ArrowRight');
   await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native arrow key updates both appearance views through the single owner');
   check(await page.eval(`(() => { const target = document.activeElement.closest('label'), style = getComputedStyle(target); return target.matches(':has(:checked)') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 3 && document.activeElement.matches(':focus-visible'); })()`), 'keyboard selection retains a visible focus outline and the native checked marker');
+  await page.key('ArrowLeft');
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'system'`, 'native ArrowLeft keeps the overlay open and synchronizes the page');
+  await page.eval(`document.querySelector('#overlay-theme input[value=dark]').focus()`);
+  await page.key('Space');
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'dark' && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused option in both views');
   await page.key('Escape');
   await chooseTheme(page, 'dark', 'page-theme');
   await openProfile(page);
@@ -918,10 +929,14 @@ async function accountAppearance(page) {
 
   for (const { width, rail, height } of [
     { width: 1440, rail: 'expanded', height: 900 },
+    { width: 1440, rail: 'compact', height: 900 },
     { width: 1024, rail: 'compact', height: 900 },
     { width: 834, rail: 'compact', height: 900 },
+    { width: 834, rail: 'expanded', height: 900 },
     { width: 1440, rail: 'expanded', height: 360 },
     { width: 1440, rail: 'compact', height: 360 },
+    { width: 834, rail: 'expanded', height: 360 },
+    { width: 834, rail: 'compact', height: 360 },
   ]) {
     await page.viewport(width, height);
     if ((await page.eval(RAIL_WIDTH)) !== (rail === 'expanded' ? 220 : 96)) await page.click('#navigation-toggle');
@@ -931,6 +946,15 @@ async function accountAppearance(page) {
         await openProfile(page);
         await chooseTheme(page, theme);
         const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
+        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling, including its brand`);
+        if (width !== 1024 && rail === 'expanded') {
+          await page.key('Escape');
+          await page.eval(`scrollTo(0, 0)`);
+          await page.capture(`account-page-${scenario}`);
+          await page.eval(`document.querySelector('#page-theme').scrollIntoView({ block: 'end' })`);
+          await page.capture(`account-page-${scenario}-appearance`);
+          await openProfile(page);
+        }
         check(await page.eval(`(() => {
           const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
           return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
@@ -1150,9 +1174,11 @@ async function adaptiveShell(page) {
   await assertBrand(page, 'dark');
   await openProfile(page);
   check(await page.eval(`document.activeElement?.value === 'dark' && document.querySelector('#page-theme input:checked')?.value === 'dark'`), 'storage denial keeps page and overlay on the same session-local choice');
+  await page.capture('appearance-storage-denied-overlay-dark');
   await chooseTheme(page, 'system');
   check(await page.eval(`document.querySelector('#page-theme input:checked')?.value === 'system'`), 'storage-denied system choice updates both views');
   await page.key('Escape');
+  await page.capture('appearance-storage-denied-page-system');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
   await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.theme')`);
@@ -1161,7 +1187,7 @@ async function adaptiveShell(page) {
   await accountAppearance(page);
 
   for (const width of [1440, 1024, 834, 390, 320]) {
-    await page.viewport(width);
+    await page.viewport(width, width === 390 ? 844 : 900);
     for (const theme of ['system', 'light', 'dark']) {
       if (width >= 760) {
         await openProfile(page);
@@ -1219,6 +1245,53 @@ async function adaptiveShell(page) {
   await chooseTheme(page, 'system', 'page-theme');
   await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
   await page.viewport(1280);
+  await appearanceFirstPaint(page);
+}
+
+/** Keep first-paint selection evidence separate from hydrated interaction evidence. */
+async function appearanceFirstPaint(page) {
+  console.log('appearance preference before hydration:');
+  const errorsBefore = page.errors.length;
+  const mismatches = [];
+  let navigations = 0;
+  const { identifier } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__appearancePaints = [];
+    const sample = () => {
+      const choice = document.querySelector('#page-theme input:checked');
+      if (choice) { const signature = (document.documentElement.dataset.theme || 'system') + ':' + choice.value; if (!window.__appearancePaints.includes(signature)) window.__appearancePaints.push(signature); }
+      if (document.documentElement.dataset.hydrated !== 'true') requestAnimationFrame(sample);
+    }; requestAnimationFrame(sample);` });
+  for (const [theme, os] of [['light', 'dark'], ['dark', 'light'], ['system', 'light'], ['system', 'dark']]) {
+    await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: os }] });
+    await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
+    for (const width of [1440, 320]) {
+      await page.viewport(width);
+      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
+      await page.goto(`${args.base}/toi`);
+      navigations++;
+      for (const scale of [100, 200]) {
+        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        const name = `appearance-first-paint-${theme}-os-${os}-${width}-text${scale}`;
+        await page.capture(name, { scenario: 'UI-REVIEW-21-first-paint', fixture: 'local-fixture-unknown-account' });
+        await page.eval(`document.querySelector('#page-theme').scrollIntoView({ block: 'end' })`);
+        await page.capture(`${name}-appearance`, { scenario: 'UI-REVIEW-21-first-paint', fixture: 'local-fixture-unknown-account' });
+        const state = await page.eval(`({ hydrated: document.documentElement.dataset.hydrated === 'true', theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value) })`);
+        if (state.hydrated || state.theme !== theme || state.choices.some(value => value !== theme)) mismatches.push({ name, expected: theme, ...state });
+      }
+      await page.send('Network.setBlockedURLs', { urls: [] });
+      await page.reload();
+      const hydrated = await page.eval(`({ theme: document.documentElement.dataset.theme || 'system', choices: ['page-theme', 'overlay-theme'].map(id => document.querySelector('#' + id + ' input:checked')?.value), paints: window.__appearancePaints })`);
+      if (hydrated.theme !== theme || hydrated.choices.some(value => value !== theme) || hydrated.paints.some(value => value !== `${theme}:${theme}`)) mismatches.push({ name: 'hydration-' + theme + '-' + width, expected: theme, ...hydrated });
+    }
+  }
+  await page.send('Network.setBlockedURLs', { urls: [] });
+  for (const deadline = Date.now() + 5000; page.errors.length < errorsBefore + navigations && Date.now() < deadline;) await sleep(50);
+  const blocked = page.errors.splice(errorsBefore);
+  check(blocked.length === navigations && blocked.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`), 'blocked hydration produces only the expected import failures');
+  await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
+  await page.eval(`localStorage.removeItem('vink.ui.theme')`);
+  await page.reload();
+  check(mismatches.length === 0, `first paint and both native selections agree with the preference before hydration: ${JSON.stringify(mismatches)}`);
 }
 
 async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
@@ -1238,6 +1311,11 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
   await openProfile(page);
   check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
+  for (const theme of ['light', 'system', 'dark']) {
+    await chooseTheme(page, theme);
+    await page.key('Escape');
+    await openProfile(page);
+  }
   await chooseTheme(page, 'dark');
   await page.capture('1280-editor-dirty-overlay-dark');
   await page.key('Escape');
@@ -2329,6 +2407,13 @@ async function mainPhase(page) {
   check((await page.body()) === BODY + TAIL, 'conflict keeps the text being written');
   const serverAfterConflict = await page.draft(workId);
   check(serverAfterConflict.title === 'Tab khác' && serverAfterConflict.version === 3, 'stale save wrote nothing');
+  await page.eval(`document.querySelector('.cm-editor').__appearanceConflictView = 'kept'`);
+  await openProfile(page);
+  await chooseTheme(page, 'dark');
+  await page.click('#open-me');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation from a conflicted editor uses the guard');
+  check(await page.eval(`location.pathname === '/ban-viet/${workId}' && document.querySelector('.cm-editor').__appearanceConflictView === 'kept'`) && (await page.body()) === BODY + TAIL && (await page.status()) === 'conflict', 'appearance and guarded Tôi navigation retain the conflicted editor and text');
+  await page.key('Escape');
   await page.click('#keep-mine');
   await page.waitStatus('saved', 'explicit overwrite');
   const final = await page.draft(workId);
@@ -2436,6 +2521,14 @@ async function mainPhase(page) {
     await page.waitStatus('saving');
     await page.key('Escape');
     await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed while saving');
+    const pendingText = await page.body();
+    await page.eval(`document.querySelector('.cm-editor').__appearancePendingView = 'kept'`);
+    await openProfile(page);
+    await chooseTheme(page, 'light');
+    await page.click('#open-me');
+    await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'profile navigation during a pending save uses the guard');
+    check(await page.eval(`location.pathname === '${editorPath}' && document.querySelector('.cm-editor').__appearancePendingView === 'kept'`) && (await page.body()) === pendingText && (await page.status()) === 'saving' && gate.held.length === 0, 'appearance keeps the same pending editor protected without starting another save');
+    await page.key('Escape');
     await gate.release(held);
     await page.waitStatus('saved', 'late acknowledgement');
     await sleep(700);
@@ -2725,6 +2818,12 @@ try {
   activePage = page;
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
+  else if (args.phase === 'appearance') await adaptiveShell(page);
+  else if (args.phase === 'first-paint') {
+    await page.goto(`${args.base}/toi`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance hydration');
+    await appearanceFirstPaint(page);
+  }
   else throw new Error(`unknown phase ${args.phase}`);
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   console.log(`browser-smoke: PASS (${args.phase})`);
