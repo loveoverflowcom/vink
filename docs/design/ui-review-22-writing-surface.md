@@ -1,6 +1,6 @@
 # UI-REVIEW-22 — Writing Surface: Editor Layout & Typography
 
-**Kết quả: REVIEW-ONLY.** Chưa xác nhận defect UI trên snapshot `4ce0ff1` trong phạm vi đã kiểm. PR này lưu báo cáo và tóm tắt evidence để owner review; không có patch sản phẩm và không hoàn tất S-01. Không tự approve, merge hoặc deploy.
+**Kết quả lượt runtime: REVIEW-ONLY.** Chưa xác nhận defect UI trên snapshot `4ce0ff1` trong phạm vi baseline UI-REPAIR-05 đã kiểm. PR này lưu báo cáo và tóm tắt evidence; không có patch sản phẩm và không hoàn tất S-01. Đối chiếu yêu cầu mới bên dưới xác nhận title FloatingTonal và các thay đổi R1/R2 ở #66/#67 vẫn **IMPLEMENTATION_PENDING**; kết luận runtime cũ không nghiệm thu các yêu cầu đó.
 
 ## Nền và ủy quyền
 
@@ -9,7 +9,7 @@
 - Snapshot/runtime đã review: `4ce0ff18c9602ec2ce0bfe09c59dc5f84eef1193`. Nhánh `codex/review-editor-surface`, worktree riêng trong workspace task này. Không reset về review snapshot `c6aa486`.
 - Trước khi tạo nhánh: không có branch local, remote-tracking branch hay PR cùng head `codex/review-editor-surface`; API pull requests trả danh sách rỗng. Không ghi đè feature branch.
 - Đã đọc [#47](https://github.com/loveoverflowcom/vink/pull/47), [#56](https://github.com/loveoverflowcom/vink/pull/56), [#62](https://github.com/loveoverflowcom/vink/pull/62). Cả ba đã merge. Diff từ `c6aa486` tới snapshot `4ce0ff1` không đổi editor bridge, CodeMirror runtime hoặc editor composition; CSS app đổi các vùng đọc công khai.
-- Phạm vi PR hiện tại là tài liệu review và evidence dạng văn bản theo yêu cầu tạo PR. Giữ **MERGE/DEPLOY FORBIDDEN, OWNER_REVIEW REQUIRED**; không kiểm hoặc chờ CI GitHub.
+- Khi tạo PR ban đầu, phạm vi là tài liệu review và evidence dạng văn bản, với **MERGE/DEPLOY FORBIDDEN, OWNER_REVIEW REQUIRED**. Chỉ dẫn tiếp theo của người dùng đã cho phép review độc lập, sửa, cập nhật develop, resolve conflicts và tự merge khi validation đạt; quyền mới thay ghi chú cấm merge cũ. Không tự approve, bypass branch protection hoặc deploy; không kiểm/chờ CI GitHub.
 - Base tích hợp tài liệu: `325746232ccf5a05b53c1d531f69bb09c77ea6b1`, sau [PR #70](https://github.com/loveoverflowcom/vink/pull/70). Đã fast-forward không conflict. #70 đổi appearance/bootstrap, brand rail CSS và browser smoke; `desk.rs`, Rust editor bridge và CodeMirror runtime không đổi. Không gắn kết quả runtime `4ce0ff1` cho base mới hoặc PR tài liệu này.
 
 ## Authority và nguồn đã đọc
@@ -17,6 +17,22 @@
 Accepted base là [UI-REPAIR-05 r1](https://github.com/loveoverflowcom/vink/blob/4ce0ff18c9602ec2ce0bfe09c59dc5f84eef1193/docs/design/ui-repair-05.md), cùng [UI-REVIEW-18](https://github.com/loveoverflowcom/vink/blob/4ce0ff18c9602ec2ce0bfe09c59dc5f84eef1193/docs/design/ui-review-18.md). Đã đọc AGENTS, development guide/feature map, cả chín skill bắt buộc và các reference về layout/evidence/verification.
 
 Đã mở [archive desktop](https://drive.google.com/file/d/1i_YiJ1pb8ippWdy3kaAWobeV_KrGdYNk/view), [archive mobile](https://drive.google.com/file/d/1bucuiIqUpjMj0S6gKnL77hiVJXa5O8BA/view) và [implementation lịch sử](https://drive.google.com/file/d/1DmMCd9BZUK3aH8-DVaoWNJt7Bii11-VB/view). Archive chỉ là reference lịch sử; không dùng làm HEAD capture, pixel baseline hoặc contract lưu. Copy “Đã lưu trên thiết bị này” không phải contract hiện hành.
+
+## Đối chiếu yêu cầu cập nhật 04/11/2026
+
+Review độc lập PR #71 bắt đầu ở head `03e2644eb4e11f287fe9146d664ac5be412d4fa3`, merge-base và latest `origin/develop` đều là `325746232ccf5a05b53c1d531f69bb09c77ea6b1`. `git merge origin/develop --no-edit` báo already up to date; không có conflict. Diff sản phẩm của PR rỗng.
+
+Đã đọc đầy đủ file Space `Pasted text(20261104-090708).txt` (`libfile_c83bc8f6eec08191b061569b2a70e17a`, 82 dòng), description và toàn bộ comments [#66](https://github.com/loveoverflowcom/vink/issues/66)/[#67](https://github.com/loveoverflowcom/vink/issues/67), [LayoutSpec R2](https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view), [audit/handoff hiện hành](https://drive.google.com/file/d/1Ao43o1ymizuBILy0BPHa0RG_Y9uRFDSM/view) và source [Desk v2.6](https://drive.google.com/file/d/15PQVO1_dT9TXTmML_QR5_xvCTSg50xxb/view). Chỉ dẫn hiện tại → R2 cho appearance/account → R1 cho field/action/search/editor → baseline chưa bị thay thế. Prototype/source design không là bằng chứng runtime app.
+
+| Yêu cầu / owner | Source tại develop `3257462` | Trạng thái và phần tiếp theo |
+| --- | --- | --- |
+| #66 AC-02..05, PR-01 `codex/r2-shared-controls` | Shared `TextField` chưa có typed FloatingTonal; `.vk-ui-input` còn idle border 1px và invalid border + inset shadow; CMP vẫn dùng `OutlinedTextField` | **IMPLEMENTATION_PENDING.** PR-01 sở hữu `packages/ui-system/**`, API/anatomy/focus và qualification riêng Web/CMP |
+| #66 AC-06..08 và #67 AC-08, PR-02 `codex/r2-explore-desk-consumers` | `desk.rs` vẫn dùng `TextField id="draft-title" name="title" input_ref=title_input`; Explore giữ native GET `name=q` với clear link bên ngoài; `SearchField` chưa có prop `name` | **IMPLEMENTATION_PENDING; DEPENDENCY: PR-01.** Migrate title qua API thật sau PR-01; giữ DOM input/caret/IME/undo/dirty guard, GET/no-JS và CodeMirror/save. Không thêm CSS giả FloatingTonal hoặc đoán prop chưa tồn tại |
+| #67 AC-02..07, PR-03 `codex/r2-appearance-account` | ThemePicker dùng native RadioGroup; app còn khung preference/choice và backdrop transparent. #70 đã bổ sung bootstrap checked-radio và rail wrap | **IMPLEMENTATION_PENDING.** R2 appearance/account là owner PR-03; giữ nguyên fixes #69/#70. Không suy merge #70 là nghiệm thu R2 |
+
+Đây là **gap yêu cầu đã có trước PR #71**, không phải regression do PR tài liệu. R22-04 chỉ giải thích title một dòng so với archive cũ; không phủ nhận yêu cầu FloatingTonal mới. Không sửa shared controls, app consumers hoặc appearance trong PR tài liệu này vì chúng là ba lát cắt có owner/dependency riêng đã được chỉ định; PR-02 cần contract chưa triển khai của PR-01. Không tick acceptance hoặc đóng #66/#67 từ bằng chứng review cũ. Phần body layout/typography/selection của UI-REVIEW-22 vẫn là evidence hồi quy hữu ích cho PR-02.
+
+Kiểm độc lập cho delta tài liệu: đối chiếu 11 SHA-256 source với đúng commit runtime, kiểm 120 tổ hợp geometry đầy đủ/không trùng và các invariant metadata về raw source/view/overflow; kiểm 13 locator ảnh và tổng 145 capture; diff/whitespace/relative links. Đây là kiểm source/metadata, không phải chạy lại browser hoặc mở lại ảnh. Library đã resolve đúng ZIP `UI-REVIEW-22-review-only.zip`, ID `libfile_b53ab409196c8191bd3b8700dd0e525a`, version `1`, metadata 6.946.844 byte; chưa tải lại ZIP để kiểm độc lập checksum/pixel. Không chuyển kết quả quick/web lịch sử thành PASS runtime mới.
 
 ## HOW / WHY và owner
 

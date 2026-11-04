@@ -5,6 +5,49 @@
   "reviewed_runtime_sha": "4ce0ff18c9602ec2ce0bfe09c59dc5f84eef1193",
   "report_integration_base": "325746232ccf5a05b53c1d531f69bb09c77ea6b1",
   "runtime_results_apply_to": "reviewed_runtime_sha only; not a new runtime run on the documentation PR base",
+  "requirements_reconciliation": {
+    "status": "IMPLEMENTATION_PENDING_IN_SEPARATE_PRS",
+    "compared_base": "325746232ccf5a05b53c1d531f69bb09c77ea6b1",
+    "reviewed_pr_head": "03e2644eb4e11f287fe9146d664ac5be412d4fa3",
+    "attachment": {
+      "library_file_id": "libfile_c83bc8f6eec08191b061569b2a70e17a",
+      "name": "Pasted text(20261104-090708).txt",
+      "total_lines": 82,
+      "size_bytes": 6890
+    },
+    "issues": [
+      "https://github.com/loveoverflowcom/vink/issues/66",
+      "https://github.com/loveoverflowcom/vink/issues/67"
+    ],
+    "handoff_comment_ids": [
+      6626690244,
+      6626691192,
+      6626692309
+    ],
+    "design_layout_spec": "https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view",
+    "independent_validation": "11 source SHA-256 values match reviewed_runtime_sha; 120 complete unique geometry records; raw source, view identity, dimensions and capture counts consistent. Metadata/source only, no runtime or pixel rerun.",
+    "pending_slices": [
+      {
+        "owner": "PR-01 codex/r2-shared-controls",
+        "scope": "Shared Web/CMP fields/actions/focus and typed FloatingTonal",
+        "status": "IMPLEMENTATION_PENDING"
+      },
+      {
+        "owner": "PR-02 codex/r2-explore-desk-consumers",
+        "scope": "Explore/Desk and #67 AC-08 editor title",
+        "status": "DEPENDENCY_PR01",
+        "reason": "Current TextField has no FloatingTonal variant; SearchField has no name prop. Consume the actual shared API after PR-01."
+      },
+      {
+        "owner": "PR-03 codex/r2-appearance-account",
+        "scope": "Appearance/account R2",
+        "status": "IMPLEMENTATION_PENDING",
+        "preserve": "PR #69 and PR #70 merged fixes"
+      }
+    ],
+    "issue_acceptance_changed": false,
+    "product_diff": "empty"
+  },
   "environment": {
     "rustc": "1.99.1",
     "node": "22.15.0",
@@ -39,6 +82,9 @@
     "size_bytes": 6946844,
     "sha256": "aa4f1fc4d8de428f80213198455ac5f91ae60f16c6f52ca2a42360c3e5a133fe",
     "location": "Owner Library; no public URL asserted",
+    "library_file_id": "libfile_b53ab409196c8191bd3b8700dd0e525a",
+    "version_id": "1",
+    "independent_archive_check": "Library metadata matches filename/size; ZIP bytes and pixels not independently re-read in follow-up review",
     "contains": "145 PNGs, manifest, raw fixture plan, computed metrics, runtime/source hashes, verification history",
     "not_committed": [
       "PNG binaries",

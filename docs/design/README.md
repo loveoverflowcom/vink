@@ -18,11 +18,14 @@ Quy tắc trả focus khi quay lại từ bước xác nhận bỏ chữ trong e
 nằm ở [UI-REVIEW-18](ui-review-18.md).
 Báo cáo [UI-REVIEW-22 — Writing Surface](ui-review-22-writing-surface.md) ghi snapshot,
 geometry/typography, kiểm editor, evidence và giới hạn; đây là review-only, không có patch sản phẩm.
+Phần đối chiếu cập nhật của báo cáo giữ rõ yêu cầu title FloatingTonal và các phần R1/R2
+ở #66/#67 còn chờ triển khai qua ba PR có owner riêng.
 
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |
 | --- | --- |
+| [Quiet Lavender R1 / #66](https://github.com/loveoverflowcom/vink/issues/66), [Expressive Lavender R2 / #67](https://github.com/loveoverflowcom/vink/issues/67), [LayoutSpec R2](https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view) | Yêu cầu thiết kế mới: R1 cho shared fields/actions/search/Explore/Desk/editor; R2 chỉ override appearance/account. Ba PR implementation còn pending tại develop `3257462`; không gọi design là UI đã triển khai |
 | [Current design 02/11](https://drive.google.com/file/d/1cNYQh-iukYP-nP0cphLOGdywROAmtkSr/view), [amendment v4](https://drive.google.com/file/d/1PQeLmEbwkNiFquI-Qgb6gaEV3i0OZWSn/view) | Tham chiếu thị giác Khám phá hiện hành; phạm vi dữ liệu thật và đối chiếu vùng ở [UI-REPAIR-02](ui-repair-02.md) |
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
