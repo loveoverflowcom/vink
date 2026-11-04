@@ -16,6 +16,8 @@ nhau, `tokens.json` là hiện trạng và trang này cần cập nhật. Owner 
 
 Quy tắc trả focus khi quay lại từ bước xác nhận bỏ chữ trong editor và ảnh đối chiếu
 nằm ở [UI-REVIEW-18](ui-review-18.md).
+Báo cáo [UI-REVIEW-22 — Writing Surface](ui-review-22-writing-surface.md) ghi snapshot,
+geometry/typography, kiểm editor, evidence và giới hạn; đây là review-only, không có patch sản phẩm.
 
 ## Nguồn và thứ tự ưu tiên
 
