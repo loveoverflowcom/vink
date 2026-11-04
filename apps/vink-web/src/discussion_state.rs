@@ -282,6 +282,15 @@ impl DiscussionController {
     }
 }
 
+/// A failed read of an additional page. The loaded list is still valid, so it does not talk
+/// about unknown write outcomes or ask the reader to reload before another attempt.
+pub fn page_read_message(error: &ApiError) -> &'static str {
+    match error {
+        ApiError::NotFound => error_message(error),
+        _ => "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại.",
+    }
+}
+
 pub fn error_message(error: &ApiError) -> &'static str {
     match error {
         ApiError::Unauthenticated => {

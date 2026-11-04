@@ -2258,12 +2258,20 @@ async function discussionReadingAndWrites(page) {
   const replyId = fixture.roots[0].preview[0].comment_id;
   let currentFixture = structuredClone(fixture);
   let replyRequest;
+  let failNextPage = false;
   const fixtureListener = message => {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
     const path = decodeURIComponent(new URL(message.params.request.url).pathname);
     if (message.params.request.method === 'POST' && path === new URL(`${endpoint}/comments`).pathname) { replyRequest = message.params.requestId; return; }
     if (message.params.request.method !== 'GET' || path !== new URL(endpoint).pathname) {
       page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
+      return;
+    }
+    if (failNextPage && new URL(message.params.request.url).searchParams.has('cursor')) {
+      page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 503,
+        responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+        body: Buffer.from(JSON.stringify({ error: { code: 'unavailable', message: 'fixture outage' } })).toString('base64'),
+      }).catch(() => {});
       return;
     }
     page.send('Fetch.fulfillRequest', { requestId: message.params.requestId, responseCode: 200,
@@ -2305,6 +2313,20 @@ async function discussionReadingAndWrites(page) {
     check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên') && document.querySelector('#reply-composer-${rootId}-send')?.getAttribute('aria-disabled')==='true' && document.querySelectorAll('.vk-discussion-replies .vk-discussion-comment').length===3`), 'revoked context keeps peer replies and draft, neutralizes cached target identity and blocks stale send');
     await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({ block: 'center', behavior: 'instant' })`);
     await page.capture('discussion-contract-fixture-context-revoked', { scenario: 'D2T-03-context', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    currentFixture = structuredClone(fixture);
+    currentFixture.next_cursor = 'next-root-cursor';
+    await page.click('#discussion-refresh');
+    await page.waitFor(`document.querySelector('#root-pagination button') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'root pagination control');
+    failNextPage = true;
+    await page.click('#root-pagination button');
+    await page.waitFor(`document.querySelector('#root-pagination [role=status]')?.textContent.includes('Chưa tải thêm được')`, 'next-page failure is reported at its control');
+    check(await page.eval(`!document.querySelector('#comments-mode').textContent.includes('Chưa tải thêm được') && !document.querySelector('#comments-mode').textContent.includes('Chưa rõ kết quả') && document.querySelectorAll('.vk-discussion-comment').length>=3`), 'next-page failure stays beside its control, keeps loaded comments and does not claim an unknown write');
+    await page.eval(`document.querySelector('#root-pagination').scrollIntoView({ block: 'center', behavior: 'instant' })`);
+    await page.capture('discussion-contract-fixture-next-page-error', { scenario: 'D2T-03-paging', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    failNextPage = false;
+    await page.click('#root-pagination button');
+    await page.waitFor(`document.querySelector('#root-pagination') && !document.querySelector('#root-pagination [role=status]')?.textContent`, 'retry refetches the same cursor and clears the local error');
+    check(true, 'intercepted fixture only: retrying the failed next page performs a real new request and clears its local status');
   } finally {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);

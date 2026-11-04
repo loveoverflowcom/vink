@@ -48,7 +48,8 @@ endpoint tra cứu đúng scope, không quét toàn bộ hội thoại hoặc đ
 | D2T-03-public | SSR chỉ gọi anonymous read, roots + tối đa 3 preview từ provider | Không serialize own-pending hoặc identity; bài vẫn đọc được nếu discussion lỗi |
 | D2T-03-sharing-open / sharing-closed | Sharing chỉ là intent, comments mode là fact riêng | Giữ input ở cùng vị trí; Closed chặn gửi, không xóa chữ/thread |
 | D2T-03-no-authority | Production chưa có authority/session | Input soạn cục bộ, gửi disabled có lý do; không nút login giả, không dựng principal |
-| D2T-03-paging | Cursor opaque, roots/replies cũ → mới | Dedupe theo ID, không suy has-more từ count; lỗi chỉ ở nhánh liên quan |
+| D2T-03-paging | Cursor opaque, roots/replies cũ → mới | Dedupe theo ID, không suy has-more từ count; lỗi tải thêm hiện ngay cạnh nút (`#root-pagination`, trạng thái dưới `#root-list` / `#reply-pagination`), giữ phần đã tải và bấm lại gọi đúng cursor cũ; `#comments-mode` chỉ giữ lỗi làm mới cả vùng |
+| D2T-03-load-retry | Đọc ban đầu lỗi: bài vẫn đọc được | “Tải lại nhận xét” là Button gọi lại resource (request mới), không phải link cùng URL + fragment chỉ cuộn trang |
 | D2T-03-context | Reply-to-reply vẫn thuộc root ban đầu | Chỉ đổi target, giữ text; context unavailable không tiết lộ tên/snippet cũ |
 | D2T-03-submitting | Một snapshot + command key + actor/session/work/root | Không gửi đôi; người dùng gõ tiếp; ACK chỉ xóa đúng snapshot chưa đổi |
 | D2T-03-pending | Receipt `pending`, hoặc trạng thái khác đúng response | Không giả public/count/participant; refresh lấy projection mới |

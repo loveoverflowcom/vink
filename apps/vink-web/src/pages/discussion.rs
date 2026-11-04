@@ -38,6 +38,8 @@ struct ViewState {
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
     refresh_queued: bool,
     error: Option<String>,
+    /// A failed "load more roots" read, shown beside the control that started it.
+    page_error: Option<String>,
     unavailable: bool,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
     epoch: u64,
@@ -62,6 +64,21 @@ impl ViewState {
     fn accepts_read(&self, epoch: u64) -> bool {
         self.epoch == epoch && !self.mutation_busy
     }
+
+    /// A refresh failure belongs to the whole region; a failed next-page read stays by its
+    /// button so the loaded list and the retry control keep their meaning.
+    fn fail_roots_read(&mut self, append: bool, error: &crate::contract::ApiError) {
+        if error == &crate::contract::ApiError::NotFound {
+            self.error = Some(crate::discussion_state::error_message(error).into());
+            self.unavailable = true;
+            self.page.roots.clear();
+            self.replies.clear();
+        } else if append {
+            self.page_error = Some(crate::discussion_state::page_read_message(error).into());
+        } else {
+            self.error = Some(crate::discussion_state::error_message(error).into());
+        }
+    }
 }
 
 fn comments_mode_message(unavailable: bool, comments_open: bool) -> &'static str {
@@ -84,7 +101,7 @@ fn should_recover_reply(draft: &crate::discussion_state::Draft) -> bool {
 
 #[component]
 pub fn Discussion(work_id: String) -> impl IntoView {
-    let resource = api::discussion_resource(work_id.clone());
+    let resource = api::discussion_resource(work_id);
     let fixture = api::local_discussion_fixture_scope();
     view! {
         <section id="feedback-region" class="vk-discussion" aria-labelledby="feedback-heading">
@@ -93,13 +110,13 @@ pub fn Discussion(work_id: String) -> impl IntoView {
             <Suspense fallback=|| view! { <p role="status">"Đang tải nhận xét…"</p> }>
                 {move || {
                     let fixture = fixture.clone();
-                    let work_id = work_id.clone();
                     Suspend::new(async move {
                         match resource.await {
                             Ok(page) => view! { <DiscussionLoaded page fixture /> }.into_any(),
                             Err(_) => view! {
                                 <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
-                                <vink_ui::Link href=format!("/tac-pham/{work_id}#feedback-region")>"Tải lại nhận xét"</vink_ui::Link>
+                                // A same-URL fragment link only scrolls and never re-runs the resource.
+                                <Button id="discussion-load-retry" variant=ButtonVariant::Tonal on_press=move |_| resource.refetch()>"Tải lại nhận xét"</Button>
                             }.into_any(),
                         }
                     })
@@ -131,6 +148,7 @@ fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoV
         loading: false,
         refresh_queued: false,
         error: None,
+        page_error: None,
         unavailable: false,
         epoch: 0,
         mutation_busy: false,
@@ -182,7 +200,10 @@ fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoV
                     children=move |root| view! { <RootThreadView root controller state refresh write_state /> } />
             </div>
             <Show when=move || state.read().page.next_cursor.is_some()>
-                <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, true)>"Xem thêm nhận xét"</Button>
+                <div id="root-pagination" class="vk-discussion-pagination">
+                    <p role="status">{move || state.read().page_error.clone().unwrap_or_default()}</p>
+                    <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, true)>"Xem thêm nhận xét"</Button>
+                </div>
             </Show>
             <Show when=move || state.read().page.next_cursor.is_none()>
                 <ListEnd label="Đã hết danh sách nhận xét được cấp." />
@@ -421,6 +442,7 @@ fn read_roots(
             s.refresh_queued = false;
             s.reply_loading.clear();
             s.error = None;
+            s.page_error = None;
             s.epoch += 1;
             epoch = s.epoch;
         });
@@ -472,16 +494,18 @@ fn read_roots(
                         revalidate_targets(s, controller);
                     }
                     Err(error) => {
-                        s.error = Some(crate::discussion_state::error_message(&error).into());
+                        s.fail_roots_read(append, &error);
                         if error == crate::contract::ApiError::NotFound {
-                            s.unavailable = true;
-                            s.page.roots.clear();
-                            s.replies.clear();
                             revalidate_targets(s, controller);
                         }
                     }
                     _ => {
-                        s.error = Some("Phản hồi không khớp tác phẩm; chưa cập nhật.".into());
+                        let message = "Phản hồi không khớp tác phẩm; chưa cập nhật.".to_owned();
+                        if append {
+                            s.page_error = Some(message);
+                        } else {
+                            s.error = Some(message);
+                        }
                     }
                 }
             });
@@ -555,8 +579,10 @@ fn read_replies(
                                 .retain(|thread| adapters::root_id(thread) != root);
                             revalidate_targets(s, controller);
                         }
-                        s.reply_errors
-                            .insert(root, crate::discussion_state::error_message(&error).into());
+                        s.reply_errors.insert(
+                            root,
+                            crate::discussion_state::page_read_message(&error).into(),
+                        );
                     }
                 }
             });
@@ -808,6 +834,63 @@ mod tests {
         assert_eq!(comments_mode_message(false, true), "Bình luận đang mở");
     }
     #[test]
+    fn a_failed_next_page_stays_local_while_a_refresh_failure_or_loss_of_access_keeps_its_scope() {
+        use crate::contract::ApiError;
+        let page: DiscussionPage = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/discussion.get.json"
+        ))
+        .unwrap();
+        let mut state = ViewState {
+            page,
+            replies: BTreeMap::new(),
+            reply_loading: BTreeMap::new(),
+            reply_errors: BTreeMap::new(),
+            loading: false,
+            refresh_queued: false,
+            error: None,
+            page_error: None,
+            unavailable: false,
+            epoch: 0,
+            mutation_busy: false,
+            mutation_message: None,
+            mutation_needs_refresh: false,
+        };
+        let loaded = state.page.roots.len();
+        state.fail_roots_read(true, &ApiError::Unavailable);
+        assert!(
+            state.error.is_none(),
+            "region status must not carry a next-page failure"
+        );
+        let local = state.page_error.clone().unwrap();
+        assert!(local.contains("thử lại") && !local.contains("chưa rõ kết quả"));
+        assert_eq!(state.page.roots.len(), loaded);
+        assert!(!state.unavailable);
+        state.fail_roots_read(false, &ApiError::Network);
+        assert!(state.error.is_some());
+        state.fail_roots_read(true, &ApiError::NotFound);
+        assert!(state.unavailable && state.page.roots.is_empty());
+        assert!(
+            state
+                .error
+                .as_deref()
+                .unwrap()
+                .contains("không còn khả dụng")
+        );
+    }
+    #[test]
+    fn loaded_page_read_copy_never_describes_a_read_as_an_unknown_write() {
+        for error in [
+            crate::contract::ApiError::Network,
+            crate::contract::ApiError::Unavailable,
+            crate::contract::ApiError::Unexpected { status: 500 },
+        ] {
+            assert_eq!(
+                crate::discussion_state::page_read_message(&error),
+                "Chưa tải thêm được. Phần đã tải vẫn giữ nguyên; bạn có thể thử lại."
+            );
+        }
+    }
+    #[test]
     fn cursors_are_authoritative_even_when_preview_is_short_or_count_differs() {
         let page: DiscussionPage = serde_json::from_str(include_str!(
             "../../../../services/vink-app/contracts/http/v1/fixtures/discussion.get.json"
@@ -821,6 +904,7 @@ mod tests {
             loading: false,
             refresh_queued: false,
             error: None,
+            page_error: None,
             unavailable: false,
             epoch: 0,
             mutation_busy: false,
