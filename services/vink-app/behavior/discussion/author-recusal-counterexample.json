@@ -22,14 +22,18 @@
         "id": 0,
         "target": 0,
         "expected": 0,
-        "value": ""
+        "value": "",
+        "key": 0,
+        "body": 0
       },
       "outcome": "granted",
+      "answer": null,
       "mode": "open",
       "generation": 1,
       "grants": [
         1
       ],
+      "receipts": [],
       "comments": []
     },
     {
@@ -39,13 +43,25 @@
         "id": 1,
         "target": 0,
         "expected": 0,
-        "value": ""
+        "value": "",
+        "key": 1,
+        "body": 1
       },
       "outcome": "created",
+      "answer": 1,
       "mode": "open",
       "generation": 1,
       "grants": [
         1
+      ],
+      "receipts": [
+        {
+          "actor": 2,
+          "key": 1,
+          "target": null,
+          "body": 1,
+          "comment": 1
+        }
       ],
       "comments": [
         {
@@ -71,13 +87,25 @@
         "id": 1,
         "target": 0,
         "expected": 1,
-        "value": "remove"
+        "value": "remove",
+        "key": 0,
+        "body": 0
       },
       "outcome": "changed",
+      "answer": null,
       "mode": "open",
       "generation": 1,
       "grants": [
         1
+      ],
+      "receipts": [
+        {
+          "actor": 2,
+          "key": 1,
+          "target": null,
+          "body": 1,
+          "comment": 1
+        }
       ],
       "comments": [
         {

@@ -1,0 +1,117 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "lifecycle.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedReceiptStep",
+    "--max-steps=2",
+    "--max-samples=1",
+    "--invariant=idempotentSubmission",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "submit",
+        "actor": 2,
+        "id": 1,
+        "target": 0,
+        "expected": 0,
+        "value": "",
+        "key": 5,
+        "body": 1
+      },
+      "outcome": "created",
+      "answer": 1,
+      "mode": "open",
+      "generation": 1,
+      "grants": [],
+      "receipts": [
+        {
+          "actor": 2,
+          "key": 5,
+          "target": null,
+          "body": 1,
+          "comment": 1
+        }
+      ],
+      "comments": [
+        {
+          "id": 1,
+          "writer": 2,
+          "target": null,
+          "review": "pending",
+          "removal": "none",
+          "version": 1,
+          "views": [
+            "unavailable",
+            "unavailable",
+            "own_pending",
+            "unavailable"
+          ]
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "submit",
+        "actor": 2,
+        "id": 2,
+        "target": 0,
+        "expected": 0,
+        "value": "",
+        "key": 5,
+        "body": 1
+      },
+      "outcome": "created",
+      "answer": 2,
+      "mode": "open",
+      "generation": 1,
+      "grants": [],
+      "receipts": [
+        {
+          "actor": 2,
+          "key": 5,
+          "target": null,
+          "body": 1,
+          "comment": 2
+        }
+      ],
+      "comments": [
+        {
+          "id": 1,
+          "writer": 2,
+          "target": null,
+          "review": "pending",
+          "removal": "none",
+          "version": 1,
+          "views": [
+            "unavailable",
+            "unavailable",
+            "own_pending",
+            "unavailable"
+          ]
+        },
+        {
+          "id": 2,
+          "writer": 2,
+          "target": null,
+          "review": "pending",
+          "removal": "none",
+          "version": 1,
+          "views": [
+            "unavailable",
+            "unavailable",
+            "own_pending",
+            "unavailable"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 //! `docs/architecture/discussion-ownership.md`). This file holds the structural seam (D2T-01):
 //! roots, one flat list of replies and context normalization. The submodules hold the other pure
 //! decisions: body text, lifecycle, per-work comments mode, permissions, viewer visibility,
-//! idempotent submission and paging. Nothing here performs I/O; a successful decision is not a
-//! durable write.
+//! idempotent submission, reactions and paging. Nothing here performs I/O; a successful decision
+//! is not a durable write.
 //!
 //! The PostgreSQL adapter loads facts in a transaction and calls these same functions; the
 //! database independently enforces identity uniqueness and the two tiers. [`DiscussionThread`] is
@@ -46,6 +46,9 @@ pub mod page;
 pub mod policy;
 #[cfg(kani)]
 mod proofs;
+pub mod reaction;
+#[cfg(test)]
+mod reaction_replay;
 pub mod settings;
 pub mod submission;
 pub mod visibility;
@@ -175,7 +178,9 @@ pub fn reply_placement(
     if target.thread_id != thread_id {
         return Err(StructureError::TargetNotFound);
     }
-    if target.id == id {
+    // A fresh identity equal to the target or to its root would make a self-referential
+    // placement; it is a collision, never a valid reply.
+    if target.id == id || target.root_id().0 == id {
         return Err(StructureError::CommentExists);
     }
     Ok(CommentPlacement {
@@ -370,6 +375,11 @@ mod tests {
         let contextual = reply_placement(state.id(), comment(3), reply).unwrap();
         assert_eq!(contextual.root_id(), root.root_id());
         assert_eq!(contextual.reply_to(), Some(reply.id()));
+        assert_eq!(
+            reply_placement(state.id(), root.id(), reply),
+            Err(StructureError::CommentExists),
+            "an identity equal to the target's root would make the reply its own root"
+        );
         let direct = reply_placement(state.id(), comment(4), root).unwrap();
         assert_eq!(
             direct.reply_to(),

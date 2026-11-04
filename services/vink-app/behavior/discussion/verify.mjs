@@ -85,7 +85,8 @@ function projectLifecycle(file, expectedSteps, status) {
     const c = state.command;
     const command = {
       op: string(c.op), actor: integer(c.actor), id: integer(c.id), target: integer(c.target),
-      expected: integer(c.expected), value: string(c.value),
+      expected: integer(c.expected), value: string(c.value), key: integer(c.key),
+      body: integer(c.body),
     };
     const views = new Map(state.views['#map'].map(([id, byViewer]) => [integer(id),
       byViewer['#map'].map(([viewer, seen]) => [integer(viewer), string(seen)])
@@ -100,9 +101,61 @@ function projectLifecycle(file, expectedSteps, status) {
     }).sort((left, right) => left.id - right.id);
     assert.equal(views.size, comments.length);
     assert(comments.every(comment => comment.views?.length === 4));
+    const receipts = state.receipts['#map'].map(([key, receipt]) => {
+      const [actor, commandKey] = tuple(key);
+      const target = integer(receipt.target);
+      return {
+        actor, key: commandKey, target: target === 0 ? null : target, body: integer(receipt.body),
+        comment: integer(receipt.comment),
+      };
+    }).sort((left, right) => left.actor - right.actor || left.key - right.key);
+    const answer = integer(state.answer);
     return {
-      command, outcome: string(state.outcome), mode: string(state.mode),
-      generation: integer(state.generation), grants: sortedSet(state.grants), comments,
+      command, outcome: string(state.outcome), answer: answer === 0 ? null : answer,
+      mode: string(state.mode), generation: integer(state.generation),
+      grants: sortedSet(state.grants), receipts, comments,
+    };
+  });
+}
+
+function tuple(value) {
+  assert(Array.isArray(value?.['#tup']), 'Expected an ITF tuple');
+  return value['#tup'].map(integer);
+}
+
+const kindMap = value => Object.fromEntries(value['#map'].map(([kind, count]) =>
+  [string(kind), integer(count)]).sort(([left], [right]) => left.localeCompare(right)));
+
+// Reaction states: comment status, mode, every (actor, comment) reaction and both tallies.
+function projectReaction(file, expectedSteps, status) {
+  const trace = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(trace['#meta'].status, status);
+  assert.equal(trace['#meta'].format, 'ITF');
+  assert.equal(trace.states.length, expectedSteps + 1, 'No empty/truncated scenario passes');
+  const [init] = trace.states;
+  assert.equal(init.outcome, 'init');
+  assert.equal(init.mode, 'open', 'A new public work starts open');
+  return trace.states.slice(1).map((state, index) => {
+    assert.equal(integer(state.cursor), index + 1);
+    const c = state.command;
+    const command = {
+      op: string(c.op), actor: integer(c.actor), id: integer(c.id),
+      expected: integer(c.expected), value: string(c.value),
+    };
+    const comments = state.comments['#map'].map(([id, status]) => ({
+      id: integer(id), status: string(status),
+      tally: kindMap(state.tally['#map'].find(([tallied]) => integer(tallied) === integer(id))[1]),
+    })).sort((left, right) => left.id - right.id);
+    const reactions = state.reactions['#map'].map(([key, reaction]) => {
+      const [actor, id] = tuple(key);
+      return { actor, id, kind: string(reaction.kind), generation: integer(reaction.generation) };
+    }).sort((left, right) => left.id - right.id || left.actor - right.actor);
+    const visible = state.visibleTally['#map'].map(([id, tally]) => ({
+      id: integer(id), tally: kindMap(tally),
+    })).sort((left, right) => left.id - right.id);
+    return {
+      command, outcome: string(state.outcome), mode: string(state.mode), comments, reactions,
+      visible_tally: visible,
     };
   });
 }
@@ -124,7 +177,8 @@ try {
   assert.equal(run(['--version']).trim(), version, 'Use the pinned Quint version');
   run(['typecheck', 'structure.qnt']);
   run(['typecheck', 'lifecycle.qnt']);
-  console.log(`PASS Quint ${version}: typecheck both models (including the mutation actions)`);
+  run(['typecheck', 'reaction.qnt']);
+  console.log(`PASS Quint ${version}: typecheck all three models (including the mutation actions)`);
 
   simulation('structure.qnt', 'step', 40, 1000, 'structureSafe');
   console.log(`PASS simulation: seed=${seed}, samples=1000, max_steps=40, IDs=1..4, backend=typescript`);
@@ -162,6 +216,7 @@ try {
   for (const [name, step, length] of [
     ['moderation_authority', 'moderationStep', 26],
     ['comments_mode', 'modeStep', 16],
+    ['submission_retry', 'retryStep', 12],
   ]) {
     const out = join(temporary, `${name}.itf.json`);
     simulation('lifecycle.qnt', step, length, 1, 'lifecycleSafe', out);
@@ -171,7 +226,7 @@ try {
   const outcomes = new Set(lifecycle.flatMap(s => s.steps.map(step => step.outcome)));
   for (const expected of ['created', 'closed', 'target_unavailable', 'changed', 'unchanged',
     'stale', 'removed', 'not_work_author', 'not_comment_writer', 'hidden', 'not_moderator',
-    'recused', 'granted', 'already_active', 'revoked', 'not_active']) {
+    'recused', 'granted', 'already_active', 'revoked', 'not_active', 'replayed', 'key_reused']) {
     assert(outcomes.has(expected), `lifecycle scenarios never reach outcome ${expected}`);
   }
   const seen = new Set(lifecycle.flatMap(s => s.steps.flatMap(step =>
@@ -201,6 +256,73 @@ try {
     status: 'violation', steps: recusalSteps,
   });
   console.log('PASS negative control: a work author moderating their own work violates writeAuthority at transition 3');
+
+  const receipt = join(temporary, 'receipt-retry.itf.json');
+  const receiptCommand = simulation('lifecycle.qnt', 'mutatedReceiptStep', 2, 1,
+    'idempotentSubmission', receipt, 1);
+  const receiptSteps = projectLifecycle(receipt, 2, 'violation');
+  const duplicated = receiptSteps.at(-1);
+  // The counterexample must be a second durable effect for one (actor, key, payload).
+  assert.equal(duplicated.outcome, 'created');
+  assert.deepEqual(receiptSteps.map(step => [step.command.actor, step.command.key, step.command.body]),
+    [[2, 5, 1], [2, 5, 1]]);
+  assert.equal(duplicated.comments.filter(comment => comment.writer === 2).length, 2);
+  fixture('receipt-retry-counterexample.json', {
+    format: 'vink-discussion-counterexample-v1', quint_version: version,
+    command: ['quint', ...receiptCommand.filter(arg => !arg.startsWith('--out-itf='))],
+    status: 'violation', steps: receiptSteps,
+  });
+  console.log('PASS negative control: ignoring the receipt creates a second comment for one key and violates idempotentSubmission at transition 2');
+
+  simulation('reaction.qnt', 'step', 40, 1000, 'reactionSafe');
+  console.log(`PASS reaction simulation: seed=${seed}, samples=1000, max_steps=40, principals=1..3, comments=1..2, kinds=heart/moved`);
+
+  const reactionLength = 23;
+  const reactionOut = join(temporary, 'desired_state.itf.json');
+  simulation('reaction.qnt', 'desiredStateStep', reactionLength, 1, 'reactionSafe', reactionOut);
+  const reactionSteps = projectReaction(reactionOut, reactionLength, 'ok');
+  const reactionOutcomes = new Set(reactionSteps.map(step => step.outcome));
+  for (const expected of ['changed', 'unchanged', 'stale', 'target_unavailable', 'own_comment',
+    'closed', 'moderated', 'mode_set']) {
+    assert(reactionOutcomes.has(expected), `reaction scenario never reaches outcome ${expected}`);
+  }
+  // Non-vacuity: replacement, a hidden comment that still stores reactions, a nonzero count.
+  assert(reactionSteps.some(step => step.command.op === 'react' && step.outcome === 'changed' &&
+    step.command.value !== 'none' && step.command.expected > 1));
+  assert(reactionSteps.some(step => step.comments.some(comment => comment.status === 'removed' &&
+    Object.values(comment.tally).some(count => count > 0))));
+  fixture('reaction-fixtures.json', {
+    format: 'vink-discussion-reaction-conformance-v1', quint_version: version, work_author: 1,
+    writers: { 1: 2, 2: 3 }, scenarios: [{ name: 'desired_state', steps: reactionSteps }],
+  });
+
+  for (const [name, step, length, invariant, check] of [
+    ['reaction-toggle-counterexample.json', 'mutatedToggleStep', 3, 'noBlindToggle', steps => {
+      // A retry of Heart cleared it: the toggle the desired-state rule forbids.
+      const last = steps.at(-1);
+      assert.equal(last.command.value, 'heart');
+      assert.equal(steps.at(-2).reactions.find(r => r.actor === 3 && r.id === 1).kind, 'heart');
+      assert.equal(last.reactions.find(r => r.actor === 3 && r.id === 1).kind, 'none');
+    }],
+    ['reaction-unfenced-counterexample.json', 'mutatedUnfencedStep', 4, 'generationFence', steps => {
+      // A delayed request from generation 1 brought Heart back after the clear at generation 2.
+      const last = steps.at(-1);
+      assert.equal(last.command.expected, 1);
+      assert.equal(steps.at(-2).reactions.find(r => r.actor === 3 && r.id === 1).generation, 3);
+      assert.equal(last.reactions.find(r => r.actor === 3 && r.id === 1).kind, 'heart');
+    }],
+  ]) {
+    const out = join(temporary, name.replace('.json', '.itf.json'));
+    const args = simulation('reaction.qnt', step, length, 1, invariant, out, 1);
+    const steps = projectReaction(out, length, 'violation');
+    check(steps);
+    fixture(name, {
+      format: 'vink-discussion-counterexample-v1', quint_version: version,
+      command: ['quint', ...args.filter(arg => !arg.startsWith('--out-itf='))],
+      status: 'violation', steps,
+    });
+    console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
+  }
   console.log('NOT_RUN Apalache/model checking; Rust conformance is a separate cargo test');
   rmSync(temporary, { recursive: true });
 } catch (error) {

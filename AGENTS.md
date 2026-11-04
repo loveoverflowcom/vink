@@ -57,9 +57,11 @@ paging), application use cases, a PostgreSQL adapter/migration with real-databas
 v1 discussion routes with contract fixtures (read, submit, remove own, author toggle, moderation
 queue/decisions), DB-held moderator grants managed only by `vink-app moderator grant|revoke|list`
 and rechecked at each decision's commit (moderators recuse from their own comments and works),
-plus scoped Quint models with trace replay (`services/vink-app/behavior`: structure and comment
-lifecycle/mode/moderation authority). Production
-writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker/reaction, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual
+plus scoped Quint models with trace replay (`services/vink-app/behavior`: structure, comment
+lifecycle/mode/moderation authority with submission receipts, and reactions). Reactions exist only
+as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
+proposed, not product-accepted) with no table, store, route or UI. Production
+writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
@@ -104,7 +106,7 @@ Do not infer permission to push, post messages or publish from a local editing t
 
 Discover manifests, scripts and CI before selecting checks. `cargo xtask verify
 quick|discussion|expressions|kani|postgres|web` are implemented lanes, used by CI as well. `discussion` checks
-the structural D2T-01 and lifecycle D2T-02 Quint models and replays their inputs through the real
+the structural D2T-01, lifecycle D2T-02 (with receipts) and reaction D2T-INV-08 Quint models and replays their inputs through the real
 pure decisions (the lane fails if a named replay test is not selected); locking, transactions and
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
 runs the owner-local manifests and requires every declared harness to verify. Every crate inherits

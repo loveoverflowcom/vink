@@ -1,5 +1,5 @@
-//! The structural D2T-01 and lifecycle D2T-02 models and their real Rust seams share one
-//! local/CI command.
+//! The structural D2T-01, lifecycle D2T-02 (with submission receipts) and reaction D2T-INV-08
+//! models and their real Rust seams share one local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
 
 use std::process::Command;
@@ -7,14 +7,17 @@ use std::process::Command;
 use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
-const FILTERS: [&str; 2] = [
+const FILTERS: [&str; 4] = [
     "domain::discussion::tests",
     "domain::discussion::lifecycle_replay",
+    "domain::discussion::reaction::tests",
+    "domain::discussion::reaction_replay",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 2] = [
+const REPLAYS: [&str; 3] = [
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",
     "domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions",
+    "domain::discussion::reaction_replay::quint_reaction_inputs_replay_against_the_production_decisions",
 ];
 
 pub fn verify(report: &mut Report) -> bool {
@@ -39,7 +42,7 @@ pub fn verify(report: &mut Report) -> bool {
     let mut model = Command::new("node");
     model.current_dir(&dir).arg("verify.mjs");
     if !report.step(
-        "discussion: Quint structure/lifecycle models and trace drift",
+        "discussion: Quint structure/lifecycle/reaction models and trace drift",
         || {
             process::run(
                 &mut model,

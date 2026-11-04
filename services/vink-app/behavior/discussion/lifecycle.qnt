@@ -3,11 +3,16 @@
 // anonymous reader. Each action is one serialized commit: the PostgreSQL locks that make grant,
 // mode and comment rows serialize are an assumption here, tested in the postgres lane.
 // Structure (root/context) belongs to structure.qnt; target here is only "reply to which comment".
+// Submission receipts (D2T-INV-06): a receipt binds (actor, key) to the payload (work, target,
+// body) and the comment it created; it is written only together with that comment.
 module lifecycle {
   type Comment = { writer: int, target: int, review: str, removal: str, version: int }
   // op: submit | set_mode | remove_own | moderate | grant | revoke.
   // value: mode for set_mode, approve/reject/remove for moderate, otherwise "".
-  type Command = { op: str, actor: int, id: int, target: int, expected: int, value: str }
+  // key/body: the client's idempotency key and body text (1..2) of a submit, otherwise 0.
+  type Command = { op: str, actor: int, id: int, target: int, expected: int, value: str,
+                   key: int, body: int }
+  type Receipt = { target: int, body: int, comment: int }
 
   pure val WORK_AUTHOR = 1
   pure val principals = 1.to(3)
@@ -18,6 +23,10 @@ module lifecycle {
   var mode: str
   var generation: int
   var grants: Set[int]
+  // (actor, key) -> receipt of the committed submission.
+  var receipts: (int, int) -> Receipt
+  // Comment ID the command answered with: the created or replayed comment, otherwise 0.
+  var answer: int
   // Viewer projection of every comment, exported so the Rust replay compares it with `view`.
   var views: int -> (int -> str)
   // Snapshot of the step before, for transition invariants.
@@ -25,6 +34,7 @@ module lifecycle {
   var previousMode: str
   var previousGeneration: int
   var previousGrants: Set[int]
+  var previousReceipts: (int, int) -> Receipt
   var command: Command
   var outcome: str
   // Only deterministic scenarios use cursor; saturating it keeps the state space finite.
@@ -48,47 +58,75 @@ module lifecycle {
     mode' = "open",
     generation' = 1,
     grants' = Set(),
+    receipts' = Map(),
+    answer' = 0,
     views' = Map(),
     previous' = Map(),
     previousMode' = "open",
     previousGeneration' = 1,
     previousGrants' = Set(),
-    command' = { op: "init", actor: 0, id: 0, target: 0, expected: 0, value: "" },
+    previousReceipts' = Map(),
+    command' = { op: "init", actor: 0, id: 0, target: 0, expected: 0, value: "", key: 0, body: 0 },
     outcome' = "init",
     cursor' = 0,
   }
 
-  action commit(cmd: Command, result: str, nextComments: int -> Comment, nextMode: str,
-                nextGeneration: int, nextGrants: Set[int]): bool = all {
+  action commitWith(cmd: Command, result: str, nextComments: int -> Comment, nextMode: str,
+                    nextGeneration: int, nextGrants: Set[int], nextReceipts: (int, int) -> Receipt,
+                    nextAnswer: int): bool = all {
     comments' = nextComments,
     mode' = nextMode,
     generation' = nextGeneration,
     grants' = nextGrants,
+    receipts' = nextReceipts,
+    answer' = nextAnswer,
     views' = viewsOf(nextComments),
     previous' = comments,
     previousMode' = mode,
     previousGeneration' = generation,
     previousGrants' = grants,
+    previousReceipts' = receipts,
     command' = cmd,
     outcome' = result,
     cursor' = if (cursor < 30) cursor + 1 else cursor,
   }
 
-  // decide_submission with no receipt on a public work. The server generates a fresh ID.
-  action submit(cmd: Command): bool = {
-    val result = if (mode != "open") "closed"
+  // Every command except submit leaves receipts alone and answers no comment.
+  action commit(cmd: Command, result: str, nextComments: int -> Comment, nextMode: str,
+                nextGeneration: int, nextGrants: Set[int]): bool =
+    commitWith(cmd, result, nextComments, nextMode, nextGeneration, nextGrants, receipts, 0)
+
+  // decide_submission on a public work. The receipt check comes before every other gate, so a
+  // retry replays even after comments close. A refused submission rolls back and keeps no
+  // receipt. The server generates a fresh ID even for a retry; a replay answers the first one.
+  // honorReceipts is false ONLY for the explicit negative-control action below.
+  action submitWith(cmd: Command, honorReceipts: bool): bool = {
+    val receiptKey = (cmd.actor, cmd.key)
+    val hasReceipt = honorReceipts and receipts.keys().contains(receiptKey)
+    val result = if (hasReceipt)
+        (if (receipts.get(receiptKey).target == cmd.target and receipts.get(receiptKey).body == cmd.body)
+          "replayed" else "key_reused")
+      else if (mode != "open") "closed"
       else if (cmd.target != 0 and not(comments.keys().contains(cmd.target) and
         isPublic(comments.get(cmd.target)))) "target_unavailable"
       else "created"
     all {
       not(comments.keys().contains(cmd.id)),
-      commit(cmd, result,
+      commitWith(cmd, result,
         if (result == "created") comments.put(cmd.id, {
           writer: cmd.actor, target: cmd.target, review: "pending", removal: "none", version: 1,
         }) else comments,
-        mode, generation, grants),
+        mode, generation, grants,
+        if (result == "created")
+          receipts.put(receiptKey, { target: cmd.target, body: cmd.body, comment: cmd.id })
+        else receipts,
+        if (result == "created") cmd.id
+        else if (result == "replayed") receipts.get(receiptKey).comment
+        else 0),
     }
   }
+
+  action submit(cmd: Command): bool = submitWith(cmd, true)
 
   // authorize_mode_change, then DiscussionSettings::change_mode (desired-state, generation CAS).
   action setMode(cmd: Command): bool = {
@@ -165,22 +203,30 @@ module lifecycle {
     nondet delta = Set(-1, 0, 1).oneOf()
     nondet modeValue = Set("open", "closed").oneOf()
     nondet decision = Set("approve", "reject", "remove").oneOf()
+    // Two keys and two bodies per actor make retries, replays and key reuse likely.
+    nondet key = 1.to(2).oneOf()
+    nondet body = 1.to(2).oneOf()
     // Expected versions near the current one make stale and current requests both likely.
     val expectedGeneration = if (generation + delta < 1) 1 else generation + delta
     val version = if (comments.keys().contains(id)) comments.get(id).version else 1
     val expectedVersion = if (version + delta < 1) 1 else version + delta
     any {
-      submit({ op: "submit", actor: actor, id: id, target: target, expected: 0, value: "" }),
-      setMode({ op: "set_mode", actor: actor, id: 0, target: 0, expected: expectedGeneration, value: modeValue }),
-      removeOwn({ op: "remove_own", actor: actor, id: id, target: 0, expected: 0, value: "" }),
-      moderate({ op: "moderate", actor: actor, id: id, target: 0, expected: expectedVersion, value: decision }),
-      grant({ op: "grant", actor: actor, id: 0, target: 0, expected: 0, value: "" }),
-      revoke({ op: "revoke", actor: actor, id: 0, target: 0, expected: 0, value: "" }),
+      submit({ op: "submit", actor: actor, id: id, target: target, expected: 0, value: "", key: key, body: body }),
+      setMode(cmd("set_mode", actor, 0, 0, expectedGeneration, modeValue)),
+      removeOwn(cmd("remove_own", actor, id, 0, 0, "")),
+      moderate(cmd("moderate", actor, id, 0, expectedVersion, decision)),
+      grant(cmd("grant", actor, 0, 0, 0, "")),
+      revoke(cmd("revoke", actor, 0, 0, 0, "")),
     }
   }
 
+  // A submit through this helper uses its fresh comment ID as its key and body 1, so these
+  // scenarios never retry; submission_retry below sets keys and bodies explicitly.
   pure def cmd(op: str, actor: int, id: int, target: int, expected: int, value: str): Command =
-    { op: op, actor: actor, id: id, target: target, expected: expected, value: value }
+    { op: op, actor: actor, id: id, target: target, expected: expected, value: value,
+      key: if (op == "submit") id else 0, body: if (op == "submit") 1 else 0 }
+  pure def keyed(actor: int, id: int, target: int, key: int, body: int): Command =
+    { op: "submit", actor: actor, id: id, target: target, expected: 0, value: "", key: key, body: body }
 
   // Inputs only: expected outcomes and states are always computed by the actions above.
   // Principal 1 = work author (later also a moderator), 2 = reader, 3 = moderator.
@@ -230,6 +276,25 @@ module lifecycle {
     cmd("moderate", 2, 2, 0, 2, "approve"), // a later review reverses the rejection
     cmd("submit", 1, 3, 2, 0, ""),
   )
+  // D2T-INV-06: `id` is the server's fresh ID for that attempt, unused by a replay.
+  pure val submissionRetry = List(
+    keyed(2, 1, 0, 5, 1),
+    keyed(2, 2, 0, 5, 1), // retry after a lost response: replays comment 1
+    keyed(2, 2, 0, 5, 2), // same key, other body
+    keyed(2, 2, 1, 5, 1), // same key, other target
+    cmd("set_mode", 1, 0, 0, 1, "closed"),
+    keyed(2, 2, 0, 5, 1), // the receipt precedes the closed gate
+    keyed(2, 2, 0, 6, 1), // a new key while closed
+    cmd("set_mode", 1, 0, 0, 2, "open"),
+    cmd("remove_own", 2, 1, 0, 0, ""),
+    keyed(2, 2, 0, 5, 1), // replaying never recreates the removed comment
+    keyed(3, 2, 0, 5, 1), // keys are scoped by actor
+    keyed(2, 3, 0, 6, 1), // the refused attempt kept no receipt
+  )
+  pure val receiptRetry = List(
+    keyed(2, 1, 0, 5, 1),
+    keyed(2, 2, 0, 5, 1), // without the receipt check the retry creates a second comment
+  )
   pure val authorRecusal = List(
     cmd("grant", 1, 0, 0, 0, ""),
     cmd("submit", 2, 1, 0, 0, ""),
@@ -240,6 +305,12 @@ module lifecycle {
   action modeStep = all { cursor < commentsMode.length(), dispatch(commentsMode.nth(cursor)) }
   action mutatedDispatch(c: Command): bool =
     if (c.op == "moderate") moderateWith(c, false) else dispatch(c)
+  action retryStep = all { cursor < submissionRetry.length(), dispatch(submissionRetry.nth(cursor)) }
+  action mutatedReceiptStep = all {
+    cursor < receiptRetry.length(),
+    val c = receiptRetry.nth(cursor)
+    if (c.op == "submit") submitWith(c, false) else dispatch(c),
+  }
   action mutatedRecusalStep = all {
     cursor < authorRecusal.length(), mutatedDispatch(authorRecusal.nth(cursor)),
   }
@@ -248,7 +319,7 @@ module lifecycle {
   val rejectionAtomic =
     Set("created", "changed", "granted", "revoked").contains(outcome) or (
       comments == previous and mode == previousMode and generation == previousGeneration and
-      grants == previousGrants)
+      grants == previousGrants and receipts == previousReceipts)
 
   // A command touches only its own target: comment commands one comment, set_mode only the mode
   // (closing never hides, edits or removes a comment), operator commands only grants.
@@ -260,13 +331,16 @@ module lifecycle {
     val modeScoped = command.op == "set_mode" or
       (mode == previousMode and generation == previousGeneration)
     val grantsScoped = Set("grant", "revoke").contains(command.op) or grants == previousGrants
-    commentsScoped and modeScoped and grantsScoped
+    val receiptsScoped = command.op == "submit" or receipts == previousReceipts
+    commentsScoped and modeScoped and grantsScoped and receiptsScoped
   }
 
   // COM-02: every new comment is pending, version 1, written by the actor, only while open and
   // only in reply to a comment that was public at that commit.
   val premoderatedSubmission = command.op != "submit" or (
-    if (previousMode == "closed") outcome == "closed"
+    if (previousReceipts.keys().contains((command.actor, command.key)))
+      Set("replayed", "key_reused").contains(outcome)
+    else if (previousMode == "closed") outcome == "closed"
     else if (outcome == "created")
       comments.get(command.id) == {
         writer: command.actor, target: command.target, review: "pending", removal: "none", version: 1,
@@ -318,6 +392,25 @@ module lifecycle {
     })
   })
 
+  // D2T-INV-06: one durable effect per (actor, key). A comment is created only under a fresh key
+  // and its receipt records exactly that payload; the same key and payload answers the first
+  // comment; the same key with another payload is refused. Receipts are never rewritten or lost.
+  val idempotentSubmission = {
+    val k = (command.actor, command.key)
+    val payloadMatches = previousReceipts.keys().contains(k) and
+      previousReceipts.get(k).target == command.target and previousReceipts.get(k).body == command.body
+    previousReceipts.keys().forall(r => receipts.keys().contains(r) and
+      receipts.get(r) == previousReceipts.get(r)) and
+    receipts.keys().forall(r => comments.keys().contains(receipts.get(r).comment) and
+      comments.get(receipts.get(r).comment).writer == r._1 and
+      comments.get(receipts.get(r).comment).target == receipts.get(r).target) and
+    (outcome != "created" or (not(previousReceipts.keys().contains(k)) and answer == command.id and
+      receipts.get(k) == { target: command.target, body: command.body, comment: command.id })) and
+    (outcome != "replayed" or (payloadMatches and answer == previousReceipts.get(k).comment)) and
+    (outcome != "key_reused" or (previousReceipts.keys().contains(k) and not(payloadMatches))) and
+    (Set("created", "replayed").contains(outcome) or answer == 0)
+  }
+
   val finiteDomain = comments.keys().subseteq(ids) and grants.subseteq(principals) and
     Set("open", "closed").contains(mode) and generation >= 1 and
     comments.keys().forall(id => {
@@ -328,5 +421,6 @@ module lifecycle {
     })
 
   val lifecycleSafe = rejectionAtomic and scopedWrites and premoderatedSubmission and
-    modeAuthority and versionedLifecycle and writeAuthority and viewerProjection and finiteDomain
+    modeAuthority and versionedLifecycle and writeAuthority and viewerProjection and
+    idempotentSubmission and finiteDomain
 }
