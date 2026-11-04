@@ -15,9 +15,11 @@ pub mod document;
 pub mod draft_list;
 pub mod editor;
 mod expressions;
+pub mod freshness;
 pub mod navigation;
 mod pages;
 pub mod public_list;
+pub mod public_reads;
 pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;

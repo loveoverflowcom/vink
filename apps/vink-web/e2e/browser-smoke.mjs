@@ -572,6 +572,151 @@ async function conditionalPublicReads(page) {
   check(details.length === 2 && details[0].wire === 200 && !details[0].ifNoneMatch && details[1].ifNoneMatch === etag && details[1].wire === 304, 'stored publication bytes were reused only after the server answered 304');
 }
 
+/** READ-02: the tab's public snapshot renders first, lifecycle signals revalidate it through the
+ * browser HTTP cache, failures keep the last success and a 404 removes it. The app's monotonic
+ * clock (`performance.now`) and the document visibility are driven by the test. */
+async function cacheFirstPublicReads(page) {
+  console.log('cache-first public reads (READ-02): snapshot first, lifecycle revalidation, failure and removal:');
+  const worksPath = '/api/v1/works';
+  const publicationPath = `/api/v1/works/${SAMPLE_WORK}/publication`;
+  const original = await (await fetch(`${args.base}${publicationPath}`)).json();
+  const seen = [];
+  // ExtraInfo events may arrive before or after requestWillBeSent: merge by request id.
+  const byId = new Map();
+  const record = id => byId.get(id) ?? byId.set(id, {}).get(id);
+  const network = ({ sessionId, method, params }) => {
+    if (sessionId !== page.sessionId) return;
+    if (method === 'Network.requestWillBeSent') {
+      const path = new URL(params.request.url).pathname;
+      if (path === worksPath || path === publicationPath) seen.push(Object.assign(record(params.requestId), { path }));
+    }
+    if (method === 'Network.requestWillBeSentExtraInfo') record(params.requestId).ifNoneMatch = Object.entries(params.headers).find(([name]) => name.toLowerCase() === 'if-none-match')?.[1] ?? null;
+    if (method === 'Network.responseReceivedExtraInfo') record(params.requestId).wire = params.statusCode;
+  };
+  const count = path => seen.filter(entry => entry.path === path).length;
+  // Fetch-domain fixtures: undefined = continue to the real server, 'hold' = keep pending.
+  const fixtures = new Map();
+  const held = [];
+  const gate = ({ sessionId, method, params }) => {
+    if (sessionId !== page.sessionId || method !== 'Fetch.requestPaused') return;
+    const answer = fixtures.get(new URL(params.request.url).pathname);
+    if (answer === 'hold') return held.push(params.requestId);
+    (answer ? page.send('Fetch.fulfillRequest', {
+      requestId: params.requestId, responseCode: answer.status,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify(answer.body)).toString('base64'),
+    }) : page.send('Fetch.continueRequest', { requestId: params.requestId })).catch(() => {});
+  };
+  const clock = `(window.__vinkClock ??= (() => { const now = performance.now.bind(performance), clock = { offset: 0 }; performance.now = () => now() + clock.offset; return clock; })())`;
+  const advance = seconds => page.eval(`${clock}.offset += ${seconds * 1000}`);
+  const signals = events => page.eval(`${JSON.stringify(events)}.forEach(name => (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name)))`);
+  const setHidden = hidden => page.eval(`Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => ${hidden ? "'hidden'" : "'visible'"} }); document.dispatchEvent(new Event('visibilitychange'))`);
+  const settled = (selector, what) => page.waitFor(`document.querySelector('${selector}')?.dataset.refreshing === 'false'`, what);
+  page.cdp.listeners.push(network, gate);
+  try {
+    await page.goto(`${args.base}/`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row')`, 'hydrated Explore');
+    await sleep(400);
+    check(count(worksPath) === 0 && await page.eval(`document.querySelector('#public-collection').dataset.refreshing === 'false'`), 'hydrated Explore reuses its SSR snapshot: no client list request after hydration');
+
+    await page.goto(`${args.base}/toi`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'utility hydration before the first client list read');
+    const nav = await page.eval(`innerWidth < 760`) ? '.vk-ui-bottom-nav a[href="/"]' : '#navigation-primary a[href="/"]';
+    const timed = (selector, ready) => page.eval(`(async () => {
+      window.__sawLoading = false;
+      const watch = new MutationObserver(() => { if (document.querySelector('#community-stream')?.textContent.includes('Đang tải tác phẩm')) window.__sawLoading = true; });
+      watch.observe(document.body, { subtree: true, childList: true, characterData: true });
+      const start = performance.now();
+      document.querySelector(${JSON.stringify(selector)}).click();
+      while (!(${ready})) await new Promise(resolve => requestAnimationFrame(resolve));
+      watch.disconnect();
+      return { ms: Math.round(performance.now() - start), loading: window.__sawLoading };
+    })()`);
+    const ROWS = `location.pathname === '/' && document.querySelector('.vk-public-row a[href="/tac-pham/${SAMPLE_WORK}"]')`;
+    const first = await timed(nav, ROWS);
+    check(count(worksPath) === 1 && first.loading, `a first client visit fetches once and shows its loading state (${first.ms} ms to rows)`);
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'reader by client navigation');
+    const back = await timed('#reader-return', ROWS);
+    await sleep(300);
+    check(count(worksPath) === 1 && !back.loading, `returning within the stale threshold renders the snapshot at once with no request and no loading state (${back.ms} ms to rows)`);
+    console.log(`  ..  time to rows: first client visit ${first.ms} ms (network), return ${back.ms} ms (tab snapshot)`);
+
+    await page.eval(`document.querySelector('.vk-public-row').__kept = true; document.querySelector('.vk-public-row__link').focus()`);
+    await advance(119);
+    await signals(['focus']);
+    await sleep(300);
+    check(count(worksPath) === 1, '119 s after validation a focus does not revalidate');
+    await advance(2);
+    await signals(['focus', 'online', 'visibilitychange', 'pageshow']);
+    await settled('#public-collection', 'list revalidation');
+    await sleep(300);
+    const revalidation = seen.filter(entry => entry.path === worksPath).at(-1);
+    check(count(worksPath) === 2, `four simultaneous lifecycle signals at 121 s share one request (${count(worksPath) - 1} sent)`);
+    check(revalidation.ifNoneMatch && revalidation.wire === 304, `the revalidation used the browser's stored validator and the origin answered 304 (${JSON.stringify(revalidation)})`);
+    check(await page.eval(`document.querySelector('.vk-public-row').__kept === true && document.activeElement?.matches('.vk-public-row__link')`), 'an unchanged refresh keeps the same row elements and focus');
+
+    await setHidden(true);
+    await advance(300);
+    await signals(['focus', 'online']);
+    await sleep(800);
+    check(count(worksPath) === 2, 'a hidden document does not revalidate on focus/online and pauses the timer');
+    await setHidden(false);
+    await settled('#public-collection', 'revalidation after becoming visible');
+    await sleep(300);
+    check(count(worksPath) === 3, 'becoming visible with a stale snapshot sends exactly one request');
+
+    await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works*`, requestStage: 'Request' }] });
+    fixtures.set(worksPath, { status: 503, body: { error: { code: 'dependency_unavailable' } } });
+    await advance(121);
+    await signals(['focus']);
+    await page.waitFor(`document.querySelector('[data-testid=public-refresh-failed]')`, 'refresh failure notice');
+    check(await page.eval(`document.querySelector('.vk-public-row').__kept === true && !document.querySelector('[data-testid=public-unavailable], [data-testid=public-empty]') && document.querySelector('#public-collection').getAttribute('aria-busy') === 'false'`), 'a temporary refresh failure keeps the last success on screen, separate from the unavailable/empty states');
+    await page.capture('explore-refresh-failed');
+    fixtures.delete(worksPath);
+    await page.click('[data-testid=public-refresh-failed] button');
+    await page.waitFor(`!document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing === 'false'`, 'manual retry recovers');
+    check(await page.eval(`document.querySelector('.vk-public-row').__kept === true`), 'manual retry restores freshness without remounting the list');
+
+    // Reader: a changed representation is offered, never swapped mid-reading; a 404 removes it.
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'reader again');
+    await settled('#reader-freshness', 'reader revalidation on mount');
+    const updated = { ...original, revision_id: '[mẫu-kiểm-tra]-revision', title: '[Mẫu kiểm tra] Mưa trên phố cũ (bản cập nhật)', document: { schema_version: 1, blocks: [{ lines: ['Khổ thay thế chỉ có trong fixture kiểm tra.'] }] } };
+    fixtures.set(publicationPath, { status: 200, body: updated });
+    await advance(121);
+    await signals(['focus']);
+    await page.waitFor(`document.querySelector('[data-testid=reader-update]')`, 'new version notice');
+    check(await page.eval(`document.querySelector('.vk-reader').dataset.revision === '${original.revision_id}' && document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'a changed publication is offered without replacing the text being read');
+    await page.capture('reader-update-available');
+    await page.click('[data-testid=reader-update] button');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${updated.revision_id}' && !document.querySelector('[data-testid=reader-update]')`, 'applied new version');
+    check(await page.eval(`document.querySelectorAll('.vk-reader').length === 1 && document.querySelector('.vk-document').textContent.includes('Khổ thay thế') && !document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'the reader applies the new version only on request, replacing the whole text once');
+    await page.waitFor(`document.activeElement?.id === 'noi-dung'`, 'focus moves to the content start after applying');
+
+    fixtures.set(publicationPath, { status: 404, body: { error: { code: 'not_found' } } });
+    await advance(121);
+    await signals(['focus']);
+    await page.waitFor(`document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, 'authoritative removal');
+    check(await page.eval(`!document.querySelector('.vk-document') && !document.querySelector('.vk-reader')`), 'an authoritative 404 removes the text at once instead of keeping a stale copy');
+    fixtures.set(worksPath, 'hold');
+    await page.click('[data-panel] a');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('#public-collection')`, 'Explore after removal');
+    check(await page.eval(`!document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`), 'the removed work’s card is dropped from the tab snapshot while the list revalidates');
+    const deadline = Date.now() + 10000;
+    while (!held.length && Date.now() < deadline) await sleep(50);
+    check(held.length === 1, 'returning with a stale list sends one revalidation');
+    fixtures.delete(worksPath);
+    fixtures.delete(publicationPath);
+    await page.send('Fetch.continueRequest', { requestId: held.pop() });
+    await page.waitFor(`document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`, 'origin list restores the card');
+    check(true, 'the origin’s list, not the derived preview, decides membership once it answers');
+  } finally {
+    await page.send('Fetch.disable').catch(() => {});
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== network && item !== gate);
+  }
+}
+
 async function serverHtml() {
   console.log('server HTML before any JavaScript:');
   const home = await fetch(args.base);
@@ -2032,6 +2177,7 @@ async function editorChrome(page) {
 async function mainPhase(page) {
   await serverHtml();
   await conditionalPublicReads(page);
+  await cacheFirstPublicReads(page);
   await expressionPilot(page, args, check);
   await discussionReadingAndWrites(page);
   await adaptiveShell(page);

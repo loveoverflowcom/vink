@@ -19,7 +19,9 @@ CodeMirror 6 body editor
 (`apps/vink-web/editor`, pinned npm runtime), an adaptive 220/96 rail/mobile bar with local
 appearance preferences and a truthful `/toi` utility, a finite v4 public reading stream with
 loaded-list title/author search and URL-based reader return context, conditional public reads
-(READ-01: strong body-hash ETag, `304`, `private, no-cache`; no server cache), a quiet reader, a private
+(READ-01: strong body-hash ETag, `304`, `private, no-cache`; no server cache) with a browser-tab,
+memory-only cache-first owner for those two reads (READ-02 Web pilot: ~120 s revalidation while
+visible, last success kept on temporary failure, removed on 404; CMP/native not implemented), a quiet reader, a private
 draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a lifecycle-only worker,
 `cargo xtask` lanes and CI, and the UI System foundation (`packages/ui-system`: one token source in
 `shared/tokens.json` generating CSS/Rust/Kotlin with a drift check, the Leptos crate `vink-ui`, a

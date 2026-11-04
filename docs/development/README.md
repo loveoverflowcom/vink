@@ -20,6 +20,9 @@ PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 
 [Đọc công khai có điều kiện](public-conditional-reads.md) (READ-01, [#52](https://github.com/loveoverflowcom/vink/issues/52))
 ghi ETag mạnh trên đúng byte JSON, `private, no-cache`, thứ tự lỗi trước 304, bằng chứng và số đo.
+[Đọc công khai cache-first](public-read-freshness.md) (READ-02, [#53](https://github.com/loveoverflowcom/vink/issues/53))
+ghi owner snapshot của tab trình duyệt cho hai public read: render snapshot trước, kiểm tra lại
+~120 s khi màn hiển thị, giữ last-success khi lỗi tạm, xóa khi 404; CMP/native chưa triển khai.
 
 [Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + Web pilot độc lập EMO-01A;
 chưa tích hợp composer/reaction/sticker persistence.

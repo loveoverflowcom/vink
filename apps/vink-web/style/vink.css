@@ -183,12 +183,13 @@ a {
 
 /* Stream header: H2 and the loaded-count status share a row; DOM order stays heading → count. */
 #community-stream { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-content: start; align-items: baseline; column-gap: var(--vk-space-4); }
-#community-stream > *, #public-results > * { grid-column: 1 / -1; }
+#community-stream > *, #public-collection > *, #public-results > * { grid-column: 1 / -1; }
 #community-stream > #works-title { grid-column: 1; margin: 0; }
-#public-results { display: contents; }
+/* READ-02 wrapper (refresh facts) must not become a grid item: the count stays beside the H2. */
+#public-collection, #public-results { display: contents; }
 #public-results > .vk-public-scope { grid-column: 2; grid-row: 1; margin: 0; text-align: end; }
 .vk-public-scope { font-size: var(--vk-type-caption-size); }
-#public-results > .vk-public-list, #public-results > [data-testid], #community-stream > [data-testid] { margin-top: var(--vk-space-3); }
+#public-results > .vk-public-list, #public-results > [data-testid], #public-collection > [data-testid], #community-stream > [data-testid] { margin-top: var(--vk-space-3); }
 @container vk-explore (max-width: 28rem) {
   #public-results > .vk-public-scope { grid-column: 1 / -1; grid-row: auto; margin-top: var(--vk-space-1); text-align: start; }
 }
@@ -260,6 +261,7 @@ a {
 
 #reader-return { gap: var(--vk-space-2); margin-bottom: var(--vk-space-6); }
 #reader-return .vk-ui-icon { margin: 0; }
+.vk-reader-freshness > [data-testid] { margin-block: calc(-1 * var(--vk-space-2)) var(--vk-space-6); }
 .vk-reader { min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; }
 .vk-discussion-mode, .vk-discussion-composer { display: grid; gap: var(--vk-space-3); margin-block: var(--vk-space-4); min-width: 0; }

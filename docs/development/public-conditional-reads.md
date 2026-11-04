@@ -69,8 +69,8 @@ quyền. PUB-03 vẫn chưa hoàn tất: chưa có lệnh rút bài sản phẩm
 | Trách nhiệm | Owner hiện tại |
 | --- | --- |
 | Validator, thứ tự lỗi, 304, header cache của hai endpoint | READ-01 — `vink-app` `http/conditional.rs`, contract v1 |
-| Lưu byte và tự gửi `If-None-Match` | HTTP cache của trình duyệt (fetch mặc định). Web app **không** tự gửi `If-None-Match`; decoder vẫn coi raw `304` là lỗi bất thường |
-| Giữ snapshot UI khi đang làm mới, nhịp 1–3 phút, lifecycle, offline | READ-02 |
+| Lưu byte và tự gửi `If-None-Match` | HTTP cache của trình duyệt (READ-02 gọi fetch với `cache: "no-cache"`). Web app **không** tự gửi `If-None-Match`; raw `304` không bao giờ được parse như JSON mà đổi thành đúng một request `reload` không điều kiện |
+| Giữ snapshot UI khi đang làm mới, nhịp 1–3 phút, lifecycle, offline | READ-02 — `apps/vink-web` `freshness.rs` + `public_reads.rs` (Web pilot, phương án A: [ghi chú](public-read-freshness.md)) |
 | Nếu READ-02 tự quản validator | Phải tự xử lý `304` (dùng body đã giữ) và không đặt TTL HTTP riêng chồng lên `no-cache` |
 
 Không gọi một response cũ là kết quả GET mới đã được server xác nhận: với `no-cache`, trình
