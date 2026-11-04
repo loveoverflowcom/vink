@@ -16,14 +16,15 @@ use crate::canonical_url;
 use crate::contract::{Publication, WorkCard, WorkList};
 use crate::document::DocumentView;
 use crate::public_list::{explore_href, reader_href, visible_works, work_anchor};
+use crate::public_reads;
 use crate::ui::{
     adapters,
     patterns::{ReaderHeader, WorkCard as WorkCardPattern},
 };
 use vink_ui::{
-    Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, Icon, IconName, ListEnd,
-    PanelContent, PanelKind, ProblemKind, Radius, Space, StatePanel, Surface, SurfaceTone,
-    TextField, TextKind, TypeRole,
+    Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, Icon, IconName,
+    InlineNotice, ListEnd, PanelContent, PanelKind, ProblemKind, Radius, RecoveryAction,
+    RecoveryIntent, Space, StatePanel, Surface, SurfaceTone, TextField, TextKind, Tone, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -86,20 +87,7 @@ pub fn Home() -> impl IntoView {
                     let status = status.clone();
                     Suspend::new(async move {
                         match works.await {
-                            Ok(list) if list.works.is_empty() => {
-                                view! {
-                                    <div data-testid="public-empty">
-                                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Chưa có tác phẩm nào được công khai.".into(), message: "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau.".into(), actions: vec![], code: None }>
-                                            <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Về Bàn viết"</vink_ui::Link>
-                                        </StatePanel>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
-                            Ok(list) => {
-                                view! { <PublicListView list query /> }
-                                    .into_any()
-                            }
+                            Ok(list) => view! { <PublicCollection list query /> }.into_any(),
                             Err(_) => {
                                 status.set(503);
                                 // Explore is already the return route: only the reload recovers here.
@@ -126,16 +114,54 @@ pub fn Home() -> impl IntoView {
     }
 }
 
+/// READ-02: the collection follows the tab's public snapshot. A refresh swaps cards in place
+/// (stable keys keep rows, focus and scroll); a failed refresh keeps the last success visible.
 #[component]
-fn PublicListView(list: WorkList, query: Memo<String>) -> impl IntoView {
-    let total = list.works.len();
-    let visible = Memo::new(move |_| visible_works(&list.works, &query.get()));
+fn PublicCollection(list: WorkList, query: Memo<String>) -> impl IntoView {
+    let live = public_reads::follow_works(list);
+    let works = live.data;
+    let refreshing = live.refreshing;
+    let failed = live.failed;
+    let empty = Memo::new(move |_| works.read().works.is_empty());
+    view! {
+        <div id="public-collection" aria-busy=move || refreshing.get().to_string()
+            data-refreshing=move || refreshing.get().to_string()>
+            <Show when=move || failed.get()>
+                <div data-testid="public-refresh-failed">
+                    <InlineNotice tone=Tone::Warning
+                        message="Chưa làm mới được danh sách. Bạn vẫn đang xem bản đã tải trước đó."
+                        action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
+                        on_recover={
+                            let live = live.clone();
+                            move |_| live.refresh()
+                        } />
+                </div>
+            </Show>
+            {move || if empty.get() {
+                view! {
+                    <div data-testid="public-empty">
+                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Chưa có tác phẩm nào được công khai.".into(), message: "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau.".into(), actions: vec![], code: None }>
+                            <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Về Bàn viết"</vink_ui::Link>
+                        </StatePanel>
+                    </div>
+                }.into_any()
+            } else {
+                view! { <PublicListView works query /> }.into_any()
+            }}
+        </div>
+    }
+}
+
+#[component]
+fn PublicListView(works: Signal<WorkList>, query: Memo<String>) -> impl IntoView {
+    let total = Memo::new(move |_| works.read().works.len());
+    let visible = Memo::new(move |_| visible_works(&works.read().works, &query.get()));
     #[cfg(feature = "hydrate")]
     restore_public_position(visible);
     view! {
         <div id="public-results">
             <p class="vk-muted vk-public-scope" role="status">
-                {move || format!("{} trong {total} tác phẩm đã tải.", visible.read().len())}
+                {move || format!("{} trong {} tác phẩm đã tải.", visible.read().len(), total.get())}
             </p>
             {move || {
                 let works = visible.get();
@@ -221,8 +247,42 @@ pub fn Reader() -> impl IntoView {
     }
 }
 
+/// READ-02: the reader never swaps text under the reader's eyes. A changed snapshot is offered
+/// ("Xem bản mới") and applied on request; an authoritative 404 removes the text at once.
 #[component]
 fn PublicationView(publication: Publication) -> impl IntoView {
+    let live = public_reads::follow_publication(publication.clone());
+    let latest = live.data;
+    let removed = live.removed;
+    let shown = RwSignal::new(publication);
+    let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
+    let params = use_query_map();
+    let not_found_href = move || {
+        explore_href(
+            &params.read_untracked().get("q").unwrap_or_default(),
+            Some(&shown.with_untracked(|p| p.work_id.clone())),
+        )
+    };
+    move || {
+        if removed.get() {
+            view! { <NotFoundContent return_href=not_found_href() /> }.into_any()
+        } else {
+            let live = live.clone();
+            view! { <PublicationContent publication=shown.get() live update shown /> }.into_any()
+        }
+    }
+}
+
+#[component]
+fn PublicationContent(
+    publication: Publication,
+    live: public_reads::Live<Publication>,
+    update: Memo<bool>,
+    shown: RwSignal<Publication>,
+) -> impl IntoView {
+    let latest = live.data;
+    let failed = live.failed;
+    let refreshing = live.refreshing;
     let author = adapters::publication_author(&publication);
     let params = use_query_map();
     let id = publication.work_id.clone();
@@ -248,6 +308,30 @@ fn PublicationView(publication: Publication) -> impl IntoView {
         <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
             <Icon name=IconName::ArrowBack /> "Khám phá"
         </vink_ui::Link>
+        <div id="reader-freshness" class="vk-reader-freshness" data-refreshing=move || refreshing.get().to_string()>
+            <Show when=move || update.get()>
+                <div data-testid="reader-update">
+                    <InlineNotice tone=Tone::Info title="Tác phẩm vừa có bản cập nhật."
+                        message="Bạn vẫn đang đọc bản đã mở. Chọn “Xem bản mới” khi muốn chuyển; trang sẽ về đầu tác phẩm."
+                        action=RecoveryAction { intent: RecoveryIntent::Reconcile, label: "Xem bản mới".into() }
+                        on_recover=move |_| {
+                            shown.set(latest.get_untracked());
+                            focus_recovery("noi-dung");
+                        } />
+                </div>
+            </Show>
+            <Show when=move || failed.get() && !update.get()>
+                <div data-testid="reader-refresh-failed">
+                    <InlineNotice tone=Tone::Warning
+                        message="Chưa kiểm tra được bản mới. Bạn vẫn đang đọc bản đã tải trước đó."
+                        action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
+                        on_recover={
+                            let live = live.clone();
+                            move |_| live.refresh()
+                        } />
+                </div>
+            </Show>
+        </div>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
             <ReaderHeader title=publication.title author />
             <DocumentView document=publication.document />

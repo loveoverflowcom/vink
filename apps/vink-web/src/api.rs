@@ -161,7 +161,19 @@ pub fn works_resource() -> Resource<Result<WorkList, LoadError>> {
     }
     #[cfg(not(feature = "ssr"))]
     {
-        Resource::new(|| (), |()| browser(public_get("/api/v1/works".to_string())))
+        Resource::new(
+            || (),
+            |()| {
+                browser(async {
+                    match public(crate::public_reads::PublicKey::Works).await? {
+                        crate::public_reads::Snapshot::Works(list) => Ok(list),
+                        crate::public_reads::Snapshot::Publication(_) => {
+                            Err(LoadError::Unavailable)
+                        }
+                    }
+                })
+            },
+        )
     }
 }
 
@@ -186,7 +198,14 @@ pub fn publication_resource(work_id: Memo<String>) -> Resource<Result<Publicatio
     {
         Resource::new(
             move || work_id.get(),
-            |id| browser(public_get(format!("/api/v1/works/{id}/publication"))),
+            |id| {
+                browser(async move {
+                    match public(crate::public_reads::PublicKey::Publication(id)).await? {
+                        crate::public_reads::Snapshot::Publication(p) => Ok(p),
+                        crate::public_reads::Snapshot::Works(_) => Err(LoadError::Unavailable),
+                    }
+                })
+            },
         )
     }
 }
@@ -208,6 +227,7 @@ fn browser<F: std::future::Future + 'static>(
     }
 }
 
+/// Discussion stays `no-store` and outside the READ-02 store.
 #[cfg(not(feature = "ssr"))]
 async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, LoadError> {
     #[cfg(feature = "hydrate")]
@@ -222,6 +242,30 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
         let _ = path;
         Err(LoadError::Unavailable)
     }
+}
+
+/// Browser public reads go through the tab's READ-02 owner (cache-first, single-flight).
+#[cfg(not(feature = "ssr"))]
+async fn public(
+    key: crate::public_reads::PublicKey,
+) -> Result<crate::public_reads::Snapshot, LoadError> {
+    #[cfg(feature = "hydrate")]
+    {
+        crate::public_reads::load(key).await
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        let _ = key;
+        Err(LoadError::Unavailable)
+    }
+}
+
+/// One public read for the READ-02 owner, revalidated through the browser HTTP cache.
+#[cfg(feature = "hydrate")]
+pub(crate) async fn fetch_public<T: serde::de::DeserializeOwned>(
+    path: &str,
+) -> crate::freshness::Outcome<T> {
+    http::public(path).await
 }
 
 #[cfg(feature = "hydrate")]
@@ -340,6 +384,47 @@ mod http {
         };
         let response = request.send().await.map_err(|_| ApiError::Network)?;
         decode(response).await
+    }
+
+    /// A public read. `no-cache` makes the browser revalidate any stored representation with
+    /// its validator (READ-01 ETag) before use, so a merged 304 is a real origin confirmation and
+    /// never a fresh-cache hit dated "now". The app sends no validator itself; should a raw 304
+    /// still arrive, one unconditional `reload` request replaces it (never an empty JSON parse).
+    pub async fn public<T: DeserializeOwned>(path: &str) -> crate::freshness::Outcome<T> {
+        use crate::freshness::{Outcome, PublicStatus, public_status};
+        use web_sys::RequestCache;
+
+        let temporary = Outcome::Temporary { retry_after: None };
+        for cache in [RequestCache::NoCache, RequestCache::Reload] {
+            let Ok(deadline) = Deadline::new() else {
+                return temporary;
+            };
+            let signal = deadline.controller.signal();
+            let Ok(response) = Request::get(path)
+                .cache(cache)
+                .abort_signal(Some(&signal))
+                .header("accept", "application/json")
+                .send()
+                .await
+            else {
+                return temporary;
+            };
+            match public_status(response.status()) {
+                PublicStatus::Body => {
+                    return response.json::<T>().await.map_or(temporary, Outcome::Fresh);
+                }
+                PublicStatus::Unconditional => continue,
+                PublicStatus::Removed => return Outcome::Removed,
+                PublicStatus::Temporary => {
+                    let retry_after = response
+                        .headers()
+                        .get("retry-after")
+                        .and_then(|value| crate::freshness::retry_after_ms(&value));
+                    return Outcome::Temporary { retry_after };
+                }
+            }
+        }
+        temporary
     }
 
     async fn decode<T: DeserializeOwned>(response: Response) -> Result<T, ApiError> {
