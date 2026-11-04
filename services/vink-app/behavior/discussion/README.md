@@ -1,8 +1,9 @@
 # Model discussion
 
-Thư mục giữ hai model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
-hai tầng, D2T-01) và `lifecycle.qnt` (vòng đời bình luận, bật/tắt và authority kiểm duyệt,
-D2T-02, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)).
+Thư mục giữ ba model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
+hai tầng, D2T-01), `lifecycle.qnt` (vòng đời bình luận, bật/tắt, authority kiểm duyệt và receipt
+gửi bình luận, D2T-02/D2T-INV-06, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)) và
+`reaction.qnt` (reaction desired-state, D2T-INV-08, [phần cuối](#model-reaction-d2t-inv-08)).
 
 ## Model cấu trúc
 
@@ -110,7 +111,7 @@ Các action đi theo đúng thứ tự kiểm của store (`persistence/discussi
 
 | Action | Quyết định production được replay |
 | --- | --- |
-| `submit` | `decide_submission` (không receipt, tác phẩm công khai): `closed`, `target_unavailable`, `created` pending v1 |
+| `submit` | `decide_submission` (tác phẩm công khai): receipt của (actor, key) quyết định trước (`replayed` trả bình luận đầu, `key_reused` khi payload khác), rồi `closed`, `target_unavailable`, `created` pending v1 cùng receipt; bị từ chối thì không giữ receipt |
 | `setMode` | `authorize_mode_change` rồi `DiscussionSettings::change_mode` |
 | `removeOwn` | `view` của chính actor → `authorize_writer_removal` → `remove_by_author` |
 | `moderate` | grant tại commit + `authorize_moderation` (tự né) → `ModerationAction::apply` |
@@ -134,9 +135,14 @@ Invariant, gộp trong `lifecycleSafe`:
   không phải người viết và không phải tác giả tác phẩm (COM-08, MOD-02).
 - `viewerProjection`: chỉ present + approved là công khai; người khác (kể cả tác giả tác phẩm)
   không thấy gì của bình luận pending/rejected/đã gỡ; người viết thấy trạng thái của mình.
+- `idempotentSubmission` (D2T-INV-06): mỗi (actor, key) chỉ một hiệu ứng bền; bình luận chỉ được
+  tạo dưới key mới và receipt ghi đúng payload (target, body) cùng bình luận đó; cùng key + payload
+  trả lại bình luận đầu (kể cả khi đã tắt hoặc bình luận đã bị gỡ, không tạo lại); cùng key khác
+  payload bị từ chối; receipt không bị ghi đè hay mất. `premoderatedSubmission` đặt receipt trước
+  gate đóng.
 - `finiteDomain`.
 
-**Không được chứng minh:** auth authority (D-05), receipt/idempotency (D2T-INV-06), rút bài, lý
+**Không được chứng minh:** auth authority (D-05), retention receipt, rút bài, lý
 do kiểm duyệt, hàng chờ/phân trang, neo root ẩn và context không còn hiển thị (INV-05), nhiều tác
 phẩm/thread, thu hồi đang chạy song song với quyết định (chỉ thứ tự đã tuần tự hóa), report/appeal,
 mở lại sau khi gỡ, liveness của hàng chờ.
@@ -145,22 +151,31 @@ Runner chạy thêm cho model này:
 
 1. Random simulation `step`: seed `41`, **1.000 samples**, tối đa **40 transitions/sample**, kiểm
    `lifecycleSafe` sau init và mỗi transition.
-2. Hai scenario xác định xuất ITF thành `lifecycle-fixtures.json`
+2. Ba scenario xác định xuất ITF thành `lifecycle-fixtures.json`
    (`vink-discussion-lifecycle-conformance-v1`): `moderation_authority` 26 transitions (grant,
-   tự né của tác giả-moderator và của người viết, stale, retry, thu hồi trước commit, gỡ terminal)
-   và `comments_mode` 16 transitions (chỉ tác giả đổi, tắt chặn root/reply kể cả của tác giả,
-   retry, tab cũ, bật lại, target pending, từ chối rồi duyệt lại). Runner đòi hai scenario cùng
-   đạt đủ 16 outcome và 4 kiểu hiển thị, để invariant không đúng nhờ antecedent không đạt tới.
+   tự né của tác giả-moderator và của người viết, stale, retry, thu hồi trước commit, gỡ terminal),
+   `comments_mode` 16 transitions (chỉ tác giả đổi, tắt chặn root/reply kể cả của tác giả,
+   retry, tab cũ, bật lại, target pending, từ chối rồi duyệt lại) và `submission_retry` 12
+   transitions (mất phản hồi rồi gửi lại, cùng key khác body/target, replay sau khi tắt, key mới bị
+   chặn khi tắt không giữ receipt, replay không tạo lại bình luận đã gỡ, key theo từng actor).
+   Runner đòi ba scenario cùng đạt đủ 18 outcome và 4 kiểu hiển thị, để invariant không đúng nhờ
+   antecedent không đạt tới.
 3. `mutatedRecusalStep` gọi `moderateWith(_, false)`: giữ nguyên mọi semantics khác nhưng bỏ tự né
    của tác giả tác phẩm. Runner đòi exit 1, ITF status violation và state thật trong đó tác giả
    (có grant) đã gỡ bình luận của người khác tại transition 3; lưu ở
    `author-recusal-counterexample.json`.
+4. `mutatedReceiptStep` gọi `submitWith(_, false)` (bỏ kiểm receipt) với hai lần gửi cùng (actor 2,
+   key 5, body 1). Runner đòi violation của `idempotentSubmission` tại transition 2, trong đó lần
+   gửi lại tạo bình luận thứ hai; lưu ở `receipt-retry-counterexample.json`.
 
 Rust replay `domain::discussion::lifecycle_replay` đưa **chỉ command** của từng step vào các quyết
-định production theo thứ tự của store, rồi so outcome, chế độ, generation, grant, trạng thái từng
-bình luận và `view` của 4 người xem với state của model. Bình luận, settings và tập grant nằm trong
-shell bộ nhớ (được ghi rõ trong test); khóa và độ bền thuộc lane `postgres`. Tạm bỏ
-`actor == work_author` trong `authorize_moderation` làm replay đỏ ở `moderation_authority step 5`.
+định production theo thứ tự của store, rồi so outcome, bình luận được trả về, chế độ, generation,
+grant, receipt, trạng thái từng bình luận và `view` của 4 người xem với state của model. Receipt
+mang `PayloadDigest::of_submission` thật của (work, target, body); body 1 viết dạng NFD nên cũng
+kiểm digest chuẩn hóa. Bình luận, receipt, settings và tập grant nằm trong shell bộ nhớ (được ghi
+rõ trong test); khóa và độ bền thuộc lane `postgres`. Tạm bỏ `actor == work_author` trong
+`authorize_moderation` làm replay đỏ ở `moderation_authority step 5`; tạm chuyển kiểm receipt
+xuống sau gate đóng trong `decide_submission` làm replay đỏ ở `submission_retry step 5`.
 
 Lệnh trực tiếp tương đương cho random simulation (chạy tại thư mục này):
 
@@ -168,4 +183,58 @@ Lệnh trực tiếp tương đương cho random simulation (chạy tại thư m
 ./node_modules/.bin/quint typecheck lifecycle.qnt
 ./node_modules/.bin/quint run lifecycle.qnt --backend=typescript --seed=41 \
   --step=step --max-steps=40 --max-samples=1000 --invariant=lifecycleSafe --verbosity=1
+```
+
+## Model reaction (D2T-INV-08)
+
+`reaction.qnt` mô tả **một tác phẩm công khai** của principal 1, principals `1..3`, bình luận 1
+(người viết 2) và 2 (người viết 3), hai trong bốn loại production (`heart`, `moved`) là đủ để thay
+thế. Bình luận chỉ còn ba trạng thái reaction cần: `pending`, `public`, `removed`; shell kiểm duyệt
+tổng hợp duyệt/gỡ ở version hiện tại, tác giả đổi chế độ ở generation hiện tại (authority của hai
+việc này thuộc `lifecycle.qnt`). Mỗi action là một commit đã tuần tự hóa; chưa có store reaction
+nên khóa là **giả định** (#43).
+
+`react` đi đúng `decide_reaction` rồi `ReactionTally::apply`. Semantics là **đề xuất** của
+[registry](../../../../docs/development/discussion-core.md): desired state, một reaction mỗi
+(người, bình luận), generation fence, giới hạn tương tác, count là projection.
+
+Invariant, gộp trong `reactionSafe`:
+
+- `reactionWritesAreApplied`, `scopedWrites`: chỉ reaction được áp mới đổi reaction/count, và chỉ
+  của đúng (actor, bình luận); lệnh khác không chạm reaction.
+- `noBlindToggle`: xin đúng reaction hiện có không đổi gì; reaction được áp luôn là reaction được xin.
+- `generationFence`: mọi thay đổi cần generation actor đã thấy và tăng đúng 1.
+- `interactionLimits`: chỉ bình luận đang công khai đổi được; thêm/đổi cần chế độ mở và actor
+  không phải người viết; gỡ vẫn được khi đã tắt.
+- `tallyMatchesReactions`: count mỗi loại đúng bằng số actor đang giữ loại đó, không âm.
+- `noSelfReaction`, `hiddenCountsStayHidden` (bình luận ẩn không lộ count), `finiteDomain`.
+
+**Không được chứng minh:** persistence/khóa/đồng thời, rate limit theo thời gian, catalog cuối,
+reaction trên nhiều tác phẩm, rút bài, quan hệ với sticker (#25), UI/API.
+
+Runner chạy:
+
+1. Random simulation `step`: seed `41`, **1.000 samples**, tối đa **40 transitions/sample**, kiểm
+   `reactionSafe`.
+2. Scenario `desired_state` 23 transitions xuất `reaction-fixtures.json`
+   (`vink-discussion-reaction-conformance-v1`): bình luận pending, tự thả, đặt, retry mất phản hồi,
+   tác giả tác phẩm thả như người đọc, thay thế, tab cũ, gỡ, bản trùng muộn, gỡ hai lần, tắt (chặn
+   thêm, retry vẫn `unchanged`, gỡ vẫn được), bật lại, gỡ bình luận (reaction còn lưu nhưng count
+   ẩn). Runner đòi đủ 8 outcome, một lần thay thế ở generation > 1 và một bình luận đã gỡ còn count.
+3. `mutatedToggleStep` (`desiredState = false`: xin lại reaction hiện có thì gỡ nó) phải vi phạm
+   `noBlindToggle` tại transition 3 (`reaction-toggle-counterexample.json`);
+   `mutatedUnfencedStep` (`fenced = false`) phải vi phạm `generationFence` tại transition 4, khi yêu
+   cầu cũ ở generation 1 đưa `heart` trở lại sau lần gỡ (`reaction-unfenced-counterexample.json`).
+   Runner kiểm nội dung counterexample, không chỉ exit code.
+
+Rust replay `domain::discussion::reaction_replay` đưa chỉ command vào `decide_reaction`,
+`ReactionTally::apply`, `ModerationAction::apply`, `change_mode` và `public_tally`, rồi so outcome,
+chế độ, trạng thái/count từng bình luận, reaction của mọi (actor, bình luận) và count công khai với
+state của model. Tạm bỏ kiểm `expected != self.generation` trong `ActorReaction::desire` làm replay
+đỏ ở `desired_state step 7` (tab cũ).
+
+```sh
+./node_modules/.bin/quint typecheck reaction.qnt
+./node_modules/.bin/quint run reaction.qnt --backend=typescript --seed=41 \
+  --step=step --max-steps=40 --max-samples=1000 --invariant=reactionSafe --verbosity=1
 ```

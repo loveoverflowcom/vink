@@ -2,9 +2,11 @@
 //!
 //! Only model INPUTS reach Rust: each command goes into the same pure functions the PostgreSQL
 //! store calls, in the store's order (`persistence/discussion.rs`). The generated state is used
-//! solely as an oracle afterwards. Synthetic shell, labelled: comment rows, the thread's settings
-//! and the active grant set live in memory here, and grant/revoke mirror the operator commands'
-//! idempotent outcomes; their locking and durability belong to the postgres lane.
+//! solely as an oracle afterwards. Synthetic shell, labelled: comment rows, receipts, the thread's
+//! settings and the active grant set live in memory here, and grant/revoke mirror the operator
+//! commands' idempotent outcomes; their locking and durability belong to the postgres lane.
+//! Receipts carry the real [`PayloadDigest`] of the model's (work, target, body), so replay,
+//! key reuse and the receipt-before-gates order run through `decide_submission` itself.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -12,6 +14,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use super::CommentPlacement;
+use super::body::CommentBody;
 use super::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
@@ -23,10 +26,10 @@ use super::settings::{
     CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
 };
 use super::submission::{
-    PayloadDigest, SubmissionDecision, SubmissionFacts, TargetFacts, decide_submission,
+    PayloadDigest, Receipt, SubmissionDecision, SubmissionFacts, TargetFacts, decide_submission,
 };
 use super::visibility::{CommentView, view};
-use crate::domain::ids::{CommentId, PrincipalId, ThreadId};
+use crate::domain::ids::{CommentId, PrincipalId, ThreadId, WorkId};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -49,10 +52,23 @@ struct Scenario {
 struct Step {
     command: Command,
     outcome: String,
+    /// The comment a submit created or replayed.
+    answer: Option<u128>,
     mode: String,
     generation: i64,
     grants: Vec<u128>,
+    receipts: Vec<ExpectedReceipt>,
     comments: Vec<ExpectedComment>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct ExpectedReceipt {
+    actor: u128,
+    key: u128,
+    target: Option<u128>,
+    body: u8,
+    comment: u128,
 }
 
 #[derive(Deserialize)]
@@ -64,6 +80,8 @@ struct Command {
     target: u128,
     expected: i64,
     value: String,
+    key: u128,
+    body: u8,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -86,12 +104,32 @@ struct Row {
     state: CommentState,
 }
 
+struct StoredReceipt {
+    receipt: Receipt,
+    target: Option<u128>,
+    body: u8,
+}
+
 struct Shell {
     thread: ThreadId,
+    work: WorkId,
     work_author: PrincipalId,
     settings: DiscussionSettings,
     grants: BTreeSet<u128>,
     rows: BTreeMap<u128, Row>,
+    /// Receipts by (actor, key), the store's (actor, operation, key) for the one operation here.
+    receipts: BTreeMap<(u128, u128), StoredReceipt>,
+    answer: Option<u128>,
+}
+
+/// The model's body texts 1 and 2; NFC/NFD spellings of one text share a digest.
+fn body(index: u8) -> CommentBody {
+    let text = match index {
+        1 => "Hay qua\u{0301}",
+        2 => "Cảm ơn tác giả",
+        other => panic!("unknown body {other}"),
+    };
+    CommentBody::parse(text).unwrap()
 }
 
 fn principal(id: u128) -> PrincipalId {
@@ -124,6 +162,7 @@ fn transition(decided: Result<Transition, LifecycleError>) -> (&'static str, Opt
 
 impl Shell {
     fn apply(&mut self, command: &Command) -> &'static str {
+        self.answer = None;
         let actor = principal(command.actor);
         match command.op.as_str() {
             "submit" => self.submit(command),
@@ -198,16 +237,30 @@ impl Shell {
             placement: row.placement,
             state: row.state,
         });
+        let key = (command.actor, command.key);
         let facts = SubmissionFacts {
-            receipt: None,
+            receipt: self.receipts.get(&key).map(|stored| stored.receipt),
             work_public: true,
             settings: self.settings,
             target,
         };
-        let digest = PayloadDigest::from_bytes(&[0; 32]).unwrap();
+        let digest = PayloadDigest::of_submission(self.work, requested, &body(command.body));
         match decide_submission(self.thread, comment(command.id), digest, requested, facts) {
             SubmissionDecision::Insert(placement) => {
                 assert_eq!(placement.id(), comment(command.id));
+                // The store commits the receipt together with the comment, never alone.
+                self.receipts.insert(
+                    key,
+                    StoredReceipt {
+                        receipt: Receipt {
+                            digest,
+                            comment_id: placement.id(),
+                        },
+                        target: requested.map(|_| command.target),
+                        body: command.body,
+                    },
+                );
+                self.answer = Some(command.id);
                 self.rows.insert(
                     command.id,
                     Row {
@@ -219,10 +272,28 @@ impl Shell {
                 );
                 "created"
             }
+            SubmissionDecision::Replay(id) => {
+                self.answer = Some(id.as_uuid().as_u128());
+                "replayed"
+            }
+            SubmissionDecision::KeyReused => "key_reused",
             SubmissionDecision::CommentsClosed => "closed",
             SubmissionDecision::TargetUnavailable => "target_unavailable",
             other => panic!("unexpected submission decision {other:?}"),
         }
+    }
+
+    fn observed_receipts(&self) -> Vec<ExpectedReceipt> {
+        self.receipts
+            .iter()
+            .map(|(&(actor, key), stored)| ExpectedReceipt {
+                actor,
+                key,
+                target: stored.target,
+                body: stored.body,
+                comment: stored.receipt.comment_id.as_uuid().as_u128(),
+            })
+            .collect()
     }
 
     fn observed(&self) -> Vec<ExpectedComment> {
@@ -280,16 +351,20 @@ fn quint_lifecycle_inputs_replay_against_the_production_decisions() {
         assert!(!scenario.steps.is_empty(), "{}", scenario.name);
         let mut shell = Shell {
             thread: ThreadId::from_uuid(Uuid::from_u128(10)),
+            work: WorkId::from_uuid(Uuid::from_u128(77)),
             work_author: principal(fixture.work_author),
             // A new public work starts open (owner decision 03/11/2026).
             settings: DiscussionSettings::INITIAL,
             grants: BTreeSet::new(),
             rows: BTreeMap::new(),
+            receipts: BTreeMap::new(),
+            answer: None,
         };
         for (index, step) in scenario.steps.iter().enumerate() {
             let at = format!("{} step {index}", scenario.name);
             let outcome = shell.apply(&step.command);
             assert_eq!(outcome, step.outcome, "{at}");
+            assert_eq!(shell.answer, step.answer, "{at}");
             outcomes.insert(outcome);
             let mode = match shell.settings.mode() {
                 CommentsMode::Open => "open",
@@ -302,9 +377,10 @@ fn quint_lifecycle_inputs_replay_against_the_production_decisions() {
                 step.grants,
                 "{at}"
             );
+            assert_eq!(shell.observed_receipts(), step.receipts, "{at}");
             assert_eq!(shell.observed(), step.comments, "{at}");
         }
     }
     // Non-vacuous: every production refusal and outcome the model distinguishes was replayed.
-    assert_eq!(outcomes.len(), 16, "{outcomes:?}");
+    assert_eq!(outcomes.len(), 18, "{outcomes:?}");
 }

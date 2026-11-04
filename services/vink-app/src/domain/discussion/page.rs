@@ -103,14 +103,19 @@ impl PageCursor {
         }
         let created_at_micros: i64 = micros.parse().map_err(|_| PageError::Cursor)?;
         let id = Uuid::try_parse(id).map_err(|_| PageError::Cursor)?;
-        let cursor = Self {
-            created_at_micros,
-            id: CommentId::from_uuid(id),
-        };
-        // Reject positions that cannot round-trip to a timestamp instead of clamping them.
+        Self::at_micros(created_at_micros, CommentId::from_uuid(id))
+    }
+
+    /// The decoded position, if it is a representable timestamp. Positions that cannot round-trip
+    /// through [`Self::created_at`] are rejected instead of clamped, so a cursor never lands on
+    /// another key than the one it was issued for.
+    pub(super) fn at_micros(created_at_micros: i64, id: CommentId) -> Result<Self, PageError> {
         let nanos = i128::from(created_at_micros) * 1_000;
         OffsetDateTime::from_unix_timestamp_nanos(nanos).map_err(|_| PageError::Cursor)?;
-        Ok(cursor)
+        Ok(Self {
+            created_at_micros,
+            id,
+        })
     }
 }
 
@@ -146,6 +151,21 @@ mod tests {
         assert_eq!(PageCursor::decode(&before_epoch.encode()), Ok(before_epoch));
     }
 
+    /// -9999-01-01T00:00:00Z and 9999-12-31T23:59:59.999999Z, the `time` range without
+    /// `large-dates`, in microseconds.
+    const MIN_MICROS: i64 = -377_705_116_800_000_000;
+    const MAX_MICROS: i64 = 253_402_300_799_999_999;
+
+    #[test]
+    fn the_extreme_representable_positions_round_trip() {
+        let id = CommentId::from_uuid(Uuid::from_u128(1));
+        for micros in [MIN_MICROS, -1, 0, MAX_MICROS] {
+            let cursor = PageCursor::at_micros(micros, id).unwrap();
+            assert_eq!(PageCursor::decode(&cursor.encode()), Ok(cursor));
+            assert_eq!(PageCursor::after(cursor.created_at(), id), cursor);
+        }
+    }
+
     #[test]
     fn foreign_or_forged_cursors_are_rejected() {
         let id = "0192aaaabbbb7ccc8dddeeeeffff0000";
@@ -158,6 +178,8 @@ mod tests {
             "c1.1.0192aaaa-bbbb-7ccc-8ddd-eeeeffff0000",
             "c1.99999999999999999999.0192aaaabbbb7ccc8dddeeeeffff0000",
             &format!("c1.{}.{id}", i64::MAX),
+            &format!("c1.{}.{id}", MAX_MICROS + 1),
+            &format!("c1.{}.{id}", MIN_MICROS - 1),
             &format!("c1.1.{id}.extra"),
         ] {
             assert_eq!(PageCursor::decode(raw), Err(PageError::Cursor), "{raw}");
