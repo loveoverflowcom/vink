@@ -31,6 +31,9 @@ Consumer giữ request identity, actor/work/revision/session và cách bỏ ph�
 có adapter thật tại `apps/vink-web/src/pages/discussion.rs` và controller `discussion_state.rs`;
 production auth chưa có, chỉ LocalFixture có marker host để kiểm ghi cục bộ. Gallery và CMP vẫn
 là mẫu, không có acknowledgment để giả thành công. Không thêm provider vào package này.
+`FeedbackIntent::Unspecified` không render nhãn intent riêng; nhãn textarea vẫn gọi tên input.
+Các intent có tên giữ nhãn ở cả Leptos và CMP. `label()` trả `Option<&str>` ở Rust,
+`label` là `String?` ở Kotlin; consumer bỏ phần tử nhãn khi không có giá trị.
 `composition.feedback` dùng cùng scenario IDs `sharing-open`, `sharing-closed`, `discussion-flat`,
 `discussion-anchor` ở hai gallery; đây là projection mẫu, không phải proof Rust/Quint hoặc native integration.
 

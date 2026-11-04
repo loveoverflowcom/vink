@@ -150,3 +150,9 @@ bắt được mẫu chặn URL chưa bao phủ query cursor: sửa wildcard và
 cả lần lỗi lẫn retry, tránh dùng phản hồi lỗi từ server thật cho cursor giả làm
 bằng chứng 503 fixture. Kết quả chạy gắn với head cuối
 được ghi trong PR, không suy PASS từ các assertion vừa thêm.
+
+PR #61 xử lý F3 đã ghi ở trên: `Unspecified` không còn nhãn intent ở cả Leptos/CMP,
+nhãn textarea và các intent có tên vẫn giữ nguyên. Ghi nhận F3 ở đợt review ban đầu
+là lịch sử trước sửa, không còn là việc đang mở sau khi tích hợp #61. Test render
+Leptos và common test CMP kiểm hai trường hợp có/không có nhãn; gallery vẫn dùng
+intent có tên, CMP vẫn là mẫu không nối dịch vụ.
