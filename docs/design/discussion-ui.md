@@ -30,7 +30,7 @@ thảo luận thuộc `packages/vink-patterns`; primitive từ `vink-ui`. App ad
 DTO, transport, scope và draft. Không tạo account/avatar/feedback intent từ tên hay
 work ID. Provider chưa có feedback intent, root total hay ranking: không dựng số
 tổng, selector “Mới nhất/Nổi bật” hoặc intent của tác giả. Sharing trong mẫu độc lập
-với comments mode ở cả hai renderer.
+với comments mode ở cả hai renderer. `FeedbackIntent::Unspecified` không có nhãn riêng (tiêu đề `#feedback-heading` và nhãn textarea đã gọi tên form); các intent có tên giữ nhãn của chúng.
 
 Desktop/tablet giữ cột đọc; mobile 320/390 có một khoảng lệch `space-3` cho toàn bộ
 replies, không lồng card theo target. Action wrap và input co theo chiều rộng; không

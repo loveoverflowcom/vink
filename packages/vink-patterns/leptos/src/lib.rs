@@ -154,12 +154,14 @@ pub enum FeedbackIntent {
     Technique,
 }
 impl FeedbackIntent {
-    pub const fn label(self) -> &'static str {
+    /// `Unspecified` has no label of its own: the host heading already names the form, and the
+    /// field label ("Nhận xét của bạn") would otherwise repeat the same word a third time.
+    pub const fn label(self) -> Option<&'static str> {
         match self {
-            Self::Unspecified => "Nhận xét",
-            Self::Sharing => "Chỉ chia sẻ",
-            Self::Impressions => "Muốn nghe cảm nhận",
-            Self::Technique => "Xin góp ý kỹ thuật",
+            Self::Unspecified => None,
+            Self::Sharing => Some("Chỉ chia sẻ"),
+            Self::Impressions => Some("Muốn nghe cảm nhận"),
+            Self::Technique => Some("Xin góp ý kỹ thuật"),
         }
     }
 }
@@ -239,7 +241,7 @@ pub fn FeedbackComposer(
     });
     view! {
         <section class="vk-feedback-composer">
-            <Text role=TypeRole::Label>{intent.label()}</Text>
+            {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
             <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
                 value on_input help="Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." />
             <Button id=submit_id state=submit_state on_press=on_submit>"Gửi nhận xét"</Button>
@@ -384,6 +386,34 @@ mod tests {
         assert!(
             html.contains("data-tone=\"neutral\""),
             "no author ID: {html}"
+        );
+    }
+
+    #[test]
+    fn an_unspecified_composer_adds_no_intent_label_while_named_intents_keep_theirs() {
+        let render = |intent| {
+            Owner::new().with(|| {
+                view! {
+                    <FeedbackComposer id="composer" intent value="" on_input=|_| {}
+                        state=ActionState::Enabled on_submit=|_| {} />
+                }
+                .to_html()
+            })
+        };
+        let plain = render(FeedbackIntent::Unspecified);
+        assert!(
+            !plain.contains(">Nhận xét<") && plain.contains("Nhận xét của bạn"),
+            "{plain}"
+        );
+        assert!(
+            !plain.contains("vk-ui-text"),
+            "no empty label element: {plain}"
+        );
+        let named = render(FeedbackIntent::Sharing);
+        assert!(named.contains("Chỉ chia sẻ"), "{named}");
+        assert!(
+            named.contains("vk-ui-text"),
+            "oracle: a label renders a text element: {named}"
         );
     }
 
