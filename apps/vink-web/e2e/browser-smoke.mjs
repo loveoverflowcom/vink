@@ -517,6 +517,61 @@ async function openPage(cdp) {
   return page;
 }
 
+/** READ-01: the wire contract of conditional public reads, then the browser's HTTP cache
+ * revalidating a real client read (wire 304) while the application still receives a full 200. */
+async function conditionalPublicReads(page) {
+  console.log('conditional public reads (READ-01): wire contract, then browser cache vs application value:');
+  const path = `/api/v1/works/${SAMPLE_WORK}/publication`;
+  const first = await fetch(`${args.base}${path}`);
+  const body = await first.text();
+  const etag = first.headers.get('etag');
+  check(first.status === 200 && /^"[0-9a-f]{32}"$/.test(etag ?? '') && first.headers.get('cache-control') === 'private, no-cache' && !first.headers.has('vary'), 'public read carries a strong validator, private, no-cache and no Vary');
+  const revalidated = await fetch(`${args.base}${path}`, { headers: { 'If-None-Match': `"other", W/${etag}` } });
+  check(revalidated.status === 304 && (await revalidated.text()) === '' && revalidated.headers.get('etag') === etag && revalidated.headers.get('cache-control') === 'private, no-cache', 'raw revalidation (weak comparison, tag list) is a 304 without content');
+  const malformed = await fetch(`${args.base}${path}`, { headers: { 'If-None-Match': etag.slice(1) } });
+  check(malformed.status === 200 && (await malformed.text()) === body, 'a malformed If-None-Match gets the full 200');
+  for (const missing of ['00000000-0000-4000-8000-000000000000', 'not-a-uuid']) {
+    const response = await fetch(`${args.base}/api/v1/works/${missing}/publication`, { headers: { 'If-None-Match': '*' } });
+    check(response.status === 404 && response.headers.get('cache-control') === 'no-store' && !response.headers.has('etag'), `${missing}: still 404 (no-store) with If-None-Match: *`);
+  }
+  const list = await fetch(`${args.base}/api/v1/works`);
+  const listEtag = list.headers.get('etag');
+  await list.arrayBuffer();
+
+  const requests = new Map();
+  const entry = id => requests.get(id) ?? requests.set(id, {}).get(id);
+  const listener = ({ sessionId, method, params }) => {
+    if (sessionId !== page.sessionId) return;
+    if (method === 'Network.requestWillBeSent') entry(params.requestId).path = new URL(params.request.url).pathname;
+    if (method === 'Network.requestWillBeSentExtraInfo') entry(params.requestId).ifNoneMatch = Object.entries(params.headers).find(([name]) => name.toLowerCase() === 'if-none-match')?.[1] ?? null;
+    if (method === 'Network.responseReceivedExtraInfo') entry(params.requestId).wire = params.statusCode;
+    if (method === 'Network.responseReceived') entry(params.requestId).reported = params.response.status;
+  };
+  page.cdp.listeners.push(listener);
+  try {
+    // The app's own client read (Explore after client navigation), twice.
+    for (const round of ['first', 'second']) {
+      await page.goto(`${args.base}/toi`);
+      await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, `utility hydration before ${round} client read`);
+      const nav = await page.eval(`innerWidth < 760`) ? '.vk-ui-bottom-nav a[href="/"]' : '#navigation-primary a[href="/"]';
+      await page.click(nav);
+      await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row a[href="/tac-pham/${SAMPLE_WORK}"]')`, `${round} client read renders the real public row`);
+    }
+    // What fetch() hands the application on a revalidated read.
+    const seen = [];
+    for (let read = 0; read < 2; read++) seen.push(await page.eval(`fetch(${JSON.stringify(path)}).then(async r => ({ status: r.status, etag: r.headers.get('etag'), body: await r.text() }))`));
+    check(seen.every(read => read.status === 200 && read.etag === etag && read.body === body), 'the application receives a full 200 with the same bytes, never a raw 304');
+    await sleep(200);
+  } finally {
+    page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
+  }
+  const reads = [...requests.values()].filter(read => read.path === '/api/v1/works');
+  const details = [...requests.values()].filter(read => read.path === path);
+  console.log(`  ..  /api/v1/works wire: ${JSON.stringify(reads)}; publication wire: ${JSON.stringify(details)}`);
+  check(reads.length === 2 && reads[1].ifNoneMatch === listEtag && reads[1].wire === 304, 'the second client list read was revalidated on the wire (If-None-Match → 304)');
+  check(details.length === 2 && details[0].wire === 200 && !details[0].ifNoneMatch && details[1].ifNoneMatch === etag && details[1].wire === 304, 'stored publication bytes were reused only after the server answered 304');
+}
+
 async function serverHtml() {
   console.log('server HTML before any JavaScript:');
   const home = await fetch(args.base);
@@ -1966,6 +2021,7 @@ async function editorChrome(page) {
 
 async function mainPhase(page) {
   await serverHtml();
+  await conditionalPublicReads(page);
   await expressionPilot(page, args, check);
   await discussionReadingAndWrites(page);
   await adaptiveShell(page);

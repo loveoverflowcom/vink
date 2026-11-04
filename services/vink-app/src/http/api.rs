@@ -1,12 +1,13 @@
 use axum::extract::rejection::{JsonRejection, QueryRejection};
 use axum::extract::{Path, Query, Request, State};
-use axum::http::{HeaderValue, Method, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Json, Router};
 use tower_http::set_header::SetResponseHeaderLayer;
 
+use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
     CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft, DraftCard, DraftList,
     ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse, PageQuery,
@@ -52,9 +53,17 @@ pub fn routes(state: AppState) -> Router<AppState> {
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
         ));
-    Router::new()
+    // Public reads (READ-01): a success sets its own validator and `private, no-cache`; errors
+    // carry `no-store` so a 404/503 never outlives recovery in a cache.
+    let public = Router::new()
         .route("/works", get(list_works))
         .route("/works/{work_id}/publication", get(get_publication))
+        .layer(SetResponseHeaderLayer::if_not_present(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static(PUBLIC_ERROR_CACHE_CONTROL),
+        ));
+    Router::new()
+        .merge(public)
         .merge(drafts)
         .merge(discussion)
         .fallback(|| async { ApiError::NotFound })
@@ -112,19 +121,28 @@ fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
         })
 }
 
-async fn list_works(State(state): State<AppState>) -> Result<Json<WorkList>, ApiError> {
+/// Visibility and every error are decided by the use case first; only an existing representation
+/// is evaluated against `If-None-Match` (GET and HEAD share this handler).
+async fn list_works(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
     let works = state.vink.public_works().await?;
-    Ok(Json(WorkList {
-        works: works.iter().map(WorkCard::from).collect(),
-    }))
+    conditional::respond(
+        &headers,
+        &WorkList {
+            works: works.iter().map(WorkCard::from).collect(),
+        },
+    )
 }
 
 async fn get_publication(
     State(state): State<AppState>,
     Path(raw): Path<String>,
-) -> Result<Json<Publication>, ApiError> {
+    headers: HeaderMap,
+) -> Result<Response, ApiError> {
     let work = state.vink.publication(work_id(&raw)?).await?;
-    Ok(Json(Publication::from(&work)))
+    conditional::respond(&headers, &Publication::from(&work))
 }
 
 async fn list_drafts(
