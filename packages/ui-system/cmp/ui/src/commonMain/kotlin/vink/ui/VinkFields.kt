@@ -1,5 +1,8 @@
 package vink.ui
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,8 +24,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Switch
@@ -41,6 +45,10 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -48,12 +56,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 /**
  * Inputs and choices (shared/components.md). Text fields take and return [TextFieldValue] so
  * selection and IME composition survive recomposition — never a String round trip. Values are
- * passed back raw (no trim/normalise/parse). Labels use Material's `label` slot, which stays
- * visible (it floats, never disappears like a placeholder) and is merged into the field's own
- * semantics — no contentDescription standing in for a label. Help and error are adjacent text and
+ * passed back raw (no trim/normalise/parse). Floating labels use Material's `label` slot. External labels are visible adjacent text,
+ * named in the native field semantics (Text, not contentDescription). Both remain present
+ * independently of the placeholder. Help and error are adjacent text and
  * `error()` semantics. Validation is the caller's.
  */
 enum class FieldMode { Editable, ReadOnly, Disabled }
+
+enum class FieldVariant { ExternalLabel, FloatingTonal }
 
 enum class TextKind(val keyboard: KeyboardType) { Text(KeyboardType.Text), Email(KeyboardType.Email), Url(KeyboardType.Uri), Tel(KeyboardType.Phone) }
 
@@ -75,6 +85,39 @@ private fun Messages(help: String?, error: String?) {
     }
 }
 
+/** The native field retains selection/composition. Only its paint changes. */
+@Composable
+private fun tonalColors(): TextFieldColors {
+    val c = LocalVink.current.colors
+    return TextFieldDefaults.colors(
+        focusedTextColor = c[ColorRole.OnSurface],
+        unfocusedTextColor = c[ColorRole.OnSurface],
+        errorTextColor = c[ColorRole.OnSurface],
+        focusedContainerColor = c[ColorRole.FieldContainer],
+        unfocusedContainerColor = c[ColorRole.FieldContainer],
+        errorContainerColor = c[ColorRole.FieldContainer],
+        disabledContainerColor = c[ColorRole.DisabledContainer],
+        disabledTextColor = c[ColorRole.DisabledContent],
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        errorIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent,
+        cursorColor = c[ColorRole.Primary],
+        errorCursorColor = c[ColorRole.Error],
+        focusedLabelColor = c[ColorRole.OnSurfaceVariant],
+        unfocusedLabelColor = c[ColorRole.OnSurfaceVariant],
+        errorLabelColor = c[ColorRole.Error],
+        disabledLabelColor = c[ColorRole.DisabledContent],
+    )
+}
+
+@Composable
+private fun Modifier.tonalPerimeter(focused: Boolean, invalid: Boolean, enabled: Boolean): Modifier {
+    if (!enabled || (!focused && !invalid)) return this
+    val c = LocalVink.current.colors
+    return border(if (focused) 2.dp else 1.dp, c[if (invalid) ColorRole.Error else ColorRole.FocusRing], RoundedCornerShape(VinkDimens.RadiusMd))
+}
+
 private enum class TextControl { Field, Area, Search }
 
 @Composable
@@ -92,18 +135,29 @@ private fun TextControlField(
     placeholder: String?,
     minLines: Int,
     onSubmit: ((String) -> Unit)?,
+    variant: FieldVariant,
 ) {
     val vink = LocalVink.current
     val c = vink.colors
     val shown = error.present()
     val name = accessibleName(label, required)
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val floating = variant == FieldVariant.FloatingTonal && control != TextControl.Area
+    val description = help ?: if (mode == FieldMode.Disabled) "Tính năng chưa khả dụng." else null
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
-        OutlinedTextField(
+        if (!floating) Text(name, Modifier.clearAndSetSemantics {}, style = vink.text(VinkTextRoles.Label), color = c[ColorRole.OnSurface])
+        TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().heightIn(min = maxOf(VinkDimens.DensityControlHeight, VinkDimens.SizeHitTarget))
-                .semantics { if (shown != null) error(shown) },
-            label = { Text(name) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
+                .tonalPerimeter(focused, shown != null, mode != FieldMode.Disabled)
+                .semantics {
+                    if (!floating) text = AnnotatedString(name)
+                    if (shown != null) error(shown)
+                },
+            interactionSource = interaction,
+            label = if (floating) { { Text(name, style = vink.text(VinkTextRoles.Label)) } } else null,
             enabled = mode != FieldMode.Disabled,
             readOnly = mode == FieldMode.ReadOnly,
             textStyle = vink.text(VinkTextRoles.Body),
@@ -127,26 +181,13 @@ private fun TextControlField(
                     TextControl.Field -> ImeAction.Next
                 },
             ),
-            keyboardActions = KeyboardActions(onSearch = { onSubmit?.invoke(value.text) }),
+            keyboardActions = KeyboardActions(onSearch = { if (value.composition == null) onSubmit?.invoke(value.text) }),
             singleLine = control != TextControl.Area,
             minLines = minLines,
             shape = RoundedCornerShape(VinkDimens.RadiusMd),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = c[ColorRole.OnSurface],
-                unfocusedTextColor = c[ColorRole.OnSurface],
-                focusedContainerColor = c[ColorRole.FieldContainer],
-                unfocusedContainerColor = if (mode == FieldMode.ReadOnly) androidx.compose.ui.graphics.Color.Transparent else c[ColorRole.FieldContainer],
-                focusedBorderColor = c[ColorRole.Primary],
-                unfocusedBorderColor = c[ColorRole.FieldOutline],
-                errorBorderColor = c[ColorRole.Error],
-                errorContainerColor = c[ColorRole.FieldContainer],
-                disabledContainerColor = c[ColorRole.DisabledContainer],
-                disabledTextColor = c[ColorRole.DisabledContent],
-                disabledBorderColor = androidx.compose.ui.graphics.Color.Transparent,
-                cursorColor = c[ColorRole.Primary],
-            ),
+            colors = tonalColors(),
         )
-        Messages(help, shown)
+        Messages(description, shown)
     }
 }
 
@@ -162,7 +203,8 @@ fun VinkTextField(
     mode: FieldMode = FieldMode.Editable,
     kind: TextKind = TextKind.Text,
     placeholder: String? = null,
-) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null)
+    variant: FieldVariant = FieldVariant.ExternalLabel,
+) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null, variant)
 
 /** Multi-line text; newlines, blank lines and leading spaces are kept verbatim. */
 @Composable
@@ -177,7 +219,7 @@ fun VinkTextArea(
     mode: FieldMode = FieldMode.Editable,
     rows: Int = 4,
     placeholder: String? = null,
-) = TextControlField(TextControl.Area, label, value, onValueChange, modifier, help, error, required, mode, TextKind.Text, placeholder, rows, null)
+) = TextControlField(TextControl.Area, label, value, onValueChange, modifier, help, error, required, mode, TextKind.Text, placeholder, rows, null, FieldVariant.ExternalLabel)
 
 /** Search input with a clear button while it has text; the IME Search action calls [onSubmit]. */
 @Composable
@@ -190,7 +232,7 @@ fun VinkSearchField(
     help: String? = null,
     mode: FieldMode = FieldMode.Editable,
     placeholder: String? = null,
-) = TextControlField(TextControl.Search, label, value, onValueChange, modifier, help, null, false, mode, TextKind.Text, placeholder, 1, onSubmit)
+) = TextControlField(TextControl.Search, label, value, onValueChange, modifier, help, null, false, mode, TextKind.Text, placeholder, 1, onSubmit, FieldVariant.FloatingTonal)
 
 @Composable
 private fun Toggle(
@@ -208,7 +250,7 @@ private fun Toggle(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
         // Box and label are one toggleable target with one handler.
         Row(
-            Modifier.heightIn(min = maxOf(VinkDimens.DensityControlHeight, VinkDimens.SizeHitTarget))
+            Modifier.heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
                 .toggleable(checked, enabled = enabled, role = if (switch) Role.Switch else Role.Checkbox, onValueChange = onChange)
                 .semantics(mergeDescendants = true) { if (shown != null) error(shown) },
             horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space3),
@@ -287,7 +329,7 @@ fun VinkRadioGroup(
             options.forEach { option ->
                 val on = enabled && !option.disabled
                 Row(
-                    Modifier.fillMaxWidth().heightIn(min = maxOf(VinkDimens.DensityControlHeight, VinkDimens.SizeHitTarget))
+                    Modifier.fillMaxWidth().heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
                         .selectable(option.value == value, enabled = on, role = Role.RadioButton) { onChange(option.value) },
                     horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space3),
                     verticalAlignment = Alignment.CenterVertically,
@@ -331,10 +373,12 @@ fun VinkSelect(
     val c = vink.colors
     val shown = error.present()
     var expanded by remember { mutableStateOf(false) }
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
     val current = options.firstOrNull { it.value == value }?.label
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
         ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (enabled) expanded = it }) {
-            OutlinedTextField(
+            TextField(
                 value = current ?: placeholder,
                 onValueChange = {},
                 readOnly = true,
@@ -344,16 +388,12 @@ fun VinkSelect(
                 isError = shown != null,
                 singleLine = true,
                 shape = RoundedCornerShape(VinkDimens.RadiusMd),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = c[ColorRole.FieldContainer],
-                    unfocusedContainerColor = c[ColorRole.FieldContainer],
-                    unfocusedBorderColor = c[ColorRole.FieldOutline],
-                    focusedBorderColor = c[ColorRole.Primary],
-                    errorBorderColor = c[ColorRole.Error],
-                    disabledContainerColor = c[ColorRole.DisabledContainer],
-                ),
+                colors = tonalColors(),
+                interactionSource = interaction,
                 label = { Text(accessibleName(label, required)) },
-                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled)
+                modifier = Modifier.fillMaxWidth().heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
+                    .tonalPerimeter(focused, shown != null, enabled)
+                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled)
                     .semantics { if (shown != null) error(shown) },
             )
             ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {

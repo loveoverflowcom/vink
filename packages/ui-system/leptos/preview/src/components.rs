@@ -7,10 +7,11 @@ use vink_ui::identity_vectors::{BROKEN_AVIF_BASE64, PEOPLE, SAMPLE_PNG_BASE64};
 use vink_ui::{
     ActionState, Align, AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind, AvatarSize,
     Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction, Divider,
-    FieldMode, FilterChip, FormSummary, Grid, GridMin, Heading, HeadingLevel, Icon, IconButton,
-    IconName, ImageFrame, ImageState, Link, LinkTarget, LinkVariant, Measure, Person, RadioGroup,
-    Radius, SearchField, Select, Space, Stack, Surface, SurfaceTone, Switch, Text, TextArea,
-    TextField, TextInput, TextKind, TextTag, TextTone, ThemePreference, ThemeScope, TypeRole,
+    FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading, HeadingLevel, Icon,
+    IconButton, IconName, ImageFrame, ImageState, Link, LinkTarget, LinkVariant, Measure, Person,
+    RadioGroup, Radius, SearchField, Select, Space, Stack, Surface, SurfaceTone, Switch, Text,
+    TextArea, TextField, TextInput, TextKind, TextTag, TextTone, ThemePreference, ThemeScope,
+    TypeRole,
 };
 
 /// The preview's event log; absent when a specimen is rendered in a unit test.
@@ -513,10 +514,16 @@ fn field_text(scenario: &str) -> AnyView {
     };
     let text = RwSignal::new(value.to_string());
     let email = RwSignal::new(String::new());
+    let variant = if scenario == "external-label" {
+        FieldVariant::ExternalLabel
+    } else {
+        FieldVariant::FloatingTonal
+    };
     view! {
         <Stack gap=Space::S6>
             <TextField
                 id="title"
+                variant=variant
                 label=label
                 value=text
                 on_input=text_logger("title", text)

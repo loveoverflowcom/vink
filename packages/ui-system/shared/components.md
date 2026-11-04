@@ -72,6 +72,43 @@ Màn hẹp (<760px, cùng ngưỡng shell): Stack Row được `wrap`, Grid về
 `-narrow`, byline xuống dòng nhưng tên vẫn trước metadata. Chữ 200%: rem/sp tăng theo, không cắt;
 control giữ chiều cao tối thiểu nhưng được cao thêm. Sáng/Tối: mọi màu là role, resolve theo scope.
 
+## Quiet Lavender R1 — Shared Controls (PR-01)
+
+`TextField` / `VinkTextField` thêm `variant: FieldVariant`:
+`ExternalLabel` (mặc định) và `FloatingTonal`. `FloatingTonal` là short field một dòng;
+PR-02 dùng `variant=FieldVariant::FloatingTonal` cho `draft-title` và giữ nguyên `id`, `name`,
+`max_length`, `input_ref`, `on_focus`, callback và value. `TextArea` luôn dùng nhãn ngoài;
+`SearchField` giữ contract hiện có (Web chưa có `name`, không thay thế máy móc form GET).
+
+Cây floating Web: `Field → Control [Input + Label] → Help/Error`. Input và label dùng hai hàng
+intrinsic để nhãn dài tiếng Việt reflow ở 200%; empty blur đặt nhãn giữa shell, focus/filled/
+restored/autofill đặt nhãn trên hàng chữ. CSS đọc giá trị DOM (`:placeholder-shown`, `:autofill`),
+không remount hoặc thay input khi label đổi. Label thật có `for`, helper/error có
+`aria-describedby`. CMP giữ Material3 `TextField` và `TextFieldValue`; `FloatingTonal` dùng slot
+label native; nhãn ngoài là text hiện hữu, được đưa vào semantics text của cùng field, không
+thay label bằng contentDescription. Field disabled thiếu help được giải thích “Tính năng chưa
+khả dụng.”; caller có thể cung cấp lý do cụ thể hơn.
+
+Idle tonal không outline trang trí. Floating shell Web sở hữu một outline inset; field nhãn ngoài,
+search, Select và textarea để input sở hữu. Focus 2px, error 1px, error+focus 2px màu error;
+không shadow vẽ viền. Nút trailing chỉ vẽ focus của chính nó. Actions/chips dùng một focus 2px
+flush; Outlined vẫn có API riêng. CMP tắt cả bốn indicator Material, một border trên native
+TextField là perimeter duy nhất. Chỉ focus của text control kích hoạt perimeter, không dùng
+focus-within của parent cho trailing action. Forced-colors được thêm stroke hệ thống và giữ
+focus; không có chuyển động nhãn custom.
+
+Chip idle dùng SurfaceContainer, selected dùng SecondaryContainer + check/pressed; slot check
+được giữ để toggle không dịch hàng. Filled/Tonal/Text/Outlined/Danger và action guards giữ nguyên;
+status slot của cả Text button được chừa trước pending. Tonal dành cho hành động phụ, Filled cho
+hành động chính; không đổi default API của Button.
+
+Quyết định CHOICE-01: Material3 TextField + indicator transparent + border có điều kiện, giữ
+native IME/caret/label và không xây BasicTextField mới. CHOICE-02: floating shell / input nhãn ngoài
+sở hữu perimeter theo đúng painted target; không dùng parent focus-within. CHOICE-03: giữ
+RadioGroup generic native; inventory chỉ có appearance cần icon/label/check, recipe app thuộc PR-03.
+Không thay token vì role màu/spacing/radius hiện có đủ; catalog thêm scenario `external-label`
+và sinh lại bằng `cargo xtask ui-tokens`.
+
 ## Props, sự kiện và trạng thái
 
 Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`Button`, `on_press`), CMP viết
@@ -154,7 +191,7 @@ view! {
 
 ```kotlin
 var title by remember { mutableStateOf(TextFieldValue("")) }
-VinkTextField(id = "title", label = "Tiêu đề", value = title, onValueChange = { title = it }, help = "Có thể sửa sau.")
+VinkTextField(label = "Tiêu đề", value = title, onValueChange = { title = it }, help = "Có thể sửa sau.")
 VinkButton("Lưu", onPress = ::save, variant = ButtonVariant.Filled)
 ```
 

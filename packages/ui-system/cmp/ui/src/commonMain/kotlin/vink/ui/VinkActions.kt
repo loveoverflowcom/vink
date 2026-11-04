@@ -106,8 +106,8 @@ fun VinkButton(
             border = if (variant == ButtonVariant.Outlined && !disabled) BorderStroke(1.dp, c[ColorRole.Outline]) else null,
             contentPadding = PaddingValues(
                 start = if (variant == ButtonVariant.Text) VinkDimens.Space3 else VinkDimens.Space6,
-                // The status slot lives in the end padding; a Text button widens it only while pending.
-                end = if (variant == ButtonVariant.Text && pending == null) VinkDimens.Space3 else VinkDimens.Space6,
+                // Reserve the status slot before pending to keep every variant stable.
+                end = VinkDimens.Space6,
                 top = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),
                 bottom = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),
             ),
@@ -233,24 +233,22 @@ fun VinkFilterChip(
         label = { Text(label, style = LocalVink.current.text(VinkTextRoles.Label)) },
         modifier = modifier.heightIn(min = NativeControl),
         enabled = state !is ActionState.Disabled,
-        leadingIcon = if (selected) {
-            { VinkIcon(IconName.Check, size = IconSize.Small) }
-        } else {
-            null
+        leadingIcon = {
+            // Reserve the check slot so selecting a chip never shifts the row.
+            androidx.compose.foundation.layout.Box(Modifier.size(VinkDimens.SizeIconSm)) {
+                if (selected) VinkIcon(IconName.Check, size = IconSize.Small)
+            }
         },
         shape = RoundedCornerShape(VinkDimens.RadiusSm),
         colors = FilterChipDefaults.filterChipColors(
+            containerColor = c[ColorRole.SurfaceContainer],
             labelColor = c[ColorRole.OnSurfaceVariant],
             selectedContainerColor = c[ColorRole.SecondaryContainer],
             selectedLabelColor = c[ColorRole.OnSecondaryContainer],
             selectedLeadingIconColor = c[ColorRole.OnSecondaryContainer],
             disabledLabelColor = c[ColorRole.DisabledContent],
         ),
-        border = FilterChipDefaults.filterChipBorder(
-            enabled = state !is ActionState.Disabled,
-            selected = selected,
-            borderColor = c[ColorRole.Outline],
-        ),
+        border = null,
     )
         Note(state.note)
     }

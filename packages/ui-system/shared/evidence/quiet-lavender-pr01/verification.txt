@@ -1,0 +1,34 @@
+pr01-quick-verified.log
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)
+
+
+pr01-leptos-verified.log
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: headless Chrome scenarios and captures
+
+
+pr01-cmp-final.log
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  CMP: common + desktop tests and captures
+
+
+pr01-cmp-focus-capture.log
+WARNING: Restricted methods will be blocked in a future release unless native access is enabled
+
+> Task :preview:desktopTest
+
+BUILD SUCCESSFUL in 12s
+26 actionable tasks: 8 executed, 18 up-to-date

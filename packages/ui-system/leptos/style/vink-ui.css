@@ -245,8 +245,7 @@
   overflow-wrap: anywhere;
 }
 
-/* UIS-03 MicroArc slot: positioned inside the inline-end padding, so filling it never changes
- * the width or covers the label. Text buttons have narrower padding and widen while pending. */
+/* Reserve the status slot even before pending; every variant keeps its width and label. */
 .vk-ui-button__status {
   position: absolute;
   inset-block-start: 50%;
@@ -257,7 +256,6 @@
 
 .vk-ui-button__status:empty { display: none; }
 
-.vk-ui-button--text[data-state="pending"] { padding-inline-end: var(--vk-space-6); }
 
 .vk-ui-button--tonal {
   background-color: var(--vk-action-tonal-container);
@@ -271,7 +269,7 @@
 }
 
 .vk-ui-button--text {
-  padding-inline: var(--vk-space-3);
+  padding-inline: var(--vk-space-3) var(--vk-space-6);
   background-color: transparent;
   color: var(--vk-primary);
 }
@@ -344,9 +342,9 @@
 
 .vk-ui-chip {
   padding: 0 var(--vk-space-4) 0 var(--vk-space-2);
-  border-color: var(--vk-outline);
+  border-color: transparent;
   border-radius: var(--vk-radius-sm);
-  background-color: transparent;
+  background-color: var(--vk-surface-container);
   color: var(--vk-on-surface-variant);
 }
 
@@ -361,6 +359,23 @@
   inline-size: var(--vk-size-icon-sm);
   justify-content: center;
 }
+
+/* Painted actions use a flush perimeter, including inside the app scaffold. */
+.vk-ui-button:focus-visible,
+.vk-ui-icon-button:focus-visible,
+.vk-ui-chip:focus-visible,
+.vk-ui-scaffold .vk-ui-button:focus-visible,
+.vk-ui-scaffold .vk-ui-icon-button:focus-visible,
+.vk-ui-scaffold .vk-ui-chip:focus-visible,
+.vk-ui .vk-ui-button:focus-visible,
+.vk-ui .vk-ui-icon-button:focus-visible,
+.vk-ui .vk-ui-chip:focus-visible {
+  outline: 2px solid var(--vk-focus-ring);
+  outline-offset: 0;
+}
+.vk-ui-button:focus-visible, .vk-ui-icon-button:focus-visible { border-radius: var(--vk-radius-full); }
+.vk-ui-chip > span { min-inline-size: 0; overflow-wrap: anywhere; }
+.vk-ui-chip__check { flex-shrink: 0; }
 
 /* Fields -------------------------------------------------------------------------------------- */
 
@@ -420,7 +435,7 @@
   min-block-size: var(--vk-density-control-height);
   margin: 0;
   padding: var(--vk-density-control-padding) var(--vk-space-4);
-  border: 1px solid var(--vk-field-outline);
+  border: 0;
   border-radius: var(--vk-radius-md);
   background-color: var(--vk-field-container);
   color: var(--vk-on-surface);
@@ -430,22 +445,28 @@
 }
 
 .vk-ui-input::placeholder { color: var(--vk-on-surface-variant); }
-.vk-ui-input:focus { border-color: var(--vk-primary); }
+.vk-ui-field .vk-ui-input { border-radius: var(--vk-radius-md); }
+
+/* Input owns the inset perimeter. Specificity beats app/scaffold focus defaults,
+ * while the independent trailing action never paints a parent focus ring. */
+.vk-ui-field .vk-ui-input:focus {
+  outline: 2px solid var(--vk-focus-ring);
+  outline-offset: -2px;
+}
 
 .vk-ui-input--area {
   resize: vertical;
   white-space: pre-wrap;
 }
 
-.vk-ui-field[data-invalid] .vk-ui-input,
-.vk-ui-input[aria-invalid="true"] {
-  border-color: var(--vk-error);
-  box-shadow: inset 0 0 0 1px var(--vk-error);
+.vk-ui-field .vk-ui-input[aria-invalid="true"] {
+  outline: 1px solid var(--vk-error);
+  outline-offset: -1px;
 }
 
-.vk-ui-input[readonly] {
-  border-style: dashed;
-  background-color: transparent;
+.vk-ui-field .vk-ui-input[aria-invalid="true"]:focus {
+  outline-width: 2px;
+  outline-offset: -2px;
 }
 
 .vk-ui-input:disabled {
@@ -482,6 +503,68 @@
 
 .vk-ui-field__control--select > .vk-ui-icon {
   inset-inline: auto var(--vk-space-3);
+}
+
+/* Floating labels share an intrinsic grid with the input: long Vietnamese labels
+ * grow the first row at 200% text instead of overlapping or clipping input text. */
+.vk-ui-field--floating .vk-ui-field__control {
+  display: grid;
+  grid-template-rows: minmax(calc(var(--vk-space-2) + 1.5 * var(--vk-type-caption-size)), auto) auto;
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-field-container);
+}
+.vk-ui-field--floating .vk-ui-input {
+  grid-area: 2 / 1;
+  min-block-size: var(--vk-density-control-height);
+  padding-block: var(--vk-space-2);
+  background: transparent;
+}
+.vk-ui-field--floating .vk-ui-field__label {
+  grid-area: 1 / 1;
+  z-index: 1;
+  margin: var(--vk-space-2) var(--vk-space-4) 0;
+  align-self: start;
+  font-size: var(--vk-type-caption-size);
+  line-height: var(--vk-type-caption-line-height);
+  color: var(--vk-on-surface-variant);
+}
+.vk-ui-field--floating .vk-ui-input:placeholder-shown:not(:focus):not(:autofill) + .vk-ui-field__label {
+  grid-row: 1 / 3;
+  align-self: center;
+  margin-block: var(--vk-space-2);
+  font-size: var(--vk-type-body-size);
+  line-height: var(--vk-type-body-line-height);
+}
+.vk-ui-field--floating .vk-ui-input:not(:focus)::placeholder { opacity: 0; }
+.vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus) {
+  outline: 2px solid var(--vk-focus-ring);
+  outline-offset: -2px;
+}
+.vk-ui-field--floating[data-invalid] .vk-ui-field__control {
+  outline: 1px solid var(--vk-error);
+  outline-offset: -1px;
+}
+.vk-ui-field--floating[data-invalid] .vk-ui-field__control:has(> .vk-ui-input:focus) {
+  outline-color: var(--vk-error);
+  outline-width: 2px;
+  outline-offset: -2px;
+}
+.vk-ui-field.vk-ui-field--floating .vk-ui-field__control > .vk-ui-input {
+  outline: 0;
+  border: 0;
+  border-radius: 0 0 var(--vk-radius-md) var(--vk-radius-md);
+}
+.vk-ui-field--floating[data-mode="disabled"] .vk-ui-field__control { background: var(--vk-disabled-container); }
+
+@media (forced-colors: active) {
+  .vk-ui-input:not(:focus):not([aria-invalid="true"]),
+  .vk-ui-button, .vk-ui-icon-button, .vk-ui-chip { border: 1px solid ButtonText; }
+  .vk-ui-field--floating .vk-ui-field__control { border: 1px solid ButtonText; }
+  .vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus),
+  .vk-ui-field--floating[data-invalid] .vk-ui-field__control,
+  .vk-ui-field--floating[data-invalid] .vk-ui-field__control:has(> .vk-ui-input:focus),
+  .vk-ui-field .vk-ui-input:focus,
+  .vk-ui-field .vk-ui-input[aria-invalid="true"] { outline-color: Highlight; }
 }
 
 .vk-ui-choice__target {

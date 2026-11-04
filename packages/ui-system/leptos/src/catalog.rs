@@ -5,7 +5,7 @@
 
 use crate::values::{CatalogEntry, Scenario};
 
-pub const CATALOG_VERSION: &str = "0.5.2";
+pub const CATALOG_VERSION: &str = "0.5.3";
 pub const STATUSES: &[&str] = &["implemented-unverified", "unsupported", "verified"];
 pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp"), ("screen", "Màn Vink — Mẫu")];
 
@@ -305,6 +305,10 @@ pub const ENTRIES: &[CatalogEntry] = &[
             Scenario {
                 id: "long-label",
                 label: "Nhãn dài và giá trị 0",
+            },
+            Scenario {
+                id: "external-label",
+                label: "Nhãn ngoài",
             },
         ],
         leptos: "implemented-unverified",

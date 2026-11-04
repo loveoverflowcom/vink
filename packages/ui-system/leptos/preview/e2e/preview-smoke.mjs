@@ -357,7 +357,7 @@ async function forcedColors(page) {
     const el = document.activeElement, style = getComputedStyle(el);
     return { name: el.textContent.trim(), outline: parseFloat(style.outlineWidth), adjustment: style.forcedColorAdjust };
   })()`);
-  check(focus.name && focus.outline >= 3 && focus.adjustment !== 'none', 'forced-colors keeps named control and visible keyboard focus under system colors');
+  check(focus.name && focus.outline >= 2 && focus.adjustment !== 'none', 'forced-colors keeps named control and visible keyboard focus under system colors');
   await page.capture('action.button--forced-colors--1440');
   await page.emulate('forced-colors', 'none');
 }
@@ -480,7 +480,7 @@ async function components(page) {
   await page.key('Space');
   check((await count()).includes('3 lần'), 'Button: Space dispatches exactly once');
   const ring = await page.eval(`(() => { const el = document.activeElement; const s = getComputedStyle(el); return [el.matches(':focus-visible'), s.outlineStyle, s.outlineWidth]; })()`);
-  check(ring[0] && ring[1] === 'solid' && ring[2] === '3px', `Button: keyboard focus shows the 3px ring (${ring})`);
+  check(ring[0] && ring[1] === 'solid' && ring[2] === '2px', `Button: keyboard focus shows one flush 2px perimeter (${ring})`);
   await page.click('[data-testid=in-form-button] button');
   const formLog = await page.log();
   check(formLog.includes('trong form') && !formLog.includes('form → submit'), 'Button: the default kind never submits its form');
@@ -516,6 +516,65 @@ async function components(page) {
   await page.key('Tab');
   const next = await page.eval(`[...document.querySelectorAll('.vk-ui-chip')].indexOf(document.activeElement)`);
   check(chip === 'true' && next === 1, 'FilterChip: Space toggles aria-pressed and Tab moves to the next chip');
+
+  // Exercise the opt-in control against the app's actual global focus fallback as well.
+  const appFocus = readFileSync(new URL('../../../../../apps/vink-web/style/vink.css', import.meta.url), 'utf8').match(/:focus-visible\s*\{[^}]+\}/)[0];
+  await page.eval(`(() => { const s = document.createElement('style'); s.id = 'app-focus-probe'; s.textContent = ${JSON.stringify(appFocus)}; document.head.append(s); })()`);
+  await page.open('field.text-field');
+  const fieldPaint = () => page.eval(`(() => {
+    const i = document.getElementById('title'), shell = i.parentElement;
+    const s = getComputedStyle(shell), c = getComputedStyle(i), l = getComputedStyle(document.querySelector('label[for=title]'));
+    return { shell: [s.outlineWidth, s.outlineOffset, s.outlineColor, s.boxShadow],
+      input: [c.outlineWidth, c.borderWidth, c.boxShadow], label: l.fontSize,
+      labelBottom: document.querySelector('label[for=title]').getBoundingClientRect().bottom,
+      inputTop: i.getBoundingClientRect().top, outlineStyle: s.outlineStyle };
+  })()`);
+  await page.eval(`document.activeElement?.blur(); window.fieldIdentity = document.getElementById('title')`);
+  const emptyPaint = await fieldPaint();
+  check(emptyPaint.outlineStyle === 'none' && emptyPaint.input.every(v => v === '0px' || v === 'none'), `FloatingTonal: empty idle is borderless, no shadow (${JSON.stringify(emptyPaint)})`);
+  await page.click('label[for=title]');
+  check(await page.eval(`document.activeElement.id === 'title'`), 'FloatingTonal: clicking the real label focuses the native input');
+  const focusPaint = await fieldPaint();
+  check(focusPaint.shell[0] === '2px' && focusPaint.shell[1] === '-2px' && focusPaint.input[0] === '0px' && focusPaint.shell[3] === 'none', 'FloatingTonal: one inset 2px perimeter beats app focus fallback');
+  check(parseFloat(focusPaint.label) < parseFloat(emptyPaint.label) && focusPaint.labelBottom <= focusPaint.inputTop + 1, 'FloatingTonal: focused label floats above the native text row');
+  await page.eval(`document.getElementById('title').blur()`);
+  await page.send('DOM.enable');
+  await page.send('CSS.enable');
+  const documentNode = await page.send('DOM.getDocument');
+  const titleNode = await page.send('DOM.querySelector', { nodeId: documentNode.root.nodeId, selector: '#title' });
+  await page.send('CSS.forcePseudoState', { nodeId: titleNode.nodeId, forcedPseudoClasses: ['autofill'] });
+  check((await fieldPaint()).label === focusPaint.label, 'FloatingTonal: emulated autofill floats the real label');
+  await page.send('CSS.forcePseudoState', { nodeId: titleNode.nodeId, forcedPseudoClasses: [] });
+  await page.eval(`document.getElementById('title').focus()`);
+  await page.send('Input.insertText', { text: 'Bản thảo tiếng Việt' });
+  await page.eval(`document.getElementById('title').blur()`);
+  check((await fieldPaint()).label === focusPaint.label, 'FloatingTonal: filled label stays floated');
+  await page.eval(`(() => { const i = document.getElementById('title'); i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await page.settle();
+  await page.eval(`document.getElementById('title').value = 'Khôi phục từ trình duyệt'`);
+  check((await fieldPaint()).label === focusPaint.label && await page.eval(`window.fieldIdentity === document.getElementById('title')`), 'FloatingTonal: native restored value floats without input replacement');
+  await page.open('field.text-field', 'invalid');
+  await page.eval(`document.activeElement?.blur()`);
+  const errorPaint = await fieldPaint();
+  await page.eval(`document.getElementById('title').focus()`);
+  const errorFocusPaint = await fieldPaint();
+  check(errorPaint.shell[0] === '1px' && errorFocusPaint.shell[0] === '2px' && errorPaint.shell[2] === errorFocusPaint.shell[2] && errorFocusPaint.input[0] === '0px', 'FloatingTonal: error 1px and error+focus 2px share one error perimeter');
+  await page.capture('field.text-field--invalid-focus--light--1440');
+  await page.emulate('forced-colors', 'active');
+  const forcedPaint = await fieldPaint();
+  check(forcedPaint.shell[0] === '2px' && forcedPaint.input[0] === '0px' && forcedPaint.input[1] === '0px', 'FloatingTonal: forced-colors preserves one focus perimeter');
+  await page.emulate('forced-colors', 'none');
+  await page.open('field.text-field', 'external-label');
+  await page.eval(`document.getElementById('title').focus()`);
+  check(await page.css('#title', 'outline-width') === '2px' && await page.css('#title', 'outline-offset') === '-2px' && await page.css('#title', 'border-width') === '0px', 'External label: input owns a single inset perimeter');
+  await page.open('field.text-field', 'long-label');
+  await page.choose('scale', '200%');
+  await page.viewport(320);
+  const longPaint = await fieldPaint();
+  check(longPaint.labelBottom <= longPaint.inputTop + 1 && await page.eval(`document.documentElement.scrollWidth <= innerWidth`), 'FloatingTonal: long Vietnamese label reflows above value at 320px/text200');
+  await page.choose('scale', '100%');
+  await page.viewport(1440);
+  await page.eval(`document.getElementById('app-focus-probe').remove()`);
 
   await page.open('field.text-field');
   await page.eval(`document.getElementById('title').focus()`);

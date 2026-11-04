@@ -6,7 +6,7 @@
 package vink.ui
 
 object VinkCatalog {
-    const val VERSION: String = "0.5.2"
+    const val VERSION: String = "0.5.3"
     val statuses: List<String> = listOf("implemented-unverified", "unsupported", "verified")
     val families: List<Pair<String, String>> = listOf("foundation" to "Nền tảng", "text" to "Chữ", "layout" to "Bố cục", "action" to "Hành động", "field" to "Nhập và chọn", "identity" to "Danh tính và hình ảnh", "state" to "Trạng thái và phản hồi", "navigation" to "Điều hướng và khung", "composition" to "Kết hợp", "screen" to "Màn Vink — Mẫu")
 
@@ -151,7 +151,7 @@ object VinkCatalog {
             family = "field",
             label = "TextField",
             summary = "Ô nhập một dòng có nhãn, gợi ý, lỗi; giữ selection và composition.",
-            scenarios = listOf(Scenario("default", "Mặc định"), Scenario("invalid", "Lỗi"), Scenario("read-only", "Chỉ đọc"), Scenario("disabled", "Không khả dụng"), Scenario("long-label", "Nhãn dài và giá trị 0")),
+            scenarios = listOf(Scenario("default", "Mặc định"), Scenario("invalid", "Lỗi"), Scenario("read-only", "Chỉ đọc"), Scenario("disabled", "Không khả dụng"), Scenario("long-label", "Nhãn dài và giá trị 0"), Scenario("external-label", "Nhãn ngoài")),
             leptos = "implemented-unverified",
             cmp = "implemented-unverified",
         ),
