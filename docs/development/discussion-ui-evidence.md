@@ -115,3 +115,38 @@ theme/build. Ảnh phải được mở để được gọi là inspected.
   trên không thay các lane đó.
 - Draft trong bộ nhớ trang, không phải persistence/recovery qua reload. Không lưu text
   vào storage chung; đổi route/scope không chuyển text sang tác phẩm hoặc actor khác.
+
+## UI-REVIEW-17 — rà reader thảo luận trên `develop@eb41d4b` (sau PR #59)
+
+Phạm vi: so Design (Reader desktop/mobile, Guided Feedback mobile) với HEAD, và kiểm riêng retry
+refetch, closed/open, auth-required, pending, uncertain, giữ chữ. Ảnh chụp bằng Chrome headless
+(CDP) vào thư mục ngoài repo; không commit binary. Các ảnh có dữ liệu thảo luận dùng provider
+fixture chặn ở trình duyệt (nhãn `intercepted-provider-contract-fixture`), không phải persistence.
+Chưa tải ảnh lên Drive và chưa kiểm OS IME/screen reader.
+
+| Kết quả | Chứng cứ | Giới hạn |
+| --- | --- | --- |
+| P2 đã sửa — “Tải lại nhận xét” khi đọc ban đầu lỗi là link cùng URL + `#feedback-region`: bấm khi server đã khỏe lại tạo 0 request, lỗi vẫn còn; chỉ reload cả trang mới hết (đúng như chú thích “same-URL link … only scrolls” ở `Unavailable`). Sau sửa là Button `resource.refetch()`: 2 GET và vùng nhận xét tải lại | Gỡ tạm `SELECT` của role runtime trên `comments`/`discussion_threads` ở cluster scratch để SSR lỗi | Một lỗi SSR mô phỏng bằng quyền DB, không phải mọi nguyên nhân |
+| P2 đã sửa — lỗi “Xem thêm nhận xét” hiện ở `#comments-mode`, cách nút ~2.270px (y 746 vs 3014 ở 390px) nên người đọc không thấy; lời lỗi lại nói “chưa rõ kết quả” cho một lần đọc. Sau sửa: trạng thái ngay trên nút, phần đã tải giữ nguyên, bấm lại gọi đúng cursor cũ; lỗi “Xem thêm phản hồi” dùng cùng copy đọc | Fixture chặn 503 ở GET có `cursor` | Không có nhánh mạng thật bị đứt |
+| Không lỗi — closed/open (Closed chặn gửi, giữ chữ), 401, `comments_closed`, pending, mất kết nối/chưa rõ: biên nhận đúng, chữ được giữ; đối soát gửi lại đúng body + `command_key` (2 POST giống hệt) và chỉ khi đó mới có biên nhận; auth-required: gửi disabled có lý do, chữ ở root và reply được giữ | Fixture POST chặn ở trình duyệt, LocalFixture `VINK_DEV_PRINCIPAL` và server không principal | Không chứng minh auth production, persistence, moderation |
+| Không lỗi — reflow 320/390/834/1440, sáng/tối, chữ 100/200%: không tràn ngang, không có tầng reply thứ ba | `scrollWidth ≤ innerWidth` ở 16 tổ hợp × 5 trạng thái | Ảnh Design là mẫu có `3 cảm nhận mẫu`, “Gửi cảm nhận mẫu”, “Dẫn một câu trong bài”; không thêm số đếm/xếp hạng/sticker giả |
+
+Ghi nhận, chưa sửa (P3, cần owner quyết): nhãn “Nhận xét” lặp ba lần (tiêu đề, nhãn intent
+`Unspecified`, nhãn textarea) vì `FeedbackComposer` dùng chung Web/CMP; chữ nút “Trả lời/Gỡ”
+lệch vào trong ~13px so với thân bình luận do padding nút văn bản; composer chưa có thẻ nền và CTA
+chưa căn phải như Design; thân bình luận gốc ở desktop chưa thụt theo tên như Design. Đây là khác
+biệt trình bày so với mẫu, không phải lỗi dữ liệu hay mất chữ.
+
+### Review bổ sung trước tích hợp — 04/11/2026
+
+Rà từ head PR #60 `c5606c7` trên base `eb41d4b`: lỗi làm mới cả vùng vẫn dùng
+thông báo kết quả ghi chưa rõ, còn assertion retry kết thúc ngay lúc xóa lỗi cũ,
+trước khi biết request hoàn tất. Bản sửa dùng copy riêng cho đọc/làm mới và giữ
+lý do phiên/quyền. Browser smoke nay kiểm GET mới sau lỗi đọc ban đầu qua điều
+hướng client, refresh lỗi giữ danh sách/chữ, hai GET phân trang dùng cùng cursor,
+và nhận xét trang kế chỉ xuất hiện sau response thành công. Fixture mạng vẫn không
+thay bằng chứng persistence hoặc auth production. Lượt browser đầu của review mới
+bắt được mẫu chặn URL chưa bao phủ query cursor: sửa wildcard và đếm request của
+cả lần lỗi lẫn retry, tránh dùng phản hồi lỗi từ server thật cho cursor giả làm
+bằng chứng 503 fixture. Kết quả chạy gắn với head cuối
+được ghi trong PR, không suy PASS từ các assertion vừa thêm.
