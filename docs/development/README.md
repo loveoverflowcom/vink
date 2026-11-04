@@ -18,6 +18,9 @@ PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 [ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
 đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database. [UI thảo luận](../design/discussion-ui.md) hiển thị anonymous SSR và tải projection của viewer sau hydration; controller giữ draft/request theo scope. Chỉ LocalFixture hiện cho kiểm ghi cục bộ, có nhãn rõ; production trả `401`, chưa có UI kiểm duyệt hoặc auth authority.
 
+[Đọc công khai có điều kiện](public-conditional-reads.md) (READ-01, [#52](https://github.com/loveoverflowcom/vink/issues/52))
+ghi ETag mạnh trên đúng byte JSON, `private, no-cache`, thứ tự lỗi trước 304, bằng chứng và số đo.
+
 [Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + Web pilot độc lập EMO-01A;
 chưa tích hợp composer/reaction/sticker persistence.
 

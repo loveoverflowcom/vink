@@ -1,6 +1,7 @@
 //! HTTP adapter: API v1, health probes and the Leptos SSR host on one Axum router.
 
 mod api;
+mod conditional;
 pub mod contract;
 mod error;
 mod health;
@@ -112,7 +113,7 @@ mod tests {
     use std::path::Path;
 
     use axum::body::Body;
-    use axum::http::{Request, StatusCode};
+    use axum::http::{Request, StatusCode, header};
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
@@ -161,6 +162,26 @@ mod tests {
         let (status, body) = get(&router, "/api/v1/works").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("dependency_unavailable"), "{body}");
+
+        // An unverifiable state is never guessed "not modified", and the error is not stored.
+        for path in [
+            "/api/v1/works",
+            "/api/v1/works/33333333-3333-4333-8333-333333333333/publication",
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::get(path)
+                        .header(header::IF_NONE_MATCH, "*")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE, "{path}");
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            assert!(response.headers().get(header::ETAG).is_none());
+        }
 
         let (status, body) = get(&router, "/?q=%C4%90%20%26%20100%25").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);

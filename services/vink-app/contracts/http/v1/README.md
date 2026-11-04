@@ -36,8 +36,8 @@ Only the endpoints below exist. Publish/withdraw and account endpoints do not. D
 
 | Method and path | Success | Errors | Fixture |
 | --- | --- | --- | --- |
-| `GET /api/v1/works` | `200` list of current publications (at most 12) | `503` | [works.list.json](fixtures/works.list.json) |
-| `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
+| `GET /api/v1/works` | `200` list of current publications (at most 12); `304` on a matching `If-None-Match` | `503` | [works.list.json](fixtures/works.list.json) |
+| `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft); `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
 | `GET /api/v1/drafts` | `200` the actor's drafts | `401`, `503` | [drafts.list.json](fixtures/drafts.list.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
@@ -49,6 +49,35 @@ exist and a draft owned by someone else both answer `404`. A malformed `work_id`
 
 `POST` is not idempotent: a retried request after a lost response may create a second empty
 draft. Clients disable the button while a request is pending.
+
+### Conditional public reads (READ-01)
+
+Only the two public reads above are conditional; `HEAD` answers like `GET` without content.
+Rationale, evidence and rollback: [public conditional reads](../../../../../docs/development/public-conditional-reads.md).
+
+- **Validator.** `ETag` is a **strong** tag: `"` + the first 128 bits of SHA-256 of the exact
+  response body, as 32 lowercase hex digits + `"`. It covers every byte the client gets (title,
+  byline, document, revision, order and membership). Responses are not content-coded; the tag is
+  opaque and its derivation may change. No request header selects a variant, so there is no
+  `Vary`.
+- **Order.** The resource is resolved first: `404`, `503` and `500` are returned as usual whatever
+  `If-None-Match` says. Only an existing representation is compared, never a guess.
+- **`If-None-Match`.** Parsed as RFC 9110 list (`*`, or entity tags with optional `W/`, OWS and
+  empty elements, several field lines) with weak comparison. A match, or `*`, is `304` with no
+  content and the same `ETag` and `Cache-Control`; otherwise `200` with the body. A malformed field
+  (unquoted tag, `*` inside a list, illegal byte), more than 32 tags or more than 4096 bytes is
+  ignored: the answer is the full `200`, never a `304`.
+- **Cache policy.** `200`/`304`: `Cache-Control: private, no-cache` — a browser may store the bytes
+  but must revalidate before each reuse; no shared cache. Errors of these routes: `no-store`.
+  Drafts and discussion stay `no-store` and have no validator.
+- **Consistency.** Each response is one SQL statement (one snapshot) serialized once; the tag is
+  computed from those bytes, so it never travels with another body. A `304` still runs that query
+  and the serialization: it saves transfer, not database work.
+- **Withdrawal.** A request whose read starts after a withdrawal commits gets `404`, not `304`.
+  Copies a client already received are not recalled by this endpoint.
+- **Consumers.** The web app sends no `If-None-Match` itself and treats a raw `304` as an
+  unexpected status; the browser's HTTP cache adds the validator and hands the application the
+  stored `200`. A client that sends `If-None-Match` itself must handle `304`.
 
 ## Discussion (D2T-02b)
 
