@@ -392,6 +392,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     let title_input = NodeRef::<html::Input>::new();
     let leave_open = RwSignal::new(false);
     let keep_editing = NodeRef::<html::Button>::new();
+    let leave_stay = NodeRef::<html::Button>::new();
+    let leave_discard = NodeRef::<html::Button>::new();
     let last_field = StoredValue::new(Field::Body);
     let page_scroll = StoredValue::new(0.0_f64);
     let preview = RwSignal::new(None::<(String, DocumentDto)>);
@@ -516,6 +518,36 @@ fn Editor(draft: Draft) -> impl IntoView {
         leave.update(|g| session.with_untracked(|s| g.ask_discard(s)));
         request_animation_frame(move || {
             if let Some(button) = keep_editing.get_untracked() {
+                let _ = button.focus();
+            }
+        });
+    };
+    let back_to_leave_choices = move || {
+        leave.update(LeaveGuard::keep_choosing);
+        request_animation_frame(move || {
+            if !leave_open.try_get_untracked().unwrap_or(false)
+                || !leave
+                    .try_with_untracked(|guard| {
+                        matches!(
+                            guard.pending().map(|intent| intent.stage),
+                            Some(LeaveStage::Choosing { .. })
+                        )
+                    })
+                    .unwrap_or(false)
+            {
+                return;
+            }
+            // A pending save can settle while the confirmation is open, removing discard.
+            // In that case return focus to the safe, still-present choice.
+            if let Some(button) = leave_discard
+                .get_untracked()
+                .filter(|button| button.is_connected())
+                .or_else(|| {
+                    leave_stay
+                        .get_untracked()
+                        .filter(|button| button.is_connected())
+                })
+            {
                 let _ = button.focus();
             }
         });
@@ -716,6 +748,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         <div class="vk-dialog__actions">
                             <Button variant=ButtonVariant::Text
                                 id="leave-stay"
+                                button_ref=leave_stay
                                 on_press=move |_| stay()
                             >
                                 "Ở lại"
@@ -738,6 +771,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 </Button>
                                 <Button variant=ButtonVariant::Danger
                                     id="leave-discard"
+                                    button_ref=leave_discard
                                     on_press=move |_| ask_discard()
                                 >
                                     "Rời mà không lưu…"
@@ -754,7 +788,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     <Button variant=ButtonVariant::Text
                         id="discard-back"
                         button_ref=keep_editing
-                        on_press=move |_| leave.update(LeaveGuard::keep_choosing)
+                        on_press=move |_| back_to_leave_choices()
                     >
                         "Quay lại"
                     </Button>
