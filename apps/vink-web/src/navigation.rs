@@ -195,11 +195,16 @@ mod dom {
             let (Some(here), Some(page)) = (window_href(), guard.router_href()) else {
                 return;
             };
+            let window = leptos::prelude::window();
+            let scroll = (
+                window.scroll_x().unwrap_or_default(),
+                window.scroll_y().unwrap_or_default(),
+            );
             // The router has not handled this event yet: its location is still the page's.
-            // Back closes an open overlay before it leaves the screen; the next Back reaches
-            // the page's check.
-            if path_and_query(&page) == path_and_query(&here)
-                || !(guard.close_overlay(CloseReason::Back) || guard.holds(&here))
+            // An overlay consumes traversal even between fragments of the same page. Without
+            // an overlay, fragment-only history stays in-page and bypasses the leave check.
+            if !(guard.close_overlay(CloseReason::Back)
+                || (path_and_query(&page) != path_and_query(&here) && guard.holds(&here)))
             {
                 return;
             }
@@ -207,6 +212,14 @@ mod dom {
             if let Ok(history) = leptos::prelude::window().history() {
                 let _ = history.push_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&page));
             }
+            // Native history restores the traversed entry's scroll after popstate returns.
+            // This traversal was held: keep the current page's position after that step,
+            // unless a newer intent has already moved to a different URL.
+            leptos::prelude::request_animation_frame(move || {
+                if window_href().as_deref() == Some(page.as_str()) {
+                    leptos::prelude::window().scroll_to_with_x_and_y(scroll.0, scroll.1);
+                }
+            });
         });
         let capture = AddEventListenerOptions::new();
         capture.set_capture(true);

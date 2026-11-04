@@ -963,6 +963,50 @@ async function accountAppearance(page) {
   await page.reload();
 }
 
+// Fragment history still belongs to the shell overlay; with no overlay it remains an
+// ordinary in-page traversal and must not ask the dirty editor's leave guard.
+async function shellFragmentHistory(page) {
+  await page.goto(`${args.base}/toi`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'fragment history hydration');
+  await page.eval(`location.hash = 'shell-fragment'`);
+  await page.waitFor(`location.hash === '#shell-fragment'`, 'fragment history entry');
+  await sleep(100);
+  await openProfile(page);
+  await page.capture('1440-fragment-overlay-before-back');
+  await page.eval(`history.back()`);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Back closes Tôi');
+  await sleep(100);
+  check(await page.eval(`location.pathname === '/toi' && location.hash === '#shell-fragment' && document.activeElement?.id === 'profile-trigger'`), 'fragment Back closes the overlay, retains the current URL and restores trigger focus');
+  await page.capture('1440-fragment-overlay-after-back');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.hash === ''`, 'next Back traverses the fragment');
+  await page.eval(`history.forward()`);
+  await page.waitFor(`location.hash === '#shell-fragment'`, 'Forward traverses the fragment without an overlay');
+  check(await page.eval(`location.pathname === '/toi' && !${PROFILE_OPEN}`), 'plain fragment Back/Forward leaves the route and overlay unchanged');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.hash === ''`, 'prepare fragment Forward with overlay');
+  await openProfile(page);
+  await page.eval(`history.forward()`);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Forward closes Tôi');
+  await sleep(100);
+  check(await page.eval(`location.pathname === '/toi' && location.hash === '' && document.activeElement?.id === 'profile-trigger'`), 'fragment Forward also closes the overlay before changing the current URL');
+
+  await page.viewport(1440, 360);
+  await page.eval(`document.documentElement.style.fontSize = '200%'; location.hash = 'shell-scroll'`);
+  await sleep(100);
+  await page.eval(`scrollTo(0, 500)`);
+  const scroll = await page.eval(`scrollY`);
+  check(scroll > 0, 'fragment scroll probe starts below the top of the page');
+  await openProfile(page);
+  await page.eval(`history.back()`);
+  await page.waitFor(`!${PROFILE_OPEN}`, 'scrolled fragment Back closes Tôi');
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  check(await page.eval(`scrollY === ${scroll} && location.hash === '#shell-scroll' && document.activeElement?.id === 'profile-trigger'`), 'held fragment Back preserves nonzero page scroll after native history restoration');
+  await page.capture('1440x360-fragment-scroll-text200');
+  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
+  await page.viewport(1440);
+}
+
 async function adaptiveShell(page) {
   console.log('adaptive navigation and appearance:');
   await page.viewport(1440);
@@ -1074,6 +1118,7 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/'`, 'the next Back leaves the page');
   await page.eval(`history.forward()`);
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'forward returns to Tôi');
+  await shellFragmentHistory(page);
   await openProfile(page);
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
@@ -1177,6 +1222,8 @@ async function adaptiveShell(page) {
 }
 
 async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
+  const workId = editorPath.split('/').at(-1);
+  const serverVersion = (await page.draft(workId)).version;
   console.log('shell utilities preserve the live dirty editor:');
   let writes = 0;
   const listener = (event) => {
@@ -1193,9 +1240,17 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
   await chooseTheme(page, 'dark');
   await page.capture('1280-editor-dirty-overlay-dark');
+  await page.key('Escape');
+  await page.eval(`location.hash = 'editor-fragment'`);
+  await page.waitFor(`location.hash === '#editor-fragment'`, 'dirty editor fragment entry');
+  await sleep(100);
+  await openProfile(page);
   await page.eval(`history.back()`);
   await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes appearance before dirty editor navigation');
-  check(await page.eval(`location.pathname === '${editorPath}' && !document.querySelector('[data-testid=leave-editor]').open`), 'Back from appearance keeps the dirty editor without opening a second dialog');
+  check(await page.eval(`location.pathname === '${editorPath}' && location.hash === '#editor-fragment' && !document.querySelector('[data-testid=leave-editor]').open`), 'fragment Back closes appearance and keeps the dirty editor URL without opening a second dialog');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.hash === ''`, 'plain fragment Back in dirty editor');
+  check(await page.eval(`location.pathname === '${editorPath}' && !document.querySelector('[data-testid=leave-editor]').open`), 'plain fragment Back does not invoke the dirty editor leave guard');
   await openProfile(page);
   await page.key('Escape');
   await page.tabToBody();
@@ -1227,6 +1282,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after mobile resize');
   check((await page.eval(selected)) === LAST_LINE && writes === 0, 'utility changes sent no draft writes and retained the caret selection');
+  check((await page.draft(workId)).version === serverVersion, 'shell and fragment traversal preserve the confirmed draft version');
   page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener), 1);
   await openProfile(page);
   await chooseTheme(page, 'system');
