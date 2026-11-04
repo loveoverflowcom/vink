@@ -858,9 +858,9 @@ async function textContrast(page, theme, surface = 'shell') {
     desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
     explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
-    me: ['#me-title', '#page-account h2', '#page-account .vk-ui-type-label', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
-    account: ['#profile-title', '#overlay-account h2', '#overlay-account .vk-ui-type-label', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked) span', '#profile-menu .vk-ui-button'];
+    me: ['#me-title', '#page-account .vk-ui-type-label', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
+    account: ['#profile-title', '#overlay-account .vk-ui-type-label', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
+  }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -892,39 +892,45 @@ async function accountAppearance(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Tôi route for the appearance matrix');
+  const pageAccount = await page.eval(`document.querySelector('#page-account').textContent`);
   await page.eval(`document.querySelector('#profile-trigger').focus()`);
   await page.key('Enter');
-  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme'`, 'keyboard opens the utility and focuses its selected native radio');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.name === 'page-theme' && document.activeElement.checked && document.activeElement.matches(':focus-visible') && !document.querySelector('#profile-trigger').hasAttribute('aria-haspopup') && document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'page-theme' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') !== 'true' && location.pathname === '/toi'`), 'Tôi on /toi focuses its existing checked radio with visible focus and no duplicate modal');
+  await chooseTheme(page, 'system', 'page-theme');
+  await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
+  await page.key('ArrowRight');
+  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates page preference');
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'account utility host');
+  await openProfile(page);
+  check(await page.eval(`document.querySelector('#overlay-account').textContent === ${JSON.stringify(pageAccount)} && document.querySelector('#profile-title').textContent === 'Tùy chọn' && document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' && document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' && document.querySelector('#profile-trigger').getAttribute('aria-current') !== 'page' && document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`), 'panel shares truthful identity, identifies utility and preserves route active state');
   check(await page.eval(`(() => {
-    const ids = [...document.querySelectorAll('[id]')].map(el => el.id);
-    const labels = group => [...document.querySelectorAll('#' + group + ' label')].map(el => el.textContent).join('|');
-    return new Set(ids).size === ids.length &&
-      document.querySelector('#page-account').textContent === document.querySelector('#overlay-account').textContent &&
-      labels('page-theme') === 'Sáng|Tối|Hệ thống' && labels('page-theme') === labels('overlay-theme') &&
-      ['page-theme', 'overlay-theme'].every(group => {
-        const el = document.getElementById(group);
-        return el.tagName === 'FIELDSET' && el.querySelector('legend') &&
-          el.getAttribute('aria-describedby') === group + '-help' &&
-          el.querySelectorAll('input[type=radio]:checked').length === 1;
-      }) && !document.querySelector('#page-account img, #overlay-account img');
-  })()`), 'page and overlay share truthful account content, named native radio groups and unique IDs');
+    const ids = [...document.querySelectorAll('[id]')].map(el => el.id), group = document.querySelector('#overlay-theme');
+    return new Set(ids).size === ids.length && group.tagName === 'FIELDSET' && group.querySelector('legend').textContent === 'Chế độ màu' &&
+      group.getAttribute('aria-describedby') === 'overlay-theme-help' && group.querySelectorAll('input[type=radio]').length === 3 &&
+      [...group.querySelectorAll('label')].map(el => el.textContent).join('|') === 'Sáng|Tối|Hệ thống' &&
+      [...group.querySelectorAll('label')].every(el => getComputedStyle(el, '::before').maskImage.startsWith('url(') && getComputedStyle(el, '::after').maskImage.startsWith('url(')) &&
+      !document.querySelector('#overlay-account img');
+  })()`), 'native fieldset/legend, full labels, decorative icons/checks and unique IDs');
   await chooseTheme(page, 'system');
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
-  await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native arrow key updates both appearance views through the single owner');
-  check(await page.eval(`(() => { const target = document.activeElement.closest('label'), style = getComputedStyle(target); return target.matches(':has(:checked)') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) >= 3 && document.activeElement.matches(':focus-visible'); })()`), 'keyboard selection retains a visible focus outline and the native checked marker');
+  await page.waitFor(`document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates utility preference');
+  check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) === 2 && style.outlineOffset === '-2px' && style.boxShadow === 'none' && getComputedStyle(face, '::after').opacity === '1'; })()`), 'native keyboard focus paints one flush 2px perimeter independently of the selected check');
   await page.key('ArrowLeft');
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'system'`, 'native ArrowLeft keeps the overlay open and synchronizes the page');
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'system'`, 'native ArrowLeft keeps panel open');
   await page.eval(`document.querySelector('#overlay-theme input[value=dark]').focus()`);
   await page.key('Space');
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'dark' && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused option in both views');
-  await page.key('Escape');
-  await chooseTheme(page, 'dark', 'page-theme');
-  await openProfile(page);
-  check(await page.eval(`document.activeElement?.value === 'dark' && document.activeElement?.name === 'overlay-theme'`), 'page theme changes are selected and focused when the overlay opens');
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused choice');
   await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#overlay-theme input[value="' + value + '"]').click(); })()`);
-  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#page-theme input:checked')?.value === 'dark' && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle both views on the last choice without dismissing the overlay');
-  await assertBrand(page, 'dark');
+  await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle on the final preference');
+  check(await page.eval(`(() => { const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect(), dialog = document.querySelector('#profile-menu'); return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng tùy chọn' && close.querySelector('[data-icon=close]') && getComputedStyle(dialog).backgroundColor.startsWith('rgb(') && getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' && [...dialog.querySelectorAll('*')].every(el => !['auto','scroll'].includes(getComputedStyle(el).overflowY)); })()`), 'opaque panel, visible scrim, one scroller and named close icon target >=48px');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
+  await page.key('ArrowRight');
+  check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
+  await page.capture('appearance-forced-colors-reduced-motion');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   await page.key('Escape');
 
   for (const { width, rail, height } of [
@@ -947,14 +953,6 @@ async function accountAppearance(page) {
         await chooseTheme(page, theme);
         const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
         check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling, including its brand`);
-        if (width !== 1024 && rail === 'expanded') {
-          await page.key('Escape');
-          await page.eval(`scrollTo(0, 0)`);
-          await page.capture(`account-page-${scenario}`);
-          await page.eval(`document.querySelector('#page-theme').scrollIntoView({ block: 'end' })`);
-          await page.capture(`account-page-${scenario}-appearance`);
-          await openProfile(page);
-        }
         check(await page.eval(`(() => {
           const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
           return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
@@ -984,13 +982,14 @@ async function accountAppearance(page) {
   }
   await page.eval(`document.documentElement.style.fontSize = ''; localStorage.removeItem('vink.ui.rail')`);
   await page.viewport(1440);
-  await page.reload();
+  await page.goto(`${args.base}/toi`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Me restored');
 }
 
 // Fragment history still belongs to the shell overlay; with no overlay it remains an
 // ordinary in-page traversal and must not ask the dirty editor's leave guard.
 async function shellFragmentHistory(page) {
-  await page.goto(`${args.base}/toi`);
+  await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'fragment history hydration');
   await page.eval(`location.hash = 'shell-fragment'`);
   await page.waitFor(`location.hash === '#shell-fragment'`, 'fragment history entry');
@@ -1000,20 +999,20 @@ async function shellFragmentHistory(page) {
   await page.eval(`history.back()`);
   await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Back closes Tôi');
   await sleep(100);
-  check(await page.eval(`location.pathname === '/toi' && location.hash === '#shell-fragment' && document.activeElement?.id === 'profile-trigger'`), 'fragment Back closes the overlay, retains the current URL and restores trigger focus');
+  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '#shell-fragment' && document.activeElement?.id === 'profile-trigger'`), 'fragment Back closes the overlay, retains the current URL and restores trigger focus');
   await page.capture('1440-fragment-overlay-after-back');
   await page.eval(`history.back()`);
   await page.waitFor(`location.hash === ''`, 'next Back traverses the fragment');
   await page.eval(`history.forward()`);
   await page.waitFor(`location.hash === '#shell-fragment'`, 'Forward traverses the fragment without an overlay');
-  check(await page.eval(`location.pathname === '/toi' && !${PROFILE_OPEN}`), 'plain fragment Back/Forward leaves the route and overlay unchanged');
+  check(await page.eval(`location.pathname === '/ban-viet' && !${PROFILE_OPEN}`), 'plain fragment Back/Forward leaves the route and overlay unchanged');
   await page.eval(`history.back()`);
   await page.waitFor(`location.hash === ''`, 'prepare fragment Forward with overlay');
   await openProfile(page);
   await page.eval(`history.forward()`);
   await page.waitFor(`!${PROFILE_OPEN}`, 'fragment Forward closes Tôi');
   await sleep(100);
-  check(await page.eval(`location.pathname === '/toi' && location.hash === '' && document.activeElement?.id === 'profile-trigger'`), 'fragment Forward also closes the overlay before changing the current URL');
+  check(await page.eval(`location.pathname === '/ban-viet' && location.hash === '' && document.activeElement?.id === 'profile-trigger'`), 'fragment Forward also closes the overlay before changing the current URL');
 
   await page.viewport(1440, 360);
   await page.eval(`document.documentElement.style.fontSize = '200%'; location.hash = 'shell-scroll'`);
@@ -1133,21 +1132,28 @@ async function adaptiveShell(page) {
   await page.click('#open-me');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'real Tôi destination');
   check(await page.eval(`document.querySelector('#profile-trigger').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
+  await page.eval(`document.querySelector('#profile-trigger').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.name === 'page-theme' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') !== 'true'`), '/toi uses existing settings instead of a duplicate panel');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'overlay history host');
   await openProfile(page);
   await page.eval(`history.back()`);
-  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes Tôi');
+  await page.waitFor(`!${PROFILE_OPEN}`, 'Back closes utility');
   await sleep(200);
-  check(await page.eval(`location.pathname === '/toi' && document.activeElement?.id === 'profile-trigger'`), 'Back closes the overlay before leaving the page and restores trigger focus');
+  check(await page.eval(`location.pathname === '/' && document.activeElement?.id === 'profile-trigger'`), 'Back closes panel before leaving its host route and restores focus');
   await page.eval(`history.back()`);
-  await page.waitFor(`location.pathname === '/'`, 'the next Back leaves the page');
+  await page.waitFor(`location.pathname === '/toi'`, 'next Back leaves host');
   await page.eval(`history.forward()`);
-  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#me-title')`, 'forward returns to Tôi');
+  await page.waitFor(`location.pathname === '/'`, 'Forward returns to host');
   await shellFragmentHistory(page);
   await openProfile(page);
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
-  check(await page.eval(`location.pathname === '/toi' && document.activeElement?.id === 'noi-dung'`), 'resize retains route and moves focus to the visible main');
+  check(await page.eval(`location.pathname === '/ban-viet' && document.activeElement?.id === 'noi-dung'`), 'resize retains host route and focuses visible main');
   check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
+  await page.click('.vk-ui-bottom-nav a[href="/toi"]');
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme')`, 'compact Tôi goes to canonical route');
 
   await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
   await chooseTheme(page, 'system', 'page-theme');
@@ -1172,12 +1178,15 @@ async function adaptiveShell(page) {
   await page.click('#navigation-toggle');
   check(await page.eval(`document.documentElement.dataset.theme === 'dark' && document.documentElement.dataset.rail === 'compact'`), 'storage-denied theme and rail still work in memory');
   await assertBrand(page, 'dark');
+  // Client navigation retains the session preference even while storage is unavailable.
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`location.pathname === '/'`, 'storage-denied panel host');
   await openProfile(page);
-  check(await page.eval(`document.activeElement?.value === 'dark' && document.querySelector('#page-theme input:checked')?.value === 'dark'`), 'storage denial keeps page and overlay on the same session-local choice');
+  check(await page.eval(`document.activeElement?.value === 'dark'`), 'storage denial keeps utility on the session-local preference');
   await page.capture('appearance-storage-denied-overlay-dark');
   await chooseTheme(page, 'system');
-  check(await page.eval(`document.querySelector('#page-theme input:checked')?.value === 'system'`), 'storage-denied system choice updates both views');
-  await page.key('Escape');
+  await page.click('#open-me');
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'system'`, 'storage-denied System survives client navigation');
   await page.capture('appearance-storage-denied-page-system');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
@@ -1189,14 +1198,7 @@ async function adaptiveShell(page) {
   for (const width of [1440, 1024, 834, 390, 320]) {
     await page.viewport(width, width === 390 ? 844 : 900);
     for (const theme of ['system', 'light', 'dark']) {
-      if (width >= 760) {
-        await openProfile(page);
-        await chooseTheme(page, theme);
-        if (width === 1440) await textContrast(page, theme);
-        await page.key('Escape');
-      } else {
-        await chooseTheme(page, theme, 'page-theme');
-      }
+      await chooseTheme(page, theme, 'page-theme');
       if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
@@ -1204,6 +1206,11 @@ async function adaptiveShell(page) {
         await page.capture(`${width}-me-${theme}-text${scale}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
+        check(await page.eval(`(() => {
+          const region = document.querySelector('.vk-appearance-region'), faces = [...document.querySelectorAll('#page-theme label')].map(el => el.getBoundingClientRect());
+          const wide = region.clientWidth >= 38 * parseFloat(getComputedStyle(region).fontSize);
+          return faces.length === 3 && (wide ? faces.every(r => Math.abs(r.top - faces[0].top) < 1 && Math.abs(r.width - faces[0].width) < 1) : faces.every((r,i) => i === 0 || r.top > faces[i-1].bottom));
+        })()`), `${width}px/${scale}% ${theme}: connected choices use actual container width and font size for horizontal/vertical reflow`);
         check(await page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].every(el => [...el.textContent.matchAll(/\\S+/g)].every(word => {
           const range = document.createRange(); range.setStart(el.firstChild, word.index); range.setEnd(el.firstChild, word.index + word[0].length);
           return range.getClientRects().length === 1;
@@ -1265,7 +1272,7 @@ async function appearanceFirstPaint(page) {
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
     for (const width of [1440, 320]) {
       await page.viewport(width);
-      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`] });
+      await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
       await page.goto(`${args.base}/toi`);
       navigations++;
       for (const scale of [100, 200]) {
@@ -1687,6 +1694,10 @@ async function nativeExploreSearch(page) {
       await page.send('Input.dispatchKeyEvent', { type, key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, ...(type === 'keyDown' ? { text: '\r' } : {}) });
     }
   };
+  // A no-JS document cannot consume HydrationScripts' WASM preload. Block both
+  // assets here, as in the bootstrap checks, so the next hydrated document cannot
+  // wait behind a stranded same-URL preload (observed ~20s in cold debug builds).
+  await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
   await page.send('Emulation.setScriptExecutionDisabled', { value: true });
   try {
     await page.goto(`${args.base}/?q=old&q=duplicate&unused=1`);
@@ -1716,6 +1727,7 @@ async function nativeExploreSearch(page) {
     check(true, 'native submit button returns the correct SSR no-results state');
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled', { value: false });
+    await page.send('Network.setBlockedURLs', { urls: [] });
   }
 }
 

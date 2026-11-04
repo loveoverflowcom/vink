@@ -93,52 +93,96 @@ a {
   left: calc(var(--vk-ui-rail-width) + var(--vk-space-4));
   bottom: var(--vk-space-4);
   margin: 0;
-  width: min(26rem, calc(100vw - var(--vk-ui-rail-width) - 2 * var(--vk-space-4)));
+  width: min(28rem, calc(100vw - var(--vk-ui-rail-width) - 2 * var(--vk-space-4)));
   max-height: calc(100dvh - 2 * var(--vk-space-4));
   overflow-y: auto;
-  padding: var(--vk-space-4);
+  overscroll-behavior: contain;
+  scroll-padding: var(--vk-space-4);
+  padding: var(--vk-space-6);
   border: 0;
   border-radius: var(--vk-radius-xl);
-  background: var(--vk-surface-container);
+  background: var(--vk-surface-container-low);
   color: var(--vk-on-surface);
   box-shadow: var(--vk-shadow);
 }
 
-.vk-profile-menu::backdrop { background: transparent; }
-.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-4); }
+.vk-profile-menu::backdrop { background: var(--vk-scrim); }
+.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-6); }
 .vk-profile-menu > * { flex-shrink: 0; }
 .vk-profile-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--vk-space-2); }
-.vk-profile-heading h2 { margin: 0; font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); }
-.vk-preference-region {
-  min-width: 0;
-  display: grid;
-  gap: var(--vk-space-4);
-  padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
-  border: 1px solid var(--vk-outline-variant);
-  border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
+.vk-profile-heading h2 { margin: 0; font-family: var(--vk-font-ui); font-size: var(--vk-type-title-size); }
+.vk-profile-heading .vk-ui-action { flex: none; }
+.vk-profile-heading .vk-ui-icon-button { min-inline-size: 48px; min-block-size: 48px; background: var(--vk-surface-container); }
+.vk-preference-region { min-width: 0; display: grid; gap: var(--vk-space-4); }
+.vk-preference-region h2 { margin: 0; font-family: var(--vk-font-ui); }
+.vk-account-status { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: flex-start; }
+.vk-account-status > div { min-width: 0; flex: 1 1 12em; }
+.vk-account-status p { margin: 0; overflow-wrap: normal; }
+/* R2 app recipe on the unchanged native RadioGroup. The approved R2 prototype's
+   decorative sun/moon/device/check glyphs are masks, so accessible labels stay unchanged. */
+.vk-appearance-region { container: vk-appearance / inline-size; }
+.vk-appearance-region .vk-ui-group > legend {
+  position: absolute; inline-size: 1px; block-size: 1px; margin: -1px;
+  padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
-.vk-preference-region h2 { margin: 0; }
-.vk-account-status { display: flex; gap: var(--vk-space-3); align-items: flex-start; }
-.vk-account-status > div { min-width: 0; }
-.vk-account-status p { margin: 0; overflow-wrap: anywhere; }
-/* Only the app's appearance composition decorates the existing native radio targets. */
-.vk-appearance-region label {
-  width: 100%;
-  gap: var(--vk-space-2);
-  padding: var(--vk-space-2);
-  border: 2px solid var(--vk-outline-variant);
-  border-radius: var(--vk-radius-md);
+.vk-appearance-region__choices {
+  padding: var(--vk-space-1); border-radius: var(--vk-radius-xl); background: var(--vk-surface-container);
 }
-.vk-appearance-region label:hover { border-color: var(--vk-primary); }
-.vk-appearance-region label:has(:checked) {
-  border-color: var(--vk-primary);
-  background: var(--vk-primary-container);
-  color: var(--vk-on-primary-container);
+.vk-appearance-region .vk-ui-choice__target {
+  position: relative; display: flex; inline-size: 100%; min-inline-size: 0;
+  min-block-size: 60px; gap: var(--vk-space-3); padding: var(--vk-space-3) var(--vk-space-4);
+  border: 0; border-radius: var(--vk-radius-md); color: var(--vk-on-surface-variant);
+  transition: background-color var(--vk-duration-short) ease, color var(--vk-duration-short) ease;
 }
-.vk-appearance-region label:focus-within { outline: 3px solid var(--vk-focus); outline-offset: 2px; }
+.vk-appearance-region .vk-ui-choice__input {
+  position: absolute; inset: 0; inline-size: 100%; block-size: 100%; margin: 0; opacity: 0;
+}
+.vk-appearance-region label:first-of-type { border-start-start-radius: var(--vk-radius-lg); border-start-end-radius: var(--vk-radius-lg); }
+.vk-appearance-region label:last-of-type { border-end-start-radius: var(--vk-radius-lg); border-end-end-radius: var(--vk-radius-lg); }
+.vk-appearance-region .vk-ui-choice__label { min-inline-size: 0; overflow-wrap: normal; word-break: normal; font-weight: var(--vk-type-label-weight); }
+.vk-appearance-region label::before,
+.vk-appearance-region label::after {
+  content: ""; display: block; flex: none; inline-size: var(--vk-size-icon); block-size: var(--vk-size-icon);
+  background: currentColor; mask-position: center; mask-repeat: no-repeat; mask-size: contain;
+}
+.vk-appearance-region label:has([value="light"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M16%2012a4%204%200%201%201-8%200%204%204%200%200%201%208%200ZM12%202v2m0%2016v2M2%2012h2m16%200h2M5%205l1.5%201.5m11%2011L19%2019M5%2019l1.5-1.5m11-11L19%205%22%2F%3E%3C%2Fsvg%3E"); }
+.vk-appearance-region label:has([value="dark"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20.8%2013.2A9%209%200%200%201%2010.8%203.1%209%209%200%201%200%2020.8%2013.2Z%22%2F%3E%3C%2Fsvg%3E"); }
+.vk-appearance-region label:has([value="system"])::before { mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%204h12a3%203%200%200%201%203%203v7a3%203%200%200%201-3%203H6a3%203%200%200%201-3-3V7a3%203%200%200%201%203-3ZM8%2021h8m-4-4v4M8%208h8%22%2F%3E%3C%2Fsvg%3E"); }
+.vk-appearance-region label::after {
+  inline-size: var(--vk-size-icon-sm); block-size: var(--vk-size-icon-sm); margin-inline-start: auto; opacity: 0;
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.8%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22m5%2012%204%204L19%206%22%2F%3E%3C%2Fsvg%3E");
+}
+.vk-appearance-region label:has(:checked) { background: var(--vk-primary-container); color: var(--vk-on-primary-container); border-radius: var(--vk-radius-lg); }
+.vk-appearance-region label:has(:checked)::after { opacity: 1; }
+.vk-appearance-region label:hover:not(:has(:checked, :disabled)) { background: var(--vk-surface-container-high); }
+.vk-appearance-region label:has(:focus-visible) { outline: 2px solid var(--vk-focus); outline-offset: -2px; }
+.vk-appearance-region label:has(:disabled) { color: var(--vk-disabled-content); cursor: not-allowed; }
+.vk-appearance-region .vk-ui-field__help { margin: 0; }
+@container vk-appearance (min-width: 38em) {
+  .vk-me .vk-appearance-region .vk-ui-group { flex-direction: row; }
+  .vk-me .vk-appearance-region .vk-ui-choice__target { flex: 1 1 0; min-block-size: 96px; flex-direction: column; align-items: flex-start; justify-content: space-between; }
+  .vk-me .vk-appearance-region label::after { position: absolute; inset-block-start: var(--vk-space-3); inset-inline-end: var(--vk-space-4); }
+  .vk-me .vk-appearance-region label:first-of-type { border-radius: var(--vk-radius-lg) var(--vk-radius-md) var(--vk-radius-md) var(--vk-radius-lg); }
+  .vk-me .vk-appearance-region label:last-of-type { border-radius: var(--vk-radius-md) var(--vk-radius-lg) var(--vk-radius-lg) var(--vk-radius-md); }
+  .vk-me .vk-appearance-region label:has(:checked) { border-radius: var(--vk-radius-lg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vk-appearance-region label { transition: none; }
+}
+@media (forced-colors: active) {
+  .vk-profile-menu { outline: 1px solid CanvasText; }
+  .vk-appearance-region label::before,
+  .vk-appearance-region label::after { forced-color-adjust: none; }
+  .vk-appearance-region__choices { outline: 1px solid CanvasText; }
+  .vk-appearance-region label:has(:checked) { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+  .vk-appearance-region label:has(:focus-visible) { outline-color: Highlight; }
+}
 .vk-me { max-width: var(--vk-measure); display: grid; gap: var(--vk-space-6); padding-block: var(--vk-space-6); }
 .vk-me > h1 { margin: 0; }
+/* Keep one 16px gutter at narrow widths even when root text doubles. */
+@media (max-width: 759px) {
+  .vk-me { margin-inline: min(0px, calc(16px - var(--vk-space-4))); }
+}
 .vk-main {
   flex: 1;
   width: 100%;
