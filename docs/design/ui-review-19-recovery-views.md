@@ -77,7 +77,9 @@ vòng focus không hiện trong ảnh; vòng focus được kiểm riêng bằng
 
 ## Ngoài phạm vi, chưa sửa
 
-- Submit ô tìm Explore tạo URL `?q=…&=` (submitter không tên của `Form`); có sẵn trên develop, không
-  mất query, không thuộc recovery views.
+- Submit ô tìm Explore tạo URL `?q=…&=`: `leptos::form::form_data_from_event` (leptos 0.8.22)
+  append cả nút submit không tên, trái với HTML. Có sẵn trên develop, không thuộc recovery views;
+  sửa ở PR riêng `codex/explore-search-url` bằng `on_form_data` bỏ cặp tên rỗng, kèm smoke kiểm
+  URL chỉ có `q` khi bấm "Tìm" và khi Enter.
 - Chưa chạy CMP/Android/iOS: patch chỉ đổi CSS Web và caller Leptos, API `StatePanel` không đổi.
 - Chưa kiểm Safari/Firefox, screen reader, OS text scale; text200 là cỡ chữ gốc của trang.

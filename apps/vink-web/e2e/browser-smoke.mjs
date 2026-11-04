@@ -1350,6 +1350,7 @@ async function publicReading(page) {
     await page.send('Input.insertText', { text: query });
     await page.click('#public-search button[type=submit]');
     await page.waitFor(`new URL(location.href).searchParams.get('q') === ${JSON.stringify(query)} && document.querySelector('#public-query')?.value === ${JSON.stringify(query)}`, 'submitted public search URL');
+    check(await page.eval(`JSON.stringify([...new URL(location.href).searchParams.keys()]) === '["q"]'`), `public search URL carries only q, not an unnamed submitter pair (${await page.eval('location.search')})`);
   };
   const setPublicTheme = async theme => {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
@@ -1527,6 +1528,11 @@ async function publicReading(page) {
   const loadedRequests = listRequests;
   await searchPublic('duong ve');
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1`, 'unaccented public title match');
+  // Implicit submission (Enter in the field) also names the button as submitter.
+  await page.eval(`document.querySelector('#public-query').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1 && document.activeElement?.id === 'public-query'`, 'Enter resubmits the same public search');
+  check(await page.eval(`location.search === '?q=duong+ve'`), `Enter keeps the public search URL to q only (${await page.eval('location.search')})`);
   check(await page.eval(`document.querySelector('.vk-public-row h3').textContent === ${JSON.stringify(cards[0].title)}`), 'search preserves the authored NFD title');
   await searchPublic('TRẦN LINH'.normalize('NFD'));
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 6`, 'decomposed public author match');
