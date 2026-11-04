@@ -5,12 +5,17 @@ use leptos::prelude::*;
 pub(crate) const THEME_KEY: &str = "vink.ui.theme";
 pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 
-// Runs before CSS; only mutates the document root outside the hydrated app. The browser effect
-// reads these same keys after hydration. Storage denial leaves system/context defaults intact.
+// Runs before CSS; only mutates the document root outside the hydrated app. Hydration adopts
+// that theme synchronously; the rail effect reads its key. Storage denial keeps defaults intact.
 // Head links are outside the hydrated body. Observe the existing theme authority so explicit
 // choices, system changes and storage-denied sessions share one icon/manifest selection.
 pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}
 (()=>{const root=document.documentElement,media=matchMedia('(prefers-color-scheme: dark)');const sync=()=>{const theme=root.dataset.theme||(media.matches?'dark':'light');document.getElementById('vink-favicon').setAttribute('href','/pkg/brand/vink-mark-'+theme+'-compact.svg');document.getElementById('vink-manifest').setAttribute('href','/pkg/brand/manifest-'+theme+'.webmanifest')};sync();new MutationObserver(sync).observe(root,{attributes:true,attributeFilter:['data-theme']});media.addEventListener('change',sync)})()"#;
+
+// The head bootstrap cannot see SSR controls yet. Run directly after each group's markup,
+// before the parser yields to paint, and change properties only (not the hydrated DOM shape).
+// Read the root authority rather than storage again; hydration adopts this same preference.
+const THEME_PICKER_BOOTSTRAP: &str = r#"(()=>{const group=document.currentScript.previousElementSibling,theme=document.documentElement.dataset.theme||'system';for(const input of group.querySelectorAll('input[type=radio]'))input.checked=input.value===theme})()"#;
 
 /// Theme preference values and parsing are owned by the UI system; this module keeps the
 /// storage key, the pre-CSS bootstrap and when to persist.
@@ -27,14 +32,21 @@ pub(crate) struct Appearance {
 
 impl Appearance {
     pub fn provide() -> Self {
+        #[cfg(feature = "hydrate")]
+        let theme = document()
+            .document_element()
+            .and_then(|root| root.get_attribute("data-theme"))
+            .map(|value| Theme::parse(&value))
+            .unwrap_or(Theme::System);
+        #[cfg(not(feature = "hydrate"))]
+        let theme = Theme::System;
         let state = Self {
-            theme: RwSignal::new(Theme::System),
+            theme: RwSignal::new(theme),
             rail: RwSignal::new(None),
         };
         provide_context(state);
         #[cfg(feature = "hydrate")]
         Effect::new(move |_| {
-            state.theme.set(Theme::parse(&read(THEME_KEY)));
             state.rail.set(Rail::parse(&read(RAIL_KEY)));
         });
         state
@@ -106,6 +118,7 @@ pub(crate) fn ThemePicker(group: &'static str) -> impl IntoView {
                 help="Chỉ áp dụng trên thiết bị này. Hệ thống theo giao diện của thiết bị."
                 value=Signal::derive(move || Some(appearance.theme.get().value().to_string()))
                 on_change=move |value: String| appearance.set_theme(Theme::parse(&value)) />
+            <script inner_html=THEME_PICKER_BOOTSTRAP></script>
         </section>
     }
 }

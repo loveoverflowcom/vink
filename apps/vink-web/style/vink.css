@@ -82,6 +82,11 @@ a {
   .vk-rail-brand .vk-brand__name { display: none; }
 }
 
+/* Large text plus a short rail's scrollbar can leave less room than the brand's row. */
+@container vk-ui-rail (min-width: 101px) {
+  .vk-rail-brand { max-inline-size: 100%; flex-wrap: wrap; }
+}
+
 .vk-profile-menu {
   position: fixed;
   inset: auto;
