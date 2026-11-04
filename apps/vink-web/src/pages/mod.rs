@@ -100,7 +100,8 @@ pub fn Home() -> impl IntoView {
                             }
                             Err(_) => {
                                 status.set(503);
-                                view! { <Unavailable return_href=explore_href(&query.get_untracked(), None) /> }.into_any()
+                                // Explore is already the return route: only the reload recovers here.
+                                view! { <Unavailable /> }.into_any()
                             }
                         }
                     })
@@ -256,9 +257,17 @@ fn PublicationView(publication: Publication) -> impl IntoView {
 
 #[component]
 fn Unavailable(
-    #[prop(default = "/".to_string())] return_href: String,
+    /// Where to leave to. `None` on Explore itself, whose same-URL link would neither leave
+    /// nor refetch the list.
+    #[prop(optional, into)]
+    return_href: Option<String>,
     #[prop(default = HeadingLevel::H2)] heading: HeadingLevel,
 ) -> impl IntoView {
+    let message = if return_href.is_some() {
+        "Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá."
+    } else {
+        "Chưa thể tải danh sách lúc này. Đây không phải danh sách rỗng; bạn có thể tải lại trang."
+    };
     let location = leptos_router::hooks::use_location();
     let retry_href = Memo::new(move |_| {
         let mut href = location.pathname.get();
@@ -276,7 +285,7 @@ fn Unavailable(
     });
     view! {
         <div data-testid="public-unavailable" role="alert">
-            <StatePanel heading content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: "Tạm thời chưa đọc được nội dung.".into(), message: "Chưa thể tải nội dung lúc này. Bạn có thể tải lại trang hoặc quay về Khám phá.".into(), actions: vec![], code: None }>
+            <StatePanel heading content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: "Tạm thời chưa đọc được nội dung.".into(), message: message.into(), actions: vec![], code: None }>
                 <vink_ui::Link href=retry_href attr:rel="external" attr:id="retry-public" variant=vink_ui::LinkVariant::Standalone
                     on:click=move |_event: leptos::ev::MouseEvent| {
                         #[cfg(feature = "hydrate")]
@@ -287,7 +296,9 @@ fn Unavailable(
                             let _ = window().location().reload();
                         }
                     }>"Thử tải lại"</vink_ui::Link>
-                <vink_ui::Link href=return_href.clone() variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
+                {return_href.clone().map(|href| view! {
+                    <vink_ui::Link href variant=vink_ui::LinkVariant::Standalone>"Về Khám phá"</vink_ui::Link>
+                })}
             </StatePanel>
         </div>
     }

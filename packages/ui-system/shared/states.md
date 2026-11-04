@@ -129,7 +129,10 @@ frame/dấu chấm tải, không lặp sau recomposition). Lỗi/retry không t�
 
 ```text
 StatePanel #state-panel        — Symbol(icon, ẩn với AT) → Heading → Explanation → Primary recovery
-                                 → Secondary actions → Code ("Mã: …", chữ nhỏ); căn trái, measure đọc
+                                 → Secondary actions → Code ("Mã: …", chữ nhỏ); căn trái, measure đọc.
+                                 Primary = typed action đầu (Filled); không có typed action thì Web
+                                 tô Primary cho link Standalone đứng đầu slot (GET chạy trước hydrate),
+                                 CMP caller truyền VinkButton Filled
 InlineNotice #inline-notice    — Icon + Title? + Message (không cắt, xuống dòng) + Action?; tone bằng icon + chữ
 Banner #banner                 — như InlineNotice, rộng hết vùng chứa, đầu trang/vùng; không che control
 Skeleton #skeleton             — cùng geometry/thứ tự đọc nội dung thật (dòng tiêu đề, meta, đoạn);

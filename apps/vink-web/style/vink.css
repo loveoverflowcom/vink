@@ -192,14 +192,15 @@ a {
 @container vk-explore (max-width: 28rem) {
   #public-results > .vk-public-scope { grid-column: 1 / -1; grid-row: auto; margin-top: var(--vk-space-1); text-align: start; }
 }
-/* No match is a recovery inside the stream: centered, its title below the H2 it belongs to. */
-[data-testid=public-no-results] > .vk-ui-panel { max-inline-size: none; justify-items: center; text-align: center; }
-[data-testid=public-no-results] .vk-ui-heading {
+/* Empty, no-match and unavailable are one recovery slot inside the stream: centered, full column,
+ * titled below the H2 they belong to. Reader keeps its own (H1) unavailable panel. */
+#community-stream [data-testid^=public-] > .vk-ui-panel { max-inline-size: none; justify-items: center; text-align: center; }
+#community-stream [data-testid^=public-] .vk-ui-heading {
   font-size: var(--vk-type-title-size);
   line-height: var(--vk-type-title-line-height);
   letter-spacing: var(--vk-type-title-tracking);
 }
-[data-testid=public-no-results] .vk-ui-panel__actions { justify-content: center; }
+#community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
 
 .vk-discovery-tools { container-type: inline-size; max-width: 40rem; margin-bottom: var(--vk-space-8); }
 .vk-public-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--vk-space-1) var(--vk-space-2); }
