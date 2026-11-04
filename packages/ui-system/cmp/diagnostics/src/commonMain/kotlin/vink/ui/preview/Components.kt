@@ -32,6 +32,7 @@ import vink.ui.ChoiceOption
 import vink.ui.ColorRole
 import vink.ui.Direction
 import vink.ui.FieldMode
+import vink.ui.FieldVariant
 import vink.ui.GridMin
 import vink.ui.HeadingLevel
 import vink.ui.IconName
@@ -408,7 +409,7 @@ private fun FieldText(scenario: String) {
     }
     val (title, setTitle) = textState(initial as String, "title")
     val (email, setEmail) = textState("", "contact")
-    VinkTextField(label as String, title, setTitle, Modifier.testTag("field:title"), help = "Có thể sửa sau; Vink không tự cắt khoảng trắng.", error = error as String?, required = true, mode = mode as FieldMode)
+    VinkTextField(label as String, title, setTitle, Modifier.testTag("field:title"), help = "Có thể sửa sau; Vink không tự cắt khoảng trắng.", error = error as String?, required = true, mode = mode as FieldMode, variant = if (scenario == "external-label") FieldVariant.ExternalLabel else FieldVariant.FloatingTonal)
     VinkTextField("Email liên hệ", email, setEmail, Modifier.testTag("field:contact"), kind = TextKind.Email)
     Box(Modifier.testTag("title-value")) { VinkText("Giá trị caller giữ: \"${title.text}\" · chọn ${title.selection.start}..${title.selection.end}", tone = TextTone.Muted) }
 }

@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.5.2",
+  "version": "0.5.3",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -374,6 +374,10 @@
         {
           "id": "long-label",
           "label": "Nhãn dài và giá trị 0"
+        },
+        {
+          "id": "external-label",
+          "label": "Nhãn ngoài"
         }
       ],
       "status": {

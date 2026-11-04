@@ -19,6 +19,14 @@ pub enum FieldMode {
     Disabled,
 }
 
+/// Short-field presentation; both variants keep one stable native input.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum FieldVariant {
+    #[default]
+    ExternalLabel,
+    FloatingTonal,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TextKind {
     #[default]
@@ -229,13 +237,17 @@ fn text_field(
     max_length: Option<u32>,
     input_ref: Option<NodeRef<leptos::html::Input>>,
     on_focus: Option<Callback<()>>,
+    variant: FieldVariant,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
+    let help =
+        help.or_else(|| (mode == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into()));
     let has_help = help.is_some();
     let described = {
         let id = id.clone();
         Signal::derive(move || described_by(&id, has_help, invalid.get()))
     };
+    let floating = variant == FieldVariant::FloatingTonal;
     let node = input_ref.unwrap_or_default();
     let props = TextProps {
         id: id.clone(),
@@ -246,7 +258,11 @@ fn text_field(
         invalid,
         required,
         described,
-        placeholder,
+        placeholder: if floating {
+            Some(placeholder.unwrap_or_else(|| " ".into()))
+        } else {
+            placeholder
+        },
         autocomplete,
         name,
         max_length,
@@ -271,7 +287,7 @@ fn text_field(
     };
     view! {
         <div
-            class="vk-ui-field"
+            class=if floating { "vk-ui-field vk-ui-field--floating" } else { "vk-ui-field" }
             data-mode=match mode {
                 FieldMode::Editable => "editable",
                 FieldMode::ReadOnly => "read-only",
@@ -279,13 +295,21 @@ fn text_field(
             }
             data-invalid=move || invalid.get().then_some("true")
         >
-            <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>
-                {label}
-                {required_mark(required)}
-            </label>
+            {(!floating).then(|| view! {
+                <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>
+                    {label.clone()}
+                    {required_mark(required)}
+                </label>
+            })}
             <div class="vk-ui-field__control" data-search=search.then_some("true")>
                 {search.then(|| view! { <Icon name=IconName::Search /> })}
                 {text_control(control, props, node)}
+                {floating.then(|| view! {
+                    <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>
+                        {label}
+                        {required_mark(required)}
+                    </label>
+                })}
                 {clear}
             </div>
             {messages(id, help, error)}
@@ -304,6 +328,7 @@ pub fn TextField(
     #[prop(optional)] required: bool,
     #[prop(optional)] mode: FieldMode,
     #[prop(optional)] kind: TextKind,
+    #[prop(optional)] variant: FieldVariant,
     #[prop(optional, into)] placeholder: Option<String>,
     #[prop(optional, into)] autocomplete: Option<String>,
     #[prop(optional, into)] name: Option<String>,
@@ -328,6 +353,7 @@ pub fn TextField(
         max_length,
         input_ref,
         on_focus,
+        variant,
     )
 }
 
@@ -362,6 +388,7 @@ pub fn TextArea(
         None,
         None,
         None,
+        FieldVariant::ExternalLabel,
     )
 }
 
@@ -395,6 +422,7 @@ pub fn SearchField(
         None,
         None,
         None,
+        FieldVariant::ExternalLabel,
     )
 }
 
@@ -830,6 +858,44 @@ mod tests {
             .into_any()
         });
         assert!(html.contains("<select") && html.contains("Chọn…"), "{html}");
+    }
+
+    #[test]
+    fn floating_fields_keep_native_form_identity_and_disabled_explanation() {
+        let html = render(|| {
+            view! {
+                <TextField id="draft-title" name="title" label="Tên bản thảo" max_length=200
+                    variant=FieldVariant::FloatingTonal value=Signal::stored("Mùa mưa".to_string())
+                    autocomplete="name" on_input=|_| {} help="Có thể sửa sau."
+                    error=Signal::stored(Some("Lỗi nhập".to_string())) />
+            }
+            .into_any()
+        });
+        assert_eq!(html.matches("<input").count(), 1, "{html}");
+        assert_eq!(html.matches("<label").count(), 1, "{html}");
+        for expected in [
+            "vk-ui-field--floating",
+            "name=\"title\"",
+            "maxlength=\"200\"",
+            "for=\"draft-title\"",
+            "value=\"Mùa mưa\"",
+            "autocomplete=\"name\"",
+            "aria-describedby=\"draft-title-help draft-title-error\"",
+        ] {
+            assert!(html.contains(expected), "{expected} in {html}");
+        }
+        let disabled = render(|| {
+            view! {
+                <TextField id="disabled" label="Tên" variant=FieldVariant::FloatingTonal
+                    value=Signal::stored(String::new()) on_input=|_| {} mode=FieldMode::Disabled />
+            }
+            .into_any()
+        });
+        assert!(
+            disabled.contains("aria-describedby=\"disabled-help\""),
+            "{disabled}"
+        );
+        assert!(disabled.contains("Tính năng chưa khả dụng."), "{disabled}");
     }
 
     #[test]

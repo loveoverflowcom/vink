@@ -1,0 +1,161 @@
+{
+  "format": "vink-shared-controls-evidence-v1",
+  "base_sha": "33688b151af71f89f14ec1d8e02cc73efb5fd280",
+  "source_fingerprint_sha256": "ca203e8f9c13276c708192cd78a0516e7fb656a2813f4c620bb9555972faa30a",
+  "source_files": [
+    {
+      "path": "packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/Components.kt",
+      "sha256": "8687e853532be5b95ff88020f3459e828b98823e2e1e085c8a6b9a67427a9105"
+    },
+    {
+      "path": "packages/ui-system/cmp/preview/src/desktopTest/kotlin/vink/ui/preview/SharedControlsCaptureTest.kt",
+      "sha256": "2d04a2c9a3a3bc04887452a84169002224cce39c478d31699492ee4e2aa12962"
+    },
+    {
+      "path": "packages/ui-system/cmp/preview/src/desktopTest/kotlin/vink/ui/preview/SharedControlsTest.kt",
+      "sha256": "506731a0b72fe40bed927480c491b186115295964a8d1b0f74a24d3bbc24c6b1"
+    },
+    {
+      "path": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
+      "sha256": "56a768dfe1b6186cd0e3c5b715de96a02cae1f4baa1cd410c3e717541f2afe3e"
+    },
+    {
+      "path": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkCatalog.kt",
+      "sha256": "4b564996bfca6a157d58f62618c4d0452e0ffc8e0e901e2ea4d3aaceb94aa809"
+    },
+    {
+      "path": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
+      "sha256": "165cb3f88147df8d933288273393daf2f31af672735108f217aa3c04db59bcb6"
+    },
+    {
+      "path": "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs",
+      "sha256": "529fad4f01d7679f197624da23477e1b33e2dfa1d5f8c7f574af483715fb6dcb"
+    },
+    {
+      "path": "packages/ui-system/leptos/preview/src/components.rs",
+      "sha256": "204ee8ed42552f88be0667d872c85e3aef7f0163f45642d173d2779f777d602a"
+    },
+    {
+      "path": "packages/ui-system/leptos/src/catalog.rs",
+      "sha256": "51ec41ebfffbc218080bf3ffcfd63873164076516f969a4f93c26cdeb0f0ceaa"
+    },
+    {
+      "path": "packages/ui-system/leptos/src/field.rs",
+      "sha256": "5f0b2f325cc8e7876f5e3c4d7df8b140b85dfbbe25fd4ecfb4d7e155486f6796"
+    },
+    {
+      "path": "packages/ui-system/leptos/src/lib.rs",
+      "sha256": "bf18e011a1d3f7d02200b3c57f33ce0c214e4851a1064ebad59716cb1aed0a23"
+    },
+    {
+      "path": "packages/ui-system/leptos/style/vink-ui.css",
+      "sha256": "cbd1a55f97c160717099f5ba37c31a070f631102371be0b9ad07f9f555f87339"
+    },
+    {
+      "path": "packages/ui-system/shared/preview-catalog.json",
+      "sha256": "62b402f20b5a11c243f343ca03a180b97b83a660df78cd77c223874339135256"
+    }
+  ],
+  "captures": [
+    {
+      "file": "cmp-error-focus.png",
+      "width_px": 1024,
+      "height_px": 58,
+      "sha256": "2bf02c5fb8ddaffd38073ff63229dd6a7502b57a22bb6f266a049e960f39e4a6",
+      "visual_inspection": "OPENED"
+    },
+    {
+      "file": "cmp-field-after.png",
+      "width_px": 1280,
+      "height_px": 2600,
+      "sha256": "ce981f867ea5a4c21ee7198be3bea8c6432c6c8e85ba34f563b9d8eb310c53c7",
+      "visual_inspection": "OPENED"
+    },
+    {
+      "file": "cmp-field-before.png",
+      "width_px": 1280,
+      "height_px": 2600,
+      "sha256": "ced503ebecb90b6870142530aaec3b32a08fbc31d1ca1153dbf3a1d88eba7ca7",
+      "visual_inspection": "OPENED"
+    },
+    {
+      "file": "cmp-text200.png",
+      "width_px": 390,
+      "height_px": 2600,
+      "sha256": "cd966002136e36be41c1c4599cca49711c230578fc7f9386ce9379a9dc3af29c",
+      "visual_inspection": "OPENED"
+    },
+    {
+      "file": "web-field-after.png",
+      "width_px": 1440,
+      "height_px": 3715,
+      "sha256": "5ea24288811f12a309a101abac08484aad3dc9cbeaa7f107aeab8e66115bc491",
+      "visual_inspection": "OPENED"
+    },
+    {
+      "file": "web-field-before.png",
+      "width_px": 1440,
+      "height_px": 3583,
+      "sha256": "42b1fef74891bc67ba714a77f851662f3b9fb632f4847acae4622c1bf621aff7",
+      "visual_inspection": "OPENED"
+    }
+  ],
+  "web_runs": {
+    "before_browser": "Chrome/156.0.8078.80",
+    "after_browser": "Chrome/156.0.8078.80",
+    "after_capture_context_count": 754,
+    "before_pair_context": {
+      "hash": "#field.text-field/default",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    },
+    "after_pair_context": {
+      "hash": "#field.text-field/default",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference",
+        "forced-colors": "none"
+      }
+    }
+  },
+  "checks": {
+    "token_drift": "PASS",
+    "quick": "PASS",
+    "leptos_preview": "PASS",
+    "cmp_preview": "PASS",
+    "cmp_focused_3_tests": "PASS"
+  }
+}

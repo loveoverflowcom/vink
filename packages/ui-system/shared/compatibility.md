@@ -1,6 +1,13 @@
 # Compatibility và nguồn authoring
 
-Token source hiện hành 0.4.0, catalog 0.5.2. Package nội bộ chưa phát hành registry.
+Token source hiện hành 0.4.0, catalog 0.5.3. Package nội bộ chưa phát hành registry.
+
+PR-01 Quiet Lavender thêm `FieldVariant::{ExternalLabel,FloatingTonal}` ở cả hai renderer;
+`ExternalLabel` mặc định giữ callsite. CMP short fields mặc định đổi từ Material outlined label
+sang nhãn ngoài; muốn nhãn nổi dùng `FloatingTonal`. Textarea luôn nhãn ngoài. Giữ toàn bộ
+TextFieldValue/native input và API form/editor. Field disabled thiếu helper có lý do trung tính.
+Chip idle tonal, focus actions/fields một perimeter; Text button chừa status slot cả khi enabled.
+Catalog 0.5.3 đăng ký `external-label` trong entry hiện có, token source vẫn 0.4.0.
 
 D2T-03 bổ sung `DiscussionThread` ở Leptos/CMP và bốn scenario trong entry
 `composition.feedback`. `FeedbackComposer.comments_closed`/`commentsClosed` optional giữ
