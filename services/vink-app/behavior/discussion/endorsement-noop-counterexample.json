@@ -1,0 +1,141 @@
+{
+  "format": "vink-endorsement-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "endorsement.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedNoopStep",
+    "--max-steps=2",
+    "--max-samples=1",
+    "--invariant=acceptedAgainstLatest",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "set",
+        "actor": 3,
+        "id": 1,
+        "expected": 1,
+        "key": 1,
+        "value": false
+      },
+      "outcome": "accepted_unchanged",
+      "rows": [
+        {
+          "actor": 3,
+          "id": 1,
+          "selected": false,
+          "version": 1,
+          "order": 1
+        }
+      ],
+      "counts": [
+        {
+          "id": 1,
+          "count": 0
+        },
+        {
+          "id": 2,
+          "count": 0
+        },
+        {
+          "id": 3,
+          "count": 0
+        },
+        {
+          "id": 4,
+          "count": 0
+        }
+      ],
+      "public_counts": [
+        {
+          "id": 1,
+          "count": 0
+        },
+        {
+          "id": 3,
+          "count": 0
+        },
+        {
+          "id": 4,
+          "count": 0
+        }
+      ],
+      "receipt_count": 1,
+      "historical": null,
+      "publication": 1,
+      "shown": [
+        3,
+        4
+      ],
+      "comments_open": true,
+      "authority": true
+    },
+    {
+      "command": {
+        "op": "set",
+        "actor": 3,
+        "id": 1,
+        "expected": 1,
+        "key": 2,
+        "value": true
+      },
+      "outcome": "accepted_changed",
+      "rows": [
+        {
+          "actor": 3,
+          "id": 1,
+          "selected": true,
+          "version": 2,
+          "order": 2
+        }
+      ],
+      "counts": [
+        {
+          "id": 1,
+          "count": 1
+        },
+        {
+          "id": 2,
+          "count": 0
+        },
+        {
+          "id": 3,
+          "count": 0
+        },
+        {
+          "id": 4,
+          "count": 0
+        }
+      ],
+      "public_counts": [
+        {
+          "id": 1,
+          "count": 1
+        },
+        {
+          "id": 3,
+          "count": 0
+        },
+        {
+          "id": 4,
+          "count": 0
+        }
+      ],
+      "receipt_count": 2,
+      "historical": null,
+      "publication": 1,
+      "shown": [
+        3,
+        4
+      ],
+      "comments_open": true,
+      "authority": true
+    }
+  ]
+}

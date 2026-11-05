@@ -1,436 +1,343 @@
-//! Kani 0.67.0 / bundled nightly-2025-11-21 harnesses for the literary endorsement core (#73),
-//! compiled by the owner-local manifest `services/vink-app/kani` with the rest of `src/domain`.
-//! Every harness calls the production function on symbolic input over its whole domain: any
-//! `i64` version or expected version, any `u32` count, every review/removal/mode/generation of a
-//! comment, every selection, intent and binding. Identities range over a few symbolic values,
-//! enough to make every pair equal or distinct (three revisions: selected, published, other).
-//! There are no loops, so no unwind bound is needed. One harness checks a two-request sequence
-//! (the stream-order fence); longer interleavings, publication/moderation steps and the client
-//! shell stay in `endorsement.qnt`; locking, transactions and I/O are #73 PR3.
+//! Kani 0.67.0, production source in place. No loops/collections: default unwind, assertions on.
+//! Scalars cover all i64; IDs use three symbolic values (all equality/inequality relations).
+//! Facts are server-origin assumptions, not proof of auth/SQL. No target text is modelled.
+use super::*;
 
-use uuid::Uuid;
-
-use super::comment::{
-    CommentDecision, CommentFacts, CommentIntent, CommentRequest, comment_summary,
-    decide_comment_endorsement, own_comment_view,
-};
-use super::work::{
-    WorkDecision, WorkFacts, WorkIntent, WorkRequest, decide_work_endorsement, own_work_view,
-    work_summary,
-};
-use super::{
-    CommentAnchor, CountError, Endorsement, EndorsementCount, EndorsementVersion, OwnView, Summary,
-    Transition,
-};
-use crate::domain::discussion::lifecycle::{CommentState, ModerationVersion, Removal, Review};
-use crate::domain::discussion::settings::{CommentsMode, DiscussionSettings, SettingsGeneration};
-use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
-
-fn any_version() -> EndorsementVersion {
-    let raw: i64 = kani::any();
-    kani::assume(raw >= 1);
-    EndorsementVersion::new(raw).unwrap()
+fn principal(n: u8) -> PrincipalId {
+    PrincipalId::from_uuid(Uuid::from_u128(u128::from(n)))
 }
-
-fn revision() -> RevisionId {
-    let raw: u8 = kani::any();
-    kani::assume(raw < 3);
-    RevisionId::from_uuid(Uuid::from_u128(u128::from(raw) + 1))
-}
-
-fn principal() -> PrincipalId {
-    let raw: u8 = kani::any();
-    kani::assume(raw < 3);
-    PrincipalId::from_uuid(Uuid::from_u128(u128::from(raw) + 1))
-}
-
-fn work_id() -> WorkId {
-    WorkId::from_uuid(Uuid::from_u128(if kani::any() { 10 } else { 20 }))
-}
-
-fn comment_id() -> CommentId {
-    CommentId::from_uuid(Uuid::from_u128(if kani::any() { 30 } else { 40 }))
-}
-
-fn any_selection() -> Option<RevisionId> {
-    if kani::any() { Some(revision()) } else { None }
-}
-
-/// Any work endorsement storage could hand back.
-fn any_work_endorsement() -> Endorsement<RevisionId> {
-    Endorsement::restore(any_selection(), any_version())
-}
-
-fn any_comment_endorsement() -> Endorsement<CommentAnchor> {
-    Endorsement::restore(kani::any::<bool>().then_some(CommentAnchor), any_version())
-}
-
-/// Any comment state storage could hand back, including combinations no transition produces.
-fn any_state() -> CommentState {
-    let review = match kani::any::<u8>() % 3 {
-        0 => Review::Pending,
-        1 => Review::Approved,
-        _ => Review::Rejected,
-    };
-    let removal = match kani::any::<u8>() % 3 {
-        0 => None,
-        1 => Some(Removal::ByAuthor),
-        _ => Some(Removal::ByModeration),
-    };
-    let raw: i64 = kani::any();
-    kani::assume(raw >= 1);
-    CommentState::restore(review, removal, ModerationVersion::new(raw).unwrap())
-}
-
-fn any_settings() -> DiscussionSettings {
-    let mode = if kani::any() {
-        CommentsMode::Open
-    } else {
-        CommentsMode::Closed
-    };
-    let raw: i64 = kani::any();
-    kani::assume(raw >= 1);
-    DiscussionSettings::restore(mode, SettingsGeneration::new(raw).unwrap())
-}
-
-/// LVE-INV-04/05, CHOICE-03: a request is accepted exactly when it carries the stored version;
-/// every acceptance (a reaffirmation too) advances it by one without wrapping; a request at any
-/// other version writes nothing and is `AlreadyCurrent` exactly when its desire already holds.
-#[kani::proof]
-fn transitions_accept_only_the_current_version_and_every_acceptance_advances_it() {
-    let raw: i64 = kani::any();
-    assert_eq!(
-        EndorsementVersion::new(raw).map(EndorsementVersion::get),
-        (raw >= 1).then_some(raw)
-    );
-    let current = any_work_endorsement();
-    let expected = any_version();
-    let desired = any_selection();
-    let transition = current.transition(expected, desired);
-    let advanced = current.version().get().checked_add(1);
-    match transition {
-        Transition::Changed { next, delta } => {
-            assert_eq!(expected, current.version());
-            assert_ne!(desired, current.selection());
-            assert_eq!(next.selection(), desired);
-            assert_eq!(advanced, Some(next.version().get()));
-            assert_eq!(
-                (delta.removed(), delta.added()),
-                (current.selection(), desired)
-            );
-            assert_ne!(delta.removed(), delta.added());
-        }
-        Transition::Reaffirmed { next } => {
-            assert_eq!(expected, current.version());
-            assert_eq!(desired, current.selection());
-            assert_eq!(next.selection(), current.selection());
-            assert_eq!(advanced, Some(next.version().get()));
-        }
-        Transition::AlreadyCurrent(same) => {
-            assert_ne!(expected, current.version());
-            assert_eq!(desired, current.selection());
-            assert_eq!(same, current);
-        }
-        Transition::Stale { current: seen } => {
-            assert_ne!(expected, current.version());
-            assert_ne!(desired, current.selection());
-            assert_eq!(seen, current);
-        }
-        Transition::VersionExhausted => {
-            assert_eq!(expected, current.version());
-            assert_eq!(current.version().get(), i64::MAX);
-        }
+fn target(n: u8) -> EndorsementTarget {
+    EndorsementTarget::Work {
+        work: WorkId::from_uuid(Uuid::from_u128(u128::from(n))),
+        revision: RevisionId::from_uuid(Uuid::from_u128(10)),
     }
-    assert_eq!(
-        transition.write().is_some(),
-        expected == current.version() && advanced.is_some()
-    );
-    assert_eq!(
-        transition.delta().is_some(),
-        matches!(transition, Transition::Changed { .. })
-    );
-    kani::cover!(
-        matches!(transition, Transition::Changed { delta, .. }
-            if delta.removed().is_some() && delta.added().is_some()),
-        "reconfirming at another revision is reachable"
-    );
-    kani::cover!(
-        matches!(transition, Transition::Reaffirmed { .. }),
-        "a reaffirmation is reachable"
-    );
-    kani::cover!(
-        matches!(transition, Transition::AlreadyCurrent(_)),
-        "a retry of the held state is reachable"
-    );
-    kani::cover!(
-        matches!(transition, Transition::VersionExhausted),
-        "the last version is reachable"
-    );
 }
-
-/// LVE-FR-03, LVE-INV-05: once a request of a stream is confirmed (accepted, or found already
-/// current), no request that stream issued earlier is accepted afterwards. A stream learns
-/// versions from the server in order, so the earlier request carries a version no newer than
-/// the later one, and neither is newer than the stored version. Includes the adversarial trace:
-/// OFF@v, the older "endorse@v" delayed behind the newer "clear@v".
-#[kani::proof]
-fn a_confirmed_request_fences_every_earlier_request_of_its_stream() {
-    let start = any_work_endorsement();
-    let earlier = any_version();
-    let later = any_version();
-    kani::assume(earlier <= later && later <= start.version());
-    let earlier_desire = any_selection();
-    let later_desire = any_selection();
-    let confirmed = start.transition(later, later_desire);
-    let after = match confirmed {
-        Transition::Changed { next, .. } | Transition::Reaffirmed { next } => next,
-        Transition::AlreadyCurrent(same) => same,
-        Transition::Stale { .. } | Transition::VersionExhausted => return,
-    };
-    let replayed = after.transition(earlier, earlier_desire);
-    assert!(replayed.write().is_none());
-    assert!(after.version() > earlier);
-    kani::cover!(
-        matches!(confirmed, Transition::Reaffirmed { .. })
-            && earlier == later
-            && earlier_desire.is_some()
-            && start.selection().is_none(),
-        "the delayed endorse behind a reaffirmed clear at the same version"
-    );
-    kani::cover!(
-        matches!(confirmed, Transition::AlreadyCurrent(_))
-            && matches!(replayed, Transition::Stale { .. }),
-        "an earlier request after a confirmed retry"
-    );
-}
-
-/// LVE-INV-01/02/06/12, CHOICE-02 C, CHOICE-08 A: a work endorsement needs the loaded work to be
-/// the requested one and public; its author is refused; a selection is accepted only for the
-/// revision the reader observed and is always that published revision; the own view and the
-/// summary hide exactly what admission refuses as unavailable.
-#[kani::proof]
-fn work_admission_checks_binding_visibility_authorship_and_the_observed_revision() {
-    let actor = principal();
-    let work = work_id();
-    let facts = if kani::any() {
-        Some(WorkFacts {
-            work: work_id(),
-            author: principal(),
-            published: any_selection(),
-        })
-    } else {
-        None
-    };
-    let current = any_work_endorsement();
-    let intent = if kani::any() {
-        WorkIntent::Endorse {
-            observed: revision(),
-        }
-    } else {
-        WorkIntent::Clear
-    };
-    let request = WorkRequest {
-        expected: any_version(),
-        intent,
-    };
-    let decided = decide_work_endorsement(actor, work, request, facts, current);
-    let public = facts
-        .filter(|facts| facts.work == work)
-        .and_then(|facts| facts.published);
-    match decided {
-        WorkDecision::TargetUnavailable => assert!(public.is_none()),
-        WorkDecision::OwnWork => {
-            assert!(public.is_some());
-            assert_eq!(actor, facts.unwrap().author);
-        }
-        WorkDecision::RevisionChanged { published } => {
-            assert_eq!(public, Some(published));
-            assert_ne!(actor, facts.unwrap().author);
-            assert!(matches!(intent, WorkIntent::Endorse { observed } if observed != published));
-        }
-        WorkDecision::Transition(transition) => {
-            let published = public.unwrap();
-            assert_ne!(actor, facts.unwrap().author);
-            let desired = match intent {
-                WorkIntent::Endorse { observed } => {
-                    assert_eq!(observed, published);
-                    Some(published)
-                }
-                WorkIntent::Clear => None,
-            };
-            assert_eq!(transition, current.transition(request.expected, desired));
-            if let Some(selection) = transition.write().and_then(Endorsement::selection) {
-                assert_eq!(selection, published);
-            }
-        }
-    }
-    let view = own_work_view(work, facts, current);
-    assert_eq!(view == OwnView::Unavailable, public.is_none());
-    if let Some(published) = public {
-        assert_eq!(
-            view == OwnView::Endorsed,
-            current.selection() == Some(published)
-        );
-        assert_eq!(
-            view == OwnView::EndorsedEarlierRevision,
-            current
-                .selection()
-                .is_some_and(|selection| selection != published)
-        );
-    }
-    let count = EndorsementCount::restore(kani::any());
-    assert_eq!(
-        work_summary(work, facts, count),
-        if public.is_some() {
-            Summary::Count(count)
+fn command(expected: i64, selected: bool) -> EndorsementCommand {
+    EndorsementCommand {
+        key: EndorsementCommandKey::from_uuid(Uuid::from_u128(50)),
+        target: target(1),
+        expected: AcceptedOrder::new(expected).unwrap(),
+        intent: if selected {
+            EndorsementIntent::Select
         } else {
-            Summary::Unavailable
-        }
-    );
-    kani::cover!(
-        facts.is_some_and(|facts| facts.work != work && facts.published.is_some()),
-        "a public but foreign work is reachable (and unavailable)"
-    );
-    kani::cover!(
-        matches!(decided, WorkDecision::RevisionChanged { .. }),
-        "a publication that changed after reading is reachable"
-    );
-    kani::cover!(
-        matches!(decided, WorkDecision::Transition(Transition::Changed { delta, .. })
-            if delta.removed().is_some() && delta.added().is_some()),
-        "reconfirming an earlier-revision endorsement is reachable"
-    );
-    kani::cover!(
-        view == OwnView::EndorsedEarlierRevision,
-        "an earlier-revision endorsement is reachable"
-    );
+            EndorsementIntent::Remove
+        },
+    }
+}
+fn facts(state: EndorsementState) -> EndorsementFacts {
+    EndorsementFacts {
+        can_endorse: true,
+        current: Some(StoredEndorsement::restore(principal(1), target(1), state)),
+        receipt: None,
+        target: Some(EndorsementTargetFacts::work(
+            target(1).work(),
+            principal(2),
+            Some(RevisionId::from_uuid(Uuid::from_u128(10))),
+        )),
+    }
 }
 
-/// LVE-INV-01/02/06/12, CHOICE-08 A, CHOICE-09 B: a comment endorsement needs the loaded comment
-/// to be the requested one in the requested work's thread and public; its writer is refused;
-/// closed comments refuse only a new selection, so clearing a visible comment is never refused
-/// to a non-writer; the own view and the summary hide exactly the unavailable comments.
 #[kani::proof]
-fn comment_admission_checks_binding_visibility_authorship_and_comments_mode() {
-    let actor = principal();
-    let work = work_id();
-    let comment = comment_id();
-    let facts = if kani::any() {
-        Some(CommentFacts {
-            work: work_id(),
-            comment: comment_id(),
-            work_public: kani::any(),
-            writer: principal(),
-            state: any_state(),
-            settings: any_settings(),
-        })
-    } else {
-        None
-    };
-    let current = any_comment_endorsement();
-    let intent = if kani::any() {
-        CommentIntent::Endorse
-    } else {
-        CommentIntent::Clear
-    };
-    let request = CommentRequest {
-        expected: any_version(),
-        intent,
-    };
-    let decided = decide_comment_endorsement(actor, work, comment, request, facts, current);
-    let visible = facts.filter(|facts| {
-        facts.work == work
-            && facts.comment == comment
-            && facts.work_public
-            && facts.state.is_public()
-    });
-    let desired = matches!(intent, CommentIntent::Endorse).then_some(CommentAnchor);
-    let new_selection = desired.is_some() && desired != current.selection();
-    match decided {
-        CommentDecision::TargetUnavailable => assert!(visible.is_none()),
-        CommentDecision::OwnComment => assert_eq!(actor, visible.unwrap().writer),
-        CommentDecision::CommentsClosed => {
-            let facts = visible.unwrap();
-            assert_ne!(actor, facts.writer);
-            assert!(new_selection);
-            assert!(!facts.settings.accepts_new_comments());
+fn endorsement_scalars_and_count_arithmetic_are_total() {
+    let raw: i64 = kani::any();
+    assert_eq!(AcceptedOrder::new(raw).is_some(), raw >= 1);
+    assert_eq!(EndorsementVersion::new(raw).is_some(), raw >= 1);
+    assert_eq!(EndorsementCount::new(raw).is_some(), raw >= 0);
+    if let Some(count) = EndorsementCount::new(raw) {
+        assert_eq!(count.apply(EndorsementDelta::None), Ok(count));
+        let add = count.apply(EndorsementDelta::Add);
+        let remove = count.apply(EndorsementDelta::Remove);
+        assert_eq!(add.is_err(), raw == i64::MAX);
+        assert_eq!(remove.is_err(), raw == 0);
+        if let Ok(next) = add {
+            assert_eq!(next.get(), raw + 1);
         }
-        CommentDecision::Transition(transition) => {
-            let facts = visible.unwrap();
-            assert_ne!(actor, facts.writer);
-            assert!(!new_selection || facts.settings.accepts_new_comments());
-            assert_eq!(transition, current.transition(request.expected, desired));
+        if let Ok(next) = remove {
+            assert_eq!(next.get(), raw - 1);
         }
+        kani::cover!(add == Err(CountError::Overflow));
+        kani::cover!(remove == Err(CountError::Underflow));
+        kani::cover!(raw > 0 && raw < i64::MAX);
     }
-    if visible.is_some_and(|facts| facts.writer != actor) && desired.is_none() {
-        assert!(matches!(decided, CommentDecision::Transition(_)));
-    }
-    let view = own_comment_view(work, comment, facts, current);
-    assert_eq!(view == OwnView::Unavailable, visible.is_none());
-    assert_ne!(view, OwnView::EndorsedEarlierRevision);
-    let count = EndorsementCount::restore(kani::any());
-    assert_eq!(
-        comment_summary(work, comment, facts, count) == Summary::Unavailable,
-        visible.is_none()
-    );
-    kani::cover!(
-        matches!(decided, CommentDecision::Transition(Transition::Changed { delta, .. })
-            if delta.removed().is_some())
-            && facts.is_some_and(|facts| !facts.settings.accepts_new_comments()),
-        "clearing while comments are closed is reachable"
-    );
-    kani::cover!(
-        matches!(decided, CommentDecision::CommentsClosed),
-        "closed comments refuse a new endorsement"
-    );
-    kani::cover!(
-        facts.is_some_and(|facts| facts.comment != comment
-            && facts.work == work
-            && facts.work_public
-            && facts.state.is_public()),
-        "a public comment loaded under another identity is reachable (and unavailable)"
-    );
 }
 
-/// LVE-INV-07: applying an accepted change's delta moves exactly the count of the anchor it
-/// removes or adds, by one, never below zero or past `u32::MAX`, and fails atomically.
 #[kani::proof]
-fn counts_follow_deltas_without_underflow_or_wrapping() {
-    let before = EndorsementCount::restore(kani::any());
-    let current = any_work_endorsement();
-    let Transition::Changed { delta, .. } = current.transition(current.version(), any_selection())
+fn endorsement_acceptance_fences_every_new_intent_including_same_state() {
+    let order: i64 = kani::any();
+    let version: i64 = kani::any();
+    let expected: i64 = kani::any();
+    kani::assume(order >= 1 && version >= 1 && version <= order && expected >= 1);
+    let before = EndorsementState::restore(kani::any(), version, order).unwrap();
+    let c = command(expected, kani::any());
+    let result = decide_endorsement(principal(1), c, facts(before));
+    match result {
+        EndorsementOutcome::Accepted(write) => {
+            let after = write.next().state();
+            assert_eq!(expected, order);
+            assert_eq!(after.order().get(), order + 1);
+            assert_eq!(after.selected(), c.intent.selected());
+            let changed = before.selected() != after.selected();
+            assert_eq!(after.version().get(), version + i64::from(changed));
+            assert_eq!(write.delta() == EndorsementDelta::None, !changed);
+            assert_eq!(write.receipt().command(), c);
+            assert_eq!(write.receipt().committed(), after);
+            assert_eq!(write.next().actor(), principal(1));
+            assert_eq!(write.next().target(), c.target);
+            kani::cover!(!changed);
+            kani::cover!(changed && after.selected());
+            kani::cover!(changed && !after.selected());
+        }
+        EndorsementOutcome::Conflict { observed } => {
+            assert_ne!(expected, order);
+            assert_eq!(observed, before);
+        }
+        EndorsementOutcome::Refused(EndorsementRefusal::TokenExhausted) => {
+            assert_eq!(expected, order);
+            assert_eq!(order, i64::MAX);
+        }
+        _ => panic!("valid public facts cannot produce this outcome"),
+    }
+    kani::cover!(matches!(result, EndorsementOutcome::Conflict { .. }));
+    kani::cover!(matches!(
+        result,
+        EndorsementOutcome::Refused(EndorsementRefusal::TokenExhausted)
+    ));
+}
+
+#[kani::proof]
+fn endorsement_noop_then_delayed_on_and_remove_recreate_cannot_reset_order() {
+    let off = EndorsementCommand {
+        key: EndorsementCommandKey::from_uuid(Uuid::from_u128(51)),
+        ..command(1, false)
+    };
+    let EndorsementOutcome::Accepted(write) =
+        decide_endorsement(principal(1), off, facts(EndorsementState::INITIAL))
     else {
-        return;
+        panic!("OFF accepted");
     };
-    let anchor = revision();
-    let removed = delta.removed() == Some(anchor);
-    let added = delta.added() == Some(anchor);
-    assert!(!(removed && added));
-    let applied = before.apply(anchor, delta);
-    match applied {
-        Ok(after) => assert_eq!(
-            i64::from(after.get()),
-            i64::from(before.get()) - i64::from(removed) + i64::from(added)
-        ),
-        Err(CountError::Underflow) => {
-            assert!(removed);
-            assert_eq!(before.get(), 0);
-        }
-        Err(CountError::Overflow) => {
-            assert!(added);
-            assert_eq!(before.get(), u32::MAX);
-        }
+    let retained = write.next().state();
+    let late = EndorsementCommand {
+        key: EndorsementCommandKey::from_uuid(Uuid::from_u128(52)),
+        ..command(1, true)
+    };
+    assert!(matches!(
+        decide_endorsement(principal(1), late, facts(retained)),
+        EndorsementOutcome::Conflict { .. }
+    ));
+    let fresh = EndorsementCommand {
+        key: EndorsementCommandKey::from_uuid(Uuid::from_u128(53)),
+        ..command(2, true)
+    };
+    let EndorsementOutcome::Accepted(on) = decide_endorsement(principal(1), fresh, facts(retained))
+    else {
+        panic!("fresh ON accepted");
+    };
+    let EndorsementOutcome::Accepted(off) =
+        decide_endorsement(principal(1), command(3, false), facts(on.next().state()))
+    else {
+        panic!("remove accepted");
+    };
+    assert_eq!(off.next().state().order().get(), 4);
+    assert!(matches!(
+        decide_endorsement(principal(1), late, facts(off.next().state())),
+        EndorsementOutcome::Conflict { .. }
+    ));
+    kani::cover!(!off.next().state().selected());
+}
+
+#[kani::proof]
+fn endorsement_eligibility_and_scoped_private_removal_fail_closed() {
+    let selected: bool = kani::any();
+    let c = command(2, selected);
+    let state = EndorsementState::restore(true, 2, 2).unwrap();
+    let mut f = facts(state);
+    f.can_endorse = kani::any();
+    let visible: bool = kani::any();
+    let own: bool = kani::any();
+    let foreign: bool = kani::any();
+    f.target = Some(EndorsementTargetFacts::work(
+        target(if foreign { 2 } else { 1 }).work(),
+        principal(if own { 1 } else { 2 }),
+        if visible {
+            Some(RevisionId::from_uuid(Uuid::from_u128(10)))
+        } else {
+            None
+        },
+    ));
+    let outcome = decide_endorsement(principal(1), c, f);
+    if !f.can_endorse {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::AuthorityUnavailable)
+        );
+    } else if foreign {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::InvalidFacts)
+        );
+    } else if !selected {
+        assert!(matches!(outcome, EndorsementOutcome::Accepted(_)));
+    } else if !visible {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::TargetUnavailable)
+        );
+    } else if own {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::OwnContent)
+        );
+    } else {
+        assert!(matches!(outcome, EndorsementOutcome::Accepted(_)));
     }
-    kani::cover!(
-        applied == Err(CountError::Overflow),
-        "a saturated count is reachable"
+    assert_eq!(
+        public_count(c.target, f.target, EndorsementCount::ZERO).is_some(),
+        visible && !foreign
+    );
+    kani::cover!(!selected && !visible && matches!(outcome, EndorsementOutcome::Accepted(_)));
+    kani::cover!(selected && own && visible && !foreign && f.can_endorse);
+    // A record belonging to someone else can never be cleared.
+    let foreign_record = EndorsementFacts {
+        current: Some(StoredEndorsement::restore(principal(3), target(1), state)),
+        ..facts(state)
+    };
+    assert_eq!(
+        decide_endorsement(principal(1), command(2, false), foreign_record),
+        EndorsementOutcome::Refused(EndorsementRefusal::InvalidFacts)
+    );
+}
+
+#[kani::proof]
+fn endorsement_receipt_replays_history_separately_and_rejects_changed_payload() {
+    let EndorsementOutcome::Accepted(on) = decide_endorsement(
+        principal(1),
+        command(1, true),
+        facts(EndorsementState::INITIAL),
+    ) else {
+        panic!("ON accepted");
+    };
+    let after = EndorsementState::restore(false, 3, 3).unwrap();
+    let mut f = facts(after);
+    f.receipt = Some(on.receipt());
+    let replay = decide_endorsement(principal(1), command(1, true), f);
+    assert_eq!(
+        replay,
+        EndorsementOutcome::Replay {
+            committed: on.next().state(),
+            observed: after
+        }
+    );
+    assert_eq!(
+        decide_endorsement(principal(1), command(1, false), f),
+        EndorsementOutcome::Refused(EndorsementRefusal::KeyReused)
+    );
+    let other_actor = EndorsementFacts {
+        receipt: EndorsementReceipt::restore(principal(3), command(1, true), on.next().state()),
+        ..f
+    };
+    assert_eq!(
+        decide_endorsement(principal(1), command(1, true), other_actor),
+        EndorsementOutcome::Refused(EndorsementRefusal::InvalidFacts)
     );
     kani::cover!(
-        applied == Err(CountError::Underflow),
-        "a drifted projection is reachable"
+        matches!(replay, EndorsementOutcome::Replay { committed, observed } if committed.selected() && !observed.selected())
     );
-    kani::cover!(
-        !removed && !added && applied == Ok(before),
-        "an unrelated anchor is untouched"
+}
+
+#[kani::proof]
+fn endorsement_comment_scope_and_visibility_reuse_two_tier_facts() {
+    use crate::domain::discussion::lifecycle::{ModerationVersion, Removal, Review};
+    use crate::domain::discussion::{reply_placement, root_placement};
+    let thread = ThreadId::from_uuid(Uuid::from_u128(20));
+    let root = root_placement(thread, CommentId::from_uuid(Uuid::from_u128(21)));
+    let reply = reply_placement(thread, CommentId::from_uuid(Uuid::from_u128(22)), root).unwrap();
+    let is_root: bool = kani::any();
+    let placement = if is_root { root } else { reply };
+    let approved: bool = kani::any();
+    let removed: bool = kani::any();
+    let work_public: bool = kani::any();
+    let own: bool = kani::any();
+    let state = CommentState::restore(
+        if approved {
+            Review::Approved
+        } else {
+            Review::Pending
+        },
+        if removed {
+            Some(Removal::ByAuthor)
+        } else {
+            None
+        },
+        ModerationVersion::FIRST,
     );
+    let t = EndorsementTarget::Comment {
+        work: target(1).work(),
+        comment: placement.id(),
+    };
+    let tf = EndorsementTargetFacts::comment(
+        t.work(),
+        thread,
+        placement,
+        principal(if own { 1 } else { 2 }),
+        state,
+        work_public,
+    )
+    .unwrap();
+    let visible = approved && !removed && work_public;
+    assert_eq!(tf.visible(t), visible);
+    let f = EndorsementFacts {
+        current: None,
+        target: Some(tf),
+        ..facts(EndorsementState::INITIAL)
+    };
+    let outcome = decide_endorsement(
+        principal(1),
+        EndorsementCommand {
+            target: t,
+            ..command(1, true)
+        },
+        f,
+    );
+    if !visible {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::TargetUnavailable)
+        );
+    } else if own {
+        assert_eq!(
+            outcome,
+            EndorsementOutcome::Refused(EndorsementRefusal::OwnContent)
+        );
+    } else {
+        assert!(matches!(outcome, EndorsementOutcome::Accepted(_)));
+    }
+    let wrong = ThreadId::from_uuid(Uuid::from_u128(30));
+    assert!(
+        EndorsementTargetFacts::comment(
+            t.work(),
+            wrong,
+            placement,
+            principal(2),
+            state,
+            work_public
+        )
+        .is_none()
+    );
+    let other_comment = EndorsementTarget::Comment {
+        work: t.work(),
+        comment: CommentId::from_uuid(Uuid::from_u128(99)),
+    };
+    assert_eq!(
+        decide_endorsement(
+            principal(1),
+            EndorsementCommand {
+                target: other_comment,
+                ..command(1, true)
+            },
+            f
+        ),
+        EndorsementOutcome::Refused(EndorsementRefusal::InvalidFacts)
+    );
+    kani::cover!(is_root && visible && !own);
+    kani::cover!(!is_root && visible && !own);
 }

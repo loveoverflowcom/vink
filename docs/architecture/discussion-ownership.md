@@ -89,7 +89,7 @@ Tác phẩm mới công khai mặc định **bật** bình luận (vẫn tiền 
 03/11/2026).
 
 Thay đổi chế độ dùng **generation của ý định được chấp nhận** (chủ sản phẩm xác nhận
-05/11/2026, cùng luật với ghi nhận văn học `lve-core-v1`): yêu cầu mang đúng `expected_generation`
+05/11/2026, theo sửa fence accepted intent của PR #79): yêu cầu mang đúng `expected_generation`
 hiện tại luôn được chấp nhận và tăng generation, **kể cả khi chế độ đã đúng**; generation khác mà
 chế độ đã đúng thì không ghi (an toàn khi gửi lại); generation khác và chế độ khác bị từ chối. Nhờ
 vậy một yêu cầu cũ còn trên đường đi không thể đè lựa chọn mới hơn của chính tác giả, kể cả khi

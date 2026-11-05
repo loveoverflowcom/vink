@@ -46,12 +46,17 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
 | D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner; cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh |
 | D-13 | Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác | **Đã chốt 03/11/2026** | Quyền bật/tắt tách khỏi quyền kiểm duyệt hệ thống; “tắt” chỉ ngừng nhận bình luận mới, không ẩn bình luận đã duyệt; tác phẩm mới mặc định bật; tác giả có grant kiểm duyệt vẫn tự né tác phẩm của mình (xác nhận 03/11/2026); bật/tắt dùng generation của ý định được chấp nhận, yêu cầu ở đúng generation hiện tại luôn tăng generation kể cả khi trùng chế độ (xác nhận 05/11/2026), xem [ADR](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm) |
-| D-14 | Ghi nhận văn học (LVE, #73): một tín hiệu dương mỗi người/đích trên tác phẩm, bình luận gốc, phản hồi | Lõi `lve-core-v1` **chọn cho lát lõi** 05/11/2026, chờ chủ sản phẩm xác nhận CHOICE-02/08/09 | Anchor theo revision đã đọc, version chấp nhận ý định làm fence, không tự ghi nhận, tắt bình luận chặn ghi nhận mới trên bình luận; lưu trữ/API/xếp hạng/icon/UI còn OPEN. Xem [decision record LVE](literary-endorsement.md) |
+| D-14 | Ghi nhận văn học (LVE, #73): work revision, root, flat reply | Lựa chọn pure slice LVE-PR-01, hợp nhất PR #80 sau #78 ngày 05/11/2026 | CHOICE-01 A, 02 B, core 03 B (accepted order + exact receipt), 08 A, 09 A, 11 A; không đổi COM-07/08 hoặc luật #79. Storage/API/ranking/icon/UI và voter visibility còn OPEN. [Decision owner](literary-endorsement.md) |
 
 Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md) ghi quyết định
 03/11/2026 chọn Vink làm owner duy nhất ghi/kiểm duyệt bình luận; [core/registry](../development/discussion-core.md)
 ghi phần đã hiện thực và gap. D-05, D-08 và D-12 vẫn mở: thiếu auth authority thật vẫn chặn
 ghi bình luận production, tiền kiểm cần authority kiểm duyệt và màn vận hành.
+
+Literary endorsement [#73](https://github.com/loveoverflowcom/vink/issues/73), LVE-PR-01:
+[decision owner](literary-endorsement.md) ghi CHOICE-01/02/03/08/09/11 cho pure slice;
+[registry](../development/endorsement-core.md) tách evidence/gaps. Không đổi D/INV hiện hành,
+không đóng epic hoặc nhận production readiness; các CHOICE còn lại vẫn OPEN.
 
 ## 3. Không dùng một state enum cho toàn bộ vòng đời
 

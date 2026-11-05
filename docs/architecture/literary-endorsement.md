@@ -1,138 +1,133 @@
-# Ghi nhận văn học (LVE) — decision record lõi
+# Literary endorsement — quyết định của lát LVE-PR-01
 
-**Ngày:** 05/11/2026 · **Policy:** `lve-core-v1` · **Epic:** [#73](https://github.com/loveoverflowcom/vink/issues/73)
-· **Trạng thái:** các lựa chọn dưới đây được **chọn cho lát lõi** (pure Rust + Quint + Kani) với bằng
-chứng; chủ sản phẩm chưa xác nhận hệ quả sản phẩm của CHOICE-02, 08 và 09. Không lựa chọn nào tự
-thành Accepted vì đã được viết hoặc kiểm chứng.
+**Ngày:** 05/11/2026. **Nguồn:** [#73](https://github.com/loveoverflowcom/vink/issues/73),
+LVE-PR-01 do người dùng giao thực thi; baseline `develop@be2b69e490d7637f6021c4b97062ed3859e09189`.
+Đây là lựa chọn triển khai có phạm vi **pure core PR1**, không phê duyệt toàn bộ epic, UI hay
+production policy. Nội dung lõi liên quan trong snapshot Drive r1/issue được supersede bởi
+[PRD canonical](../../prd/requirements.md#12-literary-endorsement-lve) và tài liệu này;
+phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/INV/COM hiện hành.
 
-Yêu cầu và ID: [PRD LVE](../../prd/literary-endorsement.md). Code, bằng chứng và gap:
-[registry](../development/literary-endorsement-core.md). Code owner:
-[`domain/endorsement`](../../services/vink-app/src/domain/endorsement.rs). Quyết định này không đổi
-D-01..D-13, INV-01..08, COM-07/08 hay semantics reaction hiện có.
+## Hợp nhất sau #78/#79
 
-## 1. Lựa chọn
+Theo yêu cầu merge PR #80, slice này tiếp nối lõi #78 đã vào develop. Chỉ giữ
+`decide_endorsement` với accepted order/mutation version/receipt riêng và revision-specific target.
+Hai module `work.rs`/`comment.rs` cùng model/counterexample cũ của #78 được thay bằng seam/model
+hiện hành; requirements/registry URL cũ chuyển hướng về một owner. Đây là delta chủ ý: CHOICE-02 B
+và CHOICE-09 A của #80 thay C/B tạm thời của #78. Không có transaction/UI consumer cũ cần migrate.
+Giữ nguyên mọi production source/fixtures và harness sửa fence reaction/settings của #79.
 
-| CHOICE | Trạng thái | Lựa chọn | Lý do và phương án bị loại | Bằng chứng |
+## Review và phản biện trước khi triển khai
+
+Bảng dưới ghi findings trên baseline ban đầu trước #79. #79 đã sửa riêng reaction/settings;
+phần hợp nhất giữ nguyên các sửa đó, không dùng findings cũ để đảo chúng.
+
+| Finding | Source/symbol | Hậu quả | Phương án | Quyết định slice |
 | --- | --- | --- | --- | --- |
-| 01 Ý nghĩa/cardinality | Chọn cho lõi | **A**: một tín hiệu dương mỗi (actor, đích), chọn hoặc không | Đủ cho pilot, ít giải thích. B (facet lý do) vẫn OPEN như phần mở rộng: facet không được đổi `Endorsement` hay số đếm. C (thẩm định có cấu trúc) để sau | Unit test, `countsMatchSelections` |
-| 02 Anchor qua các bản | Chọn cho lõi | **C**: quan hệ theo tác phẩm, ghi **revision người đọc đã đọc**; chỉ hiệu lực (được đếm) khi revision đó là publication hiện hành; bản mới làm ghi nhận cũ thành “bản trước”, không đếm, cho tới khi người đọc ghi nhận bản mới | A chuyển ngầm ghi nhận sang chữ mới (vi phạm LVE-UC-10) trừ khi thêm luật hiệu lực, tức là C. B cần một hàng và một version cho mỗi revision nên mỗi người có nhiều chuỗi fence; tổng hiệu lực giống C. Không dùng `publications.generation` (xóa/chèn lại con trỏ có thể bắt đầu lại) hay `moderation_version` (không phải revision chữ). Bình luận không sửa được (D-08) nên chính bình luận là anchor | `noSilentTransfer` + counterexample `endorsement-transfer`; Kani work admission |
-| 03 Thứ tự/thử lại | Chọn cho lõi | **B′**: version của ý định được chấp nhận. Mỗi yêu cầu mang đúng version hiện tại được chấp nhận và tăng version 1, **kể cả khi trùng trạng thái** (reaffirm). Không có receipt: thử lại được nhận ra bằng hiệu ứng (`AlreadyCurrent`) | A (CAS, no-op khi trùng trạng thái) thua trace phản biện kể cả khi client tuần tự hóa: ACK mất, yêu cầu cũ còn trên mạng, đọc lại không chặn được nó. B đầy đủ với receipt không cần cho bất biến của lõi; giữ OPEN nếu cần audit “lệnh của tôi đã được chấp nhận chưa” | `noRevival` + counterexample `endorsement-unfenced`, `endorsement-version-reset`; Kani hai bước |
-| 04 Lưu trữ/FK | OPEN (lát PostgreSQL) | — | Lõi đòi: FK đúng loại đích, unique (actor, đích), version ≥ 1, **giữ hàng sau khi bỏ chọn** | §4 |
-| 05 Tổng hợp/read model | OPEN | — | Delta theo anchor và `EndorsementCount` không âm/tràn dùng được cho đếm-khi-đọc, counter giao dịch hoặc projection outbox | Kani counts |
-| 06 Xếp hạng | OPEN | — | Lõi không sắp xếp gì; phản hồi giữ thứ tự thời gian | — |
-| 07 Icon | OPEN | — | Không thuộc lõi | — |
-| 08 Tự ghi nhận | Chọn cho lõi | **A**: tác giả tác phẩm/người viết bình luận bị từ chối mọi ý định trên nội dung của mình, nên không bao giờ có hàng của họ | B (đánh dấu riêng) chưa có utility khác Lưu bài | `noSelfEndorsement`, Kani admission |
-| 09 Tắt bình luận | Chọn tạm cho lõi | **B**: tắt chặn ghi nhận **mới** trên bình luận; gỡ và reaffirm vẫn được; không ẩn gì; ghi nhận tác phẩm không bị ảnh hưởng; mở lại không đổi dữ liệu | Tôn trọng quyền kiểm soát duy nhất của tác giả với hoạt động thảo luận (COM-07) mà không ẩn nội dung; nới về A sau dễ hơn siết lại. Không suy từ reaction: reaction là đề xuất riêng | `eligibleWrites`, scenario `comment_targets`, Kani comment admission |
-| 10 Xác nhận phía client | OPEN | — | Lõi đặt nghĩa vụ client ở §5 | — |
-| 11 Owner thuần | Chọn | **A**: module `domain/endorsement` trong `vink-app` | B (crate dùng chung) chưa có consumer Rust thứ hai | `verify quick` kiểm import boundary |
-| 12 Hiển thị người ghi nhận | Hệ quả của lõi | Chỉ tổng số + trạng thái riêng của chính người đó; lõi không có projection danh sách người ghi nhận | B (ghi danh tự nguyện) OPEN; không tự đưa người dùng hiện có vào | — |
+| No-op chỉ trả quan sát, không fence lệnh đến muộn | `discussion/reaction.rs::ActorReaction::desire`, #75 | OFF@1 đến trước không chặn ON@1 cũ | A: bắt client serialize; B: mọi acceptance có order + receipt | B, không reuse reducer reaction có semantics khác |
+| Publication generation nằm trên hàng pointer có thể bị xóa | migration literary core `publications` | Delete/reinsert có thể reset generation; không là anchor bền | A: work + observed revision; B: immutable revision; C: stale/reconfirm | B cho work; không dùng generation/moderation_version làm content revision |
+| Bình luận chưa có content revision/edit route | `lifecycle.rs`, migration `comments` | Không thể coi moderation_version là phiên bản văn bản | Original comment identity; hoặc thêm lifecycle edit | Identity cho original root/reply; edit UNSUPPORTED trong slice |
+| `comments_open` là quyền tạo text | ADR discussion §4, COM-07/08 | Reuse gate reaction nhập ngầm policy đóng vote | Capability độc lập hoặc chặn vote khi đóng | Độc lập; close/reopen không đổi endorsement |
+| Chỉ backend có consumer nghiệp vụ dự kiến | domain, application/ports | Shared crate/framework tăng surface chưa có lợi ích | Module local hoặc crate khi có consumer thứ hai | Module `domain::endorsement`, không thêm service/port giả |
+| Receipt submission có CHECK/FK chỉ cho submit | migration discussion | Đổi chuỗi operation không đủ để dùng cho vote | Bảng/protocol riêng ở PR SQL | PR1 trả write intent; chưa có persistence/HTTP caller |
 
-Mọi thay đổi ý nghĩa (ví dụ coi hai revision cùng `content_hash` là cùng anchor, hay đổi CHOICE-08/09)
-là một policy version mới, không sửa `lve-core-v1` tại chỗ.
+Code reaction và các yêu cầu đã chốt giữ nguyên. Một model PASS không chốt sản phẩm; phạm vi
+của các lựa chọn dưới đây là contract để PR2/PR3 review/consume, không phải production acceptance.
 
-**Hệ quả CHOICE-02 C cần chủ sản phẩm xác nhận:** đăng bản sửa lỗi chính tả làm số đếm của bản mới
-bắt đầu từ 0, người đã ghi nhận thấy “bạn đã đánh giá cao bản trước”. Đăng lại đúng revision cũ
-khôi phục hiệu lực mà không ghi gì. Coi bản tương đương nội dung là cùng anchor là refinement OPEN.
+## Lựa chọn và alternatives
 
-## 2. Semantics lõi (`lve-core-v1`)
-
-Một yêu cầu gồm trạng thái mong muốn (chọn/bỏ; với tác phẩm kèm revision đã đọc) và `expected` —
-version mà client đã thấy. Actor và đích do server lấy từ session và route, không lấy từ body.
-
-**Version của ý định được chấp nhận.** Người chưa từng thao tác có `Endorsement::ABSENT`
-(không chọn, version 1). Kết quả của `Endorsement::transition`:
-
-| Kết quả | Khi nào | Ghi? | Client hiểu |
-| --- | --- | --- | --- |
-| `Changed` | `expected` = version, lựa chọn khác | Có: lựa chọn mới, version + 1, delta số đếm | Ý định mới được chấp nhận |
-| `Reaffirmed` | `expected` = version, lựa chọn đã đúng | Có: chỉ version + 1, số đếm không đổi | Ý định mới được chấp nhận; mọi yêu cầu cũ hơn bị chặn |
-| `AlreadyCurrent` | `expected` ≠ version, lựa chọn đã đúng | Không | Trạng thái đang quan sát đã thỏa yêu cầu; **không** phải chấp nhận mới, không chặn gì |
-| `Stale` | `expected` ≠ version, lựa chọn khác | Không | Xung đột: một ý định được chấp nhận sau góc nhìn của client; cần đối soát từ `current` |
-| `VersionExhausted` | `expected` = version = `i64::MAX` | Không | Lỗi nội bộ, không bao giờ là thành công |
-
-Phân biệt bốn khái niệm: **trạng thái đang quan sát** (lựa chọn + version trả về), **ý định vừa được
-chấp nhận** (`Changed`/`Reaffirmed`), **command lịch sử đã commit** (không lưu riêng: không có
-receipt; một lần thử lại chỉ thấy hiệu ứng) và **xung đột cần đối soát** (`Stale`,
-`RevisionChanged`). Server không bao giờ tự cập nhật `expected` để phát lại một ý định cũ.
-
-**Đủ điều kiện, theo thứ tự** (`decide_work_endorsement`, `decide_comment_endorsement`):
-
-1. Đích phải đúng hàng server đã nạp (tác phẩm; bình luận trong thread của đúng tác phẩm) và đang
-   công khai: tác phẩm có publication hiện hành; bình luận đã duyệt, còn hiện diện, tác phẩm công
-   khai. Ngược lại `TargetUnavailable` cho **mọi** ý định, kể cả bỏ chọn: không lộ đích ẩn, ghi nhận
-   đã lưu vẫn còn nhưng không hiệu lực/không hiển thị, có lại hiệu lực khi đích công khai trở lại.
-   Phản hồi dưới gốc đã ẩn vẫn ghi nhận được khi chính phản hồi còn công khai.
-2. Tác giả/người viết của đích: `OwnWork`/`OwnComment` (CHOICE-08 A).
-3. Tác phẩm, ý định chọn: revision đã đọc khác publication hiện hành → `RevisionChanged`
-   (không ghi). Bỏ chọn không cần revision.
-4. Bình luận, lựa chọn **mới** khi tác giả đã tắt bình luận → `CommentsClosed` (CHOICE-09 B).
-5. `Endorsement::transition` quyết định theo version.
-
-**Projection.** `Summary::Unavailable` cho đích ẩn, không bao giờ là `Count(0)`; tổng số tác phẩm
-chỉ đếm lựa chọn ở revision hiện hành. `OwnView` (`Unavailable`, `NotEndorsed`, `Endorsed`,
-`EndorsedEarlierRevision`) chỉ dành cho chính actor, không vào cache dùng chung. Số đếm là projection:
-không ACL, xuất bản, kiểm duyệt, tuyển chọn hay xếp hạng nào đọc nó.
-
-## 3. Trace phản biện
-
-| Trace | Kết quả theo `lve-core-v1` | Bằng chứng |
+| ID của #73 | Chọn cho PR1 | Lý do / đánh đổi / evidence cần thêm |
 | --- | --- | --- |
-| OFF/v1; A = chọn@v1 tạo trước nhưng đến muộn; B = bỏ@v1 đến trước | B `Reaffirmed` → version 2; A `Stale`. Nếu no-op không tạo fence (CAS thuần), A thắng | Scenario `reorder_and_retry` (giao stamp 2 rồi stamp 1); counterexample `endorsement-unfenced`; Kani hai bước |
-| Ý định ngược chiều từ góc nhìn cũ | `Stale` với trạng thái hiện tại; không ghi | Unit test, Kani transition |
-| Thử lại sau khi bỏ chọn | Thử lại lệnh bỏ: `AlreadyCurrent`; bản trùng của lệnh chọn trước đó: `Stale` | `reorder_and_retry` |
-| Xóa/tạo lại hàng làm reset version (ABA) | Cấm: bỏ chọn giữ hàng với version mới. Mutation xóa hàng làm bản trùng cũ áp lại | counterexample `endorsement-version-reset` |
-| Đã chọn nhưng revision cần xác nhận lại | `EndorsedEarlierRevision`, không đếm; thử lại trang cũ → `RevisionChanged`; chọn bản mới → `Changed` (delta chuyển 1 từ bản cũ sang bản mới) | `revision_anchor`, unit test work |
-| Trùng lặp với khóa khác | Không có khóa: hai yêu cầu cùng version và cùng lựa chọn → một `Changed`/`Reaffirmed`, một `AlreadyCurrent`; tối đa một hiệu ứng | `reorder_and_retry` (bản trùng), Kani |
-| Đích ẩn/rút bài | Mọi ý định `TargetUnavailable`; tổng số và trạng thái riêng `Unavailable`; yêu cầu bỏ đã bị từ chối khi ẩn có thể áp sau khi đăng lại | `revision_anchor`, `comment_targets` |
-| Sai binding tác phẩm/bình luận | `TargetUnavailable` | Unit test, Kani admission (identity khác nhau) |
-| Hai thiết bị của cùng người | Ai được chấp nhận trước ở một version thắng, bên kia `Stale`; **không** hứa “ý cuối” theo đồng hồ | `reorder_and_retry` (luồng 4) |
-| Cạn version/số đếm | `VersionExhausted`; `CountError::{Underflow, Overflow}` làm rollback cả giao dịch | Kani transition, Kani counts |
+| CHOICE-01 | A — một tín hiệu tích cực mỗi actor/target/anchor | Nhỏ, không có nhu cầu facets đã xác định. B tăng policy/schema; C appraisal riêng để sau. Work “Đánh giá cao”, comment “Hữu ích”; không điểm chuyên môn. Count không nhân vì reason. |
+| CHOICE-02 | B — work theo `RevisionId` của publication; comment theo original `CommentId` | `revisions(work_id,id)` có FK, UPDATE bị trigger chặn. Rewrite tạo anchor mới với count riêng; A thừa kế ghi nhận qua rewrite, C cần content-change policy chưa có. Cùng revision được đăng lại giữ ghi nhận; không phụ thuộc số lần publication delete/reinsert. Không tự chuyển vote sang bản mới. |
+| CHOICE-03 | B ở **core ordering/retry** — accepted-command order + receipt exact payload | Every accepted intent, kể cả same-state, tăng order. Mutation version riêng. A nhỏ hơn nhưng buộc client serialize mới tránh OFF/no-op trace; không dùng A để giảm invariant. Hình dạng HTTP POST/PUT vẫn OPEN cho PR API; contract identity/order/receipt phải giữ. |
+| CHOICE-08 | A — chặn self endorsement | Không có utility self-mark riêng với bookmark. Work author vẫn có thể vote comment của người khác trên bài mình. |
+| CHOICE-09 | A — độc lập quyền gửi text | COM-07 đóng root/reply create; không làm người viết tác phẩm có quyền xóa vote. Close, retry, reopen giữ cùng rules. Visibility/authority vẫn thắng. |
+| CHOICE-11 | A — owner-local module trong `vink-app` | Chưa có consumer Rust thứ hai; reuse IDs, placement và lifecycle predicate thật; không tạo crate chỉ để gọi “abstract”. |
 
-## 4. Hợp đồng cho lát API và PostgreSQL
+**Còn OPEN:** CHOICE-04 storage/FK; 05 aggregate/read strategy; 06 ranking; 07 icon;
+10 client confirmation; 12 voter visibility/consent. Core chỉ trả count và trạng thái riêng của actor,
+không có voter list; không được suy quyền công khai danh tính. Facets, chapter target, sửa comment,
+account ban/removal/quarantine/retention, rate limit và auth authority chưa được triển khai.
+D-05/08/12 giữ trạng thái hiện hành. Ranking/optimistic UI không nằm trong PR1.
 
-Lát sau gọi đúng các hàm trên trong transaction; không viết luật thứ hai trong handler hay SQL.
+## Contract của production seam
 
-1. Actor là `PrincipalId` từ resolver phía server; production trả `401` tới khi có auth authority (D-05).
-2. Thứ tự khóa thống nhất với adapter thảo luận: hàng `publications` (FOR SHARE) → với bình luận:
-   `discussion_threads` → hàng bình luận (FOR SHARE) → hàng ghi nhận của (actor, đích) (FOR UPDATE,
-   hoặc chèn-giành rồi khóa).
-3. Nạp facts từ chính các hàng đó: `WorkFacts { work, author: works.owner_id, published:
-   publications.revision_id }`; `CommentFacts { work: thread.work_id, comment, work_public,
-   writer, state, settings }`; hàng hiện tại hoặc `Endorsement::ABSENT`.
-4. Chỉ khi `Transition::write()` có giá trị: ghi có điều kiện `version = current.version` (UPDATE)
-   hoặc INSERT khi chưa có hàng (`ON CONFLICT DO NOTHING`, xung đột thì đọc lại và quyết định lại).
-   Nếu chọn counter giao dịch, áp `delta()` cho anchor bị bỏ và anchor được thêm trong cùng transaction;
-   `CountError` làm rollback toàn bộ.
-5. **Không DELETE hàng khi bỏ chọn.** Chỉ xóa tài khoản/purge đích mới được xóa hàng, sau khi không
-   còn yêu cầu nào của principal/đích đó có thể được nhận.
-6. Đề xuất ánh xạ HTTP (lát API quyết định và giữ mã hiện có): `Changed`/`Reaffirmed` → `200`
-   `accepted: true`; `AlreadyCurrent` → `200` `accepted: false`; `Stale` → `409 version_conflict`
-   kèm trạng thái riêng hiện tại; `RevisionChanged` → `409 revision_changed` kèm revision đang công
-   khai; `TargetUnavailable` → `404 not_found`; `OwnWork`/`OwnComment` → `403`; `CommentsClosed` →
-   `409 comments_closed`. Phản hồi riêng tư dùng `no-store`, tách khỏi tổng số công khai.
+`services/vink-app/src/domain/endorsement.rs` là owner implementation. Hàm
+`decide_endorsement(server_actor, command, facts)` chỉ nhận input, không I/O/clock/random,
+không nhận actor/count từ client DTO. Không có route/store thực sự gọi hàm trong PR1.
 
-## 5. Nghĩa vụ của client và giới hạn của hợp đồng
+- `EndorsementTarget::{Work {work,revision}, Comment {work,comment}}` giữ work/root/reply riêng.
+  `EndorsementAnchor` là revision bất biến hoặc original comment. Root/reply dùng cùng luật,
+  không tự cộng count lên root/work. Comment constructor kiểm placement thuộc thread;
+  adapter phải chứng minh `thread.work_id == work`, revision thuộc work từ FK/locked lookup.
+- `EndorsementState::INITIAL`: absent = OFF, mutation version 1, accepted order 1.
+  `StoredEndorsement` bind actor + full target/anchor. Sau remove **giữ hàng OFF và order**;
+  không delete/reset/reuse identity. Mỗi trạng thái lưu có `1 <= version <= order <= i64::MAX`.
+- `EndorsementCommand` = key + full target/anchor + expected accepted order + Select/Remove.
+  Key UUID từ caller, namespace `(server actor, endorsement operation, key)` trên mọi đích.
+  Receipt giữ exact command (bao gồm expected token) và committed state, không chỉ desired bool.
+- `Accepted(write)` luôn là **lệnh mới vừa được chấp nhận**: order +1; nếu đổi selected thì
+  mutation version +1 và delta Add/Remove, nếu cùng trạng thái thì version giữ và delta None.
+  No-op về selection **vẫn phải ghi fence và receipt**. Key mới không là retry.
+- `Replay {committed,observed}` là **lệnh lịch sử đã commit**, không ghi lại/count lại và không
+  có nghĩa selected hiện tại giống lịch sử. Receipt cũ phải có order <= current; bằng order phải
+  cùng state. Payload khác cùng key → `KeyReused`; facts sai actor/target/key → `InvalidFacts`.
+- `Conflict {observed}` chỉ quan sát trạng thái của đúng actor/đích, không nhận lệnh mới.
+  Caller reconcile, **không tự refresh expected token rồi phát lại ý định cũ**. Sau conflict,
+  muốn thể hiện ý mới phải do consumer/người dùng xác định; không hứa latest user intent xuyên
+  thiết bị khi chưa có global creation ordering. Bảo đảm là first accepted CAS wins, stale không thắng.
+- Refusal: authority unavailable, target unavailable, own content, invalid facts, key reuse,
+  token exhaustion. Không ghi gì trên conflict/refusal/replay. Count là `i64 >= 0`, checked arithmetic;
+  underflow/overflow là lỗi projection/integrity khiến **rollback toàn transaction**.
 
-- Gửi `expected` = version cuối cùng đã học cho (session, đích). Mỗi (session, đích) chỉ một yêu cầu
-  đang bay; thao tác tiếp theo được gộp thành trạng thái mong muốn mới nhất, gửi sau khi yêu cầu
-  trước có kết quả, với version từ kết quả đó.
-- Mất kết quả: gửi lại **đúng** yêu cầu (cùng `expected`) hoặc đọc lại trạng thái riêng trước khi
-  gửi yêu cầu kế tiếp. `Stale`/`RevisionChanged`: hiển thị trạng thái hiện tại, không tự gửi lại ý
-  định cũ với version mới.
-- Chỉ áp kết quả có version lớn hơn version đang hiển thị, để ACK đảo thứ tự không kéo UI lùi.
-- Hợp đồng không cho biết ý định cuối giữa nhiều thiết bị; không có receipt nên server không trả lời
-  “lệnh cụ thể này đã từng được chấp nhận chưa”. Reaffirm ghi một hàng/version dù trạng thái không
-  đổi; giới hạn tần suất là việc của policy chống lạm dụng (LVE-UC-15), chưa có.
+**Eligibility/effectiveness:** Select (kể cả selected=true cùng trạng thái) cần capability hiện
+hành, target đúng scope, work đang public đúng revision hoặc comment present+approved trên work
+public, và actor khác tác giả target. Bản revision cũ không được “reconfirm” bằng same-state ON;
+phải chọn target của revision mới. Không có stale flag vì mỗi revision là relation riêng.
+Selected lưu là lịch sử source; effective/public chỉ khi anchor hiện hành và target còn visible.
+`public_count` trả `None` khi không visible, không giả 0. Comment pending/rejected/removed không lộ count.
 
-## 6. Phát hiện ngoài phạm vi
+**Own-removal ngoại lệ riêng tư:** actor có capability hiện hành được Remove đúng retained record
+của mình dù target hidden/withdrawn/missing/old revision. Không có own record thì missing/hidden
+vẫn `TargetUnavailable`. Response không trả author/text/count hay xác nhận target cho người khác.
+Receipt Select cũ trên target hiện không visible không replay ra ngoài; Remove có own row thì replay
+được. Capability bị thu hồi chặn cả remove/replay; khôi phục quyền cần authority thật, không fixture.
 
-`ActorReaction::desire` (reaction, đề xuất #41) và `DiscussionSettings::change_mode` (COM-07) kiểm
-từng kiểm “trùng trạng thái” trước version, nên một yêu cầu trùng trạng thái không tạo fence: hai tab
-của cùng người có thể gặp đúng trace phản biện ở trên. Lát LVE **không đổi** hai hành vi đó (AC-P1-06).
+## Transaction preconditions cho PR2/PR3
 
-Chủ sản phẩm đã quyết định ngày 05/11/2026 đổi cả hai sang cùng luật “version của ý định được chấp
-nhận” với `lve-core-v1`. Thay đổi nằm ở PR riêng
-[loveoverflowcom/vink#79](https://github.com/loveoverflowcom/vink/pull/79) (Part of #41), **đã
-merge** vào `develop` cùng lát này (05/11/2026), nên phát hiện đã được giải quyết: COM-07 trả `200` và tăng generation khi gửi lại đúng chế độ ở đúng
-generation; reaction đổi cùng luật và từ chối mọi yêu cầu của người viết trên bình luận của mình.
-Code LVE không phụ thuộc thay đổi đó. Mục này nay chỉ còn là lịch sử.
+Đây là nghĩa vụ **chưa có implementation/evidence**. Không copy luật vào HTTP/SQL như reducer thứ hai.
+
+1. Resolve principal/capability phía server. Serialize với revoke; tải work/publication/thread/comment
+   từ owner App, đúng thứ tự khóa hiện tại: publication → thread → target. Trường hợp own removal
+   target đã mất cần khóa record actor/target và retained identity mà không lộ target. Thiết kế khóa
+   bổ sung phải giải quyết absence races, republish/withdraw và deadlock trong PR SQL.
+2. Serialize state và receipt namespace: actor+target+anchor có unique/CAS; actor+operation+key unique
+   **trên mọi đích**. Concurrent cùng key khác target phải có một winner; không chỉ khóa target.
+   Receipt/state đọc cùng transaction; không load từ cache/client. Chưa có receipt retention policy:
+   giữ receipt/fence, không expire rồi tuyên bố historical replay vẫn được nhận diện.
+3. Recheck target visibility, exact revision/work binding, capability tại durable boundary, rồi gọi
+   hàm thuần. Với `Accepted`, ghi retained row (kể cả delta None), checked count hoặc source-derived
+   aggregation theo CHOICE-05 và receipt atomically. Projection không là ACL/publication authority.
+4. Chống reset khi remove/recreate, publish delete/reinsert, account purge/restore. UUID và immutable
+   revisions không được tái sử dụng; comment body edits cần revision/anchor policy mới. Schema hiện tại
+   chỉ chặn UPDATE revision, chưa chứng minh lifecycle purge/reuse; comment body không có SQL immutable
+   trigger. Không mở write/edit integration trước khi migration/adapter bảo vệ các preconditions này.
+5. Response/readback phân biệt accepted/replay/conflict; private actor state `no-store`, public count
+   không có viewer identity; current visibility override receipt/projection. Retention/privacy/ranking
+   vẫn cần quyết định riêng. Unit/model/Kani không chứng minh các nghĩa vụ SQL/auth/browser này.
+
+## Trace đối kháng
+
+| Input theo thứ tự đến | Kết quả contract |
+| --- | --- |
+| absent OFF/v1/order1; B=OFF@1 đến trước A=ON@1 | B accepted unchanged: v1/order2, delta0 + receipt; A conflict, không ON |
+| ON@1 commit; OFF@2 commit; replay ON cùng key/payload | committed ON/v2/order2; observed OFF/v3/order3, không ghi |
+| ON cũ với key khác sau OFF | Conflict; không tự lấy order hiện tại phát lại |
+| Remove rồi Select lại | Giữ hàng OFF; order tăng tiếp, không reset về initial |
+| selected=true của revision cũ; publication sang revision mới | ON target cũ unavailable; target revision mới độc lập; Remove own cũ vẫn được |
+| target bị ẩn/rút; own Remove | Chỉ own retained row + current authority; public count None |
+| work/comment/actor binding sai | InvalidFacts, không mutation; HTTP mapping privacy-safe cần PR API |
+| order/version/count hết miền | Refuse/checked count error, không wrap hay partial commit |
+
+[Registry, model/proof evidence và gap](../development/endorsement-core.md) là owner duy nhất
+traceability LVE; không gán proof lõi cho SQL, HTTP, UI hay toàn epic.

@@ -160,53 +160,6 @@ function projectReaction(file, expectedSteps, status) {
   });
 }
 
-const pairsOf = value => value['#map'].map(([key, item]) => [tuple(key), item]);
-
-// Endorsement states: the request the step carried and every projection the replay compares.
-function projectEndorsement(file, expectedSteps, status) {
-  const trace = JSON.parse(readFileSync(file, 'utf8'));
-  assert.equal(trace['#meta'].status, status);
-  assert.equal(trace['#meta'].format, 'ITF');
-  assert.equal(trace.states.length, expectedSteps + 1, 'No empty/truncated scenario passes');
-  const [init] = trace.states;
-  assert.equal(init.outcome, 'init');
-  assert.equal(integer(init.published), 0, 'A work starts without a public publication');
-  return trace.states.slice(1).map((state, index) => {
-    assert.equal(integer(state.cursor), index + 1);
-    const c = state.command;
-    assert.equal(typeof c.keep, 'boolean');
-    assert.equal(typeof c.heard, 'boolean');
-    const command = {
-      op: string(c.op), stamp: integer(c.stamp), stream: integer(c.stream),
-      actor: integer(c.actor), target: integer(c.target), expected: integer(c.expected),
-      desire: string(c.desire), observed: integer(c.observed), keep: c.keep, heard: c.heard,
-      value: string(c.value),
-    };
-    // Keyed objects keep the fixture small; an absent row is `Endorsement::ABSENT` (sel 0,
-    // version 1), so listing only the others still pins every row.
-    const keyed = entries => Object.fromEntries(entries.sort(([left], [right]) =>
-      left.localeCompare(right)));
-    const comments = keyed(state.status['#map'].map(([id, value]) =>
-      [String(integer(id)), string(value)]));
-    const rows = keyed(pairsOf(state.rows).map(([[actor, target], row]) =>
-      [`${actor}/${target}`, { sel: integer(row.sel), version: integer(row.version) }])
-      .filter(([, row]) => row.sel !== 0 || row.version !== 1));
-    const counts = keyed(pairsOf(state.counts).map(([[target, anchor], count]) =>
-      [`${target}/${anchor}`, integer(count)]));
-    const summary = keyed(state.summary['#map'].map(([target, count]) => {
-      const value = integer(count);
-      return [String(integer(target)), value < 0 ? null : value];
-    }));
-    const views = keyed(pairsOf(state.views).map(([[actor, target], view]) =>
-      [`${actor}/${target}`, string(view)]));
-    return {
-      command, outcome: string(state.outcome), answer: integer(state.answer),
-      published: integer(state.published), mode: string(state.mode), comments, rows, counts,
-      summary, views,
-    };
-  });
-}
-
 function fixture(name, data) {
   const path = join(directory, name);
   const content = JSON.stringify(data, null, 2) + '\n';
@@ -218,6 +171,64 @@ function fixture(name, data) {
       `${name} differs from Quint output. Review the model change, then use --write explicitly.`);
     console.log(`PASS ${name}: matches generated Quint output`);
   }
+}
+
+function projectEndorsement(file, length, status) {
+  const trace = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(trace['#meta'].status, status);
+  assert.equal(trace.states.length, length + 1);
+  assert.equal(trace.states[0].outcome, 'init');
+  assert.deepEqual(trace.states[0].present['#set'], []);
+  const row = r => ({ selected: r.selected, version: integer(r.version), order: integer(r.order) });
+  const command = c => ({ op: string(c.op), actor: integer(c.actor), id: integer(c.id),
+    expected: integer(c.expected), key: integer(c.key), value: c.value });
+  const counts = c => c['#map'].map(([id, n]) => ({ id: integer(id), count: integer(n) }))
+    .sort((a, b) => a.id - b.id);
+  return trace.states.slice(1).map((s, i) => {
+    assert.equal(integer(s.cursor), i + 1);
+    const present = s.present['#set'].map(tuple);
+    const rows = s.rows['#map'].filter(([p]) => present.some(([a, t]) => {
+      const [actor, id] = tuple(p); return a === actor && t === id;
+    })).map(([p, r]) => { const [actor, id] = tuple(p); return { actor, id, ...row(r) }; })
+      .sort((a, b) => a.actor - b.actor || a.id - b.id);
+    return { command: command(s.command), outcome: string(s.outcome), rows,
+      counts: counts(s.counts), public_counts: counts(s.publicCounts),
+      receipt_count: s.receipts['#map'].length,
+      historical: s.outcome === 'replay' ? row(s.historical) : null,
+      publication: integer(s.publication), shown: sortedSet(s.shown),
+      comments_open: s.commentsOpen, authority: s.authority };
+  });
+}
+
+function verifyEndorsement() {
+  run(['typecheck', 'endorsement.qnt']);
+  simulation('endorsement.qnt', 'step', 40, 1000, 'endorsementSafe');
+  console.log(`PASS endorsement simulation: seed=${seed}, samples=1000, max_steps=40, actors=1..3, targets=1..4`);
+  const out = join(temporary, 'endorsement.itf.json');
+  simulation('endorsement.qnt', 'adversarialStep', 33, 1, 'endorsementSafe', out);
+  const steps = projectEndorsement(out, 33, 'ok');
+  const outcomes = new Set(steps.map(s => s.outcome));
+  for (const expected of ['accepted_changed', 'accepted_unchanged', 'replay', 'conflict',
+    'key_reused', 'target_unavailable', 'own_content', 'authority_unavailable', 'facts_set']) {
+    assert(outcomes.has(expected), `endorsement scenario never reaches ${expected}`);
+  }
+  assert(steps.some(s => s.historical?.selected && s.rows.some(r => r.actor === s.command.actor &&
+    r.id === s.command.id && !r.selected)), 'historical ON must coexist with observed OFF');
+  assert(steps.some(s => !s.comments_open && s.outcome === 'accepted_changed' && s.command.id === 3));
+  fixture('endorsement-fixtures.json', { format: 'vink-endorsement-conformance-v1',
+    quint_version: version, scenarios: [{ name: 'ordering_anchor_privacy', steps }] });
+  const negative = join(temporary, 'endorsement-noop.itf.json');
+  const args = simulation('endorsement.qnt', 'mutatedNoopStep', 2, 1, 'acceptedAgainstLatest', negative, 1);
+  const violation = projectEndorsement(negative, 2, 'violation');
+  assert.equal(violation[0].outcome, 'accepted_unchanged');
+  assert.equal(violation[0].rows[0].order, 1);
+  assert.equal(violation[1].outcome, 'accepted_changed');
+  assert.equal(violation[1].command.expected, 1);
+  assert.equal(violation[1].rows[0].selected, true, 'old ON resurrects after accepted OFF');
+  fixture('endorsement-noop-counterexample.json', { format: 'vink-endorsement-counterexample-v1',
+    quint_version: version, command: ['quint', ...args.filter(a => !a.startsWith('--out-itf='))],
+    status: 'violation', steps: violation });
+  console.log('PASS negative control: missing no-op fence lets old ON resurrect after OFF at transition 2');
 }
 
 try {
@@ -416,85 +427,7 @@ try {
     });
     console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
   }
-  simulation('endorsement.qnt', 'step', 40, 1000, 'endorsementSafe');
-  console.log(`PASS endorsement simulation: seed=${seed}, samples=1000, max_steps=40, principals=1..3, streams=1..4, targets=work/root/reply, revisions=1..2`);
-
-  const endorsement = [];
-  for (const [name, step, length] of [
-    ['reorder_and_retry', 'reorderStep', 21],
-    ['revision_anchor', 'anchorStep', 21],
-    ['comment_targets', 'commentStep', 28],
-  ]) {
-    const out = join(temporary, `${name}.itf.json`);
-    simulation('endorsement.qnt', step, length, 1, 'endorsementSafe', out);
-    endorsement.push({ name, steps: projectEndorsement(out, length, 'ok') });
-  }
-  // Non-vacuity: every decision outcome and projection the model distinguishes is reached.
-  const endorsementOutcomes = new Set(endorsement.flatMap(s => s.steps.map(step => step.outcome)));
-  for (const expected of ['changed', 'reaffirmed', 'already_current', 'stale',
-    'target_unavailable', 'own_content', 'revision_changed', 'comments_closed', 'issued',
-    'read', 'read_hidden', 'published', 'withdrawn', 'moderated', 'mode_set']) {
-    assert(endorsementOutcomes.has(expected), `endorsement scenarios never reach outcome ${expected}`);
-  }
-  const endorsementViews = new Set(endorsement.flatMap(s => s.steps.flatMap(step =>
-    Object.values(step.views))));
-  for (const expected of ['unavailable', 'none', 'endorsed', 'earlier_revision']) {
-    assert(endorsementViews.has(expected), `endorsement scenarios never reach view ${expected}`);
-  }
-  // The adversarial trace itself: B (clear@1, stamp 2) is reaffirmed before the older A
-  // (endorse@1, stamp 1) arrives, which is then stale. Each target kind is endorsed.
-  const [reorder] = endorsement;
-  assert.deepEqual(reorder.steps.slice(3, 5).map(step =>
-    [step.command.stamp, step.command.desire, step.command.expected, step.outcome]),
-  [[2, 'clear', 1, 'reaffirmed'], [1, 'select', 1, 'stale']]);
-  for (const target of [0, 1, 2]) {
-    assert(endorsement.some(s => s.steps.some(step => step.outcome === 'changed' &&
-      step.command.target === target && step.command.desire === 'select')),
-    `no endorsement of target ${target} is applied`);
-  }
-  assert(endorsement.some(s => s.steps.some(step => step.views['2/0'] === 'earlier_revision' &&
-    step.summary['0'] !== null)), 'an earlier-revision endorsement next to a visible count');
-  fixture('endorsement-fixtures.json', {
-    format: 'vink-endorsement-conformance-v1', quint_version: version, policy: 'lve-core-v1',
-    work_author: 1, writers: { 1: 2, 2: 3 }, scenarios: endorsement,
-  });
-
-  for (const [name, step, length, invariant, check] of [
-    ['endorsement-unfenced-counterexample.json', 'mutatedUnfencedStep', 5, 'noRevival', steps => {
-      // Without the fence the newer clear was a no-op, so the older endorse (stamp 1) applied
-      // after the server had confirmed the clear (stamp 2).
-      const [, , , confirmedClear, revived] = steps;
-      assert.deepEqual([confirmedClear.command.stamp, confirmedClear.outcome], [2, 'already_current']);
-      assert.deepEqual([revived.command.stamp, revived.command.expected, revived.outcome],
-        [1, 1, 'changed']);
-      assert.equal(revived.rows['3/0'].sel, 1);
-    }],
-    ['endorsement-version-reset-counterexample.json', 'mutatedResetStep', 6, 'noRevival', steps => {
-      // Deleting the cleared row restarted its version at 1, so the duplicate select applied.
-      assert.equal(steps[3].rows['2/0'].version, 2);
-      assert.equal(steps[4].rows['2/0'], undefined, 'the cleared row is gone: version 1 again');
-      const last = steps.at(-1);
-      assert.deepEqual([last.command.stamp, last.outcome], [1, 'changed']);
-      assert.equal(last.rows['2/0'].sel, 1);
-    }],
-    ['endorsement-transfer-counterexample.json', 'mutatedTransferStep', 4, 'noSilentTransfer', steps => {
-      // The reader read revision 1; the endorsement landed on revision 2.
-      const last = steps.at(-1);
-      assert.deepEqual([last.command.observed, last.published, last.outcome], [1, 2, 'changed']);
-      assert.equal(last.rows['2/0'].sel, 2);
-    }],
-  ]) {
-    const out = join(temporary, name.replace('.json', '.itf.json'));
-    const args = simulation('endorsement.qnt', step, length, 1, invariant, out, 1);
-    const steps = projectEndorsement(out, length, 'violation');
-    check(steps);
-    fixture(name, {
-      format: 'vink-endorsement-counterexample-v1', quint_version: version,
-      command: ['quint', ...args.filter(arg => !arg.startsWith('--out-itf='))],
-      status: 'violation', steps,
-    });
-    console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
-  }
+  verifyEndorsement();
   console.log('NOT_RUN Apalache/model checking; Rust conformance is a separate cargo test');
   rmSync(temporary, { recursive: true });
 } catch (error) {
