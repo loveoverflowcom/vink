@@ -233,6 +233,82 @@
         {
           "command": {
             "op": "react",
+            "actor": 2,
+            "id": 1,
+            "expected": 1,
+            "value": "none"
+          },
+          "outcome": "own_comment",
+          "mode": "open",
+          "comments": [
+            {
+              "id": 1,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "status": "pending",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ],
+          "reactions": [
+            {
+              "actor": 1,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 1,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            }
+          ],
+          "visible_tally": [
+            {
+              "id": 1,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "react",
             "actor": 3,
             "id": 1,
             "expected": 1,
@@ -314,7 +390,7 @@
             "expected": 1,
             "value": "heart"
           },
-          "outcome": "unchanged",
+          "outcome": "already_current",
           "mode": "open",
           "comments": [
             {
@@ -770,7 +846,7 @@
             "expected": 4,
             "value": "none"
           },
-          "outcome": "unchanged",
+          "outcome": "reaffirmed",
           "mode": "open",
           "comments": [
             {
@@ -807,7 +883,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -883,7 +959,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -919,7 +995,7 @@
             "op": "react",
             "actor": 3,
             "id": 1,
-            "expected": 4,
+            "expected": 5,
             "value": "heart"
           },
           "outcome": "closed",
@@ -959,7 +1035,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -998,7 +1074,7 @@
             "expected": 1,
             "value": "moved"
           },
-          "outcome": "unchanged",
+          "outcome": "already_current",
           "mode": "closed",
           "comments": [
             {
@@ -1035,7 +1111,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1072,6 +1148,82 @@
             "actor": 1,
             "id": 1,
             "expected": 2,
+            "value": "moved"
+          },
+          "outcome": "reaffirmed",
+          "mode": "closed",
+          "comments": [
+            {
+              "id": 1,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 1
+              }
+            },
+            {
+              "id": 2,
+              "status": "pending",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ],
+          "reactions": [
+            {
+              "actor": 1,
+              "id": 1,
+              "kind": "moved",
+              "generation": 3
+            },
+            {
+              "actor": 2,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "kind": "none",
+              "generation": 5
+            },
+            {
+              "actor": 1,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            }
+          ],
+          "visible_tally": [
+            {
+              "id": 1,
+              "tally": {
+                "heart": 0,
+                "moved": 1
+              }
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "react",
+            "actor": 1,
+            "id": 1,
+            "expected": 3,
             "value": "none"
           },
           "outcome": "changed",
@@ -1099,7 +1251,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1111,7 +1263,83 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
+              "generation": 5
+            },
+            {
+              "actor": 1,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            }
+          ],
+          "visible_tally": [
+            {
+              "id": 1,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "set_mode",
+            "actor": 1,
+            "id": 0,
+            "expected": 0,
+            "value": "closed"
+          },
+          "outcome": "mode_reaffirmed",
+          "mode": "closed",
+          "comments": [
+            {
+              "id": 1,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "status": "pending",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ],
+          "reactions": [
+            {
+              "actor": 1,
+              "id": 1,
+              "kind": "none",
               "generation": 4
+            },
+            {
+              "actor": 2,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "kind": "none",
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1175,7 +1403,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1187,7 +1415,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1251,7 +1479,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1263,7 +1491,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1327,7 +1555,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1339,7 +1567,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1383,6 +1611,172 @@
             "actor": 2,
             "id": 2,
             "expected": 1,
+            "value": "none"
+          },
+          "outcome": "reaffirmed",
+          "mode": "open",
+          "comments": [
+            {
+              "id": 1,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ],
+          "reactions": [
+            {
+              "actor": 1,
+              "id": 1,
+              "kind": "none",
+              "generation": 4
+            },
+            {
+              "actor": 2,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "kind": "none",
+              "generation": 5
+            },
+            {
+              "actor": 1,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 2,
+              "kind": "none",
+              "generation": 2
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            }
+          ],
+          "visible_tally": [
+            {
+              "id": 1,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "react",
+            "actor": 2,
+            "id": 2,
+            "expected": 1,
+            "value": "heart"
+          },
+          "outcome": "stale",
+          "mode": "open",
+          "comments": [
+            {
+              "id": 1,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "status": "public",
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ],
+          "reactions": [
+            {
+              "actor": 1,
+              "id": 1,
+              "kind": "none",
+              "generation": 4
+            },
+            {
+              "actor": 2,
+              "id": 1,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "kind": "none",
+              "generation": 5
+            },
+            {
+              "actor": 1,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            },
+            {
+              "actor": 2,
+              "id": 2,
+              "kind": "none",
+              "generation": 2
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "kind": "none",
+              "generation": 1
+            }
+          ],
+          "visible_tally": [
+            {
+              "id": 1,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            },
+            {
+              "id": 2,
+              "tally": {
+                "heart": 0,
+                "moved": 0
+              }
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "react",
+            "actor": 2,
+            "id": 2,
+            "expected": 2,
             "value": "heart"
           },
           "outcome": "changed",
@@ -1410,7 +1804,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1422,7 +1816,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1434,7 +1828,7 @@
               "actor": 2,
               "id": 2,
               "kind": "heart",
-              "generation": 2
+              "generation": 3
             },
             {
               "actor": 3,
@@ -1493,7 +1887,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1505,7 +1899,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1517,7 +1911,7 @@
               "actor": 2,
               "id": 2,
               "kind": "heart",
-              "generation": 2
+              "generation": 3
             },
             {
               "actor": 3,
@@ -1576,7 +1970,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1588,7 +1982,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1600,7 +1994,7 @@
               "actor": 2,
               "id": 2,
               "kind": "heart",
-              "generation": 2
+              "generation": 3
             },
             {
               "actor": 3,
@@ -1624,7 +2018,7 @@
             "op": "react",
             "actor": 2,
             "id": 2,
-            "expected": 2,
+            "expected": 3,
             "value": "none"
           },
           "outcome": "target_unavailable",
@@ -1652,7 +2046,7 @@
               "actor": 1,
               "id": 1,
               "kind": "none",
-              "generation": 3
+              "generation": 4
             },
             {
               "actor": 2,
@@ -1664,7 +2058,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1676,7 +2070,7 @@
               "actor": 2,
               "id": 2,
               "kind": "heart",
-              "generation": 2
+              "generation": 3
             },
             {
               "actor": 3,
@@ -1700,7 +2094,7 @@
             "op": "react",
             "actor": 1,
             "id": 1,
-            "expected": 3,
+            "expected": 4,
             "value": "heart"
           },
           "outcome": "changed",
@@ -1728,7 +2122,7 @@
               "actor": 1,
               "id": 1,
               "kind": "heart",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 2,
@@ -1740,7 +2134,7 @@
               "actor": 3,
               "id": 1,
               "kind": "none",
-              "generation": 4
+              "generation": 5
             },
             {
               "actor": 1,
@@ -1752,7 +2146,7 @@
               "actor": 2,
               "id": 2,
               "kind": "heart",
-              "generation": 2
+              "generation": 3
             },
             {
               "actor": 3,

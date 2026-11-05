@@ -1,0 +1,247 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "reaction.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedNoopStep",
+    "--max-steps=3",
+    "--max-samples=1",
+    "--invariant=confirmedIntentFence",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "approve",
+        "actor": 0,
+        "id": 1,
+        "expected": 0,
+        "value": ""
+      },
+      "outcome": "moderated",
+      "mode": "open",
+      "comments": [
+        {
+          "id": 1,
+          "status": "public",
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        },
+        {
+          "id": 2,
+          "status": "pending",
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        }
+      ],
+      "reactions": [
+        {
+          "actor": 1,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 1,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        }
+      ],
+      "visible_tally": [
+        {
+          "id": 1,
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "react",
+        "actor": 3,
+        "id": 1,
+        "expected": 1,
+        "value": "none"
+      },
+      "outcome": "already_current",
+      "mode": "open",
+      "comments": [
+        {
+          "id": 1,
+          "status": "public",
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        },
+        {
+          "id": 2,
+          "status": "pending",
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        }
+      ],
+      "reactions": [
+        {
+          "actor": 1,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 1,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        }
+      ],
+      "visible_tally": [
+        {
+          "id": 1,
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "react",
+        "actor": 3,
+        "id": 1,
+        "expected": 1,
+        "value": "heart"
+      },
+      "outcome": "changed",
+      "mode": "open",
+      "comments": [
+        {
+          "id": 1,
+          "status": "public",
+          "tally": {
+            "heart": 1,
+            "moved": 0
+          }
+        },
+        {
+          "id": 2,
+          "status": "pending",
+          "tally": {
+            "heart": 0,
+            "moved": 0
+          }
+        }
+      ],
+      "reactions": [
+        {
+          "actor": 1,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 1,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 1,
+          "kind": "heart",
+          "generation": 2
+        },
+        {
+          "actor": 1,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 2,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        },
+        {
+          "actor": 3,
+          "id": 2,
+          "kind": "none",
+          "generation": 1
+        }
+      ],
+      "visible_tally": [
+        {
+          "id": 1,
+          "tally": {
+            "heart": 1,
+            "moved": 0
+          }
+        }
+      ]
+    }
+  ]
+}

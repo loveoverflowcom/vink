@@ -215,7 +215,7 @@ try {
   const lifecycle = [];
   for (const [name, step, length] of [
     ['moderation_authority', 'moderationStep', 26],
-    ['comments_mode', 'modeStep', 16],
+    ['comments_mode', 'modeStep', 18],
     ['submission_retry', 'retryStep', 12],
   ]) {
     const out = join(temporary, `${name}.itf.json`);
@@ -225,10 +225,18 @@ try {
   // Non-vacuity: the scenarios together reach every outcome and every viewer projection.
   const outcomes = new Set(lifecycle.flatMap(s => s.steps.map(step => step.outcome)));
   for (const expected of ['created', 'closed', 'target_unavailable', 'changed', 'unchanged',
-    'stale', 'removed', 'not_work_author', 'not_comment_writer', 'hidden', 'not_moderator',
-    'recused', 'granted', 'already_active', 'revoked', 'not_active', 'replayed', 'key_reused']) {
+    'reaffirmed', 'already_current', 'stale', 'removed', 'not_work_author', 'not_comment_writer',
+    'hidden', 'not_moderator', 'recused', 'granted', 'already_active', 'revoked', 'not_active',
+    'replayed', 'key_reused']) {
     assert(outcomes.has(expected), `lifecycle scenarios never reach outcome ${expected}`);
   }
+  // Non-vacuity of confirmedModeFence: a reaffirmation followed by the older request it fences.
+  const modeSteps = lifecycle.find(s => s.name === 'comments_mode').steps;
+  assert(modeSteps.some((step, index) => step.outcome === 'reaffirmed' &&
+    modeSteps[index + 1]?.outcome === 'stale' &&
+    modeSteps[index + 1].command.expected === step.command.expected &&
+    modeSteps[index + 1].command.value !== step.command.value),
+    'comments_mode never delays an older request behind a reaffirmation');
   const seen = new Set(lifecycle.flatMap(s => s.steps.flatMap(step =>
     step.comments.flatMap(comment => comment.views))));
   for (const expected of ['public', 'own_pending', 'own_rejected', 'unavailable']) {
@@ -274,18 +282,44 @@ try {
   });
   console.log('PASS negative control: ignoring the receipt creates a second comment for one key and violates idempotentSubmission at transition 2');
 
+  const noopMode = join(temporary, 'mode-noop-fence.itf.json');
+  const noopModeCommand = simulation('lifecycle.qnt', 'mutatedNoopModeStep', 3, 1,
+    'confirmedModeFence', noopMode, 1);
+  const noopModeSteps = projectLifecycle(noopMode, 3, 'violation');
+  // The counterexample must be the COM-07 trace: tab B's request for the current mode at
+  // generation 2 fenced nothing, so tab A's older reopen at generation 2 was applied after it.
+  const [, keepClosed, reopened] = noopModeSteps;
+  assert.deepEqual([keepClosed.command.expected, keepClosed.command.value, keepClosed.outcome,
+    keepClosed.mode, keepClosed.generation], [2, 'closed', 'already_current', 'closed', 2]);
+  assert.deepEqual([reopened.command.expected, reopened.command.value, reopened.outcome,
+    reopened.mode, reopened.generation], [2, 'open', 'changed', 'open', 3]);
+  fixture('mode-noop-fence-counterexample.json', {
+    format: 'vink-discussion-counterexample-v1', quint_version: version,
+    command: ['quint', ...noopModeCommand.filter(arg => !arg.startsWith('--out-itf='))],
+    status: 'violation', steps: noopModeSteps,
+  });
+  console.log('PASS negative control: a no-op for the current mode lets an older reopen through and violates confirmedModeFence at transition 3');
+
   simulation('reaction.qnt', 'step', 40, 1000, 'reactionSafe');
   console.log(`PASS reaction simulation: seed=${seed}, samples=1000, max_steps=40, principals=1..3, comments=1..2, kinds=heart/moved`);
 
-  const reactionLength = 23;
+  const reactionLength = 28;
   const reactionOut = join(temporary, 'desired_state.itf.json');
   simulation('reaction.qnt', 'desiredStateStep', reactionLength, 1, 'reactionSafe', reactionOut);
   const reactionSteps = projectReaction(reactionOut, reactionLength, 'ok');
   const reactionOutcomes = new Set(reactionSteps.map(step => step.outcome));
-  for (const expected of ['changed', 'unchanged', 'stale', 'target_unavailable', 'own_comment',
-    'closed', 'moderated', 'mode_set']) {
+  for (const expected of ['changed', 'reaffirmed', 'already_current', 'stale',
+    'target_unavailable', 'own_comment', 'closed', 'moderated', 'mode_set', 'mode_reaffirmed']) {
     assert(reactionOutcomes.has(expected), `reaction scenario never reaches outcome ${expected}`);
   }
+  // Non-vacuity: a reaffirmation while closed, and an older request delayed behind one.
+  assert(reactionSteps.some(step => step.outcome === 'reaffirmed' && step.mode === 'closed' &&
+    step.command.value !== 'none'));
+  assert(reactionSteps.some((step, index) => step.outcome === 'reaffirmed' &&
+    reactionSteps[index + 1]?.outcome === 'stale' &&
+    reactionSteps[index + 1].command.actor === step.command.actor &&
+    reactionSteps[index + 1].command.id === step.command.id &&
+    reactionSteps[index + 1].command.expected === step.command.expected));
   // Non-vacuity: replacement, a hidden comment that still stores reactions, a nonzero count.
   assert(reactionSteps.some(step => step.command.op === 'react' && step.outcome === 'changed' &&
     step.command.value !== 'none' && step.command.expected > 1));
@@ -310,6 +344,17 @@ try {
       assert.equal(last.command.expected, 1);
       assert.equal(steps.at(-2).reactions.find(r => r.actor === 3 && r.id === 1).generation, 3);
       assert.equal(last.reactions.find(r => r.actor === 3 && r.id === 1).kind, 'heart');
+    }],
+    ['reaction-noop-fence-counterexample.json', 'mutatedNoopStep', 3, 'confirmedIntentFence', steps => {
+      // Tab B's "no reaction" at generation 1 was a no-op that fenced nothing, so tab A's older
+      // Heart at generation 1 was applied after it; generationFence alone does not see this.
+      const [, keepNone, late] = steps;
+      const mine = step => step.reactions.find(r => r.actor === 3 && r.id === 1);
+      assert.deepEqual([keepNone.command.expected, keepNone.command.value, keepNone.outcome],
+        [1, 'none', 'already_current']);
+      assert.deepEqual(mine(keepNone), { actor: 3, id: 1, kind: 'none', generation: 1 });
+      assert.deepEqual([late.command.expected, late.command.value, late.outcome], [1, 'heart', 'changed']);
+      assert.deepEqual(mine(late), { actor: 3, id: 1, kind: 'heart', generation: 2 });
     }],
   ]) {
     const out = join(temporary, name.replace('.json', '.itf.json'));

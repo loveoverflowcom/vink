@@ -14,10 +14,12 @@ const FILTERS: [&str; 4] = [
     "domain::discussion::reaction_replay",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 3] = [
+const REPLAYS: [&str; 5] = [
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",
     "domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions",
+    "domain::discussion::lifecycle_replay::the_no_op_mode_counterexample_is_refused_by_production",
     "domain::discussion::reaction_replay::quint_reaction_inputs_replay_against_the_production_decisions",
+    "domain::discussion::reaction_replay::the_no_op_reaction_counterexample_is_refused_by_production",
 ];
 
 pub fn verify(report: &mut Report) -> bool {
