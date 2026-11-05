@@ -314,3 +314,10 @@ hiện hữu. Chữ 200% ở 320px; năm viewport × hai theme. Source invariant
 CMP `NotoExpressionTest` dùng fixture sinh từ cùng manifest, chỉ kiểm lookup/Unicode trên JVM.
 Đây là coverage intent; không phải tuyên bố lượt chạy PASS, heap leak-free, IME thật, screen reader,
 mobile native, full benchmark hoặc #45 integration. SHA/kết quả chạy phải xem evidence của PR.
+
+
+## LVE-PR-01 — endorsement core (05/11/2026)
+
+| Điểm vào / scope | Owner / assertions | Coverage limit |
+| --- | --- | --- |
+| Chưa có UI/HTTP; pure work revision + root/flat reply | `domain::endorsement::decide_endorsement`, target facts, retained state, accepted order, receipt, checked count; 8 regression + Quint replay 33 inputs, sáu Kani obligations được registry chọn | Pure slice; [registry](endorsement-core.md) ghi kết quả/gap; auth/transaction/API/UI và epic AC-03 chưa hoàn tất |

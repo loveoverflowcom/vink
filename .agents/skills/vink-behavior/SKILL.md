@@ -13,7 +13,8 @@ Use [requirements](../../../prd/requirements.md) and
 INV ID and decision status. Inspect the real implementation separately. The foundation
 proposes Quint. The scoped two-tier creation model, the comment lifecycle/mode/moderation
 authority model and their generated traces live in `services/vink-app/behavior/discussion`;
-`verify discussion` checks both and replays their inputs through the real Rust decisions. They
+`verify discussion` checks both and replays their inputs through the real Rust decisions. The owner-local literary endorsement model/replay (LVE-PR-01) shares this runner;
+its [registry](../../../docs/development/endorsement-core.md) records separate semantics and gaps. They
 do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are in
 `docs/development/discussion-core.md`.
 `verify kani` checks single discussion decisions (version/generation arithmetic, viewer projection)

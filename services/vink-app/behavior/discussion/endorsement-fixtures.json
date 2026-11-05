@@ -1,0 +1,2253 @@
+{
+  "format": "vink-endorsement-conformance-v1",
+  "quint_version": "0.33.1",
+  "scenarios": [
+    {
+      "name": "ordering_anchor_privacy",
+      "steps": [
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 1,
+            "key": 1,
+            "value": false
+          },
+          "outcome": "accepted_unchanged",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 1,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 1,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 1,
+            "key": 2,
+            "value": true
+          },
+          "outcome": "conflict",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 1,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 1,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 1,
+            "key": 3,
+            "value": false
+          },
+          "outcome": "conflict",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 1,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 1,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 2,
+            "key": 2,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": true,
+              "version": 2,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 2,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 2,
+            "key": 2,
+            "value": true
+          },
+          "outcome": "replay",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": true,
+              "version": 2,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 2,
+          "historical": {
+            "selected": true,
+            "version": 2,
+            "order": 3
+          },
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 3,
+            "key": 4,
+            "value": false
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 3,
+              "order": 4
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 3,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 2,
+            "key": 2,
+            "value": true
+          },
+          "outcome": "replay",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 3,
+              "order": 4
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 3,
+          "historical": {
+            "selected": true,
+            "version": 2,
+            "order": 3
+          },
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 2,
+            "key": 5,
+            "value": true
+          },
+          "outcome": "conflict",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 3,
+              "order": 4
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 3,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 3,
+            "key": 2,
+            "value": false
+          },
+          "outcome": "key_reused",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 3,
+              "order": 4
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 3,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 4,
+            "key": 5,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": true,
+              "version": 4,
+              "order": 5
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 4,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 5,
+            "key": 6,
+            "value": false
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 5,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 1,
+            "id": 1,
+            "expected": 1,
+            "key": 1,
+            "value": true
+          },
+          "outcome": "own_content",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 5,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": true,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "mode",
+            "actor": 0,
+            "id": 0,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 5,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 3,
+            "expected": 1,
+            "key": 7,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 6,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 2,
+            "id": 4,
+            "expected": 1,
+            "key": 7,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 7,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "show",
+            "actor": 0,
+            "id": 3,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 7,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 3,
+            "expected": 2,
+            "key": 8,
+            "value": false
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 8,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 3,
+            "expected": 3,
+            "key": 9,
+            "value": true
+          },
+          "outcome": "target_unavailable",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 8,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "publish",
+            "actor": 0,
+            "id": 2,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 8,
+          "historical": null,
+          "publication": 2,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 6,
+            "key": 9,
+            "value": true
+          },
+          "outcome": "target_unavailable",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 8,
+          "historical": null,
+          "publication": 2,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 2,
+            "expected": 1,
+            "key": 1,
+            "value": true
+          },
+          "outcome": "key_reused",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 8,
+          "historical": null,
+          "publication": 2,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 2,
+            "expected": 1,
+            "key": 9,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 6
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 2,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 9,
+          "historical": null,
+          "publication": 2,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 1,
+            "expected": 6,
+            "key": 10,
+            "value": false
+          },
+          "outcome": "accepted_unchanged",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 2,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "receipt_count": 10,
+          "historical": null,
+          "publication": 2,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "publish",
+            "actor": 0,
+            "id": 0,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 1
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 10,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 3,
+            "id": 2,
+            "expected": 2,
+            "key": 11,
+            "value": false
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 11,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 2,
+            "id": 4,
+            "expected": 2,
+            "key": 10,
+            "value": true
+          },
+          "outcome": "target_unavailable",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 11,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "authority",
+            "actor": 0,
+            "id": 0,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 11,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": false
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 2,
+            "id": 4,
+            "expected": 2,
+            "key": 11,
+            "value": false
+          },
+          "outcome": "authority_unavailable",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 11,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": false
+        },
+        {
+          "command": {
+            "op": "authority",
+            "actor": 0,
+            "id": 0,
+            "expected": 0,
+            "key": 0,
+            "value": true
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 1
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 11,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 2,
+            "id": 4,
+            "expected": 2,
+            "key": 11,
+            "value": false
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [],
+          "receipt_count": 12,
+          "historical": null,
+          "publication": 0,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "publish",
+            "actor": 0,
+            "id": 1,
+            "expected": 0,
+            "key": 0,
+            "value": false
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 12,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "show",
+            "actor": 0,
+            "id": 3,
+            "expected": 0,
+            "key": 0,
+            "value": true
+          },
+          "outcome": "facts_set",
+          "rows": [
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 0
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 12,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        },
+        {
+          "command": {
+            "op": "set",
+            "actor": 1,
+            "id": 3,
+            "expected": 1,
+            "key": 1,
+            "value": true
+          },
+          "outcome": "accepted_changed",
+          "rows": [
+            {
+              "actor": 1,
+              "id": 3,
+              "selected": true,
+              "version": 2,
+              "order": 2
+            },
+            {
+              "actor": 2,
+              "id": 4,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 1,
+              "selected": false,
+              "version": 5,
+              "order": 7
+            },
+            {
+              "actor": 3,
+              "id": 2,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            },
+            {
+              "actor": 3,
+              "id": 3,
+              "selected": false,
+              "version": 3,
+              "order": 3
+            }
+          ],
+          "counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 2,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "public_counts": [
+            {
+              "id": 1,
+              "count": 0
+            },
+            {
+              "id": 3,
+              "count": 1
+            },
+            {
+              "id": 4,
+              "count": 0
+            }
+          ],
+          "receipt_count": 13,
+          "historical": null,
+          "publication": 1,
+          "shown": [
+            3,
+            4
+          ],
+          "comments_open": false,
+          "authority": true
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Model discussion
 
-Thư mục giữ ba model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
+Thư mục giữ bốn model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
 hai tầng, D2T-01), `lifecycle.qnt` (vòng đời bình luận, bật/tắt, authority kiểm duyệt và receipt
 gửi bình luận, D2T-02/D2T-INV-06, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)) và
 `reaction.qnt` (reaction desired-state, D2T-INV-08, [phần cuối](#model-reaction-d2t-inv-08)).
@@ -238,3 +238,13 @@ state của model. Tạm bỏ kiểm `expected != self.generation` trong `ActorR
 ./node_modules/.bin/quint run reaction.qnt --backend=typescript --seed=41 \
   --step=step --max-steps=40 --max-samples=1000 --invariant=reactionSafe --verbosity=1
 ```
+
+
+## Literary endorsement LVE-PR-01
+
+`endorsement.qnt` là model thứ tư dùng **cùng** `verify.mjs`/pin 0.33.1 và lane discussion.
+[Policy](../../../../docs/architecture/literary-endorsement.md) và
+[registry, bounds, replay, negative control và gaps](../../../../docs/development/endorsement-core.md)
+là canonical owners. Không đổi `reaction.qnt`: endorsement không là emotion Applause đổi tên.
+Simulation seed41, 1000 samples ×40 transitions; scenario 33 inputs qua Rust production;
+mutant bỏ no-op fence tạo OFF→old ON resurrection ở transition2. Không exhaustive model checking.

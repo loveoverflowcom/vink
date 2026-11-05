@@ -173,6 +173,64 @@ function fixture(name, data) {
   }
 }
 
+function projectEndorsement(file, length, status) {
+  const trace = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(trace['#meta'].status, status);
+  assert.equal(trace.states.length, length + 1);
+  assert.equal(trace.states[0].outcome, 'init');
+  assert.deepEqual(trace.states[0].present['#set'], []);
+  const row = r => ({ selected: r.selected, version: integer(r.version), order: integer(r.order) });
+  const command = c => ({ op: string(c.op), actor: integer(c.actor), id: integer(c.id),
+    expected: integer(c.expected), key: integer(c.key), value: c.value });
+  const counts = c => c['#map'].map(([id, n]) => ({ id: integer(id), count: integer(n) }))
+    .sort((a, b) => a.id - b.id);
+  return trace.states.slice(1).map((s, i) => {
+    assert.equal(integer(s.cursor), i + 1);
+    const present = s.present['#set'].map(tuple);
+    const rows = s.rows['#map'].filter(([p]) => present.some(([a, t]) => {
+      const [actor, id] = tuple(p); return a === actor && t === id;
+    })).map(([p, r]) => { const [actor, id] = tuple(p); return { actor, id, ...row(r) }; })
+      .sort((a, b) => a.actor - b.actor || a.id - b.id);
+    return { command: command(s.command), outcome: string(s.outcome), rows,
+      counts: counts(s.counts), public_counts: counts(s.publicCounts),
+      receipt_count: s.receipts['#map'].length,
+      historical: s.outcome === 'replay' ? row(s.historical) : null,
+      publication: integer(s.publication), shown: sortedSet(s.shown),
+      comments_open: s.commentsOpen, authority: s.authority };
+  });
+}
+
+function verifyEndorsement() {
+  run(['typecheck', 'endorsement.qnt']);
+  simulation('endorsement.qnt', 'step', 40, 1000, 'endorsementSafe');
+  console.log(`PASS endorsement simulation: seed=${seed}, samples=1000, max_steps=40, actors=1..3, targets=1..4`);
+  const out = join(temporary, 'endorsement.itf.json');
+  simulation('endorsement.qnt', 'adversarialStep', 33, 1, 'endorsementSafe', out);
+  const steps = projectEndorsement(out, 33, 'ok');
+  const outcomes = new Set(steps.map(s => s.outcome));
+  for (const expected of ['accepted_changed', 'accepted_unchanged', 'replay', 'conflict',
+    'key_reused', 'target_unavailable', 'own_content', 'authority_unavailable', 'facts_set']) {
+    assert(outcomes.has(expected), `endorsement scenario never reaches ${expected}`);
+  }
+  assert(steps.some(s => s.historical?.selected && s.rows.some(r => r.actor === s.command.actor &&
+    r.id === s.command.id && !r.selected)), 'historical ON must coexist with observed OFF');
+  assert(steps.some(s => !s.comments_open && s.outcome === 'accepted_changed' && s.command.id === 3));
+  fixture('endorsement-fixtures.json', { format: 'vink-endorsement-conformance-v1',
+    quint_version: version, scenarios: [{ name: 'ordering_anchor_privacy', steps }] });
+  const negative = join(temporary, 'endorsement-noop.itf.json');
+  const args = simulation('endorsement.qnt', 'mutatedNoopStep', 2, 1, 'acceptedAgainstLatest', negative, 1);
+  const violation = projectEndorsement(negative, 2, 'violation');
+  assert.equal(violation[0].outcome, 'accepted_unchanged');
+  assert.equal(violation[0].rows[0].order, 1);
+  assert.equal(violation[1].outcome, 'accepted_changed');
+  assert.equal(violation[1].command.expected, 1);
+  assert.equal(violation[1].rows[0].selected, true, 'old ON resurrects after accepted OFF');
+  fixture('endorsement-noop-counterexample.json', { format: 'vink-endorsement-counterexample-v1',
+    quint_version: version, command: ['quint', ...args.filter(a => !a.startsWith('--out-itf='))],
+    status: 'violation', steps: violation });
+  console.log('PASS negative control: missing no-op fence lets old ON resurrect after OFF at transition 2');
+}
+
 try {
   assert.equal(run(['--version']).trim(), version, 'Use the pinned Quint version');
   run(['typecheck', 'structure.qnt']);
@@ -323,6 +381,7 @@ try {
     });
     console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
   }
+  verifyEndorsement();
   console.log('NOT_RUN Apalache/model checking; Rust conformance is a separate cargo test');
   rmSync(temporary, { recursive: true });
 } catch (error) {

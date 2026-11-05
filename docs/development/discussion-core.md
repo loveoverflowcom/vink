@@ -75,6 +75,10 @@ thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contr
   tắt. `ReactionTally` là projection: chỉ đổi theo delta, không âm/không tràn, không quyết định
   ACL/xếp hạng/gỡ, bình luận ẩn không lộ số đếm. Chưa có rate limit theo thời gian (cần clock).
 
+Endorsement văn học là module riêng, không đổi reaction thành Hữu ích hoặc cạnh tranh slot emotion.
+[Registry LVE-PR-01](endorsement-core.md) giữ model/trace/proof và quyết định order/no-op của #73.
+Runner discussion/Kani dùng chung, D2T semantics/checklist ở đây giữ nguyên.
+
 ## Registry traceability của #41
 
 Đây là bảng mapping duy nhất cho D2T-INV trong repo. Requirements/ADR sở hữu quyết định; model

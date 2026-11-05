@@ -52,6 +52,11 @@ Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md)
 ghi phần đã hiện thực và gap. D-05, D-08 và D-12 vẫn mở: thiếu auth authority thật vẫn chặn
 ghi bình luận production, tiền kiểm cần authority kiểm duyệt và màn vận hành.
 
+Literary endorsement [#73](https://github.com/loveoverflowcom/vink/issues/73), LVE-PR-01:
+[decision owner](literary-endorsement.md) ghi CHOICE-01/02/03/08/09/11 cho pure slice;
+[registry](../development/endorsement-core.md) tách evidence/gaps. Không đổi D/INV hiện hành,
+không đóng epic hoặc nhận production readiness; các CHOICE còn lại vẫn OPEN.
+
 ## 3. Không dùng một state enum cho toàn bộ vòng đời
 
 Tách các trục sau giúp diễn đạt đúng trạng thái người dùng thấy:

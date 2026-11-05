@@ -127,3 +127,48 @@ Không đưa một số hiệu suất tùy ý thành lời hứa. Trước publi
 Later: đồng biên tập thời gian thực; nhóm kín với ACL phức tạp; ghi chú bên lề tự re-anchor qua mọi lần sửa; chat/DM; hệ điểm/karmas; chợ bản quyền, paywall và chi trả tác giả; ứng dụng native; hệ recommendation riêng; chuyển thể audio tự động và SSO chung Cantos.
 
 Không viết DDL cuối cùng, OpenAPI đầy đủ hoặc model Quint thực thi trong đợt requirements này. Các tài liệu đó cần theo sau quyết định phạm vi, editor schema, identity và integration spike.
+
+## 12. Literary endorsement (LVE)
+
+Nguồn [epic #73](https://github.com/loveoverflowcom/vink/issues/73); canonical phần lõi được promote
+ngày 05/11/2026 trong LVE-PR-01. [Quyết định slice](../docs/architecture/literary-endorsement.md)
+chọn policy, alternatives và contract; [registry](../docs/development/endorsement-core.md) giữ
+traceability/evidence/gaps. Snapshot handoff r1 không còn normative cho phần lõi đã promote.
+Đây là yêu cầu và scope, không phải checklist production PASS. COM-07/08, MOD-01 và private/public giữ nguyên.
+
+| ID | Yêu cầu canonical | Phạm vi PR1 |
+| --- | --- | --- |
+| LVE-FR-01 | Actor có capability thật chọn/bỏ một tín hiệu tích cực cho work theo revision, root hoặc flat reply; chặn self endorsement | Pure decision; authority thật chưa có |
+| LVE-FR-02 | Aggregate có nguồn tách own state; unavailable khác 0 | Checked count + visibility seam; query/read adapter để sau |
+| LVE-FR-03 | Desired state, không toggle; retry/duplicate/lệnh đến muộn không nhân hiệu ứng hoặc hồi sinh intent cũ | Every accepted intent tăng order, receipt exact payload; UI/session/ACK để sau |
+| LVE-FR-04 | Truy vết văn bản được ghi nhận, không tự chuyển qua rewrite | Work neo immutable RevisionId; comment original identity, edit unsupported |
+| LVE-FR-05 | Read/write/summary/cursor giữ visibility; không leak draft/pending/withdrawn | Guard/count projection + private own-removal; I/O để sau |
+| LVE-FR-06 | Root ranking cần policy/capability thật; replies giữ chronology và hai tầng | Ranking OPEN, không đổi thứ tự discussion |
+| LVE-FR-07 | Endorsement độc lập emotion/bookmark/report; không nhập policy reaction, không đổi COM-07 | Module riêng; close text không chặn endorsement |
+| LVE-FR-08 | UI có default/selected/pending/uncertain/rejected/unavailable/disabled-reason, keyboard/focus/text200%/reduced motion | Ngoài PR1, giữ yêu cầu epic |
+| LVE-FR-09 | Canonical source, rebuild/reconciliation và policy abuse/retention có owner/version; RAM không là durable authority | Delta/checks + transaction contract; retention/account lifecycle OPEN |
+| LVE-FR-10 | Fixture/skeleton không giả success; production cần auth/authority/persistence thật | Không route/store giả; epic AC-03 chỉ PARTIAL |
+
+| Use case ID giữ từ #73 | Hành vi phải giữ |
+| --- | --- |
+| LVE-UC-01 | Khách đọc có visibility; không giả đăng nhập/vote thành công |
+| LVE-UC-02 | Chọn work đúng revision, chỉ confirmed sau durable outcome/readback |
+| LVE-UC-03 | Root/reply đổi đúng target, không cộng lên parent/work, giữ hai tầng |
+| LVE-UC-04 | Bỏ/lặp thao tác không nhân delta; accepted same-state vẫn ghi fence |
+| LVE-UC-05 | Pending serialize/coalesce/confirmation và ACK cũ không đè intent mới (UI sau) |
+| LVE-UC-06 | Mất ACK là uncertain; cùng key/payload replay lịch sử tách current state |
+| LVE-UC-07 | Multi-tab/máy: accepted-order CAS; stale không tự thắng; không hứa latest creation intent xuyên thiết bị |
+| LVE-UC-08 | Đổi actor/session/route không áp ACK/read cũ vào scope mới (consumer sau) |
+| LVE-UC-09 | Hide/delete/withdraw kiểm tại commit/read; own removal riêng tư không hồi sinh target |
+| LVE-UC-10 | Publication revision mới có relation/count riêng; không tự chuyển endorsement |
+| LVE-UC-11 | Chặn vote own target; work author không có quyền sửa/xóa vote của người khác |
+| LVE-UC-12 | Đóng bình luận chỉ chặn text COM-07; endorsement theo capability/visibility riêng; reopen không reset |
+| LVE-UC-13 | Root sorting/cursor/epoch/refresh cần policy; replies chronological (ngoài PR1) |
+| LVE-UC-14 | DB/network/summary lỗi không biến thành 0/confirmed hay làm mất góp ý |
+| LVE-UC-15 | Abuse/limits có owner, actor server-derived; không suy gian lận từ IP/đồng quan điểm (policy sau) |
+| LVE-UC-16 | Accessible name/pressed/busy không chỉ màu/hover; focus ổn (UI sau) |
+| LVE-UC-17 | Account removal/quarantine/rebuild không đếm trùng/hồi sinh vote; retention/effectiveness cần policy riêng |
+| LVE-UC-18 | Không bắt viết luận để vote; facets/rubric nếu mở là tự nguyện, không là ACL |
+
+Vote không là điểm nghệ thuật khách quan, danh hiệu chuyên môn hay quyền publish/moderation/curation.
+Downvote, sao, leaderboard, AI chấm văn, native product app không được mở bởi slice này.
