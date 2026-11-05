@@ -455,9 +455,10 @@ async fn set_work_endorsement(
             actor,
             SetWorkEndorsement {
                 work_id,
-                expected_version: body.expected_version,
+                revision: body.revision_id,
+                command_key: body.command_key,
+                expected_order: body.expected_order,
                 endorsed: body.endorsed,
-                observed_revision: body.observed_revision_id,
             },
         )
         .await?;
@@ -483,7 +484,8 @@ async fn set_comment_endorsement(
             SetCommentEndorsement {
                 work_id,
                 comment_id,
-                expected_version: body.expected_version,
+                command_key: body.command_key,
+                expected_order: body.expected_order,
                 endorsed: body.endorsed,
             },
         )

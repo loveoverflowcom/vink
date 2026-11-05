@@ -7,7 +7,7 @@
 //! holds share locks on the publication and thread rows; a mode change updates the thread row and
 //! a moderation decision locks only the comment row, so no two paths wait on each other in reverse.
 //! Literary endorsement (`endorsement.rs`) takes the same prefix with share locks and then only
-//! its own row, so it never waits on these paths in reverse either.
+//! its own key lock and row, so it never waits on these paths in reverse either.
 
 use sqlx::postgres::PgPool;
 // Dynamic statements below are concatenations of this module's constants, never input.
@@ -149,14 +149,14 @@ pub(super) fn state(
 }
 
 #[derive(sqlx::FromRow)]
-pub(super) struct ThreadRow {
-    pub(super) id: Uuid,
-    pub(super) comments_open: bool,
-    pub(super) settings_generation: i64,
+struct ThreadRow {
+    id: Uuid,
+    comments_open: bool,
+    settings_generation: i64,
 }
 
 impl ThreadRow {
-    pub(super) fn settings(&self) -> Result<DiscussionSettings, StoreError> {
+    fn settings(&self) -> Result<DiscussionSettings, StoreError> {
         let generation = SettingsGeneration::new(self.settings_generation)
             .ok_or_else(|| integrity("stored settings generation", self.settings_generation))?;
         let mode = if self.comments_open {

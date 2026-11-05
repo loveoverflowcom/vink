@@ -13,35 +13,36 @@ SELECT '{' || string_agg('30000000-0000-4000-8000-' || lpad(n::text, 12, '0'), '
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
 SELECT w.id, w.owner_id, p.revision_id AS published,
        (SELECT count(*) FROM work_endorsements e
-         WHERE e.work_id = w.id AND e.revision_id = p.revision_id) AS effective,
-       NULL::uuid AS anchor, NULL::bigint AS version
+         WHERE e.work_id = w.id AND e.revision_id = p.revision_id AND e.selected) AS effective,
+       NULL::boolean AS selected, NULL::bigint AS version, NULL::bigint AS accepted_order
   FROM works w LEFT JOIN publications p ON p.work_id = w.id
  WHERE w.id = :'work';
 
 \echo '== 2. summary: 80 comments of the work with counts'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
-SELECT c.id, c.author_id, c.review, c.removal, c.moderation_version,
-       t.id AS thread_id, t.work_id, t.comments_open, t.settings_generation,
+SELECT c.id, c.root_id, c.reply_to_id, c.author_id, c.review, c.removal, c.moderation_version,
+       t.id AS thread_id, t.work_id,
        (SELECT count(*) FROM comment_endorsements e
          WHERE e.comment_id = c.id AND e.selected) AS endorsements,
-       NULL::boolean AS selected, NULL::bigint AS version
+       NULL::boolean AS selected, NULL::bigint AS version, NULL::bigint AS accepted_order
   FROM comments c JOIN discussion_threads t ON t.id = c.thread_id
  WHERE c.id = ANY(:'page'::uuid[]) AND t.work_id = :'work';
 
 \echo '== 3. own state: work + the actor row'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
 SELECT w.id, w.owner_id, p.revision_id AS published, NULL::bigint AS effective,
-       e.revision_id AS anchor, e.version
+       e.selected, e.version, e.accepted_order
   FROM works w
   LEFT JOIN publications p ON p.work_id = w.id
-  LEFT JOIN work_endorsements e ON e.work_id = w.id AND e.actor_id = :'actor'
+  LEFT JOIN work_endorsements e ON e.work_id = w.id
+        AND e.revision_id = p.revision_id AND e.actor_id = :'actor'
  WHERE w.id = :'work';
 
 \echo '== 4. own state: 80 comments with the actor rows'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
-SELECT c.id, c.author_id, c.review, c.removal, c.moderation_version,
-       t.id AS thread_id, t.work_id, t.comments_open, t.settings_generation,
-       NULL::bigint AS endorsements, e.selected, e.version
+SELECT c.id, c.root_id, c.reply_to_id, c.author_id, c.review, c.removal, c.moderation_version,
+       t.id AS thread_id, t.work_id,
+       NULL::bigint AS endorsements, e.selected, e.version, e.accepted_order
   FROM comments c
   JOIN discussion_threads t ON t.id = c.thread_id
   LEFT JOIN comment_endorsements e ON e.comment_id = c.id AND e.actor_id = :'actor'
@@ -50,7 +51,7 @@ SELECT c.id, c.author_id, c.review, c.removal, c.moderation_version,
 \echo '== 5. write: effective count of the hot work after a write'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
 SELECT count(*) FROM work_endorsements
- WHERE work_id = :'work' AND revision_id = '20000000-0000-4000-8003-000000000000';
+ WHERE work_id = :'work' AND revision_id = '20000000-0000-4000-8003-000000000000' AND selected;
 
 \echo '== 6. write: selected count of the hot root after a write'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
@@ -58,5 +59,5 @@ SELECT count(*) FROM comment_endorsements WHERE comment_id = :'hot' AND selected
 
 \echo '== 7. write: the actor row under lock'
 EXPLAIN (ANALYZE, BUFFERS, COSTS OFF, TIMING OFF)
-SELECT selected, version FROM comment_endorsements
+SELECT selected, version, accepted_order FROM comment_endorsements
  WHERE comment_id = :'hot' AND actor_id = :'actor' FOR UPDATE;

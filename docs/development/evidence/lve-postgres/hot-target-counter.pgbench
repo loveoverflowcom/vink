@@ -5,10 +5,18 @@ BEGIN;
 SELECT 1 FROM publications WHERE work_id = :work FOR SHARE;
 SELECT 1 FROM discussion_threads WHERE id = :thread FOR SHARE;
 SELECT 1 FROM comments WHERE id = :hot AND thread_id = :thread FOR SHARE;
-SELECT selected, version FROM comment_endorsements
+SELECT pg_advisory_xact_lock(hashtextextended(cast(:n as text) || '/' || cast(random() as text), 7313));
+SELECT selected, version, accepted_order FROM comment_endorsements
  WHERE comment_id = :hot AND actor_id = ('00000000-0000-4000-8000-' || lpad(cast(:n as text), 12, '0'))::uuid
    FOR UPDATE;
-UPDATE comment_endorsements SET selected = NOT selected, version = version + 1, updated_at = now()
+UPDATE comment_endorsements
+   SET selected = NOT selected, version = version + 1, accepted_order = accepted_order + 1,
+       updated_at = now()
+ WHERE comment_id = :hot AND actor_id = ('00000000-0000-4000-8000-' || lpad(cast(:n as text), 12, '0'))::uuid;
+INSERT INTO endorsement_receipts (actor_id, command_key, comment_id, expected_order, selected,
+                                  committed_version, committed_order)
+SELECT actor_id, gen_random_uuid(), comment_id, accepted_order - 1, selected, version, accepted_order
+  FROM comment_endorsements
  WHERE comment_id = :hot AND actor_id = ('00000000-0000-4000-8000-' || lpad(cast(:n as text), 12, '0'))::uuid;
 UPDATE bench_counters SET selected = selected + 1 WHERE comment_id = :hot;
 SELECT selected FROM bench_counters WHERE comment_id = :hot;

@@ -1,17 +1,20 @@
 {
-  "policy": "lve-core-v1",
   "work_id": "33333333-3333-4333-8333-333333333333",
+  "revision_id": null,
   "comment_id": "0192f3a1-0000-7000-8000-000000000002",
-  "accepted": false,
+  "outcome": "replayed",
   "endorsement": {
-    "state": "not_endorsed",
+    "selected": true,
     "version": 4,
-    "revision_id": null,
-    "can_endorse": false,
-    "blocked_reason": "comments_closed"
+    "order": 5
+  },
+  "committed": {
+    "selected": false,
+    "version": 3,
+    "order": 4
   },
   "summary": {
     "status": "available",
-    "count": 0
+    "count": 7
   }
 }

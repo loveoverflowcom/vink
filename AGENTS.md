@@ -49,6 +49,17 @@ production source (`verify kani`, pinned verifier installed separately). CMP is 
 fallback only; no native animation renderer, composer integration, durable stickers/reactions or
 backend performance qualification is implied. [Expression scope](docs/development/expressions.md)
 records provenance, licensing, model/proof bounds and remaining acceptance.
+LVE-PR-01 adds the owner-local pure `domain::endorsement` seam for work revisions and original
+root/flat replies, accepted-order fencing including same-state intents, exact receipts and checked
+counts. Its Quint/replay shares `verify discussion`; its six Kani obligations are registered in the
+existing App manifest/runner (19 App harnesses total). The API/PostgreSQL slice calls it from
+use cases, HTTP API v1 routes (desired-state `PUT` with an actor-scoped command key and expected
+order per work revision/comment; public summary and own-state batch reads, all `no-store`) and a
+`PgStore` adapter/migration (state rows per target and append-only receipts, never deleted; counts
+read from canonical rows) with real-database race tests; production writes answer `401` and no UI,
+ranking or voter list exists. See [policy](docs/architecture/literary-endorsement.md),
+[registry/gaps](docs/development/endorsement-core.md) and
+[runtime](docs/development/literary-endorsement-runtime.md).
 No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
 production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
@@ -61,15 +72,7 @@ plus scoped Quint models with trace replay (`services/vink-app/behavior`: struct
 lifecycle/mode/moderation authority with submission receipts, and reactions). Reactions exist only
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
 proposed, not product-accepted) with no table, store, route or UI. Production
-writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Literary endorsement
-(LVE, #73) has a pure core (`domain/endorsement`: work/root/reply decisions, revision anchor,
-accepted-intent version fence; policy `lve-core-v1` selected for the slice, product confirmation
-pending) with a Quint model replayed in the `discussion` lane and Kani harnesses, plus use cases,
-HTTP API v1 routes (desired-state `PUT` per work/comment, public summary and own-state batch
-reads, all `no-store`) and a PostgreSQL adapter/migration (two tables, rows never deleted,
-counts read from canonical rows) with real-database race tests; production writes answer `401`
-and no UI, ranking or voter list exists ([decision record](docs/architecture/literary-endorsement.md),
-[runtime](docs/development/literary-endorsement-runtime.md)). Inspect actual
+writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.

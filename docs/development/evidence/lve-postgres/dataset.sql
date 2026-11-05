@@ -2,11 +2,11 @@
 -- never on a shared or production database. Deterministic: setseed() fixes random().
 --
 -- Shape: 20 000 principals; one hot public work (3 revisions, publication at r3) with 15 000
--- work endorsements (6 000 effective at r3, 5 000 at r2, 2 000 at r1, 2 000 cleared); 200 other
+-- work endorsement rows (6 000 selected at r3, 5 000 at r2, 2 000 at r1, 2 000 removed at r3); 200 other
 -- public works with 50 endorsements each; the hot work's thread has 500 roots and 1 500 replies
 -- (80 % approved, 10 % pending, 5 % rejected, 5 % removed by moderation); comment endorsements
 -- are skewed: one hot root with 5 000 rows (4 000 selected), then about 2 000/(rank) per comment, with
--- one row in five cleared.
+-- one row in five removed. Receipts are not seeded: no read path touches them.
 SELECT setseed(0.73);
 
 CREATE FUNCTION pg_temp.pid(n int) RETURNS uuid LANGUAGE sql IMMUTABLE
@@ -33,15 +33,17 @@ INSERT INTO publications (work_id, revision_id, generation, published_at)
 SELECT pg_temp.wid(w), pg_temp.rid(w, CASE WHEN w = 0 THEN 3 ELSE 1 END), 1, now()
   FROM generate_series(0, 200) w;
 
--- Hot work endorsements: readers 1..15000.
-INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-SELECT pg_temp.wid(0), pg_temp.pid(n),
+-- Hot work endorsements: readers 1..15000, one row per (revision, reader).
+INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+SELECT pg_temp.wid(0),
        CASE WHEN n <= 6000 THEN pg_temp.rid(0, 3) WHEN n <= 11000 THEN pg_temp.rid(0, 2)
-            WHEN n <= 13000 THEN pg_temp.rid(0, 1) ELSE NULL END,
-       2 + (n % 5)
+            WHEN n <= 13000 THEN pg_temp.rid(0, 1) ELSE pg_temp.rid(0, 3) END,
+       pg_temp.pid(n), n <= 13000,
+       CASE WHEN n <= 13000 THEN 2 ELSE 3 END,
+       CASE WHEN n <= 13000 THEN 2 ELSE 3 END + (n % 5)
   FROM generate_series(1, 15000) n;
-INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-SELECT pg_temp.wid(w), pg_temp.pid(n), pg_temp.rid(w, 1), 2
+INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+SELECT pg_temp.wid(w), pg_temp.rid(w, 1), pg_temp.pid(n), true, 2, 2
   FROM generate_series(1, 200) w, generate_series(1, 50) n;
 
 -- Thread and comments of the hot work. Comments 1..500 are roots; 501..2000 reply to root
@@ -65,8 +67,9 @@ SELECT pg_temp.cid(n), '40000000-0000-4000-8000-000000000000',
   FROM drawn;
 
 -- Skewed comment endorsements: comment 1 gets 5 000 actors, comment k about 2000/k.
-INSERT INTO comment_endorsements (comment_id, actor_id, selected, version)
-SELECT pg_temp.cid(k), pg_temp.pid(a), (a % 5) <> 0, 2
+INSERT INTO comment_endorsements (comment_id, actor_id, selected, version, accepted_order)
+SELECT pg_temp.cid(k), pg_temp.pid(a), (a % 5) <> 0,
+       CASE WHEN (a % 5) <> 0 THEN 2 ELSE 3 END, CASE WHEN (a % 5) <> 0 THEN 2 ELSE 3 END
   FROM generate_series(1, 2000) k,
        LATERAL generate_series(1, CASE WHEN k = 1 THEN 5000 ELSE greatest(1, 2000 / k) END) a;
 

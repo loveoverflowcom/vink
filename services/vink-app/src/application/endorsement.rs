@@ -1,36 +1,33 @@
-//! Literary endorsement use cases (LVE, #73): "Đánh giá cao" on a public work, "Hữu ích" on a
-//! root comment or a flat reply.
+//! Literary endorsement use cases (LVE, #73): "Đánh giá cao" on one published revision of a
+//! work, "Hữu ích" on a root comment or a flat reply.
 //!
-//! Each write authenticates the actor, validates raw input into a pure request (desired state +
-//! the version the client saw, plus the revision it read for a work), then hands that request to
-//! ONE [`EndorsementStore`] transaction. The store loads the facts under locks, calls the pure
-//! decision of `domain::endorsement` and commits before answering; this module only maps the
-//! decision it reports. Nothing here restates an eligibility or ordering rule.
+//! Each write authenticates the actor, validates raw input into an [`EndorsementCommand`]
+//! (command key, full target with its anchor, expected accepted order, Select/Remove), then hands
+//! it to ONE [`EndorsementStore`] transaction. The store loads the facts, the actor's retained
+//! record and the key's receipt under locks, calls [`decide_endorsement`] and commits before
+//! answering; this module only maps the outcome it reports. Nothing here restates an
+//! eligibility, ordering or replay rule.
 //!
-//! Protocol (CHOICE-03, selected for this slice): a desired-state `PUT` bound to the actor's
-//! accepted-intent version, with no command key or receipt. Method, deduplication and ordering
-//! are separate axes: the method states the desired selection; a retry or duplicate is recognized
-//! by its effect (`accepted: false`, the state already holds); ordering is the per-(actor, target)
-//! version, which an accepted request advances even when the state already held. The version
-//! orders only that actor's requests on that target; nothing orders targets or actors.
+//! Protocol (CHOICE-03 shape, selected for this slice on top of the core's CHOICE-03 B): a
+//! desired-state `PUT` per target carrying an actor-scoped command key and the accepted order the
+//! client last saw. Method, deduplication and ordering stay separate axes: the method names the
+//! desired selection; a retry with the same key and payload is a historical replay (the receipt),
+//! never re-applied; ordering is the per-(actor, target) accepted order, which every accepted
+//! command advances, same-state ones included. A replay reports the committed command AND the
+//! current state; the current state is the one to show.
 //!
 //! Reads are split (CHOICE-13 A): public summaries need no principal and never carry viewer
-//! state; the actor's own state needs one. A guest therefore gets counts and `401` for own state,
-//! never a fabricated "not endorsed". Capabilities in an own state are advisory: they come from
-//! the same pure decision on a read snapshot and authorize nothing at commit.
+//! state; the actor's own state needs one. Capabilities in an own state are advisory: they come
+//! from the same pure decision on a read snapshot and authorize nothing at commit.
+
+use uuid::Uuid;
 
 use super::Vink;
-use super::ports::{CommentEndorsementWrite, EndorsementStore, StoreError, WorkEndorsementWrite};
-use crate::domain::endorsement::comment::{
-    CommentDecision, CommentFacts, CommentIntent, CommentRequest, comment_summary,
-    decide_comment_endorsement, own_comment_view,
-};
-use crate::domain::endorsement::work::{
-    WorkDecision, WorkFacts, WorkIntent, WorkRequest, decide_work_endorsement, own_work_view,
-    work_summary,
-};
+use super::ports::{EndorsementStore, EndorsementWriteRecord, StoreError};
 use crate::domain::endorsement::{
-    CommentAnchor, Endorsement, EndorsementVersion, OwnView, Summary, Transition,
+    AcceptedOrder, EndorsementCommand, EndorsementCommandKey, EndorsementCount, EndorsementFacts,
+    EndorsementIntent, EndorsementOutcome, EndorsementRefusal, EndorsementState, EndorsementTarget,
+    EndorsementTargetFacts, StoredEndorsement, decide_endorsement, public_count,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 
@@ -38,22 +35,27 @@ use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 /// (20 roots + 3 previews each) fits; a larger page splits into several requests.
 pub const MAX_BATCH_COMMENTS: usize = 100;
 
-/// Untrusted request to set or clear the actor's endorsement of a work.
+/// A public aggregate: `None` when the target is not visible, never shown as zero.
+pub type Summary = Option<EndorsementCount>;
+
+/// Untrusted request to select or remove the actor's endorsement of one revision of a work.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetWorkEndorsement {
     pub work_id: WorkId,
-    pub expected_version: i64,
+    /// The revision the page rendered: part of the target (CHOICE-02 B).
+    pub revision: String,
+    pub command_key: String,
+    pub expected_order: i64,
     pub endorsed: bool,
-    /// The revision the reader's page rendered; required to endorse, refused when clearing.
-    pub observed_revision: Option<String>,
 }
 
-/// Untrusted request to set or clear the actor's endorsement of a root comment or a reply.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Untrusted request to select or remove the actor's endorsement of a root comment or reply.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SetCommentEndorsement {
     pub work_id: WorkId,
     pub comment_id: CommentId,
-    pub expected_version: i64,
+    pub command_key: String,
+    pub expected_order: i64,
     pub endorsed: bool,
 }
 
@@ -93,53 +95,53 @@ impl CommentBatch {
     }
 }
 
-/// What the actor could do with "endorse" now, from the pure decision on a read snapshot.
+/// What the actor could do with "select" now, from the pure decision on a read snapshot.
 /// Advisory only: the write transaction decides again on the facts it locks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Capability {
-    /// Selecting (or reaffirming the selection) at the returned version would be eligible.
     Allowed,
     /// The actor wrote the comment or owns the work (CHOICE-08 A).
     OwnContent,
-    /// The work's author closed comments: no new comment endorsement; clearing still works.
-    CommentsClosed,
-    /// The target is not available to the actor.
+    /// The actor has no current endorsement capability.
+    NotPermitted,
+    /// The target is not visible to the actor.
     Unavailable,
 }
 
-/// The actor's own endorsement as they may see it. Private to that actor.
+/// The actor's own endorsement of a target as they may see it. Private to that actor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OwnEndorsement {
-    pub view: OwnView,
-    /// Send back as `expected_version`. `None` exactly when the target is unavailable: a hidden
-    /// target exposes no stored state.
-    pub version: Option<EndorsementVersion>,
-    /// Works only: the revision the selection is anchored to, while selected.
-    pub revision: Option<RevisionId>,
+    /// `None` exactly when the target is not visible: a hidden target exposes no stored state.
+    /// Otherwise the retained record, or [`EndorsementState::INITIAL`] without one.
+    pub state: Option<EndorsementState>,
     pub capability: Capability,
 }
 
 impl OwnEndorsement {
     pub const UNAVAILABLE: Self = Self {
-        view: OwnView::Unavailable,
-        version: None,
-        revision: None,
+        state: None,
         capability: Capability::Unavailable,
     };
 }
 
+/// What a committed request did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EndorsementResult {
+    /// A new command was accepted and advanced the order (same-state commands included).
+    Accepted(EndorsementState),
+    /// The same key and payload had already committed: `committed` is that historical result,
+    /// `observed` the current state. Nothing was written; show `observed`.
+    Replayed {
+        committed: EndorsementState,
+        observed: EndorsementState,
+    },
+}
+
 /// The durable result of an endorsement request, reported only after the store committed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EndorsementOutcome {
-    pub work_id: WorkId,
-    /// `None` for the work's own endorsement.
-    pub comment_id: Option<CommentId>,
-    /// True when this request was accepted and advanced the version (a change or a
-    /// reaffirmation). False when the stored state already satisfied it at a version the client
-    /// had not seen (a retry or a duplicate): nothing was written and nothing was fenced.
-    pub accepted: bool,
-    /// The actor's endorsement as committed (or as found, when not accepted).
-    pub own: OwnEndorsement,
+pub struct EndorsementOutcomeView {
+    pub target: EndorsementTarget,
+    pub result: EndorsementResult,
     /// The target's public aggregate read in the same transaction, after the write.
     pub summary: Summary,
 }
@@ -150,15 +152,15 @@ pub struct CommentSummary {
     pub summary: Summary,
 }
 
-/// Public summaries of a public work and of requested comments of its thread, one snapshot.
+/// Public summaries of a public work's current revision and of requested comments, one snapshot.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EndorsementSummaries {
     pub work_id: WorkId,
-    /// The current publication's revision, the one `work` counts.
+    /// The current publication's revision: the work target `work` counts.
     pub revision: RevisionId,
-    pub work: Summary,
-    /// One entry per distinct requested ID, in request order. Missing, foreign and hidden
-    /// comments are all [`Summary::Unavailable`].
+    pub work: EndorsementCount,
+    /// One entry per distinct requested ID, in request order; missing, foreign and hidden
+    /// comments are all `None`.
     pub comments: Vec<CommentSummary>,
 }
 
@@ -168,22 +170,23 @@ pub struct OwnCommentEndorsement {
     pub own: OwnEndorsement,
 }
 
-/// The actor's own endorsements of a public work and of requested comments, one snapshot.
+/// The actor's own endorsements of a public work's current revision and of requested comments.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OwnEndorsements {
     pub work_id: WorkId,
+    pub revision: RevisionId,
     pub work: OwnEndorsement,
     pub comments: Vec<OwnCommentEndorsement>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum EndorsementInput {
-    #[error("expected_version must be >= 1")]
-    ExpectedVersion,
-    #[error("observed_revision_id must be the revision ID the page rendered when endorsing")]
-    ObservedRevision,
-    #[error("observed_revision_id must be null when clearing an endorsement")]
-    RevisionWhenClearing,
+    #[error("expected_order must be >= 1")]
+    ExpectedOrder,
+    #[error("command_key must be a UUID")]
+    CommandKey,
+    #[error("revision_id must be the revision ID the page rendered")]
+    Revision,
     #[error("comment_ids must be comma-separated comment IDs")]
     CommentId,
     #[error("comment_ids accepts at most {MAX_BATCH_COMMENTS} IDs")]
@@ -193,8 +196,9 @@ pub enum EndorsementInput {
 impl EndorsementInput {
     pub fn field(&self) -> &'static str {
         match self {
-            Self::ExpectedVersion => "expected_version",
-            Self::ObservedRevision | Self::RevisionWhenClearing => "observed_revision_id",
+            Self::ExpectedOrder => "expected_order",
+            Self::CommandKey => "command_key",
+            Self::Revision => "revision_id",
             Self::CommentId | Self::TooManyComments => "comment_ids",
         }
     }
@@ -204,21 +208,25 @@ impl EndorsementInput {
 pub enum EndorsementError {
     #[error("unauthenticated")]
     Unauthenticated,
-    /// Missing, foreign or not public; deliberately indistinguishable.
+    /// Missing, foreign or not visible; deliberately indistinguishable.
     #[error("not found")]
     NotFound,
     /// Authors and comment writers do not endorse their own content (CHOICE-08 A).
     #[error("own content cannot be endorsed")]
     SelfEndorsement,
-    /// The reader endorsed a revision that is no longer the public one; nothing was written.
+    /// The actor has no current endorsement capability.
+    #[error("endorsement not permitted")]
+    NotPermitted,
+    /// Selecting a revision that is no longer the public one; nothing was written.
     #[error("the publication changed; current revision is {published}")]
     RevisionChanged { published: RevisionId },
-    #[error("comments are closed for this work")]
-    CommentsClosed,
-    /// An accepted intent changed the selection since the client's version; nothing was
-    /// written. `current` is the actor's stored state, to reconcile from.
+    /// The expected order is not the current one; nothing was written. `observed` is the
+    /// actor's state to reconcile from; the old intent must not be resent with a fresh order.
     #[error("endorsement conflict")]
-    Conflict { current: OwnEndorsement },
+    Conflict { observed: EndorsementState },
+    /// The command key was used for a different command by this actor.
+    #[error("command key reused for a different command")]
+    KeyReused,
     #[error("invalid input: {0}")]
     Invalid(#[from] EndorsementInput),
     #[error("storage unavailable")]
@@ -238,188 +246,164 @@ impl From<StoreError> for EndorsementError {
     }
 }
 
-fn expected(raw: i64) -> Result<EndorsementVersion, EndorsementInput> {
-    EndorsementVersion::new(raw).ok_or(EndorsementInput::ExpectedVersion)
+fn expected(raw: i64) -> Result<AcceptedOrder, EndorsementInput> {
+    AcceptedOrder::new(raw).ok_or(EndorsementInput::ExpectedOrder)
 }
 
-/// The actor's view of their work endorsement, with the capability the pure decision gives a
-/// request to endorse the current text at the current version.
-fn own_work(
+fn key(raw: &str) -> Result<EndorsementCommandKey, EndorsementInput> {
+    Uuid::parse_str(raw)
+        .map(EndorsementCommandKey::from_uuid)
+        .map_err(|_| EndorsementInput::CommandKey)
+}
+
+const fn intent(endorsed: bool) -> EndorsementIntent {
+    if endorsed {
+        EndorsementIntent::Select
+    } else {
+        EndorsementIntent::Remove
+    }
+}
+
+/// The actor's own view of `target` with the capability the pure decision gives a Select at
+/// the current order. The probe never reaches storage.
+fn own(
     actor: PrincipalId,
-    work: WorkId,
-    facts: Option<WorkFacts>,
-    current: Endorsement<RevisionId>,
+    can_endorse: bool,
+    target: EndorsementTarget,
+    facts: Option<EndorsementTargetFacts>,
+    state: Option<EndorsementState>,
 ) -> OwnEndorsement {
-    let view = own_work_view(work, facts, current);
-    let Some(published) = facts.and_then(|facts| facts.published) else {
-        return OwnEndorsement::UNAVAILABLE;
-    };
-    if view == OwnView::Unavailable {
+    if !facts.is_some_and(|facts| facts.visible(target)) {
         return OwnEndorsement::UNAVAILABLE;
     }
-    let probe = WorkRequest {
-        expected: current.version(),
-        intent: WorkIntent::Endorse {
-            observed: published,
+    let current = state.unwrap_or(EndorsementState::INITIAL);
+    let probe = EndorsementCommand {
+        key: EndorsementCommandKey::from_uuid(Uuid::nil()),
+        target,
+        expected: current.order(),
+        intent: EndorsementIntent::Select,
+    };
+    let decided = decide_endorsement(
+        actor,
+        probe,
+        EndorsementFacts {
+            can_endorse,
+            target: facts,
+            current: state.map(|state| StoredEndorsement::restore(actor, target, state)),
+            receipt: None,
         },
-    };
-    let capability = match decide_work_endorsement(actor, work, probe, facts, current) {
-        WorkDecision::Transition(transition) if transition.write().is_some() => Capability::Allowed,
-        WorkDecision::OwnWork => Capability::OwnContent,
+    );
+    let capability = match decided {
+        EndorsementOutcome::Accepted(_) => Capability::Allowed,
+        EndorsementOutcome::Refused(EndorsementRefusal::OwnContent) => Capability::OwnContent,
+        EndorsementOutcome::Refused(EndorsementRefusal::AuthorityUnavailable) => {
+            Capability::NotPermitted
+        }
         _ => Capability::Unavailable,
     };
     OwnEndorsement {
-        view,
-        version: Some(current.version()),
-        revision: current.selection(),
+        state: Some(current),
         capability,
     }
 }
 
-fn own_comment(
-    actor: PrincipalId,
-    work: WorkId,
-    comment: CommentId,
-    facts: Option<CommentFacts>,
-    current: Endorsement<CommentAnchor>,
-) -> OwnEndorsement {
-    let view = own_comment_view(work, comment, facts, current);
-    if view == OwnView::Unavailable {
-        return OwnEndorsement::UNAVAILABLE;
-    }
-    let probe = CommentRequest {
-        expected: current.version(),
-        intent: CommentIntent::Endorse,
-    };
-    let capability = match decide_comment_endorsement(actor, work, comment, probe, facts, current) {
-        CommentDecision::Transition(transition) if transition.write().is_some() => {
-            Capability::Allowed
+fn settle(
+    command: EndorsementCommand,
+    record: EndorsementWriteRecord,
+) -> Result<EndorsementOutcomeView, EndorsementError> {
+    let summary = public_count(command.target, record.facts.target, record.count);
+    let result = match record.outcome {
+        EndorsementOutcome::Accepted(write) => EndorsementResult::Accepted(write.next().state()),
+        EndorsementOutcome::Replay {
+            committed,
+            observed,
+        } => EndorsementResult::Replayed {
+            committed,
+            observed,
+        },
+        EndorsementOutcome::Conflict { observed } => {
+            return Err(EndorsementError::Conflict { observed });
         }
-        CommentDecision::OwnComment => Capability::OwnContent,
-        CommentDecision::CommentsClosed => Capability::CommentsClosed,
-        _ => Capability::Unavailable,
-    };
-    OwnEndorsement {
-        view,
-        version: Some(current.version()),
-        revision: None,
-        capability,
-    }
-}
-
-/// `Changed`/`Reaffirmed` are accepted; `AlreadyCurrent` reports the state that already holds;
-/// `Stale` is a conflict carrying the stored state.
-fn settled<A: Copy>(
-    transition: Transition<A>,
-    view: impl Fn(Endorsement<A>) -> OwnEndorsement,
-) -> Result<(bool, OwnEndorsement), EndorsementError> {
-    match transition {
-        Transition::Changed { next, .. } | Transition::Reaffirmed { next } => {
-            Ok((true, view(next)))
+        EndorsementOutcome::Refused(refusal) => {
+            return Err(match refusal {
+                EndorsementRefusal::TargetUnavailable => match (command, record.published) {
+                    // Selecting the text of an earlier publication: the current publication is
+                    // public, so naming it reveals nothing.
+                    (
+                        EndorsementCommand {
+                            target: EndorsementTarget::Work { revision, .. },
+                            intent: EndorsementIntent::Select,
+                            ..
+                        },
+                        Some(published),
+                    ) if published != revision => EndorsementError::RevisionChanged { published },
+                    _ => EndorsementError::NotFound,
+                },
+                EndorsementRefusal::OwnContent => EndorsementError::SelfEndorsement,
+                EndorsementRefusal::AuthorityUnavailable => EndorsementError::NotPermitted,
+                EndorsementRefusal::KeyReused => EndorsementError::KeyReused,
+                // The store loaded facts that do not bind the command, or a token is exhausted:
+                // never reported as a success or as the client's fault.
+                EndorsementRefusal::InvalidFacts | EndorsementRefusal::TokenExhausted => {
+                    EndorsementError::Internal
+                }
+            });
         }
-        Transition::AlreadyCurrent(current) => Ok((false, view(current))),
-        Transition::Stale { current } => Err(EndorsementError::Conflict {
-            current: view(current),
-        }),
-        // Unreachable in practice (i64 versions); never reported as a success.
-        Transition::VersionExhausted => Err(EndorsementError::Internal),
-    }
+    };
+    Ok(EndorsementOutcomeView {
+        target: command.target,
+        result,
+        summary,
+    })
 }
 
 impl<S> Vink<S>
 where
     S: EndorsementStore,
 {
-    /// Sets or clears the actor's endorsement of a public work. To endorse, the request names
-    /// the revision the reader read; a publication that changed since is `RevisionChanged`.
+    /// Selects or removes the actor's endorsement of one revision of a public work.
     pub async fn set_work_endorsement(
         &self,
         actor: Option<PrincipalId>,
         command: SetWorkEndorsement,
-    ) -> Result<EndorsementOutcome, EndorsementError> {
+    ) -> Result<EndorsementOutcomeView, EndorsementError> {
         let actor = actor.ok_or(EndorsementError::Unauthenticated)?;
-        let expected = expected(command.expected_version)?;
-        let intent = match (command.endorsed, command.observed_revision.as_deref()) {
-            (true, Some(raw)) => WorkIntent::Endorse {
-                observed: RevisionId::parse(raw).ok_or(EndorsementInput::ObservedRevision)?,
+        let revision = RevisionId::parse(&command.revision).ok_or(EndorsementInput::Revision)?;
+        let command = EndorsementCommand {
+            key: key(&command.command_key)?,
+            target: EndorsementTarget::Work {
+                work: command.work_id,
+                revision,
             },
-            (true, None) => return Err(EndorsementInput::ObservedRevision.into()),
-            (false, None) => WorkIntent::Clear,
-            (false, Some(_)) => return Err(EndorsementInput::RevisionWhenClearing.into()),
+            expected: expected(command.expected_order)?,
+            intent: intent(command.endorsed),
         };
-        let work_id = command.work_id;
-        let WorkEndorsementWrite {
-            facts,
-            decision,
-            count,
-        } = self
-            .store
-            .set_work_endorsement(actor, work_id, WorkRequest { expected, intent })
-            .await?;
-        let transition = match decision {
-            WorkDecision::Transition(transition) => transition,
-            WorkDecision::TargetUnavailable => return Err(EndorsementError::NotFound),
-            WorkDecision::OwnWork => return Err(EndorsementError::SelfEndorsement),
-            WorkDecision::RevisionChanged { published } => {
-                return Err(EndorsementError::RevisionChanged { published });
-            }
-        };
-        let (accepted, own) =
-            settled(transition, |stored| own_work(actor, work_id, facts, stored))?;
-        Ok(EndorsementOutcome {
-            work_id,
-            comment_id: None,
-            accepted,
-            own,
-            summary: work_summary(work_id, facts, count),
-        })
+        let record = self.store.set_endorsement(actor, command).await?;
+        settle(command, record)
     }
 
-    /// Sets or clears the actor's endorsement of one comment (root or reply) of the work.
+    /// Selects or removes the actor's endorsement of one comment (root or reply) of the work.
     pub async fn set_comment_endorsement(
         &self,
         actor: Option<PrincipalId>,
         command: SetCommentEndorsement,
-    ) -> Result<EndorsementOutcome, EndorsementError> {
+    ) -> Result<EndorsementOutcomeView, EndorsementError> {
         let actor = actor.ok_or(EndorsementError::Unauthenticated)?;
-        let request = CommentRequest {
-            expected: expected(command.expected_version)?,
-            intent: if command.endorsed {
-                CommentIntent::Endorse
-            } else {
-                CommentIntent::Clear
+        let command = EndorsementCommand {
+            key: key(&command.command_key)?,
+            target: EndorsementTarget::Comment {
+                work: command.work_id,
+                comment: command.comment_id,
             },
+            expected: expected(command.expected_order)?,
+            intent: intent(command.endorsed),
         };
-        let (work_id, comment_id) = (command.work_id, command.comment_id);
-        let CommentEndorsementWrite {
-            facts,
-            decision,
-            count,
-        } = self
-            .store
-            .set_comment_endorsement(actor, work_id, comment_id, request)
-            .await?;
-        let transition = match decision {
-            CommentDecision::Transition(transition) => transition,
-            CommentDecision::TargetUnavailable => return Err(EndorsementError::NotFound),
-            CommentDecision::OwnComment => return Err(EndorsementError::SelfEndorsement),
-            CommentDecision::CommentsClosed => return Err(EndorsementError::CommentsClosed),
-        };
-        let (accepted, own) = settled(transition, |stored| {
-            own_comment(actor, work_id, comment_id, facts, stored)
-        })?;
-        Ok(EndorsementOutcome {
-            work_id,
-            comment_id: Some(comment_id),
-            accepted,
-            own,
-            summary: comment_summary(work_id, comment_id, facts, count),
-        })
+        let record = self.store.set_endorsement(actor, command).await?;
+        settle(command, record)
     }
 
     /// Public summaries; readable by anyone and independent of identity resolution. A work that
-    /// is not public is `NotFound`; within a public work each unavailable comment stays
-    /// `Unavailable`, never zero.
+    /// is not public is `NotFound`; within a public work each unavailable comment stays `None`.
     pub async fn endorsement_summaries(
         &self,
         work_id: WorkId,
@@ -427,27 +411,27 @@ where
     ) -> Result<EndorsementSummaries, EndorsementError> {
         let batch = CommentBatch::parse(comment_ids)?;
         let facts = self.store.endorsement_summaries(work_id, &batch).await?;
-        let work = work_summary(work_id, facts.work, facts.work_count);
-        let (Summary::Count(_), Some(revision)) = (work, facts.work.and_then(|w| w.published))
-        else {
+        let Some(revision) = facts.published else {
             return Err(EndorsementError::NotFound);
         };
+        let work_target = EndorsementTarget::Work {
+            work: work_id,
+            revision,
+        };
+        let work = public_count(work_target, facts.work, facts.work_count)
+            .ok_or(EndorsementError::NotFound)?;
         let comments = batch
             .ids()
             .iter()
             .map(|&comment_id| {
-                let found = facts
-                    .comments
-                    .iter()
-                    .find(|entry| entry.facts.comment == comment_id);
+                let target = EndorsementTarget::Comment {
+                    work: work_id,
+                    comment: comment_id,
+                };
+                let found = facts.comments.iter().find(|c| c.comment_id == comment_id);
                 CommentSummary {
                     comment_id,
-                    summary: match found {
-                        Some(entry) => {
-                            comment_summary(work_id, comment_id, Some(entry.facts), entry.count)
-                        }
-                        None => Summary::Unavailable,
-                    },
+                    summary: found.and_then(|c| public_count(target, Some(c.facts), c.count)),
                 }
             })
             .collect();
@@ -459,7 +443,7 @@ where
         })
     }
 
-    /// The actor's own endorsements; `401` for a guest rather than "not endorsed".
+    /// The actor's own endorsements; `401` for a guest rather than "not selected".
     pub async fn own_endorsements(
         &self,
         actor: Option<PrincipalId>,
@@ -469,28 +453,36 @@ where
         let actor = actor.ok_or(EndorsementError::Unauthenticated)?;
         let batch = CommentBatch::parse(comment_ids)?;
         let facts = self.store.own_endorsements(actor, work_id, &batch).await?;
-        let work = own_work(actor, work_id, facts.work, facts.endorsement);
-        if work.view == OwnView::Unavailable {
+        let Some(revision) = facts.published else {
+            return Err(EndorsementError::NotFound);
+        };
+        let work_target = EndorsementTarget::Work {
+            work: work_id,
+            revision,
+        };
+        let work = own(
+            actor,
+            facts.can_endorse,
+            work_target,
+            facts.work,
+            facts.work_state,
+        );
+        if work.state.is_none() {
             return Err(EndorsementError::NotFound);
         }
         let comments = batch
             .ids()
             .iter()
             .map(|&comment_id| {
-                let found = facts
-                    .comments
-                    .iter()
-                    .find(|entry| entry.facts.comment == comment_id);
+                let target = EndorsementTarget::Comment {
+                    work: work_id,
+                    comment: comment_id,
+                };
+                let found = facts.comments.iter().find(|c| c.comment_id == comment_id);
                 OwnCommentEndorsement {
                     comment_id,
                     own: match found {
-                        Some(entry) => own_comment(
-                            actor,
-                            work_id,
-                            comment_id,
-                            Some(entry.facts),
-                            entry.endorsement,
-                        ),
+                        Some(c) => own(actor, facts.can_endorse, target, Some(c.facts), c.state),
                         None => OwnEndorsement::UNAVAILABLE,
                     },
                 }
@@ -498,6 +490,7 @@ where
             .collect();
         Ok(OwnEndorsements {
             work_id,
+            revision,
             work,
             comments,
         })

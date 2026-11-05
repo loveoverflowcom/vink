@@ -1,5 +1,6 @@
 {
-  "expected_version": 1,
+  "command_key": "0192f3a1-0000-7000-8000-00000000c0de",
+  "expected_order": 1,
   "endorsed": true,
-  "observed_revision_id": "44444444-4444-4444-8444-444444444444"
+  "revision_id": "44444444-4444-4444-8444-444444444444"
 }

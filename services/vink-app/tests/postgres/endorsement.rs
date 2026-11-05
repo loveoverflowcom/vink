@@ -1,10 +1,10 @@
 //! Literary endorsement (LVE, #73) on real PostgreSQL. Use cases run through `PgStore`, so every
-//! write is the production transaction that locks the facts, calls the pure decision and commits.
-//! Integrity negatives bypass Rust with direct SQL. Races use a second connection that holds a
-//! real lock (or an uncommitted row) and then commits or rolls back, so both commit orders are
-//! exercised on purpose rather than by scheduler accident. Publication pointer changes are SQL
-//! fixtures: no publish/withdraw command exists yet, so these prove the durable boundary, not a
-//! product workflow.
+//! write is the production transaction that locks the facts, calls `decide_endorsement` and
+//! commits. Integrity negatives bypass Rust with direct SQL. Races use a second connection that
+//! holds a real lock (or an uncommitted row) and then commits or rolls back, so both commit
+//! orders are exercised on purpose rather than by scheduler accident. Publication pointer changes
+//! are SQL fixtures: no publish/withdraw command exists yet, so these prove the durable boundary,
+//! not a product workflow.
 
 use std::time::Duration;
 
@@ -12,12 +12,12 @@ use vink_app::application::discussion::{
     ModerateComment, ModerationAction, SetCommentsMode, SubmitComment,
 };
 use vink_app::application::endorsement::{
-    Capability, EndorsementError, EndorsementOutcome, OwnEndorsement, SetCommentEndorsement,
-    SetWorkEndorsement,
+    Capability, EndorsementError, EndorsementOutcomeView, EndorsementResult, OwnEndorsement,
+    SetCommentEndorsement, SetWorkEndorsement,
 };
 use vink_app::domain::discussion::moderation::GrantNote;
 use vink_app::domain::discussion::settings::CommentsMode;
-use vink_app::domain::endorsement::{EndorsementCount, EndorsementVersion, OwnView, Summary};
+use vink_app::domain::endorsement::{EndorsementCount, EndorsementState, EndorsementTarget};
 use vink_app::domain::ids::{CommentId, RevisionId};
 use vink_app::identity::{IdentityResolver, Resolution, ResolveFuture};
 use vink_app::persistence::grant_moderator;
@@ -26,6 +26,7 @@ use super::*;
 
 const MODERATOR: Uuid = Uuid::from_u128(0x6666_6666_6666_4666_8666_6666_6666_6666);
 const PAUSE: Duration = Duration::from_millis(300);
+const R1: Uuid = dev_seed::SAMPLE_REVISION;
 
 fn reader_id(n: u128) -> Uuid {
     Uuid::from_u128(0x7777_7777_7777_4777_8777_0000_0000_0000 + n)
@@ -57,63 +58,55 @@ async fn setup(pool: &PgPool) -> Arc<Vink<PgStore>> {
     Arc::new(vink)
 }
 
-fn version(raw: i64) -> Option<EndorsementVersion> {
-    EndorsementVersion::new(raw)
+fn state(selected: bool, version: i64, order: i64) -> EndorsementState {
+    EndorsementState::restore(selected, version, order).unwrap()
 }
 
-fn count(raw: u32) -> Summary {
-    Summary::Count(EndorsementCount::restore(raw))
+fn count(raw: i64) -> Option<EndorsementCount> {
+    EndorsementCount::new(raw)
 }
 
-fn own(
-    view: OwnView,
-    raw_version: i64,
-    revision: Option<Uuid>,
-    capability: Capability,
-) -> OwnEndorsement {
-    OwnEndorsement {
-        view,
-        version: version(raw_version),
-        revision: revision.map(RevisionId::from_uuid),
-        capability,
-    }
+fn key() -> String {
+    Uuid::now_v7().to_string()
 }
 
-fn endorse(expected_version: i64, observed: Uuid) -> SetWorkEndorsement {
+fn on_work(key: &str, expected: i64, endorsed: bool, revision: Uuid) -> SetWorkEndorsement {
     SetWorkEndorsement {
         work_id: sample_work(),
-        expected_version,
-        endorsed: true,
-        observed_revision: Some(observed.to_string()),
+        revision: revision.to_string(),
+        command_key: key.into(),
+        expected_order: expected,
+        endorsed,
     }
 }
 
-fn clear(expected_version: i64) -> SetWorkEndorsement {
-    SetWorkEndorsement {
-        work_id: sample_work(),
-        expected_version,
-        endorsed: false,
-        observed_revision: None,
-    }
-}
-
-fn endorse_comment(comment_id: CommentId, expected_version: i64) -> SetCommentEndorsement {
+fn on_comment(
+    key: &str,
+    comment: CommentId,
+    expected: i64,
+    endorsed: bool,
+) -> SetCommentEndorsement {
     SetCommentEndorsement {
         work_id: sample_work(),
-        comment_id,
-        expected_version,
-        endorsed: true,
+        comment_id: comment,
+        command_key: key.into(),
+        expected_order: expected,
+        endorsed,
     }
 }
 
-fn clear_comment(comment_id: CommentId, expected_version: i64) -> SetCommentEndorsement {
-    SetCommentEndorsement {
-        endorsed: false,
-        ..endorse_comment(comment_id, expected_version)
+fn accepted(
+    outcome: Result<EndorsementOutcomeView, EndorsementError>,
+) -> (EndorsementState, Option<EndorsementCount>) {
+    match outcome {
+        Ok(EndorsementOutcomeView {
+            result: EndorsementResult::Accepted(state),
+            summary,
+            ..
+        }) => (state, summary),
+        other => panic!("expected an accepted command, got {other:?}"),
     }
 }
-
-const R1: Uuid = dev_seed::SAMPLE_REVISION;
 
 async fn submit(
     vink: &Vink<PgStore>,
@@ -196,20 +189,23 @@ async fn point(pool: &PgPool, revision: Uuid) {
         .unwrap();
 }
 
-async fn work_row(pool: &PgPool, actor: Uuid) -> Option<(Option<Uuid>, i64)> {
+async fn work_row(pool: &PgPool, revision: Uuid, actor: Uuid) -> Option<(bool, i64, i64)> {
     sqlx::query_as(
-        "SELECT revision_id, version FROM work_endorsements WHERE work_id = $1 AND actor_id = $2",
+        "SELECT selected, version, accepted_order FROM work_endorsements
+          WHERE work_id = $1 AND revision_id = $2 AND actor_id = $3",
     )
     .bind(dev_seed::SAMPLE_WORK)
+    .bind(revision)
     .bind(actor)
     .fetch_optional(pool)
     .await
     .unwrap()
 }
 
-async fn comment_row(pool: &PgPool, comment: CommentId, actor: Uuid) -> Option<(bool, i64)> {
+async fn comment_row(pool: &PgPool, comment: CommentId, actor: Uuid) -> Option<(bool, i64, i64)> {
     sqlx::query_as(
-        "SELECT selected, version FROM comment_endorsements WHERE comment_id = $1 AND actor_id = $2",
+        "SELECT selected, version, accepted_order FROM comment_endorsements
+          WHERE comment_id = $1 AND actor_id = $2",
     )
     .bind(comment.as_uuid())
     .bind(actor)
@@ -218,7 +214,14 @@ async fn comment_row(pool: &PgPool, comment: CommentId, actor: Uuid) -> Option<(
     .unwrap()
 }
 
-async fn work_summary(vink: &Vink<PgStore>) -> Result<Summary, EndorsementError> {
+async fn rows(pool: &PgPool, table: &str) -> i64 {
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT count(*) FROM {table}")))
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn work_summary(vink: &Vink<PgStore>) -> Result<EndorsementCount, EndorsementError> {
     vink.endorsement_summaries(sample_work(), None)
         .await
         .map(|s| s.work)
@@ -243,112 +246,121 @@ async fn raw(pool: &PgPool, sql: &str) -> Result<(), String> {
 async fn the_database_alone_enforces_endorsement_structure(pool: PgPool) {
     let vink = setup(&pool).await;
     let root = public_comment(&vink, other(), None, "Gốc để ghi nhận").await;
-    let foreign = vink.create_draft(author()).await.unwrap().work_id;
-    let (work, rev, actor, ghost) = (
+    let foreign = vink.create_draft(author()).await.unwrap().work_id.as_uuid();
+    let (work, rev, actor, ghost, c) = (
         dev_seed::SAMPLE_WORK,
         R1,
         reader_id(1),
         Uuid::from_u128(0xdead),
+        root.as_uuid(),
     );
-    let c = root.as_uuid();
-    let insert_work = |work: Uuid, actor: Uuid, rev: Option<Uuid>, version: i64| {
-        let rev = rev.map_or("NULL".into(), |r| format!("'{r}'"));
+    let w = |work: Uuid, rev: Uuid, actor: Uuid, version: i64, order: i64| {
         format!(
-            "INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-             VALUES ('{work}', '{actor}', {rev}, {version})"
+            "INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+             VALUES ('{work}', '{rev}', '{actor}', true, {version}, {order})"
         )
     };
-    let insert_comment = |comment: Uuid, actor: Uuid, version: i64| {
+    let cm = |comment: Uuid, actor: Uuid, version: i64, order: i64| {
         format!(
-            "INSERT INTO comment_endorsements (comment_id, actor_id, selected, version)
-             VALUES ('{comment}', '{actor}', true, {version})"
+            "INSERT INTO comment_endorsements (comment_id, actor_id, selected, version, accepted_order)
+             VALUES ('{comment}', '{actor}', true, {version}, {order})"
+        )
+    };
+    let receipt = |targets: &str, expected: i64, version: i64, order: i64| {
+        format!(
+            "INSERT INTO endorsement_receipts (actor_id, command_key, work_id, revision_id, comment_id,
+                 expected_order, selected, committed_version, committed_order)
+             VALUES ('{actor}', gen_random_uuid(), {targets}, {expected}, true, {version}, {order})"
         )
     };
     for (sql, expected) in [
-        (
-            insert_work(work, ghost, Some(rev), 2),
-            "work_endorsements_actor_id_fkey",
-        ),
-        (
-            insert_work(ghost, actor, None, 2),
-            "work_endorsements_work_id_fkey",
-        ),
+        (w(work, rev, ghost, 2, 2), "work_endorsements_actor_id_fkey"),
+        (w(ghost, rev, actor, 2, 2), "work_endorsements_work_id_fkey"),
         // The anchor must be a revision OF THIS work.
         (
-            insert_work(foreign.as_uuid(), actor, Some(rev), 2),
+            w(foreign, rev, actor, 2, 2),
             "work_endorsements_revision_of_work_fkey",
         ),
         (
-            insert_work(work, actor, Some(ghost), 2),
+            w(work, ghost, actor, 2, 2),
             "work_endorsements_revision_of_work_fkey",
         ),
-        // A stored row is an accepted intent: version 1 is the absent state, never stored.
+        // A stored row is an accepted command: order 1 is the absent state; version <= order.
+        (w(work, rev, actor, 1, 1), "work_endorsements_tokens_check"),
+        (w(work, rev, actor, 3, 2), "work_endorsements_tokens_check"),
+        (w(work, rev, actor, 0, 2), "work_endorsements_tokens_check"),
         (
-            insert_work(work, actor, Some(rev), 1),
-            "work_endorsements_version_check",
-        ),
-        (
-            insert_work(work, actor, None, 0),
-            "work_endorsements_version_check",
-        ),
-        (
-            insert_comment(ghost, actor, 2),
+            cm(ghost, actor, 2, 2),
             "comment_endorsements_comment_id_fkey",
         ),
+        (cm(c, ghost, 2, 2), "comment_endorsements_actor_id_fkey"),
+        (cm(c, actor, 1, 1), "comment_endorsements_tokens_check"),
+        // Receipts: exactly one typed target, the revision of its work, the next order.
         (
-            insert_comment(c, ghost, 2),
-            "comment_endorsements_actor_id_fkey",
+            receipt(&format!("'{work}', '{rev}', '{c}'"), 1, 2, 2),
+            "endorsement_receipts_one_target",
         ),
         (
-            insert_comment(c, actor, 1),
-            "comment_endorsements_version_check",
+            receipt(&format!("'{work}', NULL, NULL"), 1, 2, 2),
+            "endorsement_receipts_one_target",
+        ),
+        (
+            receipt(&format!("'{foreign}', '{rev}', NULL"), 1, 2, 2),
+            "endorsement_receipts_revision_of_work_fkey",
+        ),
+        (
+            receipt(&format!("NULL, NULL, '{ghost}'"), 1, 2, 2),
+            "endorsement_receipts_comment_id_fkey",
+        ),
+        (
+            receipt(&format!("'{work}', '{rev}', NULL"), 1, 2, 3),
+            "endorsement_receipts_committed_check",
         ),
     ] {
         assert_eq!(raw(&pool, &sql).await.unwrap_err(), expected, "{sql}");
     }
 
-    raw(&pool, &insert_work(work, actor, Some(rev), 2))
+    raw(&pool, &w(work, rev, actor, 2, 2)).await.unwrap();
+    raw(&pool, &cm(c, actor, 2, 2)).await.unwrap();
+    raw(&pool, &receipt(&format!("NULL, NULL, '{c}'"), 1, 2, 2))
         .await
         .unwrap();
-    raw(&pool, &insert_comment(c, actor, 2)).await.unwrap();
     assert_eq!(
-        raw(&pool, &insert_work(work, actor, None, 5))
-            .await
-            .unwrap_err(),
+        raw(&pool, &w(work, rev, actor, 2, 5)).await.unwrap_err(),
         "work_endorsements_pkey",
-        "one row per (actor, work)"
+        "one row per (actor, revision)"
     );
     assert_eq!(
-        raw(&pool, &insert_comment(c, actor, 5)).await.unwrap_err(),
+        raw(&pool, &cm(c, actor, 2, 5)).await.unwrap_err(),
         "comment_endorsements_pkey"
     );
 
     let other_reader = reader_id(2);
     for (sql, message) in [
-        // Versions only advance, so a cleared row can never be reset under an old duplicate.
+        // The order only advances, so a removed row can never be reset under an old command.
         (
-            format!("UPDATE work_endorsements SET version = 2 WHERE actor_id = '{actor}'"),
-            "version must advance",
+            format!("UPDATE work_endorsements SET accepted_order = 2 WHERE actor_id = '{actor}'"),
+            "accepted order must advance",
         ),
         (
             format!(
-                "UPDATE comment_endorsements SET selected = false, version = 1 WHERE actor_id = '{actor}'"
+                "UPDATE comment_endorsements SET accepted_order = 3, version = 1 WHERE actor_id = '{actor}'"
             ),
-            "version must advance",
+            "version cannot decrease",
         ),
         (
             format!(
-                "UPDATE work_endorsements SET actor_id = '{other_reader}', version = 3 WHERE actor_id = '{actor}'"
-            ),
-            "identity is immutable",
-        ),
-        (
-            format!(
-                "UPDATE comment_endorsements SET comment_id = comment_id, actor_id = '{other_reader}', version = 3"
+                "UPDATE work_endorsements SET actor_id = '{other_reader}', accepted_order = 3 WHERE actor_id = '{actor}'"
             ),
             "identity is immutable",
         ),
-        // Clearing keeps the row; nothing deletes or truncates endorsements, even matching none.
+        (
+            format!(
+                "UPDATE work_endorsements SET revision_id = revision_id, work_id = '{foreign}', accepted_order = 3"
+            ),
+            "identity is immutable",
+        ),
+        // Records and receipts are retained, even by a statement matching no row.
         ("DELETE FROM work_endorsements".into(), "rows are retained"),
         (
             "DELETE FROM comment_endorsements WHERE false".into(),
@@ -356,20 +368,30 @@ async fn the_database_alone_enforces_endorsement_structure(pool: PgPool) {
         ),
         ("TRUNCATE work_endorsements".into(), "rows are retained"),
         ("TRUNCATE comment_endorsements".into(), "rows are retained"),
+        (
+            "UPDATE endorsement_receipts SET selected = false".into(),
+            "rows are retained",
+        ),
+        (
+            "DELETE FROM endorsement_receipts".into(),
+            "rows are retained",
+        ),
+        ("TRUNCATE endorsement_receipts".into(), "rows are retained"),
     ] {
         let error = raw(&pool, &sql).await.unwrap_err();
         assert!(error.contains(message), "{sql}: {error}");
     }
-    // A clear through SQL keeps the row and advances its version; NULL anchor is allowed.
+    // A removal through SQL keeps the row and advances its order.
     raw(
         &pool,
-        &format!("UPDATE work_endorsements SET revision_id = NULL, version = 3 WHERE actor_id = '{actor}'"),
+        &format!(
+            "UPDATE work_endorsements SET selected = false, version = 3, accepted_order = 3 WHERE actor_id = '{actor}'"
+        ),
     )
     .await
     .unwrap();
-    assert_eq!(work_row(&pool, actor).await, Some((None, 3)));
-    // Comments are reached through their thread; the table stores no second work column that
-    // could disagree with it.
+    assert_eq!(work_row(&pool, R1, actor).await, Some((false, 3, 3)));
+    // Comments are reached through their thread; no second work column could disagree.
     let columns: Vec<String> = sqlx::query_scalar(
         "SELECT column_name::text FROM information_schema.columns
           WHERE table_name = 'comment_endorsements' ORDER BY ordinal_position",
@@ -384,215 +406,228 @@ async fn the_database_alone_enforces_endorsement_structure(pool: PgPool) {
             "actor_id",
             "selected",
             "version",
+            "accepted_order",
             "updated_at"
         ]
     );
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn a_work_endorsement_follows_the_accepted_intent_version(pool: PgPool) {
+async fn a_work_endorsement_follows_accepted_order_and_receipts(pool: PgPool) {
     let vink = setup(&pool).await;
     let me = reader(1);
-    let endorsed = |raw_version| {
-        own(
-            OwnView::Endorsed,
-            raw_version,
-            Some(R1),
-            Capability::Allowed,
-        )
-    };
-    let cleared = |raw_version| own(OwnView::NotEndorsed, raw_version, None, Capability::Allowed);
+    let a = key();
 
-    let first = vink.set_work_endorsement(me, endorse(1, R1)).await.unwrap();
+    let first = vink
+        .set_work_endorsement(me, on_work(&a, 1, true, R1))
+        .await;
+    assert_eq!(accepted(first), (state(true, 2, 2), count(1)));
+    // Lost ACK: the same key and body is a historical replay, never applied twice.
+    let retry = vink
+        .set_work_endorsement(me, on_work(&a, 1, true, R1))
+        .await
+        .unwrap();
     assert_eq!(
-        first,
-        EndorsementOutcome {
-            work_id: sample_work(),
-            comment_id: None,
-            accepted: true,
-            own: endorsed(2),
-            summary: count(1),
+        retry.result,
+        EndorsementResult::Replayed {
+            committed: state(true, 2, 2),
+            observed: state(true, 2, 2),
         }
     );
-    // Lost ACK: the same request again is recognized by its effect, not applied twice.
-    let retry = vink.set_work_endorsement(me, endorse(1, R1)).await.unwrap();
+    assert_eq!(retry.summary, count(1));
+    // The same key with another body is refused.
     assert_eq!(
-        (retry.accepted, retry.own, retry.summary),
-        (false, endorsed(2), count(1))
+        vink.set_work_endorsement(me, on_work(&a, 2, false, R1))
+            .await,
+        Err(EndorsementError::KeyReused)
     );
-    // Reaffirming at the current version is a new accepted intent: version +1, count unchanged.
-    let reaffirmed = vink.set_work_endorsement(me, endorse(2, R1)).await.unwrap();
+    // Same-state at the current order is a new accepted command: order + 1, version kept.
+    let again = vink
+        .set_work_endorsement(me, on_work(&key(), 2, true, R1))
+        .await;
+    assert_eq!(accepted(again), (state(true, 2, 3), count(1)));
+    // A stale order conflicts, whatever the desire.
+    for endorsed in [true, false] {
+        assert_eq!(
+            vink.set_work_endorsement(me, on_work(&key(), 2, endorsed, R1))
+                .await,
+            Err(EndorsementError::Conflict {
+                observed: state(true, 2, 3)
+            })
+        );
+    }
+    let off = vink
+        .set_work_endorsement(me, on_work(&key(), 3, false, R1))
+        .await;
+    assert_eq!(accepted(off), (state(false, 3, 4), count(0)));
     assert_eq!(
-        (reaffirmed.accepted, reaffirmed.own, reaffirmed.summary),
-        (true, endorsed(3), count(1))
+        work_row(&pool, R1, reader_id(1)).await,
+        Some((false, 3, 4)),
+        "removing keeps the row and its order"
     );
-    // A clear from the older view is stale: it would undo a newer accepted intent.
+    // ABA: replaying the very first command reports its history and the current OFF state; it
+    // never resurrects the selection.
+    let replay = vink
+        .set_work_endorsement(me, on_work(&a, 1, true, R1))
+        .await
+        .unwrap();
     assert_eq!(
-        vink.set_work_endorsement(me, clear(2)).await,
-        Err(EndorsementError::Conflict {
-            current: endorsed(3)
-        })
+        replay.result,
+        EndorsementResult::Replayed {
+            committed: state(true, 2, 2),
+            observed: state(false, 3, 4),
+        }
     );
-    let off = vink.set_work_endorsement(me, clear(3)).await.unwrap();
-    assert_eq!(
-        (off.accepted, off.own, off.summary),
-        (true, cleared(4), count(0))
-    );
-    assert_eq!(
-        work_row(&pool, reader_id(1)).await,
-        Some((None, 4)),
-        "clearing keeps the row and its version"
-    );
-    // ABA: the delayed duplicate of the very first endorse cannot apply again.
-    assert_eq!(
-        vink.set_work_endorsement(me, endorse(1, R1)).await,
-        Err(EndorsementError::Conflict {
-            current: cleared(4)
-        })
-    );
-    let clear_retry = vink.set_work_endorsement(me, clear(3)).await.unwrap();
-    assert_eq!((clear_retry.accepted, clear_retry.own), (false, cleared(4)));
-    assert_eq!(work_summary(&vink).await, Ok(count(0)));
+    assert_eq!(work_summary(&vink).await, Ok(EndorsementCount::ZERO));
     let readback = vink
         .own_endorsements(me, sample_work(), None)
         .await
         .unwrap();
-    assert_eq!(readback.work, cleared(4));
+    assert_eq!(
+        readback.work,
+        OwnEndorsement {
+            state: Some(state(false, 3, 4)),
+            capability: Capability::Allowed,
+        }
+    );
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 3);
 
-    // The author can neither endorse nor clear on their own work, and gets no row.
-    for command in [endorse(1, R1), clear(1)] {
-        assert_eq!(
-            vink.set_work_endorsement(author(), command).await,
-            Err(EndorsementError::SelfEndorsement)
-        );
-    }
-    assert_eq!(work_row(&pool, dev_seed::SAMPLE_AUTHOR).await, None);
+    // The author cannot select their own work and gets no row.
+    assert_eq!(
+        vink.set_work_endorsement(author(), on_work(&key(), 1, true, R1))
+            .await,
+        Err(EndorsementError::SelfEndorsement)
+    );
+    assert_eq!(work_row(&pool, R1, dev_seed::SAMPLE_AUTHOR).await, None);
     let mine = vink
         .own_endorsements(author(), sample_work(), None)
         .await
         .unwrap();
-    assert_eq!(
-        mine.work,
-        own(OwnView::NotEndorsed, 1, None, Capability::OwnContent)
-    );
+    assert_eq!(mine.work.capability, Capability::OwnContent);
     // A resolved principal without a Vink record is not an actor, before any decision.
     let ghost = Some(PrincipalId::from_uuid(Uuid::now_v7()));
     assert_eq!(
-        vink.set_work_endorsement(ghost, endorse(1, R1)).await,
+        vink.set_work_endorsement(ghost, on_work(&key(), 1, true, R1))
+            .await,
         Err(EndorsementError::Unauthenticated)
     );
     assert_eq!(
         vink.own_endorsements(ghost, sample_work(), None).await,
         Err(EndorsementError::Unauthenticated)
     );
-    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM work_endorsements")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(rows, 1);
+    assert_eq!(rows(&pool, "work_endorsements").await, 1);
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 3);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn an_initial_clear_fences_an_endorse_created_earlier(pool: PgPool) {
-    // LVE adversarial trace: OFF@1. A = endorse@1 was created first but is delayed; B = clear@1
-    // arrives first. B is accepted (reaffirmed) and stored as a cleared row at version 2, so A
-    // is stale instead of reviving the older intent.
+async fn an_initial_remove_fences_a_select_created_earlier(pool: PgPool) {
+    // OFF@1. A = select@1 was created first but is delayed; B = remove@1 arrives first. B is a
+    // new accepted command (order 2, version 1), so A conflicts instead of reviving it.
     let vink = setup(&pool).await;
     let b = vink
-        .set_work_endorsement(reader(1), clear(1))
-        .await
-        .unwrap();
-    assert!(b.accepted);
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((None, 2)));
+        .set_work_endorsement(reader(1), on_work(&key(), 1, false, R1))
+        .await;
+    assert_eq!(accepted(b).0, state(false, 1, 2));
     assert_eq!(
-        vink.set_work_endorsement(reader(1), endorse(1, R1)).await,
+        vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, R1))
+            .await,
         Err(EndorsementError::Conflict {
-            current: own(OwnView::NotEndorsed, 2, None, Capability::Allowed)
+            observed: state(false, 1, 2)
         })
     );
-    assert_eq!(work_summary(&vink).await, Ok(count(0)));
+    assert_eq!(work_summary(&vink).await, Ok(EndorsementCount::ZERO));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn republication_needs_reconfirmation_and_withdrawal_hides_everything(pool: PgPool) {
+async fn each_revision_is_its_own_target_and_own_removal_survives_hiding(pool: PgPool) {
     let vink = setup(&pool).await;
-    vink.set_work_endorsement(reader(1), endorse(1, R1))
-        .await
-        .unwrap();
-    vink.set_work_endorsement(reader(2), endorse(1, R1))
-        .await
-        .unwrap();
-    assert_eq!(work_summary(&vink).await, Ok(count(2)));
+    for n in [1, 2] {
+        vink.set_work_endorsement(reader(n), on_work(&key(), 1, true, R1))
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        work_summary(&vink).await,
+        EndorsementCount::new(2).ok_or(EndorsementError::Internal)
+    );
 
     let r2 = new_revision(&pool).await;
     point(&pool, r2).await;
-    // Earlier selections stay stored but are not counted for the new text.
+    // The new text starts its own count; earlier selections stay stored and are not transferred.
     let summaries = vink
         .endorsement_summaries(sample_work(), None)
         .await
         .unwrap();
     assert_eq!(
         (summaries.work, summaries.revision),
-        (count(0), RevisionId::from_uuid(r2))
+        (EndorsementCount::ZERO, RevisionId::from_uuid(r2))
     );
     let mine = vink
         .own_endorsements(reader(1), sample_work(), None)
         .await
         .unwrap();
     assert_eq!(
-        mine.work,
-        own(
-            OwnView::EndorsedEarlierRevision,
-            2,
-            Some(R1),
-            Capability::Allowed
-        )
+        (mine.revision, mine.work.state),
+        (RevisionId::from_uuid(r2), Some(EndorsementState::INITIAL))
     );
-    // Retrying the old page's request is not a reconfirmation; nothing is written.
+    // Selecting the old page's revision is refused with the current one named; nothing written.
     assert_eq!(
-        vink.set_work_endorsement(reader(1), endorse(2, R1)).await,
+        vink.set_work_endorsement(reader(3), on_work(&key(), 1, true, R1))
+            .await,
         Err(EndorsementError::RevisionChanged {
             published: RevisionId::from_uuid(r2)
         })
     );
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((Some(R1), 2)));
-    let reconfirmed = vink
-        .set_work_endorsement(reader(1), endorse(2, r2))
-        .await
-        .unwrap();
+    assert_eq!(work_row(&pool, R1, reader_id(3)).await, None);
+    // The owner of a retained record of the old revision may still remove it.
+    let removed = vink
+        .set_work_endorsement(reader(2), on_work(&key(), 2, false, R1))
+        .await;
     assert_eq!(
-        (reconfirmed.accepted, reconfirmed.own, reconfirmed.summary),
-        (
-            true,
-            own(OwnView::Endorsed, 3, Some(r2), Capability::Allowed),
-            count(1)
-        )
+        accepted(removed),
+        (state(false, 3, 3), None),
+        "no count for a hidden target"
     );
+    let selected = vink
+        .set_work_endorsement(reader(1), on_work(&key(), 1, true, r2))
+        .await;
+    assert_eq!(accepted(selected), (state(true, 2, 2), count(1)));
 
     // Republishing the earlier revision makes ITS selections effective again (same text).
     point(&pool, R1).await;
-    assert_eq!(work_summary(&vink).await, Ok(count(1)), "reader 2 only");
+    assert_eq!(
+        work_summary(&vink).await,
+        Ok(EndorsementCount::new(1).unwrap()),
+        "reader 1 only"
+    );
     point(&pool, r2).await;
 
-    // Withdrawal hides the work from every intent and every read; rows stay untouched.
+    // Withdrawal hides the work from selection and from every read; own removal still works.
     sqlx::query(WITHDRAW)
         .bind(dev_seed::SAMPLE_WORK)
         .execute(&pool)
         .await
         .unwrap();
-    for command in [endorse(3, r2), clear(3), endorse(1, R1)] {
-        assert_eq!(
-            vink.set_work_endorsement(reader(1), command).await,
-            Err(EndorsementError::NotFound)
-        );
-    }
+    assert_eq!(
+        vink.set_work_endorsement(reader(4), on_work(&key(), 1, true, r2))
+            .await,
+        Err(EndorsementError::NotFound)
+    );
+    assert_eq!(
+        vink.set_work_endorsement(reader(4), on_work(&key(), 1, false, r2))
+            .await,
+        Err(EndorsementError::NotFound),
+        "no retained record: nothing to remove, nothing revealed"
+    );
     assert_eq!(work_summary(&vink).await, Err(EndorsementError::NotFound));
     assert_eq!(
         vink.own_endorsements(reader(1), sample_work(), None).await,
         Err(EndorsementError::NotFound)
     );
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((Some(r2), 3)));
-    // A later republish restores the stored state without any write.
+    let own_removal = vink
+        .set_work_endorsement(reader(1), on_work(&key(), 2, false, r2))
+        .await;
+    assert_eq!(accepted(own_removal), (state(false, 3, 3), None));
     sqlx::query(
         "INSERT INTO publications (work_id, revision_id, generation, published_at)
          VALUES ($1, $2, 1, now())",
@@ -602,11 +637,11 @@ async fn republication_needs_reconfirmation_and_withdrawal_hides_everything(pool
     .execute(&pool)
     .await
     .unwrap();
-    assert_eq!(work_summary(&vink).await, Ok(count(1)));
+    assert_eq!(work_summary(&vink).await, Ok(EndorsementCount::ZERO));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: PgPool) {
+async fn comment_endorsements_follow_visibility_scope_and_ignore_comments_close(pool: PgPool) {
     let vink = setup(&pool).await;
     let root = public_comment(&vink, other(), None, "Gốc công khai").await;
     let reply = public_comment(&vink, author(), Some(root), "Phản hồi công khai").await;
@@ -625,7 +660,6 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
         "Phản hồi còn công khai",
     )
     .await;
-    decide(&vink, hidden_root, 2, ModerationAction::Remove).await;
 
     // Another work's public comment, addressed through the sample work's route.
     let foreign_work = vink.create_draft(author()).await.unwrap().work_id;
@@ -657,26 +691,31 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
     )
     .await;
     decide(&vink, foreign, 1, ModerationAction::Approve).await;
+    // Reader 1 endorses the foreign comment through ITS work's route.
+    vink.set_comment_endorsement(
+        reader(1),
+        SetCommentEndorsement {
+            work_id: foreign_work,
+            ..on_comment(&key(), foreign, 1, true)
+        },
+    )
+    .await
+    .unwrap();
 
     let me = reader(1);
     let on = vink
-        .set_comment_endorsement(me, endorse_comment(root, 1))
+        .set_comment_endorsement(me, on_comment(&key(), root, 1, true))
+        .await;
+    assert_eq!(accepted(on), (state(true, 2, 2), count(1)));
+    vink.set_comment_endorsement(me, on_comment(&key(), reply, 1, true))
         .await
         .unwrap();
-    assert_eq!(
-        (on.accepted, on.comment_id, on.own, on.summary),
-        (
-            true,
-            Some(root),
-            own(OwnView::Endorsed, 2, None, Capability::Allowed),
-            count(1)
-        )
-    );
-    vink.set_comment_endorsement(me, endorse_comment(reply, 1))
+    vink.set_comment_endorsement(me, on_comment(&key(), hidden_root, 1, true))
         .await
         .unwrap();
-    // A reply under a hidden root is still endorsable; the hidden root is not.
-    vink.set_comment_endorsement(me, endorse_comment(under_hidden, 1))
+    decide(&vink, hidden_root, 2, ModerationAction::Remove).await;
+    // A reply under a hidden root stays endorsable; the hidden root does not.
+    vink.set_comment_endorsement(me, on_comment(&key(), under_hidden, 1, true))
         .await
         .unwrap();
     for target in [
@@ -684,29 +723,44 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
         rejected,
         removed,
         hidden_root,
-        foreign,
         CommentId::generate(),
     ] {
-        for command in [endorse_comment(target, 1), clear_comment(target, 1)] {
-            assert_eq!(
-                vink.set_comment_endorsement(me, command).await,
-                Err(EndorsementError::NotFound),
-                "{target}"
-            );
-        }
+        let expected = if target == hidden_root { 2 } else { 1 };
+        assert_eq!(
+            vink.set_comment_endorsement(me, on_comment(&key(), target, expected, true))
+                .await,
+            Err(EndorsementError::NotFound),
+            "{target}"
+        );
     }
-    // The writer's own pending comment is not public, so it is unavailable before ownership.
+    // A comment of another work is unreachable through this work, even to remove the actor's
+    // own retained record of it.
     assert_eq!(
-        vink.set_comment_endorsement(other(), endorse_comment(pending, 1))
+        vink.set_comment_endorsement(me, on_comment(&key(), foreign, 2, false))
             .await,
         Err(EndorsementError::NotFound)
     );
     assert_eq!(
-        vink.set_comment_endorsement(other(), endorse_comment(root, 1))
+        comment_row(&pool, foreign, reader_id(1)).await,
+        Some((true, 2, 2))
+    );
+    // Own removal of a retained record survives the comment being hidden.
+    let unhidden = vink
+        .set_comment_endorsement(me, on_comment(&key(), hidden_root, 2, false))
+        .await;
+    assert_eq!(accepted(unhidden), (state(false, 3, 3), None));
+    // The writer's own pending comment is not public; their public root is own content.
+    assert_eq!(
+        vink.set_comment_endorsement(other(), on_comment(&key(), pending, 1, true))
+            .await,
+        Err(EndorsementError::NotFound)
+    );
+    assert_eq!(
+        vink.set_comment_endorsement(other(), on_comment(&key(), root, 1, true))
             .await,
         Err(EndorsementError::SelfEndorsement)
     );
-    // Nothing cascaded to the root, the work or the other tier.
+    // Nothing cascaded to the root, the work or the other tier; hidden is never zero.
     let raw_ids = [
         root,
         reply,
@@ -722,7 +776,7 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
         .endorsement_summaries(sample_work(), Some(&raw_ids))
         .await
         .unwrap();
-    assert_eq!(summaries.work, count(0));
+    assert_eq!(summaries.work, EndorsementCount::ZERO);
     assert_eq!(
         summaries
             .comments
@@ -733,14 +787,13 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
             (root, count(1)),
             (reply, count(1)),
             (under_hidden, count(1)),
-            (hidden_root, Summary::Unavailable),
-            (pending, Summary::Unavailable),
-            (foreign, Summary::Unavailable),
-        ],
-        "deduplicated, in request order; hidden is never zero"
+            (hidden_root, None),
+            (pending, None),
+            (foreign, None),
+        ]
     );
 
-    // Closing comments stops NEW comment endorsements only.
+    // Closing comments governs text, not endorsement (CHOICE-09 A): select and remove proceed.
     vink.set_comments_mode(
         author(),
         SetCommentsMode {
@@ -751,40 +804,16 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
     )
     .await
     .unwrap();
-    assert_eq!(
-        vink.set_comment_endorsement(reader(2), endorse_comment(root, 1))
-            .await,
-        Err(EndorsementError::CommentsClosed)
-    );
-    let reaffirmed = vink
-        .set_comment_endorsement(me, endorse_comment(reply, 2))
-        .await
-        .unwrap();
-    assert_eq!(
-        (reaffirmed.accepted, reaffirmed.own.version),
-        (true, version(3))
-    );
-    let cleared = vink
-        .set_comment_endorsement(me, clear_comment(root, 2))
-        .await
-        .unwrap();
-    assert_eq!(
-        (cleared.accepted, cleared.own, cleared.summary),
-        (
-            true,
-            own(OwnView::NotEndorsed, 3, None, Capability::CommentsClosed),
-            count(0)
-        )
-    );
-    assert_eq!(
-        vink.set_comment_endorsement(me, endorse_comment(root, 3))
-            .await,
-        Err(EndorsementError::CommentsClosed)
-    );
-    // The work's own endorsement is not governed by the comments switch.
-    vink.set_work_endorsement(me, endorse(1, R1)).await.unwrap();
+    let closed_select = vink
+        .set_comment_endorsement(reader(2), on_comment(&key(), root, 1, true))
+        .await;
+    assert_eq!(accepted(closed_select), (state(true, 2, 2), count(2)));
+    let closed_remove = vink
+        .set_comment_endorsement(me, on_comment(&key(), root, 2, false))
+        .await;
+    assert_eq!(accepted(closed_remove), (state(false, 3, 3), count(1)));
 
-    // Own state: actor-scoped, versions only where available, advisory capabilities.
+    // Own state: actor-scoped, tokens only where visible, advisory capabilities.
     let ids = [root, reply, pending, hidden_root]
         .map(|id| id.to_string())
         .join(",");
@@ -795,8 +824,14 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
     assert_eq!(
         mine.comments.iter().map(|c| c.own).collect::<Vec<_>>(),
         [
-            own(OwnView::NotEndorsed, 3, None, Capability::CommentsClosed),
-            own(OwnView::Endorsed, 3, None, Capability::Allowed),
+            OwnEndorsement {
+                state: Some(state(false, 3, 3)),
+                capability: Capability::Allowed,
+            },
+            OwnEndorsement {
+                state: Some(state(true, 2, 2)),
+                capability: Capability::Allowed,
+            },
             OwnEndorsement::UNAVAILABLE,
             OwnEndorsement::UNAVAILABLE,
         ]
@@ -808,113 +843,152 @@ async fn comment_endorsements_follow_visibility_scope_and_comments_close(pool: P
     assert_eq!(
         writer.comments.iter().map(|c| c.own).collect::<Vec<_>>(),
         [
-            own(OwnView::NotEndorsed, 1, None, Capability::OwnContent),
-            own(OwnView::NotEndorsed, 1, None, Capability::CommentsClosed),
-            // Their own pending comment is readable in the discussion, never endorsable.
+            OwnEndorsement {
+                state: Some(EndorsementState::INITIAL),
+                capability: Capability::OwnContent,
+            },
+            OwnEndorsement {
+                state: Some(EndorsementState::INITIAL),
+                capability: Capability::Allowed,
+            },
             OwnEndorsement::UNAVAILABLE,
             OwnEndorsement::UNAVAILABLE,
         ],
-        "another actor's selections never leak into this actor's state"
+        "another actor's records never leak into this actor's state"
     );
     assert_eq!(
         vink.own_endorsements(None, sample_work(), Some(&ids)).await,
         Err(EndorsementError::Unauthenticated)
     );
-
-    // Reopening restores endorsing without any data change.
-    vink.set_comments_mode(
-        author(),
-        SetCommentsMode {
-            work_id: sample_work(),
-            expected_generation: 2,
-            mode: CommentsMode::Open,
-        },
-    )
-    .await
-    .unwrap();
-    let again = vink
-        .set_comment_endorsement(me, endorse_comment(root, 3))
-        .await
-        .unwrap();
-    assert_eq!((again.accepted, again.summary), (true, count(1)));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn concurrent_first_intents_have_exactly_one_acceptance(pool: PgPool) {
+async fn concurrent_commands_have_exactly_one_winner(pool: PgPool) {
     let vink = setup(&pool).await;
     let root = public_comment(&vink, other(), None, "Gốc bị bấm nhiều lần").await;
 
-    // Eight identical first endorsements of one actor: one accepted, seven already current.
+    // Eight copies of ONE command (same key and body): one accepted, seven replays.
+    let a = key();
     let tasks: Vec<_> = (0..8)
         .map(|_| {
-            let vink = Arc::clone(&vink);
-            tokio::spawn(async move { vink.set_work_endorsement(reader(1), endorse(1, R1)).await })
+            let (vink, a) = (Arc::clone(&vink), a.clone());
+            tokio::spawn(async move {
+                vink.set_work_endorsement(reader(1), on_work(&a, 1, true, R1))
+                    .await
+            })
         })
         .collect();
-    let mut accepted = 0;
+    let mut accepted_count = 0;
     for task in tasks {
-        let outcome = task.await.unwrap().unwrap();
-        accepted += usize::from(outcome.accepted);
-        assert_eq!(outcome.own.version, version(2));
+        match task.await.unwrap().unwrap().result {
+            EndorsementResult::Accepted(state) => {
+                accepted_count += 1;
+                assert_eq!(state, self::state(true, 2, 2));
+            }
+            EndorsementResult::Replayed { committed, .. } => {
+                assert_eq!(committed, state(true, 2, 2));
+            }
+        }
     }
-    assert_eq!(accepted, 1);
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((Some(R1), 2)));
+    assert_eq!(accepted_count, 1);
+    assert_eq!(work_row(&pool, R1, reader_id(1)).await, Some((true, 2, 2)));
 
-    // Mixed first intents at version 1 on a comment: exactly one is accepted; the rest are
-    // already current (same desire) or conflicts (opposite desire); the count matches the row.
+    // Eight first commands with different keys, mixed desires, all at order 1: one accepted,
+    // the rest conflict; the count matches the row.
     let tasks: Vec<_> = (0..8)
         .map(|n| {
             let vink = Arc::clone(&vink);
             tokio::spawn(async move {
-                let command = if n % 2 == 0 {
-                    endorse_comment(root, 1)
-                } else {
-                    clear_comment(root, 1)
-                };
-                vink.set_comment_endorsement(reader(2), command).await
+                vink.set_comment_endorsement(reader(2), on_comment(&key(), root, 1, n % 2 == 0))
+                    .await
             })
         })
         .collect();
-    let mut accepted = 0;
+    let mut accepted_count = 0;
     for task in tasks {
         match task.await.unwrap() {
-            Ok(outcome) => accepted += usize::from(outcome.accepted),
-            Err(EndorsementError::Conflict { current }) => {
-                assert_eq!(current.version, version(2));
+            Ok(outcome) => {
+                assert!(matches!(outcome.result, EndorsementResult::Accepted(_)));
+                accepted_count += 1;
             }
+            Err(EndorsementError::Conflict { observed }) => assert_eq!(observed.order().get(), 2),
             Err(other) => panic!("{other:?}"),
         }
     }
-    assert_eq!(accepted, 1);
-    let (selected, row_version) = comment_row(&pool, root, reader_id(2)).await.unwrap();
-    assert_eq!(row_version, 2);
-    let ids = root.to_string();
+    assert_eq!(accepted_count, 1);
+    let (selected, _, order) = comment_row(&pool, root, reader_id(2)).await.unwrap();
+    assert_eq!(order, 2);
     let summary = vink
-        .endorsement_summaries(sample_work(), Some(&ids))
+        .endorsement_summaries(sample_work(), Some(&root.to_string()))
         .await
         .unwrap();
-    assert_eq!(summary.comments[0].summary, count(u32::from(selected)));
+    assert_eq!(summary.comments[0].summary, count(i64::from(selected)));
+
+    // One key, two targets at once: the key namespace is the actor's, across targets.
+    let shared = key();
+    let (left, right) = {
+        let (v1, v2, k1, k2) = (
+            Arc::clone(&vink),
+            Arc::clone(&vink),
+            shared.clone(),
+            shared.clone(),
+        );
+        (
+            tokio::spawn(async move {
+                v1.set_work_endorsement(reader(3), on_work(&k1, 1, true, R1))
+                    .await
+            }),
+            tokio::spawn(async move {
+                v2.set_comment_endorsement(reader(3), on_comment(&k2, root, 1, true))
+                    .await
+            }),
+        )
+    };
+    let outcomes = [
+        left.await.unwrap().map(|_| ()),
+        right.await.unwrap().map(|_| ()),
+    ];
+    assert_eq!(
+        outcomes.iter().filter(|o| o.is_ok()).count(),
+        1,
+        "{outcomes:?}"
+    );
+    assert!(
+        outcomes.contains(&Err(EndorsementError::KeyReused)),
+        "{outcomes:?}"
+    );
+    let receipts: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM endorsement_receipts WHERE command_key = $1")
+            .bind(Uuid::parse_str(&shared).unwrap())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(receipts, 1);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn an_uncommitted_first_intent_decides_a_waiting_insert_in_both_commit_orders(pool: PgPool) {
+async fn an_uncommitted_first_command_decides_a_waiting_insert_in_both_commit_orders(pool: PgPool) {
     let vink = setup(&pool).await;
-    // Order 1: a concurrent first intent (a clear, accepted at version 1) is uncommitted when this
-    // endorse decides from the absent row. Its INSERT waits; after the commit it reads that row
-    // under lock and decides again: stale, nothing written.
+    // Order 1: a concurrent first command (a remove, accepted at order 1) is uncommitted when
+    // this select decides from the absent row. Its INSERT waits; after the commit it reads that
+    // row under lock and decides again: a conflict, nothing written, no receipt.
     let mut first = pool.begin().await.unwrap();
     sqlx::query(
-        "INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-         VALUES ($1, $2, NULL, 2)",
+        "INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+         VALUES ($1, $2, $3, false, 1, 2)",
     )
     .bind(dev_seed::SAMPLE_WORK)
+    .bind(R1)
     .bind(reader_id(1))
     .execute(&mut *first)
     .await
     .unwrap();
     let racing = {
         let vink = Arc::clone(&vink);
-        tokio::spawn(async move { vink.set_work_endorsement(reader(1), endorse(1, R1)).await })
+        tokio::spawn(async move {
+            vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, R1))
+                .await
+        })
     };
     tokio::time::sleep(PAUSE).await;
     assert!(
@@ -925,147 +999,37 @@ async fn an_uncommitted_first_intent_decides_a_waiting_insert_in_both_commit_ord
     assert_eq!(
         racing.await.unwrap(),
         Err(EndorsementError::Conflict {
-            current: own(OwnView::NotEndorsed, 2, None, Capability::Allowed)
+            observed: state(false, 1, 2)
         })
     );
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((None, 2)));
+    assert_eq!(work_row(&pool, R1, reader_id(1)).await, Some((false, 1, 2)));
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 0);
 
-    // Order 2: the concurrent first intent rolls back; the waiting INSERT then wins.
+    // Order 2: the concurrent first command rolls back; the waiting INSERT then wins.
     let mut first = pool.begin().await.unwrap();
     sqlx::query(
-        "INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-         VALUES ($1, $2, $3, 2)",
+        "INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+         VALUES ($1, $2, $3, true, 2, 2)",
     )
     .bind(dev_seed::SAMPLE_WORK)
-    .bind(reader_id(2))
     .bind(R1)
+    .bind(reader_id(2))
     .execute(&mut *first)
     .await
     .unwrap();
     let racing = {
         let vink = Arc::clone(&vink);
-        tokio::spawn(async move { vink.set_work_endorsement(reader(2), clear(1)).await })
+        tokio::spawn(async move {
+            vink.set_work_endorsement(reader(2), on_work(&key(), 1, false, R1))
+                .await
+        })
     };
     tokio::time::sleep(PAUSE).await;
     assert!(!racing.is_finished());
     first.rollback().await.unwrap();
-    let won = racing.await.unwrap().unwrap();
-    assert_eq!(
-        (won.accepted, won.own),
-        (
-            true,
-            own(OwnView::NotEndorsed, 2, None, Capability::Allowed)
-        )
-    );
-    assert_eq!(work_row(&pool, reader_id(2)).await, Some((None, 2)));
-}
-
-#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
-async fn endorsing_and_closing_comments_serialize_on_the_thread(pool: PgPool) {
-    let vink = setup(&pool).await;
-    let root = public_comment(&vink, other(), None, "Gốc trong lúc tắt bình luận").await;
-
-    // An uncommitted close holds the thread row; a new endorsement waits, then sees Closed.
-    let mut closer = pool.begin().await.unwrap();
-    sqlx::query(
-        "UPDATE discussion_threads SET comments_open = false,
-                settings_generation = settings_generation + 1 WHERE work_id = $1",
-    )
-    .bind(dev_seed::SAMPLE_WORK)
-    .execute(&mut *closer)
-    .await
-    .unwrap();
-    let endorsing = {
-        let vink = Arc::clone(&vink);
-        tokio::spawn(async move {
-            vink.set_comment_endorsement(reader(1), endorse_comment(root, 1))
-                .await
-        })
-    };
-    tokio::time::sleep(PAUSE).await;
-    assert!(
-        !endorsing.is_finished(),
-        "endorsement waits for the thread lock"
-    );
-    closer.commit().await.unwrap();
-    assert_eq!(
-        endorsing.await.unwrap(),
-        Err(EndorsementError::CommentsClosed)
-    );
-    assert_eq!(comment_row(&pool, root, reader_id(1)).await, None);
-    vink.set_comments_mode(
-        author(),
-        SetCommentsMode {
-            work_id: sample_work(),
-            expected_generation: 2,
-            mode: CommentsMode::Open,
-        },
-    )
-    .await
-    .unwrap();
-
-    // The other order: a REAL in-flight endorsement holds its thread share lock until commit.
-    // Pause it on its own row (it already locked publication, thread and comment): a close must
-    // wait, so no endorsement can commit after a committed close.
-    vink.set_comment_endorsement(reader(2), clear_comment(root, 1))
-        .await
-        .unwrap();
-    let mut pauser = pool.begin().await.unwrap();
-    sqlx::query(
-        "SELECT 1 FROM comment_endorsements WHERE comment_id = $1 AND actor_id = $2 FOR UPDATE",
-    )
-    .bind(root.as_uuid())
-    .bind(reader_id(2))
-    .execute(&mut *pauser)
-    .await
-    .unwrap();
-    let endorsing = {
-        let vink = Arc::clone(&vink);
-        tokio::spawn(async move {
-            vink.set_comment_endorsement(reader(2), endorse_comment(root, 2))
-                .await
-        })
-    };
-    tokio::time::sleep(PAUSE).await;
-    assert!(
-        !endorsing.is_finished(),
-        "endorsement is paused on its own row"
-    );
-    let closing = {
-        let vink = Arc::clone(&vink);
-        tokio::spawn(async move {
-            vink.set_comments_mode(
-                author(),
-                SetCommentsMode {
-                    work_id: sample_work(),
-                    expected_generation: 3,
-                    mode: CommentsMode::Closed,
-                },
-            )
-            .await
-        })
-    };
-    tokio::time::sleep(PAUSE).await;
-    assert!(
-        !closing.is_finished(),
-        "a close waits for the in-flight endorsement"
-    );
-    pauser.rollback().await.unwrap();
-    let endorsed = endorsing.await.unwrap().unwrap();
-    assert!(endorsed.accepted);
-    let closed = closing.await.unwrap().unwrap();
-    assert_eq!(closed.mode(), CommentsMode::Closed);
-    let ordered: bool = sqlx::query_scalar(
-        "SELECT e.updated_at <= t.updated_at FROM comment_endorsements e, discussion_threads t
-          WHERE e.comment_id = $1 AND e.actor_id = $2 AND t.work_id = $3",
-    )
-    .bind(root.as_uuid())
-    .bind(reader_id(2))
-    .bind(dev_seed::SAMPLE_WORK)
-    .fetch_one(&pool)
-    .await
-    .unwrap();
-    assert!(ordered, "the endorsement committed before the close");
+    assert_eq!(accepted(racing.await.unwrap()).0, state(false, 1, 2));
+    assert_eq!(work_row(&pool, R1, reader_id(2)).await, Some((false, 1, 2)));
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 1);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -1074,8 +1038,8 @@ async fn endorsing_and_moderation_serialize_on_the_comment(pool: PgPool) {
     let first = public_comment(&vink, other(), None, "Gốc sẽ bị gỡ khi đang ghi nhận").await;
     let second = public_comment(&vink, other(), None, "Gốc thứ hai").await;
 
-    // An uncommitted moderation removal holds the comment row; the endorsement waits and then
-    // finds the comment unavailable.
+    // An uncommitted moderation removal holds the comment row; the select waits and then finds
+    // the comment unavailable.
     let mut moderating = pool.begin().await.unwrap();
     sqlx::query(
         "UPDATE comments SET removal = 'moderation', moderation_version = moderation_version + 1
@@ -1088,7 +1052,7 @@ async fn endorsing_and_moderation_serialize_on_the_comment(pool: PgPool) {
     let endorsing = {
         let vink = Arc::clone(&vink);
         tokio::spawn(async move {
-            vink.set_comment_endorsement(reader(1), endorse_comment(first, 1))
+            vink.set_comment_endorsement(reader(1), on_comment(&key(), first, 1, true))
                 .await
         })
     };
@@ -1102,8 +1066,8 @@ async fn endorsing_and_moderation_serialize_on_the_comment(pool: PgPool) {
     assert_eq!(comment_row(&pool, first, reader_id(1)).await, None);
 
     // The other order: a paused in-flight endorsement holds the comment FOR SHARE, so a real
-    // moderation decision waits for it; afterwards the stored endorsement is hidden, not lost.
-    vink.set_comment_endorsement(reader(1), clear_comment(second, 1))
+    // moderation decision waits for it; afterwards the stored record is hidden, not lost.
+    vink.set_comment_endorsement(reader(1), on_comment(&key(), second, 1, false))
         .await
         .unwrap();
     let mut pauser = pool.begin().await.unwrap();
@@ -1118,7 +1082,7 @@ async fn endorsing_and_moderation_serialize_on_the_comment(pool: PgPool) {
     let endorsing = {
         let vink = Arc::clone(&vink);
         tokio::spawn(async move {
-            vink.set_comment_endorsement(reader(1), endorse_comment(second, 2))
+            vink.set_comment_endorsement(reader(1), on_comment(&key(), second, 2, true))
                 .await
         })
     };
@@ -1133,18 +1097,17 @@ async fn endorsing_and_moderation_serialize_on_the_comment(pool: PgPool) {
         "moderation waits for the in-flight endorsement"
     );
     pauser.rollback().await.unwrap();
-    assert!(endorsing.await.unwrap().unwrap().accepted);
+    assert_eq!(accepted(endorsing.await.unwrap()).0, state(true, 2, 3));
     removing.await.unwrap();
     assert_eq!(
         comment_row(&pool, second, reader_id(1)).await,
-        Some((true, 3))
+        Some((true, 2, 3))
     );
-    let ids = second.to_string();
     let summaries = vink
-        .endorsement_summaries(sample_work(), Some(&ids))
+        .endorsement_summaries(sample_work(), Some(&second.to_string()))
         .await
         .unwrap();
-    assert_eq!(summaries.comments[0].summary, Summary::Unavailable);
+    assert_eq!(summaries.comments[0].summary, None);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -1152,8 +1115,8 @@ async fn endorsing_and_publication_changes_serialize_on_the_pointer(pool: PgPool
     let vink = setup(&pool).await;
     let r2 = new_revision(&pool).await;
 
-    // An uncommitted republish holds the pointer; an endorsement of the old page waits and then
-    // learns that the text changed, writing nothing.
+    // An uncommitted republish holds the pointer; a select of the old page waits and then learns
+    // that the text changed, writing nothing.
     let mut republishing = pool.begin().await.unwrap();
     sqlx::query(POINT)
         .bind(dev_seed::SAMPLE_WORK)
@@ -1163,7 +1126,10 @@ async fn endorsing_and_publication_changes_serialize_on_the_pointer(pool: PgPool
         .unwrap();
     let endorsing = {
         let vink = Arc::clone(&vink);
-        tokio::spawn(async move { vink.set_work_endorsement(reader(1), endorse(1, R1)).await })
+        tokio::spawn(async move {
+            vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, R1))
+                .await
+        })
     };
     tokio::time::sleep(PAUSE).await;
     assert!(
@@ -1177,9 +1143,9 @@ async fn endorsing_and_publication_changes_serialize_on_the_pointer(pool: PgPool
             published: RevisionId::from_uuid(r2)
         })
     );
-    assert_eq!(work_row(&pool, reader_id(1)).await, None);
+    assert_eq!(work_row(&pool, R1, reader_id(1)).await, None);
 
-    // An uncommitted withdrawal: the endorsement waits and then finds nothing.
+    // An uncommitted withdrawal that rolls back: the select waits, then applies.
     let mut withdrawing = pool.begin().await.unwrap();
     sqlx::query(WITHDRAW)
         .bind(dev_seed::SAMPLE_WORK)
@@ -1188,29 +1154,38 @@ async fn endorsing_and_publication_changes_serialize_on_the_pointer(pool: PgPool
         .unwrap();
     let endorsing = {
         let vink = Arc::clone(&vink);
-        tokio::spawn(async move { vink.set_work_endorsement(reader(1), endorse(1, r2)).await })
+        tokio::spawn(async move {
+            vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, r2))
+                .await
+        })
     };
     tokio::time::sleep(PAUSE).await;
     assert!(!endorsing.is_finished());
     withdrawing.rollback().await.unwrap();
-    // Rolled back: the work stayed public and the endorsement applies.
-    assert!(endorsing.await.unwrap().unwrap().accepted);
+    assert_eq!(accepted(endorsing.await.unwrap()).0, state(true, 2, 2));
 
     // The other order: a paused in-flight endorsement holds the pointer FOR SHARE, so a
     // withdrawal waits for its commit and then hides it.
     let mut pauser = pool.begin().await.unwrap();
-    sqlx::query("SELECT 1 FROM work_endorsements WHERE work_id = $1 AND actor_id = $2 FOR UPDATE")
-        .bind(dev_seed::SAMPLE_WORK)
-        .bind(reader_id(1))
-        .execute(&mut *pauser)
-        .await
-        .unwrap();
+    sqlx::query(
+        "SELECT 1 FROM work_endorsements WHERE work_id = $1 AND revision_id = $2 AND actor_id = $3
+            FOR UPDATE",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .bind(r2)
+    .bind(reader_id(1))
+    .execute(&mut *pauser)
+    .await
+    .unwrap();
     let endorsing = {
         let vink = Arc::clone(&vink);
-        tokio::spawn(async move { vink.set_work_endorsement(reader(1), clear(2)).await })
+        tokio::spawn(async move {
+            vink.set_work_endorsement(reader(1), on_work(&key(), 2, false, r2))
+                .await
+        })
     };
     tokio::time::sleep(PAUSE).await;
-    let withdrawing = {
+    let withdrawn = {
         let pool = pool.clone();
         tokio::spawn(async move {
             sqlx::query(WITHDRAW)
@@ -1223,53 +1198,53 @@ async fn endorsing_and_publication_changes_serialize_on_the_pointer(pool: PgPool
     };
     tokio::time::sleep(PAUSE).await;
     assert!(
-        !withdrawing.is_finished(),
+        !withdrawn.is_finished(),
         "withdrawal waits for the in-flight endorsement"
     );
     pauser.rollback().await.unwrap();
-    assert!(endorsing.await.unwrap().unwrap().accepted);
-    assert_eq!(withdrawing.await.unwrap(), 1);
+    assert_eq!(accepted(endorsing.await.unwrap()).0, state(false, 3, 3));
+    assert_eq!(withdrawn.await.unwrap(), 1);
     assert_eq!(work_summary(&vink).await, Err(EndorsementError::NotFound));
-    assert_eq!(work_row(&pool, reader_id(1)).await, Some((None, 3)));
+    assert_eq!(work_row(&pool, r2, reader_id(1)).await, Some((false, 3, 3)));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn a_refused_or_failed_write_leaves_nothing_behind(pool: PgPool) {
     let vink = setup(&pool).await;
-    vink.set_work_endorsement(reader(1), endorse(1, R1))
+    vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, R1))
         .await
         .unwrap();
-    // The last version: the core refuses to wrap and nothing is written or counted twice.
-    sqlx::query("UPDATE work_endorsements SET version = $1 WHERE actor_id = $2")
+    // The last order: the core refuses to wrap; nothing is written, no receipt is added.
+    sqlx::query("UPDATE work_endorsements SET accepted_order = $1 WHERE actor_id = $2")
         .bind(i64::MAX)
         .bind(reader_id(1))
         .execute(&pool)
         .await
         .unwrap();
     assert_eq!(
-        vink.set_work_endorsement(reader(1), clear(i64::MAX)).await,
+        vink.set_work_endorsement(reader(1), on_work(&key(), i64::MAX, false, R1))
+            .await,
         Err(EndorsementError::Internal)
     );
     assert_eq!(
-        work_row(&pool, reader_id(1)).await,
-        Some((Some(R1), i64::MAX))
+        work_row(&pool, R1, reader_id(1)).await,
+        Some((true, 2, i64::MAX))
     );
-    assert_eq!(work_summary(&vink).await, Ok(count(1)));
-    // A stale or refused request writes nothing either.
-    let before: i64 =
-        sqlx::query_scalar("SELECT count(*) FROM work_endorsements WHERE updated_at IS NOT NULL")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-    let _ = vink.set_work_endorsement(author(), endorse(1, R1)).await;
+    assert_eq!(
+        work_summary(&vink).await,
+        Ok(EndorsementCount::new(1).unwrap())
+    );
     let _ = vink
-        .set_work_endorsement(reader(2), endorse(1, Uuid::now_v7()))
+        .set_work_endorsement(author(), on_work(&key(), 1, true, R1))
         .await;
-    let after: i64 = sqlx::query_scalar("SELECT count(*) FROM work_endorsements")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(before, after);
+    let _ = vink
+        .set_work_endorsement(reader(2), on_work(&key(), 1, true, Uuid::now_v7()))
+        .await;
+    let _ = vink
+        .set_work_endorsement(reader(2), on_work(&key(), 5, true, R1))
+        .await;
+    assert_eq!(rows(&pool, "work_endorsements").await, 1);
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 1);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -1280,66 +1255,55 @@ async fn summaries_equal_an_independent_recount_of_canonical_rows(pool: PgPool) 
         public_comment(&vink, other(), None, "Gốc hai").await,
     ];
     let r2 = new_revision(&pool).await;
-    // Readers 1–4 endorse revision 1; then revision 2 is published; readers 3–6 endorse it
-    // (3 and 4 reconfirm), reader 5 clears again, reader 2 reaffirms its old selection request
-    // in vain. Comments: readers 1–6 endorse root one, readers 1, 3, 5 also clear it.
+    // Readers 1–4 select revision 1; revision 2 is published; readers 3–6 select it; reader 5
+    // removes it again. Comments: readers 1–6 select root one, readers 1, 3, 5 remove it,
+    // reader 2 reaffirms (same state, new order, no second vote).
     for n in 1..=4 {
-        vink.set_work_endorsement(reader(n), endorse(1, R1))
+        vink.set_work_endorsement(reader(n), on_work(&key(), 1, true, R1))
             .await
             .unwrap();
     }
     point(&pool, r2).await;
-    for n in 3..=4 {
-        vink.set_work_endorsement(reader(n), endorse(2, r2))
+    for n in 3..=6 {
+        vink.set_work_endorsement(reader(n), on_work(&key(), 1, true, r2))
             .await
             .unwrap();
     }
-    for n in 5..=6 {
-        vink.set_work_endorsement(reader(n), endorse(1, r2))
-            .await
-            .unwrap();
-    }
-    vink.set_work_endorsement(reader(5), clear(2))
+    vink.set_work_endorsement(reader(5), on_work(&key(), 2, false, r2))
         .await
         .unwrap();
-    assert!(
-        vink.set_work_endorsement(reader(2), endorse(2, R1))
-            .await
-            .is_err()
-    );
     for n in 1..=6 {
-        vink.set_comment_endorsement(reader(n), endorse_comment(roots[0], 1))
+        vink.set_comment_endorsement(reader(n), on_comment(&key(), roots[0], 1, true))
             .await
             .unwrap();
     }
     for n in [1, 3, 5] {
-        vink.set_comment_endorsement(reader(n), clear_comment(roots[0], 2))
+        vink.set_comment_endorsement(reader(n), on_comment(&key(), roots[0], 2, false))
             .await
             .unwrap();
     }
-    // A reaffirmation of a selection never adds a second vote.
-    vink.set_comment_endorsement(reader(2), endorse_comment(roots[0], 2))
+    vink.set_comment_endorsement(reader(2), on_comment(&key(), roots[0], 2, true))
         .await
         .unwrap();
 
-    // Independent recount: every effective row, grouped, joined to the CURRENT pointer.
-    let (work_effective, all_selected): (i64, i64) = sqlx::query_as(
-        "SELECT count(*) FILTER (WHERE e.revision_id = p.revision_id),
-                count(*) FILTER (WHERE e.revision_id IS NOT NULL)
+    // Independent recount: every selected row joined to the CURRENT pointer.
+    let (effective, all_selected): (i64, i64) = sqlx::query_as(
+        "SELECT count(*) FILTER (WHERE e.selected AND e.revision_id = p.revision_id),
+                count(*) FILTER (WHERE e.selected)
            FROM work_endorsements e JOIN publications p USING (work_id)",
     )
     .fetch_one(&pool)
     .await
     .unwrap();
     assert_eq!(
-        (work_effective, all_selected),
-        (3, 5),
-        "readers 3, 4, 6 at r2; 1, 2 at r1"
+        (effective, all_selected),
+        (3, 7),
+        "r2: 3, 4, 6; r1: 1, 2, 3, 4"
     );
     let per_comment: Vec<(Uuid, i64)> = sqlx::query_as(
         "SELECT c.id, count(e.actor_id) FILTER (WHERE e.selected)
            FROM comments c LEFT JOIN comment_endorsements e ON e.comment_id = c.id
-          GROUP BY c.id ORDER BY c.id",
+          GROUP BY c.id",
     )
     .fetch_all(&pool)
     .await
@@ -1349,13 +1313,13 @@ async fn summaries_equal_an_independent_recount_of_canonical_rows(pool: PgPool) 
         .endorsement_summaries(sample_work(), Some(&ids))
         .await
         .unwrap();
-    assert_eq!(summaries.work, count(work_effective as u32));
+    assert_eq!(summaries.work.get(), effective);
     for entry in &summaries.comments {
         let (_, expected) = per_comment
             .iter()
             .find(|(id, _)| *id == entry.comment_id.as_uuid())
             .unwrap();
-        assert_eq!(entry.summary, count(*expected as u32));
+        assert_eq!(entry.summary, count(*expected));
     }
     assert_eq!(summaries.comments[0].summary, count(3));
     assert_eq!(summaries.comments[1].summary, count(0));
@@ -1380,11 +1344,12 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
     let on_root = format!("{work}/discussion/comments/{root}/endorsement/me");
     let (me, origin) = (Some(reader_id(1)), Some(ORIGIN));
     let code = |body: &str| json(body)["error"]["code"].as_str().unwrap().to_string();
-    let put = |expected: i64, endorsed: bool, revision: Option<Uuid>| {
+    let put = |key: &str, expected: i64, endorsed: bool, revision: Uuid| {
         Some(json!({
-            "expected_version": expected,
+            "command_key": key,
+            "expected_order": expected,
             "endorsed": endorsed,
-            "observed_revision_id": revision.map(|r| r.to_string()),
+            "revision_id": revision.to_string(),
         }))
     };
 
@@ -1422,7 +1387,6 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
     assert_eq!(
         json(&body),
         json!({
-            "policy": "lve-core-v1",
             "work_id": dev_seed::SAMPLE_WORK.to_string(),
             "work": {"status": "available", "count": 0, "revision_id": R1.to_string()},
             "comments": []
@@ -1443,64 +1407,81 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
     );
 
     // Writes: authentication, then Origin, then the body.
-    let (status, _, _) = call(&app, "PUT", &mine, None, origin, put(1, true, Some(R1))).await;
+    let a = key();
+    let (status, _, _) = call(&app, "PUT", &mine, None, origin, put(&a, 1, true, R1)).await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
-    let (status, _, body) = call(&app, "PUT", &mine, me, None, put(1, true, Some(R1))).await;
+    let (status, _, body) = call(&app, "PUT", &mine, me, None, put(&a, 1, true, R1)).await;
     assert_eq!(
         (status, code(&body).as_str()),
         (StatusCode::FORBIDDEN, "forbidden")
     );
     for (body, field) in [
         (
-            Some(json!({"expected_version": 1, "endorsed": true,
-                        "observed_revision_id": R1, "actor_id": dev_seed::SAMPLE_AUTHOR})),
+            Some(
+                json!({"command_key": a, "expected_order": 1, "endorsed": true,
+                        "revision_id": R1, "actor_id": dev_seed::SAMPLE_AUTHOR}),
+            ),
             "body",
         ),
         (
             Some(
-                json!({"expected_version": 1, "endorsed": true, "observed_revision_id": R1, "count": 99}),
+                json!({"command_key": a, "expected_order": 1, "endorsed": true,
+                        "revision_id": R1, "count": 99}),
             ),
             "body",
         ),
-        (put(0, true, Some(R1)), "expected_version"),
-        (put(1, true, None), "observed_revision_id"),
-        (put(1, false, Some(R1)), "observed_revision_id"),
+        (
+            Some(json!({"command_key": a, "expected_order": 1, "endorsed": true})),
+            "body",
+        ),
+        (put(&a, 0, true, R1), "expected_order"),
+        (put("not-a-uuid", 1, true, R1), "command_key"),
     ] {
         let (status, cache, response) = call(&app, "PUT", &mine, me, origin, body).await;
         assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{response}");
         assert_eq!(json(&response)["error"]["field"], field, "{response}");
         assert_eq!(cache.as_deref(), Some("no-store"));
     }
-    let (status, cache, body) = call(&app, "PUT", &mine, me, origin, put(1, true, Some(R1))).await;
+    let (status, cache, body) = call(&app, "PUT", &mine, me, origin, put(&a, 1, true, R1)).await;
     assert_eq!(
         (status, cache.as_deref()),
         (StatusCode::OK, Some("no-store"))
     );
-    let written = json(&body);
-    assert_eq!(written["accepted"], true);
     assert_eq!(
-        written["endorsement"],
-        json!({"state": "endorsed", "version": 2, "revision_id": R1.to_string(),
-               "can_endorse": true, "blocked_reason": null})
+        json(&body),
+        json!({
+            "work_id": dev_seed::SAMPLE_WORK.to_string(),
+            "revision_id": R1.to_string(),
+            "comment_id": null,
+            "outcome": "accepted",
+            "endorsement": {"selected": true, "version": 2, "order": 2},
+            "committed": null,
+            "summary": {"status": "available", "count": 1}
+        })
     );
-    assert_eq!(
-        written["summary"],
-        json!({"status": "available", "count": 1})
-    );
-    // Lost ACK retry: 200 with accepted false and the same state.
-    let (status, _, body) = call(&app, "PUT", &mine, me, origin, put(1, true, Some(R1))).await;
+    // Lost ACK retry with the same key and body: 200 replayed, history + current.
+    let (status, _, body) = call(&app, "PUT", &mine, me, origin, put(&a, 1, true, R1)).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(json(&body)["accepted"], false);
-    assert_eq!(json(&body)["endorsement"]["version"], 2);
-    // Stale opposite intent: 409 with the stored state to reconcile from.
-    let (status, _, body) = call(&app, "PUT", &mine, me, origin, put(1, false, None)).await;
+    assert_eq!(json(&body)["outcome"], "replayed");
+    assert_eq!(json(&body)["committed"]["order"], 2);
+    // Same key, other body: 422 idempotency_key_reused.
+    let (status, _, body) = call(&app, "PUT", &mine, me, origin, put(&a, 2, false, R1)).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::UNPROCESSABLE_ENTITY, "idempotency_key_reused")
+    );
+    // Stale order with a fresh key: 409 with the observed state.
+    let (status, _, body) = call(&app, "PUT", &mine, me, origin, put(&key(), 1, false, R1)).await;
     assert_eq!(status, StatusCode::CONFLICT);
     let error = &json(&body)["error"];
     assert_eq!(
         (error["code"].as_str(), error["current_version"].as_i64()),
         (Some("version_conflict"), Some(2))
     );
-    assert_eq!(error["endorsement"]["state"], "endorsed");
+    assert_eq!(
+        error["endorsement"],
+        json!({"selected": true, "version": 2, "order": 2})
+    );
     // Self-endorsement, unknown or malformed work.
     let (status, _, body) = call(
         &app,
@@ -1508,7 +1489,7 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         &mine,
         Some(dev_seed::SAMPLE_AUTHOR),
         origin,
-        put(1, true, Some(R1)),
+        put(&key(), 1, true, R1),
     )
     .await;
     assert_eq!(
@@ -1519,18 +1500,20 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         format!("/api/v1/works/{}/endorsement/me", Uuid::now_v7()),
         "/api/v1/works/không-phải-id/endorsement/me".to_string(),
     ] {
-        let (status, _, body) = call(&app, "PUT", &path, me, origin, put(1, true, Some(R1))).await;
+        let (status, _, body) =
+            call(&app, "PUT", &path, me, origin, put(&key(), 1, true, R1)).await;
         assert_eq!(
             (status, code(&body).as_str()),
             (StatusCode::NOT_FOUND, "not_found")
         );
     }
+
     // READ-01 is untouched: endorsement writes never change the public representation.
     assert_eq!(etag(app.clone()).await, before);
     let (_, _, body) = call(&app, "GET", &publication, None, None, None).await;
     assert!(!body.contains("endorse"), "{body}");
 
-    // A republished work: the old page's endorsement is 409 revision_changed.
+    // A republished work: selecting the old page's revision is 409 revision_changed.
     let r2 = new_revision(&pool).await;
     point(&pool, r2).await;
     let (status, _, body) = call(
@@ -1539,49 +1522,29 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         &mine,
         Some(reader_id(2)),
         origin,
-        put(1, true, Some(R1)),
+        put(&key(), 1, true, R1),
     )
     .await;
     assert_eq!(status, StatusCode::CONFLICT);
     assert_eq!(json(&body)["error"]["code"], "revision_changed");
     assert_eq!(json(&body)["error"]["current_revision_id"], r2.to_string());
 
-    // Comments: endorse, closed, cross-work and batch reads.
+    // Comments: select, cross-work route, batch reads.
+    let comment_body = |key: &str, expected: i64, endorsed: bool| {
+        Some(json!({"command_key": key, "expected_order": expected, "endorsed": endorsed}))
+    };
     let (status, _, body) = call(
         &app,
         "PUT",
         &on_root,
         me,
         origin,
-        Some(json!({"expected_version": 1, "endorsed": true})),
+        comment_body(&key(), 1, true),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(json(&body)["comment_id"], root.to_string());
-    assert_eq!(json(&body)["endorsement"]["revision_id"], Value::Null);
-    vink.set_comments_mode(
-        author(),
-        SetCommentsMode {
-            work_id: sample_work(),
-            expected_generation: 1,
-            mode: CommentsMode::Closed,
-        },
-    )
-    .await
-    .unwrap();
-    let (status, _, body) = call(
-        &app,
-        "PUT",
-        &on_root,
-        Some(reader_id(2)),
-        origin,
-        Some(json!({"expected_version": 1, "endorsed": true})),
-    )
-    .await;
-    assert_eq!(
-        (status, code(&body).as_str()),
-        (StatusCode::CONFLICT, "comments_closed")
-    );
+    assert_eq!(json(&body)["revision_id"], Value::Null);
     let foreign_route = format!(
         "/api/v1/works/{}/discussion/comments/{root}/endorsement/me",
         Uuid::now_v7()
@@ -1592,7 +1555,7 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         &foreign_route,
         me,
         origin,
-        Some(json!({"expected_version": 1, "endorsed": false})),
+        comment_body(&key(), 2, false),
     )
     .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
@@ -1615,8 +1578,9 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         (status, cache.as_deref()),
         (StatusCode::OK, Some("no-store"))
     );
-    assert_eq!(json(&body)["work"]["state"], "endorsed_earlier_revision");
-    assert_eq!(json(&body)["comments"][0]["state"], "endorsed");
+    assert_eq!(json(&body)["revision_id"], r2.to_string());
+    assert_eq!(json(&body)["work"]["state"], "not_selected");
+    assert_eq!(json(&body)["comments"][0]["state"], "selected");
     let too_many = (0..=100)
         .map(|_| Uuid::now_v7().to_string())
         .collect::<Vec<_>>()
@@ -1662,8 +1626,12 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         &mine,
         None,
         origin,
-        put(2, false, None),
+        put(&key(), 2, false, R1),
     )
     .await;
     assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+    let _ = EndorsementTarget::Work {
+        work: sample_work(),
+        revision: RevisionId::from_uuid(R1),
+    };
 }

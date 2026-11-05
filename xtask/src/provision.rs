@@ -769,14 +769,16 @@ async fn app_runtime(url: &str) -> Result<(), String> {
         .execute(&mut *tx)
         .await
         .map_err(|e| format!("runtime INSERT: {e}"))?;
-    // LVE (#73): the runtime writes endorsement rows (a clear keeps the row, so it never needs
+    // LVE (#73): the runtime writes endorsement rows (a removal keeps the row, so it never needs
     // DELETE); the migration's grants reach the new tables through default privileges.
     for sql in [
         "WITH probe AS (INSERT INTO principals (id, display_name)
                         VALUES (gen_random_uuid(), 'probe') RETURNING id)
-         INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-         SELECT w.id, probe.id, NULL, 2 FROM probe, works w LIMIT 1",
-        "UPDATE work_endorsements SET version = version + 1",
+         INSERT INTO work_endorsements
+                (work_id, revision_id, actor_id, selected, version, accepted_order)
+         SELECT p.work_id, p.revision_id, probe.id, true, 2, 2 FROM probe, publications p LIMIT 1",
+        "UPDATE work_endorsements SET accepted_order = accepted_order + 1",
+        "SELECT count(*) FROM endorsement_receipts",
         "SELECT count(*) FROM comment_endorsements WHERE selected",
     ] {
         sqlx::query(sql)

@@ -4,8 +4,9 @@ use axum::response::{IntoResponse, Response};
 
 use super::contract::{ErrorBody, ErrorEnvelope};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
-use crate::application::endorsement::{EndorsementError, EndorsementInput, OwnEndorsement};
+use crate::application::endorsement::{EndorsementError, EndorsementInput};
 use crate::application::{DraftError, InvalidInput, ReadError};
+use crate::domain::endorsement::EndorsementState;
 use crate::domain::ids::RevisionId;
 
 /// Outcome classes of HTTP API v1. Messages are for developers; clients branch on `code`.
@@ -38,10 +39,14 @@ pub enum ApiError {
     },
     /// Authors and comment writers do not endorse their own content (LVE CHOICE-08 A).
     SelfEndorsement,
-    /// An accepted endorsement intent changed the selection since `expected_version`.
+    /// The actor has no current endorsement capability.
+    EndorsementNotPermitted,
+    /// The endorsement's accepted order is not `expected_order`.
     EndorsementConflict {
-        current: OwnEndorsement,
+        observed: EndorsementState,
     },
+    /// The endorsement command key was already used for a different command.
+    EndorsementKeyReused,
     /// The endorsed revision is no longer the public one.
     RevisionChanged {
         published: RevisionId,
@@ -59,7 +64,8 @@ impl ApiError {
             | Self::NotCommentWriter
             | Self::NotModerator
             | Self::ModeratorRecused
-            | Self::SelfEndorsement => StatusCode::FORBIDDEN,
+            | Self::SelfEndorsement
+            | Self::EndorsementNotPermitted => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
             | Self::DiscussionConflict { .. }
@@ -69,7 +75,7 @@ impl ApiError {
             | Self::ModerationConflict { .. }
             | Self::EndorsementConflict { .. }
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
-            Self::KeyReused => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::KeyReused | Self::EndorsementKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -163,13 +169,27 @@ impl ApiError {
                 None,
                 None,
             ),
-            Self::EndorsementConflict { current } => (
+            Self::EndorsementNotPermitted => (
+                "endorsement_not_permitted",
+                "the actor may not endorse now; nothing was written".to_string(),
+                None,
+                None,
+            ),
+            Self::EndorsementConflict { observed } => (
                 "version_conflict",
-                "another accepted request changed this endorsement since expected_version; \
+                "another accepted command moved this endorsement past expected_order; \
                  nothing was written"
                     .to_string(),
-                current.version.map(|version| version.get()),
+                Some(observed.order().get()),
+                Some("expected_order"),
+            ),
+            Self::EndorsementKeyReused => (
+                "idempotency_key_reused",
+                "command_key was already used for a different endorsement command; nothing was \
+                 written"
+                    .to_string(),
                 None,
+                Some("command_key"),
             ),
             Self::RevisionChanged { .. } => (
                 "revision_changed",
@@ -196,7 +216,7 @@ impl ApiError {
                     _ => None,
                 },
                 endorsement: match self {
-                    Self::EndorsementConflict { current } => Some((*current).into()),
+                    Self::EndorsementConflict { observed } => Some((*observed).into()),
                     _ => None,
                 },
             },
@@ -294,8 +314,9 @@ impl From<EndorsementError> for ApiError {
             EndorsementError::NotFound => Self::NotFound,
             EndorsementError::SelfEndorsement => Self::SelfEndorsement,
             EndorsementError::RevisionChanged { published } => Self::RevisionChanged { published },
-            EndorsementError::CommentsClosed => Self::CommentsClosed,
-            EndorsementError::Conflict { current } => Self::EndorsementConflict { current },
+            EndorsementError::NotPermitted => Self::EndorsementNotPermitted,
+            EndorsementError::Conflict { observed } => Self::EndorsementConflict { observed },
+            EndorsementError::KeyReused => Self::EndorsementKeyReused,
             EndorsementError::Invalid(invalid) => invalid.into(),
             EndorsementError::Unavailable => Self::DependencyUnavailable,
             EndorsementError::Internal => Self::Internal,

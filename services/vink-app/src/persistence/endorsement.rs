@@ -1,60 +1,60 @@
 //! PostgreSQL adapter of literary endorsement (LVE, #73). Each write is one transaction:
-//! current facts under locks → the exact pure decision (`decide_work_endorsement`,
-//! `decide_comment_endorsement`) → a conditional write of `Transition::write()` → commit → the
-//! durable answer. The schema (`migrations/20261105000000_literary_endorsement.sql`) holds the
-//! structural rules on its own: typed target foreign keys, one row per (actor, target), a
-//! revision of the same work, versions that only advance, rows that are never deleted.
+//! current facts under locks → the exact pure decision (`decide_endorsement`) → the accepted
+//! state and its receipt written atomically → commit → the durable answer. The schema
+//! (`migrations/20261105000000_literary_endorsement.sql`) holds the structural rules on its own:
+//! typed target foreign keys, one row per (actor, target), a revision of the same work, an order
+//! that only advances, rows and receipts that are never deleted.
 //!
 //! Lock order, the prefix of the discussion adapter's: publication (FOR SHARE) → thread (FOR
-//! SHARE) → comment (FOR SHARE) → the actor's endorsement row (FOR UPDATE). A withdrawal or
-//! republish (pointer update), a comments close (thread UPDATE) and a moderation decision
-//! (comment UPDATE) therefore either commit before the decision reads its facts or wait until
-//! it commits; endorsement never takes their rows in the reverse order. No network call happens
-//! inside these transactions.
+//! SHARE) → comment (FOR SHARE) → the actor's command-key namespace (transaction advisory lock)
+//! → the actor's record (FOR UPDATE). A withdrawal or republish (pointer update) and a
+//! moderation decision (comment UPDATE) either commit before the decision reads its facts or wait
+//! until it commits; endorsement never takes their rows in the reverse order. The advisory lock
+//! makes one command key have one winner across ALL targets of the actor, which a lock on the
+//! target alone could not. No network call happens inside these transactions.
 //!
-//! An absent row is not a lock on a future row. A first intent decides from
-//! [`Endorsement::ABSENT`] and INSERTs with `ON CONFLICT DO NOTHING`; if a concurrent first intent
-//! of the same actor committed meanwhile, the INSERT writes nothing and the transaction reads the
-//! winner's row under FOR UPDATE and decides again. The UPDATE path is conditional on the version
-//! it decided from. A unique key alone would not stop a stale intent: the version does.
+//! An absent record is not a lock on a future row. A first command decides from the initial
+//! state and INSERTs with `ON CONFLICT DO NOTHING`; if a concurrent first command (another key)
+//! committed meanwhile, the INSERT writes nothing and the transaction reads the winner's row under
+//! FOR UPDATE and decides again. The UPDATE path is conditional on the order it decided from.
 //!
-//! Counts are read from the canonical rows in the same transaction (CHOICE-05 A): a work counts
-//! selections of its current publication's revision, a comment its selected rows.
+//! The current capability is "the principal has a Vink record": no ban, quarantine or revocation
+//! mechanism exists yet, so there is nothing else to recheck. Counts are read from the canonical
+//! rows in the same transaction (CHOICE-05 A).
 
-use sqlx::{Postgres, Transaction};
+use sqlx::{AssertSqlSafe, Postgres, Transaction};
 use uuid::Uuid;
 
 use super::PgStore;
-use super::discussion::{ThreadRow, integrity, read_snapshot, state};
+use super::discussion::{integrity, read_snapshot, state};
 use super::postgres::classify;
 use crate::application::endorsement::CommentBatch;
 use crate::application::ports::{
-    CommentEndorsementWrite, CommentSummaryFacts, EndorsementStore, EndorsementSummaryFacts,
-    OwnCommentFacts, OwnEndorsementFacts, StoreError, WorkEndorsementWrite,
+    CommentSummaryFacts, EndorsementStore, EndorsementSummaryFacts, EndorsementWriteRecord,
+    OwnCommentFacts, OwnEndorsementFacts, StoreError,
 };
-use crate::domain::endorsement::comment::{
-    CommentDecision, CommentFacts, CommentRequest, decide_comment_endorsement,
-};
-use crate::domain::endorsement::work::{
-    WorkDecision, WorkFacts, WorkRequest, decide_work_endorsement,
-};
+use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::endorsement::{
-    CommentAnchor, Endorsement, EndorsementCount, EndorsementVersion,
+    AcceptedOrder, EndorsementCommand, EndorsementCommandKey, EndorsementCount, EndorsementFacts,
+    EndorsementIntent, EndorsementOutcome, EndorsementReceipt, EndorsementState, EndorsementTarget,
+    EndorsementTargetFacts, StoredEndorsement, decide_endorsement,
 };
-use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
+use crate::domain::ids::{CommentId, PrincipalId, RevisionId, ThreadId, WorkId};
 
-/// A first intent can lose the INSERT to a concurrent first intent at most once: afterwards the
-/// winner's row exists (rows are never deleted) and every read locks it.
+/// A first command can lose the INSERT to a concurrent first command at most once: afterwards
+/// the winner's row exists (rows are never deleted) and every read locks it.
 const CLAIM_ATTEMPTS: usize = 2;
 
-fn version(raw: i64) -> Result<EndorsementVersion, StoreError> {
-    EndorsementVersion::new(raw).ok_or_else(|| integrity("stored endorsement version", raw))
+/// Seed of the advisory-lock hash for the endorsement command-key namespace.
+const KEY_LOCK_SEED: i64 = 7_313;
+
+fn tokens(selected: bool, version: i64, order: i64) -> Result<EndorsementState, StoreError> {
+    EndorsementState::restore(selected, version, order)
+        .ok_or_else(|| integrity("stored endorsement tokens", format!("{version}/{order}")))
 }
 
 fn count(raw: i64) -> Result<EndorsementCount, StoreError> {
-    u32::try_from(raw)
-        .map(EndorsementCount::restore)
-        .map_err(|_| integrity("endorsement count", raw))
+    EndorsementCount::new(raw).ok_or_else(|| integrity("endorsement count", raw))
 }
 
 /// A resolved principal without a Vink record is not an authenticated actor, whatever the
@@ -80,352 +80,429 @@ fn ids(batch: &CommentBatch) -> Vec<Uuid> {
     batch.ids().iter().map(|id| id.as_uuid()).collect()
 }
 
-/// The work, its current publication's revision and either its effective count (summaries) or
-/// the actor's row (own state).
-#[derive(sqlx::FromRow)]
-struct WorkRow {
+fn placement(
     id: Uuid,
-    owner_id: Uuid,
-    published: Option<Uuid>,
-    effective: Option<i64>,
-    anchor: Option<Uuid>,
-    version: Option<i64>,
+    thread_id: Uuid,
+    root_id: Option<Uuid>,
+    reply_to_id: Option<Uuid>,
+) -> Result<CommentPlacement, StoreError> {
+    let position = match root_id {
+        None => StoredPosition::Root,
+        Some(root_id) => StoredPosition::Reply {
+            root_id: CommentId::from_uuid(root_id),
+            reply_to: reply_to_id.map(CommentId::from_uuid),
+        },
+    };
+    CommentPlacement::from_stored(
+        CommentId::from_uuid(id),
+        ThreadId::from_uuid(thread_id),
+        position,
+    )
+    .map_err(|error| integrity("stored placement", error))
 }
 
-impl WorkRow {
-    fn facts(&self) -> WorkFacts {
-        WorkFacts {
-            work: WorkId::from_uuid(self.id),
-            author: PrincipalId::from_uuid(self.owner_id),
-            published: self.published.map(RevisionId::from_uuid),
-        }
-    }
-}
-
-/// A requested comment of the work's thread, with that thread's settings and either its public
-/// count (summaries) or the actor's row (own state).
+/// A requested or targeted comment of the work's thread, with that thread's identity and either
+/// its public count (summaries) or the actor's row (own state).
 #[derive(sqlx::FromRow)]
 struct CommentRow {
     id: Uuid,
+    root_id: Option<Uuid>,
+    reply_to_id: Option<Uuid>,
     author_id: Uuid,
     review: String,
     removal: Option<String>,
     moderation_version: i64,
     thread_id: Uuid,
     work_id: Uuid,
-    comments_open: bool,
-    settings_generation: i64,
     endorsements: Option<i64>,
     selected: Option<bool>,
     version: Option<i64>,
+    accepted_order: Option<i64>,
 }
 
 impl CommentRow {
-    fn facts(&self, work_public: bool) -> Result<CommentFacts, StoreError> {
-        let thread = ThreadRow {
-            id: self.thread_id,
-            comments_open: self.comments_open,
-            settings_generation: self.settings_generation,
-        };
-        Ok(CommentFacts {
-            work: WorkId::from_uuid(self.work_id),
-            comment: CommentId::from_uuid(self.id),
-            work_public,
-            writer: PrincipalId::from_uuid(self.author_id),
-            state: state(
+    fn facts(&self, work_public: bool) -> Result<EndorsementTargetFacts, StoreError> {
+        EndorsementTargetFacts::comment(
+            WorkId::from_uuid(self.work_id),
+            ThreadId::from_uuid(self.thread_id),
+            placement(self.id, self.thread_id, self.root_id, self.reply_to_id)?,
+            PrincipalId::from_uuid(self.author_id),
+            state(
                 &self.review,
                 self.removal.as_deref(),
                 self.moderation_version,
             )?,
-            settings: thread.settings()?,
-        })
+            work_public,
+        )
+        .ok_or_else(|| integrity("comment outside its thread", self.id))
     }
 
-    fn endorsement(&self) -> Result<Endorsement<CommentAnchor>, StoreError> {
-        match (self.selected, self.version) {
-            (Some(selected), Some(raw)) => Ok(Endorsement::restore(
-                selected.then_some(CommentAnchor),
-                version(raw)?,
-            )),
-            (None, None) => Ok(Endorsement::ABSENT),
+    fn own_state(&self) -> Result<Option<EndorsementState>, StoreError> {
+        match (self.selected, self.version, self.accepted_order) {
+            (Some(selected), Some(version), Some(order)) => {
+                tokens(selected, version, order).map(Some)
+            }
+            (None, None, None) => Ok(None),
             _ => Err(integrity("partial comment endorsement row", self.id)),
         }
     }
 }
 
-const COMMENT_COLUMNS: &str = "c.id, c.author_id, c.review, c.removal, c.moderation_version, \
-     t.id AS thread_id, t.work_id, t.comments_open, t.settings_generation";
+const COMMENT_COLUMNS: &str = "c.id, c.root_id, c.reply_to_id, c.author_id, c.review, \
+     c.removal, c.moderation_version, t.id AS thread_id, t.work_id";
+
+/// The work, its current publication's revision and either the effective count of that revision
+/// (summaries) or the actor's row for it (own state).
+#[derive(sqlx::FromRow)]
+struct WorkRow {
+    id: Uuid,
+    owner_id: Uuid,
+    published: Option<Uuid>,
+    effective: Option<i64>,
+    selected: Option<bool>,
+    version: Option<i64>,
+    accepted_order: Option<i64>,
+}
+
+impl WorkRow {
+    fn facts(&self) -> EndorsementTargetFacts {
+        EndorsementTargetFacts::work(
+            WorkId::from_uuid(self.id),
+            PrincipalId::from_uuid(self.owner_id),
+            self.published.map(RevisionId::from_uuid),
+        )
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct ReceiptRow {
+    work_id: Option<Uuid>,
+    revision_id: Option<Uuid>,
+    comment_id: Option<Uuid>,
+    comment_work: Option<Uuid>,
+    expected_order: i64,
+    selected: bool,
+    committed_version: i64,
+    committed_order: i64,
+}
+
+impl ReceiptRow {
+    fn receipt(
+        self,
+        actor: PrincipalId,
+        key: EndorsementCommandKey,
+    ) -> Result<EndorsementReceipt, StoreError> {
+        let target = match (
+            self.work_id,
+            self.revision_id,
+            self.comment_id,
+            self.comment_work,
+        ) {
+            (Some(work), Some(revision), None, _) => EndorsementTarget::Work {
+                work: WorkId::from_uuid(work),
+                revision: RevisionId::from_uuid(revision),
+            },
+            (None, None, Some(comment), Some(work)) => EndorsementTarget::Comment {
+                work: WorkId::from_uuid(work),
+                comment: CommentId::from_uuid(comment),
+            },
+            _ => return Err(integrity("receipt target", key.as_uuid())),
+        };
+        let command = EndorsementCommand {
+            key,
+            target,
+            expected: AcceptedOrder::new(self.expected_order)
+                .ok_or_else(|| integrity("receipt expected order", self.expected_order))?,
+            intent: if self.selected {
+                EndorsementIntent::Select
+            } else {
+                EndorsementIntent::Remove
+            },
+        };
+        let committed = tokens(self.selected, self.committed_version, self.committed_order)?;
+        EndorsementReceipt::restore(actor, command, committed)
+            .ok_or_else(|| integrity("receipt does not match its command", key.as_uuid()))
+    }
+}
+
+/// The actor's record of `target` under FOR UPDATE.
+async fn locked_record(
+    tx: &mut Transaction<'_, Postgres>,
+    actor: PrincipalId,
+    target: EndorsementTarget,
+) -> Result<Option<EndorsementState>, StoreError> {
+    let row: Option<(bool, i64, i64)> = match target {
+        EndorsementTarget::Work { work, revision } => sqlx::query_as(
+            "SELECT selected, version, accepted_order FROM work_endorsements
+              WHERE work_id = $1 AND revision_id = $2 AND actor_id = $3 FOR UPDATE",
+        )
+        .bind(work.as_uuid())
+        .bind(revision.as_uuid())
+        .bind(actor.as_uuid()),
+        EndorsementTarget::Comment { comment, .. } => sqlx::query_as(
+            "SELECT selected, version, accepted_order FROM comment_endorsements
+              WHERE comment_id = $1 AND actor_id = $2 FOR UPDATE",
+        )
+        .bind(comment.as_uuid())
+        .bind(actor.as_uuid()),
+    }
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(classify)?;
+    row.map(|(selected, version, order)| tokens(selected, version, order))
+        .transpose()
+}
+
+/// Writes the accepted state: a conditional UPDATE of the row decided from, or a first INSERT.
+/// `false` when a concurrent first command committed the row first (nothing written).
+async fn write_record(
+    tx: &mut Transaction<'_, Postgres>,
+    actor: PrincipalId,
+    target: EndorsementTarget,
+    from: Option<EndorsementState>,
+    next: EndorsementState,
+) -> Result<bool, StoreError> {
+    let query = match (target, from) {
+        (EndorsementTarget::Work { work, revision }, Some(from)) => sqlx::query(
+            "UPDATE work_endorsements
+                SET selected = $4, version = $5, accepted_order = $6, updated_at = now()
+              WHERE work_id = $1 AND revision_id = $2 AND actor_id = $3 AND accepted_order = $7",
+        )
+        .bind(work.as_uuid())
+        .bind(revision.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(next.selected())
+        .bind(next.version().get())
+        .bind(next.order().get())
+        .bind(from.order().get()),
+        (EndorsementTarget::Work { work, revision }, None) => sqlx::query(
+            "INSERT INTO work_endorsements
+                    (work_id, revision_id, actor_id, selected, version, accepted_order)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (work_id, revision_id, actor_id) DO NOTHING",
+        )
+        .bind(work.as_uuid())
+        .bind(revision.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(next.selected())
+        .bind(next.version().get())
+        .bind(next.order().get()),
+        (EndorsementTarget::Comment { comment, .. }, Some(from)) => sqlx::query(
+            "UPDATE comment_endorsements
+                SET selected = $3, version = $4, accepted_order = $5, updated_at = now()
+              WHERE comment_id = $1 AND actor_id = $2 AND accepted_order = $6",
+        )
+        .bind(comment.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(next.selected())
+        .bind(next.version().get())
+        .bind(next.order().get())
+        .bind(from.order().get()),
+        (EndorsementTarget::Comment { comment, .. }, None) => sqlx::query(
+            "INSERT INTO comment_endorsements
+                    (comment_id, actor_id, selected, version, accepted_order)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (comment_id, actor_id) DO NOTHING",
+        )
+        .bind(comment.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(next.selected())
+        .bind(next.version().get())
+        .bind(next.order().get()),
+    };
+    let affected = query
+        .execute(&mut **tx)
+        .await
+        .map_err(classify)?
+        .rows_affected();
+    if from.is_some() && affected != 1 {
+        // The row is locked FOR UPDATE: a mismatch here is not a race but a broken invariant.
+        return Err(integrity("locked endorsement changed", actor));
+    }
+    Ok(affected == 1)
+}
+
+async fn write_receipt(
+    tx: &mut Transaction<'_, Postgres>,
+    receipt: EndorsementReceipt,
+) -> Result<(), StoreError> {
+    let command = receipt.command();
+    let (work, revision, comment) = match command.target {
+        EndorsementTarget::Work { work, revision } => {
+            (Some(work.as_uuid()), Some(revision.as_uuid()), None)
+        }
+        EndorsementTarget::Comment { comment, .. } => (None, None, Some(comment.as_uuid())),
+    };
+    sqlx::query(
+        "INSERT INTO endorsement_receipts
+                (actor_id, command_key, work_id, revision_id, comment_id, expected_order,
+                 selected, committed_version, committed_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+    )
+    .bind(receipt.actor().as_uuid())
+    .bind(command.key.as_uuid())
+    .bind(work)
+    .bind(revision)
+    .bind(comment)
+    .bind(command.expected.get())
+    .bind(command.intent.selected())
+    .bind(receipt.committed().version().get())
+    .bind(receipt.committed().order().get())
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?;
+    Ok(())
+}
 
 impl EndorsementStore for PgStore {
-    async fn set_work_endorsement(
+    async fn set_endorsement(
         &self,
         actor: PrincipalId,
-        work_id: WorkId,
-        request: WorkRequest,
-    ) -> Result<WorkEndorsementWrite, StoreError> {
+        command: EndorsementCommand,
+    ) -> Result<EndorsementWriteRecord, StoreError> {
+        let target = command.target;
+        let work_id = target.work();
         let mut tx = self.pool().begin().await.map_err(classify)?;
         require_principal(&mut tx, actor).await?;
         // A withdraw/republish (pointer DELETE/UPDATE) waits for this decision, or committed
         // before it and is what this read sees.
-        let published: Option<Uuid> =
+        let published: Option<RevisionId> =
             sqlx::query_scalar("SELECT revision_id FROM publications WHERE work_id = $1 FOR SHARE")
                 .bind(work_id.as_uuid())
                 .fetch_optional(&mut *tx)
                 .await
-                .map_err(classify)?;
+                .map_err(classify)?
+                .map(RevisionId::from_uuid);
         // The owner never changes; the loaded row's identity is the fact, never the request's.
-        let work: Option<(Uuid, Uuid)> =
+        let owner: Option<(Uuid, Uuid)> =
             sqlx::query_as("SELECT id, owner_id FROM works WHERE id = $1")
                 .bind(work_id.as_uuid())
                 .fetch_optional(&mut *tx)
                 .await
                 .map_err(classify)?;
-        let facts = work.map(|(id, owner)| WorkFacts {
-            work: WorkId::from_uuid(id),
-            author: PrincipalId::from_uuid(owner),
-            published: published.map(RevisionId::from_uuid),
-        });
-
-        for _ in 0..CLAIM_ATTEMPTS {
-            let row: Option<(Option<Uuid>, i64)> = sqlx::query_as(
-                "SELECT revision_id, version FROM work_endorsements
-                  WHERE work_id = $1 AND actor_id = $2 FOR UPDATE",
-            )
-            .bind(work_id.as_uuid())
-            .bind(actor.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-            let current = match row {
-                Some((anchor, raw)) => {
-                    Endorsement::restore(anchor.map(RevisionId::from_uuid), version(raw)?)
-                }
-                None => Endorsement::ABSENT,
-            };
-            let decision = decide_work_endorsement(actor, work_id, request, facts, current);
-            if let WorkDecision::Transition(transition) = decision
-                && let Some(next) = transition.write()
-            {
-                let anchor = next.selection().map(|revision| revision.as_uuid());
-                let written = if row.is_some() {
-                    let updated = sqlx::query(
-                        "UPDATE work_endorsements
-                            SET revision_id = $3, version = $4, updated_at = now()
-                          WHERE work_id = $1 AND actor_id = $2 AND version = $5",
-                    )
-                    .bind(work_id.as_uuid())
-                    .bind(actor.as_uuid())
-                    .bind(anchor)
-                    .bind(next.version().get())
-                    .bind(current.version().get())
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(classify)?
-                    .rows_affected();
-                    if updated != 1 {
-                        return Err(integrity("locked work endorsement changed", work_id));
-                    }
-                    true
-                } else {
-                    sqlx::query(
-                        "INSERT INTO work_endorsements (work_id, actor_id, revision_id, version)
-                         VALUES ($1, $2, $3, $4)
-                         ON CONFLICT (work_id, actor_id) DO NOTHING",
-                    )
-                    .bind(work_id.as_uuid())
-                    .bind(actor.as_uuid())
-                    .bind(anchor)
-                    .bind(next.version().get())
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(classify)?
-                    .rows_affected()
-                        == 1
-                };
-                if !written {
-                    // A concurrent first intent committed its row: decide again on it.
-                    continue;
-                }
-            }
-            let count = match facts.and_then(|facts| facts.published) {
-                Some(revision) => count(
-                    sqlx::query_scalar(
-                        "SELECT count(*) FROM work_endorsements
-                          WHERE work_id = $1 AND revision_id = $2",
-                    )
-                    .bind(work_id.as_uuid())
-                    .bind(revision.as_uuid())
-                    .fetch_one(&mut *tx)
+        let target_facts = match target {
+            EndorsementTarget::Work { .. } => owner.map(|(id, owner)| {
+                EndorsementTargetFacts::work(
+                    WorkId::from_uuid(id),
+                    PrincipalId::from_uuid(owner),
+                    published,
+                )
+            }),
+            EndorsementTarget::Comment { comment, .. } => {
+                // Share lock on the thread of this work, then the comment INSIDE it, so an ID of
+                // another work's comment finds nothing. Its work and thread come from its own
+                // thread row, so the pure binding check refuses a foreign comment too.
+                let thread: Option<Uuid> = sqlx::query_scalar(
+                    "SELECT id FROM discussion_threads WHERE work_id = $1 FOR SHARE",
+                )
+                .bind(work_id.as_uuid())
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(classify)?;
+                let row: Option<CommentRow> = match thread {
+                    Some(thread) => sqlx::query_as(AssertSqlSafe(format!(
+                        "SELECT {COMMENT_COLUMNS}, NULL::bigint AS endorsements,
+                                NULL::boolean AS selected, NULL::bigint AS version,
+                                NULL::bigint AS accepted_order
+                           FROM comments c JOIN discussion_threads t ON t.id = c.thread_id
+                          WHERE c.id = $1 AND c.thread_id = $2
+                            FOR SHARE OF c"
+                    )))
+                    .bind(comment.as_uuid())
+                    .bind(thread)
+                    .fetch_optional(&mut *tx)
                     .await
                     .map_err(classify)?,
-                )?,
-                None => EndorsementCount::ZERO,
-            };
-            tx.commit().await.map_err(classify)?;
-            return Ok(WorkEndorsementWrite {
-                facts,
-                decision,
-                count,
-            });
-        }
-        Err(integrity("work endorsement claim did not settle", work_id))
-    }
+                    None => None,
+                };
+                row.map(|row| row.facts(published.is_some())).transpose()?
+            }
+        };
+        // A comment record is read only for a comment of this work: a retained row of another
+        // work's comment is never addressed through this work's route.
+        let addressable = match target {
+            EndorsementTarget::Work { .. } => true,
+            EndorsementTarget::Comment { .. } => target_facts.is_some(),
+        };
 
-    async fn set_comment_endorsement(
-        &self,
-        actor: PrincipalId,
-        work_id: WorkId,
-        comment_id: CommentId,
-        request: CommentRequest,
-    ) -> Result<CommentEndorsementWrite, StoreError> {
-        let mut tx = self.pool().begin().await.map_err(classify)?;
-        require_principal(&mut tx, actor).await?;
-        let work_public = sqlx::query_scalar::<_, Uuid>(
-            "SELECT work_id FROM publications WHERE work_id = $1 FOR SHARE",
+        // One winner per (actor, command key) across every target of the actor.
+        sqlx::query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1::text || '/' || $2::text, $3))",
         )
-        .bind(work_id.as_uuid())
-        .fetch_optional(&mut *tx)
+        .bind(actor.as_uuid())
+        .bind(command.key.as_uuid())
+        .bind(KEY_LOCK_SEED)
+        .execute(&mut *tx)
         .await
-        .map_err(classify)?
-        .is_some();
-        // Share lock: a comments close (thread UPDATE) waits for this decision or vice versa.
-        let thread: Option<(Uuid, Uuid, bool, i64)> = sqlx::query_as(
-            "SELECT id, work_id, comments_open, settings_generation
-               FROM discussion_threads WHERE work_id = $1 FOR SHARE",
+        .map_err(classify)?;
+        let receipt: Option<ReceiptRow> = sqlx::query_as(
+            "SELECT r.work_id, r.revision_id, r.comment_id, t.work_id AS comment_work,
+                    r.expected_order, r.selected, r.committed_version, r.committed_order
+               FROM endorsement_receipts r
+               LEFT JOIN comments c ON c.id = r.comment_id
+               LEFT JOIN discussion_threads t ON t.id = c.thread_id
+              WHERE r.actor_id = $1 AND r.command_key = $2",
         )
-        .bind(work_id.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(command.key.as_uuid())
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
-        // The comment is looked up only inside this work's thread, so an ID of another work's
-        // comment finds nothing; its work still comes from its OWN thread row, so the pure
-        // binding check would refuse a foreign comment even if that scope were lost. Share lock:
-        // moderation and removal (UPDATE) are serialized with this decision.
-        let facts = match thread {
-            Some((thread_id, _, comments_open, settings_generation)) => {
-                let target: Option<(Uuid, Uuid, String, Option<String>, i64, Uuid)> =
-                    sqlx::query_as(
-                        "SELECT c.id, c.author_id, c.review, c.removal, c.moderation_version,
-                                t.work_id
-                           FROM comments c JOIN discussion_threads t ON t.id = c.thread_id
-                          WHERE c.id = $1 AND c.thread_id = $2
-                            FOR SHARE OF c",
-                    )
-                    .bind(comment_id.as_uuid())
-                    .bind(thread_id)
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-                target
-                    .map(
-                        |(id, author, raw_review, raw_removal, raw_version, comment_work)| {
-                            let settings = ThreadRow {
-                                id: thread_id,
-                                comments_open,
-                                settings_generation,
-                            }
-                            .settings()?;
-                            Ok::<_, StoreError>(CommentFacts {
-                                work: WorkId::from_uuid(comment_work),
-                                comment: CommentId::from_uuid(id),
-                                work_public,
-                                writer: PrincipalId::from_uuid(author),
-                                state: state(&raw_review, raw_removal.as_deref(), raw_version)?,
-                                settings,
-                            })
-                        },
-                    )
-                    .transpose()?
-            }
-            None => None,
-        };
+        let receipt = receipt
+            .map(|row| row.receipt(actor, command.key))
+            .transpose()?;
 
         for _ in 0..CLAIM_ATTEMPTS {
-            let row: Option<(bool, i64)> = sqlx::query_as(
-                "SELECT selected, version FROM comment_endorsements
-                  WHERE comment_id = $1 AND actor_id = $2 FOR UPDATE",
-            )
-            .bind(comment_id.as_uuid())
-            .bind(actor.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-            let current = match row {
-                Some((selected, raw)) => {
-                    Endorsement::restore(selected.then_some(CommentAnchor), version(raw)?)
-                }
-                None => Endorsement::ABSENT,
+            let current = if addressable {
+                locked_record(&mut tx, actor, target).await?
+            } else {
+                None
             };
-            let decision =
-                decide_comment_endorsement(actor, work_id, comment_id, request, facts, current);
-            if let CommentDecision::Transition(transition) = decision
-                && let Some(next) = transition.write()
-            {
-                let selected = next.selection().is_some();
-                let written = if row.is_some() {
-                    let updated = sqlx::query(
-                        "UPDATE comment_endorsements
-                            SET selected = $3, version = $4, updated_at = now()
-                          WHERE comment_id = $1 AND actor_id = $2 AND version = $5",
-                    )
-                    .bind(comment_id.as_uuid())
-                    .bind(actor.as_uuid())
-                    .bind(selected)
-                    .bind(next.version().get())
-                    .bind(current.version().get())
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(classify)?
-                    .rows_affected();
-                    if updated != 1 {
-                        return Err(integrity("locked comment endorsement changed", comment_id));
-                    }
-                    true
-                } else {
-                    sqlx::query(
-                        "INSERT INTO comment_endorsements (comment_id, actor_id, selected, version)
-                         VALUES ($1, $2, $3, $4)
-                         ON CONFLICT (comment_id, actor_id) DO NOTHING",
-                    )
-                    .bind(comment_id.as_uuid())
-                    .bind(actor.as_uuid())
-                    .bind(selected)
-                    .bind(next.version().get())
-                    .execute(&mut *tx)
-                    .await
-                    .map_err(classify)?
-                    .rows_affected()
-                        == 1
-                };
-                if !written {
+            let facts = EndorsementFacts {
+                can_endorse: true,
+                target: target_facts,
+                current: current.map(|state| StoredEndorsement::restore(actor, target, state)),
+                receipt,
+            };
+            let outcome = decide_endorsement(actor, command, facts);
+            if let EndorsementOutcome::Accepted(write) = outcome {
+                if !write_record(&mut tx, actor, target, current, write.next().state()).await? {
+                    // A concurrent first command committed its row: decide again on it.
                     continue;
                 }
+                write_receipt(&mut tx, write.receipt()).await?;
             }
-            let count = if facts.is_some_and(|facts| facts.visible()) {
-                count(
-                    sqlx::query_scalar(
+            let visible = target_facts.is_some_and(|facts| facts.visible(target));
+            let count = if visible {
+                let raw: i64 = match target {
+                    EndorsementTarget::Work { work, revision } => sqlx::query_scalar(
+                        "SELECT count(*) FROM work_endorsements
+                          WHERE work_id = $1 AND revision_id = $2 AND selected",
+                    )
+                    .bind(work.as_uuid())
+                    .bind(revision.as_uuid()),
+                    EndorsementTarget::Comment { comment, .. } => sqlx::query_scalar(
                         "SELECT count(*) FROM comment_endorsements
                           WHERE comment_id = $1 AND selected",
                     )
-                    .bind(comment_id.as_uuid())
-                    .fetch_one(&mut *tx)
-                    .await
-                    .map_err(classify)?,
-                )?
+                    .bind(comment.as_uuid()),
+                }
+                .fetch_one(&mut *tx)
+                .await
+                .map_err(classify)?;
+                count(raw)?
             } else {
                 EndorsementCount::ZERO
             };
             tx.commit().await.map_err(classify)?;
-            return Ok(CommentEndorsementWrite {
+            return Ok(EndorsementWriteRecord {
                 facts,
-                decision,
+                outcome,
                 count,
+                published,
             });
         }
-        Err(integrity(
-            "comment endorsement claim did not settle",
-            comment_id,
-        ))
+        Err(integrity("endorsement claim did not settle", actor))
     }
 
     async fn endorsement_summaries(
@@ -434,13 +511,15 @@ impl EndorsementStore for PgStore {
         comments: &CommentBatch,
     ) -> Result<EndorsementSummaryFacts, StoreError> {
         // One read-only snapshot: the work's publication, the comments' states and every count
-        // agree with each other. Three statements whatever the batch size.
+        // agree with each other. Two statements whatever the batch size.
         let mut tx = read_snapshot(self.pool()).await?;
         let work: Option<WorkRow> = sqlx::query_as(
             "SELECT w.id, w.owner_id, p.revision_id AS published,
                     (SELECT count(*) FROM work_endorsements e
-                      WHERE e.work_id = w.id AND e.revision_id = p.revision_id) AS effective,
-                    NULL::uuid AS anchor, NULL::bigint AS version
+                      WHERE e.work_id = w.id AND e.revision_id = p.revision_id
+                        AND e.selected) AS effective,
+                    NULL::boolean AS selected, NULL::bigint AS version,
+                    NULL::bigint AS accepted_order
                FROM works w LEFT JOIN publications p ON p.work_id = w.id
               WHERE w.id = $1",
         )
@@ -452,6 +531,7 @@ impl EndorsementStore for PgStore {
             tx.commit().await.map_err(classify)?;
             return Ok(EndorsementSummaryFacts {
                 work: None,
+                published: None,
                 work_count: EndorsementCount::ZERO,
                 comments: Vec::new(),
             });
@@ -459,11 +539,12 @@ impl EndorsementStore for PgStore {
         let rows: Vec<CommentRow> = if comments.ids().is_empty() {
             Vec::new()
         } else {
-            sqlx::query_as(sqlx::AssertSqlSafe(format!(
+            sqlx::query_as(AssertSqlSafe(format!(
                 "SELECT {COMMENT_COLUMNS},
                         (SELECT count(*) FROM comment_endorsements e
                           WHERE e.comment_id = c.id AND e.selected) AS endorsements,
-                        NULL::boolean AS selected, NULL::bigint AS version
+                        NULL::boolean AS selected, NULL::bigint AS version,
+                        NULL::bigint AS accepted_order
                    FROM comments c JOIN discussion_threads t ON t.id = c.thread_id
                   WHERE c.id = ANY($2::uuid[]) AND t.work_id = $1"
             )))
@@ -477,11 +558,13 @@ impl EndorsementStore for PgStore {
         let work_public = work.published.is_some();
         Ok(EndorsementSummaryFacts {
             work: Some(work.facts()),
+            published: work.published.map(RevisionId::from_uuid),
             work_count: count(work.effective.unwrap_or_default())?,
             comments: rows
                 .iter()
                 .map(|row| {
                     Ok(CommentSummaryFacts {
+                        comment_id: CommentId::from_uuid(row.id),
                         facts: row.facts(work_public)?,
                         count: count(row.endorsements.unwrap_or_default())?,
                     })
@@ -500,10 +583,11 @@ impl EndorsementStore for PgStore {
         require_principal(&mut tx, actor).await?;
         let work: Option<WorkRow> = sqlx::query_as(
             "SELECT w.id, w.owner_id, p.revision_id AS published, NULL::bigint AS effective,
-                    e.revision_id AS anchor, e.version
+                    e.selected, e.version, e.accepted_order
                FROM works w
                LEFT JOIN publications p ON p.work_id = w.id
-               LEFT JOIN work_endorsements e ON e.work_id = w.id AND e.actor_id = $2
+               LEFT JOIN work_endorsements e ON e.work_id = w.id
+                     AND e.revision_id = p.revision_id AND e.actor_id = $2
               WHERE w.id = $1",
         )
         .bind(work_id.as_uuid())
@@ -514,16 +598,19 @@ impl EndorsementStore for PgStore {
         let Some(work) = work else {
             tx.commit().await.map_err(classify)?;
             return Ok(OwnEndorsementFacts {
+                can_endorse: true,
                 work: None,
-                endorsement: Endorsement::ABSENT,
+                published: None,
+                work_state: None,
                 comments: Vec::new(),
             });
         };
         let rows: Vec<CommentRow> = if comments.ids().is_empty() {
             Vec::new()
         } else {
-            sqlx::query_as(sqlx::AssertSqlSafe(format!(
-                "SELECT {COMMENT_COLUMNS}, NULL::bigint AS endorsements, e.selected, e.version
+            sqlx::query_as(AssertSqlSafe(format!(
+                "SELECT {COMMENT_COLUMNS}, NULL::bigint AS endorsements,
+                        e.selected, e.version, e.accepted_order
                    FROM comments c
                    JOIN discussion_threads t ON t.id = c.thread_id
                    LEFT JOIN comment_endorsements e ON e.comment_id = c.id AND e.actor_id = $3
@@ -537,22 +624,24 @@ impl EndorsementStore for PgStore {
             .map_err(classify)?
         };
         tx.commit().await.map_err(classify)?;
-        let endorsement = match work.version {
-            Some(raw) => {
-                Endorsement::restore(work.anchor.map(RevisionId::from_uuid), version(raw)?)
-            }
-            None => Endorsement::ABSENT,
+        let work_state = match (work.selected, work.version, work.accepted_order) {
+            (Some(selected), Some(version), Some(order)) => Some(tokens(selected, version, order)?),
+            (None, None, None) => None,
+            _ => return Err(integrity("partial work endorsement row", work.id)),
         };
         let work_public = work.published.is_some();
         Ok(OwnEndorsementFacts {
+            can_endorse: true,
             work: Some(work.facts()),
-            endorsement,
+            published: work.published.map(RevisionId::from_uuid),
+            work_state,
             comments: rows
                 .iter()
                 .map(|row| {
                     Ok(OwnCommentFacts {
+                        comment_id: CommentId::from_uuid(row.id),
                         facts: row.facts(work_public)?,
-                        endorsement: row.endorsement()?,
+                        state: row.own_state()?,
                     })
                 })
                 .collect::<Result<_, StoreError>>()?,

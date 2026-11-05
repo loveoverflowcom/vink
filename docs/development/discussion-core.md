@@ -57,7 +57,7 @@ thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contr
   khác: `NotCommentWriter` khi bình luận đang công khai, `NotFound` khi bị ẩn; không có grant kiểm
   duyệt qua quyền sở hữu tác phẩm.
 - **Generation của ý định được chấp nhận** (bật/tắt và reaction; chủ sản phẩm xác nhận
-  05/11/2026, cùng luật với ghi nhận văn học `lve-core-v1` CHOICE-03): yêu cầu mang đúng
+  05/11/2026, theo sửa fence accepted intent của PR #79): yêu cầu mang đúng
   generation hiện tại luôn được chấp nhận và tăng 1, kể cả khi trạng thái đã đúng (`Reaffirmed`,
   có ghi; reaction không đổi count). Generation khác + trạng thái đã đúng → `AlreadyCurrent`, không
   ghi; generation khác + trạng thái khác → `Stale`. Luật cũ kiểm “trùng trạng thái” trước
@@ -86,6 +86,10 @@ thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contr
   reaffirm được của mình; retry đúng trạng thái hiện tại vẫn `AlreadyCurrent` sau khi tắt.
   Generation theo luật ý định được chấp nhận ở trên. `ReactionTally` là projection: chỉ đổi theo delta, không âm/không tràn, không quyết định
   ACL/xếp hạng/gỡ, bình luận ẩn không lộ số đếm. Chưa có rate limit theo thời gian (cần clock).
+
+Endorsement văn học là module riêng, không đổi reaction thành Hữu ích hoặc cạnh tranh slot emotion.
+[Registry LVE-PR-01](endorsement-core.md) giữ model/trace/proof và quyết định order/no-op của #73.
+Runner discussion/Kani dùng chung, D2T semantics/checklist ở đây giữ nguyên.
 
 ## Registry traceability của #41
 

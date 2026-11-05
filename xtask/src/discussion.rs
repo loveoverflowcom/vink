@@ -21,7 +21,7 @@ const REPLAYS: [&str; 6] = [
     "domain::discussion::lifecycle_replay::the_no_op_mode_counterexample_is_refused_by_production",
     "domain::discussion::reaction_replay::quint_reaction_inputs_replay_against_the_production_decisions",
     "domain::discussion::reaction_replay::the_no_op_reaction_counterexample_is_refused_by_production",
-    "domain::endorsement::replay::quint_endorsement_inputs_replay_against_the_production_decisions",
+    "domain::endorsement::replay::quint_endorsement_inputs_replay_against_production",
 ];
 
 pub fn verify(report: &mut Report) -> bool {
