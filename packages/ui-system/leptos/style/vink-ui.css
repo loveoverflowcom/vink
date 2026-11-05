@@ -730,9 +730,14 @@
   .vk-ui-avatar--reader { --vk-ui-avatar-size: var(--vk-size-avatar-reader-narrow); }
 }
 
+.vk-ui-avatar__initials {
+  display: inline-grid;
+  place-items: center;
+}
+
 .vk-ui-avatar .vk-ui-icon {
-  inline-size: 60%;
-  block-size: 60%;
+  inline-size: calc(var(--vk-ui-avatar-size) * 0.6);
+  block-size: calc(var(--vk-ui-avatar-size) * 0.6);
 }
 
 .vk-ui-avatar__image {

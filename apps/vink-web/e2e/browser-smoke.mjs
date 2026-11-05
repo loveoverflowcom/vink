@@ -906,12 +906,17 @@ async function accountAppearance(page) {
   check(await page.eval(`document.querySelector('#overlay-account').textContent === ${JSON.stringify(pageAccount)} && document.querySelector('#profile-title').textContent === 'Tùy chọn' && document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' && document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' && document.querySelector('#profile-trigger').getAttribute('aria-current') !== 'page' && document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`), 'panel shares truthful identity, identifies utility and preserves route active state');
   check(await page.eval(`(() => {
     const ids = [...document.querySelectorAll('[id]')].map(el => el.id), group = document.querySelector('#overlay-theme');
+    const avatar = document.querySelector('#overlay-account .vk-ui-avatar').getBoundingClientRect();
+    const icon = document.querySelector('#overlay-account .vk-ui-avatar .vk-ui-icon').getBoundingClientRect();
     return new Set(ids).size === ids.length && group.tagName === 'FIELDSET' && group.querySelector('legend').textContent === 'Chế độ màu' &&
       group.getAttribute('aria-describedby') === 'overlay-theme-help' && group.querySelectorAll('input[type=radio]').length === 3 &&
       [...group.querySelectorAll('label')].map(el => el.textContent).join('|') === 'Sáng|Tối|Hệ thống' &&
       [...group.querySelectorAll('label')].every(el => getComputedStyle(el, '::before').maskImage.startsWith('url(') && getComputedStyle(el, '::after').maskImage.startsWith('url(')) &&
-      !document.querySelector('#overlay-account img');
-  })()`), 'native fieldset/legend, full labels, decorative icons/checks and unique IDs');
+      !document.querySelector('#overlay-account img') &&
+      Math.abs((icon.left + icon.right) / 2 - (avatar.left + avatar.right) / 2) <= 1 &&
+      Math.abs((icon.top + icon.bottom) / 2 - (avatar.top + avatar.bottom) / 2) <= 1 &&
+      Math.abs(icon.width - avatar.width * 0.6) <= 1;
+  })()`), 'native fieldset/legend, full labels, decorative icons/checks, centered neutral avatar icon and unique IDs');
   await chooseTheme(page, 'system');
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
@@ -1364,6 +1369,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'mobile brand uses guard');
   await page.key('Escape');
   await page.viewport(1280);
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   await page.tabToBody();
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after mobile resize');
   check((await page.eval(selected)) === LAST_LINE && writes === 0, 'utility changes sent no draft writes and retained the caret selection');
@@ -1585,6 +1591,7 @@ async function draftDashboard(page) {
   await captureRecovery(page, 'desk-unavailable', '[data-testid=desk-error]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
     for (const width of [1440, 320]) {
       await page.viewport(width);
       await page.eval(`scrollTo(0, 0)`);
@@ -1613,6 +1620,7 @@ async function draftDashboard(page) {
   await captureRecovery(page, 'desk-empty', '[data-testid=draft-empty]');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
+    await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
     for (const width of [1440, 320]) {
       await page.viewport(width);
       await page.eval(`scrollTo(0, 0)`);
@@ -2213,7 +2221,14 @@ async function editorChrome(page) {
     check(await page.eval(`document.activeElement.id === '${id}'`), `editor Tab reaches ${id}`);
   }
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.classList.contains('cm-content')`), 'editor Tab reaches the text box');
+  check(await page.eval(`(() => {
+    const body = document.querySelector('[data-testid=editor-body]'), style = getComputedStyle(body);
+    return document.activeElement.classList.contains('cm-content') &&
+      parseFloat(style.borderTopWidth) === 0 &&
+      style.outlineStyle === 'solid' &&
+      parseFloat(style.outlineWidth) === 2 &&
+      style.outlineOffset === '-2px';
+  })()`), 'editor Tab reaches the text box with a borderless tonal surface and one flush 2px focus perimeter');
   const gate = new SaveGate(page);
   await gate.enable();
   await page.click('#save');
@@ -2415,6 +2430,7 @@ async function mainPhase(page) {
   const blocks = await page.eval(`[...document.querySelectorAll('.vk-block')].map((b) => b.textContent)`);
   check(blocks.length === 2, 'two stanzas render as two blocks');
   check(blocks[1].split('\n').length === 4 && blocks[1].includes(INDENTED_LINE), 'line breaks and indentation survive rendering');
+  check(await page.eval(`[...document.querySelectorAll('.vk-discussion [role="status"]:empty')].every((el) => getComputedStyle(el).display === 'none')`), 'empty discussion status nodes collapse without adding dead grid gaps');
 
   console.log('self-hosted fonts:');
   const loaded = await page.eval(`document.fonts.ready.then(() => [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replaceAll('"', '') + ' ' + f.weight))`);
