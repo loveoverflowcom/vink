@@ -23,7 +23,7 @@ use crate::domain::discussion::moderation::{ModerationReason, ReasonError, decis
 use crate::domain::discussion::page::{PageCursor, PageError, PageLimit};
 use crate::domain::discussion::policy::Denied;
 use crate::domain::discussion::settings::{
-    CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
+    CommentsMode, DiscussionSettings, SettingsError, SettingsGeneration,
 };
 use crate::domain::discussion::submission::{CommandKey, PayloadDigest};
 use crate::domain::discussion::visibility::{CommentView, ReplyContext};
@@ -419,9 +419,7 @@ where
         {
             Guarded::NotFound => Err(DiscussionError::NotFound),
             Guarded::Denied(reason) => Err(denied(reason)),
-            Guarded::Decided(Ok(
-                ModeChange::Changed(settings) | ModeChange::Unchanged(settings),
-            )) => Ok(settings),
+            Guarded::Decided(Ok(decided)) => Ok(decided.settings()),
             Guarded::Decided(Err(SettingsError::Stale { current })) => {
                 Err(DiscussionError::Conflict {
                     current: current.generation().get(),
