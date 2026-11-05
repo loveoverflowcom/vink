@@ -20,6 +20,7 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 | --- | --- |
 | Pure rules (document v1, title, draft version, revision hash) | `services/vink-app/src/domain/` — no Axum, SQLx, Leptos or tokio imports |
 | Discussion decisions (two tiers, body, lifecycle, comments mode, permissions, visibility, idempotency, paging) | `services/vink-app/src/domain/discussion.rs` + `domain/discussion/`; [ADR](../../../docs/architecture/discussion-ownership.md), [registry](../../../docs/development/discussion-core.md) |
+| Literary endorsement decisions (LVE #73: work/root/reply, revision anchor, accepted-intent version) | `services/vink-app/src/domain/endorsement.rs` + `domain/endorsement/`; [decision record](../../../docs/architecture/literary-endorsement.md), [registry](../../../docs/development/literary-endorsement-core.md); no store/route yet |
 | Use cases, actor checks, storage ports | `services/vink-app/src/application/` |
 | SQL, transactions, constraint classification | `services/vink-app/src/persistence/` (`postgres.rs`, `discussion.rs`) and `migrations/` |
 | Pools, migration lifecycle, schema state, connection-error classes | `packages/store-postgres/` (caller supplies its `Migrator`; no business SQL) |

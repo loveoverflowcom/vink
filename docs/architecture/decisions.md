@@ -46,6 +46,7 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
 | D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner; cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh |
 | D-13 | Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác | **Đã chốt 03/11/2026** | Quyền bật/tắt tách khỏi quyền kiểm duyệt hệ thống; “tắt” chỉ ngừng nhận bình luận mới, không ẩn bình luận đã duyệt; tác phẩm mới mặc định bật; tác giả có grant kiểm duyệt vẫn tự né tác phẩm của mình (xác nhận 03/11/2026), xem [ADR](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm) |
+| D-14 | Ghi nhận văn học (LVE, #73): một tín hiệu dương mỗi người/đích trên tác phẩm, bình luận gốc, phản hồi | Lõi `lve-core-v1` **chọn cho lát lõi** 05/11/2026, chờ chủ sản phẩm xác nhận CHOICE-02/08/09 | Anchor theo revision đã đọc, version chấp nhận ý định làm fence, không tự ghi nhận, tắt bình luận chặn ghi nhận mới trên bình luận; lưu trữ/API/xếp hạng/icon/UI còn OPEN. Xem [decision record LVE](literary-endorsement.md) |
 
 Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md) ghi quyết định
 03/11/2026 chọn Vink làm owner duy nhất ghi/kiểm duyệt bình luận; [core/registry](../development/discussion-core.md)

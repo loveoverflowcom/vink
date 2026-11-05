@@ -15,7 +15,8 @@ proposes Quint. The scoped two-tier creation model, the comment lifecycle/mode/m
 authority model and their generated traces live in `services/vink-app/behavior/discussion`;
 `verify discussion` checks both and replays their inputs through the real Rust decisions. They
 do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are in
-`docs/development/discussion-core.md`.
+`docs/development/discussion-core.md`. The literary endorsement model (`endorsement.qnt`, LVE #73)
+shares that directory and lane; its registry is `docs/development/literary-endorsement-core.md`.
 `verify kani` checks single discussion decisions (version/generation arithmetic, viewer projection)
 over whole input domains; it is no sequence or race proof. There is no generic behavior lane.
 Other stateful code keeps its own boundary tests:
