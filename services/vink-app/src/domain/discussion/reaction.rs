@@ -5,17 +5,22 @@
 //! `docs/development/discussion-core.md`):
 //!
 //! - **Desired state, never a toggle.** A request names the reaction the actor wants on a comment
-//!   (`Some(kind)`) or none (`None`). Asking for what is already there is a no-op, so a retry
-//!   after a lost response cannot undo itself.
+//!   (`Some(kind)`) or none (`None`). Asking for what is already there never removes or flips
+//!   it, so a retry after a lost response cannot undo itself.
 //! - **Cardinality:** at most one reaction per (actor, comment), from the closed
 //!   [`ReactionKind`] catalog. Choosing another kind replaces the previous one.
-//! - **Generation fence:** every actual change advances the actor's [`ReactionGeneration`] on
-//!   that comment by one and needs the generation the client saw. A delayed duplicate from an
-//!   older view is `Stale`, so it cannot revert a newer choice. Storage must therefore keep a
-//!   cleared reaction's row (kind `None`, its generation) instead of deleting it.
+//! - **Accepted-intent generation** (the rule of literary endorsement `lve-core-v1` CHOICE-03,
+//!   aligned 05/11/2026): a request carrying the actor's current [`ReactionGeneration`] on that
+//!   comment is accepted and advances it by one, **even when it asks for the reaction already
+//!   held** ([`ReactionChange::Reaffirmed`], no count delta). That advance fences every older
+//!   request still in flight, so a delayed one cannot revert a newer choice. A request at another
+//!   generation writes nothing: `AlreadyCurrent` when the stored reaction already matches (a
+//!   retry or duplicate), `Stale` otherwise. Storage must therefore keep a cleared reaction's
+//!   row (kind `None`, its generation) instead of deleting it.
 //! - **Interaction limits:** only a public comment of a public work accepts reactions; a hidden
-//!   comment answers like a missing one. Nobody reacts to their own comment. A work whose author
-//!   closed comments accepts no new or changed reaction, but an actor may always clear their own.
+//!   comment answers like a missing one. A writer's every request on their own comment is
+//!   `OwnComment`, so no row is ever stored for it. A work whose author closed comments accepts
+//!   no new or changed reaction, but an actor may always clear or reaffirm their own.
 //! - **Counts are projections.** [`ReactionTally`] is rebuilt from reactions and changes only by
 //!   the delta of an applied change; it never goes negative or wraps, and it decides nothing
 //!   (no ACL, ranking or removal reads it). A hidden comment exposes no tally.
@@ -91,7 +96,8 @@ impl ReactionKind {
     }
 }
 
-/// Monotonic version of one actor's reaction on one comment, bumped only by an actual change.
+/// Monotonic version of one actor's reaction on one comment, bumped by every accepted request
+/// (a reaffirmation too); it never moves backwards.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ReactionGeneration(i64);
 
@@ -137,17 +143,23 @@ impl ReactionDelta {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReactionChange {
+    /// Accepted and the reaction changes: store `next`, apply `delta` to the tally.
     Changed {
         next: ActorReaction,
         delta: ReactionDelta,
     },
-    /// The actor already has exactly the requested reaction: a safe retry, nothing to write.
-    Unchanged(ActorReaction),
+    /// Accepted; the actor already had exactly this reaction. Store `next` (only its generation
+    /// advanced, which fences every older request); the tally does not change.
+    Reaffirmed { next: ActorReaction },
+    /// Not accepted: the stored reaction already satisfies the request at a generation other
+    /// than the caller's (a retry or duplicate). Nothing is written and nothing is fenced.
+    AlreadyCurrent(ActorReaction),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ReactionError {
-    /// Another change by this actor landed since the caller's view; it must not be undone.
+    /// Another request by this actor was accepted since the caller's view and set another
+    /// reaction; it must not be undone.
     #[error("reaction changed since the expected generation")]
     Stale { current: ActorReaction },
     #[error("reaction generation cannot advance")]
@@ -174,32 +186,39 @@ impl ActorReaction {
         self.generation
     }
 
-    /// Desired-state change bound to the generation the caller saw.
+    /// Desired-state change bound to the generation the caller saw. The generation is compared
+    /// first: a request at the current generation is accepted whatever it asks for.
     pub fn desire(
         self,
         expected: ReactionGeneration,
         wanted: Option<ReactionKind>,
     ) -> Result<ReactionChange, ReactionError> {
-        if wanted == self.kind {
-            return Ok(ReactionChange::Unchanged(self));
-        }
-        if expected != self.generation {
-            return Err(ReactionError::Stale { current: self });
-        }
-        let generation = self
-            .generation
-            .next()
-            .ok_or(ReactionError::GenerationExhausted)?;
-        Ok(ReactionChange::Changed {
-            next: Self {
+        if expected == self.generation {
+            let generation = self
+                .generation
+                .next()
+                .ok_or(ReactionError::GenerationExhausted)?;
+            let next = Self {
                 kind: wanted,
                 generation,
-            },
-            delta: ReactionDelta {
-                removed: self.kind,
-                added: wanted,
-            },
-        })
+            };
+            return Ok(if wanted == self.kind {
+                ReactionChange::Reaffirmed { next }
+            } else {
+                ReactionChange::Changed {
+                    next,
+                    delta: ReactionDelta {
+                        removed: self.kind,
+                        added: wanted,
+                    },
+                }
+            });
+        }
+        if wanted == self.kind {
+            Ok(ReactionChange::AlreadyCurrent(self))
+        } else {
+            Err(ReactionError::Stale { current: self })
+        }
     }
 }
 
@@ -222,8 +241,12 @@ pub enum ReactionDecision {
         next: ActorReaction,
         delta: ReactionDelta,
     },
-    /// Already in the requested state; write nothing.
-    Unchanged(ActorReaction),
+    /// Store `next` for the actor (its generation advanced); the tally does not change.
+    Reaffirm {
+        next: ActorReaction,
+    },
+    /// Already in the requested state at a generation other than the caller's; write nothing.
+    AlreadyCurrent(ActorReaction),
     Stale {
         current: ActorReaction,
     },
@@ -231,7 +254,7 @@ pub enum ReactionDecision {
     WorkNotPublic,
     /// Missing, foreign or not public: indistinguishable on purpose.
     TargetUnavailable,
-    /// Writers do not react to their own comments.
+    /// Writers do not react to their own comments: every request of theirs is refused.
     OwnComment,
     /// The work's author closed comments; only clearing an existing reaction is accepted.
     CommentsClosed,
@@ -251,19 +274,21 @@ pub fn decide_reaction(
     let Some((writer, _)) = facts.target.filter(|(_, state)| state.is_public()) else {
         return ReactionDecision::TargetUnavailable;
     };
-    // Limits gate only new interaction; a retry of the current state stays a no-op, and clearing
-    // is always the actor's to do.
-    if wanted.is_some() && wanted != facts.current.kind() {
-        if actor == writer {
-            return ReactionDecision::OwnComment;
-        }
-        if !facts.settings.accepts_new_comments() {
-            return ReactionDecision::CommentsClosed;
-        }
+    // Refusing every request of the writer keeps their own comment free of reaction rows, which
+    // a reaffirmation would otherwise create.
+    if actor == writer {
+        return ReactionDecision::OwnComment;
+    }
+    // Closing gates only new interaction: reaffirming the held reaction and clearing it are
+    // always the actor's to do.
+    if wanted.is_some() && wanted != facts.current.kind() && !facts.settings.accepts_new_comments()
+    {
+        return ReactionDecision::CommentsClosed;
     }
     match facts.current.desire(expected, wanted) {
         Ok(ReactionChange::Changed { next, delta }) => ReactionDecision::Apply { next, delta },
-        Ok(ReactionChange::Unchanged(current)) => ReactionDecision::Unchanged(current),
+        Ok(ReactionChange::Reaffirmed { next }) => ReactionDecision::Reaffirm { next },
+        Ok(ReactionChange::AlreadyCurrent(current)) => ReactionDecision::AlreadyCurrent(current),
         Err(ReactionError::Stale { current }) => ReactionDecision::Stale { current },
         Err(ReactionError::GenerationExhausted) => ReactionDecision::GenerationExhausted,
     }
@@ -408,9 +433,9 @@ mod tests {
     }
 
     #[test]
-    fn retrying_the_current_state_is_a_no_op_at_any_generation() {
+    fn retrying_the_current_state_at_an_old_generation_writes_nothing() {
         let heart = ActorReaction::restore(Some(ReactionKind::Heart), generation(2));
-        for expected in [1, 2, 9] {
+        for expected in [1, 3, 9] {
             assert_eq!(
                 decide_reaction(
                     principal(3),
@@ -418,14 +443,63 @@ mod tests {
                     Some(ReactionKind::Heart),
                     facts(heart)
                 ),
-                ReactionDecision::Unchanged(heart)
+                ReactionDecision::AlreadyCurrent(heart)
             );
         }
         // Clearing twice is not a toggle back to the old reaction.
         let cleared = ActorReaction::restore(None, generation(3));
         assert_eq!(
             decide_reaction(principal(3), generation(2), None, facts(cleared)),
-            ReactionDecision::Unchanged(cleared)
+            ReactionDecision::AlreadyCurrent(cleared)
+        );
+    }
+
+    #[test]
+    fn asking_for_the_held_reaction_at_its_generation_is_accepted_without_a_delta() {
+        let heart = ActorReaction::restore(Some(ReactionKind::Heart), generation(2));
+        assert_eq!(
+            decide_reaction(
+                principal(3),
+                generation(2),
+                Some(ReactionKind::Heart),
+                facts(heart)
+            ),
+            ReactionDecision::Reaffirm {
+                next: ActorReaction::restore(Some(ReactionKind::Heart), generation(3))
+            }
+        );
+        assert_eq!(
+            decide_reaction(
+                principal(3),
+                generation(1),
+                None,
+                facts(ActorReaction::NONE)
+            ),
+            ReactionDecision::Reaffirm {
+                next: ActorReaction::restore(None, generation(2))
+            },
+            "a first clear is an accepted intent too: it fences an older set"
+        );
+    }
+
+    #[test]
+    fn a_delayed_request_cannot_undo_a_newer_reaffirmation() {
+        // No reaction at generation 1. Tab A asks Heart@1 and is delayed; tab B asks none@1 later
+        // and arrives first. B is accepted and advances the generation, so A is stale. If asking
+        // for the current state were a no-op, A would match generation 1 and set Heart.
+        let Ok(ReactionChange::Reaffirmed { next: after_b }) =
+            ActorReaction::NONE.desire(generation(1), None)
+        else {
+            panic!("B carries the current generation");
+        };
+        assert_eq!(
+            decide_reaction(
+                principal(3),
+                generation(1),
+                Some(ReactionKind::Heart),
+                facts(after_b)
+            ),
+            ReactionDecision::Stale { current: after_b }
         );
     }
 
@@ -454,10 +528,13 @@ mod tests {
             target: Some((actor, public())),
             ..facts(ActorReaction::NONE)
         };
-        assert_eq!(
-            decide_reaction(actor, generation(1), Some(ReactionKind::Heart), own),
-            ReactionDecision::OwnComment
-        );
+        for wanted in [Some(ReactionKind::Heart), None] {
+            assert_eq!(
+                decide_reaction(actor, generation(1), wanted, own),
+                ReactionDecision::OwnComment,
+                "no request of the writer stores a row on their own comment"
+            );
+        }
 
         let shut = ReactionFacts {
             settings: closed(),
@@ -468,9 +545,16 @@ mod tests {
             ReactionDecision::CommentsClosed
         );
         assert_eq!(
-            decide_reaction(actor, generation(2), Some(ReactionKind::Heart), shut),
-            ReactionDecision::Unchanged(heart),
+            decide_reaction(actor, generation(1), Some(ReactionKind::Heart), shut),
+            ReactionDecision::AlreadyCurrent(heart),
             "a lost-response retry after closing still succeeds"
+        );
+        assert!(
+            matches!(
+                decide_reaction(actor, generation(2), Some(ReactionKind::Heart), shut),
+                ReactionDecision::Reaffirm { .. }
+            ),
+            "reaffirming the held reaction is no new interaction"
         );
         let (cleared, _) = applied(decide_reaction(actor, generation(2), None, shut));
         assert_eq!(cleared.kind(), None);
@@ -530,10 +614,12 @@ mod tests {
         assert_eq!(ReactionGeneration::new(0), None);
         assert_eq!(ReactionGeneration::new(-1), None);
         let last = ActorReaction::restore(None, generation(i64::MAX));
-        assert_eq!(
-            last.desire(generation(i64::MAX), Some(ReactionKind::Heart)),
-            Err(ReactionError::GenerationExhausted)
-        );
+        for wanted in [Some(ReactionKind::Heart), None] {
+            assert_eq!(
+                last.desire(generation(i64::MAX), wanted),
+                Err(ReactionError::GenerationExhausted)
+            );
+        }
     }
 
     #[test]

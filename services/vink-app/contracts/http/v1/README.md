@@ -121,10 +121,18 @@ discussion response carries `Cache-Control: no-store`: it contains viewer-specif
   can see but did not write the answer is `403 not_comment_writer`; for one they cannot see,
   `404`. Repeating a removal returns `200` again.
 - **Settings.** Only the work's author changes `comments_open`; anyone else gets `404`.
-  `expected_generation` guards against a stale tab: asking for the current state is `200`
-  without a change; another change since the given generation is `409 version_conflict` with
-  the current generation in `current_version`. Closing stops new comments and replies; approved
-  comments stay readable. Comments start open on a public work.
+  `comments_open` is the desired state and `expected_generation` the generation the client last
+  saw; the generation is compared first, so a stale tab cannot undo a newer choice:
+  - `expected_generation` equal to the stored one: **accepted**, `200` with `generation` + 1,
+    also when `comments_open` already holds. That advance fences every older request still in
+    flight (a request for the current state is a real intent, not a no-op).
+  - another generation and `comments_open` already holds: `200` with the stored settings,
+    nothing written (a retry after a lost response, or a duplicate).
+  - another generation and the other state: `409 version_conflict` with the stored generation in
+    `current_version`; nothing written. Show the stored state; never resend the old intent.
+
+  Closing stops new comments and replies; approved comments stay readable. Comments start open
+  on a public work.
 - **Not provided:** editing (blocked by D-08), reports, appeals, reactions, ranking,
   notifications or rate limits.
 
@@ -163,7 +171,7 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 | 401 | `unauthenticated` | No authenticated Vink principal | [error.unauthenticated.json](fixtures/error.unauthenticated.json) |
 | 403 | `forbidden` | Origin check failed for an unsafe method | [error.forbidden.json](fixtures/error.forbidden.json) |
 | 404 | `not_found` | Missing, private to someone else, or not published | [error.not_found.json](fixtures/error.not_found.json) |
-| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings since `expected_generation`, or a comment's moderation state since `expected_version`; `current_version` is the stored one | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json) |
+| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings set to the other state since `expected_generation`, or a comment's moderation state since `expected_version`; `current_version` is the stored one | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json) |
 | 409 | `comments_closed` | The work's author closed comments | [error.comments_closed.json](fixtures/error.comments_closed.json) |
 | 409 | `target_unavailable` | Reply target missing, of another work or not public | [error.target_unavailable.json](fixtures/error.target_unavailable.json) |
 | 422 | `idempotency_key_reused` | Same `command_key`, different payload; `field` is `command_key` | [error.idempotency_key_reused.json](fixtures/error.idempotency_key_reused.json) |

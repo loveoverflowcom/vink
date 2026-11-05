@@ -1,7 +1,8 @@
 //! Owner-local Kani harnesses. xtask never installs the verifier or its bundled toolchain; CI
 //! installs the pinned release first. Each manifest compiles production sources in place. The
-//! lane requires every `#[kani::proof]` in the registered harness files to be verified, so a harness module
-//! that is compiled out or a manifest that finds nothing cannot pass silently.
+//! lane requires every `#[kani::proof]` in the manifest's registered harness files to be
+//! verified, so a harness module that is compiled out, an unregistered harness file or a
+//! manifest that finds nothing cannot pass silently.
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -11,7 +12,8 @@ use crate::process::{Report, cargo};
 
 pub const VERSION: &str = "0.67.0";
 
-/// Each owner-local manifest and the file holding its harnesses.
+/// Each owner-local manifest and every file holding harnesses it compiles. A manifest verifies
+/// all harnesses in its crate, so a new proof file must be registered here or the count fails.
 pub const MANIFESTS: [(&str, &[&str]); 2] = [
     (
         "packages/expressions/kani/Cargo.toml",
@@ -31,9 +33,9 @@ pub fn verify(report: &mut Report) -> bool {
     if !report.step(&format!("kani: cargo-kani {VERSION}"), || version(&root)) {
         return false;
     }
-    for (manifest, harnesses) in MANIFESTS {
+    for (manifest, files) in MANIFESTS {
         let name = format!("kani: {manifest}");
-        if !report.step(&name, || run(&root, manifest, harnesses)) {
+        if !report.step(&name, || run(&root, manifest, files)) {
             return false;
         }
     }
@@ -62,17 +64,18 @@ fn version(root: &Path) -> Result<(), String> {
 
 /// Streams Kani's output and requires its own summary to count exactly the harnesses in the
 /// registered source files, all verified.
-fn run(root: &Path, manifest: &str, harnesses: &[&str]) -> Result<(), String> {
+fn run(root: &Path, manifest: &str, files: &[&str]) -> Result<(), String> {
     let mut expected = 0;
-    for path in harnesses {
-        let source = std::fs::read_to_string(root.join(path))
-            .map_err(|e| format!("cannot read {path}: {e}"))?;
-        let count = source.matches("#[kani::proof]").count();
-        if count == 0 {
-            return Err(format!("{path} declares no #[kani::proof] harness"));
+    for file in files {
+        let source = std::fs::read_to_string(root.join(file))
+            .map_err(|e| format!("cannot read {file}: {e}"))?;
+        let declared = source.matches("#[kani::proof]").count();
+        if declared == 0 {
+            return Err(format!("{file} declares no #[kani::proof] harness"));
         }
-        expected += count;
+        expected += declared;
     }
+    let harnesses = files.join(", ");
     println!("==> cargo kani --manifest-path {manifest} ({expected} harnesses)");
     let mut child = cargo(root)
         .args(["kani", "--manifest-path", manifest])
@@ -97,7 +100,7 @@ fn run(root: &Path, manifest: &str, harnesses: &[&str]) -> Result<(), String> {
         Some(line) if line == wanted => Ok(()),
         Some(line) => Err(format!("expected `{wanted}`, Kani reported `{line}`")),
         None => Err(format!(
-            "Kani verified nothing, though {harnesses:?} declares {expected} harnesses"
+            "Kani verified nothing, though {harnesses} declare {expected} harnesses"
         )),
     }
 }
@@ -109,11 +112,11 @@ mod tests {
     #[test]
     fn every_manifest_and_harness_file_exists() {
         let root = crate::root();
-        for (manifest, harnesses) in MANIFESTS {
+        for (manifest, files) in MANIFESTS {
             assert!(root.join(manifest).is_file(), "{manifest}");
-            for path in harnesses {
-                let source = std::fs::read_to_string(root.join(path)).unwrap();
-                assert!(source.contains("#[kani::proof]"), "{path}");
+            for file in files {
+                let source = std::fs::read_to_string(root.join(file)).unwrap();
+                assert!(source.contains("#[kani::proof]"), "{file}");
             }
         }
     }

@@ -52,7 +52,7 @@ records provenance, licensing, model/proof bounds and remaining acceptance.
 LVE-PR-01 adds the owner-local pure `domain::endorsement` seam for work revisions and original
 root/flat replies, accepted-order fencing including same-state intents, exact receipts and checked
 counts. Its Quint/replay shares `verify discussion`; its six Kani obligations are registered in the
-existing App manifest/runner (17 App harnesses total). No SQL/HTTP/UI consumer exists yet; see
+existing App manifest/runner (19 App harnesses total). No SQL/HTTP/UI consumer exists yet; see
 [policy](docs/architecture/literary-endorsement.md) and [registry/gaps](docs/development/endorsement-core.md).
 No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
 production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,

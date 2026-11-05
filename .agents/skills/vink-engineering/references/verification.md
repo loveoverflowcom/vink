@@ -3,10 +3,10 @@
 Use actual manifests, commands and CI from the current checkout. The implemented lanes are
 `cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
-lanes. `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts) and reaction D2T-INV-08 Quint models and literary endorsement LVE-PR-01 with real Rust replay;
+lanes. `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
 there is no generic behavior lane. `expressions` checks the isolated EMO lifecycle model
 and production policy replay. `kani` (not in `all`; needs the pinned verifier) runs the
-owner-local manifests for the expression policy and the App's pure discussion/endorsement cores. No model or
+owner-local manifests for the expression policy and the App's pure discussion and endorsement cores. No model or
 proof lane verifies locking or I/O: PostgreSQL evidence remains in `postgres`, browser in `web`.
 
 Find route-level scenarios and existing assertions in the

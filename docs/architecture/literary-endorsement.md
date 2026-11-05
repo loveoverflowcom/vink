@@ -7,7 +7,19 @@ production policy. Nội dung lõi liên quan trong snapshot Drive r1/issue đư
 [PRD canonical](../../prd/requirements.md#12-literary-endorsement-lve) và tài liệu này;
 phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/INV/COM hiện hành.
 
+## Hợp nhất sau #78/#79
+
+Theo yêu cầu merge PR #80, slice này tiếp nối lõi #78 đã vào develop. Chỉ giữ
+`decide_endorsement` với accepted order/mutation version/receipt riêng và revision-specific target.
+Hai module `work.rs`/`comment.rs` cùng model/counterexample cũ của #78 được thay bằng seam/model
+hiện hành; requirements/registry URL cũ chuyển hướng về một owner. Đây là delta chủ ý: CHOICE-02 B
+và CHOICE-09 A của #80 thay C/B tạm thời của #78. Không có transaction/UI consumer cũ cần migrate.
+Giữ nguyên mọi production source/fixtures và harness sửa fence reaction/settings của #79.
+
 ## Review và phản biện trước khi triển khai
+
+Bảng dưới ghi findings trên baseline ban đầu trước #79. #79 đã sửa riêng reaction/settings;
+phần hợp nhất giữ nguyên các sửa đó, không dùng findings cũ để đảo chúng.
 
 | Finding | Source/symbol | Hậu quả | Phương án | Quyết định slice |
 | --- | --- | --- | --- | --- |

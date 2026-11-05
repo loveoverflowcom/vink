@@ -1,0 +1,76 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "lifecycle.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedNoopModeStep",
+    "--max-steps=3",
+    "--max-samples=1",
+    "--invariant=confirmedModeFence",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "set_mode",
+        "actor": 1,
+        "id": 0,
+        "target": 0,
+        "expected": 1,
+        "value": "closed",
+        "key": 0,
+        "body": 0
+      },
+      "outcome": "changed",
+      "answer": null,
+      "mode": "closed",
+      "generation": 2,
+      "grants": [],
+      "receipts": [],
+      "comments": []
+    },
+    {
+      "command": {
+        "op": "set_mode",
+        "actor": 1,
+        "id": 0,
+        "target": 0,
+        "expected": 2,
+        "value": "closed",
+        "key": 0,
+        "body": 0
+      },
+      "outcome": "already_current",
+      "answer": null,
+      "mode": "closed",
+      "generation": 2,
+      "grants": [],
+      "receipts": [],
+      "comments": []
+    },
+    {
+      "command": {
+        "op": "set_mode",
+        "actor": 1,
+        "id": 0,
+        "target": 0,
+        "expected": 2,
+        "value": "open",
+        "key": 0,
+        "body": 0
+      },
+      "outcome": "changed",
+      "answer": null,
+      "mode": "open",
+      "generation": 3,
+      "grants": [],
+      "receipts": [],
+      "comments": []
+    }
+  ]
+}

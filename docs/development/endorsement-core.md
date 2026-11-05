@@ -1,6 +1,7 @@
 # Literary endorsement — core và registry LVE-PR-01
 
-Baseline `develop@be2b69e490d7637f6021c4b97062ed3859e09189`, macOS arm64, 05/11/2026.
+Baseline ban đầu `develop@be2b69e490d7637f6021c4b97062ed3859e09189`; lần merge #80 hợp nhất
+`develop@69f0a3e376c3ab3db9a9e7fb146451d7aa4de27b` (gồm #78/#79), macOS arm64, 05/11/2026.
 [PRD](../../prd/requirements.md#12-literary-endorsement-lve),
 [quyết định/transaction contract](../architecture/literary-endorsement.md),
 [epic #73](https://github.com/loveoverflowcom/vink/issues/73).
@@ -63,8 +64,8 @@ hoặc SQL concurrency từ các serialized traces.
 Pin theo repo: **0.67.0**, bundled compiler `nightly-2025-11-21`.
 `services/vink-app/kani/lib.rs` mount đúng production `src/domain`; sáu harness mới nằm tại
 `src/domain/endorsement/proofs.rs`, `cfg(kani)`, không rule copy. `xtask/src/kani.rs` nay đăng ký
-**cả hai file** discussion/proofs và endorsement/proofs cho App manifest; tổng phải là **17**
-harness App (11 cũ + 6 mới), cùng 3 harness expressions. Module bị compile-out/zero harness hoặc
+**cả hai file** discussion/proofs và endorsement/proofs cho App manifest; tổng phải là **19**
+harness App (13 discussion, gồm hai harness #79, + 6 endorsement), cùng 3 harness expressions. Module bị compile-out/zero harness hoặc
 summary thiếu harness là FAIL. Không tạo runner thứ hai.
 
 - `scalars_and_count_arithmetic_are_total`: mọi i64 token/count, checked +1/-1, cover underflow,
@@ -82,8 +83,9 @@ summary thiếu harness là FAIL. Không tạo runner thứ hai.
 
 Không vòng lặp/collection trong harness mới; default unwind, **giữ unwinding assertions**.
 IDs hằng là các equivalence class bằng/khác cần thiết; proofs không chứng minh UUID generation,
-principal source, work/thread FK, Unicode, SQL, I/O, auth, UI hay account lifecycle. Chưa chạy verifier
-thì các harness chỉ là proof obligations chưa được typecheck/verify bởi Kani.
+principal source, work/thread FK, Unicode, SQL, I/O, auth, UI hay account lifecycle. Lần merge PR #80 đã chạy verifier thật: 19/19 harness App và 3/3 expressions đạt;
+40 cover App (26 discussion + 14 endorsement) và 2 cover expressions đều SATISFIED.
+Giữ unwinding assertions; không có failure hoặc cover bị bỏ.
 
 ## Bằng chứng phiên và acceptance
 
@@ -96,7 +98,7 @@ Rust **1.99.1**, Node **22.15.0**, npm **10.9.2**, Quint **0.33.1**, macOS arm64
 | `node services/vink-app/behavior/discussion/verify.mjs --write` | PASS — typecheck, simulations/scenarios + meaningful negative control; fixture sinh rồi kiểm drift riêng |
 | `cargo xtask verify quick` | PASS — fmt, clippy server/browser/preview, 33 doctests, 307 unit/contract tests và repository checks |
 | `npm_config_cache=/tmp/vink-lve-npm-cache cargo xtask verify discussion` | PASS — 4 model, drift/scenarios/5 negative controls, 27 Rust tests gồm 4 replay bắt buộc |
-| `cargo xtask verify kani` | FAIL — `cargo-kani` không được cài; các manifest/harness NOT_RUN |
+| `cargo xtask verify kani` (PATH trỏ kani-tools/bin) | PASS sau cài pin 0.67.0 — App 19/19, expressions 3/3; 42/42 cover toàn lane SATISFIED |
 | Production no-op fence mutation | PASS sensitivity — mutant compile/run exit101: 3 assertion failures (`off_noop_fences…`, `same_state_new_key…`, replay step1); source đã khôi phục, quick chạy sau restoration |
 | Apalache/model checking, PostgreSQL/API/browser/native | NOT_RUN — ngoài pure slice / không có adapter hoặc UI mới |
 
@@ -105,10 +107,10 @@ người dùng. Cargo/Quint dependency được tải theo lockfile, không nân
 
 AC-P1-01: canonical owners có; AC-P1-02: pure work/root/reply + typed outcomes có;
 AC-P1-03/04: core contract + regression/model/replay/negative control, không nhận SQL/consumer;
-AC-P1-05 **CHƯA HOÀN TẤT** do thiếu Kani; AC-P1-06 kiểm regression qua lanes hiện hành.
+AC-P1-05 **ĐÃ ĐẠT** sau chạy Kani 0.67.0 tại lần merge #80; AC-P1-06 giữ source/fixtures của #79 và kiểm regression qua lanes hiện hành.
 Epic AC-03 chỉ PARTIAL; không mark/đóng #73, không merge/deploy.
 
-Resume proof từ repo root trên host hỗ trợ, đủ disk:
+Tái lập proof từ repo root trên host hỗ trợ, đủ disk (phiên merge dùng install root riêng `../kani-tools`):
 
 ```sh
 cargo install --locked kani-verifier --version 0.67.0
@@ -116,7 +118,29 @@ cargo kani setup
 cargo xtask verify kani
 ```
 
-Yêu cầu 17/17 App harness và 3/3 expression harness, mọi cover SATISFIED, không unwinding failure.
-Sau khi sửa proof/source, chạy lại quick/discussion cần thiết; thử mutant production no-op fence
-trên harness acceptance rồi khôi phục trước handoff. Downstream: auth/capability thật + transaction
+Yêu cầu 19/19 App harness và 3/3 expression harness, mọi cover SATISFIED, không unwinding failure.
+Sau khi sửa proof/source, chạy lại quick/discussion cần thiết; negative control trên harness
+acceptance được ghi riêng trong bằng chứng merge. Downstream: auth/capability thật + transaction
 adapter/schema giữ preconditions, receipt retention, query/rebuild và exact API conformance trước UI.
+
+
+## Nghiệm thu merge #80 sau #78/#79
+
+Input upstream: `69f0a3e376c3ab3db9a9e7fb146451d7aa4de27b`, PR head gốc `0f748d2`.
+Kani cài pin 0.67.0 vào `../kani-tools`, bundled compiler `nightly-2025-11-21`; không đổi
+workspace Rust 1.99.1. Dùng `PATH=../kani-tools/bin:$PATH`. Đặt `CARGO_PROFILE_DEV_DEBUG=0`,
+`CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0` cho quick/discussion để giảm artifact disk.
+Các flags này không đổi source, guards hoặc unwinding assertions.
+
+- `cargo xtask verify kani`: PASS 19/19 App, 3/3 expressions; 40 + 2 cover SATISFIED.
+- `cargo xtask verify quick`: PASS — 33 doctests, 313 unit/contract, fmt/clippy/repo checks.
+- `npm_config_cache=/tmp/vink-lve-npm-cache cargo xtask verify discussion`: PASS — 31 tests, sáu replay bắt buộc, 4 model/drift và 7 negative controls.
+- Kani production no-op fence mutant: PASS sensitivity — exit1, đúng assertion
+  `after.order().get() == order + 1` FAIL, 0/1 harness; source khôi phục byte-exact.
+- Source/fixtures reaction/settings, application/persistence và PostgreSQL tests của #79
+  khớp byte với `origin/develop@69f0a3e`; không đảo sửa fence đã merge.
+- Canonical owner/registry hợp nhất; các module work/comment cũ và model/counterexample
+  của seam #78 được thay bằng seam/model #80, không để hai luật cạnh tranh.
+
+Không đọc/chờ GitHub Actions/status/logs. PostgreSQL/browser/native không chạy lại vì
+#80 không đổi source các boundary đó so với develop. Không deploy hoặc đóng epic #73.

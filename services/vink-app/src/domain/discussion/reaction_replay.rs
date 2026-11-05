@@ -6,7 +6,8 @@
 //! Synthetic shell, labelled: comment rows, reactions and tallies live in memory, a moderator
 //! applies `ModerationAction` at the comment's current version and the work author changes the
 //! mode at the current generation (their authority belongs to `lifecycle.qnt`). No reaction store
-//! exists yet; its locking and durability are #43.
+//! exists yet; its locking and durability are #43. The counterexample of the former no-op rule
+//! is replayed too: production must refuse it.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -58,6 +59,17 @@ struct Command {
     id: u128,
     expected: i64,
     value: String,
+}
+
+/// A model counterexample (`vink-discussion-counterexample-v1`) with reaction steps.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Counterexample {
+    format: String,
+    quint_version: String,
+    command: Vec<String>,
+    status: String,
+    steps: Vec<Step>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -124,6 +136,27 @@ fn counts(tally: ReactionTally) -> BTreeMap<String, u32> {
 }
 
 impl Shell {
+    /// The model's two pending comments by their writers; nobody has reacted yet.
+    fn new(writers: &BTreeMap<String, u128>) -> Self {
+        Self {
+            settings: DiscussionSettings::INITIAL,
+            rows: writers
+                .iter()
+                .map(|(id, &writer)| {
+                    (
+                        id.parse().unwrap(),
+                        Row {
+                            writer: principal(writer),
+                            state: CommentState::SUBMITTED,
+                            tally: ReactionTally::EMPTY,
+                        },
+                    )
+                })
+                .collect(),
+            reactions: BTreeMap::new(),
+        }
+    }
+
     fn apply(&mut self, command: &Command) -> &'static str {
         match command.op.as_str() {
             "react" => self.react(command),
@@ -154,8 +187,11 @@ impl Shell {
                         self.settings = next;
                         "mode_set"
                     }
-                    Ok(ModeChange::Unchanged(_)) => "noop",
-                    Err(other) => panic!("current generation: {other:?}"),
+                    Ok(ModeChange::Reaffirmed(next)) => {
+                        self.settings = next;
+                        "mode_reaffirmed"
+                    }
+                    other => panic!("current generation: {other:?}"),
                 }
             }
             other => panic!("unknown op {other}"),
@@ -191,7 +227,12 @@ impl Shell {
                 self.reactions.insert(key, next);
                 "changed"
             }
-            ReactionDecision::Unchanged(_) => "unchanged",
+            ReactionDecision::Reaffirm { next } => {
+                // Only the generation advances; the tally is untouched.
+                self.reactions.insert(key, next);
+                "reaffirmed"
+            }
+            ReactionDecision::AlreadyCurrent(_) => "already_current",
             ReactionDecision::Stale { .. } => "stale",
             ReactionDecision::TargetUnavailable => "target_unavailable",
             ReactionDecision::OwnComment => "own_comment",
@@ -269,24 +310,7 @@ fn quint_reaction_inputs_replay_against_the_production_decisions() {
     let mut outcomes = BTreeSet::new();
     for scenario in &fixture.scenarios {
         assert!(!scenario.steps.is_empty(), "{}", scenario.name);
-        let mut shell = Shell {
-            settings: DiscussionSettings::INITIAL,
-            rows: fixture
-                .writers
-                .iter()
-                .map(|(id, &writer)| {
-                    (
-                        id.parse().unwrap(),
-                        Row {
-                            writer: principal(writer),
-                            state: CommentState::SUBMITTED,
-                            tally: ReactionTally::EMPTY,
-                        },
-                    )
-                })
-                .collect(),
-            reactions: BTreeMap::new(),
-        };
+        let mut shell = Shell::new(&fixture.writers);
         for (index, step) in scenario.steps.iter().enumerate() {
             let at = format!("{} step {index}", scenario.name);
             let outcome = shell.apply(&step.command);
@@ -303,5 +327,55 @@ fn quint_reaction_inputs_replay_against_the_production_decisions() {
         }
     }
     // Non-vacuous: every reaction refusal and outcome the model distinguishes was replayed.
-    assert_eq!(outcomes.len(), 8, "{outcomes:?}");
+    assert_eq!(outcomes.len(), 10, "{outcomes:?}");
+}
+
+/// The counterexample of the former rule, where asking for the held reaction was a no-op at any
+/// generation. Its inputs through production must not reproduce the violation: tab B's request
+/// for no reaction at generation 1 is accepted and fences it, so tab A's delayed Heart at
+/// generation 1 is stale and no reaction is counted.
+#[test]
+fn the_no_op_reaction_counterexample_is_refused_by_production() {
+    let fixture: Conformance = serde_json::from_str(include_str!(
+        "../../../behavior/discussion/reaction-fixtures.json"
+    ))
+    .unwrap();
+    let counterexample: Counterexample = serde_json::from_str(include_str!(
+        "../../../behavior/discussion/reaction-noop-fence-counterexample.json"
+    ))
+    .unwrap();
+    assert_eq!(counterexample.format, "vink-discussion-counterexample-v1");
+    assert_eq!(counterexample.quint_version, fixture.quint_version);
+    assert_eq!(counterexample.status, "violation");
+    assert!(
+        counterexample
+            .command
+            .iter()
+            .any(|arg| arg == "--step=mutatedNoopStep")
+    );
+    let model: Vec<_> = counterexample
+        .steps
+        .iter()
+        .map(|step| step.outcome.as_str())
+        .collect();
+    assert_eq!(
+        model,
+        ["moderated", "already_current", "changed"],
+        "the mutated model applies the older Heart"
+    );
+    let mut shell = Shell::new(&fixture.writers);
+    let production: Vec<_> = counterexample
+        .steps
+        .iter()
+        .map(|step| shell.apply(&step.command))
+        .collect();
+    assert_eq!(production, ["moderated", "reaffirmed", "stale"]);
+    assert_eq!(
+        shell.reactions.get(&(3, 1)),
+        Some(&ActorReaction::restore(
+            None,
+            ReactionGeneration::new(2).unwrap()
+        ))
+    );
+    assert_eq!(shell.rows[&1].tally, ReactionTally::EMPTY);
 }

@@ -105,7 +105,8 @@ pub trait DiscussionStore: Send + Sync {
         comment_id: CommentId,
     ) -> impl Future<Output = Result<Guarded<Transition, LifecycleError>, StoreError>> + Send;
 
-    /// `authorize_mode_change` then `DiscussionSettings::change_mode` on the locked thread row.
+    /// `authorize_mode_change` then `DiscussionSettings::change_mode` on the locked thread row;
+    /// stores `ModeChange::write()` (a change or a reaffirmation), never an `AlreadyCurrent`.
     fn set_comments_mode(
         &self,
         actor: PrincipalId,
