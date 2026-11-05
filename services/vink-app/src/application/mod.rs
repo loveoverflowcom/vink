@@ -2,6 +2,7 @@
 //! delegates I/O to the ports in [`ports`]; it imports no HTTP, SQL or Leptos types.
 
 pub mod discussion;
+pub mod endorsement;
 pub mod ports;
 
 use time::OffsetDateTime;
@@ -214,3 +215,7 @@ mod tests;
 #[cfg(test)]
 #[path = "discussion_tests.rs"]
 mod discussion_tests;
+
+#[cfg(test)]
+#[path = "endorsement_tests.rs"]
+mod endorsement_tests;

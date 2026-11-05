@@ -129,6 +129,9 @@ fn read_response(stream: &mut UnixStream) -> Result<(u16, String), String> {
 }
 
 /// Minimal HTTP/1.1 GET over loopback TCP: status code and body.
+/// Account-scoped LVE read: needs a principal, so it follows the drafts outcomes.
+const OWN_ENDORSEMENTS: &str = "/api/v1/works/33333333-3333-4333-8333-333333333333/endorsements/me";
+
 fn http(port: u16, path: &str, headers: &[(&str, &str)]) -> Result<(u16, String), String> {
     let mut stream =
         std::net::TcpStream::connect(("127.0.0.1", port)).map_err(|e| e.to_string())?;
@@ -893,6 +896,12 @@ impl Run<'_> {
                 401,
                 "unauthenticated",
             )?;
+            expect(
+                "own endorsements with credential",
+                http(port, OWN_ENDORSEMENTS, &forged),
+                401,
+                "unauthenticated",
+            )?;
             self.public_reading(port)?;
 
             // Identity stops: only presented credentials depend on it.
@@ -914,6 +923,12 @@ impl Run<'_> {
             expect(
                 "credential while Identity is down",
                 http(port, "/api/v1/drafts", &forged),
+                503,
+                "dependency_unavailable",
+            )?;
+            expect(
+                "own endorsements while Identity is down",
+                http(port, OWN_ENDORSEMENTS, &forged),
                 503,
                 "dependency_unavailable",
             )?;
@@ -958,13 +973,25 @@ impl Run<'_> {
         Ok(())
     }
 
-    /// Public list, reader page and SSR never need Identity; their HTML carries no credential.
+    /// Public list, reader page, endorsement summaries and SSR never need Identity; their HTML
+    /// carries no credential.
     fn public_reading(&self, port: u16) -> Result<(), String> {
         expect(
             "public works",
             http(port, "/api/v1/works", &[]),
             200,
             "works",
+        )?;
+        // The runtime role reads the endorsement tables of the provisioned, migrated database.
+        expect(
+            "public endorsement summary",
+            http(
+                port,
+                "/api/v1/works/33333333-3333-4333-8333-333333333333/endorsements",
+                &[],
+            ),
+            200,
+            r#""status":"available""#,
         )?;
         let (status, home) = http(port, "/", &[])?;
         let (reader_status, reader) =

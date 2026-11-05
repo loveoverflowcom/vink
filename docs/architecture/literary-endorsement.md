@@ -129,5 +129,23 @@ Receipt Select cũ trên target hiện không visible không replay ra ngoài; R
 | work/comment/actor binding sai | InvalidFacts, không mutation; HTTP mapping privacy-safe cần PR API |
 | order/version/count hết miền | Refuse/checked count error, không wrap hay partial commit |
 
+## Lát API + PostgreSQL (#81)
+
+Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi. Data flow,
+chữ ký, lock order và bằng chứng: [runtime](../development/literary-endorsement-runtime.md).
+
+| ID | Chọn cho lát | Lý do / phương án bị loại |
+| --- | --- | --- |
+| CHOICE-03 (HTTP) | `PUT …/endorsement/me` mang trạng thái mong muốn, `command_key` (UUID của actor, trên mọi đích) và `expected_order`; `200 accepted` / `200 replayed` (lịch sử `committed` tách trạng thái hiện tại), `409` conflict, `422` key reuse | POST lệnh cũng mang cùng key/order nên không bớt gì; không expose hai API song song |
+| CHOICE-04 | A — `work_endorsements` (PK work, revision, actor; FK revision cùng tác phẩm), `comment_endorsements`, `endorsement_receipts` (đích typed nullable + CHECK đúng một đích); token `1 ≤ version ≤ order`, `order ≥ 2`; trigger cấm đổi danh tính, order không tăng, version giảm, DELETE/TRUNCATE; receipt append-only | Một bảng state chung thêm NULL/CHECK mà không bớt truy vấn; `(target_type, target_id)` không FK bị loại |
+| CHOICE-05 | A — đếm hàng `selected` khi đọc, partial index | Counter giao dịch tuần tự hóa người ghi trên đích nóng; outbox chưa có nhu cầu. Số đo: [bằng chứng](../development/evidence/lve-postgres/README.md) |
+| CHOICE-12 | A — chỉ tổng số + trạng thái riêng; không endpoint/truy vấn nào trả danh sách người ghi nhận | B cần owner consent/retention/withdrawal, chưa có |
+| CHOICE-13 | A — `GET …/endorsements` (công khai, không resolve actor) tách `GET …/endorsements/me` (`401` cho khách), batch ≤ 100 bình luận của một tác phẩm, đều `no-store`; READ-01/02 không đổi | Gộp làm lỗi Identity che tổng số và buộc thêm trạng thái người xem vào biểu diễn công khai |
+
+Precondition ở mục trên được hiện thực như sau: capability hiện hành = principal có hàng (chưa có cơ
+chế cấm/thu hồi); khóa publication → thread → bình luận → advisory lock (actor, key) → hàng của actor;
+receipt đọc trong cùng transaction; state + receipt ghi nguyên tử; hàng bình luận chỉ được đọc khi
+bình luận thuộc tác phẩm trên route. Retention receipt, purge tài khoản và thu hồi capability vẫn OPEN.
+
 [Registry, model/proof evidence và gap](../development/endorsement-core.md) là owner duy nhất
 traceability LVE; không gán proof lõi cho SQL, HTTP, UI hay toàn epic.

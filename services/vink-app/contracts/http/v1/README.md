@@ -8,7 +8,9 @@ every fixture and must keep every field.
 
 Only the endpoints below exist. Publish/withdraw and account endpoints do not. Discussion
 (comments) is Vink-owned (owner decision 03/11/2026; no Discourse) and has the endpoints in
-[Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c).
+[Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c). Literary
+endorsement has the endpoints in [Literary endorsement](#literary-endorsement-lve-73); no web or
+native consumer uses them yet.
 
 ## Conventions
 
@@ -18,7 +20,7 @@ Only the endpoints below exist. Publish/withdraw and account endpoints do not. D
   characters (tab allowed). The server stores lines NFC-normalized. At most 200 000
   characters; titles at most 200 characters, single line, trimmed.
 - Unknown request fields are rejected.
-- Unsafe methods (`POST`, `PUT`) require an `Origin` header equal to the server's
+- Unsafe methods (`POST`, `PUT`, `DELETE`) require an `Origin` header equal to the server's
   `VINK_PUBLIC_ORIGIN`; otherwise `403 forbidden` before any use case runs.
 - Draft endpoints act for the principal resolved **by the server**. No authority is
   configured in production yet (D-05), so they answer `401` there. Nothing in the request
@@ -160,6 +162,68 @@ before any comment lookup, so non-moderators learn nothing about pending comment
 - Every decision is recorded append-only with the moderator, the grant that authorized it and
   the reason. **Not provided:** reports, appeals, reopening a removed comment, queue age alerts.
 
+## Literary endorsement (LVE #73)
+
+One positive signal per actor and target: “Đánh giá cao” on one published **revision** of a work,
+“Hữu ích” on a root comment or a flat reply. Semantics are owned by the
+[decision record](../../../../../docs/architecture/literary-endorsement.md) (`decide_endorsement`),
+data flow and operations by [the runtime guide](../../../../../docs/development/literary-endorsement-runtime.md).
+Every endorsement response, success or error, carries `Cache-Control: no-store`. Writes act for
+the server-resolved principal (`401` without one, so production answers `401` until D-05), need
+the same `Origin` as other unsafe methods, and never accept an actor, count, role, root or work
+from the body: unknown fields are `422`.
+
+| Method and path | Success | Errors | Fixture |
+| --- | --- | --- | --- |
+| `GET /api/v1/works/{work_id}/endorsements?comment_ids=` | `200` public summaries of the current revision and of the listed comments | `404`, `422` (`comment_ids`, `query`), `503` | [endorsements.get.json](fixtures/endorsements.get.json) |
+| `GET /api/v1/works/{work_id}/endorsements/me?comment_ids=` | `200` the actor's own states | `401`, `404`, `422`, `503` | [endorsements.me.get.json](fixtures/endorsements.me.get.json) |
+| `PUT /api/v1/works/{work_id}/endorsement/me` | `200` accepted or replayed | `401`, `403` (`forbidden`, `self_endorsement`, `endorsement_not_permitted`), `404`, `409` (`version_conflict`, `revision_changed`), `422` (incl. `idempotency_key_reused`), `503`, `500` | [request](fixtures/endorsement.work.put.request.json), [response](fixtures/endorsement.work.put.response.json) |
+| `PUT /api/v1/works/{work_id}/discussion/comments/{comment_id}/endorsement/me` | `200` accepted or replayed | `401`, `403`, `404`, `409` (`version_conflict`), `422`, `503`, `500` | [request](fixtures/endorsement.comment.put.request.json), [response](fixtures/endorsement.comment.put.response.json) |
+
+- **Command.** `endorsed` is the desired selection; `expected_order` the `order` the client last
+  saw for that target (`1` before any action); `command_key` a UUID the client chooses, scoped to
+  the actor across **all** targets. A work command also names `revision_id`, the revision the page
+  rendered: each revision is its own target, and the server checks it belongs to the work.
+- **Outcomes.**
+  - `expected_order` equal to the stored order and the target eligible: **accepted** (`outcome:
+    "accepted"`), `order` + 1 — also when the selection already held (that advance fences every
+    older command). `version` + 1 only when `selected` changes.
+  - The same `command_key` and the same body again (a retry after a lost response): `200`
+    `outcome: "replayed"`, nothing written. `committed` is what that command committed (history);
+    `endorsement` is the **current** state — show that one.
+  - The same key with another body: `422 idempotency_key_reused` (`field: command_key`).
+  - Another order: `409 version_conflict` with `current_version` (the current order) and
+    `endorsement` (the current state). Show it; never resend the old intent with the new order.
+  - Selecting a revision that is no longer the public one: `409 revision_changed` with
+    `current_revision_id`. Nothing written; that revision's selections stay stored, uncounted.
+  - `403 self_endorsement`: the work's author selecting their work, or a writer their comment.
+    `403 endorsement_not_permitted`: the actor has no current capability (no such mechanism exists
+    yet besides having a principal).
+  - `404`: missing, of another work, or not visible (draft, withdrawn, pending, rejected, removed,
+    hidden root) — except **removing the actor's own retained record**, which stays possible while
+    the target is hidden or withdrawn (no count is returned then). Replies under a hidden root stay
+    selectable while they are public. Closing comments does not affect endorsements.
+- **Result.** `work_id`, `revision_id` (works) or `comment_id` name the target; `endorsement` is
+  `{selected, version, order}`; `summary` is the target's public count read in the same transaction
+  (`unavailable` when the target is hidden). A client applies a result only when its `order` is
+  greater than the one it shows for that (session, target), so a late answer never moves the UI back.
+- **Ordering scope.** The order serializes one actor's commands on one target; the key namespace
+  is the actor's. Nothing orders different targets or actors, and two devices of one actor are not
+  told which intent was “last”: the first accepted at an order wins, the other gets `409`.
+- **Reads.** `comment_ids` is a comma-separated list of comment IDs of that work, at most 100
+  (duplicates count; each distinct ID is answered once, in request order). Unknown query parameters
+  are `422`. A work that is not public is `404` for both reads. `work` describes the **current**
+  publication's revision (`revision_id`). A missing, foreign or hidden comment is `{"status":
+  "unavailable", "count": null}` in summaries and `{"state": "unavailable", "version": null,
+  "order": null}` in own state: never zero, never a stored token. Own state is `not_selected` with
+  version/order `1` before any action, `401` for a guest. `can_endorse`/`blocked_reason`
+  (`own_content`, `not_permitted`) are advisory: each write decides again on the facts it locks.
+  Summaries never resolve the actor, so an identity outage cannot hide them. Each read is one
+  snapshot; summaries and own state are separate snapshots.
+- **Not provided:** voter lists or attribution, ranking by endorsements, counts on the works list
+  or the publication read (READ-01 bodies and validators are unchanged), reasons or facets, rate
+  limits, receipt expiry.
+
 ## Errors
 
 Every error body is `{"error": {"code", "message", "current_version"?, "field"?}}`. Branch on
@@ -171,16 +235,19 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 | 401 | `unauthenticated` | No authenticated Vink principal | [error.unauthenticated.json](fixtures/error.unauthenticated.json) |
 | 403 | `forbidden` | Origin check failed for an unsafe method | [error.forbidden.json](fixtures/error.forbidden.json) |
 | 404 | `not_found` | Missing, private to someone else, or not published | [error.not_found.json](fixtures/error.not_found.json) |
-| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings set to the other state since `expected_generation`, or a comment's moderation state since `expected_version`; `current_version` is the stored one | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json) |
-| 409 | `comments_closed` | The work's author closed comments | [error.comments_closed.json](fixtures/error.comments_closed.json) |
+| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings set to the other state since `expected_generation`, a comment's moderation state since `expected_version`, or an endorsement's order moved past `expected_order`; `current_version` is the stored one (endorsements also carry `endorsement` and `field: expected_order`) | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json), [endorsement](fixtures/error.endorsement_conflict.json) |
+| 409 | `revision_changed` | Selecting a revision that is no longer the public one; `current_revision_id` names the public revision | [error.revision_changed.json](fixtures/error.revision_changed.json) |
+| 403 | `self_endorsement` | The work's author or the comment's writer tried to endorse their own content | [error.self_endorsement.json](fixtures/error.self_endorsement.json) |
+| 403 | `endorsement_not_permitted` | The actor has no current endorsement capability | [error.endorsement_not_permitted.json](fixtures/error.endorsement_not_permitted.json) |
+| 409 | `comments_closed` | The work's author closed comments (new comments and replies) | [error.comments_closed.json](fixtures/error.comments_closed.json) |
 | 409 | `target_unavailable` | Reply target missing, of another work or not public | [error.target_unavailable.json](fixtures/error.target_unavailable.json) |
-| 422 | `idempotency_key_reused` | Same `command_key`, different payload; `field` is `command_key` | [error.idempotency_key_reused.json](fixtures/error.idempotency_key_reused.json) |
+| 422 | `idempotency_key_reused` | Same `command_key`, different payload (comment submission or endorsement command); `field` is `command_key` | [comment](fixtures/error.idempotency_key_reused.json), [endorsement](fixtures/error.endorsement_key_reused.json) |
 | 403 | `not_comment_writer` | Removing a visible comment written by someone else | [error.not_comment_writer.json](fixtures/error.not_comment_writer.json) |
 | 403 | `not_moderator` | No active moderator grant | [error.not_moderator.json](fixtures/error.not_moderator.json) |
 | 403 | `moderator_recused` | The moderator wrote the comment or owns the work | [error.moderator_recused.json](fixtures/error.moderator_recused.json) |
 | 409 | `comment_removed` | A decision on a removed comment | [error.comment_removed.json](fixtures/error.comment_removed.json) |
 | 503 | `dependency_unavailable` | PostgreSQL unreachable; retry later | [error.dependency_unavailable.json](fixtures/error.dependency_unavailable.json) |
-| 500 | `internal` | Stored data failed validation or an unexpected database error | — |
+| 500 | `internal` | Stored data failed validation, an unexpected database error, or an exhausted endorsement token | — |
 
 ## Health (not versioned)
 

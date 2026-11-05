@@ -1,0 +1,137 @@
+== 1. summary: work + effective count
+QUERY PLAN
+ Nested Loop Left Join (actual rows=1 loops=1)
+   Buffers: shared read=89
+   ->  Seq Scan on works w (actual rows=1 loops=1)
+         Filter: (id = '10000000-0000-4000-8000-000000000000'::uuid)
+         Rows Removed by Filter: 200
+         Buffers: shared read=2
+   ->  Seq Scan on publications p (actual rows=1 loops=1)
+         Filter: (work_id = '10000000-0000-4000-8000-000000000000'::uuid)
+         Buffers: shared read=1
+   SubPlan 1
+     ->  Aggregate (actual rows=1 loops=1)
+           Buffers: shared read=86
+           ->  Index Only Scan using work_endorsements_selected_idx on work_endorsements e (actual rows=6000 loops=1)
+                 Index Cond: ((work_id = w.id) AND (revision_id = p.revision_id))
+                 Heap Fetches: 6000
+                 Buffers: shared read=86
+ Planning:
+   Buffers: shared hit=233 read=8
+ Planning Time: 2.336 ms
+ Execution Time: 1.371 ms
+(20 rows)
+
+== 2. summary: 80 comments of the work with counts
+QUERY PLAN
+ Nested Loop (actual rows=80 loops=1)
+   Join Filter: (t.id = c.thread_id)
+   Buffers: shared hit=221 read=32
+   ->  Seq Scan on discussion_threads t (actual rows=1 loops=1)
+         Filter: (work_id = '10000000-0000-4000-8000-000000000000'::uuid)
+         Buffers: shared read=1
+   ->  Index Scan using comments_pkey on comments c (actual rows=80 loops=1)
+         Index Cond: (id = ANY (<80 comment IDs>::uuid[]))
+         Buffers: shared hit=4 read=4
+   SubPlan 1
+     ->  Aggregate (actual rows=1 loops=80)
+           Buffers: shared hit=217 read=27
+           ->  Index Only Scan using comment_endorsements_selected_idx on comment_endorsements e (actual rows=504 loops=80)
+                 Index Cond: (comment_id = c.id)
+                 Heap Fetches: 0
+                 Buffers: shared hit=217 read=27
+ Planning:
+   Buffers: shared hit=223 read=8
+ Planning Time: 1.857 ms
+ Execution Time: 1.622 ms
+(20 rows)
+
+== 3. own state: work + the actor row
+QUERY PLAN
+ Nested Loop Left Join (actual rows=1 loops=1)
+   Buffers: shared hit=5 read=3
+   ->  Nested Loop Left Join (actual rows=1 loops=1)
+         Buffers: shared hit=4
+         ->  Seq Scan on works w (actual rows=1 loops=1)
+               Filter: (id = '10000000-0000-4000-8000-000000000000'::uuid)
+               Rows Removed by Filter: 200
+               Buffers: shared hit=2
+         ->  Seq Scan on publications p (actual rows=1 loops=1)
+               Filter: (work_id = '10000000-0000-4000-8000-000000000000'::uuid)
+               Buffers: shared hit=2
+   ->  Index Scan using work_endorsements_pkey on work_endorsements e (actual rows=1 loops=1)
+         Index Cond: ((work_id = '10000000-0000-4000-8000-000000000000'::uuid) AND (revision_id = p.revision_id) AND (actor_id = '00000000-0000-4000-8000-000000000042'::uuid))
+         Buffers: shared hit=1 read=3
+ Planning:
+   Buffers: shared hit=22
+ Planning Time: 0.142 ms
+ Execution Time: 0.032 ms
+(18 rows)
+
+== 4. own state: 80 comments with the actor rows
+QUERY PLAN
+ Nested Loop (actual rows=80 loops=1)
+   Join Filter: (t.id = c.thread_id)
+   Buffers: shared hit=221 read=48
+   ->  Seq Scan on discussion_threads t (actual rows=1 loops=1)
+         Filter: (work_id = '10000000-0000-4000-8000-000000000000'::uuid)
+         Buffers: shared hit=1
+   ->  Nested Loop Left Join (actual rows=80 loops=1)
+         Buffers: shared hit=220 read=48
+         ->  Index Scan using comments_pkey on comments c (actual rows=80 loops=1)
+               Index Cond: (id = ANY (<80 comment IDs>::uuid[]))
+               Buffers: shared hit=8
+         ->  Index Scan using comment_endorsements_pkey on comment_endorsements e (actual rows=0 loops=80)
+               Index Cond: ((comment_id = c.id) AND (actor_id = '00000000-0000-4000-8000-000000000042'::uuid))
+               Buffers: shared hit=212 read=48
+ Planning:
+   Buffers: shared hit=35 read=2
+ Planning Time: 0.161 ms
+ Execution Time: 1.692 ms
+(18 rows)
+
+== 5. write: effective count of the hot work after a write
+QUERY PLAN
+ Aggregate (actual rows=1 loops=1)
+   Buffers: shared hit=86
+   ->  Bitmap Heap Scan on work_endorsements (actual rows=6000 loops=1)
+         Recheck Cond: ((work_id = '10000000-0000-4000-8000-000000000000'::uuid) AND (revision_id = '20000000-0000-4000-8003-000000000000'::uuid) AND selected)
+         Heap Blocks: exact=80
+         Buffers: shared hit=86
+         ->  Bitmap Index Scan on work_endorsements_selected_idx (actual rows=6000 loops=1)
+               Index Cond: ((work_id = '10000000-0000-4000-8000-000000000000'::uuid) AND (revision_id = '20000000-0000-4000-8003-000000000000'::uuid))
+               Buffers: shared hit=6
+ Planning Time: 0.019 ms
+ Execution Time: 0.316 ms
+(11 rows)
+
+== 6. write: selected count of the hot root after a write
+QUERY PLAN
+ Aggregate (actual rows=1 loops=1)
+   Buffers: shared hit=7
+   ->  Index Only Scan using comment_endorsements_selected_idx on comment_endorsements (actual rows=4400 loops=1)
+         Index Cond: (comment_id = '30000000-0000-4000-8000-000000000001'::uuid)
+         Heap Fetches: 0
+         Buffers: shared hit=7
+ Planning:
+   Buffers: shared hit=2 read=1
+ Planning Time: 0.019 ms
+ Execution Time: 0.125 ms
+(10 rows)
+
+== 7. write: the actor row under lock
+QUERY PLAN
+ LockRows (actual rows=1 loops=1)
+   Buffers: shared hit=6
+   ->  Bitmap Heap Scan on comment_endorsements (actual rows=1 loops=1)
+         Recheck Cond: ((comment_id = '30000000-0000-4000-8000-000000000001'::uuid) AND (actor_id = '00000000-0000-4000-8000-000000000042'::uuid))
+         Heap Blocks: exact=1
+         Buffers: shared hit=4
+         ->  Bitmap Index Scan on comment_endorsements_pkey (actual rows=1 loops=1)
+               Index Cond: ((comment_id = '30000000-0000-4000-8000-000000000001'::uuid) AND (actor_id = '00000000-0000-4000-8000-000000000042'::uuid))
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.021 ms
+ Execution Time: 0.016 ms
+(13 rows)

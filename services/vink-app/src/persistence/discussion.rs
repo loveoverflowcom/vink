@@ -6,6 +6,8 @@
 //! Lock order, shared by every path: publication → thread → receipt → comment row. A submission
 //! holds share locks on the publication and thread rows; a mode change updates the thread row and
 //! a moderation decision locks only the comment row, so no two paths wait on each other in reverse.
+//! Literary endorsement (`endorsement.rs`) takes the same prefix with share locks and then only
+//! its own key lock and row, so it never waits on these paths in reverse either.
 
 use sqlx::postgres::PgPool;
 // Dynamic statements below are concatenations of this module's constants, never input.
@@ -94,7 +96,7 @@ impl QueueRow {
     }
 }
 
-fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
+pub(super) fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
     let error = StoreError::Integrity(format!("{what}: {detail}"));
     tracing::error!(%error, "discussion integrity error");
     error
@@ -134,7 +136,7 @@ const fn removal_code(removal: Option<Removal>) -> Option<&'static str> {
     }
 }
 
-fn state(
+pub(super) fn state(
     raw_review: &str,
     raw_removal: Option<&str>,
     version: i64,
@@ -325,7 +327,7 @@ async fn readable_thread(
 }
 
 /// One consistent snapshot for a page: settings, roots, counts and previews agree.
-async fn read_snapshot(pool: &PgPool) -> Result<Transaction<'_, Postgres>, StoreError> {
+pub(super) async fn read_snapshot(pool: &PgPool) -> Result<Transaction<'_, Postgres>, StoreError> {
     let mut tx = pool.begin().await.map_err(classify)?;
     sqlx::query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
         .execute(&mut *tx)

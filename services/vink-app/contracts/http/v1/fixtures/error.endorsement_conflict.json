@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "another accepted command moved this endorsement past expected_order; nothing was written",
+    "current_version": 4,
+    "field": "expected_order",
+    "endorsement": {
+      "selected": false,
+      "version": 3,
+      "order": 4
+    }
+  }
+}

@@ -47,6 +47,9 @@ fn classify_inner(error: sqlx::Error) -> StoreError {
                     | "discussion_command_receipts_actor_id_fkey"
                     | "comment_moderation_decisions_moderator_id_fkey"
                     | "discussion_moderator_grants_principal_id_fkey"
+                    | "work_endorsements_actor_id_fkey"
+                    | "comment_endorsements_actor_id_fkey"
+                    | "endorsement_receipts_actor_id_fkey"
             )
         )
     {

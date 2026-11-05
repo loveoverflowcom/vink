@@ -212,6 +212,104 @@ mod tests {
         assert_eq!(status, StatusCode::UNAUTHORIZED);
         assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
     }
+
+    async fn send(
+        router: &Router,
+        method: &str,
+        path: &str,
+        origin: Option<&str>,
+        body: &str,
+    ) -> (StatusCode, Option<String>, String) {
+        let mut request = Request::builder()
+            .method(method)
+            .uri(path)
+            .header(header::CONTENT_TYPE, "application/json")
+            // Forged identity headers never select an actor.
+            .header("x-user-id", "22222222-2222-4222-8222-222222222222");
+        if let Some(origin) = origin {
+            request = request.header(header::ORIGIN, origin);
+        }
+        let response = router
+            .clone()
+            .oneshot(request.body(Body::from(body.to_owned())).unwrap())
+            .await
+            .unwrap();
+        let status = response.status();
+        let cache = response
+            .headers()
+            .get(header::CACHE_CONTROL)
+            .map(|value| value.to_str().unwrap().to_owned());
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        (status, cache, String::from_utf8_lossy(&body).into_owned())
+    }
+
+    /// LVE routes with no auth authority and the database down: nothing fabricates a principal,
+    /// a success or a zero count.
+    #[tokio::test]
+    async fn endorsement_routes_fail_closed_and_report_outages() {
+        let router = outage_router();
+        let origin = Some("http://127.0.0.1:3000");
+        let work = "/api/v1/works/33333333-3333-4333-8333-333333333333";
+        let comment = format!(
+            "{work}/discussion/comments/0192f3a1-0000-7000-8000-000000000001/endorsement/me"
+        );
+        let endorse = r#"{"expected_version":1,"endorsed":true,"observed_revision_id":"44444444-4444-4444-8444-444444444444"}"#;
+        for (method, path, origin, body) in [
+            ("GET", format!("{work}/endorsements/me"), None, ""),
+            ("PUT", format!("{work}/endorsement/me"), origin, endorse),
+            (
+                "PUT",
+                comment.clone(),
+                origin,
+                r#"{"expected_version":1,"endorsed":true}"#,
+            ),
+            // Authentication precedes body validation.
+            (
+                "PUT",
+                format!("{work}/endorsement/me"),
+                origin,
+                r#"{"actor_id":"x"}"#,
+            ),
+        ] {
+            let (status, cache, body) = send(&router, method, &path, origin, body).await;
+            assert_eq!(status, StatusCode::UNAUTHORIZED, "{method} {path}: {body}");
+            assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
+            assert_eq!(cache.as_deref(), Some("no-store"), "{path}");
+        }
+        let (status, _, _) = send(&router, "PUT", &comment, None, "{}").await;
+        assert_eq!(
+            status,
+            StatusCode::FORBIDDEN,
+            "Origin is required for writes"
+        );
+        // Public summaries need no principal; an outage is 503 (never zero) and is not stored.
+        let (status, cache, body) =
+            send(&router, "GET", &format!("{work}/endorsements"), None, "").await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+        assert!(body.contains("dependency_unavailable"), "{body}");
+        assert!(!body.contains("count"), "{body}");
+        assert_eq!(cache.as_deref(), Some("no-store"));
+        // Input is validated before storage: these fail as 422/404 even while the database is down.
+        let (status, _, body) = send(
+            &router,
+            "GET",
+            &format!("{work}/endorsements?comment_ids=x"),
+            None,
+            "",
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+        assert!(body.contains(r#""field":"comment_ids""#), "{body}");
+        let (status, _, _) = send(
+            &router,
+            "GET",
+            "/api/v1/works/not-a-work/endorsements",
+            None,
+            "",
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+    }
 }
 
 /// The App against a fake Identity process on a real Unix socket: the production resolver,
@@ -360,6 +458,27 @@ mod identity_tests {
                 body.contains(&format!(r#""code":"{code}""#)),
                 "{credential}: {body}"
             );
+        }
+        // Endorsement own state resolves the actor the same way: an authenticated subject
+        // without a principal binding is nobody, and an undecidable credential is an outage.
+        for (credential, status) in [
+            ("authenticated", 401),
+            ("rejected", 401),
+            ("unavailable", 503),
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::get(
+                        "/api/v1/works/33333333-3333-4333-8333-333333333333/endorsements/me",
+                    )
+                    .header(header::AUTHORIZATION, format!("Bearer {credential}"))
+                    .body(Body::empty())
+                    .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status().as_u16(), status, "{credential}");
         }
         // No credential is anonymous, never an outage, and does not call Identity.
         let (got, body) = drafts(

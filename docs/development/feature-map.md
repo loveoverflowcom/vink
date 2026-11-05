@@ -320,4 +320,15 @@ mobile native, full benchmark hoặc #45 integration. SHA/kết quả chạy ph�
 
 | Điểm vào / scope | Owner / assertions | Coverage limit |
 | --- | --- | --- |
-| Chưa có UI/HTTP; pure work revision + root/flat reply | `domain::endorsement::decide_endorsement`, target facts, retained state, accepted order, receipt, checked count; 8 regression + Quint replay 33 inputs, sáu Kani obligations được registry chọn | Pure slice; [registry](endorsement-core.md) ghi kết quả/gap; auth/transaction/API/UI và epic AC-03 chưa hoàn tất |
+| Lõi thuần work revision + root/flat reply (API/PostgreSQL ở mục dưới) | `domain::endorsement::decide_endorsement`, target facts, retained state, accepted order, receipt, checked count; 8 regression + Quint replay 33 inputs, sáu Kani obligations được registry chọn | Pure slice; [registry](endorsement-core.md) ghi kết quả/gap; auth/transaction/API/UI và epic AC-03 chưa hoàn tất |
+
+## LVE API + PostgreSQL (#73, PR #81)
+
+Owner, data flow, lock order và gap: [runtime](literary-endorsement-runtime.md). Chưa có consumer
+web/native hay UI; production trả `401` cho ghi và trạng thái riêng.
+
+| Điểm vào | Assertion hiện có | Còn thiếu |
+| --- | --- | --- |
+| Use case `Vink::{set_work_endorsement, set_comment_endorsement, endorsement_summaries, own_endorsements}` | [endorsement_tests.rs](../../services/vink-app/src/application/endorsement_tests.rs) (`quick`): xác thực trước kiểm input, lệnh thuần đúng, accepted/replayed/conflict/key reuse/refusal riêng, batch ≤ 100 | Store ghi lại; không chứng minh SQL |
+| `PUT /api/v1/works/{id}/endorsement/me`, `PUT …/discussion/comments/{id}/endorsement/me`, `GET …/endorsements`, `GET …/endorsements/me` ([contract](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73)) | `http::contract::tests::endorsement`; `http::tests::endorsement_routes_fail_closed_and_report_outages`; `the_http_api_keeps_every_endorsement_outcome_distinct` trên PostgreSQL (`postgres`) | Resolver test lấy principal từ header; chưa có consumer `vink-web` |
+| `PgStore` endorsement + migration `20261105000000` | [tests/postgres/endorsement.rs](../../services/vink-app/tests/postgres/endorsement.rs) (`postgres`): SQL trực tiếp, order/receipt, race hai thứ tự commit, khóa lệnh trên mọi đích, khóa với kiểm duyệt/rút-tái bản, quyền riêng tư, đối soát; `xtask` kiểm role runtime và App + Identity | Lệnh publish/withdraw thật; tài khoản; plan đo trên dataset tổng hợp ([bằng chứng](evidence/lve-postgres/README.md)) |

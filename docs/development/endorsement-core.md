@@ -28,6 +28,13 @@ Tên harness trong `src/domain/endorsement/proofs.rs` viết tắt bỏ tiền t
 | LVE-INV-11 / FR-07 / UC-11/18 | Không output cấp quyền | Outcome chỉ state/delta/receipt; không gọi publish/moderate/curate | Không proof hệ thống quyền | Caller/auth/authority cần tests riêng; count không được dùng làm ACL |
 | LVE-INV-12 / FR-04/07 / UC-10/11/12/18 | `noSelfEndorsement`; đổi publication, close/reopen shell | Revision identity, author check, không có comments-mode gate; `current_revision…`, `work_root_reply…` | `eligibility…`, `comment_scope…` | Content edit/purge/reuse lifecycle và production policy qualification chưa có |
 
+## Caller production (#81)
+
+Use case, HTTP API v1 và `PgStore` gọi `decide_endorsement` trong transaction; schema giữ hàng/order
+và receipt. Bằng chứng SQL/HTTP/race và gap còn lại ở
+[runtime](literary-endorsement-runtime.md); các cột "gap" PostgreSQL/API trong bảng trên được thu hẹp
+tới các mục ở đó (auth thật, thu hồi capability, retention, purge tài khoản, UI).
+
 ## Quint và replay
 
 Dùng **cùng runner/package pin** ở `services/vink-app/behavior/discussion`, không thêm lane

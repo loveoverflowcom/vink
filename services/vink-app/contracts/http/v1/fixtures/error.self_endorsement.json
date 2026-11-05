@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "self_endorsement",
+    "message": "authors and comment writers cannot endorse their own content"
+  }
+}

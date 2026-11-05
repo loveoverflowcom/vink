@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "endorsement_not_permitted",
+    "message": "the actor may not endorse now; nothing was written"
+  }
+}

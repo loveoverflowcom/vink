@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 use super::discussion::{
     Guarded, ModerationAction, ModerationQueue, NewComment, ReplyPage, RootPage, SubmitOutcome,
 };
+use super::endorsement::CommentBatch;
 use super::{PublicWork, PublicWorkSummary};
 use crate::domain::discussion::lifecycle::{LifecycleError, ModerationVersion, Transition};
 use crate::domain::discussion::moderation::ModerationReason;
@@ -15,7 +16,11 @@ use crate::domain::discussion::settings::{
     CommentsMode, ModeChange, SettingsError, SettingsGeneration,
 };
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
-use crate::domain::ids::{CommentId, PrincipalId, WorkId};
+use crate::domain::endorsement::{
+    EndorsementCommand, EndorsementCount, EndorsementFacts, EndorsementOutcome, EndorsementState,
+    EndorsementTargetFacts,
+};
+use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StoreError {
@@ -152,4 +157,88 @@ pub trait DiscussionStore: Send + Sync {
         after: Option<PageCursor>,
         limit: PageLimit,
     ) -> impl Future<Output = Result<Option<ReplyPage>, StoreError>> + Send;
+}
+
+/// What one endorsement transaction found and decided. `outcome` is exactly what
+/// `decide_endorsement` returned for `facts` (capability, target facts, the actor's retained
+/// record and the key's receipt, all read under the transaction's locks); the store wrote the
+/// accepted write (state + receipt) and nothing else.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EndorsementWriteRecord {
+    pub facts: EndorsementFacts,
+    pub outcome: EndorsementOutcome,
+    /// Selected rows of the command's target after the commit. Read only when the target is
+    /// visible; `public_count` never shows it otherwise.
+    pub count: EndorsementCount,
+    /// Works only: the revision of the current publication, if any (public information).
+    pub published: Option<RevisionId>,
+}
+
+/// Public facts of one requested comment of the work's thread.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CommentSummaryFacts {
+    pub comment_id: CommentId,
+    pub facts: EndorsementTargetFacts,
+    pub count: EndorsementCount,
+}
+
+/// One read snapshot for the public summaries of a work's current revision and some of its
+/// comments. `comments` holds only requested comments that exist in that work's thread.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EndorsementSummaryFacts {
+    pub work: Option<EndorsementTargetFacts>,
+    pub published: Option<RevisionId>,
+    /// Selected rows of the current publication's revision.
+    pub work_count: EndorsementCount,
+    pub comments: Vec<CommentSummaryFacts>,
+}
+
+/// One requested comment and the actor's retained record of it, if any.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OwnCommentFacts {
+    pub comment_id: CommentId,
+    pub facts: EndorsementTargetFacts,
+    pub state: Option<EndorsementState>,
+}
+
+/// One read snapshot of the actor's own endorsements of a work's current revision and some of
+/// its comments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnEndorsementFacts {
+    pub can_endorse: bool,
+    pub work: Option<EndorsementTargetFacts>,
+    pub published: Option<RevisionId>,
+    /// The actor's record of the current publication's revision.
+    pub work_state: Option<EndorsementState>,
+    pub comments: Vec<OwnCommentFacts>,
+}
+
+/// Vink-owned literary endorsement storage (LVE, #73). A write is ONE transaction that, in the
+/// discussion lock order (publication FOR SHARE → thread FOR SHARE → comment FOR SHARE), then the
+/// actor's command-key namespace (transaction advisory lock) and the actor's retained record (FOR
+/// UPDATE), loads the facts and the key's receipt, calls `decide_endorsement`, writes the accepted
+/// state with a conditional UPDATE or a conflict-checked INSERT (a concurrent first command makes
+/// it read and decide again) plus the receipt, and commits before answering. Records and receipts
+/// are never deleted. Reads run in one read-only snapshot and return facts; the application
+/// projects them with the pure core. An actor without a principal row is
+/// [`StoreError::UnknownPrincipal`].
+pub trait EndorsementStore: Send + Sync {
+    fn set_endorsement(
+        &self,
+        actor: PrincipalId,
+        command: EndorsementCommand,
+    ) -> impl Future<Output = Result<EndorsementWriteRecord, StoreError>> + Send;
+
+    fn endorsement_summaries(
+        &self,
+        work_id: WorkId,
+        comments: &CommentBatch,
+    ) -> impl Future<Output = Result<EndorsementSummaryFacts, StoreError>> + Send;
+
+    fn own_endorsements(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+        comments: &CommentBatch,
+    ) -> impl Future<Output = Result<OwnEndorsementFacts, StoreError>> + Send;
 }

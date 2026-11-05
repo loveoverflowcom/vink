@@ -769,7 +769,26 @@ async fn app_runtime(url: &str) -> Result<(), String> {
         .execute(&mut *tx)
         .await
         .map_err(|e| format!("runtime INSERT: {e}"))?;
+    // LVE (#73): the runtime writes endorsement rows (a removal keeps the row, so it never needs
+    // DELETE); the migration's grants reach the new tables through default privileges.
+    for sql in [
+        "WITH probe AS (INSERT INTO principals (id, display_name)
+                        VALUES (gen_random_uuid(), 'probe') RETURNING id)
+         INSERT INTO work_endorsements
+                (work_id, revision_id, actor_id, selected, version, accepted_order)
+         SELECT p.work_id, p.revision_id, probe.id, true, 2, 2 FROM probe, publications p LIMIT 1",
+        "UPDATE work_endorsements SET accepted_order = accepted_order + 1",
+        "SELECT count(*) FROM endorsement_receipts",
+        "SELECT count(*) FROM comment_endorsements WHERE selected",
+    ] {
+        sqlx::query(sql)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| format!("runtime endorsement access `{sql}`: {e}"))?;
+    }
     tx.rollback().await.map_err(|e| e.to_string())?;
+    // Endorsement rows are retained: DELETE is refused by the table's trigger for every role.
+    denied(&mut connection, "DELETE FROM work_endorsements", &["23000"]).await?;
     let elevated: bool = sqlx::query_scalar(
         "SELECT rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls
                 OR EXISTS (SELECT FROM pg_auth_members WHERE member = r.oid)
@@ -788,6 +807,7 @@ async fn app_runtime(url: &str) -> Result<(), String> {
         "ALTER TABLE works ADD COLUMN vink_probe int",
         "DROP TABLE publications",
         "TRUNCATE works",
+        "TRUNCATE comment_endorsements",
         "INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time)
          VALUES (1, 'probe', true, '\\x00', 0)",
         "UPDATE _sqlx_migrations SET success = false",

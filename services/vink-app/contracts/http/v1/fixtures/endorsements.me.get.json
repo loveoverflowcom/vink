@@ -1,0 +1,37 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "revision_id": "44444444-4444-4444-8444-444444444444",
+  "work": {
+    "state": "selected",
+    "version": 2,
+    "order": 3,
+    "can_endorse": true,
+    "blocked_reason": null
+  },
+  "comments": [
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000001",
+      "state": "not_selected",
+      "version": 1,
+      "order": 1,
+      "can_endorse": true,
+      "blocked_reason": null
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000005",
+      "state": "not_selected",
+      "version": 1,
+      "order": 1,
+      "can_endorse": false,
+      "blocked_reason": "own_content"
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000009",
+      "state": "unavailable",
+      "version": null,
+      "order": null,
+      "can_endorse": false,
+      "blocked_reason": null
+    }
+  ]
+}
