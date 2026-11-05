@@ -147,5 +147,11 @@ chế cấm/thu hồi); khóa publication → thread → bình luận → adviso
 receipt đọc trong cùng transaction; state + receipt ghi nguyên tử; hàng bình luận chỉ được đọc khi
 bình luận thuộc tác phẩm trên route. Retention receipt, purge tài khoản và thu hồi capability vẫn OPEN.
 
+**Rà soát domain ↔ API ↔ DB sau #81/#83:** không đổi semantics hay hợp đồng HTTP. Trạng thái lưu
+phải là trạng thái lõi đạt được (`selected ⇔ version chẵn`): `EndorsementState::restore` và CHECK
+`*_version_parity_check` (migration tiến `20261105120000`) cùng giữ, vì tổng số công khai là SQL không
+qua hydrate. Ma trận, quyết định và OPEN-R4 (replay Select khi đích không còn visible):
+[runtime](../development/literary-endorsement-runtime.md#rà-soát-domain--api--db-73-sau-8183).
+
 [Registry, model/proof evidence và gap](../development/endorsement-core.md) là owner duy nhất
 traceability LVE; không gán proof lõi cho SQL, HTTP, UI hay toàn epic.

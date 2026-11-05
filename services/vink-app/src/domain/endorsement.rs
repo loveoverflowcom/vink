@@ -1,6 +1,9 @@
-//! LVE pure decision seam. No adapter calls it yet (epic #73, PR1).
-//! See docs/architecture/literary-endorsement.md for policy and transaction preconditions.
-//! Accepted order advances even for same-state intent; mutation version advances only on change.
+//! LVE pure decision seam (epic #73). Its production callers are the application use cases and
+//! the `PgStore` write transaction (`persistence/endorsement.rs`), which load facts under locks
+//! and apply exactly the outcome returned here (docs/development/literary-endorsement-runtime.md).
+//! Policy and transaction preconditions: docs/architecture/literary-endorsement.md.
+//! Accepted order advances even for same-state intent; mutation version advances only on change,
+//! so a reachable state is selected exactly when its version is even (absent = OFF/v1).
 //! A receipt returns historical commitment separately from the currently observed actor state.
 //!
 //! ```compile_fail
@@ -131,11 +134,15 @@ impl EndorsementState {
         version: EndorsementVersion::FIRST,
         order: AcceptedOrder::FIRST,
     };
-    /// Storage-only reconstruction, never a client DTO. Versions cannot exceed accepted order.
+    /// Storage-only reconstruction, never a client DTO. Versions cannot exceed accepted order,
+    /// and the selection must match the version's parity: from OFF/v1 every version step flips
+    /// the selection, so `selected` with an odd version (or OFF with an even one) is a state no
+    /// sequence of accepted commands reaches. Such a row fails closed instead of being counted.
+    /// The schema holds the same structural rule (`*_version_parity_check`) for SQL aggregates.
     pub fn restore(selected: bool, version: i64, order: i64) -> Option<Self> {
         let version = EndorsementVersion::new(version)?;
         let order = AcceptedOrder::new(order)?;
-        (version.get() <= order.get()).then_some(Self {
+        (version.get() <= order.get() && selected == (version.get() % 2 == 0)).then_some(Self {
             selected,
             version,
             order,
@@ -215,7 +222,8 @@ impl EndorsementReceipt {
 }
 
 /// Facts from server-owned rows, not request DTOs. `comment` checks thread binding using the
-/// existing placement type; the future adapter must resolve thread -> work under its locks.
+/// existing placement type; the adapter resolves thread -> work under its locks (it reads the
+/// comment only inside the route work's thread, so the binding also holds in SQL).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EndorsementTargetFacts {
     work: WorkId,
@@ -371,8 +379,8 @@ pub enum EndorsementOutcome {
     Refused(EndorsementRefusal),
 }
 
-/// The sole production endorsement transition. Typed facts do not prove their database origin;
-/// the application/transaction consumer remains a prerequisite, outside PR1.
+/// The sole production endorsement transition. Typed facts do not prove their database origin:
+/// the `PgStore` transaction is responsible for loading them under its locks (#81).
 pub fn decide_endorsement(
     actor: PrincipalId,
     command: EndorsementCommand,

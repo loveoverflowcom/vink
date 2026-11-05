@@ -326,6 +326,13 @@ fn settle(
         }
         EndorsementOutcome::Refused(refusal) => {
             return Err(match refusal {
+                // OPEN(#73 R4, product owner): a retried Select whose key already committed on a
+                // target that is now hidden or an older revision lands here (the core does not
+                // replay it), so a lost-ACK client hears 404/409 although its earlier command
+                // committed. Kept per the PR #80 policy; alternatives and the discriminating test
+                // are in docs/development/literary-endorsement-runtime.md (OPEN-R4).
+                // R5: a revision ID that never belonged to the work also maps to
+                // `revision_changed`; it names only the public current revision, so it is kept.
                 EndorsementRefusal::TargetUnavailable => match (command, record.published) {
                     // Selecting the text of an earlier publication: the current publication is
                     // public, so naming it reveals nothing.

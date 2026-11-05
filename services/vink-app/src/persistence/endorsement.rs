@@ -1,9 +1,11 @@
 //! PostgreSQL adapter of literary endorsement (LVE, #73). Each write is one transaction:
 //! current facts under locks → the exact pure decision (`decide_endorsement`) → the accepted
 //! state and its receipt written atomically → commit → the durable answer. The schema
-//! (`migrations/20261105000000_literary_endorsement.sql`) holds the structural rules on its own:
-//! typed target foreign keys, one row per (actor, target), a revision of the same work, an order
-//! that only advances, rows and receipts that are never deleted.
+//! (`migrations/20261105000000_literary_endorsement.sql`, `20261105120000_…_parity.sql`) holds
+//! the structural rules on its own: typed target foreign keys, one row per (actor, target), a
+//! revision of the same work, an order that only advances, a selection matching its version's
+//! parity (the only reachable states, so SQL counts never see a row no command produced), rows
+//! and receipts that are never deleted.
 //!
 //! Lock order, the prefix of the discussion adapter's: publication (FOR SHARE) → thread (FOR
 //! SHARE) → comment (FOR SHARE) → the actor's command-key namespace (transaction advisory lock)

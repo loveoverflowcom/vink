@@ -55,8 +55,8 @@ counts. Its Quint/replay shares `verify discussion`; its six Kani obligations ar
 existing App manifest/runner (19 App harnesses total). The API/PostgreSQL slice calls it from
 use cases, HTTP API v1 routes (desired-state `PUT` with an actor-scoped command key and expected
 order per work revision/comment; public summary and own-state batch reads, all `no-store`) and a
-`PgStore` adapter/migration (state rows per target and append-only receipts, never deleted; counts
-read from canonical rows) with real-database race tests; production writes answer `401` and no UI,
+`PgStore` adapter/migrations (state rows per target and append-only receipts, never deleted; stored
+states limited to reachable ones by a selection/version parity CHECK; counts read from canonical rows) with real-database race tests; production writes answer `401` and no UI,
 ranking or voter list exists. See [policy](docs/architecture/literary-endorsement.md),
 [registry/gaps](docs/development/endorsement-core.md) and
 [runtime](docs/development/literary-endorsement-runtime.md).

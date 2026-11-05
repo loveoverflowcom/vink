@@ -316,6 +316,22 @@ async fn the_database_alone_enforces_endorsement_structure(pool: PgPool) {
             receipt(&format!("'{work}', '{rev}', NULL"), 1, 2, 3),
             "endorsement_receipts_committed_check",
         ),
+        // Selection follows the version's parity (OFF/v1 start, every step flips): selected at
+        // an odd version, or OFF at an even one, is a state no accepted command reaches.
+        (w(work, rev, actor, 1, 2), "work_endorsements_version_parity_check"),
+        (w(work, rev, actor, 3, 4), "work_endorsements_version_parity_check"),
+        (cm(c, actor, 1, 2), "comment_endorsements_version_parity_check"),
+        (
+            format!(
+                "INSERT INTO comment_endorsements (comment_id, actor_id, selected, version, accepted_order)
+                 VALUES ('{c}', '{actor}', false, 2, 3)"
+            ),
+            "comment_endorsements_version_parity_check",
+        ),
+        (
+            receipt(&format!("NULL, NULL, '{c}'"), 1, 1, 2),
+            "endorsement_receipts_version_parity_check",
+        ),
     ] {
         assert_eq!(raw(&pool, &sql).await.unwrap_err(), expected, "{sql}");
     }
@@ -347,6 +363,13 @@ async fn the_database_alone_enforces_endorsement_structure(pool: PgPool) {
                 "UPDATE comment_endorsements SET accepted_order = 3, version = 1 WHERE actor_id = '{actor}'"
             ),
             "version cannot decrease",
+        ),
+        // A flip without a version step would change the public count with no mutation.
+        (
+            format!(
+                "UPDATE work_endorsements SET selected = false, accepted_order = 3 WHERE actor_id = '{actor}'"
+            ),
+            "work_endorsements_version_parity_check",
         ),
         (
             format!(
@@ -1245,6 +1268,107 @@ async fn a_refused_or_failed_write_leaves_nothing_behind(pool: PgPool) {
         .await;
     assert_eq!(rows(&pool, "work_endorsements").await, 1);
     assert_eq!(rows(&pool, "endorsement_receipts").await, 1);
+}
+
+/// A failure AFTER the state row was written (here: the receipt INSERT, made to fail by a
+/// test-only trigger) rolls the whole command back: no state change, no orphan row, no count
+/// change, and the command key is not consumed, so the same key and body later commit once.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_failure_after_the_state_write_rolls_back_state_count_and_key(pool: PgPool) {
+    let vink = setup(&pool).await;
+    let root = public_comment(&vink, other(), None, "Gốc cho lỗi giữa giao dịch").await;
+    vink.set_work_endorsement(reader(1), on_work(&key(), 1, true, R1))
+        .await
+        .unwrap();
+    raw(
+        &pool,
+        "CREATE FUNCTION test_fail_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
+         BEGIN RAISE EXCEPTION 'injected receipt failure'; END; $$;
+         CREATE TRIGGER test_fail_receipt BEFORE INSERT ON endorsement_receipts
+             FOR EACH ROW EXECUTE FUNCTION test_fail_receipt();",
+    )
+    .await
+    .unwrap();
+
+    // UPDATE path (reader 1 has a row) and INSERT path (reader 2's first command, a comment).
+    let (update_key, insert_key) = (key(), key());
+    assert_eq!(
+        vink.set_work_endorsement(reader(1), on_work(&update_key, 2, false, R1))
+            .await,
+        Err(EndorsementError::Internal)
+    );
+    assert_eq!(
+        vink.set_comment_endorsement(reader(2), on_comment(&insert_key, root, 1, true))
+            .await,
+        Err(EndorsementError::Internal)
+    );
+    assert_eq!(work_row(&pool, R1, reader_id(1)).await, Some((true, 2, 2)));
+    assert_eq!(comment_row(&pool, root, reader_id(2)).await, None);
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 1);
+    assert_eq!(
+        work_summary(&vink).await,
+        Ok(EndorsementCount::new(1).unwrap())
+    );
+
+    raw(
+        &pool,
+        "DROP TRIGGER test_fail_receipt ON endorsement_receipts",
+    )
+    .await
+    .unwrap();
+    // Nothing of the failed attempts survived: the same keys are new commands, not replays.
+    assert_eq!(
+        accepted(
+            vink.set_work_endorsement(reader(1), on_work(&update_key, 2, false, R1))
+                .await
+        ),
+        (state(false, 3, 3), count(0))
+    );
+    assert_eq!(
+        accepted(
+            vink.set_comment_endorsement(reader(2), on_comment(&insert_key, root, 1, true))
+                .await
+        ),
+        (state(true, 2, 2), count(1))
+    );
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 3);
+}
+
+/// Rust hydration fails closed on its own: if the schema's parity CHECK were missing (here
+/// dropped in the test database), an unreachable stored state is an integrity error on the
+/// actor's reads and writes, never shown as a selection or used as the base of a new command.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn an_unreachable_stored_state_fails_closed_without_the_schema_check(pool: PgPool) {
+    let vink = setup(&pool).await;
+    raw(
+        &pool,
+        "ALTER TABLE work_endorsements DROP CONSTRAINT work_endorsements_version_parity_check",
+    )
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO work_endorsements (work_id, revision_id, actor_id, selected, version, accepted_order)
+         VALUES ($1, $2, $3, true, 1, 2)",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .bind(R1)
+    .bind(reader_id(1))
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        vink.own_endorsements(reader(1), sample_work(), None).await,
+        Err(EndorsementError::Internal)
+    );
+    for endorsed in [false, true] {
+        assert_eq!(
+            vink.set_work_endorsement(reader(1), on_work(&key(), 2, endorsed, R1))
+                .await,
+            Err(EndorsementError::Internal)
+        );
+    }
+    assert_eq!(work_row(&pool, R1, reader_id(1)).await, Some((true, 1, 2)));
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 0);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

@@ -67,7 +67,11 @@ fn endorsement_acceptance_fences_every_new_intent_including_same_state() {
     let version: i64 = kani::any();
     let expected: i64 = kani::any();
     kani::assume(order >= 1 && version >= 1 && version <= order && expected >= 1);
-    let before = EndorsementState::restore(kani::any(), version, order).unwrap();
+    // Storage restores exactly the reachable selection for a version: ON iff the version is even.
+    let selected: bool = kani::any();
+    let restored = EndorsementState::restore(selected, version, order);
+    assert_eq!(restored.is_some(), selected == (version % 2 == 0));
+    let before = EndorsementState::restore(version % 2 == 0, version, order).unwrap();
     let c = command(expected, kani::any());
     let result = decide_endorsement(principal(1), c, facts(before));
     match result {
@@ -83,6 +87,15 @@ fn endorsement_acceptance_fences_every_new_intent_including_same_state() {
             assert_eq!(write.receipt().committed(), after);
             assert_eq!(write.next().actor(), principal(1));
             assert_eq!(write.next().target(), c.target);
+            // What the reducer writes is what storage (and the schema's parity CHECK) accepts.
+            assert_eq!(
+                EndorsementState::restore(
+                    after.selected(),
+                    after.version().get(),
+                    after.order().get()
+                ),
+                Some(after)
+            );
             kani::cover!(!changed);
             kani::cover!(changed && after.selected());
             kani::cover!(changed && !after.selected());
