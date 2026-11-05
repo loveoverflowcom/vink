@@ -115,7 +115,7 @@ a {
 .vk-profile-heading .vk-ui-icon-button { min-inline-size: 48px; min-block-size: 48px; background: var(--vk-surface-container); }
 .vk-preference-region { min-width: 0; display: grid; gap: var(--vk-space-4); }
 .vk-preference-region h2 { margin: 0; font-family: var(--vk-font-ui); }
-.vk-account-status { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: flex-start; }
+.vk-account-status { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; }
 .vk-account-status > div { min-width: 0; flex: 1 1 12em; }
 .vk-account-status p { margin: 0; overflow-wrap: normal; }
 /* R2 app recipe on the unchanged native RadioGroup. The approved R2 prototype's
@@ -326,8 +326,9 @@ a {
 .vk-reader-freshness > [data-testid] { margin-block: calc(-1 * var(--vk-space-2)) var(--vk-space-6); }
 .vk-reader { min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; }
+.vk-discussion [role="status"]:empty { display: none; }
 .vk-discussion-mode, .vk-discussion-composer { display: grid; gap: var(--vk-space-3); margin-block: var(--vk-space-4); min-width: 0; }
-.vk-discussion-mode > p, .vk-discussion-composer > p { margin: 0; }
+.vk-discussion-mode > p, .vk-discussion-composer > p, .vk-discussion-root > p, .vk-discussion-reply-composer > p { margin: 0; }
 .vk-discussion-mode > .vk-ui-action { justify-self: start; }
 .vk-discussion-root { margin-block: var(--vk-space-6); min-width: 0; }
 .vk-discussion-reply-composer { margin-inline-start: var(--vk-space-3); min-width: 0; }
@@ -454,7 +455,7 @@ a {
 
 /* CodeMirror host. Selectors repeat `.cm-editor` to outrank CodeMirror's injected base theme. */
 .vk-editor-body {
-  border: 1px solid var(--vk-outline);
+  border: 0;
   border-radius: var(--vk-radius-lg);
   background: var(--vk-surface-container-low);
   color: var(--vk-on-surface);
@@ -466,8 +467,13 @@ a {
 }
 
 .vk-editor-body:focus-within {
-  outline: 3px solid var(--vk-focus);
-  border-color: transparent;
+  outline: 2px solid var(--vk-focus-ring);
+  outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+  .vk-editor-body { border: 1px solid ButtonText; }
+  .vk-editor-body:focus-within { outline-color: Highlight; }
 }
 
 .vk-editor-body .cm-editor.cm-focused {
