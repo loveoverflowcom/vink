@@ -1,9 +1,12 @@
 # Model discussion
 
-Thư mục giữ ba model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
+Thư mục giữ bốn model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
 hai tầng, D2T-01), `lifecycle.qnt` (vòng đời bình luận, bật/tắt, authority kiểm duyệt và receipt
-gửi bình luận, D2T-02/D2T-INV-06, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)) và
-`reaction.qnt` (reaction desired-state, D2T-INV-08, [phần cuối](#model-reaction-d2t-inv-08)).
+gửi bình luận, D2T-02/D2T-INV-06, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)),
+`reaction.qnt` (reaction desired-state, D2T-INV-08, [phần sau](#model-reaction-d2t-inv-08)) và
+`endorsement.qnt` (ghi nhận văn học trên tác phẩm, bình luận gốc và phản hồi, LVE #73,
+[phần cuối](#model-ghi-nhận-văn-học-lve-73)). Model LVE nằm ở đây để dùng chung pin Quint và lane
+`discussion`; nó không làm tác phẩm thành một phần của thảo luận.
 
 ## Model cấu trúc
 
@@ -269,4 +272,67 @@ production và đòi `moderated`, `reaffirmed`, `stale` (không reaction, genera
 ./node_modules/.bin/quint typecheck reaction.qnt
 ./node_modules/.bin/quint run reaction.qnt --backend=typescript --seed=41 \
   --step=step --max-steps=40 --max-samples=1000 --invariant=reactionSafe --verbosity=1
+```
+
+## Model ghi nhận văn học (LVE, #73)
+
+`endorsement.qnt` (policy `lve-core-v1`) mô tả **một tác phẩm** của principal 1 với revision 1 và 2
+(`published = 0`: chưa/không còn công khai), đích 0 là tác phẩm, đích 1 là bình luận gốc của
+principal 2, đích 2 là phản hồi phẳng của principal 3. Semantics và lựa chọn thuộc
+[decision record](../../../../docs/architecture/literary-endorsement.md); registry ở
+[lõi LVE](../../../../docs/development/literary-endorsement-core.md).
+
+Khác các model trên, model có **client shell được gắn nhãn**: luồng 1..4 (luồng 4 là thiết bị thứ
+hai của principal 3) gửi yêu cầu ở version đã học; mạng giao yêu cầu theo thứ tự bất kỳ, có thể giao
+lại (`keep`, mô phỏng thử lại/bản trùng) và làm mất câu trả lời (`heard`); `read` là đọc lại trạng
+thái riêng. Mỗi lần giao là một commit đã tuần tự hóa; khóa với publication/kiểm duyệt/chế độ là giả
+định (chưa có store). Kiểm duyệt và chế độ là shell như `reaction.qnt`; `publish`/`withdraw` chỉ
+dời con trỏ vì chưa có lệnh xuất bản.
+
+Invariant, gộp trong `endorsementSafe`:
+
+- `scopedWrites`, `acceptedVersionFence`: chỉ yêu cầu được chấp nhận mới ghi, đúng hàng của nó và
+  số đếm của đích đó; mỗi lần chấp nhận cần version đang lưu và tăng đúng 1; reaffirm không đổi số đếm.
+- `noRevival`: khi server đã xác nhận một yêu cầu của một luồng (chấp nhận hoặc thấy đã đúng), không
+  yêu cầu nào luồng đó gửi trước có hiệu lực sau đó, dù giao đảo thứ tự, giao lại hay mất câu trả lời.
+- `noSilentTransfer`: lựa chọn trên tác phẩm luôn là revision người đọc đã đọc.
+- `eligibleWrites`: ghi cần đích công khai tại commit, actor không phải tác giả; lựa chọn mới trên
+  bình luận cần chế độ mở.
+- `countsMatchSelections`, `noSelfEndorsement`, `projectionsHideAndCountEffective` (đích ẩn không có
+  số đếm hay trạng thái riêng; tổng số chỉ đếm lựa chọn hiệu lực), `finiteDomain`.
+
+**Không được chứng minh:** nhiều tác phẩm/thread, persistence/khóa/đồng thời thật, auth, giới hạn
+tần suất, lệnh xuất bản/rút bài, xếp hạng, cache, UI/API, ý định cuối giữa nhiều thiết bị (hợp đồng
+không hứa điều đó).
+
+Runner chạy:
+
+1. Random simulation `step`: seed `41`, **1.000 samples**, tối đa **40 transitions/sample**, kiểm
+   `endorsementSafe`.
+2. Ba scenario xuất `endorsement-fixtures.json` (`vink-endorsement-conformance-v1`, kèm `policy`):
+   `reorder_and_retry` 21 transitions (trace phản biện OFF/v1: bỏ@1 đến trước được reaffirm, chọn@1
+   cũ đến sau là `stale`; mất câu trả lời, đọc lại, bản trùng, thử lại sau khi bỏ, thiết bị thứ hai,
+   bản trùng cũ sau khi bỏ không gây ABA, tác giả), `revision_anchor` 21 (bản mới không nhận ghi
+   nhận ngầm, xác nhận lại, rút bài, đăng lại revision cũ, yêu cầu bỏ bị từ chối khi ẩn được áp sau
+   khi đăng lại) và `comment_targets` 28 (gốc chờ duyệt, người viết, gốc và phản hồi không cộng dây
+   chuyền, tắt bình luận chặn lựa chọn mới nhưng cho reaffirm/bỏ, tác phẩm không bị chế độ chi phối,
+   gỡ bình luận). Runner đòi đủ 15 outcome, đủ 4 trạng thái riêng, đúng hai bước phản biện và một lần
+   ghi nhận được áp cho mỗi loại đích.
+3. Negative control, kiểm nội dung counterexample: `mutatedUnfencedStep` (yêu cầu trùng trạng thái ở
+   version hiện tại là no-op) vi phạm `noRevival` tại transition 5
+   (`endorsement-unfenced-counterexample.json`); `mutatedResetStep` (xóa hàng khi bỏ chọn) vi phạm
+   `noRevival` tại transition 6 (`endorsement-version-reset-counterexample.json`);
+   `mutatedTransferStep` (bỏ kiểm revision đã đọc) vi phạm `noSilentTransfer` tại transition 4
+   (`endorsement-transfer-counterexample.json`).
+
+Rust replay `domain::endorsement::replay` đưa chỉ input vào `decide_work_endorsement`,
+`decide_comment_endorsement`, `EndorsementCount::apply`, projection, `ModerationAction::apply` và
+`change_mode`, rồi so outcome, version trả về, công khai, chế độ, trạng thái bình luận, mọi hàng khác
+`ABSENT`, số đếm theo anchor, tổng số và trạng thái riêng của mọi (actor, đích). Fixture chỉ liệt kê
+hàng khác `ABSENT` (không chọn, version 1), nên vẫn ghim mọi hàng.
+
+```sh
+./node_modules/.bin/quint typecheck endorsement.qnt
+./node_modules/.bin/quint run endorsement.qnt --backend=typescript --seed=41 \
+  --step=step --max-steps=40 --max-samples=1000 --invariant=endorsementSafe --verbosity=1
 ```

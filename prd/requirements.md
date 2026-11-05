@@ -72,6 +72,8 @@ Lịch sử moderation giữ kết luận, policy/model version, thời điểm 
 | COM-07 | Must — Pilot | Tác giả bật/tắt bình luận trên từng tác phẩm | Chỉ tác giả tác phẩm đổi được; thao tác idempotent và có version để tab cũ không đè lựa chọn mới (yêu cầu mang đúng version hiện tại luôn được chấp nhận và tăng version, kể cả khi chỉ giữ nguyên chế độ; chủ sản phẩm xác nhận 05/11/2026); tắt chặn bình luận/phản hồi mới tại commit, không xóa hay ẩn bình luận đã có (chủ sản phẩm xác nhận 03/11/2026; tác phẩm mới công khai mặc định bật); độc lập với quyền kiểm duyệt |
 | COM-08 | Must — Pilot | Tác giả tác phẩm không sửa/xóa bình luận của người khác | Mọi đường ghi kiểm quyền tại server; tác giả tác phẩm chỉ gỡ bình luận của chính mình; gỡ/duyệt bình luận người khác thuộc authority kiểm duyệt hệ thống |
 
+Ghi nhận văn học trên tác phẩm, bình luận gốc và phản hồi (“Đánh giá cao”/“Hữu ích”) có PRD riêng với ID `LVE-FR/UC/INV`: [ghi nhận văn học](literary-endorsement.md). LVE kế thừa COM-03..08 và không đổi nghĩa của chúng; tín hiệu này không cấp quyền đăng, kiểm duyệt hay tuyển chọn.
+
 Vink tự làm màn quản trị nhỏ cho bình luận (hàng đợi duyệt có version, lý do, báo cáo, khiếu nại) cùng màn cho tác phẩm, quyết định, appeal và curation. Discourse chỉ là tham khảo thiết kế (nguồn D3–D5 trong [Sources](../docs/references/sources.md)); không có Discourse Admin trong hệ thống.
 
 ## 7. Khám phá, tuyển chọn và trải nghiệm đọc

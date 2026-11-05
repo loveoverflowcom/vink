@@ -1,7 +1,8 @@
 //! Owner-local Kani harnesses. xtask never installs the verifier or its bundled toolchain; CI
 //! installs the pinned release first. Each manifest compiles production sources in place. The
-//! lane requires every `#[kani::proof]` in the harness file to be verified, so a harness module
-//! that is compiled out or a manifest that finds nothing cannot pass silently.
+//! lane requires every `#[kani::proof]` in the manifest's registered harness files to be
+//! verified, so a harness module that is compiled out, an unregistered harness file or a
+//! manifest that finds nothing cannot pass silently.
 
 use std::io::{BufRead, BufReader};
 use std::path::Path;
@@ -11,15 +12,19 @@ use crate::process::{Report, cargo};
 
 pub const VERSION: &str = "0.67.0";
 
-/// Each owner-local manifest and the file holding its harnesses.
-pub const MANIFESTS: [(&str, &str); 2] = [
+/// Each owner-local manifest and every file holding harnesses it compiles. A manifest verifies
+/// all harnesses in its crate, so a new proof file must be registered here or the count fails.
+pub const MANIFESTS: [(&str, &[&str]); 2] = [
     (
         "packages/expressions/kani/Cargo.toml",
-        "packages/expressions/src/proofs.rs",
+        &["packages/expressions/src/proofs.rs"],
     ),
     (
         "services/vink-app/kani/Cargo.toml",
-        "services/vink-app/src/domain/discussion/proofs.rs",
+        &[
+            "services/vink-app/src/domain/discussion/proofs.rs",
+            "services/vink-app/src/domain/endorsement/proofs.rs",
+        ],
     ),
 ];
 
@@ -28,9 +33,9 @@ pub fn verify(report: &mut Report) -> bool {
     if !report.step(&format!("kani: cargo-kani {VERSION}"), || version(&root)) {
         return false;
     }
-    for (manifest, harnesses) in MANIFESTS {
+    for (manifest, files) in MANIFESTS {
         let name = format!("kani: {manifest}");
-        if !report.step(&name, || run(&root, manifest, harnesses)) {
+        if !report.step(&name, || run(&root, manifest, files)) {
             return false;
         }
     }
@@ -58,14 +63,19 @@ fn version(root: &Path) -> Result<(), String> {
 }
 
 /// Streams Kani's output and requires its own summary to count exactly the harnesses in the
-/// source file, all verified.
-fn run(root: &Path, manifest: &str, harnesses: &str) -> Result<(), String> {
-    let source = std::fs::read_to_string(root.join(harnesses))
-        .map_err(|e| format!("cannot read {harnesses}: {e}"))?;
-    let expected = source.matches("#[kani::proof]").count();
-    if expected == 0 {
-        return Err(format!("{harnesses} declares no #[kani::proof] harness"));
+/// registered source files, all verified.
+fn run(root: &Path, manifest: &str, files: &[&str]) -> Result<(), String> {
+    let mut expected = 0;
+    for file in files {
+        let source = std::fs::read_to_string(root.join(file))
+            .map_err(|e| format!("cannot read {file}: {e}"))?;
+        let declared = source.matches("#[kani::proof]").count();
+        if declared == 0 {
+            return Err(format!("{file} declares no #[kani::proof] harness"));
+        }
+        expected += declared;
     }
+    let harnesses = files.join(", ");
     println!("==> cargo kani --manifest-path {manifest} ({expected} harnesses)");
     let mut child = cargo(root)
         .args(["kani", "--manifest-path", manifest])
@@ -90,7 +100,7 @@ fn run(root: &Path, manifest: &str, harnesses: &str) -> Result<(), String> {
         Some(line) if line == wanted => Ok(()),
         Some(line) => Err(format!("expected `{wanted}`, Kani reported `{line}`")),
         None => Err(format!(
-            "Kani verified nothing, though {harnesses} declares {expected} harnesses"
+            "Kani verified nothing, though {harnesses} declare {expected} harnesses"
         )),
     }
 }
@@ -102,10 +112,12 @@ mod tests {
     #[test]
     fn every_manifest_and_harness_file_exists() {
         let root = crate::root();
-        for (manifest, harnesses) in MANIFESTS {
+        for (manifest, files) in MANIFESTS {
             assert!(root.join(manifest).is_file(), "{manifest}");
-            let source = std::fs::read_to_string(root.join(harnesses)).unwrap();
-            assert!(source.contains("#[kani::proof]"), "{harnesses}");
+            for file in files {
+                let source = std::fs::read_to_string(root.join(file)).unwrap();
+                assert!(source.contains("#[kani::proof]"), "{file}");
+            }
         }
     }
 }

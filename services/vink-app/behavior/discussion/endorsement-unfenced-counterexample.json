@@ -1,0 +1,254 @@
+{
+  "format": "vink-endorsement-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "endorsement.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedUnfencedStep",
+    "--max-steps=5",
+    "--max-samples=1",
+    "--invariant=noRevival",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "publish",
+        "stamp": 0,
+        "stream": 0,
+        "actor": 0,
+        "target": 0,
+        "expected": 0,
+        "desire": "",
+        "observed": 1,
+        "keep": false,
+        "heard": false,
+        "value": ""
+      },
+      "outcome": "published",
+      "answer": 0,
+      "published": 1,
+      "mode": "open",
+      "comments": {
+        "1": "pending",
+        "2": "pending"
+      },
+      "rows": {},
+      "counts": {
+        "0/1": 0,
+        "0/2": 0,
+        "1/1": 0,
+        "2/1": 0
+      },
+      "summary": {
+        "0": 0,
+        "1": null,
+        "2": null
+      },
+      "views": {
+        "1/0": "none",
+        "1/1": "unavailable",
+        "1/2": "unavailable",
+        "2/0": "none",
+        "2/1": "unavailable",
+        "2/2": "unavailable",
+        "3/0": "none",
+        "3/1": "unavailable",
+        "3/2": "unavailable"
+      }
+    },
+    {
+      "command": {
+        "op": "issue",
+        "stamp": 1,
+        "stream": 3,
+        "actor": 3,
+        "target": 0,
+        "expected": 1,
+        "desire": "select",
+        "observed": 1,
+        "keep": false,
+        "heard": false,
+        "value": ""
+      },
+      "outcome": "issued",
+      "answer": 0,
+      "published": 1,
+      "mode": "open",
+      "comments": {
+        "1": "pending",
+        "2": "pending"
+      },
+      "rows": {},
+      "counts": {
+        "0/1": 0,
+        "0/2": 0,
+        "1/1": 0,
+        "2/1": 0
+      },
+      "summary": {
+        "0": 0,
+        "1": null,
+        "2": null
+      },
+      "views": {
+        "1/0": "none",
+        "1/1": "unavailable",
+        "1/2": "unavailable",
+        "2/0": "none",
+        "2/1": "unavailable",
+        "2/2": "unavailable",
+        "3/0": "none",
+        "3/1": "unavailable",
+        "3/2": "unavailable"
+      }
+    },
+    {
+      "command": {
+        "op": "issue",
+        "stamp": 2,
+        "stream": 3,
+        "actor": 3,
+        "target": 0,
+        "expected": 1,
+        "desire": "clear",
+        "observed": 1,
+        "keep": false,
+        "heard": false,
+        "value": ""
+      },
+      "outcome": "issued",
+      "answer": 0,
+      "published": 1,
+      "mode": "open",
+      "comments": {
+        "1": "pending",
+        "2": "pending"
+      },
+      "rows": {},
+      "counts": {
+        "0/1": 0,
+        "0/2": 0,
+        "1/1": 0,
+        "2/1": 0
+      },
+      "summary": {
+        "0": 0,
+        "1": null,
+        "2": null
+      },
+      "views": {
+        "1/0": "none",
+        "1/1": "unavailable",
+        "1/2": "unavailable",
+        "2/0": "none",
+        "2/1": "unavailable",
+        "2/2": "unavailable",
+        "3/0": "none",
+        "3/1": "unavailable",
+        "3/2": "unavailable"
+      }
+    },
+    {
+      "command": {
+        "op": "deliver",
+        "stamp": 2,
+        "stream": 3,
+        "actor": 3,
+        "target": 0,
+        "expected": 1,
+        "desire": "clear",
+        "observed": 1,
+        "keep": false,
+        "heard": true,
+        "value": ""
+      },
+      "outcome": "already_current",
+      "answer": 1,
+      "published": 1,
+      "mode": "open",
+      "comments": {
+        "1": "pending",
+        "2": "pending"
+      },
+      "rows": {},
+      "counts": {
+        "0/1": 0,
+        "0/2": 0,
+        "1/1": 0,
+        "2/1": 0
+      },
+      "summary": {
+        "0": 0,
+        "1": null,
+        "2": null
+      },
+      "views": {
+        "1/0": "none",
+        "1/1": "unavailable",
+        "1/2": "unavailable",
+        "2/0": "none",
+        "2/1": "unavailable",
+        "2/2": "unavailable",
+        "3/0": "none",
+        "3/1": "unavailable",
+        "3/2": "unavailable"
+      }
+    },
+    {
+      "command": {
+        "op": "deliver",
+        "stamp": 1,
+        "stream": 3,
+        "actor": 3,
+        "target": 0,
+        "expected": 1,
+        "desire": "select",
+        "observed": 1,
+        "keep": false,
+        "heard": true,
+        "value": ""
+      },
+      "outcome": "changed",
+      "answer": 2,
+      "published": 1,
+      "mode": "open",
+      "comments": {
+        "1": "pending",
+        "2": "pending"
+      },
+      "rows": {
+        "3/0": {
+          "sel": 1,
+          "version": 2
+        }
+      },
+      "counts": {
+        "0/1": 1,
+        "0/2": 0,
+        "1/1": 0,
+        "2/1": 0
+      },
+      "summary": {
+        "0": 1,
+        "1": null,
+        "2": null
+      },
+      "views": {
+        "1/0": "none",
+        "1/1": "unavailable",
+        "1/2": "unavailable",
+        "2/0": "none",
+        "2/1": "unavailable",
+        "2/2": "unavailable",
+        "3/0": "endorsed",
+        "3/1": "unavailable",
+        "3/2": "unavailable"
+      }
+    }
+  ]
+}
