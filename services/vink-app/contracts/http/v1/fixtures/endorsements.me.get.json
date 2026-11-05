@@ -1,0 +1,34 @@
+{
+  "policy": "lve-core-v1",
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "work": {
+    "state": "endorsed_earlier_revision",
+    "version": 3,
+    "revision_id": "0192f3a1-0000-7000-8000-000000000044",
+    "can_endorse": true,
+    "blocked_reason": null
+  },
+  "comments": [
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000001",
+      "state": "endorsed",
+      "version": 2,
+      "can_endorse": true,
+      "blocked_reason": null
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000005",
+      "state": "not_endorsed",
+      "version": 1,
+      "can_endorse": false,
+      "blocked_reason": "own_content"
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000009",
+      "state": "unavailable",
+      "version": null,
+      "can_endorse": false,
+      "blocked_reason": null
+    }
+  ]
+}

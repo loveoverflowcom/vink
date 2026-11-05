@@ -62,10 +62,14 @@ lifecycle/mode/moderation authority with submission receipts, and reactions). Re
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
 proposed, not product-accepted) with no table, store, route or UI. Production
 writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Literary endorsement
-(LVE, #73) is a pure core only (`domain/endorsement`: work/root/reply decisions, revision anchor,
+(LVE, #73) has a pure core (`domain/endorsement`: work/root/reply decisions, revision anchor,
 accepted-intent version fence; policy `lve-core-v1` selected for the slice, product confirmation
-pending) with a Quint model replayed in the `discussion` lane and Kani harnesses; it has no table,
-store, route or UI ([decision record](docs/architecture/literary-endorsement.md)). Inspect actual
+pending) with a Quint model replayed in the `discussion` lane and Kani harnesses, plus use cases,
+HTTP API v1 routes (desired-state `PUT` per work/comment, public summary and own-state batch
+reads, all `no-store`) and a PostgreSQL adapter/migration (two tables, rows never deleted,
+counts read from canonical rows) with real-database race tests; production writes answer `401`
+and no UI, ranking or voter list exists ([decision record](docs/architecture/literary-endorsement.md),
+[runtime](docs/development/literary-endorsement-runtime.md)). Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.

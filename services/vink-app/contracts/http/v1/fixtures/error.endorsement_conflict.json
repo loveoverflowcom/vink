@@ -1,0 +1,14 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "another accepted request changed this endorsement since expected_version; nothing was written",
+    "current_version": 3,
+    "endorsement": {
+      "state": "not_endorsed",
+      "version": 3,
+      "revision_id": null,
+      "can_endorse": true,
+      "blocked_reason": null
+    }
+  }
+}

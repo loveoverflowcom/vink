@@ -5,6 +5,7 @@
 //! the App's own migrations, so no other registry reaches the App database.
 
 mod discussion;
+mod endorsement;
 mod postgres;
 
 use sqlx::migrate::Migrator;

@@ -9,14 +9,17 @@ use tower_http::set_header::SetResponseHeaderLayer;
 
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
-    CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft, DraftCard, DraftList,
-    ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse, PageQuery,
-    Publication, RemovedCommentResponse, ReplyList, SaveDraftRequest, SavedDraftResponse,
-    SubmitCommentRequest, SubmittedCommentResponse, WorkCard, WorkList,
+    CommentEndorsementRequest, CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft,
+    DraftCard, DraftList, EndorsementQuery, EndorsementSummaryList, EndorsementWriteResponse,
+    ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse,
+    OwnEndorsementList, PageQuery, Publication, RemovedCommentResponse, ReplyList,
+    SaveDraftRequest, SavedDraftResponse, SubmitCommentRequest, SubmittedCommentResponse, WorkCard,
+    WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
 use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
+use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
 use crate::domain::discussion::settings::CommentsMode;
 use crate::domain::ids::{CommentId, WorkId};
 
@@ -53,6 +56,27 @@ pub fn routes(state: AppState) -> Router<AppState> {
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
         ));
+    // Literary endorsement (LVE #73). Own state is account-scoped and summaries are volatile
+    // projections without a validator, so no response may be stored by any cache. Summaries do
+    // not resolve the actor: an identity outage never hides public counts.
+    let endorsement = Router::new()
+        .route(
+            "/works/{work_id}/endorsements",
+            get(get_endorsement_summaries),
+        )
+        .route(
+            "/works/{work_id}/endorsements/me",
+            get(get_own_endorsements),
+        )
+        .route("/works/{work_id}/endorsement/me", put(set_work_endorsement))
+        .route(
+            "/works/{work_id}/discussion/comments/{comment_id}/endorsement/me",
+            put(set_comment_endorsement),
+        )
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ));
     // Public reads (READ-01): a success sets its own validator and `private, no-cache`; errors
     // carry `no-store` so a 404/503 never outlives recovery in a cache.
     let public = Router::new()
@@ -66,6 +90,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(public)
         .merge(drafts)
         .merge(discussion)
+        .merge(endorsement)
         .fallback(|| async { ApiError::NotFound })
         .layer(middleware::from_fn_with_state(state, require_same_origin))
 }
@@ -105,6 +130,17 @@ fn comment_id(raw: &str) -> Result<CommentId, ApiError> {
 }
 
 fn page_query(query: Result<Query<PageQuery>, QueryRejection>) -> Result<PageQuery, ApiError> {
+    query
+        .map(|Query(query)| query)
+        .map_err(|rejection| ApiError::Validation {
+            field: "query",
+            message: rejection.body_text(),
+        })
+}
+
+fn endorsement_query(
+    query: Result<Query<EndorsementQuery>, QueryRejection>,
+) -> Result<EndorsementQuery, ApiError> {
     query
         .map(|Query(query)| query)
         .map_err(|rejection| ApiError::Validation {
@@ -366,4 +402,91 @@ async fn decide_comment(
         )
         .await?;
     Ok(Json(ModerationDecisionResponse::new(comment_id, decided)))
+}
+
+async fn get_endorsement_summaries(
+    State(state): State<AppState>,
+    Path(raw): Path<String>,
+    query: Result<Query<EndorsementQuery>, QueryRejection>,
+) -> Result<Json<EndorsementSummaryList>, ApiError> {
+    let work_id = work_id(&raw)?;
+    let query = endorsement_query(query)?;
+    let summaries = state
+        .vink
+        .endorsement_summaries(work_id, query.comment_ids.as_deref())
+        .await?;
+    Ok(Json(EndorsementSummaryList::from(&summaries)))
+}
+
+async fn get_own_endorsements(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    query: Result<Query<EndorsementQuery>, QueryRejection>,
+) -> Result<Json<OwnEndorsementList>, ApiError> {
+    // A guest is unauthenticated, never an actor who has not endorsed.
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let work_id = work_id(&raw)?;
+    let query = endorsement_query(query)?;
+    let own = state
+        .vink
+        .own_endorsements(actor, work_id, query.comment_ids.as_deref())
+        .await?;
+    Ok(Json(OwnEndorsementList::from(&own)))
+}
+
+async fn set_work_endorsement(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<WorkEndorsementRequest>, JsonRejection>,
+) -> Result<Json<EndorsementWriteResponse>, ApiError> {
+    // Authentication is decided before the body is inspected.
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let work_id = work_id(&raw)?;
+    let body = json_body(body)?;
+    let outcome = state
+        .vink
+        .set_work_endorsement(
+            actor,
+            SetWorkEndorsement {
+                work_id,
+                expected_version: body.expected_version,
+                endorsed: body.endorsed,
+                observed_revision: body.observed_revision_id,
+            },
+        )
+        .await?;
+    Ok(Json(EndorsementWriteResponse::from(&outcome)))
+}
+
+async fn set_comment_endorsement(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path((raw_work, raw_comment)): Path<(String, String)>,
+    body: Result<Json<CommentEndorsementRequest>, JsonRejection>,
+) -> Result<Json<EndorsementWriteResponse>, ApiError> {
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let work_id = work_id(&raw_work)?;
+    let comment_id = comment_id(&raw_comment)?;
+    let body = json_body(body)?;
+    let outcome = state
+        .vink
+        .set_comment_endorsement(
+            actor,
+            SetCommentEndorsement {
+                work_id,
+                comment_id,
+                expected_version: body.expected_version,
+                endorsed: body.endorsed,
+            },
+        )
+        .await?;
+    Ok(Json(EndorsementWriteResponse::from(&outcome)))
 }

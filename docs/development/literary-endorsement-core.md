@@ -5,9 +5,11 @@
 nền `develop@be2b69e`. Ý nghĩa và ID: [PRD](../../prd/literary-endorsement.md); lựa chọn, semantics và
 hợp đồng cho lát sau: [decision record](../architecture/literary-endorsement.md).
 
-Lát này chỉ có **quyết định thuần**: không bảng, store, route, contract HTTP hay UI nào dùng chúng.
-Production vẫn chưa có auth authority. Epic AC-03 mới **PARTIAL**: seam production đã được kiểm,
-chưa có transaction caller dùng nó.
+Lát PR1 chỉ có **quyết định thuần**. Lát API + PostgreSQL (PR2 + PR3 gộp) đã thêm caller
+production: use case, HTTP API v1, bảng và adapter gọi đúng các hàm dưới đây trong transaction
+([runtime](literary-endorsement-runtime.md)); lõi không đổi. Production vẫn chưa có auth authority
+nên ghi trả `401`; chưa có UI. Epic AC-03 vẫn **PARTIAL** tới khi một principal thật chạy được
+đường ghi.
 
 ## Code
 
@@ -30,16 +32,16 @@ sinh từ model chỉ là oracle để replay input. “—” là chưa có b�
 
 | ID | Quint (`endorsement.qnt`) | Rust production / test | Kani | PostgreSQL / API | Gap còn lại |
 | --- | --- | --- | --- | --- | --- |
-| LVE-INV-01 | Một tác phẩm, ba đích cố định (giả định) | `decide_*` so `facts.work`/`facts.comment` với đích yêu cầu; `Endorsement<RevisionId>` ≠ `Endorsement<CommentAnchor>` | `work_admission_…`, `comment_admission_…`: identity khác → `TargetUnavailable` | — | FK/CHECK đúng loại (CHOICE-04) |
-| LVE-INV-02 | `eligibleWrites` | Actor là tham số `PrincipalId` từ server; không DTO nào mang actor | Hai harness admission | — | Auth authority (D-05), khóa/cấm tài khoản, giới hạn tần suất |
-| LVE-INV-03 | `countsMatchSelections`; một `Row` mỗi (actor, đích) | `Endorsement::selection` duy nhất | `transitions_…` | — | Unique key |
-| LVE-INV-04 | `scopedWrites`, `acceptedVersionFence`; bản trùng/thử lại → `already_current` | `Transition::{Reaffirmed, AlreadyCurrent}`, `write()`, `delta()` | `transitions_…` | — | Không receipt (theo thiết kế) |
-| LVE-INV-05 | `noRevival`; counterexample `endorsement-unfenced`, `endorsement-version-reset` | `Endorsement::transition`, `EndorsementVersion` | `a_confirmed_request_fences_…`, `transitions_…` | — | UPDATE/INSERT có điều kiện, không DELETE; race thật |
-| LVE-INV-06 | `eligibleWrites`, `projectionsHideAndCountEffective`; rút/đăng lại/gỡ bình luận | `decide_*`, `own_*_view`, `*_summary` | Hai harness admission (view + summary) | — | Cache/event, cursor, đọc batch |
-| LVE-INV-07 | `countsMatchSelections`; reaffirm không đổi số đếm | `EndorsementCount::apply`, `EndorsementDelta` | `counts_follow_deltas_…` | — | Rebuild/recount SQL, freshness (CHOICE-05) |
-| LVE-INV-08 | `projectionsHideAndCountEffective` | `Summary::Unavailable`, `OwnView`; không có projection danh sách người ghi nhận | Hai harness admission | — | `no-store`, tách cache công khai/riêng |
+| LVE-INV-01 | Một tác phẩm, ba đích cố định (giả định) | `decide_*` so `facts.work`/`facts.comment` với đích yêu cầu; `Endorsement<RevisionId>` ≠ `Endorsement<CommentAnchor>` | `work_admission_…`, `comment_admission_…`: identity khác → `TargetUnavailable` | FK đúng loại + `(work_id, revision_id)` → revision của đúng tác phẩm; bình luận chỉ tìm trong thread của tác phẩm trên route, work lấy từ thread của chính bình luận | — |
+| LVE-INV-02 | `eligibleWrites` | Actor là tham số `PrincipalId` từ server; không DTO nào mang actor | Hai harness admission | Actor từ resolver; principal phải tồn tại trong transaction; DTO `deny_unknown_fields` từ chối actor/count/role | Auth authority (D-05), khóa/cấm tài khoản, giới hạn tần suất |
+| LVE-INV-03 | `countsMatchSelections`; một `Row` mỗi (actor, đích) | `Endorsement::selection` duy nhất | `transitions_…` | PK (đích, actor) + SQL trực tiếp | — |
+| LVE-INV-04 | `scopedWrites`, `acceptedVersionFence`; bản trùng/thử lại → `already_current` | `Transition::{Reaffirmed, AlreadyCurrent}`, `write()`, `delta()` | `transitions_…` | `accepted: false` cho thử lại; 8 yêu cầu đầu đồng thời → đúng 1 được chấp nhận | Không receipt (theo thiết kế) |
+| LVE-INV-05 | `noRevival`; counterexample `endorsement-unfenced`, `endorsement-version-reset` | `Endorsement::transition`, `EndorsementVersion` | `a_confirmed_request_fences_…`, `transitions_…` | UPDATE theo version đã đọc, INSERT `ON CONFLICT` + đọc lại; trigger cấm DELETE/TRUNCATE và UPDATE không tăng version; race hai thứ tự commit | — |
+| LVE-INV-06 | `eligibleWrites`, `projectionsHideAndCountEffective`; rút/đăng lại/gỡ bình luận | `decide_*`, `own_*_view`, `*_summary` | Hai harness admission (view + summary) | Khóa publication/thread/bình luận; test chờ khóa với rút/tái bản, kiểm duyệt, đóng bình luận; đọc batch một snapshot | Cursor/xếp hạng (CHOICE-06) |
+| LVE-INV-07 | `countsMatchSelections`; reaffirm không đổi số đếm | `EndorsementCount::apply`, `EndorsementDelta` | `counts_follow_deltas_…` | Đếm từ hàng chuẩn khi đọc (CHOICE-05 A); test đối soát độc lập | — |
+| LVE-INV-08 | `projectionsHideAndCountEffective` | `Summary::Unavailable`, `OwnView`; không có projection danh sách người ghi nhận | Hai harness admission | Hai endpoint tách, đều `no-store`; ẩn là `unavailable`, không lộ version; READ-01 không đổi | Session fence phía client |
 | LVE-INV-09 | — | Lõi không sắp xếp | — | — | CHOICE-06 OPEN |
-| LVE-INV-10 | Version trong mỗi kết quả (`answer`); client shell học version đơn điệu | Mọi `Transition` mang version | — | — | Consumer: fence session/route, áp kết quả đơn điệu, browser |
+| LVE-INV-10 | Version trong mỗi kết quả (`answer`); client shell học version đơn điệu | Mọi `Transition` mang version | — | Response mang `work_id`/`comment_id`, `version`, `revision_id` để fence | Consumer: fence session/route, áp kết quả đơn điệu, browser |
 | LVE-INV-11 | — | Không module nào khác import `endorsement`; không quyết định nào đọc số đếm | — | — | Chưa có guard tự động; kiểm khi review |
 | LVE-INV-12 | `noSilentTransfer` + counterexample `endorsement-transfer`; `noSelfEndorsement`; scenario tắt/mở bình luận | `POLICY`, `RevisionChanged`, `OwnWork`/`OwnComment`, `CommentsClosed` | Hai harness admission | — | Chủ sản phẩm xác nhận CHOICE-02/08/09 |
 
@@ -67,7 +69,9 @@ Lệnh do [development guide](README.md) sở hữu; không có lane `verify vot
    biết version server đã tạo, theo thứ tự); admission tác phẩm/bình luận trên mọi binding, công
    khai, tác giả, revision, trạng thái bình luận × chế độ × generation; số đếm trên mọi `u32`.
    Identity trong 2–3 giá trị ký hiệu. Không chứng minh chuỗi dài, khóa, I/O.
-5. **PostgreSQL, HTTP, browser:** chưa có code; NOT_RUN ở lát này.
+5. **Application, HTTP, PostgreSQL:** xem [runtime](literary-endorsement-runtime.md#kiểm-chứng-05112026-macos-postgresql-1711-scratch)
+   (store ghi lại cho wiring, fixture, router, `verify postgres`). **Browser/UI:** chưa có code;
+   NOT_RUN.
 
 **Độ nhạy đã kiểm khi phát triển (ghi trong PR):** cho `transition` chỉ chấp nhận khi lựa chọn
 khác (no-op không fence) làm replay FAIL ở `reorder_and_retry` bước reaffirm và harness

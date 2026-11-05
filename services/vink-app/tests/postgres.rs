@@ -31,6 +31,8 @@ const ORIGIN: &str = "http://127.0.0.1:3000";
 mod conditional_reads;
 #[path = "postgres/discussion.rs"]
 mod discussion;
+#[path = "postgres/endorsement.rs"]
+mod endorsement;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

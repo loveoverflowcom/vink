@@ -6,9 +6,12 @@ chứng; chủ sản phẩm chưa xác nhận hệ quả sản phẩm của CHOI
 thành Accepted vì đã được viết hoặc kiểm chứng.
 
 Yêu cầu và ID: [PRD LVE](../../prd/literary-endorsement.md). Code, bằng chứng và gap:
-[registry](../development/literary-endorsement-core.md). Code owner:
+[registry](../development/literary-endorsement-core.md); lát application/API/PostgreSQL:
+[runtime](../development/literary-endorsement-runtime.md). Code owner:
 [`domain/endorsement`](../../services/vink-app/src/domain/endorsement.rs). Quyết định này không đổi
-D-01..D-13, INV-01..08, COM-07/08 hay semantics reaction hiện có.
+D-01..D-13, INV-01..08, COM-07/08 hay semantics reaction hiện có. Các lựa chọn 03 (hình dạng API),
+04, 05, 12, 13, 14 được chọn cho lát API + PostgreSQL ngày 05/11/2026 với bằng chứng ở trang runtime;
+chúng cũng chưa thành Accepted.
 
 ## 1. Lựa chọn
 
@@ -17,15 +20,18 @@ D-01..D-13, INV-01..08, COM-07/08 hay semantics reaction hiện có.
 | 01 Ý nghĩa/cardinality | Chọn cho lõi | **A**: một tín hiệu dương mỗi (actor, đích), chọn hoặc không | Đủ cho pilot, ít giải thích. B (facet lý do) vẫn OPEN như phần mở rộng: facet không được đổi `Endorsement` hay số đếm. C (thẩm định có cấu trúc) để sau | Unit test, `countsMatchSelections` |
 | 02 Anchor qua các bản | Chọn cho lõi | **C**: quan hệ theo tác phẩm, ghi **revision người đọc đã đọc**; chỉ hiệu lực (được đếm) khi revision đó là publication hiện hành; bản mới làm ghi nhận cũ thành “bản trước”, không đếm, cho tới khi người đọc ghi nhận bản mới | A chuyển ngầm ghi nhận sang chữ mới (vi phạm LVE-UC-10) trừ khi thêm luật hiệu lực, tức là C. B cần một hàng và một version cho mỗi revision nên mỗi người có nhiều chuỗi fence; tổng hiệu lực giống C. Không dùng `publications.generation` (xóa/chèn lại con trỏ có thể bắt đầu lại) hay `moderation_version` (không phải revision chữ). Bình luận không sửa được (D-08) nên chính bình luận là anchor | `noSilentTransfer` + counterexample `endorsement-transfer`; Kani work admission |
 | 03 Thứ tự/thử lại | Chọn cho lõi | **B′**: version của ý định được chấp nhận. Mỗi yêu cầu mang đúng version hiện tại được chấp nhận và tăng version 1, **kể cả khi trùng trạng thái** (reaffirm). Không có receipt: thử lại được nhận ra bằng hiệu ứng (`AlreadyCurrent`) | A (CAS, no-op khi trùng trạng thái) thua trace phản biện kể cả khi client tuần tự hóa: ACK mất, yêu cầu cũ còn trên mạng, đọc lại không chặn được nó. B đầy đủ với receipt không cần cho bất biến của lõi; giữ OPEN nếu cần audit “lệnh của tôi đã được chấp nhận chưa” | `noRevival` + counterexample `endorsement-unfenced`, `endorsement-version-reset`; Kani hai bước |
-| 04 Lưu trữ/FK | OPEN (lát PostgreSQL) | — | Lõi đòi: FK đúng loại đích, unique (actor, đích), version ≥ 1, **giữ hàng sau khi bỏ chọn** | §4 |
-| 05 Tổng hợp/read model | OPEN | — | Delta theo anchor và `EndorsementCount` không âm/tràn dùng được cho đếm-khi-đọc, counter giao dịch hoặc projection outbox | Kani counts |
+| 03b Hình dạng API | Chọn cho lát API | **A trên B′**: tài nguyên tường minh, `PUT …/endorsement/me` với trạng thái mong muốn + `expected_version` (+ `observed_revision_id` cho tác phẩm), đọc lại trạng thái hiện tại. Phương thức, khử trùng (theo hiệu ứng, `accepted: false`) và thứ tự (version) là ba trục riêng | B (POST + khóa/receipt bền) thêm retention/schema mà lõi không cần; vẫn phải có version nên không bớt gì. Không expose hai API song song | Contract tests, `tests/postgres/endorsement.rs` |
+| 04 Lưu trữ/FK | Chọn cho lát PostgreSQL | **A**: `work_endorsements` (anchor `revision_id`, FK `(work_id, revision_id)` → revision của đúng tác phẩm) và `comment_endorsements` (`selected`); PK (đích, actor); version ≥ 2; trigger cấm đổi danh tính, cấm UPDATE không tăng version, cấm DELETE/TRUNCATE | B (một bảng, FK nullable + CHECK đúng một đích): hai anchor khác kiểu, thêm NULL/CHECK mà không bớt truy vấn. `(target_type, target_id)` không FK bị loại | SQL trực tiếp trong `tests/postgres/endorsement.rs` |
+| 05 Tổng hợp/read model | Chọn cho lát PostgreSQL | **A**: đếm từ hàng chuẩn khi đọc, partial index; không counter/outbox/cache | B: hot-target tuần tự hóa người ghi (16 client 6,9 k so với 8,4 k tps) và cần đối soát. C: chưa có nhu cầu bất đồng bộ. Xem lại khi số đo thật vượt ngân sách đọc hoặc cần đếm cho danh sách nhiều tác phẩm | [Bằng chứng](../development/evidence/lve-postgres/README.md) |
 | 06 Xếp hạng | OPEN | — | Lõi không sắp xếp gì; phản hồi giữ thứ tự thời gian | — |
 | 07 Icon | OPEN | — | Không thuộc lõi | — |
 | 08 Tự ghi nhận | Chọn cho lõi | **A**: tác giả tác phẩm/người viết bình luận bị từ chối mọi ý định trên nội dung của mình, nên không bao giờ có hàng của họ | B (đánh dấu riêng) chưa có utility khác Lưu bài | `noSelfEndorsement`, Kani admission |
 | 09 Tắt bình luận | Chọn tạm cho lõi | **B**: tắt chặn ghi nhận **mới** trên bình luận; gỡ và reaffirm vẫn được; không ẩn gì; ghi nhận tác phẩm không bị ảnh hưởng; mở lại không đổi dữ liệu | Tôn trọng quyền kiểm soát duy nhất của tác giả với hoạt động thảo luận (COM-07) mà không ẩn nội dung; nới về A sau dễ hơn siết lại. Không suy từ reaction: reaction là đề xuất riêng | `eligibleWrites`, scenario `comment_targets`, Kani comment admission |
 | 10 Xác nhận phía client | OPEN | — | Lõi đặt nghĩa vụ client ở §5 | — |
 | 11 Owner thuần | Chọn | **A**: module `domain/endorsement` trong `vink-app` | B (crate dùng chung) chưa có consumer Rust thứ hai | `verify quick` kiểm import boundary |
-| 12 Hiển thị người ghi nhận | Hệ quả của lõi | Chỉ tổng số + trạng thái riêng của chính người đó; lõi không có projection danh sách người ghi nhận | B (ghi danh tự nguyện) OPEN; không tự đưa người dùng hiện có vào | — |
+| 12 Hiển thị người ghi nhận | Chọn cho lát API | **A**: chỉ tổng số + trạng thái riêng của chính người đó; không endpoint hay truy vấn nào trả danh sách người ghi nhận | B (ghi danh tự nguyện) OPEN tới khi có owner cho consent, lưu giữ và rút lại; không tự đưa người dùng hiện có vào | Contract, test quyền riêng tư |
+| 13 Biểu diễn đọc | Chọn cho lát API | **A**: `GET …/endorsements` (tổng số công khai, không resolve actor) và `GET …/endorsements/me` (trạng thái riêng, `401` cho khách) tách nhau, batch ≤ 100 bình luận của một tác phẩm, đều `no-store`. READ-01/READ-02 không đổi | B (gộp, toàn response `no-store`) làm lỗi Identity che cả tổng số và buộc thêm trạng thái người xem vào biểu diễn; không thêm trường vào publication/works list để giữ ETag | Router test, so ETag trong test HTTP |
+| 14 Nối skeleton | Không còn cần chọn | Lát gộp nối route với `PgStore` thật; production `401` vì chưa có authority | A/B chỉ có ý nghĩa khi API đi trước persistence | Router test với `NoAuthority` |
 
 Mọi thay đổi ý nghĩa (ví dụ coi hai revision cùng `content_hash` là cùng anchor, hay đổi CHOICE-08/09)
 là một policy version mới, không sửa `lve-core-v1` tại chỗ.
@@ -89,6 +95,12 @@ không ACL, xuất bản, kiểm duyệt, tuyển chọn hay xếp hạng nào �
 | Cạn version/số đếm | `VersionExhausted`; `CountError::{Underflow, Overflow}` làm rollback cả giao dịch | Kani transition, Kani counts |
 
 ## 4. Hợp đồng cho lát API và PostgreSQL
+
+**Đã hiện thực** ở lát API + PostgreSQL (05/11/2026) đúng như dưới đây, với các điều chỉnh đã ghi:
+mục 6 chốt thành hợp đồng ở [API v1](../../services/vink-app/contracts/http/v1/README.md#literary-endorsement-lve-73)
+(`403 self_endorsement`, `409 version_conflict` kèm `endorsement`, `409 revision_changed` kèm
+`current_revision_id`); mục 4 dùng đếm-khi-đọc nên không áp `delta()` vào counter. Data flow, lock
+order và bằng chứng: [runtime](../development/literary-endorsement-runtime.md).
 
 Lát sau gọi đúng các hàm trên trong transaction; không viết luật thứ hai trong handler hay SQL.
 

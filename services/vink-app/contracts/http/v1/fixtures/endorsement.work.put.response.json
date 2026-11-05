@@ -1,0 +1,17 @@
+{
+  "policy": "lve-core-v1",
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "comment_id": null,
+  "accepted": true,
+  "endorsement": {
+    "state": "endorsed",
+    "version": 2,
+    "revision_id": "44444444-4444-4444-8444-444444444444",
+    "can_endorse": true,
+    "blocked_reason": null
+  },
+  "summary": {
+    "status": "available",
+    "count": 12
+  }
+}

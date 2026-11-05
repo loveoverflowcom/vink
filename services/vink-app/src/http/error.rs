@@ -4,7 +4,9 @@ use axum::response::{IntoResponse, Response};
 
 use super::contract::{ErrorBody, ErrorEnvelope};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
+use crate::application::endorsement::{EndorsementError, EndorsementInput, OwnEndorsement};
 use crate::application::{DraftError, InvalidInput, ReadError};
+use crate::domain::ids::RevisionId;
 
 /// Outcome classes of HTTP API v1. Messages are for developers; clients branch on `code`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +36,16 @@ pub enum ApiError {
     ModerationConflict {
         current_version: i64,
     },
+    /// Authors and comment writers do not endorse their own content (LVE CHOICE-08 A).
+    SelfEndorsement,
+    /// An accepted endorsement intent changed the selection since `expected_version`.
+    EndorsementConflict {
+        current: OwnEndorsement,
+    },
+    /// The endorsed revision is no longer the public one.
+    RevisionChanged {
+        published: RevisionId,
+    },
     DependencyUnavailable,
     Internal,
 }
@@ -46,14 +58,17 @@ impl ApiError {
             Self::Forbidden
             | Self::NotCommentWriter
             | Self::NotModerator
-            | Self::ModeratorRecused => StatusCode::FORBIDDEN,
+            | Self::ModeratorRecused
+            | Self::SelfEndorsement => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
             | Self::DiscussionConflict { .. }
             | Self::CommentsClosed
             | Self::TargetUnavailable
             | Self::CommentRemoved
-            | Self::ModerationConflict { .. } => StatusCode::CONFLICT,
+            | Self::ModerationConflict { .. }
+            | Self::EndorsementConflict { .. }
+            | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
             Self::KeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
@@ -142,6 +157,26 @@ impl ApiError {
                 Some(*current_version),
                 None,
             ),
+            Self::SelfEndorsement => (
+                "self_endorsement",
+                "authors and comment writers cannot endorse their own content".to_string(),
+                None,
+                None,
+            ),
+            Self::EndorsementConflict { current } => (
+                "version_conflict",
+                "another accepted request changed this endorsement since expected_version; \
+                 nothing was written"
+                    .to_string(),
+                current.version.map(|version| version.get()),
+                None,
+            ),
+            Self::RevisionChanged { .. } => (
+                "revision_changed",
+                "the work was republished since the page was read; nothing was written".to_string(),
+                None,
+                None,
+            ),
             Self::DependencyUnavailable => (
                 "dependency_unavailable",
                 "a required dependency is unavailable; retry later".to_string(),
@@ -156,6 +191,14 @@ impl ApiError {
                 message,
                 current_version,
                 field,
+                current_revision_id: match self {
+                    Self::RevisionChanged { published } => Some(published.to_string()),
+                    _ => None,
+                },
+                endorsement: match self {
+                    Self::EndorsementConflict { current } => Some((*current).into()),
+                    _ => None,
+                },
             },
         }
     }
@@ -231,6 +274,31 @@ impl From<DiscussionError> for ApiError {
                 current_version: current,
             },
             DiscussionError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<EndorsementInput> for ApiError {
+    fn from(error: EndorsementInput) -> Self {
+        Self::Validation {
+            field: error.field(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<EndorsementError> for ApiError {
+    fn from(error: EndorsementError) -> Self {
+        match error {
+            EndorsementError::Unauthenticated => Self::Unauthenticated,
+            EndorsementError::NotFound => Self::NotFound,
+            EndorsementError::SelfEndorsement => Self::SelfEndorsement,
+            EndorsementError::RevisionChanged { published } => Self::RevisionChanged { published },
+            EndorsementError::CommentsClosed => Self::CommentsClosed,
+            EndorsementError::Conflict { current } => Self::EndorsementConflict { current },
+            EndorsementError::Invalid(invalid) => invalid.into(),
+            EndorsementError::Unavailable => Self::DependencyUnavailable,
+            EndorsementError::Internal => Self::Internal,
         }
     }
 }

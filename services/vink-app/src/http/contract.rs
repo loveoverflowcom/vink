@@ -8,12 +8,16 @@ use crate::application::discussion::{
     CommentItem, ModerationAction, ModerationQueue, OwnStatus, ReplyPage, RootEntry, RootItem,
     RootPage, SubmittedComment,
 };
+use crate::application::endorsement::{
+    Capability, EndorsementOutcome, EndorsementSummaries, OwnEndorsement, OwnEndorsements,
+};
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
 use crate::domain::discussion::lifecycle::{CommentState, Review};
 use crate::domain::discussion::settings::DiscussionSettings;
 use crate::domain::discussion::visibility::{CommentView, ReplyContext};
 use crate::domain::document::DocumentData;
 use crate::domain::draft::{DraftSummary, WorkingDraft};
+use crate::domain::endorsement::{OwnView, POLICY, Summary};
 use crate::domain::ids::{CommentId, PrincipalId, WorkId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -241,6 +245,112 @@ pub struct ModerationDecisionResponse {
     pub version: i64,
 }
 
+/// `PUT /works/{work_id}/endorsement/me`: the desired state of the actor's endorsement of the
+/// work, bound to the version the client last saw.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WorkEndorsementRequest {
+    pub expected_version: i64,
+    pub endorsed: bool,
+    /// The revision the page rendered; required when `endorsed`, `null`/absent when clearing.
+    #[serde(default)]
+    pub observed_revision_id: Option<String>,
+}
+
+/// `PUT /works/{work_id}/discussion/comments/{comment_id}/endorsement/me`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CommentEndorsementRequest {
+    pub expected_version: i64,
+    pub endorsed: bool,
+}
+
+/// `?comment_ids=` of both endorsement batch reads. Unknown query parameters are rejected.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EndorsementQuery {
+    pub comment_ids: Option<String>,
+}
+
+/// The actor's own endorsement of one target. Account-scoped: only in `no-store` responses.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OwnEndorsementState {
+    /// `unavailable`, `not_endorsed`, `endorsed` or `endorsed_earlier_revision`.
+    pub state: &'static str,
+    /// Send back as `expected_version`; `null` when unavailable (no stored state is exposed).
+    pub version: Option<i64>,
+    /// Works only: the revision the selection is anchored to while selected.
+    pub revision_id: Option<String>,
+    /// Advisory: endorsing (or reaffirming) at `version` would be eligible now.
+    pub can_endorse: bool,
+    /// `own_content` or `comments_closed` when endorsing is not possible; otherwise `null`.
+    pub blocked_reason: Option<&'static str>,
+}
+
+/// A public aggregate. `unavailable` is never shown as zero; `count` is `null` then.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct EndorsementSummaryView {
+    /// `available` or `unavailable`.
+    pub status: &'static str,
+    pub count: Option<u32>,
+}
+
+/// Result of an endorsement write, sent only after the commit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct EndorsementWriteResponse {
+    pub policy: &'static str,
+    pub work_id: String,
+    /// `null` for the work's own endorsement.
+    pub comment_id: Option<String>,
+    /// True when this request was accepted and advanced the version; false when the stored
+    /// state already satisfied it (a retry or duplicate: nothing written, nothing fenced).
+    pub accepted: bool,
+    pub endorsement: OwnEndorsementState,
+    pub summary: EndorsementSummaryView,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct WorkEndorsementSummary {
+    pub status: &'static str,
+    pub count: Option<u32>,
+    /// The current publication's revision: the one `count` is about.
+    pub revision_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CommentEndorsementSummary {
+    pub comment_id: String,
+    pub status: &'static str,
+    pub count: Option<u32>,
+}
+
+/// `GET /works/{work_id}/endorsements`: public summaries, one snapshot, no viewer state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct EndorsementSummaryList {
+    pub policy: &'static str,
+    pub work_id: String,
+    pub work: WorkEndorsementSummary,
+    pub comments: Vec<CommentEndorsementSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CommentOwnEndorsement {
+    pub comment_id: String,
+    pub state: &'static str,
+    pub version: Option<i64>,
+    pub can_endorse: bool,
+    pub blocked_reason: Option<&'static str>,
+}
+
+/// `GET /works/{work_id}/endorsements/me`: the actor's own states, one snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OwnEndorsementList {
+    pub policy: &'static str,
+    pub work_id: String,
+    pub work: OwnEndorsementState,
+    pub comments: Vec<CommentOwnEndorsement>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -254,6 +364,12 @@ pub struct ErrorBody {
     pub current_version: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub field: Option<&'static str>,
+    /// `revision_changed` only: the revision now published.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_revision_id: Option<String>,
+    /// Endorsement `version_conflict` only: the actor's stored state, to reconcile from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endorsement: Option<OwnEndorsementState>,
 }
 
 impl From<&PublicWorkSummary> for WorkCard {
@@ -476,6 +592,116 @@ impl ModerationDecisionResponse {
             },
             removed: !state.is_present(),
             version: state.version().get(),
+        }
+    }
+}
+
+const fn own_view_code(view: OwnView) -> &'static str {
+    match view {
+        OwnView::Unavailable => "unavailable",
+        OwnView::NotEndorsed => "not_endorsed",
+        OwnView::Endorsed => "endorsed",
+        OwnView::EndorsedEarlierRevision => "endorsed_earlier_revision",
+    }
+}
+
+const fn capability(capability: Capability) -> (bool, Option<&'static str>) {
+    match capability {
+        Capability::Allowed => (true, None),
+        Capability::OwnContent => (false, Some("own_content")),
+        Capability::CommentsClosed => (false, Some("comments_closed")),
+        Capability::Unavailable => (false, None),
+    }
+}
+
+impl From<OwnEndorsement> for OwnEndorsementState {
+    fn from(own: OwnEndorsement) -> Self {
+        let (can_endorse, blocked_reason) = capability(own.capability);
+        Self {
+            state: own_view_code(own.view),
+            version: own.version.map(|version| version.get()),
+            revision_id: own.revision.map(|revision| revision.to_string()),
+            can_endorse,
+            blocked_reason,
+        }
+    }
+}
+
+impl From<Summary> for EndorsementSummaryView {
+    fn from(summary: Summary) -> Self {
+        match summary {
+            Summary::Count(count) => Self {
+                status: "available",
+                count: Some(count.get()),
+            },
+            Summary::Unavailable => Self {
+                status: "unavailable",
+                count: None,
+            },
+        }
+    }
+}
+
+impl From<&EndorsementOutcome> for EndorsementWriteResponse {
+    fn from(outcome: &EndorsementOutcome) -> Self {
+        Self {
+            policy: POLICY,
+            work_id: outcome.work_id.to_string(),
+            comment_id: outcome.comment_id.map(|id| id.to_string()),
+            accepted: outcome.accepted,
+            endorsement: outcome.own.into(),
+            summary: outcome.summary.into(),
+        }
+    }
+}
+
+impl From<&EndorsementSummaries> for EndorsementSummaryList {
+    fn from(summaries: &EndorsementSummaries) -> Self {
+        let work = EndorsementSummaryView::from(summaries.work);
+        Self {
+            policy: POLICY,
+            work_id: summaries.work_id.to_string(),
+            work: WorkEndorsementSummary {
+                status: work.status,
+                count: work.count,
+                revision_id: summaries.revision.to_string(),
+            },
+            comments: summaries
+                .comments
+                .iter()
+                .map(|entry| {
+                    let summary = EndorsementSummaryView::from(entry.summary);
+                    CommentEndorsementSummary {
+                        comment_id: entry.comment_id.to_string(),
+                        status: summary.status,
+                        count: summary.count,
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<&OwnEndorsements> for OwnEndorsementList {
+    fn from(own: &OwnEndorsements) -> Self {
+        Self {
+            policy: POLICY,
+            work_id: own.work_id.to_string(),
+            work: own.work.into(),
+            comments: own
+                .comments
+                .iter()
+                .map(|entry| {
+                    let state = OwnEndorsementState::from(entry.own);
+                    CommentOwnEndorsement {
+                        comment_id: entry.comment_id.to_string(),
+                        state: state.state,
+                        version: state.version,
+                        can_endorse: state.can_endorse,
+                        blocked_reason: state.blocked_reason,
+                    }
+                })
+                .collect(),
         }
     }
 }
@@ -994,6 +1220,245 @@ mod tests {
                 assert_eq!(error.status().as_u16(), status, "{name}");
                 assert_matches(name, &error.envelope());
             }
+        }
+    }
+
+    /// LVE (#73): the provider serializes every endorsement message and error exactly as its
+    /// fixture; requests decode and reject unknown fields (an actor, count or role cannot ride in).
+    mod endorsement {
+        use super::*;
+        use crate::application::endorsement::{
+            Capability, CommentSummary, EndorsementError, EndorsementInput, EndorsementOutcome,
+            EndorsementSummaries, OwnCommentEndorsement, OwnEndorsement, OwnEndorsements,
+        };
+        use crate::domain::endorsement::{EndorsementCount, EndorsementVersion, OwnView, Summary};
+
+        fn cid(n: u64) -> CommentId {
+            CommentId::parse(&format!("0192f3a1-0000-7000-8000-{n:012}")).unwrap()
+        }
+
+        fn rid(raw: &str) -> RevisionId {
+            RevisionId::parse(raw).unwrap()
+        }
+
+        fn version(raw: i64) -> Option<EndorsementVersion> {
+            EndorsementVersion::new(raw)
+        }
+
+        fn count(raw: u32) -> Summary {
+            Summary::Count(EndorsementCount::restore(raw))
+        }
+
+        const PUBLISHED: &str = "44444444-4444-4444-8444-444444444444";
+
+        #[test]
+        fn write_messages_match_fixtures() {
+            let request: WorkEndorsementRequest = parse("endorsement.work.put.request.json");
+            assert_eq!(
+                request,
+                WorkEndorsementRequest {
+                    expected_version: 1,
+                    endorsed: true,
+                    observed_revision_id: Some(PUBLISHED.into()),
+                }
+            );
+            let request: CommentEndorsementRequest = parse("endorsement.comment.put.request.json");
+            assert_eq!((request.expected_version, request.endorsed), (3, false));
+            // A clear may omit the revision entirely.
+            let clear: WorkEndorsementRequest = serde_json::from_value(
+                serde_json::json!({"expected_version": 2, "endorsed": false}),
+            )
+            .unwrap();
+            assert_eq!(clear.observed_revision_id, None);
+
+            assert_matches(
+                "endorsement.work.put.response.json",
+                &EndorsementWriteResponse::from(&EndorsementOutcome {
+                    work_id: work(),
+                    comment_id: None,
+                    accepted: true,
+                    own: OwnEndorsement {
+                        view: OwnView::Endorsed,
+                        version: version(2),
+                        revision: Some(rid(PUBLISHED)),
+                        capability: Capability::Allowed,
+                    },
+                    summary: count(12),
+                }),
+            );
+            assert_matches(
+                "endorsement.comment.put.response.json",
+                &EndorsementWriteResponse::from(&EndorsementOutcome {
+                    work_id: work(),
+                    comment_id: Some(cid(2)),
+                    accepted: false,
+                    own: OwnEndorsement {
+                        view: OwnView::NotEndorsed,
+                        version: version(4),
+                        revision: None,
+                        capability: Capability::CommentsClosed,
+                    },
+                    summary: count(0),
+                }),
+            );
+        }
+
+        #[test]
+        fn requests_reject_client_supplied_authority() {
+            for (name, field) in [
+                ("endorsement.work.put.request.json", "actor_id"),
+                ("endorsement.work.put.request.json", "count"),
+                ("endorsement.comment.put.request.json", "role"),
+                ("endorsement.comment.put.request.json", "work_id"),
+            ] {
+                let mut raw = fixture(name);
+                raw[field] = Value::from("22222222-2222-4222-8222-222222222222");
+                let rejected = if name.contains("work") {
+                    serde_json::from_value::<WorkEndorsementRequest>(raw).is_err()
+                } else {
+                    serde_json::from_value::<CommentEndorsementRequest>(raw).is_err()
+                };
+                assert!(rejected, "{name} must reject {field}");
+            }
+            let mut raw = fixture("endorsement.comment.put.request.json");
+            raw["endorsed"] = Value::from("yes");
+            assert!(serde_json::from_value::<CommentEndorsementRequest>(raw).is_err());
+            assert!(
+                serde_json::from_value::<EndorsementQuery>(
+                    serde_json::json!({"comment_ids": "x", "viewer": "me"})
+                )
+                .is_err()
+            );
+        }
+
+        #[test]
+        fn batch_reads_match_fixtures() {
+            assert_matches(
+                "endorsements.get.json",
+                &EndorsementSummaryList::from(&EndorsementSummaries {
+                    work_id: work(),
+                    revision: rid(PUBLISHED),
+                    work: count(12),
+                    comments: vec![
+                        CommentSummary {
+                            comment_id: cid(1),
+                            summary: count(3),
+                        },
+                        CommentSummary {
+                            comment_id: cid(2),
+                            summary: count(0),
+                        },
+                        CommentSummary {
+                            comment_id: cid(9),
+                            summary: Summary::Unavailable,
+                        },
+                    ],
+                }),
+            );
+            assert_matches(
+                "endorsements.me.get.json",
+                &OwnEndorsementList::from(&OwnEndorsements {
+                    work_id: work(),
+                    work: OwnEndorsement {
+                        view: OwnView::EndorsedEarlierRevision,
+                        version: version(3),
+                        revision: Some(rid("0192f3a1-0000-7000-8000-000000000044")),
+                        capability: Capability::Allowed,
+                    },
+                    comments: vec![
+                        OwnCommentEndorsement {
+                            comment_id: cid(1),
+                            own: OwnEndorsement {
+                                view: OwnView::Endorsed,
+                                version: version(2),
+                                revision: None,
+                                capability: Capability::Allowed,
+                            },
+                        },
+                        OwnCommentEndorsement {
+                            comment_id: cid(5),
+                            own: OwnEndorsement {
+                                view: OwnView::NotEndorsed,
+                                version: version(1),
+                                revision: None,
+                                capability: Capability::OwnContent,
+                            },
+                        },
+                        OwnCommentEndorsement {
+                            comment_id: cid(9),
+                            own: OwnEndorsement::UNAVAILABLE,
+                        },
+                    ],
+                }),
+            );
+        }
+
+        #[test]
+        fn endorsement_error_envelopes_match_fixtures() {
+            for (name, error, status) in [
+                (
+                    "error.self_endorsement.json",
+                    EndorsementError::SelfEndorsement,
+                    403,
+                ),
+                (
+                    "error.endorsement_conflict.json",
+                    EndorsementError::Conflict {
+                        current: OwnEndorsement {
+                            view: OwnView::NotEndorsed,
+                            version: version(3),
+                            revision: None,
+                            capability: Capability::Allowed,
+                        },
+                    },
+                    409,
+                ),
+                (
+                    "error.revision_changed.json",
+                    EndorsementError::RevisionChanged {
+                        published: rid("0192f3a1-0000-7000-8000-000000000045"),
+                    },
+                    409,
+                ),
+                (
+                    "error.comments_closed.json",
+                    EndorsementError::CommentsClosed,
+                    409,
+                ),
+                ("error.not_found.json", EndorsementError::NotFound, 404),
+                (
+                    "error.unauthenticated.json",
+                    EndorsementError::Unauthenticated,
+                    401,
+                ),
+                (
+                    "error.dependency_unavailable.json",
+                    EndorsementError::Unavailable,
+                    503,
+                ),
+            ] {
+                let error = ApiError::from(error);
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
+            }
+            for (input, field) in [
+                (EndorsementInput::ExpectedVersion, "expected_version"),
+                (EndorsementInput::ObservedRevision, "observed_revision_id"),
+                (
+                    EndorsementInput::RevisionWhenClearing,
+                    "observed_revision_id",
+                ),
+                (EndorsementInput::TooManyComments, "comment_ids"),
+            ] {
+                let error = ApiError::from(EndorsementError::Invalid(input));
+                assert_eq!(error.status().as_u16(), 422);
+                assert_eq!(error.envelope().error.field, Some(field));
+                assert_eq!(error.envelope().error.code, "validation_failed");
+            }
+            assert_eq!(
+                ApiError::from(EndorsementError::Internal).status().as_u16(),
+                500
+            );
         }
     }
 }

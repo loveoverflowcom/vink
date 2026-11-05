@@ -1,0 +1,26 @@
+{
+  "policy": "lve-core-v1",
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "work": {
+    "status": "available",
+    "count": 12,
+    "revision_id": "44444444-4444-4444-8444-444444444444"
+  },
+  "comments": [
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000001",
+      "status": "available",
+      "count": 3
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+      "status": "available",
+      "count": 0
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000009",
+      "status": "unavailable",
+      "count": null
+    }
+  ]
+}

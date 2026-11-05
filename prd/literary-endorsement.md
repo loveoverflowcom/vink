@@ -1,7 +1,8 @@
 # Ghi nhận văn học (LVE) — yêu cầu sản phẩm
 
-**Phiên bản:** 0.1 · **Ngày:** 05/11/2026 · **Trạng thái:** Đề xuất; lát lõi thuần đã hiện thực,
-chưa có API, lưu trữ, giao diện hay auth authority.
+**Phiên bản:** 0.1 · **Ngày:** 05/11/2026 · **Trạng thái:** Đề xuất; lõi thuần, use case, HTTP API
+và lưu trữ PostgreSQL đã hiện thực ([runtime](../docs/development/literary-endorsement-runtime.md));
+chưa có giao diện hay auth authority nên production chưa ghi được.
 **Nguồn:** epic [#73](https://github.com/loveoverflowcom/vink/issues/73), body ngày 04/11/2026 (bản
 tóm tắt PRD r1 trên Drive; file Drive không được đọc lại khi promote). Tài liệu này **thay thế**
 snapshot đó cho FR/UC/INV; issue vẫn là tracker kế hoạch.
