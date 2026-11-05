@@ -470,7 +470,8 @@ replay input qua Rust production. Không sửa model thảo luận; `verify disc
 riêng. Muốn cập nhật output sau review nguồn dùng `node packages/expressions/generate.mjs --write`;
 fixture model dùng `node packages/expressions/behavior/verify.mjs --write` sau khi dependency được cài.
 
-Ba harness Kani của policy chạy qua `cargo xtask verify kani` cùng manifest của App; cài đặt,
+Ba harness Kani của policy chạy qua `cargo xtask verify kani` bằng manifest riêng
+`packages/expressions/kani` (cùng lane với manifest của App); cài đặt,
 bounds và giới hạn ở [mục Kani](#kani).
 
 `web` gọi `expressionPilot` trong `e2e/expressions-smoke.mjs`: no-JS/SSR/hydration, network tĩnh,
