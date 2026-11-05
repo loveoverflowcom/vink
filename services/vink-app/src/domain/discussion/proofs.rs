@@ -5,8 +5,9 @@
 //! Identities range over a few symbolic values, enough to make every pair equal or distinct.
 //! Nothing here re-implements a rule; the cursor bounds are the `time` calendar range written as
 //! constants, an independent oracle. The one fixed-length loop (four tally slots) is unrolled
-//! with unwinding assertions on. Locking, transactions and I/O stay in the `postgres` lane; the
-//! serialized multi-step lifecycle, receipts and reactions stay in the Quint models.
+//! with unwinding assertions on. Two harnesses check a two-request sequence (the accepted-intent
+//! fence of the comments mode and of a reaction); locking, transactions and I/O stay in the
+//! `postgres` lane; longer serialized lifecycles, receipts and reactions stay in the Quint models.
 
 use uuid::Uuid;
 
@@ -273,26 +274,33 @@ fn writer_removal_is_terminal_and_hides_the_comment() {
     }
 }
 
-/// COM-07 and D-13: a mode change needs the generation the author saw; asking for the current mode
-/// is a no-op at any generation, so a retry cannot flip it back.
+/// COM-07 and D-13: a request is accepted exactly when it carries the stored generation, and every
+/// acceptance (a reaffirmation too) advances it by one without wrapping; a request at any other
+/// generation writes nothing and is `AlreadyCurrent` exactly when its mode already holds, so a
+/// retry can never flip the mode back.
 #[kani::proof]
 fn comments_mode_changes_are_generation_bound() {
     let settings = DiscussionSettings::restore(any_mode(), any_generation());
     let expected = any_generation();
     let wanted = any_mode();
     let changed = settings.change_mode(expected, wanted);
+    let advanced = settings.generation().get().checked_add(1);
     match changed {
         Ok(ModeChange::Changed(next)) => {
             assert_ne!(wanted, settings.mode());
             assert_eq!(expected, settings.generation());
             assert_eq!(next.mode(), wanted);
-            assert_eq!(
-                settings.generation().get().checked_add(1),
-                Some(next.generation().get())
-            );
+            assert_eq!(advanced, Some(next.generation().get()));
         }
-        Ok(ModeChange::Unchanged(same)) => {
+        Ok(ModeChange::Reaffirmed(next)) => {
             assert_eq!(wanted, settings.mode());
+            assert_eq!(expected, settings.generation());
+            assert_eq!(next.mode(), settings.mode());
+            assert_eq!(advanced, Some(next.generation().get()));
+        }
+        Ok(ModeChange::AlreadyCurrent(same)) => {
+            assert_eq!(wanted, settings.mode());
+            assert_ne!(expected, settings.generation());
             assert_eq!(same, settings);
         }
         Err(SettingsError::Stale { current }) => {
@@ -301,12 +309,64 @@ fn comments_mode_changes_are_generation_bound() {
             assert_eq!(current, settings);
         }
         Err(SettingsError::GenerationExhausted) => {
+            assert_eq!(expected, settings.generation());
             assert_eq!(settings.generation().get(), i64::MAX);
         }
     }
+    assert_eq!(
+        changed.ok().and_then(ModeChange::write).is_some(),
+        expected == settings.generation() && advanced.is_some()
+    );
+    if let Ok(decided) = changed {
+        assert_eq!(decided.settings().mode(), wanted);
+    }
+    kani::cover!(
+        matches!(changed, Ok(ModeChange::Reaffirmed(_))),
+        "a reaffirmation is reachable"
+    );
+    kani::cover!(
+        matches!(changed, Ok(ModeChange::AlreadyCurrent(_))),
+        "a retry of the current mode is reachable"
+    );
     kani::cover!(
         matches!(changed, Err(SettingsError::GenerationExhausted)),
         "the last generation is reachable"
+    );
+}
+
+/// COM-07 "tab cũ không đè lựa chọn mới": once a mode request is confirmed (accepted, or its mode
+/// already held), no request issued from that view or an older one is accepted afterwards.
+/// Clients learn generations from the server, so the earlier request carries a generation no
+/// newer than the later one and neither is newer than the stored one. Includes the trace that
+/// motivated the rule: Closed@g, the older "open@g" delayed behind the newer "closed@g".
+#[kani::proof]
+fn a_confirmed_mode_request_fences_every_earlier_request() {
+    let start = DiscussionSettings::restore(any_mode(), any_generation());
+    let earlier = any_generation();
+    let later = any_generation();
+    kani::assume(earlier <= later && later <= start.generation());
+    let earlier_mode = any_mode();
+    let later_mode = any_mode();
+    let confirmed = start.change_mode(later, later_mode);
+    let Ok(decided) = confirmed else {
+        return;
+    };
+    let after = decided.settings();
+    let replayed = after.change_mode(earlier, earlier_mode);
+    assert!(replayed.ok().and_then(ModeChange::write).is_none());
+    assert!(after.generation() > earlier);
+    assert_eq!(after.mode(), later_mode);
+    kani::cover!(
+        matches!(confirmed, Ok(ModeChange::Reaffirmed(_)))
+            && earlier == later
+            && start.mode() == CommentsMode::Closed
+            && earlier_mode == CommentsMode::Open,
+        "the delayed reopen behind a reaffirmed close at the same generation"
+    );
+    kani::cover!(
+        matches!(confirmed, Ok(ModeChange::AlreadyCurrent(_)))
+            && matches!(replayed, Err(SettingsError::Stale { .. })),
+        "an earlier request after a confirmed retry"
     );
 }
 
@@ -509,29 +569,36 @@ fn submission_receipts_take_precedence_and_inserts_pass_every_gate() {
     );
 }
 
-/// D2T-INV-08: a reaction request is desired state. Asking for the current reaction is a no-op
-/// at any generation (never a toggle); a change needs the generation the actor saw, advances it
-/// by exactly one without wrapping and reports the delta it applies.
+/// D2T-INV-08: a reaction request is desired state behind an accepted-intent generation. A
+/// request carrying the stored generation is accepted and advances it by exactly one without
+/// wrapping (a reaffirmation too, with no delta); a change reports the delta it applies; at any
+/// other generation nothing is written, and asking for the held reaction is `AlreadyCurrent`
+/// (never a toggle).
 #[kani::proof]
 fn reaction_changes_are_desired_state_and_generation_bound() {
     let current = any_reaction();
     let expected = any_reaction_generation();
     let wanted = any_desire();
     let changed = current.desire(expected, wanted);
+    let advanced = current.generation().get().checked_add(1);
     match changed {
         Ok(ReactionChange::Changed { next, delta }) => {
             assert_ne!(wanted, current.kind());
             assert_eq!(expected, current.generation());
             assert_eq!(next.kind(), wanted);
-            assert_eq!(
-                current.generation().get().checked_add(1),
-                Some(next.generation().get())
-            );
+            assert_eq!(advanced, Some(next.generation().get()));
             assert_eq!((delta.removed(), delta.added()), (current.kind(), wanted));
             assert_ne!(delta.removed(), delta.added());
         }
-        Ok(ReactionChange::Unchanged(same)) => {
+        Ok(ReactionChange::Reaffirmed { next }) => {
             assert_eq!(wanted, current.kind());
+            assert_eq!(expected, current.generation());
+            assert_eq!(next.kind(), current.kind());
+            assert_eq!(advanced, Some(next.generation().get()));
+        }
+        Ok(ReactionChange::AlreadyCurrent(same)) => {
+            assert_eq!(wanted, current.kind());
+            assert_ne!(expected, current.generation());
             assert_eq!(same, current);
         }
         Err(ReactionError::Stale { current: seen }) => {
@@ -540,7 +607,7 @@ fn reaction_changes_are_desired_state_and_generation_bound() {
             assert_eq!(seen, current);
         }
         Err(ReactionError::GenerationExhausted) => {
-            assert_ne!(wanted, current.kind());
+            assert_eq!(expected, current.generation());
             assert_eq!(current.generation().get(), i64::MAX);
         }
     }
@@ -550,14 +617,63 @@ fn reaction_changes_are_desired_state_and_generation_bound() {
         "replacing one kind by another is reachable"
     );
     kani::cover!(
+        matches!(changed, Ok(ReactionChange::Reaffirmed { .. })),
+        "a reaffirmation is reachable"
+    );
+    kani::cover!(
+        matches!(changed, Ok(ReactionChange::AlreadyCurrent(_))),
+        "a retry of the held reaction is reachable"
+    );
+    kani::cover!(
         matches!(changed, Err(ReactionError::GenerationExhausted)),
         "the last generation is reachable"
     );
 }
 
+/// D2T-INV-08 ordering: once a reaction request of an actor is confirmed (accepted, or its
+/// reaction already held), no request issued from that view or an older one is accepted
+/// afterwards. Clients learn generations from the server, so the earlier request carries a
+/// generation no newer than the later one and neither is newer than the stored one. Includes the
+/// trace: no reaction at g, the older "Heart@g" delayed behind the newer "none@g".
+#[kani::proof]
+fn a_confirmed_reaction_request_fences_every_earlier_request() {
+    let start = any_reaction();
+    let earlier = any_reaction_generation();
+    let later = any_reaction_generation();
+    kani::assume(earlier <= later && later <= start.generation());
+    let earlier_desire = any_desire();
+    let later_desire = any_desire();
+    let confirmed = start.desire(later, later_desire);
+    let after = match confirmed {
+        Ok(ReactionChange::Changed { next, .. } | ReactionChange::Reaffirmed { next }) => next,
+        Ok(ReactionChange::AlreadyCurrent(same)) => same,
+        Err(_) => return,
+    };
+    let replayed = after.desire(earlier, earlier_desire);
+    assert!(matches!(
+        replayed,
+        Ok(ReactionChange::AlreadyCurrent(_)) | Err(ReactionError::Stale { .. })
+    ));
+    assert!(after.generation() > earlier);
+    assert_eq!(after.kind(), later_desire);
+    kani::cover!(
+        matches!(confirmed, Ok(ReactionChange::Reaffirmed { .. }))
+            && earlier == later
+            && start.kind().is_none()
+            && earlier_desire.is_some(),
+        "the delayed reaction behind a reaffirmed clear at the same generation"
+    );
+    kani::cover!(
+        matches!(confirmed, Ok(ReactionChange::AlreadyCurrent(_)))
+            && matches!(replayed, Err(ReactionError::Stale { .. })),
+        "an earlier request after a confirmed retry"
+    );
+}
+
 /// D2T-INV-08 interaction limits: only a public comment of a public work takes a reaction, and a
-/// hidden one answers like a missing one; writers never react to their own comment; closing
-/// comments stops new reactions but never stops an actor from clearing theirs.
+/// hidden one answers like a missing one; every request of a writer on their own comment is
+/// refused, so none is ever stored; closing comments stops new reactions but never stops an actor
+/// from clearing or reaffirming theirs.
 #[kani::proof]
 fn reaction_admission_enforces_the_interaction_limits() {
     let actor = principal();
@@ -582,6 +698,7 @@ fn reaction_admission_enforces_the_interaction_limits() {
     match decided {
         ReactionDecision::Apply { next, delta } => {
             assert!(reachable);
+            assert_ne!(actor, writer);
             assert_eq!(next.kind(), wanted);
             assert_eq!(expected, facts.current.generation());
             assert_eq!(
@@ -589,24 +706,37 @@ fn reaction_admission_enforces_the_interaction_limits() {
                 (facts.current.kind(), wanted)
             );
             if wanted.is_some() {
-                assert_ne!(actor, writer);
                 assert!(facts.settings.accepts_new_comments());
             }
         }
-        ReactionDecision::Unchanged(same) => {
+        ReactionDecision::Reaffirm { next } => {
             assert!(reachable);
+            assert_ne!(actor, writer);
+            assert_eq!(expected, facts.current.generation());
+            assert_eq!(wanted, facts.current.kind());
+            assert_eq!(next.kind(), facts.current.kind());
+            assert_eq!(
+                facts.current.generation().get().checked_add(1),
+                Some(next.generation().get())
+            );
+        }
+        ReactionDecision::AlreadyCurrent(same) => {
+            assert!(reachable);
+            assert_ne!(actor, writer);
             assert_eq!(same, facts.current);
             assert_eq!(wanted, facts.current.kind());
+            assert_ne!(expected, same.generation());
         }
         ReactionDecision::Stale { current } => {
             assert!(reachable);
+            assert_ne!(actor, writer);
             assert_eq!(current, facts.current);
             assert_ne!(expected, current.generation());
         }
         ReactionDecision::WorkNotPublic => assert!(!facts.work_public),
         ReactionDecision::TargetUnavailable => assert!(facts.work_public && !reachable),
         ReactionDecision::OwnComment => {
-            assert!(reachable && new_interaction);
+            assert!(reachable);
             assert_eq!(actor, writer);
         }
         ReactionDecision::CommentsClosed => {
@@ -616,19 +746,25 @@ fn reaction_admission_enforces_the_interaction_limits() {
         }
         ReactionDecision::GenerationExhausted => {
             assert!(reachable);
+            assert_ne!(actor, writer);
             assert_eq!(facts.current.generation().get(), i64::MAX);
         }
     }
-    if reachable && wanted.is_none() {
-        assert!(!matches!(
-            decided,
-            ReactionDecision::OwnComment | ReactionDecision::CommentsClosed
-        ));
+    if reachable && actor == writer {
+        assert_eq!(decided, ReactionDecision::OwnComment);
+    }
+    if reachable && actor != writer && !new_interaction {
+        assert_ne!(decided, ReactionDecision::CommentsClosed);
     }
     kani::cover!(
         matches!(decided, ReactionDecision::Apply { next, .. } if next.kind().is_none())
             && !facts.settings.accepts_new_comments(),
         "clearing while comments are closed is reachable"
+    );
+    kani::cover!(
+        matches!(decided, ReactionDecision::Reaffirm { next } if next.kind().is_some())
+            && !facts.settings.accepts_new_comments(),
+        "reaffirming a held reaction while comments are closed is reachable"
     );
     kani::cover!(
         matches!(decided, ReactionDecision::CommentsClosed),

@@ -127,12 +127,12 @@ Lát sau gọi đúng các hàm trên trong transaction; không viết luật th
 ## 6. Phát hiện ngoài phạm vi
 
 `ActorReaction::desire` (reaction, đề xuất #41) và `DiscussionSettings::change_mode` (COM-07) kiểm
-“trùng trạng thái” trước version, nên một yêu cầu trùng trạng thái không tạo fence: hai tab của cùng
-người có thể gặp đúng trace phản biện ở trên. Lát này **không đổi** hai hành vi đó (AC-P1-06).
+từng kiểm “trùng trạng thái” trước version, nên một yêu cầu trùng trạng thái không tạo fence: hai tab
+của cùng người có thể gặp đúng trace phản biện ở trên. Lát LVE **không đổi** hai hành vi đó (AC-P1-06).
 
 Chủ sản phẩm đã quyết định ngày 05/11/2026 đổi cả hai sang cùng luật “version của ý định được chấp
 nhận” với `lve-core-v1`. Thay đổi nằm ở PR riêng
-[loveoverflowcom/vink#79](https://github.com/loveoverflowcom/vink/pull/79) (Part of #41), **chưa
-merge** khi ghi dòng này: COM-07 trả `200` và tăng generation khi gửi lại đúng chế độ ở đúng
+[loveoverflowcom/vink#79](https://github.com/loveoverflowcom/vink/pull/79) (Part of #41), **đã
+merge** vào `develop` cùng lát này (05/11/2026), nên phát hiện đã được giải quyết: COM-07 trả `200` và tăng generation khi gửi lại đúng chế độ ở đúng
 generation; reaction đổi cùng luật và từ chối mọi yêu cầu của người viết trên bình luận của mình.
-Code LVE không phụ thuộc thay đổi đó. Khi cả hai đã merge, mục này chỉ còn là lịch sử.
+Code LVE không phụ thuộc thay đổi đó. Mục này nay chỉ còn là lịch sử.

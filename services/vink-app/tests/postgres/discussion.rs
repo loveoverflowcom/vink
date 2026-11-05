@@ -437,15 +437,38 @@ async fn the_work_author_toggles_comments_but_has_no_power_over_others(pool: PgP
         (closed.mode(), closed.generation().get()),
         (CommentsMode::Closed, 2)
     );
-    // A retry of the same choice is a no-op; a stale tab cannot reopen behind the author's back.
+    // A retry of the same choice writes nothing; a stale tab cannot reopen behind the author's back.
     assert_eq!(vink.set_comments_mode(author(), close(1)).await, Ok(closed));
-    let reopen_stale = SetCommentsMode {
+    let reopen_at = |expected_generation| SetCommentsMode {
         mode: CommentsMode::Open,
-        ..close(1)
+        ..close(expected_generation)
     };
     assert_eq!(
-        vink.set_comments_mode(author(), reopen_stale).await,
+        vink.set_comments_mode(author(), reopen_at(1)).await,
         Err(DiscussionError::Conflict { current: 2 })
+    );
+    // COM-07 trace: tab A's reopen@2 is delayed; tab B asks to keep it closed at 2 and arrives
+    // first. B is accepted and its generation is stored, so A's late request is stale.
+    let kept = vink.set_comments_mode(author(), close(2)).await.unwrap();
+    assert_eq!(
+        (kept.mode(), kept.generation().get()),
+        (CommentsMode::Closed, 3)
+    );
+    assert_eq!(
+        vink.set_comments_mode(author(), reopen_at(2)).await,
+        Err(DiscussionError::Conflict { current: 3 })
+    );
+    let stored: (bool, i64) = sqlx::query_as(
+        "SELECT comments_open, settings_generation FROM discussion_threads WHERE work_id = $1",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        stored,
+        (false, 3),
+        "the reaffirmation is durable, the late reopen is not"
     );
 
     // Closed: nothing new, but approved comments stay readable and nothing is hidden or deleted.
@@ -1136,6 +1159,33 @@ async fn the_http_api_keeps_every_discussion_outcome_distinct(pool: PgPool) {
         (StatusCode::CONFLICT, "version_conflict")
     );
     assert_eq!(json(&body)["error"]["current_version"], 2);
+    // Asking for the current state: at an older generation it writes nothing; at the current one
+    // it is accepted and advances the generation, which fences an older in-flight reopen.
+    let retry = Some(json!({"expected_generation": 1, "comments_open": false}));
+    let (status, _, body) = call(&app, "PUT", &settings, work_author, origin, retry).await;
+    assert_eq!(
+        (status, json(&body)),
+        (
+            StatusCode::OK,
+            json!({"comments_open": false, "generation": 2})
+        )
+    );
+    let keep = Some(json!({"expected_generation": 2, "comments_open": false}));
+    let (status, _, body) = call(&app, "PUT", &settings, work_author, origin, keep).await;
+    assert_eq!(
+        (status, json(&body)),
+        (
+            StatusCode::OK,
+            json!({"comments_open": false, "generation": 3})
+        )
+    );
+    let delayed = Some(json!({"expected_generation": 2, "comments_open": true}));
+    let (status, _, body) = call(&app, "PUT", &settings, work_author, origin, delayed).await;
+    assert_eq!(
+        (status, code(&body).as_str()),
+        (StatusCode::CONFLICT, "version_conflict")
+    );
+    assert_eq!(json(&body)["error"]["current_version"], 3);
     let late = submit(None, "Muộn rồi", "http-key-0007");
     let (status, _, body) = call(&app, "POST", &comments, writer, origin, late).await;
     assert_eq!(

@@ -5,6 +5,8 @@
 // Structure (root/context) belongs to structure.qnt; target here is only "reply to which comment".
 // Submission receipts (D2T-INV-06): a receipt binds (actor, key) to the payload (work, target,
 // body) and the comment it created; it is written only together with that comment.
+// Comments mode (COM-07) uses an accepted-intent generation (owner decision 05/11/2026): a request
+// at the current generation is accepted and advances it even when the mode already holds.
 module lifecycle {
   type Comment = { writer: int, target: int, review: str, removal: str, version: int }
   // op: submit | set_mode | remove_own | moderate | grant | revoke.
@@ -35,6 +37,11 @@ module lifecycle {
   var previousGeneration: int
   var previousGrants: Set[int]
   var previousReceipts: (int, int) -> Receipt
+  // Ghost history for COM-07: the highest generation of a confirmed mode request (accepted, or
+  // its mode already held). Clients only learn generations from the server, so a request at a
+  // generation the server never issued confirms nothing. 0 before any confirmation.
+  var modeFence: int
+  var previousModeFence: int
   var command: Command
   var outcome: str
   // Only deterministic scenarios use cursor; saturating it keeps the state space finite.
@@ -66,6 +73,8 @@ module lifecycle {
     previousGeneration' = 1,
     previousGrants' = Set(),
     previousReceipts' = Map(),
+    modeFence' = 0,
+    previousModeFence' = 0,
     command' = { op: "init", actor: 0, id: 0, target: 0, expected: 0, value: "", key: 0, body: 0 },
     outcome' = "init",
     cursor' = 0,
@@ -86,6 +95,10 @@ module lifecycle {
     previousGeneration' = generation,
     previousGrants' = grants,
     previousReceipts' = receipts,
+    modeFence' = if (cmd.op == "set_mode" and
+        Set("changed", "reaffirmed", "already_current").contains(result) and
+        cmd.expected <= generation and cmd.expected > modeFence) cmd.expected else modeFence,
+    previousModeFence' = modeFence,
     command' = cmd,
     outcome' = result,
     cursor' = if (cursor < 30) cursor + 1 else cursor,
@@ -128,17 +141,24 @@ module lifecycle {
 
   action submit(cmd: Command): bool = submitWith(cmd, true)
 
-  // authorize_mode_change, then DiscussionSettings::change_mode (desired-state, generation CAS).
-  action setMode(cmd: Command): bool = {
+  // authorize_mode_change, then DiscussionSettings::change_mode: the generation is compared first,
+  // so a request at the current generation is accepted (a reaffirmation when the mode already
+  // holds) and advances it. fenceReaffirm is false ONLY for the explicit negative control below:
+  // it restores the former rule, where asking for the current mode was a no-op at any generation.
+  action setModeWith(cmd: Command, fenceReaffirm: bool): bool = {
+    val accepted = cmd.expected == generation and (fenceReaffirm or cmd.value != mode)
     val result = if (cmd.actor != WORK_AUTHOR) "not_work_author"
-      else if (cmd.value == mode) "unchanged"
-      else if (cmd.expected != generation) "stale"
-      else "changed"
+      else if (accepted) (if (cmd.value == mode) "reaffirmed" else "changed")
+      else if (cmd.value == mode) "already_current"
+      else "stale"
+    val written = result == "changed" or result == "reaffirmed"
     commit(cmd, result, comments,
-      if (result == "changed") cmd.value else mode,
-      if (result == "changed") generation + 1 else generation,
+      if (written) cmd.value else mode,
+      if (written) generation + 1 else generation,
       grants)
   }
+
+  action setMode(cmd: Command): bool = setModeWith(cmd, true)
 
   // authorize_writer_removal on the actor's own view, then remove_by_author (no version).
   action removeOwn(cmd: Command): bool = all {
@@ -267,8 +287,10 @@ module lifecycle {
     cmd("submit", 3, 2, 0, 0, ""), // closed: no new root
     cmd("submit", 1, 2, 1, 0, ""), // closed: no reply, even from the author
     cmd("set_mode", 1, 0, 0, 1, "closed"), // retry after a lost response
+    cmd("set_mode", 1, 0, 0, 2, "closed"), // tab B keeps it closed: accepted, fences generation 2
+    cmd("set_mode", 1, 0, 0, 2, "open"), // tab A's older reopen, delayed behind B: stale
     cmd("set_mode", 1, 0, 0, 1, "open"), // stale tab
-    cmd("set_mode", 1, 0, 0, 2, "open"),
+    cmd("set_mode", 1, 0, 0, 3, "open"),
     cmd("submit", 3, 2, 1, 0, ""),
     cmd("submit", 1, 3, 2, 0, ""), // pending target
     cmd("grant", 2, 0, 0, 0, ""),
@@ -295,6 +317,13 @@ module lifecycle {
     keyed(2, 1, 0, 5, 1),
     keyed(2, 2, 0, 5, 1), // without the receipt check the retry creates a second comment
   )
+  // COM-07 counterexample: closed at generation 2; tab A asks open@2 and is delayed; tab B asks
+  // closed@2 later and arrives first. With a no-op for the current mode B fences nothing.
+  pure val delayedReopen = List(
+    cmd("set_mode", 1, 0, 0, 1, "closed"),
+    cmd("set_mode", 1, 0, 0, 2, "closed"), // tab B: the author's newer choice
+    cmd("set_mode", 1, 0, 0, 2, "open"), // tab A: without the fence it reopens comments
+  )
   pure val authorRecusal = List(
     cmd("grant", 1, 0, 0, 0, ""),
     cmd("submit", 2, 1, 0, 0, ""),
@@ -314,10 +343,13 @@ module lifecycle {
   action mutatedRecusalStep = all {
     cursor < authorRecusal.length(), mutatedDispatch(authorRecusal.nth(cursor)),
   }
+  action mutatedNoopModeStep = all {
+    cursor < delayedReopen.length(), setModeWith(delayedReopen.nth(cursor), false),
+  }
 
   // Nothing but an accepted command writes; every refusal and no-op leaves all state alone.
   val rejectionAtomic =
-    Set("created", "changed", "granted", "revoked").contains(outcome) or (
+    Set("created", "changed", "reaffirmed", "granted", "revoked").contains(outcome) or (
       comments == previous and mode == previousMode and generation == previousGeneration and
       grants == previousGrants and receipts == previousReceipts)
 
@@ -347,11 +379,18 @@ module lifecycle {
       } and (command.target == 0 or isPublic(previous.get(command.target)))
     else outcome == "target_unavailable" and command.target != 0)
 
-  // COM-07: only the work author changes the mode, with the generation they saw, by one step.
+  // COM-07: only the work author writes the settings, with the generation they saw, by one step;
+  // a reaffirmation advances the generation and keeps the mode.
   val modeAuthority = (mode == previousMode and generation == previousGeneration) or (
     command.op == "set_mode" and command.actor == WORK_AUTHOR and
     command.expected == previousGeneration and generation == previousGeneration + 1 and
-    mode == command.value and mode != previousMode)
+    mode == command.value and (outcome == "reaffirmed" iff mode == previousMode))
+
+  // COM-07 "tab cũ không đè lựa chọn mới": once a mode request is confirmed (accepted, or its
+  // mode already held), no request from that view or an older one is accepted afterwards. This
+  // is what makes a request for the current mode at the current generation consume it.
+  val confirmedModeFence = command.op != "set_mode" or
+    not(Set("changed", "reaffirmed").contains(outcome)) or command.expected > previousModeFence
 
   // MOD-02/INV-07: versions never decrease; each change advances exactly one version; removal is
   // terminal; a decision bound to an older version changes nothing.
@@ -421,6 +460,6 @@ module lifecycle {
     })
 
   val lifecycleSafe = rejectionAtomic and scopedWrites and premoderatedSubmission and
-    modeAuthority and versionedLifecycle and writeAuthority and viewerProjection and
-    idempotentSubmission and finiteDomain
+    modeAuthority and confirmedModeFence and versionedLifecycle and writeAuthority and
+    viewerProjection and idempotentSubmission and finiteDomain
 }

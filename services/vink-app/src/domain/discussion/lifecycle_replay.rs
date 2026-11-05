@@ -7,6 +7,7 @@
 //! commands' idempotent outcomes; their locking and durability belong to the postgres lane.
 //! Receipts carry the real [`PayloadDigest`] of the model's (work, target, body), so replay,
 //! key reuse and the receipt-before-gates order run through `decide_submission` itself.
+//! The COM-07 counterexample of the former no-op rule is replayed too: production must refuse it.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -59,6 +60,17 @@ struct Step {
     grants: Vec<u128>,
     receipts: Vec<ExpectedReceipt>,
     comments: Vec<ExpectedComment>,
+}
+
+/// A model counterexample (`vink-discussion-counterexample-v1`) with lifecycle steps.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Counterexample {
+    format: String,
+    quint_version: String,
+    command: Vec<String>,
+    status: String,
+    steps: Vec<Step>,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq)]
@@ -161,6 +173,20 @@ fn transition(decided: Result<Transition, LifecycleError>) -> (&'static str, Opt
 }
 
 impl Shell {
+    fn new(work_author: u128) -> Self {
+        Self {
+            thread: ThreadId::from_uuid(Uuid::from_u128(10)),
+            work: WorkId::from_uuid(Uuid::from_u128(77)),
+            work_author: principal(work_author),
+            // A new public work starts open (owner decision 03/11/2026).
+            settings: DiscussionSettings::INITIAL,
+            grants: BTreeSet::new(),
+            rows: BTreeMap::new(),
+            receipts: BTreeMap::new(),
+            answer: None,
+        }
+    }
+
     fn apply(&mut self, command: &Command) -> &'static str {
         self.answer = None;
         let actor = principal(command.actor);
@@ -177,11 +203,17 @@ impl Shell {
                 };
                 let expected = SettingsGeneration::new(command.expected).unwrap();
                 match self.settings.change_mode(expected, mode) {
-                    Ok(ModeChange::Changed(next)) => {
-                        self.settings = next;
-                        "changed"
+                    Ok(decided) => {
+                        // The store writes exactly what the decision says to write.
+                        if let Some(next) = decided.write() {
+                            self.settings = next;
+                        }
+                        match decided {
+                            ModeChange::Changed(_) => "changed",
+                            ModeChange::Reaffirmed(_) => "reaffirmed",
+                            ModeChange::AlreadyCurrent(_) => "already_current",
+                        }
                     }
-                    Ok(ModeChange::Unchanged(_)) => "unchanged",
                     Err(SettingsError::Stale { .. }) => "stale",
                     Err(SettingsError::GenerationExhausted) => panic!("small generations"),
                 }
@@ -349,17 +381,7 @@ fn quint_lifecycle_inputs_replay_against_the_production_decisions() {
     let mut outcomes = BTreeSet::new();
     for scenario in &fixture.scenarios {
         assert!(!scenario.steps.is_empty(), "{}", scenario.name);
-        let mut shell = Shell {
-            thread: ThreadId::from_uuid(Uuid::from_u128(10)),
-            work: WorkId::from_uuid(Uuid::from_u128(77)),
-            work_author: principal(fixture.work_author),
-            // A new public work starts open (owner decision 03/11/2026).
-            settings: DiscussionSettings::INITIAL,
-            grants: BTreeSet::new(),
-            rows: BTreeMap::new(),
-            receipts: BTreeMap::new(),
-            answer: None,
-        };
+        let mut shell = Shell::new(fixture.work_author);
         for (index, step) in scenario.steps.iter().enumerate() {
             let at = format!("{} step {index}", scenario.name);
             let outcome = shell.apply(&step.command);
@@ -382,5 +404,52 @@ fn quint_lifecycle_inputs_replay_against_the_production_decisions() {
         }
     }
     // Non-vacuous: every production refusal and outcome the model distinguishes was replayed.
-    assert_eq!(outcomes.len(), 18, "{outcomes:?}");
+    assert_eq!(outcomes.len(), 20, "{outcomes:?}");
+}
+
+/// COM-07 "tab cũ không đè lựa chọn mới": the counterexample of the former rule, where asking for
+/// the current mode was a no-op at any generation. Its inputs through production must not
+/// reproduce the violation: tab B's request for the current mode at generation 2 is accepted and
+/// fences it, so tab A's delayed reopen at generation 2 is stale and comments stay closed.
+#[test]
+fn the_no_op_mode_counterexample_is_refused_by_production() {
+    let counterexample: Counterexample = serde_json::from_str(include_str!(
+        "../../../behavior/discussion/mode-noop-fence-counterexample.json"
+    ))
+    .unwrap();
+    let tool: serde_json::Value =
+        serde_json::from_str(include_str!("../../../behavior/discussion/package.json")).unwrap();
+    assert_eq!(counterexample.format, "vink-discussion-counterexample-v1");
+    assert_eq!(
+        counterexample.quint_version,
+        tool["dependencies"]["@informalsystems/quint"]
+    );
+    assert_eq!(counterexample.status, "violation");
+    assert!(
+        counterexample
+            .command
+            .iter()
+            .any(|arg| arg == "--step=mutatedNoopModeStep")
+    );
+    let model: Vec<_> = counterexample
+        .steps
+        .iter()
+        .map(|step| step.outcome.as_str())
+        .collect();
+    assert_eq!(
+        model,
+        ["changed", "already_current", "changed"],
+        "the mutated model reopens comments"
+    );
+    let mut shell = Shell::new(1);
+    let production: Vec<_> = counterexample
+        .steps
+        .iter()
+        .map(|step| shell.apply(&step.command))
+        .collect();
+    assert_eq!(production, ["changed", "reaffirmed", "stale"]);
+    assert_eq!(
+        shell.settings,
+        DiscussionSettings::restore(CommentsMode::Closed, SettingsGeneration::new(3).unwrap())
+    );
 }

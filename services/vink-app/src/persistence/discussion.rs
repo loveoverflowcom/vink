@@ -617,7 +617,8 @@ impl DiscussionStore for PgStore {
         .await
         .map_err(classify)?;
         let decided = thread.settings()?.change_mode(expected, mode);
-        if let Ok(ModeChange::Changed(next)) = decided {
+        // A reaffirmation is written too: its generation advance fences older requests.
+        if let Some(next) = decided.ok().and_then(ModeChange::write) {
             sqlx::query(
                 "UPDATE discussion_threads
                     SET comments_open = $2, settings_generation = $3, updated_at = now()

@@ -88,8 +88,14 @@ cũng ẩn toàn bộ thảo luận, đó là thay đổi trong `CommentsMode` v
 Tác phẩm mới công khai mặc định **bật** bình luận (vẫn tiền kiểm; chủ sản phẩm xác nhận
 03/11/2026).
 
-Thay đổi chế độ dùng `expected_generation`: cùng chế độ là không đổi (an toàn khi gửi lại),
-khác chế độ với generation cũ bị từ chối để tab cũ không đè lựa chọn mới hơn.
+Thay đổi chế độ dùng **generation của ý định được chấp nhận** (chủ sản phẩm xác nhận
+05/11/2026, cùng luật với ghi nhận văn học `lve-core-v1`): yêu cầu mang đúng `expected_generation`
+hiện tại luôn được chấp nhận và tăng generation, **kể cả khi chế độ đã đúng**; generation khác mà
+chế độ đã đúng thì không ghi (an toàn khi gửi lại); generation khác và chế độ khác bị từ chối. Nhờ
+vậy một yêu cầu cũ còn trên đường đi không thể đè lựa chọn mới hơn của chính tác giả, kể cả khi
+lựa chọn mới chỉ là “giữ nguyên”. Luật cũ (cùng chế độ là no-op ở mọi generation) để lọt trace:
+đang tắt@g1, tab A gửi bật@g1 đến muộn, tab B gửi tắt@g1 đến trước không tăng generation, A khớp
+g1 và mở lại bình luận.
 
 ## 5. Bất biến được hiện thực ở lát D2T-02a
 

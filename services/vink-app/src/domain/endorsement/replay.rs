@@ -292,7 +292,15 @@ impl Shell {
                         self.settings = next;
                         ("mode_set", 0)
                     }
-                    Ok(ModeChange::Unchanged(_)) => ("noop", 0),
+                    // Same mode at the current generation: the accepted intent advances the
+                    // generation (#79), but the mode the model observes does not change.
+                    Ok(ModeChange::Reaffirmed(next)) => {
+                        self.settings = next;
+                        ("noop", 0)
+                    }
+                    Ok(ModeChange::AlreadyCurrent(_)) => {
+                        panic!("the current generation is always accepted")
+                    }
                     Err(other) => panic!("current generation: {other:?}"),
                 }
             }

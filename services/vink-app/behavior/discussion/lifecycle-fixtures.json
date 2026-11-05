@@ -1743,10 +1743,98 @@
             "key": 0,
             "body": 0
           },
-          "outcome": "unchanged",
+          "outcome": "already_current",
           "answer": null,
           "mode": "closed",
           "generation": 2,
+          "grants": [
+            3
+          ],
+          "receipts": [
+            {
+              "actor": 2,
+              "key": 1,
+              "target": null,
+              "body": 1,
+              "comment": 1
+            }
+          ],
+          "comments": [
+            {
+              "id": 1,
+              "writer": 2,
+              "target": null,
+              "review": "approved",
+              "removal": "none",
+              "version": 2,
+              "views": [
+                "public",
+                "public",
+                "public",
+                "public"
+              ]
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "set_mode",
+            "actor": 1,
+            "id": 0,
+            "target": 0,
+            "expected": 2,
+            "value": "closed",
+            "key": 0,
+            "body": 0
+          },
+          "outcome": "reaffirmed",
+          "answer": null,
+          "mode": "closed",
+          "generation": 3,
+          "grants": [
+            3
+          ],
+          "receipts": [
+            {
+              "actor": 2,
+              "key": 1,
+              "target": null,
+              "body": 1,
+              "comment": 1
+            }
+          ],
+          "comments": [
+            {
+              "id": 1,
+              "writer": 2,
+              "target": null,
+              "review": "approved",
+              "removal": "none",
+              "version": 2,
+              "views": [
+                "public",
+                "public",
+                "public",
+                "public"
+              ]
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "set_mode",
+            "actor": 1,
+            "id": 0,
+            "target": 0,
+            "expected": 2,
+            "value": "open",
+            "key": 0,
+            "body": 0
+          },
+          "outcome": "stale",
+          "answer": null,
+          "mode": "closed",
+          "generation": 3,
           "grants": [
             3
           ],
@@ -1790,7 +1878,7 @@
           "outcome": "stale",
           "answer": null,
           "mode": "closed",
-          "generation": 2,
+          "generation": 3,
           "grants": [
             3
           ],
@@ -1826,7 +1914,7 @@
             "actor": 1,
             "id": 0,
             "target": 0,
-            "expected": 2,
+            "expected": 3,
             "value": "open",
             "key": 0,
             "body": 0
@@ -1834,7 +1922,7 @@
           "outcome": "changed",
           "answer": null,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             3
           ],
@@ -1878,7 +1966,7 @@
           "outcome": "created",
           "answer": 2,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             3
           ],
@@ -1943,7 +2031,7 @@
           "outcome": "target_unavailable",
           "answer": null,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             3
           ],
@@ -2008,7 +2096,7 @@
           "outcome": "granted",
           "answer": null,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             2,
             3
@@ -2074,7 +2162,7 @@
           "outcome": "changed",
           "answer": null,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             2,
             3
@@ -2140,7 +2228,7 @@
           "outcome": "changed",
           "answer": null,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             2,
             3
@@ -2206,7 +2294,7 @@
           "outcome": "created",
           "answer": 3,
           "mode": "open",
-          "generation": 3,
+          "generation": 4,
           "grants": [
             2,
             3
