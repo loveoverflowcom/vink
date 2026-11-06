@@ -3,9 +3,10 @@
 **Lát:** PR2 + PR3 của [#73](https://github.com/loveoverflowcom/vink/issues/73) gộp một PR
 ([#81](https://github.com/loveoverflowcom/vink/pull/81)), đã port lên seam `decide_endorsement` của
 #80 (develop `40f8a30`). **Trạng thái:** hiện thực và kiểm cục bộ; production vẫn trả `401` cho ghi
-và trạng thái riêng vì chưa có auth authority (D-05). Không có icon, xếp hạng hay consumer
-web/native nào dùng các endpoint này; UI System chỉ có primitive `ToggleAction` và composition
-`EndorsementAction` dạng specimen ([evidence](ui-system-endorsement-evidence.md)), chưa adapter app.
+và trạng thái riêng vì chưa có auth authority (D-05). Consumer đầu tiên là reader Web
+([adapter WP-04](#web-adapter-wp-04)): `EndorsementAction` cho tác phẩm và từng bình luận, khách chỉ
+thấy tổng số + lý do bằng chữ; lệnh thật chỉ chạy với LocalFixture loopback. Không có icon (CHOICE-07),
+xếp hạng hay consumer native.
 
 Ý nghĩa và lựa chọn lõi: [decision record](../architecture/literary-endorsement.md). Lõi, Quint,
 Kani và registry LVE-INV: [endorsement-core](endorsement-core.md). Hợp đồng HTTP chuẩn:
@@ -173,7 +174,7 @@ Nền `develop@a9afecc`. Lần theo cả hai chiều: request → `http::api` (a
 | R4 | `application::endorsement::settle` | Replay lệnh Select đã commit khi đích nay ẩn/revision cũ trả `404`/`409 revision_changed` ("nothing was written"), không `replayed` — đúng policy #80 | Client mất ACK không biết Select cũ đã commit; hàng ON của revision cũ hiệu lực lại nếu revision đó được đăng lại | `each_revision…`, test replay | Quyết định sản phẩm | Xem OPEN-R4 | OPEN — giữ hành vi, ghi chú trong code |
 | R5 | `settle` (map `RevisionChanged`) | Select với revision không thuộc tác phẩm cũng nhận `409 revision_changed` kèm revision hiện hành | Thông điệp "republished" không đúng với ID rác; không lộ gì (revision hiện hành công khai) | `a_refused_or_failed_write…` | — | A giữ; B adapter kiểm revision ∈ work → `404` | P3 — giữ (A), ghi chú |
 | R6 | `persistence::classify` / `vink-store-postgres` | `40P01`/`40001` thành `Integrity` → `500` | Deadlock (chưa tái hiện) sẽ thành lỗi nội bộ thay vì retry | Test chờ khóa hai chiều | Chính sách lỗi chung của store | Chung cho mọi adapter, ngoài LVE | P3 — ghi nhận |
-| R7 | `own()` / `GET …/endorsements/me` | Hàng riêng trên đích ẩn/revision cũ đọc ra `unavailable`, không có order; gỡ cần `observed` từ `409` | UX gỡ riêng tư; không lộ dữ liệu | `each_revision…` | Thuộc CHOICE-10 | — | OPEN (CHOICE-10) |
+| R7 | `own()` / `GET …/endorsements/me` | Hàng riêng trên đích ẩn/revision cũ đọc ra `unavailable`, không có order; gỡ cần `observed` từ `409` | UX gỡ riêng tư; không lộ dữ liệu | `each_revision…` | Thuộc CHOICE-10 | — | Chốt ở [Web adapter](#web-adapter-wp-04): không UI, chỉ API |
 
 Đã kiểm và **không đổi**: actor từ resolver, `401` trước body; ID sai dạng `404`; binding đích
 (bình luận chỉ đọc trong thread của tác phẩm trên route, receipt bình luận lấy work từ thread, FK
@@ -207,12 +208,60 @@ qua `PATH`/`VINK_PG_BIN`):
 Test rollback R2 khóa hành vi đã đúng; không có mutant adapter cho nó. Quint không chứng minh khóa
 PostgreSQL; Kani không chứng minh HTTP/auth/SQL; LocalFixture/Identity giả không chứng minh auth thật.
 
+## Web adapter (WP-04)
+
+Nền: PR [#85](https://github.com/loveoverflowcom/vink/pull/85) (`ToggleAction`, `EndorsementAction`).
+Quyết định CHOICE-10 A và các lựa chọn của lát: [decision record](../architecture/literary-endorsement.md#lát-web-adapter-wp-04-06112026);
+bằng chứng: [web evidence](literary-endorsement-web-evidence.md).
+
+| Phần | File | Vai trò |
+| --- | --- | --- |
+| DTO | [`contract.rs`](../../apps/vink-web/src/contract.rs) | Biểu diễn riêng của app cho 4 route + lỗi (`EndorsementConflict { observed }`, `RevisionChanged`, `SelfEndorsement`, `EndorsementNotPermitted`); test round-trip mọi fixture LVE của provider |
+| Client | [`api.rs`](../../apps/vink-web/src/api.rs) | `endorsements_path`/`endorsement_path` mã hóa từng ID; `load_endorsement_summaries`, `load_own_endorsements`, `set_endorsement` (deadline 30 s như discussion); resource SSR `work_endorsement_resource` và `DiscussionLoad` (trang thảo luận + summaries của bình luận công khai, một lượt sau trang) |
+| Cổng SSR | [`server.rs`](../../apps/vink-web/src/server.rs) `PublicReads::endorsement_summaries`, [`http/ssr.rs`](../../services/vink-app/src/http/ssr.rs) | Gọi in-process `Vink::endorsement_summaries` (không resolve actor) rồi chuyển qua JSON như API; không đổi READ-01/02 |
+| Reducer | [`endorsement_state.rs`](../../apps/vink-web/src/endorsement_state.rs) | Thuần, không Leptos: `(generation/session, TargetKey, order)` → `EndorsementFacts`; sở hữu `command_key` (UUID v4 từ CSPRNG), `expected_order`, attempt, đối soát |
+| Adapter Leptos | [`pages/endorsement.rs`](../../apps/vink-web/src/pages/endorsement.rs) | Context theo trang reader, transport gắn owner của reader (sống qua re-render bình luận, hủy khi rời trang), `WorkEndorsement` sau văn bản |
+| Màn | [`pages/mod.rs`](../../apps/vink-web/src/pages/mod.rs), [`pages/discussion.rs`](../../apps/vink-web/src/pages/discussion.rs) | Seed số đếm SSR trước khi render; đọc counts + own state cho mỗi trang gốc/phản hồi trình duyệt tải; slot `CommentEndorsements` của `DiscussionThread` (không đổi thứ tự) |
+
+**Luật của reducer** (test `endorsement_state::tests`, tên `lve_web_*`):
+
+- **Order fence:** token (`selected, version, order`) chỉ được nhận khi `order` không nhỏ hơn order đang
+  hiện cho (generation, đích). Bằng order là cùng trạng thái đã commit (chỉ làm mới khả dụng/advisory);
+  lớn hơn là mới hơn. ACK/đọc trễ, trùng hay đảo thứ tự không kéo màn lùi. ACK của attempt cũ vẫn có
+  thể đóng góp token mới hơn nhưng không kết thúc phase của attempt hiện hành.
+- **Số đếm** không có order: summary đọc trước khi một lệnh của đích đó settle bị bỏ cho đích đó; lỗi
+  đọc giữ số đã biết, số chưa từng biết thành `Unavailable` (“–”), không bao giờ 0. Số của revision khác
+  revision đang hiện không được hiện cho nó.
+- **Session:** scope = (work, marker host); đổi scope tăng generation và xóa mọi đích, nên lệnh/đọc cũ
+  không settle kể cả khi quay lại cùng marker. Khách (không marker) hoặc sau `401` → `SignedOut`, không
+  gửi own read hay lệnh.
+- **Bấm:** chỉ khi own state đã biết, không chặn, không Pending/Uncertain; đặt `Pending` trước khi trả
+  về (yêu cầu của `ToggleAction`), nên chạm đúp chỉ gửi một lệnh.
+
+| Câu trả lời | Facts sau đó | Ghi chú |
+| --- | --- | --- |
+| `200 accepted` / `200 replayed` đúng đích | Token `endorsement` (hiện tại) + `summary`; `Idle` | `committed` của replay là lịch sử, không hiện |
+| `409 version_conflict` + `endorsement` | Token quan sát; `Idle` nếu trùng ý định, `Failed` nếu khác | Không tự gửi lại; bấm tiếp là ý định mới tại order quan sát |
+| `409 revision_changed` | Đích revision cũ `Unavailable`, số “–”; yêu cầu READ-02 kiểm tra lại (hiện “Xem bản mới”) | Đọc summary/own nêu revision khác cũng làm vậy |
+| `403 self_endorsement` / `endorsement_not_permitted` | Chặn `OwnContent` / `NotPermitted` (lý do bằng chữ) | Own read advisory `own_content`/`not_permitted` chặn trước khi bấm |
+| `404` | `Unavailable`, số “–” | Đọc sau có thể khôi phục nếu đích hiện lại |
+| `401` | Mọi đích `SignedOut` | Session không được server nhận |
+| `422 idempotency_key_reused` / `422` khác / `403 forbidden` | `Failed` (không ghi gì) | Key cũ bỏ; bấm lại sinh key mới |
+| Mất kết nối, timeout 30 s, `503`, `500`, thân trả lời không nêu đúng đích | `Uncertain`, chặn bấm; “Kiểm tra lại” replay đúng lệnh | Attempt mới; câu trả lời của attempt cũ không kết thúc nó |
+| Own read lỗi tạm thời | Đích chưa từng đọc → `Unknown` + “Kiểm tra lại” (đọc lại); đã biết → giữ | Không bao giờ thành Off |
+
+**SSR và hydration:** SSR luôn ẩn danh (như thảo luận): tổng số công khai của revision đang hiện và của
+bình luận công khai trên trang đầu được đọc in-process và serialize vào payload hydration, nên server
+và trình duyệt render cùng facts. Với marker LocalFixture, SSR hiện `Unknown` (chưa đọc own state) cho
+tới khi trình duyệt đọc `…/endorsements/me` sau hydration; khách thấy lý do “Cần đăng nhập để …”.
+Bình luận ẩn/đang chờ/bị từ chối và gốc ẩn (anchor) không có action.
+
 ## Chưa có hoặc phụ thuộc lát khác
 
 Auth authority/session (D-05) và cơ chế thu hồi capability, lệnh publish/withdraw thật (bằng chứng
 dùng SQL lên con trỏ), cách ly/cấm/purge tài khoản, retention receipt, giới hạn tần suất (LVE-UC-15),
-ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), icon (CHOICE-07), adapter/consumer web/native
-(reducer theo session/đích/order, xử lý `409`/replay), tổng số cho danh sách nhiều tác phẩm.
+ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), icon (CHOICE-07), consumer native, UI gỡ hàng giữ lại
+trên đích ẩn (R7, chỉ API), tổng số cho danh sách nhiều tác phẩm, E2E production (cần auth thật).
 
 ## Kiểm chứng (05/11/2026, macOS, PostgreSQL 17.11 scratch)
 
@@ -238,5 +287,6 @@ Lõi, model và Kani của #80 không đổi; lane `discussion`/`kani` chạy l�
 | #73 AC-08 | Trùng, chạm đúp, nhiều tab, ABA, mất ACK, đồng thời, rút/tái bản, kiểm duyệt | Thu hồi capability (chưa có cơ chế) |
 | #73 AC-09 | Inventory, batch không N+1, plan, hot-target, dataset/môi trường | Đo trên hạ tầng thật |
 | #73 AC-10 | Tổng số theo revision hiện hành; visibility hiện hành thắng receipt | Xếp hạng/cursor (CHOICE-06) |
-| #73 AC-13 | Tách cache, own state theo actor, guest `401`, lý do vô hiệu | Abuse/retention theo tài khoản, consent ghi danh, session fence phía client |
-| #73 AC-14 | Đối soát, backout, docs, feature map | UI/rollout thật; epic giữ mở |
+| #73 AC-13 | Tách cache, own state theo actor, guest `401`, lý do vô hiệu; session/generation fence phía client Web ([adapter](#web-adapter-wp-04)) | Abuse/retention theo tài khoản, consent ghi danh |
+| #73 AC-11/12 | Reader Web: SSR + hydration, bàn phím, 320/200%, sáng/tối ([web evidence](literary-endorsement-web-evidence.md)) | Glyph CHOICE-07; E2E production cần auth thật; native |
+| #73 AC-14 | Đối soát, backout, docs, feature map | Rollout thật; epic giữ mở |

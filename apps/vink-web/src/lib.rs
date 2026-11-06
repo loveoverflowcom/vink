@@ -14,6 +14,7 @@ pub mod discussion_state;
 pub mod document;
 pub mod draft_list;
 pub mod editor;
+pub mod endorsement_state;
 mod expressions;
 pub mod freshness;
 pub mod navigation;

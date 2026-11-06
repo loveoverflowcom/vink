@@ -211,6 +211,109 @@ pub struct ModerationDecision {
     pub version: i64,
 }
 
+/// One endorsement state of the actor (LVE #73): `order` advances on every accepted command and
+/// is what a client sends back as `expected_order`; `version` only when `selected` changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndorsementToken {
+    pub selected: bool,
+    pub version: i64,
+    pub order: i64,
+}
+
+/// A public aggregate: `unavailable` carries `count: null` and is never shown as zero.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndorsementSummary {
+    /// `available` or `unavailable`; kept as text so a new value is not a crash.
+    pub status: String,
+    pub count: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkEndorsementSummary {
+    pub status: String,
+    pub count: Option<i64>,
+    /// The current publication's revision: the one `count` is about.
+    pub revision_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentEndorsementSummary {
+    pub comment_id: String,
+    pub status: String,
+    pub count: Option<i64>,
+}
+
+/// `GET /works/{id}/endorsements`: public summaries, one snapshot, no viewer state.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndorsementSummaries {
+    pub work_id: String,
+    pub work: WorkEndorsementSummary,
+    pub comments: Vec<CommentEndorsementSummary>,
+}
+
+/// The actor's own state of one target as read back; `version`/`order` are `null` when the
+/// target is unavailable. `can_endorse`/`blocked_reason` are advisory.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OwnEndorsement {
+    /// `unavailable`, `not_selected` or `selected`.
+    pub state: String,
+    pub version: Option<i64>,
+    pub order: Option<i64>,
+    pub can_endorse: bool,
+    /// `own_content`, `not_permitted` or `null`.
+    pub blocked_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentOwnEndorsement {
+    pub comment_id: String,
+    #[serde(flatten)]
+    pub own: OwnEndorsement,
+}
+
+/// `GET /works/{id}/endorsements/me`: the actor's own states, one snapshot.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OwnEndorsements {
+    pub work_id: String,
+    /// The current publication's revision: the work target `work` describes.
+    pub revision_id: String,
+    pub work: OwnEndorsement,
+    pub comments: Vec<CommentOwnEndorsement>,
+}
+
+/// `PUT /works/{id}/endorsement/me`. Resend the same key and body to reconcile.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkEndorsementRequest {
+    pub command_key: String,
+    pub expected_order: i64,
+    pub endorsed: bool,
+    /// The revision the page rendered; part of the target.
+    pub revision_id: String,
+}
+
+/// `PUT /works/{id}/discussion/comments/{comment_id}/endorsement/me`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CommentEndorsementRequest {
+    pub command_key: String,
+    pub expected_order: i64,
+    pub endorsed: bool,
+}
+
+/// Result of an endorsement write, sent only after the commit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EndorsementWrite {
+    pub work_id: String,
+    pub revision_id: Option<String>,
+    pub comment_id: Option<String>,
+    /// `accepted` or `replayed`.
+    pub outcome: String,
+    /// The current state: the one to show.
+    pub endorsement: EndorsementToken,
+    /// `replayed` only: what the earlier command committed (history, never shown as current).
+    pub committed: Option<EndorsementToken>,
+    pub summary: EndorsementSummary,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -224,6 +327,12 @@ pub struct ErrorBody {
     pub current_version: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub field: Option<String>,
+    /// `revision_changed` only: the revision now published.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub current_revision_id: Option<String>,
+    /// Endorsement `version_conflict` only: the actor's current state, to reconcile from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub endorsement: Option<EndorsementToken>,
 }
 
 /// Outcome classes of the API, as this client needs to distinguish them.
@@ -243,6 +352,19 @@ pub enum ApiError {
     KeyReused,
     /// A moderation decision on a removed comment.
     CommentRemoved,
+    /// `403 self_endorsement`: the work's author or the comment's writer.
+    SelfEndorsement,
+    /// `403 endorsement_not_permitted`: no current endorsement capability.
+    EndorsementNotPermitted,
+    /// `409 version_conflict` of an endorsement: another accepted command moved the order;
+    /// `observed` is the actor's current state. Nothing was written.
+    EndorsementConflict {
+        observed: EndorsementToken,
+    },
+    /// `409 revision_changed`: the page's revision is no longer the public one.
+    RevisionChanged {
+        current_revision_id: String,
+    },
     Invalid {
         field: Option<String>,
     },
@@ -260,10 +382,25 @@ impl ApiError {
         let body = envelope.map(|e| e.error);
         match (status, body.as_ref().map(|b| b.code.as_str())) {
             (401, _) => Self::Unauthenticated,
+            (403, Some("self_endorsement")) => Self::SelfEndorsement,
+            (403, Some("endorsement_not_permitted")) => Self::EndorsementNotPermitted,
             (403, _) => Self::Forbidden,
             (404, _) => Self::NotFound,
-            (409, Some("version_conflict")) => match body.and_then(|b| b.current_version) {
-                Some(current_version) => Self::VersionConflict { current_version },
+            (409, Some("version_conflict")) => match body {
+                Some(ErrorBody {
+                    endorsement: Some(observed),
+                    ..
+                }) => Self::EndorsementConflict { observed },
+                Some(ErrorBody {
+                    current_version: Some(current_version),
+                    ..
+                }) => Self::VersionConflict { current_version },
+                _ => Self::Unexpected { status },
+            },
+            (409, Some("revision_changed")) => match body.and_then(|b| b.current_revision_id) {
+                Some(current_revision_id) => Self::RevisionChanged {
+                    current_revision_id,
+                },
                 None => Self::Unexpected { status },
             },
             (409, Some("comments_closed")) => Self::CommentsClosed,
@@ -384,6 +521,85 @@ mod tests {
                 409,
                 ApiError::VersionConflict { current_version: 3 },
             ),
+        ];
+        for (name, status, expected) in cases {
+            let envelope = round_trip::<ErrorEnvelope>(name);
+            assert_eq!(
+                ApiError::from_response(status, Some(envelope)),
+                expected,
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn decodes_endorsement_fixtures() {
+        let summaries: EndorsementSummaries = round_trip("endorsements.get.json");
+        assert!(
+            summaries
+                .comments
+                .iter()
+                .any(|c| c.status == "unavailable" && c.count.is_none())
+        );
+        let own: OwnEndorsements = round_trip("endorsements.me.get.json");
+        assert_eq!(own.work.order, Some(3));
+        assert!(
+            own.comments
+                .iter()
+                .any(|c| c.own.blocked_reason.as_deref() == Some("own_content"))
+        );
+        assert!(
+            own.comments
+                .iter()
+                .any(|c| c.own.state == "unavailable" && c.own.order.is_none())
+        );
+        let work: WorkEndorsementRequest = round_trip("endorsement.work.put.request.json");
+        assert_eq!(work.expected_order, 1);
+        let _: CommentEndorsementRequest = round_trip("endorsement.comment.put.request.json");
+        let accepted: EndorsementWrite = round_trip("endorsement.work.put.response.json");
+        assert!(accepted.committed.is_none() && accepted.revision_id.is_some());
+        let replayed: EndorsementWrite = round_trip("endorsement.comment.put.response.json");
+        assert_ne!(replayed.committed, Some(replayed.endorsement));
+    }
+
+    #[test]
+    fn classifies_endorsement_error_fixtures() {
+        let cases = [
+            (
+                "error.endorsement_conflict.json",
+                409,
+                ApiError::EndorsementConflict {
+                    observed: EndorsementToken {
+                        selected: false,
+                        version: 3,
+                        order: 4,
+                    },
+                },
+            ),
+            (
+                "error.revision_changed.json",
+                409,
+                ApiError::RevisionChanged {
+                    current_revision_id: "0192f3a1-0000-7000-8000-000000000045".into(),
+                },
+            ),
+            (
+                "error.self_endorsement.json",
+                403,
+                ApiError::SelfEndorsement,
+            ),
+            (
+                "error.endorsement_not_permitted.json",
+                403,
+                ApiError::EndorsementNotPermitted,
+            ),
+            (
+                "error.endorsement_key_reused.json",
+                422,
+                ApiError::KeyReused,
+            ),
+            ("error.unauthenticated.json", 401, ApiError::Unauthenticated),
+            ("error.forbidden.json", 403, ApiError::Forbidden),
         ];
         for (name, status, expected) in cases {
             let envelope = round_trip::<ErrorEnvelope>(name);

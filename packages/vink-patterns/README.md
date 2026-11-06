@@ -19,7 +19,7 @@ fixture adapter → :patterns (CMP common) → :ui → semantic tokens
 | `EditorToolbar` | Slot trạng thái và hành động; không sở hữu body hay save state |
 | `FeedbackComposer` | Giá trị controlled; intent độc lập với comments mode; Closed giữ input và chặn gửi, Pending vẫn đúng trạng thái transport |
 | `FeedbackItem`/`FeedbackThread`, `ParticipantSummary` | Chỉ người được trả về, khử trùng theo key theo thứ tự đầu; không suy tổng số |
-| `DiscussionThread` | Root/neo + một danh sách replies phẳng; status/context được cấp; phát reply/remove intents, không quyết định authority |
+| `DiscussionThread` | Root/neo + một danh sách replies phẳng; status/context được cấp; phát reply/remove intents, không quyết định authority. Slot Web tùy chọn `CommentEndorsements` (facts theo ID, `None` = không có đích) render `EndorsementAction` ở cuối hàng thao tác của từng gốc/phản hồi, không đổi thứ tự; CMP chưa có slot này |
 | `EndorsementAction` | Ghi nhận văn học (#73) cho một đích: `EndorsementKind::{Work, Comment}` chọn copy “Đánh giá cao”/“Hữu ích”, `EndorsementBlock` thành lý do bằng chữ; nhận `EndorsementFacts` (giá trị đã xác nhận, phase, số đếm của riêng đích) và phát trạng thái mong muốn qua `ToggleAction`. Không giữ `command_key`/order/session, không cộng số lên gốc/tác phẩm, chưa có glyph (CHOICE-07) |
 | `RecentFeedback` | Mẫu ghi rõ, không gọi là nhận xét mới nhất khi chưa có timestamp có thẩm quyền |
 
@@ -36,8 +36,9 @@ là mẫu, không có acknowledgment để giả thành công. Không thêm prov
 Các intent có tên giữ nhãn ở cả Leptos và CMP. `label()` trả `Option<&str>` ở Rust,
 `label` là `String?` ở Kotlin; consumer bỏ phần tử nhãn khi không có giá trị.
 `composition.endorsement` dùng cùng 7 scenario ở hai gallery (tác phẩm, gốc, hai phản hồi phẳng;
-mỗi đích một action). Chưa có adapter app: nối endpoint LVE cần reducer theo (session, target,
-order), xử lý `409`/replay và auth thật; trước đó app không render action giả thành công.
+mỗi đích một action). Reader Web có adapter thật (`apps/vink-web/src/pages/endorsement.rs` + reducer
+`endorsement_state.rs` theo session/đích/order, xử lý `409`/replay); production vẫn `401`, chỉ
+LocalFixture ghi cục bộ ([runtime](../../docs/development/literary-endorsement-runtime.md#web-adapter-wp-04)).
 `composition.feedback` dùng cùng scenario IDs `sharing-open`, `sharing-closed`, `discussion-flat`,
 `discussion-anchor` ở hai gallery; đây là projection mẫu, không phải proof Rust/Quint hoặc native integration.
 

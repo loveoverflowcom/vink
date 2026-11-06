@@ -6,8 +6,9 @@ Baseline ban đầu `develop@be2b69e490d7637f6021c4b97062ed3859e09189`; lần me
 [quyết định/transaction contract](../architecture/literary-endorsement.md),
 [epic #73](https://github.com/loveoverflowcom/vink/issues/73).
 Owner: `vink-app::domain::endorsement`; PR2/PR3 phải dùng cùng seam, không viết lại luật trong
-handler/SQL. Consumer transaction/HTTP có từ #81 ([runtime](literary-endorsement-runtime.md));
-chưa có UI consumer và auth thật: epic AC-03 **PARTIAL**.
+handler/SQL. Consumer transaction/HTTP có từ #81 ([runtime](literary-endorsement-runtime.md)); UI
+consumer đầu tiên là reader Web ([adapter](literary-endorsement-runtime.md#web-adapter-wp-04)); chưa có
+auth thật: epic AC-03 **PARTIAL**.
 
 ## Registry traceability duy nhất cho LVE
 
@@ -25,7 +26,7 @@ Tên harness trong `src/domain/endorsement/proofs.rs` viết tắt bỏ tiền t
 | LVE-INV-07 / FR-02/09 / UC-04/14/17 | `exactCounts` theo selected source; count 0..3 | `EndorsementCount::apply`, `EndorsementDelta`; `exhausted_tokens_and_counts…`; `EndorsementState::restore` chỉ nhận trạng thái đạt được (selected ⇔ version chẵn), `accepted_states_keep_selection_parity…` | `scalars_and_count_arithmetic_are_total`; `acceptance_fences…` kiểm restore đúng parity và mọi state được chấp nhận restore lại được | Query/transaction aggregate, reconciliation/rebuild, freshness chưa có |
 | LVE-INV-08 / FR-05 / UC-01/09 | `hiddenCountsStayHidden` | `public_count` → Option; private own state chỉ đúng scope | `eligibility…`, `comment_scope…` | Cache/HTTP/SQL/voter consent chưa có, CHOICE-12 OPEN |
 | LVE-INV-09 / FR-06 / UC-03/13 | Ngoài model | Không đổi discussion order/structure/reaction | Harness cũ giữ nguyên | Ranking/cursor slice sau; không nhận hoàn tất invariant này |
-| LVE-INV-10 / FR-03/08 / UC-05/08/14/16 | Không model transport ACK | Core tách replay history/current; UI System `ToggleView::resolve` (vectors `toggle-contract-v1`) chỉ hiện giá trị đã xác nhận, không phát lệnh khi pending/uncertain | Không proof ACK/session UI | Chưa adapter app: consumer phải bind actor/session/target/intent generation và bỏ ACK cũ theo order |
+| LVE-INV-10 / FR-03/08 / UC-05/08/14/16 | Không model transport ACK | Core tách replay history/current; UI System `ToggleView::resolve` (vectors `toggle-contract-v1`) chỉ hiện giá trị đã xác nhận, không phát lệnh khi pending/uncertain | Không proof ACK/session UI | Adapter Web (`endorsement_state.rs`) bind generation/session, đích và order; bỏ ACK/đọc cũ theo order, count theo stamp; unit tests `lve_web_*` + smoke trình duyệt, không phải proof. Native chưa có |
 | LVE-INV-11 / FR-07 / UC-11/18 | Không output cấp quyền | Outcome chỉ state/delta/receipt; không gọi publish/moderate/curate | Không proof hệ thống quyền | Caller/auth/authority cần tests riêng; count không được dùng làm ACL |
 | LVE-INV-12 / FR-04/07 / UC-10/11/12/18 | `noSelfEndorsement`; đổi publication, close/reopen shell | Revision identity, author check, không có comments-mode gate; `current_revision…`, `work_root_reply…` | `eligibility…`, `comment_scope…` | Content edit/purge/reuse lifecycle và production policy qualification chưa có |
 

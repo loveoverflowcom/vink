@@ -275,27 +275,65 @@ pub struct DiscussionThreadFacts {
     pub replies: Vec<DiscussionComment>,
 }
 
+/// Literary endorsement (LVE #73) of each comment in a thread: the root and every flat reply
+/// are separate targets, never summed into each other or the work. `facts(id)` is `None` when
+/// that comment has no endorsement target (a hidden root, the viewer's pending or rejected
+/// comment), and then nothing renders. The adapter owns command keys, order and sessions.
+#[derive(Clone, Copy)]
+pub struct CommentEndorsements {
+    pub facts: Callback<String, Option<EndorsementFacts>>,
+    /// `(comment_id, desired)`.
+    pub on_set: Callback<(String, bool)>,
+    pub on_recover: Callback<String>,
+}
+
 /// Exactly two levels. A contextual reply is still rendered in the same flat reply list.
+/// Endorsements never reorder roots or replies: the provider's order is kept as given.
 #[component]
 pub fn DiscussionThread(
     #[prop(into)] facts: Signal<DiscussionThreadFacts>,
     #[prop(into)] on_reply: Callback<String>,
     #[prop(into)] on_remove: Callback<String>,
     #[prop(optional, into)] action_state: Signal<ActionState>,
+    #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
 ) -> impl IntoView {
     let root = Memo::new(move |_| facts.get().root);
     view! {
         <div class="vk-discussion-thread">
-            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state))
+            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
             <ul class="vk-discussion-replies" aria-label="Phản hồi theo thứ tự cũ đến mới">
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state))}</li> }
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements))}</li> }
                     } />
             </ul>
         </div>
+    }
+}
+
+/// One comment's endorsement. It mounts once per presence change, so state updates keep the
+/// same button (and its focus) instead of replacing it.
+fn comment_endorsement(id: String, endorsements: CommentEndorsements) -> impl IntoView {
+    let facts = {
+        let id = id.clone();
+        Memo::new(move |_| endorsements.facts.run(id.clone()))
+    };
+    let present = Memo::new(move |_| facts.with(Option::is_some));
+    move || {
+        present.get().then(|| {
+            let (set_id, recover_id) = (id.clone(), id.clone());
+            view! {
+                <EndorsementAction
+                    id=format!("endorse-comment-{id}")
+                    kind=EndorsementKind::Comment
+                    facts=Signal::derive(move || facts.get().unwrap_or_default())
+                    on_set=move |desired: bool| endorsements.on_set.run((set_id.clone(), desired))
+                    on_recover=move |_: RecoveryIntent| endorsements.on_recover.run(recover_id.clone())
+                />
+            }
+        })
     }
 }
 
@@ -304,6 +342,7 @@ fn discussion_comment(
     on_reply: Callback<String>,
     on_remove: Callback<String>,
     state: Signal<ActionState>,
+    endorsements: Option<CommentEndorsements>,
 ) -> AnyView {
     let reply_id = comment.id.clone();
     let remove_id = comment.id.clone();
@@ -327,6 +366,8 @@ fn discussion_comment(
             <div class="vk-discussion-actions">
                 {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
                 {comment.can_remove.then(|| view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> })}
+                // Last: its note (pending, reason) wraps under it without pushing the text actions apart.
+                {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements))}
             </div>
         </article>
     }.into_any()
@@ -629,5 +670,63 @@ mod tests {
             pending.contains("Đang gửi nhận xét…") && pending.contains("data-state=\"pending\""),
             "{pending}"
         );
+    }
+
+    #[test]
+    fn thread_endorsements_render_one_action_per_target_in_provider_order() {
+        let comment = |id: &str| DiscussionComment {
+            id: id.into(),
+            author: Author {
+                name: "Người đọc".into(),
+                key: None,
+                published_at: "2026-11-06T02:00:00Z".into(),
+            },
+            body: format!("Bình luận {id}"),
+            status: None,
+            context: None,
+            can_reply: true,
+            can_remove: false,
+        };
+        let html = Owner::new().with(|| {
+            let facts = DiscussionThreadFacts {
+                root_id: "root".into(),
+                root: Some(comment("root")),
+                replies: vec![comment("z-late"), comment("a-early"), comment("pending")],
+            };
+            let endorsements = CommentEndorsements {
+                facts: Callback::new(|id: String| {
+                    (id != "pending").then(|| EndorsementFacts {
+                        value: ToggleValue::Off,
+                        phase: TogglePhase::Idle,
+                        count: CountFact::Known(if id == "z-late" { 7 } else { 0 }),
+                        block: None,
+                    })
+                }),
+                on_set: Callback::new(|_: (String, bool)| {}),
+                on_recover: Callback::new(|_: String| {}),
+            };
+            view! {
+                <DiscussionThread facts=Signal::stored(facts) on_reply=|_: String| {}
+                    on_remove=|_: String| {} endorsements=Some(endorsements) />
+            }
+            .to_html()
+        });
+        let ids: Vec<usize> = [
+            "endorse-comment-root\"",
+            "endorse-comment-z-late\"",
+            "endorse-comment-a-early\"",
+        ]
+        .iter()
+        .map(|id| html.find(id).unwrap_or_else(|| panic!("{id}: {html}")))
+        .collect();
+        assert!(
+            ids.windows(2).all(|w| w[0] < w[1]),
+            "provider order kept: {html}"
+        );
+        assert!(
+            !html.contains("endorse-comment-pending"),
+            "no target, no action: {html}"
+        );
+        assert_eq!(html.matches("vk-ui-toggle__label").count(), 3, "{html}");
     }
 }

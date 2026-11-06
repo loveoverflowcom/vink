@@ -18,6 +18,10 @@ const DROP_SCRATCH: &str = "DROP DATABASE IF EXISTS vink_verify_web WITH (FORCE)
 const CREATE_SCRATCH: &str = "CREATE DATABASE vink_verify_web";
 /// `dev_seed::SAMPLE_AUTHOR`: the browser acts as the owner of the sample work.
 const SAMPLE_AUTHOR: &str = "11111111-1111-4111-8111-111111111111";
+/// `dev_seed::OTHER_PRINCIPAL`: a reader of that work for the endorsement phase (LVE #73), with
+/// a moderator grant so it can approve the author's comments it then endorses (neither the
+/// comments' writer nor the work's owner, so not recused).
+const OTHER_PRINCIPAL: &str = "22222222-2222-4222-8222-222222222222";
 
 /// Child process that is terminated when dropped, so a failed check never leaks a server.
 pub struct Guard(pub Option<Child>);
@@ -290,6 +294,25 @@ struct Server {
 }
 
 impl Server {
+    /// The same server and database for another loopback fixture principal.
+    /// The same database served to another loopback fixture principal on its own port.
+    fn with_principal(&self, principal: &str, port: u16) -> Self {
+        let mut env = self.env.clone();
+        for (key, value) in &mut env {
+            match key.as_str() {
+                "VINK_DEV_PRINCIPAL" => *value = principal.into(),
+                "VINK_BIND" => *value = format!("127.0.0.1:{port}"),
+                "VINK_PUBLIC_ORIGIN" => *value = format!("http://127.0.0.1:{port}"),
+                _ => {}
+            }
+        }
+        Self {
+            port,
+            env,
+            log: self.log.with_file_name("server-reader.log"),
+        }
+    }
+
     fn command(&self, root: &Path, args: &[&str]) -> Command {
         let mut command = Command::new(binary(root, "vink-app"));
         command
@@ -487,6 +510,56 @@ fn run_web_checks(
         || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
     );
     let _ = restarted.terminate(Duration::from_secs(15));
+    if !ok {
+        return false;
+    }
+    // LVE #73: two servers on the same scratch database. The author's (this origin) writes the
+    // comments; a second loopback fixture principal, with a moderator grant, approves them and
+    // endorses in the browser on its own origin.
+    let reader = match free_port() {
+        Ok(port) => server.with_principal(OTHER_PRINCIPAL, port),
+        Err(e) => {
+            report.fail("free port", &e);
+            return false;
+        }
+    };
+    let mut grant = reader.command(
+        root,
+        &["moderator", "grant", OTHER_PRINCIPAL, "verify web LVE"],
+    );
+    if let Err(e) = crate::process::run(&mut grant, "vink-app moderator grant (scratch)") {
+        report.fail("scratch database: moderator grant", &e);
+        return false;
+    }
+    let mut author = match server.start(root) {
+        Ok(guard) => guard,
+        Err(e) => {
+            report.fail("author server starts again", &e);
+            return false;
+        }
+    };
+    let mut endorsing = match reader.start(root) {
+        Ok(guard) => guard,
+        Err(e) => {
+            report.fail("server starts as a second fixture principal", &e);
+            return false;
+        }
+    };
+    let reader_origin = format!("http://127.0.0.1:{}", reader.port);
+    let ok = report.step(
+        "literary endorsement: real writes, double tap, lost ACK + replay, 409, keyboard, 401",
+        || {
+            smoke(
+                root,
+                &["--phase", "endorsement", "--author-base", origin],
+                chrome,
+                &reader_origin,
+                state,
+            )
+        },
+    );
+    let _ = endorsing.terminate(Duration::from_secs(15));
+    let _ = author.terminate(Duration::from_secs(15));
     ok
 }
 

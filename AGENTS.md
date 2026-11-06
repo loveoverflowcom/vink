@@ -56,10 +56,16 @@ existing App manifest/runner (19 App harnesses total). The API/PostgreSQL slice 
 use cases, HTTP API v1 routes (desired-state `PUT` with an actor-scoped command key and expected
 order per work revision/comment; public summary and own-state batch reads, all `no-store`) and a
 `PgStore` adapter/migrations (state rows per target and append-only receipts, never deleted; stored
-states limited to reachable ones by a selection/version parity CHECK; counts read from canonical rows) with real-database race tests; production writes answer `401` and no app
-UI consumer, ranking or voter list exists. The UI System has a DTO-free `ToggleAction` (Leptos/CMP,
+states limited to reachable ones by a selection/version parity CHECK; counts read from canonical rows) with real-database race tests. The UI System has a DTO-free `ToggleAction` (Leptos/CMP,
 shared `toggle-contract-v1` vectors, recipe tokens `action.toggle.*`) and an `EndorsementAction`
-composition, registered only as gallery specimens; the glyph (CHOICE-07) stays OPEN. See [policy](docs/architecture/literary-endorsement.md),
+composition (gallery specimens on both renderers). The Web reader consumes it through an app
+adapter: “Đánh giá cao” after the text and “Hữu ích” on each public root/flat reply (a
+`DiscussionThread` slot, order unchanged), SSR public counts, and a pure reducer
+(`apps/vink-web/src/endorsement_state.rs`) keyed by session generation, target and accepted order
+that owns `command_key`/`expected_order`. CHOICE-10 A: no optimistic state; lost answers are
+Uncertain until an exact keyed replay. Guests see counts and a text reason, never a login;
+production writes answer `401`, real writes run only with the loopback LocalFixture (labelled).
+No native consumer, ranking or voter list exists; the glyph (CHOICE-07) stays OPEN. See [policy](docs/architecture/literary-endorsement.md),
 [registry/gaps](docs/development/endorsement-core.md) and
 [runtime](docs/development/literary-endorsement-runtime.md).
 No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
