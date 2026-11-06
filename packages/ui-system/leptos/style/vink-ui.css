@@ -214,7 +214,8 @@
 /* M3 state layer in the content colour: 8% hover, 12% pressed. */
 .vk-ui-button::after,
 .vk-ui-icon-button::after,
-.vk-ui-chip::after {
+.vk-ui-chip::after,
+.vk-ui-toggle__control::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -227,11 +228,13 @@
 
 .vk-ui-button:not([aria-disabled]):hover::after,
 .vk-ui-icon-button:not([aria-disabled]):hover::after,
-.vk-ui-chip:not([aria-disabled]):hover::after { opacity: 0.08; }
+.vk-ui-chip:not([aria-disabled]):hover::after,
+.vk-ui-toggle__control:not([aria-disabled]):hover::after { opacity: 0.08; }
 
 .vk-ui-button:not([aria-disabled]):active::after,
 .vk-ui-icon-button:not([aria-disabled]):active::after,
-.vk-ui-chip:not([aria-disabled]):active::after { opacity: 0.12; }
+.vk-ui-chip:not([aria-disabled]):active::after,
+.vk-ui-toggle__control:not([aria-disabled]):active::after { opacity: 0.12; }
 
 .vk-ui-button {
   padding: var(--vk-density-control-padding) var(--vk-space-6);
@@ -364,18 +367,94 @@
 .vk-ui-button:focus-visible,
 .vk-ui-icon-button:focus-visible,
 .vk-ui-chip:focus-visible,
+.vk-ui-toggle__control:focus-visible,
 .vk-ui-scaffold .vk-ui-button:focus-visible,
 .vk-ui-scaffold .vk-ui-icon-button:focus-visible,
 .vk-ui-scaffold .vk-ui-chip:focus-visible,
+.vk-ui-scaffold .vk-ui-toggle__control:focus-visible,
 .vk-ui .vk-ui-button:focus-visible,
 .vk-ui .vk-ui-icon-button:focus-visible,
-.vk-ui .vk-ui-chip:focus-visible {
+.vk-ui .vk-ui-chip:focus-visible,
+.vk-ui .vk-ui-toggle__control:focus-visible {
   outline: 2px solid var(--vk-focus-ring);
   outline-offset: 0;
 }
 .vk-ui-button:focus-visible, .vk-ui-icon-button:focus-visible { border-radius: var(--vk-radius-full); }
 .vk-ui-chip > span { min-inline-size: 0; overflow-wrap: anywhere; }
 .vk-ui-chip__check { flex-shrink: 0; }
+
+/* ToggleAction (LVE #73): quiet and borderless until the owner confirms On; the check mark
+ * (or the MicroArc while pending) sits in one reserved trailing slot so the label never moves. The
+ * feedback row is the polite live region, always mounted; it takes no space while inactive. */
+.vk-ui-toggle { gap: 0; }
+
+.vk-ui-toggle__control {
+  position: relative;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vk-space-2);
+  max-inline-size: 100%;
+  min-block-size: var(--vk-density-control-height);
+  min-inline-size: var(--vk-density-control-height);
+  margin: 0;
+  padding: 0 var(--vk-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--vk-radius-full);
+  background-color: transparent;
+  color: var(--vk-action-toggle-content);
+  font-family: var(--vk-type-label-font);
+  font-size: var(--vk-type-label-size);
+  font-weight: var(--vk-type-label-weight);
+  line-height: var(--vk-type-label-line-height);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background-color var(--vk-duration-short) var(--vk-ease-emphasized),
+    color var(--vk-duration-short) var(--vk-ease-emphasized);
+}
+
+.vk-ui-toggle__control[data-pressed="true"] {
+  background-color: var(--vk-action-toggle-selected-container);
+  color: var(--vk-action-toggle-selected-content);
+}
+
+.vk-ui-toggle__control[data-state="disabled"] {
+  color: var(--vk-disabled-content);
+  cursor: not-allowed;
+}
+
+.vk-ui-toggle__control[data-state="disabled"][data-pressed="true"] {
+  background-color: var(--vk-disabled-container);
+}
+
+.vk-ui-toggle__control[data-state="pending"] { cursor: progress; }
+.vk-ui-toggle__control[data-state="held"] { cursor: default; }
+
+.vk-ui-toggle__glyph,
+.vk-ui-toggle__mark {
+  display: inline-flex;
+  flex-shrink: 0;
+  inline-size: var(--vk-size-icon-sm);
+  justify-content: center;
+}
+
+.vk-ui-toggle__label { min-inline-size: 0; overflow-wrap: anywhere; }
+
+.vk-ui-toggle__count {
+  flex-shrink: 0;
+  font-weight: var(--vk-type-body-weight);
+}
+
+.vk-ui-toggle__feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--vk-space-2);
+  max-inline-size: 100%;
+}
+
+.vk-ui-toggle__feedback[data-active] { margin-block-start: var(--vk-space-1); }
 
 /* Fields -------------------------------------------------------------------------------------- */
 
@@ -558,7 +637,7 @@
 
 @media (forced-colors: active) {
   .vk-ui-input:not(:focus):not([aria-invalid="true"]),
-  .vk-ui-button, .vk-ui-icon-button, .vk-ui-chip { border: 1px solid ButtonText; }
+  .vk-ui-button, .vk-ui-icon-button, .vk-ui-chip, .vk-ui-toggle__control { border: 1px solid ButtonText; }
   .vk-ui-field--floating .vk-ui-field__control { border: 1px solid ButtonText; }
   .vk-ui-field--floating .vk-ui-field__control:has(> .vk-ui-input:focus),
   .vk-ui-field--floating[data-invalid] .vk-ui-field__control,

@@ -21,7 +21,7 @@ Enso và Leptos 0.8.
 | [`shared`](shared/README.md) | `tokens.json` (nguồn token duy nhất), `tokens.schema.json`, `preview-catalog.json`, `fixtures/` (gồm golden vectors identity, states và navigation), `icons.json` + license, [contract component](shared/components.md), [contract trạng thái](shared/states.md), [contract điều hướng](shared/navigation.md) | Đã triển khai |
 | [`leptos`](leptos/README.md) | crate `vink-ui`: token/catalog/icon/vector Rust sinh ra, `tokens.css` sinh ra, `UiRoot`/`ThemeScope`, component theo họ (`text`, `layout`, `action`, `field`, `media`, `identity`, `feedback`), contract thuần `state`, CSS renderer có scope; crate `vink-ui-preview` | Đã triển khai; preview kiểm bằng Chrome headless |
 | [`cmp`](cmp/README.md) | Gradle: `:ui` (commonMain, `VinkTheme`/`VinkScope`, component `Vink*` theo họ), `:diagnostics` (specimens common), `:preview` (Desktop), opt-in Android debug/iOS simulator hosts | Đã triển khai; evidence từng target ghi riêng, không suy native parity từ JVM |
-| `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs`, `xtask/src/ui_navigation.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors, navigation vectors) | Đã triển khai |
+| `xtask/src/ui_tokens.rs`, `xtask/src/ui_states.rs`, `xtask/src/ui_navigation.rs`, `xtask/src/ui_toggle.rs` | Validate + generate + `--check` (token, catalog, fixture, icon registry, identity vectors, state vectors, navigation vectors, toggle vectors) | Đã triển khai |
 | `xtask/src/ui_preview.rs` | `cargo xtask ui-preview leptos\|cmp build\|verify\|run` | Đã triển khai |
 | App (`apps/vink-web`) | Key `vink.ui.theme`/`vink.ui.rail`, bootstrap trước CSS, khi nào ghi storage, route/copy/dữ liệu, đích Vink và thứ tự, `NavigationGuard`, lớp phủ Tôi | Giữ nguyên owner; shell render bằng primitive UIS-04 |
 
@@ -43,7 +43,7 @@ Nguồn lệnh duy nhất vẫn là [docs/development](../../docs/development/RE
 
 | Lệnh | Việc |
 | --- | --- |
-| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 13 file sinh ra (chỉ ghi file thay đổi) |
+| `cargo xtask ui-tokens` | Validate các nguồn shared rồi ghi 15 file sinh ra (chỉ ghi file thay đổi) |
 | `cargo xtask ui-tokens --check` | Không ghi; lỗi khi thiếu hoặc lệch. Chạy trong `verify quick` và trước mọi build web/preview |
 | `cargo xtask ui-preview leptos build\|run\|verify` | Bundle wasm (`csr`) vào `target/ui-preview/leptos`; `run` phục vụ ở `VINK_UI_PREVIEW_BIND` (mặc định `127.0.0.1:3019`); `verify` chạy Chrome headless và ghi ảnh vào `target/ui-preview/leptos/captures/` |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle wrapper 8.14.3; `run` mở cửa sổ desktop; `verify` chạy test common + desktop và ghi ảnh vào `cmp/preview/build/captures/` |

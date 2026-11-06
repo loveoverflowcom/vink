@@ -156,3 +156,71 @@ fun RecentFeedback(items: List<Feedback>, onNavigate: (String) -> Unit) {
         FeedbackThread(items, onNavigate)
     }
 }
+
+/** What a literary endorsement (LVE #73) is about; copy only, the App's core decides. */
+enum class EndorsementKind(val id: String) {
+    /** One published revision of a work: “Đánh giá cao”. */
+    Work("work"),
+
+    /** A root comment or a flat reply, each its own target: “Hữu ích”. */
+    Comment("comment"),
+    ;
+
+    val copy: ToggleCopy
+        get() = when (this) {
+            Work -> ToggleCopy(
+                "Đánh giá cao", "Bỏ đánh giá cao", countUnit = "lượt đánh giá cao",
+                pendingOn = "Đang gửi đánh giá cao…", pendingOff = "Đang bỏ đánh giá cao…",
+                failed = "Không thể đánh giá lúc này.", unknown = "Chưa rõ bạn đã đánh giá cao chưa.",
+            )
+            Comment -> ToggleCopy(
+                "Hữu ích", "Bỏ đánh dấu hữu ích", countUnit = "lượt hữu ích",
+                pendingOn = "Đang gửi đánh dấu hữu ích…", pendingOff = "Đang bỏ đánh dấu hữu ích…",
+                failed = "Không thể đánh dấu lúc này.", unknown = "Chưa rõ bạn đã đánh dấu hữu ích chưa.",
+            )
+        }
+
+    /** Visible text, never hover-only; no login control is implied (no auth authority yet). */
+    fun reason(block: EndorsementBlock): String = when (block) {
+        EndorsementBlock.OwnContent -> if (this == Work) "Bạn không thể đánh giá tác phẩm của chính mình." else "Bạn không thể đánh dấu nhận xét của chính mình."
+        EndorsementBlock.NotPermitted -> if (this == Work) "Tài khoản này chưa thể đánh giá." else "Tài khoản này chưa thể đánh dấu hữu ích."
+        EndorsementBlock.SignedOut -> if (this == Work) "Cần đăng nhập để đánh giá." else "Cần đăng nhập để đánh dấu hữu ích."
+        EndorsementBlock.Unavailable -> if (this == Work) "Không thể đánh giá lúc này." else "Không thể đánh dấu lúc này."
+    }
+}
+
+/** Why the viewer cannot endorse here, as the adapter learned it; advisory, writes decide again. */
+enum class EndorsementBlock { OwnContent, NotPermitted, SignedOut, Unavailable }
+
+/** View facts an adapter projects from summary/own-state reads and its own command reducer. */
+data class EndorsementFacts(
+    val value: ToggleValue = ToggleValue.Unknown,
+    val phase: TogglePhase = TogglePhase.Idle,
+    /** Public count of this target only; never summed into a root or work. */
+    val count: CountFact = CountFact.Hidden,
+    val block: EndorsementBlock? = null,
+)
+
+/**
+ * The endorsement control for one target. A press emits the desired selection; the adapter owns
+ * `command_key`, `expected_order`, session fencing and late answers. No glyph until CHOICE-07.
+ */
+@Composable
+fun EndorsementAction(
+    kind: EndorsementKind,
+    facts: EndorsementFacts,
+    onSet: (Boolean) -> Unit,
+    onRecover: (RecoveryIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    VinkToggleAction(
+        copy = kind.copy,
+        value = facts.value,
+        onSet = onSet,
+        onRecover = onRecover,
+        modifier = modifier,
+        phase = facts.phase,
+        count = facts.count,
+        blocked = facts.block?.let(kind::reason),
+    )
+}

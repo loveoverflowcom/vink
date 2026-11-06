@@ -684,6 +684,64 @@ async function components(page) {
 
 // UIS-03: states, feedback and motion. Programmatic input over CDP; the playground's manual clock
 // makes every timing deterministic. Animation checks read the Web Animations API, not pixels.
+async function toggles(page) {
+  const control = (id) => page.eval(`(() => { const b = document.getElementById('${id}'); const d = (b.getAttribute('aria-describedby') || '').split(' ').map((i) => document.getElementById(i)?.textContent.trim()).join(' | ');
+    return { name: b.getAttribute('aria-label'), pressed: b.dataset.pressed, state: b.dataset.state, busy: b.getAttribute('aria-busy'), disabled: b.getAttribute('aria-disabled'), ariaPressed: b.hasAttribute('aria-pressed'), described: d, height: b.getBoundingClientRect().height, feedback: b.parentElement.querySelector('.vk-ui-toggle__feedback').textContent.trim() }; })()`);
+  const step = (label) => page.eval(`[...document.querySelectorAll('#specimen-scope button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)}).click()`);
+  const presses = async () => ((await page.log()).match(/toggle-action → muốn/g) || []).length;
+
+  await page.open('action.toggle-action', 'lifecycle');
+  let t = await control('toggle-lifecycle');
+  check(t.name === 'Ghi nhận' && t.pressed === 'false' && !t.ariaPressed && t.height >= 44, `ToggleAction: action-named, no aria-pressed, ≥44px target (${JSON.stringify(t)})`);
+  const before = await presses();
+  await page.click('#toggle-lifecycle');
+  await page.click('#toggle-lifecycle');
+  t = await control('toggle-lifecycle');
+  check((await presses()) - before === 1 && t.busy === 'true' && t.pressed === 'false', `ToggleAction: a double click asks once and shows nothing optimistic (${JSON.stringify(t)})`);
+  check(t.described.includes('12 lượt ghi nhận') && t.described.includes('Đang gửi'), `ToggleAction: count and pending note describe the control (${t.described})`);
+  await step('Mất phản hồi');
+  await page.settle();
+  await page.click('#toggle-lifecycle');
+  t = await control('toggle-lifecycle');
+  check((await presses()) - before === 1 && t.feedback.includes('Chưa xác nhận được.') && t.feedback.includes('Kiểm tra lại') && t.pressed === 'false', `ToggleAction: a lost answer blocks presses and offers Kiểm tra lại (${JSON.stringify(t)})`);
+  await step('Kiểm tra lại');
+  await page.settle();
+  t = await control('toggle-lifecycle');
+  check(t.pressed === 'true' && t.name === 'Bỏ ghi nhận' && t.described.includes('13 lượt ghi nhận') && !t.feedback.includes('Kiểm tra lại'), `ToggleAction: reconcile shows what the owner holds (${JSON.stringify(t)})`);
+  await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
+  await page.key('Enter');
+  check((await presses()) - before === 2 && (await page.log()).includes('muốn tắt'), 'ToggleAction: Enter asks for the opposite of the confirmed value');
+  await step('Từ chối');
+  await page.settle();
+  t = await control('toggle-lifecycle');
+  check(t.pressed === 'true' && t.feedback.includes('Chưa thực hiện được') && t.state === 'enabled', `ToggleAction: a refusal keeps the confirmed value and allows a deliberate retry (${JSON.stringify(t)})`);
+  await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
+  await page.key('Space');
+  check((await presses()) - before === 3, 'ToggleAction: Space dispatches once');
+  const ring = await page.eval(`(() => { const s = getComputedStyle(document.activeElement); return [document.activeElement.id, s.outlineStyle, s.outlineWidth]; })()`);
+  check(ring[0] === 'toggle-lifecycle' && ring[1] === 'solid' && ring[2] === '2px', `ToggleAction: keyboard focus stays and shows one 2px perimeter (${ring})`);
+
+  await page.open('action.toggle-action', 'count-unavailable');
+  t = await control('toggle-sample');
+  const shown = await page.eval(`document.querySelector('.vk-ui-toggle__count').textContent`);
+  check(t.described.includes('chưa có số liệu') && !/\d/.test(shown), `ToggleAction: an unavailable count is a mark, never 0 (${shown})`);
+
+  await page.open('action.toggle-action', 'disabled');
+  t = await control('toggle-sample');
+  const asked = await presses();
+  await page.click('#toggle-sample');
+  check(t.disabled === 'true' && t.described.includes('Lý do do caller cấp') && (await presses()) === asked, 'ToggleAction: a blocked action stays focusable, shows its reason and asks nothing');
+
+  await page.open('composition.endorsement');
+  const ids = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.id, b.getAttribute('aria-label')])`);
+  check(ids.length === 4 && new Set(ids.map((i) => i[0])).size === 4, `EndorsementAction: one control per target (${JSON.stringify(ids)})`);
+  check(ids[0][1] === 'Đánh giá cao' && ids[1][1] === 'Hữu ích' && ids[2][1] === 'Bỏ đánh dấu hữu ích', 'EndorsementAction: work and comment copy, name follows the confirmed value');
+  await page.open('composition.endorsement', 'signed-out');
+  const guest = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.getAttribute('aria-disabled'), b.dataset.pressed])`);
+  const text = await page.eval(`document.getElementById('specimen-scope').textContent`);
+  check(guest.every(([d, p]) => d === 'true' && p === 'unknown') && text.includes('Cần đăng nhập để đánh giá.') && !/Đăng nhập\b/.test(text), 'EndorsementAction: a guest sees counts and a reason, no fake login or own state');
+}
+
 async function states(page, cdp) {
   const text = (selector) => page.eval(`document.querySelector(${JSON.stringify(selector)})?.textContent ?? null`);
   const exists = (selector) => page.eval(`Boolean(document.querySelector(${JSON.stringify(selector)}))`);
@@ -1399,6 +1457,7 @@ try {
   await forcedColors(page);
   await densityAndMotion(page);
   await components(page);
+  await toggles(page);
   await states(page, cdp);
   await navigation(page);
   await navigationFit(page);

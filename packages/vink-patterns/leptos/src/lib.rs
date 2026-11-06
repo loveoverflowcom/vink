@@ -332,6 +332,122 @@ fn discussion_comment(
     }.into_any()
 }
 
+/// What a literary endorsement (LVE #73) is about. Copy only: one positive signal per viewer and
+/// target, decided by the App's `domain::endorsement` through its adapter, never here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EndorsementKind {
+    /// One published revision of a work: “Đánh giá cao”.
+    Work,
+    /// A root comment or a flat reply, each its own target: “Hữu ích”.
+    Comment,
+}
+
+/// Why the viewer cannot endorse here, as the adapter learned it (`blocked_reason`, `401`,
+/// `404`); advisory only, every write decides again at its durable boundary.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EndorsementBlock {
+    OwnContent,
+    NotPermitted,
+    SignedOut,
+    Unavailable,
+}
+
+impl EndorsementKind {
+    pub fn copy(self) -> ToggleCopy {
+        let (label, selected, unit, on, off, failed, unknown) = match self {
+            Self::Work => (
+                "Đánh giá cao",
+                "Bỏ đánh giá cao",
+                "lượt đánh giá cao",
+                "Đang gửi đánh giá cao…",
+                "Đang bỏ đánh giá cao…",
+                "Không thể đánh giá lúc này.",
+                "Chưa rõ bạn đã đánh giá cao chưa.",
+            ),
+            Self::Comment => (
+                "Hữu ích",
+                "Bỏ đánh dấu hữu ích",
+                "lượt hữu ích",
+                "Đang gửi đánh dấu hữu ích…",
+                "Đang bỏ đánh dấu hữu ích…",
+                "Không thể đánh dấu lúc này.",
+                "Chưa rõ bạn đã đánh dấu hữu ích chưa.",
+            ),
+        };
+        ToggleCopy {
+            count_unit: unit.into(),
+            pending_on: on.into(),
+            pending_off: off.into(),
+            failed: failed.into(),
+            unknown: unknown.into(),
+            ..ToggleCopy::new(label, selected)
+        }
+    }
+
+    /// Visible text, never hover-only; no login button is implied (no auth authority yet).
+    pub const fn reason(self, block: EndorsementBlock) -> &'static str {
+        match (self, block) {
+            (Self::Work, EndorsementBlock::OwnContent) => {
+                "Bạn không thể đánh giá tác phẩm của chính mình."
+            }
+            (Self::Comment, EndorsementBlock::OwnContent) => {
+                "Bạn không thể đánh dấu nhận xét của chính mình."
+            }
+            (Self::Work, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể đánh giá.",
+            (Self::Comment, EndorsementBlock::NotPermitted) => {
+                "Tài khoản này chưa thể đánh dấu hữu ích."
+            }
+            (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh giá.",
+            (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh dấu hữu ích.",
+            (Self::Work, EndorsementBlock::Unavailable) => "Không thể đánh giá lúc này.",
+            (Self::Comment, EndorsementBlock::Unavailable) => "Không thể đánh dấu lúc này.",
+        }
+    }
+}
+
+/// View facts an adapter projects from summary/own-state reads and its own command reducer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct EndorsementFacts {
+    /// Confirmed own state; `Unknown` for a guest, an unread or unavailable own state.
+    pub value: ToggleValue,
+    pub phase: TogglePhase,
+    /// Public count of this target only; never summed into a root or work.
+    pub count: CountFact,
+    pub block: Option<EndorsementBlock>,
+}
+
+/// The endorsement control for one target. A press emits the desired selection; the adapter
+/// owns `command_key`, `expected_order`, session fencing and late answers. The glyph slot stays
+/// empty until CHOICE-07 selects one (no heart, no Send/Save look-alike).
+#[component]
+pub fn EndorsementAction(
+    #[prop(into)] id: String,
+    kind: EndorsementKind,
+    #[prop(into)] facts: Signal<EndorsementFacts>,
+    #[prop(into)] on_set: Callback<bool>,
+    #[prop(into)] on_recover: Callback<RecoveryIntent>,
+) -> impl IntoView {
+    let blocked = Signal::derive(move || facts.get().block.map(|b| kind.reason(b).to_string()));
+    let kind_id = match kind {
+        EndorsementKind::Work => "work",
+        EndorsementKind::Comment => "comment",
+    };
+    view! {
+        <span class="vk-endorsement" data-kind=kind_id>
+            <ToggleAction
+                id
+                copy=kind.copy()
+                value=Signal::derive(move || facts.get().value)
+                phase=Signal::derive(move || facts.get().phase)
+                count=Signal::derive(move || facts.get().count)
+                blocked
+                on_set
+                on_recover
+            />
+        </span>
+    }
+}
+
 /// No authoritative recent timestamps in today's adapter: use an explicitly labelled sample.
 #[component]
 pub fn RecentFeedback(items: Vec<Feedback>) -> impl IntoView {
@@ -387,6 +503,67 @@ mod tests {
             html.contains("data-tone=\"neutral\""),
             "no author ID: {html}"
         );
+    }
+
+    #[test]
+    fn endorsement_copy_names_its_target_and_keeps_counts_apart() {
+        let render = |kind, facts: EndorsementFacts| {
+            Owner::new().with(|| {
+                view! {
+                    <EndorsementAction id="e" kind facts on_set=|_: bool| {} on_recover=|_: RecoveryIntent| {} />
+                }
+                .to_html()
+            })
+        };
+        let work = render(
+            EndorsementKind::Work,
+            EndorsementFacts {
+                value: ToggleValue::On,
+                count: CountFact::Known(12),
+                ..Default::default()
+            },
+        );
+        assert!(
+            work.contains("aria-label=\"Bỏ đánh giá cao\"") && work.contains(">Đánh giá cao<"),
+            "{work}"
+        );
+        assert!(
+            work.contains("lượt đánh giá cao") && work.contains("data-kind=\"work\""),
+            "{work}"
+        );
+        let comment = render(
+            EndorsementKind::Comment,
+            EndorsementFacts {
+                value: ToggleValue::Off,
+                block: Some(EndorsementBlock::OwnContent),
+                ..Default::default()
+            },
+        );
+        assert!(
+            comment.contains("aria-label=\"Hữu ích\"")
+                && comment.contains("nhận xét của chính mình"),
+            "{comment}"
+        );
+        assert!(!comment.contains("e-count"), "hidden count: {comment}");
+        let guest = render(
+            EndorsementKind::Work,
+            EndorsementFacts {
+                block: Some(EndorsementBlock::SignedOut),
+                ..Default::default()
+            },
+        );
+        assert!(
+            guest.contains("Cần đăng nhập để đánh giá.") && !guest.contains("<a "),
+            "no fake login: {guest}"
+        );
+        for kind in [EndorsementKind::Work, EndorsementKind::Comment] {
+            let copy = kind.copy();
+            let label = copy.label.to_lowercase();
+            assert!(
+                copy.selected_name.to_lowercase().contains(&label),
+                "label in name: {copy:?}"
+            );
+        }
     }
 
     #[test]

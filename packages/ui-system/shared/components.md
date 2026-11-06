@@ -109,6 +109,66 @@ RadioGroup generic native; inventory chỉ có appearance cần icon/label/check
 Không thay token vì role màu/spacing/radius hiện có đủ; catalog thêm scenario `external-label`
 và sinh lại bằng `cargo xtask ui-tokens`.
 
+## ToggleAction — hành động bật/tắt đã xác nhận (LVE #73)
+
+**Trạng thái:** token 0.5.0, catalog 0.6.0 (`action.toggle-action`), vectors
+`toggle-contract-v1` ở [fixtures/toggle.json](fixtures/toggle.json); đã triển khai ở Leptos
+(`vink_ui::toggle`) và CMP (`VinkToggle.kt`), `implemented-unverified`. Consumer đầu tiên là
+`EndorsementAction` của [patterns](../../vink-patterns/README.md); chưa màn app nào dùng.
+Primitive chung cho mọi tín hiệu bật/tắt có owner xác nhận (ghi nhận, sau này lưu/reaction nếu
+được chấp nhận), không biết endpoint, actor, `command_key` hay `expected_order`.
+
+```text
+ToggleAction #toggle
+  Control #control             — một <button>/node clickable; tên truy cập theo giá trị đã xác nhận
+    Slot #glyph                — icon registry tùy chọn, giữ nguyên ở mọi trạng thái (trống tới CHOICE-07)
+    Label #label               — chữ hiển thị cố định ở mọi trạng thái
+    Count #count               — số (nhóm “1.234”) | “–” khi không có số liệu | không render khi Hidden
+    Slot #mark                 — ô 20px cuối nút giữ sẵn như status slot của Button: MicroArc khi
+                                 pending · dấu ✓ khi owner xác nhận Bật; nhãn không dịch
+  Feedback #feedback           — live region polite, luôn mount, không chiếm chỗ khi rỗng
+    Note #note                 — đang gửi / chưa xác nhận được / chưa rõ / thất bại / lý do chặn (`{id}-note`)
+    Recover #recover           — Text button “Kiểm tra lại” (`RecoveryIntent::Reconcile`) khi cần
+```
+
+Ba trục độc lập, adapter của caller chiếu từ nguồn của nó:
+
+| Trục | Kiểu | Ghi chú |
+| --- | --- | --- |
+| Giá trị đã xác nhận | `ToggleValue`: `Off` · `On` · `Unknown` | Không optimistic. `Unknown` (khách, chưa đọc, đọc lỗi, đích không còn) không bao giờ mặc định thành `Off` |
+| Ý định mới nhất | `TogglePhase`: `Idle` · `Pending { desired }` · `Uncertain { desired }` · `Failed` | Reducer có ticket/order của caller. `Failed` = biết chắc không đổi; mất phản hồi/timeout = `Uncertain` |
+| Khả dụng | `blocked: Option<String>` | `Some(lý do)` chặn bấm và hiện lý do bằng chữ (không chỉ hover); chuỗi trắng = chặn không lý do |
+| Số đếm | `CountFact`: `Hidden` · `Unavailable` · `Known(n)` | Chỉ số của chính đích này; `Unavailable` hiện “–” + “chưa có số liệu”, không thành 0 |
+
+`ToggleView::resolve` (thứ tự ưu tiên pending → uncertain → chặn → chưa rõ → thất bại → idle) trả
+`pressed`, `busy`, `dispatch` (trạng thái mong muốn phát khi bấm), `note`, `reconcile`. 36 tổ hợp
+value × phase × availability nằm trong vectors; generator từ chối hàng phát lệnh khi busy/uncertain/
+chặn/chưa rõ, phát lại đúng trạng thái đang hiện, hoặc uncertain không mời Kiểm tra lại; và từ chối
+`unavailable` hiện thành chữ số. Hai renderer test với cùng vectors.
+
+- **Desired state, không toggle mù.** Bấm phát `on_set(!confirmed)` đúng một lần; pending/uncertain/
+  chặn/chưa rõ không phát. `on_set` phải đưa phase sang `Pending` trước khi trả về để click thứ hai
+  cùng frame bị bỏ qua. Bỏ phản hồi cũ (order/ticket/session) là việc của reducer, không phải view.
+- **Uncertain → Kiểm tra lại**, không “Thử lại”: đọc lại trạng thái hiện hành hoặc replay đúng
+  key/payload là quyết định của adapter. `Failed` cho bấm lại như một ý định mới có chủ ý.
+- **Dấu chọn chỉ sau xác nhận.** Không có chữ “Đã ghi nhận” sau click; ✓ + container tonal chỉ khi
+  owner trả `On`. Hai cue (hình dấu + màu), forced-colors giữ viền và dấu.
+- **Tên truy cập theo hành động** (theo copy #73): `label` khi chưa bật/chưa rõ, `selected_name`
+  (ví dụ “Bỏ đánh giá cao”) khi đã xác nhận Bật; tên phải chứa chữ của nhãn (WCAG 2.5.3). Không
+  dùng thêm `aria-pressed` để tránh đọc “Bỏ đánh giá cao, đã nhấn”. Web: `aria-label` + `aria-describedby`
+  tới `{id}-count {id}-note`; `aria-disabled`/`aria-busy` giữ focus. CMP: một node `Role.Button`,
+  `contentDescription` = tên + số đếm, `stateDescription` = ghi chú; chặn dùng `enabled = false`.
+- **Quiet, borderless:** recipe `action.toggle.content` trên nền trong suốt, `selected-container`/
+  `selected-content` khi Bật; không viền kép/halo/glow, không cạnh tranh CTA. Hit target 48 (Web gọn
+  44), glyph 20. Chữ 200% xuống dòng trong nút.
+- **Glyph** là slot đầu `icon: Option<IconName>` từ registry, không đổi theo trạng thái (✓ ở slot
+  cuối). Ghi nhận văn học để trống cho tới khi CHOICE-07 chọn hướng icon (không tim, không giống
+  Gửi/Lưu). Không có glyph thì chữ bắt đầu sau padding 12, thẳng với Text button.
+
+Tương quan CHOICE-10: primitive chỉ trình bày hướng A (pending + xác nhận sau ACK/readback). Hướng
+B (optimistic có nhãn pending) cần một phase mới và `toggle-contract-v2`, không giả bằng cách
+truyền `On` trước khi owner xác nhận. Quyết định sản phẩm CHOICE-10 vẫn thuộc lát adapter.
+
 ## Props, sự kiện và trạng thái
 
 Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`Button`, `on_press`), CMP viết
@@ -127,6 +187,7 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `IconButton` | `icon`, `label` (bắt buộc), `state`, `pressed: bool?`; Web: `id?` | `on_press` ×1 | Tooltip hover-only |
 | `Link` | `href`, `variant: LinkVariant` (Inline/Standalone); Web: `target: LinkTarget` (SameTab/NewTab); CMP: `external`, `onNavigate` | Web: trình duyệt điều hướng, giữ modifier-click; CMP: `onNavigate(href)` | Router. URL ngoài allow-list hiện như chữ ở cả hai |
 | `FilterChip` | `label`, `selected`, `state`; Web: `id?` | `on_toggle(bool)` ×1 | Danh sách lọc, query |
+| `ToggleAction` | `id` (bắt buộc), `copy: ToggleCopy` (label, selected_name, count_unit, ghi chú, “Kiểm tra lại”), `value: ToggleValue`, `phase: TogglePhase`, `count: CountFact`, `blocked: Option<String>`, `icon: IconName?` | `on_set(desired: bool)` ×1 khi được phép; `on_recover(Reconcile)` | Request, order/ticket, session, đếm lại. CMP: `blocked` dùng `enabled = false`, tên + số trong `contentDescription` |
 | `TextField` / `TextArea` | `label`, `value`, `help?`, `error?`, `required`, `mode: FieldMode` (Editable/ReadOnly/Disabled), `kind: TextKind` (Text/Email/Url/Tel), `rows` (TextArea); Web: `id`, `autocomplete?` | Web: `on_input(TextInput { value, composing })`, phát thêm khi `compositionend`; CMP: `onValueChange(TextFieldValue)` | Trim/normalize/parse, validate, save |
 | `SearchField` | như TextField + nút xóa khi có chữ | `on_input`; `on_submit(String)` (Web: Enter ngoài composition; CMP: hành động Search của IME) | Tìm kiếm, debounce |
 | `Checkbox` / `Switch` | `label`, `checked`, `help?`, `error?` (Checkbox); Web: `id`, `disabled`; CMP: `enabled` | `on_change(bool)` ×1 | Read-only (không có trên choice native) |

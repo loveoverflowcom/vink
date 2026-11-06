@@ -17,6 +17,7 @@ bằng `cargo xtask ui-tokens`.
 | [states.md](states.md) | Contract UIS-03: trục trạng thái và tổ hợp hợp lệ, `Problem`/intent phục hồi, chính sách vị trí/announce, motion/`LoadingGate`, LayoutSpec, recipe playground |
 | [fixtures/states.json](fixtures/states.json) | Vectors chung: 112 tổ hợp vùng, intent theo `ProblemKind`, 48 placement, 20 notice, 7 ca `LoadingGate`; sinh vào `state_vectors.rs`/`VinkStateVectors.kt` |
 | [navigation.md](navigation.md) | Contract UIS-04: LayoutSpec shell, chọn khung `NavLayout`, primitive điều hướng, `OverlayLayer` (một modal, Back đóng lớp phủ trước), owner host/thư viện, bảo toàn |
+| [fixtures/toggle.json](fixtures/toggle.json) | `toggle-contract-v1`: 36 tổ hợp value × phase × availability của `ToggleAction` (không phát lệnh mù, uncertain → Kiểm tra lại) và cách đọc số đếm (unavailable không thành 0); sinh vào `toggle_vectors.rs`/`VinkToggleVectors.kt` |
 | [fixtures/navigation.json](fixtures/navigation.json) | Vectors chung: breakpoint px/dp, 12 cửa sổ biên, 36 tổ hợp cửa sổ × ngữ cảnh × preference, toggle, 4 chuỗi lớp phủ, 12 ca trả focus; sinh vào `navigation_vectors.rs`/`VinkNavigationVectors.kt` |
 
 ## Lớp token
