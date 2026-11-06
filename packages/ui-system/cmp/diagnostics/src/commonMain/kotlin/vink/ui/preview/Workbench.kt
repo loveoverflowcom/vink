@@ -90,13 +90,14 @@ import vink.ui.contrast
 /** Catalog IDs this preview renders; a test keeps it equal to the shared catalog. */
 val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foundation.shape-spacing", "foundation.motion") + listOf(
     "text.text", "text.heading", "layout.surface", "layout.container", "layout.stack", "layout.grid", "layout.divider",
-    "action.button", "action.icon-button", "action.link", "action.filter-chip",
+    "action.button", "action.icon-button", "action.link", "action.filter-chip", "action.toggle-action",
     "field.text-field", "field.text-area", "field.search-field", "field.checkbox", "field.radio", "field.switch", "field.select", "field.form",
     "identity.icon", "identity.avatar", "identity.avatar-group", "identity.author-byline", "identity.image-frame",
     "state.loading", "state.progress", "state.empty", "state.error", "state.notice", "state.status", "state.dialog", "state.playground",
     "navigation.rail", "navigation.bottom-bar", "navigation.top-bar", "navigation.scaffold", "navigation.overlay", "navigation.adapter",
     "composition.nested",
     "screen.explore", "screen.reader", "screen.desk", "screen.editor", "screen.me", "composition.feedback",
+    "composition.endorsement",
 )
 
 enum class Frame(val label: String, val width: Dp?) {
@@ -368,7 +369,7 @@ fun Specimen(id: String, scenario: String) {
                 "foundation.typography" -> Typography(combining = scenario == "combining-marks")
                 "foundation.shape-spacing" -> ShapeSpacing()
                 "foundation.motion" -> Motion()
-                else -> if (id.startsWith("screen.") || id == "composition.feedback") ScreenRecipe(id, scenario) else if (!ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
+                else -> if (id.startsWith("screen.") || id == "composition.feedback") ScreenRecipe(id, scenario) else if (!EndorsementSpecimen(id, scenario) && !ComponentSpecimen(id, scenario)) TextIn("Chưa đăng ký trong preview CMP.", VinkTextRoles.Body)
             }
             }
         }

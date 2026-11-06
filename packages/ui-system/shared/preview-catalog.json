@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.5.3",
+  "version": "0.6.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -342,6 +342,58 @@
         {
           "id": "disabled",
           "label": "Không khả dụng"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "action.toggle-action",
+      "family": "action",
+      "label": "ToggleAction",
+      "summary": "Hành động bật/tắt theo trạng thái owner đã xác nhận: phát trạng thái mong muốn, không toggle mù; pending chặn bấm lặp, chưa chắc chắn thì Kiểm tra lại; số đếm không có không thành 0.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Chưa bật, có số đếm"
+        },
+        {
+          "id": "selected",
+          "label": "Đã xác nhận bật (dấu chọn)"
+        },
+        {
+          "id": "pending",
+          "label": "Đang gửi, chặn bấm lặp"
+        },
+        {
+          "id": "uncertain",
+          "label": "Chưa xác nhận được → Kiểm tra lại"
+        },
+        {
+          "id": "failed",
+          "label": "Chưa thực hiện được, bấm lại có chủ ý"
+        },
+        {
+          "id": "unknown",
+          "label": "Chưa rõ trạng thái riêng"
+        },
+        {
+          "id": "disabled",
+          "label": "Không khả dụng, có lý do"
+        },
+        {
+          "id": "count-unavailable",
+          "label": "Số đếm không khả dụng, không thành 0"
+        },
+        {
+          "id": "lifecycle",
+          "label": "Vòng đời: gửi, ack muộn, mất ack, kiểm tra lại"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn dài, số lớn"
         }
       ],
       "status": {
@@ -1337,6 +1389,46 @@
         {
           "id": "discussion-anchor",
           "label": "discussion-anchor"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "composition.endorsement",
+      "family": "composition",
+      "label": "Ghi nhận văn học — Mẫu",
+      "summary": "Ghi nhận văn học cho tác phẩm (Đánh giá cao), nhận xét gốc và phản hồi (Hữu ích) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; glyph CHOICE-07 còn OPEN.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Tác phẩm, gốc và phản hồi phẳng"
+        },
+        {
+          "id": "selected",
+          "label": "Đã xác nhận"
+        },
+        {
+          "id": "pending",
+          "label": "Đang gửi"
+        },
+        {
+          "id": "uncertain",
+          "label": "Chưa xác nhận được"
+        },
+        {
+          "id": "own-content",
+          "label": "Nội dung của chính mình"
+        },
+        {
+          "id": "signed-out",
+          "label": "Chưa có danh tính"
+        },
+        {
+          "id": "unavailable",
+          "label": "Không thể đánh giá lúc này"
         }
       ],
       "status": {

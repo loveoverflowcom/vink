@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "components": [
     {
       "renderer": "leptos",
@@ -25,6 +25,12 @@
       "source": "packages/ui-system/leptos/src/action.rs",
       "symbol": "FilterChip",
       "entry": "action.filter-chip"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/toggle.rs",
+      "symbol": "ToggleAction",
+      "entry": "action.toggle-action"
     },
     {
       "renderer": "leptos",
@@ -364,6 +370,12 @@
     },
     {
       "renderer": "cmp",
+      "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkToggle.kt",
+      "symbol": "VinkToggleAction",
+      "entry": "action.toggle-action"
+    },
+    {
+      "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
       "symbol": "VinkMotionActivity",
       "entry": "state.loading"
@@ -669,10 +681,22 @@
       "entry": "composition.feedback"
     },
     {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "EndorsementAction",
+      "entry": "composition.endorsement"
+    },
+    {
       "renderer": "cmp",
       "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
       "symbol": "DiscussionThread",
       "entry": "composition.feedback"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
+      "symbol": "EndorsementAction",
+      "entry": "composition.endorsement"
     }
   ],
   "style_exceptions": [

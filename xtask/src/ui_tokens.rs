@@ -70,6 +70,10 @@ pub fn run(root: &Path, check: bool) -> Result<(), String> {
         crate::ui_navigation::generate(&source.version, &read(crate::ui_navigation::NAVIGATION)?)
             .map_err(|problems| invalid(&problems))?,
     );
+    outputs.extend(
+        crate::ui_toggle::generate(&source.version, &read(crate::ui_toggle::TOGGLE)?)
+            .map_err(|problems| invalid(&problems))?,
+    );
     let fonts_dir = root.join(crate::checks::FONTS_DIR);
     let missing: Vec<String> = source
         .fonts
@@ -2726,11 +2730,11 @@ mod tests {
         let root = crate::root();
         let (tokens, catalog, fixtures) = sources();
         let (icons, identity) = asset_sources();
-        let assets = generate_assets("0.4.0", &icons, &identity, |_| true).unwrap();
+        let assets = generate_assets("0.5.0", &icons, &identity, |_| true).unwrap();
         let version = parse_tokens(&tokens).ok().map(|s| s.version);
         assert_eq!(
             version.as_deref(),
-            Some("0.4.0"),
+            Some("0.5.0"),
             "update the asset version above"
         );
         let states = std::fs::read_to_string(root.join(crate::ui_states::STATES)).unwrap();
@@ -2739,16 +2743,19 @@ mod tests {
             min_visible: 500,
             slow: 8000,
         };
-        let states = crate::ui_states::generate("0.4.0", &states, policy).unwrap();
+        let states = crate::ui_states::generate("0.5.0", &states, policy).unwrap();
         let navigation =
             std::fs::read_to_string(root.join(crate::ui_navigation::NAVIGATION)).unwrap();
-        let navigation = crate::ui_navigation::generate("0.4.0", &navigation).unwrap();
+        let navigation = crate::ui_navigation::generate("0.5.0", &navigation).unwrap();
+        let toggle = std::fs::read_to_string(root.join(crate::ui_toggle::TOGGLE)).unwrap();
+        let toggle = crate::ui_toggle::generate("0.5.0", &toggle).unwrap();
         for (path, text) in generate(&tokens, &catalog, &fixtures)
             .unwrap()
             .into_iter()
             .chain(assets)
             .chain(states)
             .chain(navigation)
+            .chain(toggle)
         {
             let current = std::fs::read_to_string(root.join(path)).unwrap_or_default();
             assert!(

@@ -18,6 +18,7 @@ mod ui_navigation;
 mod ui_preview;
 mod ui_qualification;
 mod ui_states;
+mod ui_toggle;
 mod ui_tokens;
 mod web;
 

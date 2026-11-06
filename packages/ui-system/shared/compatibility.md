@@ -1,6 +1,14 @@
 # Compatibility và nguồn authoring
 
-Token source hiện hành 0.4.0, catalog 0.5.3. Package nội bộ chưa phát hành registry.
+Token source hiện hành 0.5.0, catalog 0.6.0, API admission map 0.2.0. Package nội bộ chưa phát
+hành registry.
+
+LVE #73 (UI System) thêm role recipe `action.toggle.content`, `action.toggle.selected-container`,
+`action.toggle.selected-content` (alias của `on-surface-variant`, `secondary-container`,
+`on-secondary-container`; ba cặp contrast mới), primitive `ToggleAction`/`VinkToggleAction` với
+vectors `toggle-contract-v1` (`fixtures/toggle.json` → `toggle_vectors.rs`/`VinkToggleVectors.kt`)
+và composition `EndorsementAction` ở patterns. Minor: không đổi giá trị hay API hiện có; mọi callsite
+cũ giữ nguyên. Catalog thêm `action.toggle-action` và `composition.endorsement`.
 
 PR-01 Quiet Lavender thêm `FieldVariant::{ExternalLabel,FloatingTonal}` ở cả hai renderer;
 `ExternalLabel` mặc định giữ callsite. CMP short fields mặc định đổi từ Material outlined label

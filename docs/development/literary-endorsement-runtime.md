@@ -3,8 +3,9 @@
 **Lát:** PR2 + PR3 của [#73](https://github.com/loveoverflowcom/vink/issues/73) gộp một PR
 ([#81](https://github.com/loveoverflowcom/vink/pull/81)), đã port lên seam `decide_endorsement` của
 #80 (develop `40f8a30`). **Trạng thái:** hiện thực và kiểm cục bộ; production vẫn trả `401` cho ghi
-và trạng thái riêng vì chưa có auth authority (D-05). Không có UI, icon, xếp hạng hay consumer
-web/native nào dùng các endpoint này.
+và trạng thái riêng vì chưa có auth authority (D-05). Không có icon, xếp hạng hay consumer
+web/native nào dùng các endpoint này; UI System chỉ có primitive `ToggleAction` và composition
+`EndorsementAction` dạng specimen ([evidence](ui-system-endorsement-evidence.md)), chưa adapter app.
 
 Ý nghĩa và lựa chọn lõi: [decision record](../architecture/literary-endorsement.md). Lõi, Quint,
 Kani và registry LVE-INV: [endorsement-core](endorsement-core.md). Hợp đồng HTTP chuẩn:
@@ -210,8 +211,8 @@ PostgreSQL; Kani không chứng minh HTTP/auth/SQL; LocalFixture/Identity giả 
 
 Auth authority/session (D-05) và cơ chế thu hồi capability, lệnh publish/withdraw thật (bằng chứng
 dùng SQL lên con trỏ), cách ly/cấm/purge tài khoản, retention receipt, giới hạn tần suất (LVE-UC-15),
-ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), UI/icon/consumer web/native, tổng số cho danh sách
-nhiều tác phẩm.
+ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), icon (CHOICE-07), adapter/consumer web/native
+(reducer theo session/đích/order, xử lý `409`/replay), tổng số cho danh sách nhiều tác phẩm.
 
 ## Kiểm chứng (05/11/2026, macOS, PostgreSQL 17.11 scratch)
 

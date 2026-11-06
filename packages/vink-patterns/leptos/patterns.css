@@ -107,3 +107,6 @@
 
 .vk-draft-row__link:hover { text-decoration: none; background: var(--vk-state-hover); }
 .vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }
+
+/* EndorsementAction (LVE #73): sits with the target's other interactions, never as the CTA. */
+.vk-endorsement { display: inline-flex; max-inline-size: 100%; }

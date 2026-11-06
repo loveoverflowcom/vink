@@ -10,6 +10,7 @@
 #![recursion_limit = "256"]
 
 mod components;
+mod endorsement;
 mod navigation;
 mod screens;
 mod states;
@@ -24,7 +25,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 49] = [
+pub const REGISTERED: [&str; 51] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -40,6 +41,7 @@ pub const REGISTERED: [&str; 49] = [
     "action.icon-button",
     "action.link",
     "action.filter-chip",
+    "action.toggle-action",
     "field.text-field",
     "field.text-area",
     "field.search-field",
@@ -74,6 +76,7 @@ pub const REGISTERED: [&str; 49] = [
     "screen.editor",
     "screen.me",
     "composition.feedback",
+    "composition.endorsement",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.
@@ -473,6 +476,7 @@ pub fn specimen(id: &str, scenario: &str) -> AnyView {
         "foundation.shape-spacing" => shape_spacing(),
         "foundation.motion" => motion_specimen(),
         other => screens::specimen(other, scenario)
+            .or_else(|| endorsement::specimen(other, scenario))
             .or_else(|| components::specimen(other, scenario))
             .unwrap_or_else(|| view! { <p>"Chưa đăng ký trong preview Leptos."</p> }.into_any()),
     };
