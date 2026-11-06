@@ -44,8 +44,9 @@ của các lựa chọn dưới đây là contract để PR2/PR3 review/consume,
 | CHOICE-09 | A — độc lập quyền gửi text | COM-07 đóng root/reply create; không làm người viết tác phẩm có quyền xóa vote. Close, retry, reopen giữ cùng rules. Visibility/authority vẫn thắng. |
 | CHOICE-11 | A — owner-local module trong `vink-app` | Chưa có consumer Rust thứ hai; reuse IDs, placement và lifecycle predicate thật; không tạo crate chỉ để gọi “abstract”. |
 
-**Còn OPEN:** CHOICE-04 storage/FK; 05 aggregate/read strategy; 06 ranking; 07 icon;
-10 client confirmation; 12 voter visibility/consent. Core chỉ trả count và trạng thái riêng của actor,
+**Còn OPEN (tại PR1):** CHOICE-04 storage/FK; 05 aggregate/read strategy; 06 ranking; 07 icon;
+10 client confirmation; 12 voter visibility/consent. Sau đó 04/05/12 chốt A ở [#81](#lát-api--postgresql-81),
+10 chốt A ở [lát Web adapter](#lát-web-adapter-wp-04-06112026); 06 và 07 vẫn OPEN. Core chỉ trả count và trạng thái riêng của actor,
 không có voter list; không được suy quyền công khai danh tính. Facets, chapter target, sửa comment,
 account ban/removal/quarantine/retention, rate limit và auth authority chưa được triển khai.
 D-05/08/12 giữ trạng thái hiện hành. Ranking/optimistic UI không nằm trong PR1.
@@ -172,3 +173,21 @@ bằng chứng: [UI evidence](../development/ui-system-endorsement-evidence.md).
 
 [Registry, model/proof evidence và gap](../development/endorsement-core.md) là owner duy nhất
 traceability LVE; không gán proof lõi cho SQL, HTTP, UI hay toàn epic.
+
+## Lát Web adapter (WP-04, 06/11/2026)
+
+Reader Web tiêu thụ `EndorsementAction` cho tác phẩm (sau văn bản) và cho từng bình luận gốc/phản
+hồi phẳng. Owner, luồng và bảng ánh xạ: [runtime](../development/literary-endorsement-runtime.md#web-adapter-wp-04);
+bằng chứng: [web evidence](../development/literary-endorsement-web-evidence.md).
+
+| ID | Chọn | Lý do / phương án bị loại / còn OPEN |
+| --- | --- | --- |
+| CHOICE-10 | **A** — không optimistic: bấm chỉ đặt `Pending` (ghi chú “Đang gửi…”, MicroArc); giá trị và số đếm chỉ đổi theo ACK `accepted`/`replayed` (trạng thái hiện tại `endorsement`, không phải `committed`) hoặc đọc lại own state; mất phản hồi/timeout/`503`/`500` → `Uncertain` chặn bấm, “Kiểm tra lại” replay đúng lệnh (cùng key, order, trạng thái mong muốn, revision); own state chưa đọc/đọc lỗi → `Unknown`, “Kiểm tra lại” đọc lại | B (optimistic có nhãn) cần phase mới + `toggle-contract-v2`, rollback hiển thị và fence ý định mới nhất xuyên thiết bị mà lõi không hứa; lợi ích là độ trễ cảm nhận của một nút nhỏ, không đáng rủi ro “đã ghi nhận” giả. Đánh giá lại nếu đo được độ trễ ghi thật làm người đọc bấm lặp |
+| Đối soát Uncertain | Replay cùng key thay vì chỉ đọc own state | Replay trả `replayed` khi lệnh cũ đã commit, nên biết chắc; đọc own state không phân biệt được lệnh của mình với lệnh khác và để lệnh cũ có thể commit sau khi màn đã hiện. Own-state read dùng cho trạng thái `Unknown`, không cho lệnh mất phản hồi |
+| `409 version_conflict` | Hiện `endorsement` quan sát được nếu order không cũ hơn; trùng ý định → `Idle`, khác → `Failed` (bấm lại là ý định mới tại order mới) | Không tự gửi lại ý định cũ với order mới (hợp đồng API) |
+| R7 (gỡ riêng tư trên đích ẩn/revision cũ) | Không có UI: đích ẩn không được render, action của revision cũ bị chặn `Unavailable`; gỡ hàng giữ lại chỉ qua API | Hiện đích đã ẩn để gỡ sẽ làm lộ đích; cần thiết kế riêng nếu sản phẩm muốn danh sách “ghi nhận của tôi” |
+| Khách | Tổng số công khai + lý do bằng chữ “Cần đăng nhập để…” trên từng action; không gửi own read hay lệnh; không nút đăng nhập | D-05 chưa có auth authority; LVE-UC-01 |
+
+**Giữ OPEN:** CHOICE-07 glyph (slot trống), CHOICE-06 ranking (không sắp xếp theo ghi nhận; replies
+giữ thứ tự provider), CHOICE-12 B ghi danh, OPEN-R4. Production vẫn `401` cho ghi (D-05); lệnh thật
+chỉ chạy với LocalFixture loopback, có nhãn trên trang.

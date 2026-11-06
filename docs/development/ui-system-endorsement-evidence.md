@@ -5,6 +5,8 @@
 Kết quả chạy trên máy dev; không phải nghiệm thu thiết kế, thiết bị thật, screen reader thật hay
 production. Contract: [components.md](../../packages/ui-system/shared/components.md#toggleaction--hành-động-bậttắt-đã-xác-nhận-lve-73);
 quyết định: [literary-endorsement](../architecture/literary-endorsement.md#ui-system--phần-tái-sử-dụng-wp-04-06112026).
+Bản ghi này là của lát UI System (#85); adapter app đến sau ở
+[bằng chứng Web adapter](literary-endorsement-web-evidence.md).
 
 ## Môi trường
 

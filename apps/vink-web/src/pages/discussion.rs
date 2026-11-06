@@ -7,9 +7,13 @@ use vink_ui::{
     ActionState, Button, ButtonVariant, Heading, HeadingLevel, ListEnd, TextInput, TypeRole,
 };
 
-use crate::api;
-use crate::contract::{DiscussionPage, ReplyList};
+use super::endorsement::Endorsements;
+use crate::api::{self, LoadError};
+use crate::contract::{DiscussionPage, EndorsementSummaries, ReplyList};
 use crate::discussion_state::{ComposerKey, Delivery, DiscussionController, Scope, Target};
+use crate::endorsement_state::page_targets;
+#[cfg(feature = "hydrate")]
+use crate::endorsement_state::public_targets;
 use crate::ui::{
     adapters,
     patterns::{DiscussionThread, FeedbackComposer, FeedbackIntent},
@@ -112,7 +116,7 @@ pub fn Discussion(work_id: String) -> impl IntoView {
                     let fixture = fixture.clone();
                     Suspend::new(async move {
                         match resource.await {
-                            Ok(page) => view! { <DiscussionLoaded page fixture /> }.into_any(),
+                            Ok(load) => view! { <DiscussionLoaded page=load.page endorsements=load.endorsements fixture /> }.into_any(),
                             Err(_) => view! {
                                 <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
                                 // A same-URL fragment link only scrolls and never re-runs the resource.
@@ -128,10 +132,25 @@ pub fn Discussion(work_id: String) -> impl IntoView {
 }
 
 #[component]
-fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoView {
+fn DiscussionLoaded(
+    page: DiscussionPage,
+    endorsements: Result<EndorsementSummaries, LoadError>,
+    fixture: Option<String>,
+) -> impl IntoView {
     #[cfg(feature = "hydrate")]
     if let Some(owner) = Owner::current() {
         provide_context(TransportOwner(owner.downgrade()));
+    }
+    // LVE #73: counts of the server-rendered page before any comment action renders them.
+    let lve = Endorsements::current();
+    if let Some(lve) = lve {
+        lve.seed(page_targets(&page), endorsements.as_ref().ok());
+        // A fixture session refreshes the page after hydration, which reads own states too.
+        #[cfg(feature = "hydrate")]
+        if fixture.is_none() && endorsements.is_err() {
+            let targets = page_targets(&page);
+            spawn_transport(async move { lve.read(targets, true) });
+        }
     }
     let controller = RwSignal::new(DiscussionController::new(
         Scope {
@@ -155,7 +174,7 @@ fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoV
         mutation_message: None,
         mutation_needs_refresh: false,
     });
-    let refresh = Callback::new(move |()| read_roots(state, controller, false));
+    let refresh = Callback::new(move |()| read_roots(state, controller, lve, false));
     // Viewer-private projections only arrive after hydration through the no-store API.
     #[cfg(feature = "hydrate")]
     if fixture.is_some() {
@@ -181,7 +200,7 @@ fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoV
             <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open)}</p>
             {fixture.is_some().then(|| view! { <p class="vk-muted">"Mẫu định danh cục bộ · Không phải đăng nhập production."</p> })}
             <Show when=move || !state.read().unavailable && state.read().page.viewer_is_work_author>
-                <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller)>
+                <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
                     {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
                 </Button>
             </Show>
@@ -197,12 +216,12 @@ fn DiscussionLoaded(page: DiscussionPage, fixture: Option<String>) -> impl IntoV
             </Show>
             <div id="root-list">
                 <For each=move || { state.read().page.roots.iter().map(|root| adapters::root_id(root).to_owned()).collect::<Vec<_>>() } key=|id| id.clone()
-                    children=move |root| view! { <RootThreadView root controller state refresh write_state /> } />
+                    children=move |root| view! { <RootThreadView root controller state refresh write_state lve /> } />
             </div>
             <Show when=move || state.read().page.next_cursor.is_some()>
                 <div id="root-pagination" class="vk-discussion-pagination">
                     <p role="status">{move || state.read().page_error.clone().unwrap_or_default()}</p>
-                    <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, true)>"Xem thêm nhận xét"</Button>
+                    <Button variant=ButtonVariant::Tonal state=Signal::derive(move || if state.read().loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled }) on_press=move |_| read_roots(state, controller, lve, true)>"Xem thêm nhận xét"</Button>
                 </div>
             </Show>
             <Show when=move || state.read().page.next_cursor.is_none()>
@@ -237,6 +256,7 @@ fn RootThreadView(
     state: RwSignal<ViewState>,
     refresh: Callback<()>,
     write_state: Signal<ActionState>,
+    lve: Option<Endorsements>,
 ) -> impl IntoView {
     let root = StoredValue::new(root);
     let facts = Signal::derive(move || {
@@ -276,14 +296,14 @@ fn RootThreadView(
             controller.update(|c| c.reply(root.get_value(), target));
         }
     });
-    let on_remove = Callback::new(move |id: String| remove_own(state, controller, id));
+    let on_remove = Callback::new(move |id: String| remove_own(state, controller, lve, id));
     view! {
         <section class="vk-discussion-root" aria-label="Nhánh nhận xét">
-            <DiscussionThread facts on_reply on_remove action_state=write_state />
+            <DiscussionThread facts on_reply on_remove action_state=write_state endorsements=lve.map(Endorsements::comments) />
             <p role="status">{move || state.read().reply_errors.get(&root.get_value()).cloned().unwrap_or_default()}</p>
             <Show when=move || next_reply_cursor(&state.read(), &root.get_value()).is_some()>
                 <Button variant=ButtonVariant::Text state=Signal::derive(move || if state.read().reply_loading.get(&root.get_value()) == Some(&true) { ActionState::pending("Đang tải phản hồi…") } else { ActionState::Enabled })
-                    on_press=move |_| read_replies(state, controller, root.get_value())>"Xem thêm phản hồi"</Button>
+                    on_press=move |_| read_replies(state, controller, lve, root.get_value())>"Xem thêm phản hồi"</Button>
             </Show>
             <Show when=move || controller.read().draft(&key.get_value()).open>
                 <div class="vk-discussion-reply-composer">
@@ -414,6 +434,7 @@ fn revalidate_targets(state: &ViewState, controller: RwSignal<DiscussionControll
 fn read_roots(
     state: RwSignal<ViewState>,
     controller: RwSignal<DiscussionController>,
+    lve: Option<Endorsements>,
     append: bool,
 ) {
     #[cfg(feature = "hydrate")]
@@ -455,6 +476,7 @@ fn read_roots(
                 return;
             }
             let mut refresh_again = false;
+            let mut endorsable = None;
             state.try_update(|s| {
                 if !s.accepts_read(epoch) {
                     return;
@@ -464,6 +486,7 @@ fn read_roots(
                 s.refresh_queued = false;
                 match result {
                     Ok(page) if page.work_id == scope.work_id => {
+                        endorsable = Some(page_targets(&page));
                         controller.update(|c| c.settings = page.settings.clone());
                         s.unavailable = false;
                         s.mutation_needs_refresh = false;
@@ -509,20 +532,25 @@ fn read_roots(
                     }
                 }
             });
+            // Fresh counts and own states for the comments this read returned.
+            if let (Some(lve), Some(targets)) = (lve, endorsable) {
+                lve.read(targets, true);
+            }
             if refresh_again {
-                read_roots(state, controller, false);
+                read_roots(state, controller, lve, false);
             }
         });
     }
     #[cfg(not(feature = "hydrate"))]
     {
-        let _ = (state, controller, append);
+        let _ = (state, controller, lve, append);
     }
 }
 
 fn read_replies(
     state: RwSignal<ViewState>,
     controller: RwSignal<DiscussionController>,
+    lve: Option<Endorsements>,
     root: String,
 ) {
     #[cfg(feature = "hydrate")]
@@ -549,6 +577,7 @@ fn read_replies(
             {
                 return;
             }
+            let mut endorsable = None;
             state.try_update(|s| {
                 if !s.accepts_read(epoch) {
                     return;
@@ -556,6 +585,7 @@ fn read_replies(
                 s.reply_loading.insert(root.clone(), false);
                 match result {
                     Ok(page) => {
+                        endorsable = Some(public_targets(&page.replies));
                         let initial = s
                             .page
                             .roots
@@ -586,11 +616,14 @@ fn read_replies(
                     }
                 }
             });
+            if let (Some(lve), Some(targets)) = (lve, endorsable) {
+                lve.read(targets, true);
+            }
         });
     }
     #[cfg(not(feature = "hydrate"))]
     {
-        let _ = (state, controller, root);
+        let _ = (state, controller, lve, root);
     }
 }
 
@@ -650,7 +683,11 @@ fn submit(
     }
 }
 
-fn change_mode(state: RwSignal<ViewState>, controller: RwSignal<DiscussionController>) {
+fn change_mode(
+    state: RwSignal<ViewState>,
+    controller: RwSignal<DiscussionController>,
+    lve: Option<Endorsements>,
+) {
     #[cfg(feature = "hydrate")]
     {
         let c = controller.get_untracked();
@@ -694,16 +731,21 @@ fn change_mode(state: RwSignal<ViewState>, controller: RwSignal<DiscussionContro
                     }
                 }
             });
-            read_roots(state, controller, false);
+            read_roots(state, controller, lve, false);
         });
     }
     #[cfg(not(feature = "hydrate"))]
     {
-        let _ = (state, controller);
+        let _ = (state, controller, lve);
     }
 }
 
-fn remove_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionController>, id: String) {
+fn remove_own(
+    state: RwSignal<ViewState>,
+    controller: RwSignal<DiscussionController>,
+    lve: Option<Endorsements>,
+    id: String,
+) {
     #[cfg(feature = "hydrate")]
     {
         let c = controller.get_untracked();
@@ -750,12 +792,12 @@ fn remove_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionControl
                     }
                 });
             });
-            read_roots(state, controller, false);
+            read_roots(state, controller, lve, false);
         });
     }
     #[cfg(not(feature = "hydrate"))]
     {
-        let _ = (state, controller, id);
+        let _ = (state, controller, lve, id);
     }
 }
 

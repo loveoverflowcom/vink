@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "hydrate")]
 use crate::contract::{ApiError, Draft, DraftList, SaveDraftRequest, SavedDraft};
-use crate::contract::{DiscussionPage, Publication, WorkList};
+use crate::contract::{DiscussionPage, EndorsementSummaries, Publication, WorkList};
 
 const DISCUSSION_ID: percent_encoding::AsciiSet =
     percent_encoding::NON_ALPHANUMERIC.remove(b'-').remove(b'_');
@@ -31,7 +31,68 @@ pub fn local_discussion_fixture_scope() -> Option<String> {
     }
 }
 
-pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionPage, LoadError>> {
+/// The anonymous discussion page and the public endorsement summaries (LVE #73) of its public
+/// comments, read one after the other so SSR and hydration render the same counts. A failed
+/// summary read never hides the discussion.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiscussionLoad {
+    pub page: DiscussionPage,
+    pub endorsements: Result<EndorsementSummaries, LoadError>,
+}
+
+fn first_batch(page: &DiscussionPage) -> Vec<String> {
+    // A first page has at most 20 roots with 3 preview replies each (80 < 100); later pages
+    // are read in batches by the browser adapter.
+    crate::endorsement_state::page_targets(page)
+        .into_iter()
+        .filter_map(|target| match target {
+            crate::endorsement_state::TargetKey::Comment { comment_id } => Some(comment_id),
+            crate::endorsement_state::TargetKey::Work { .. } => None,
+        })
+        .take(crate::endorsement_state::MAX_BATCH)
+        .collect()
+}
+
+pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionLoad, LoadError>> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            move || work_id.clone(),
+            move |id| {
+                let port = port.clone();
+                async move {
+                    let Some(port) = port else {
+                        return Err(LoadError::Unavailable);
+                    };
+                    let page = port.discussion(id.clone()).await?;
+                    let endorsements = port.endorsement_summaries(id, first_batch(&page)).await;
+                    Ok(DiscussionLoad { page, endorsements })
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(
+            move || work_id.clone(),
+            |id| {
+                browser(async move {
+                    let page: DiscussionPage =
+                        public_get(format!("/api/v1/works/{id}/discussion")).await?;
+                    let endorsements =
+                        public_get(endorsements_path(&id, false, &first_batch(&page))).await;
+                    Ok(DiscussionLoad { page, endorsements })
+                })
+            },
+        )
+    }
+}
+
+/// Public endorsement summary of the work's current revision (no comments), for the reader.
+pub fn work_endorsement_resource(
+    work_id: String,
+) -> Resource<Result<EndorsementSummaries, LoadError>> {
     #[cfg(feature = "ssr")]
     {
         let port = use_context::<crate::server::SharedPublicReads>();
@@ -41,7 +102,7 @@ pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionPage, L
                 let port = port.clone();
                 async move {
                     match port {
-                        Some(port) => port.discussion(id).await,
+                        Some(port) => port.endorsement_summaries(id, Vec::new()).await,
                         None => Err(LoadError::Unavailable),
                     }
                 }
@@ -52,8 +113,73 @@ pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionPage, L
     {
         Resource::new(
             move || work_id.clone(),
-            |id| browser(public_get(format!("/api/v1/works/{id}/discussion"))),
+            |id| browser(public_get(endorsements_path(&id, false, &[]))),
         )
+    }
+}
+
+/// `GET …/endorsements[/me]?comment_ids=` with each ID encoded; commas separate them.
+pub fn endorsements_path(work: &str, own: bool, comment_ids: &[String]) -> String {
+    use percent_encoding::utf8_percent_encode;
+    let mut path = format!(
+        "/api/v1/works/{}/endorsements{}",
+        utf8_percent_encode(work, &DISCUSSION_ID),
+        if own { "/me" } else { "" }
+    );
+    if !comment_ids.is_empty() {
+        let ids: Vec<String> = comment_ids
+            .iter()
+            .map(|id| utf8_percent_encode(id, &DISCUSSION_ID).to_string())
+            .collect();
+        path.push_str("?comment_ids=");
+        path.push_str(&ids.join(","));
+    }
+    path
+}
+
+/// `PUT` path of one endorsement target.
+pub fn endorsement_path(work: &str, comment: Option<&str>) -> String {
+    use percent_encoding::utf8_percent_encode;
+    match comment {
+        None => format!(
+            "/api/v1/works/{}/endorsement/me",
+            utf8_percent_encode(work, &DISCUSSION_ID)
+        ),
+        Some(comment) => format!(
+            "{}/comments/{}/endorsement/me",
+            discussion_path(work, None, None),
+            utf8_percent_encode(comment, &DISCUSSION_ID)
+        ),
+    }
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_endorsement_summaries(
+    work: &str,
+    comment_ids: &[String],
+) -> Result<EndorsementSummaries, ApiError> {
+    http::get(&endorsements_path(work, false, comment_ids)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_own_endorsements(
+    work: &str,
+    comment_ids: &[String],
+) -> Result<crate::contract::OwnEndorsements, ApiError> {
+    http::get(&endorsements_path(work, true, comment_ids)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn set_endorsement(
+    work: &str,
+    request: &crate::endorsement_state::Request,
+) -> Result<crate::contract::EndorsementWrite, ApiError> {
+    use crate::endorsement_state::Request;
+    match request {
+        Request::Work(body) => http::send("PUT", &endorsement_path(work, None), Some(body)).await,
+        Request::Comment { comment_id, body } => {
+            http::send("PUT", &endorsement_path(work, Some(comment_id)), Some(body)).await
+        }
     }
 }
 
@@ -337,11 +463,13 @@ mod http {
         }
     }
 
+    /// Discussion and endorsement calls end after 30 s; a lost write is then uncertain.
+    fn bounded(path: &str) -> bool {
+        path.contains("/discussion") || path.contains("/endorsement")
+    }
+
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
-        let deadline = path
-            .contains("/discussion")
-            .then(Deadline::new)
-            .transpose()?;
+        let deadline = bounded(path).then(Deadline::new).transpose()?;
         let signal = deadline
             .as_ref()
             .map(|deadline| deadline.controller.signal());
@@ -359,10 +487,7 @@ mod http {
         path: &str,
         body: Option<&B>,
     ) -> Result<T, ApiError> {
-        let deadline = path
-            .contains("/discussion")
-            .then(Deadline::new)
-            .transpose()?;
+        let deadline = bounded(path).then(Deadline::new).transpose()?;
         let signal = deadline
             .as_ref()
             .map(|deadline| deadline.controller.signal());
@@ -455,6 +580,26 @@ mod discussion_tests {
         assert_eq!(
             super::discussion_path("../other", None, None),
             "/api/v1/works/%2E%2E%2Fother/discussion"
+        );
+    }
+
+    #[test]
+    fn endorsement_paths_encode_each_identifier_and_keep_the_batch_shape() {
+        assert_eq!(
+            super::endorsements_path("work", false, &[]),
+            "/api/v1/works/work/endorsements"
+        );
+        assert_eq!(
+            super::endorsements_path("work", true, &["a-1".into(), "b,2&x=1".into()]),
+            "/api/v1/works/work/endorsements/me?comment_ids=a-1,b%2C2%26x%3D1"
+        );
+        assert_eq!(
+            super::endorsement_path("../w", None),
+            "/api/v1/works/%2E%2E%2Fw/endorsement/me"
+        );
+        assert_eq!(
+            super::endorsement_path("w", Some("c/1")),
+            "/api/v1/works/w/discussion/comments/c%2F1/endorsement/me"
         );
     }
 }

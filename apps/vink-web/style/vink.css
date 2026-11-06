@@ -325,6 +325,8 @@ a {
 #reader-return .vk-ui-icon { margin: 0; }
 .vk-reader-freshness > [data-testid] { margin-block: calc(-1 * var(--vk-space-2)) var(--vk-space-6); }
 .vk-reader { min-width: 0; }
+/* LVE #73: the work's endorsement closes the text, quiet and start-aligned, before discussion. */
+.vk-reader-endorsement { display: flex; margin-block: var(--vk-space-6) 0; min-width: 0; }
 .vk-discussion { margin-block: var(--vk-space-8); padding-block-start: var(--vk-space-6); border-block-start: 1px solid var(--vk-outline-variant); min-width: 0; }
 .vk-discussion [role="status"]:empty { display: none; }
 .vk-discussion-mode, .vk-discussion-composer { display: grid; gap: var(--vk-space-3); margin-block: var(--vk-space-4); min-width: 0; }

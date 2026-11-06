@@ -61,6 +61,28 @@ impl PublicReads for PublicReadsAdapter {
             to_web(&super::contract::DiscussionPage::new(id, &page, None))
         })
     }
+    fn endorsement_summaries(
+        &self,
+        work_id: String,
+        comment_ids: Vec<String>,
+    ) -> PortFuture<Result<web::EndorsementSummaries, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let id = WorkId::parse(&work_id).ok_or(LoadError::NotFound)?;
+            // Public counts only: no actor is resolved, as for `GET …/endorsements`.
+            let ids = (!comment_ids.is_empty()).then(|| comment_ids.join(","));
+            let summaries = vink
+                .endorsement_summaries(id, ids.as_deref())
+                .await
+                .map_err(|error| match error {
+                    crate::application::endorsement::EndorsementError::NotFound => {
+                        LoadError::NotFound
+                    }
+                    _ => LoadError::Unavailable,
+                })?;
+            to_web(&super::contract::EndorsementSummaryList::from(&summaries))
+        })
+    }
     fn works(&self) -> PortFuture<Result<web::WorkList, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {

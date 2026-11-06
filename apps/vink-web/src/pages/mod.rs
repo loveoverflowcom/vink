@@ -1,5 +1,6 @@
 mod desk;
 mod discussion;
+mod endorsement;
 pub(crate) mod me;
 
 pub use desk::{DeskIndex, DraftEditor};
@@ -307,6 +308,15 @@ fn PublicationContent(
         .unwrap_or_default();
     let canonical = canonical_url(&format!("/tac-pham/{}", publication.work_id));
     let discussion_work = publication.work_id.clone();
+    // LVE #73: one endorsement state per shown revision; a newer revision reported by the
+    // server asks READ-02 to revalidate, which then offers “Xem bản mới”.
+    let on_superseded = {
+        let live = live.clone();
+        Callback::new(move |()| live.refresh())
+    };
+    endorsement::Endorsements::provide(publication.work_id.clone(), on_superseded);
+    let work_summary = api::work_endorsement_resource(publication.work_id.clone());
+    let revision = publication.revision_id.clone();
     view! {
         <Title text=format!("{} — Vink", publication.title) />
         <Meta name="description" content=description.clone() />
@@ -346,6 +356,15 @@ fn PublicationContent(
             <ReaderHeader title=publication.title author />
             <DocumentView document=publication.document />
         </article>
+        <Suspense fallback=|| ()>
+            {move || {
+                let revision = revision.clone();
+                Suspend::new(async move {
+                    let summaries = work_summary.await.ok();
+                    view! { <endorsement::WorkEndorsement revision_id=revision summaries /> }
+                })
+            }}
+        </Suspense>
         <discussion::Discussion work_id=discussion_work />
         </div>
     }

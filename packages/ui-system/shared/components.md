@@ -114,7 +114,8 @@ và sinh lại bằng `cargo xtask ui-tokens`.
 **Trạng thái:** token 0.5.0, catalog 0.6.0 (`action.toggle-action`), vectors
 `toggle-contract-v1` ở [fixtures/toggle.json](fixtures/toggle.json); đã triển khai ở Leptos
 (`vink_ui::toggle`) và CMP (`VinkToggle.kt`), `implemented-unverified`. Consumer đầu tiên là
-`EndorsementAction` của [patterns](../../vink-patterns/README.md); chưa màn app nào dùng.
+`EndorsementAction` của [patterns](../../vink-patterns/README.md); màn app đầu tiên là reader Web
+(tác phẩm + từng bình luận, qua adapter LVE của `vink-web`).
 Primitive chung cho mọi tín hiệu bật/tắt có owner xác nhận (ghi nhận, sau này lưu/reaction nếu
 được chấp nhận), không biết endpoint, actor, `command_key` hay `expected_order`.
 
@@ -167,7 +168,8 @@ chặn/chưa rõ, phát lại đúng trạng thái đang hiện, hoặc uncertai
 
 Tương quan CHOICE-10: primitive chỉ trình bày hướng A (pending + xác nhận sau ACK/readback). Hướng
 B (optimistic có nhãn pending) cần một phase mới và `toggle-contract-v2`, không giả bằng cách
-truyền `On` trước khi owner xác nhận. Quyết định sản phẩm CHOICE-10 vẫn thuộc lát adapter.
+truyền `On` trước khi owner xác nhận. Lát adapter Web đã chốt CHOICE-10 **A** cho sản phẩm
+([decision record](../../../docs/architecture/literary-endorsement.md#lát-web-adapter-wp-04-06112026)).
 
 ## Props, sự kiện và trạng thái
 

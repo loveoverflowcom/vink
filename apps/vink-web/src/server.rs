@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use crate::api::LoadError;
-use crate::contract::{DiscussionPage, Publication, WorkList};
+use crate::contract::{DiscussionPage, EndorsementSummaries, Publication, WorkList};
 
 pub type PortFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
@@ -18,6 +18,15 @@ pub trait PublicReads: Send + Sync + 'static {
     fn publication(&self, work_id: String) -> PortFuture<Result<Publication, LoadError>>;
     /// Always anonymous: viewer-private comments never enter public HTML/hydration payloads.
     fn discussion(&self, _work_id: String) -> PortFuture<Result<DiscussionPage, LoadError>> {
+        Box::pin(std::future::ready(Err(LoadError::Unavailable)))
+    }
+    /// Public endorsement summaries (LVE #73) of the current revision and of `comment_ids`
+    /// (at most 100): one snapshot, no viewer state, the same representation as the API.
+    fn endorsement_summaries(
+        &self,
+        _work_id: String,
+        _comment_ids: Vec<String>,
+    ) -> PortFuture<Result<EndorsementSummaries, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))
     }
 }

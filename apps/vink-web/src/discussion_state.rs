@@ -300,7 +300,10 @@ pub fn error_message(error: &ApiError) -> &'static str {
         ApiError::Unauthenticated => {
             "Máy chủ chưa xác nhận phiên đăng nhập. Bản đang soạn được giữ lại."
         }
-        ApiError::Forbidden => "Máy chủ từ chối thao tác này. Bản đang soạn được giữ lại.",
+        // Endorsement refusals never reach the composer; keep the generic refusal wording.
+        ApiError::Forbidden | ApiError::SelfEndorsement | ApiError::EndorsementNotPermitted => {
+            "Máy chủ từ chối thao tác này. Bản đang soạn được giữ lại."
+        }
         ApiError::NotFound => {
             "Tác phẩm hoặc nhận xét không còn khả dụng. Bản đang soạn được giữ lại."
         }
@@ -314,7 +317,9 @@ pub fn error_message(error: &ApiError) -> &'static str {
         ApiError::Invalid { .. } => {
             "Nội dung chưa hợp lệ (tối đa 4.000 ký tự, 200 dòng). Sửa rồi gửi lại; chữ vẫn được giữ."
         }
-        ApiError::VersionConflict { .. } => {
+        ApiError::VersionConflict { .. }
+        | ApiError::EndorsementConflict { .. }
+        | ApiError::RevisionChanged { .. } => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }
         ApiError::CommentRemoved => "Nhận xét không còn hiển thị.",

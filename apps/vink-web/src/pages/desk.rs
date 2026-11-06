@@ -948,12 +948,17 @@ fn failure(error: &ApiError) -> Failure {
         ApiError::Forbidden => Failure::Forbidden,
         ApiError::NotFound => Failure::NotFound,
         ApiError::Invalid { .. } => Failure::Invalid,
-        // Draft routes never answer the discussion codes; treat them like any unexpected reply.
+        // Draft routes never answer the discussion or endorsement codes; treat them like any
+        // unexpected reply.
         ApiError::VersionConflict { .. }
         | ApiError::CommentsClosed
         | ApiError::TargetUnavailable
         | ApiError::KeyReused
         | ApiError::CommentRemoved
+        | ApiError::SelfEndorsement
+        | ApiError::EndorsementNotPermitted
+        | ApiError::EndorsementConflict { .. }
+        | ApiError::RevisionChanged { .. }
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }

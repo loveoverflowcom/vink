@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|appearance|first-paint
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -11,6 +11,7 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { expressionPilot } from './expressions-smoke.mjs';
+import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -2019,14 +2020,15 @@ async function publicReading(page) {
   // Keyboard scrolling and the page end must clear the measured fixed bar, also after text grows.
   await page.viewport(320);
   await page.eval(`document.documentElement.style.fontSize = '200%'; document.querySelector('#reader-return').focus()`);
-  // Discussion follows the reading body in DOM order. Traverse its actual controls
+  // The work's endorsement (LVE #73) and then the discussion follow the reading body in DOM
+  // order. Traverse their actual controls
   // (including an unavailable-state retry) before checking the fixed navigation.
   const feedbackStops = await page.eval(`(() => {
-    window.__readerFeedbackTabStops = [...document.querySelectorAll('#feedback-region a[href], #feedback-region button, #feedback-region input, #feedback-region select, #feedback-region textarea, #feedback-region [tabindex]')]
+    window.__readerFeedbackTabStops = [...document.querySelectorAll('#work-endorsement button, #feedback-region a[href], #feedback-region button, #feedback-region input, #feedback-region select, #feedback-region textarea, #feedback-region [tabindex]')]
       .filter(el => el.getClientRects().length && el.tabIndex >= 0 && !el.disabled);
     return window.__readerFeedbackTabStops.map(el => el.id || el.getAttribute('aria-label') || el.textContent.trim());
   })()`);
-  check(feedbackStops.length > 0, 'reader exposes its feedback recovery or composer controls to the keyboard');
+  check(feedbackStops.length > 0 && feedbackStops[0] === 'endorse-work', 'reader exposes “Đánh giá cao” first, then its feedback recovery or composer controls, to the keyboard');
   for (const [index, label] of feedbackStops.entries()) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement === window.__readerFeedbackTabStops[${index}] && document.activeElement.matches(':focus-visible') && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), `Tab reaches reader feedback control ${label} with a visible focus ring`);
@@ -2417,6 +2419,7 @@ async function mainPhase(page) {
   await cacheFirstPublicReads(page);
   await expressionPilot(page, args, check);
   await discussionReadingAndWrites(page);
+  await endorsementAsAuthor(page, { args, check });
   await adaptiveShell(page);
   await draftDashboard(page);
   await publicReading(page);
@@ -2922,6 +2925,7 @@ try {
   activePage = page;
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
+  else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'appearance') await adaptiveShell(page);
   else if (args.phase === 'first-paint') {
     await page.goto(`${args.base}/toi`);
