@@ -338,8 +338,9 @@ fn foreign_facts_and_corrupt_receipt_fail_closed_before_writing() {
 
 #[test]
 fn exhausted_tokens_and_counts_refuse_without_partial_writes() {
-    for selected in [false, true] {
-        let state = EndorsementState::restore(selected, i64::MAX, i64::MAX).unwrap();
+    // i64::MAX is odd, so the only reachable state there is OFF; ON sits one version below.
+    for (selected, version) in [(false, i64::MAX), (true, i64::MAX - 1)] {
+        let state = EndorsementState::restore(selected, version, i64::MAX).unwrap();
         let f = EndorsementFacts {
             current: Some(StoredEndorsement::restore(actor(1), target(), state)),
             ..facts()
@@ -361,4 +362,51 @@ fn exhausted_tokens_and_counts_refuse_without_partial_writes() {
     let max = EndorsementCount::new(i64::MAX).unwrap();
     assert_eq!(max.apply(EndorsementDelta::Add), Err(CountError::Overflow));
     assert_eq!(max.get(), i64::MAX);
+}
+
+/// Every state the reducer accepts is one storage can restore, and storage restores no state the
+/// reducer cannot reach: ON exactly at an even version. Exhaustive over every intent sequence of
+/// length <= 8 from the absent state, each command at the current order.
+#[test]
+fn accepted_states_keep_selection_parity_and_storage_restores_only_reachable_states() {
+    let mut frontier = vec![EndorsementState::INITIAL];
+    let mut seen = 0;
+    for _ in 0..8 {
+        let mut next_frontier = Vec::new();
+        for state in frontier {
+            for wanted in [false, true] {
+                let f = EndorsementFacts {
+                    current: (state != EndorsementState::INITIAL)
+                        .then(|| StoredEndorsement::restore(actor(1), target(), state)),
+                    ..facts()
+                };
+                let next = accepted(decide_endorsement(
+                    actor(1),
+                    cmd(1, state.order().get(), wanted),
+                    f,
+                ))
+                .next()
+                .state();
+                let (version, order) = (next.version().get(), next.order().get());
+                assert_eq!(next.selected(), version % 2 == 0, "{next:?}");
+                assert_eq!(
+                    EndorsementState::restore(next.selected(), version, order),
+                    Some(next)
+                );
+                assert_eq!(
+                    EndorsementState::restore(!next.selected(), version, order),
+                    None,
+                    "the opposite selection at {version}/{order} is unreachable"
+                );
+                next_frontier.push(next);
+                seen += 1;
+            }
+        }
+        frontier = next_frontier;
+    }
+    assert_eq!(seen, 510);
+    // Storage shapes the database also refuses (selected without a version step, and back).
+    assert_eq!(EndorsementState::restore(true, 1, 2), None);
+    assert_eq!(EndorsementState::restore(false, 2, 2), None);
+    assert_eq!(EndorsementState::restore(false, 2, 3), None);
 }

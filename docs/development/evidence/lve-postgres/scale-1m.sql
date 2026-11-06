@@ -3,6 +3,8 @@
 -- to see the own-state and summary plans when the table no longer fits a few hundred pages.
 INSERT INTO comment_endorsements (comment_id, actor_id, selected, version, accepted_order)
 SELECT ('30000000-0000-4000-8000-' || lpad(k::text, 12, '0'))::uuid,
-       ('00000000-0000-4000-8000-' || lpad(a::text, 12, '0'))::uuid, (a % 5) <> 0, 2, 3
+       ('00000000-0000-4000-8000-' || lpad(a::text, 12, '0'))::uuid, (a % 5) <> 0,
+       -- A reachable state: ON at an even version, OFF at an odd one (version parity CHECK).
+       CASE WHEN (a % 5) <> 0 THEN 2 ELSE 3 END, 3
   FROM generate_series(1, 2000) k, generate_series(5001, 5500) a;
 ANALYZE;

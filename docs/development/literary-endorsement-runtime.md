@@ -19,7 +19,7 @@ Kani và registry LVE-INV: [endorsement-core](endorsement-core.md). Hợp đồn
 | Port | [`application/ports.rs`](../../services/vink-app/src/application/ports.rs) `EndorsementStore` | Hợp đồng transaction nguyên tử; trả facts + outcome thuần đã áp |
 | HTTP | [`http/api.rs`](../../services/vink-app/src/http/api.rs), [`contract.rs`](../../services/vink-app/src/http/contract.rs), [`error.rs`](../../services/vink-app/src/http/error.rs) | Route, DTO `deny_unknown_fields`, mã lỗi, `no-store` |
 | Adapter | [`persistence/endorsement.rs`](../../services/vink-app/src/persistence/endorsement.rs) | Khóa → receipt → `decide_endorsement` → ghi state + receipt → commit; đọc batch một snapshot |
-| Schema | [`migrations/20261105000000_literary_endorsement.sql`](../../services/vink-app/migrations/20261105000000_literary_endorsement.sql) | Hai bảng state + bảng receipt, FK đúng loại, token hợp lệ, trigger giữ hàng/order |
+| Schema | [`migrations/20261105000000_literary_endorsement.sql`](../../services/vink-app/migrations/20261105000000_literary_endorsement.sql), [`20261105120000_endorsement_version_parity.sql`](../../services/vink-app/migrations/20261105120000_endorsement_version_parity.sql) | Hai bảng state + bảng receipt, FK đúng loại, token hợp lệ, selection khớp parity version, trigger giữ hàng/order |
 | Test | [`application/endorsement_tests.rs`](../../services/vink-app/src/application/endorsement_tests.rs), `http::contract::tests::endorsement`, `http::tests`, [`tests/postgres/endorsement.rs`](../../services/vink-app/tests/postgres/endorsement.rs) | Store ghi lại (chạy lõi thật trên facts kịch bản), fixture, router, PostgreSQL thật |
 
 ## Hợp đồng Rust (bàn giao)
@@ -111,6 +111,11 @@ gọi `public_count`: tác phẩm không công khai → `404`; bình luận thi�
   `endorsement_receipts` PK `(actor_id, command_key)`, đích typed nullable + CHECK đúng một đích,
   `committed_order = expected_order + 1`. Bảng bình luận và receipt bình luận không lưu work dư; work
   lấy từ thread. B (một bảng state chung) bị loại: thêm NULL/CHECK mà truy vấn không bớt.
+- **Trạng thái đạt được (`20261105120000`):** lõi bắt đầu OFF/v1 và chỉ tăng version khi selection
+  đổi, nên mọi trạng thái đạt được có `selected ⇔ version chẵn`. CHECK `*_version_parity_check` trên
+  hai bảng state và receipt (`committed_version`) giữ đúng điều đó; `EndorsementState::restore` từ chối
+  cùng hình dạng khi hydrate. Không mã hóa bước chuyển trong SQL (không reducer thứ hai): order có thể
+  nhảy hoặc version tăng chẵn bằng SQL trực tiếp vẫn không bị schema chặn, chỉ bị lõi fence.
 - **Lưu giữ (chốt cho lát):** bỏ chọn giữ hàng; hàng và receipt **không bao giờ bị xóa** — trigger
   statement-level chặn `DELETE`/`TRUNCATE` (receipt chặn cả `UPDATE`), trigger hàng chặn đổi danh
   tính, order không tăng, version giảm. Receipt giữ vô thời hạn vì chưa có policy retention. Purge
@@ -143,8 +148,63 @@ gọi `public_count`: tác phẩm không công khai → `404`; bình luận thi�
   `http/api.rs` và deploy lại; schema giữ nguyên.
 - **Backout schema** (chấp nhận mất mọi ghi nhận và receipt): `DROP TABLE endorsement_receipts,
   work_endorsements, comment_endorsements; DROP FUNCTION guard_endorsement_update(),
-  reject_endorsement_removal();` rồi xóa dòng `20261105000000` khỏi `_sqlx_migrations` bằng migrator,
-  sau khi deploy binary không có migration này.
+  reject_endorsement_removal();` rồi xóa dòng `20261105000000` và `20261105120000` khỏi
+  `_sqlx_migrations` bằng migrator, sau khi deploy binary không có hai migration này. Chỉ gỡ
+  parity: `ALTER TABLE … DROP CONSTRAINT *_version_parity_check` trên ba bảng rồi xóa dòng
+  `20261105120000`; binary vẫn từ chối hàng sai parity khi hydrate (đọc/ghi riêng trả `500`).
+- **Nâng cấp:** `ADD CONSTRAINT … CHECK` kiểm mọi hàng hiện có dưới khóa của migration. Hàng do App
+  ghi luôn hợp lệ; database từng bị SQL trực tiếp ghi hàng không đạt được (như bản cũ của
+  `scale-1m.sql`) sẽ dừng migration. Không có sửa tự động an toàn: cần xem từng hàng.
+
+## Rà soát domain ↔ API ↔ DB (#73, sau #81/#83)
+
+Nền `develop@a9afecc`. Lần theo cả hai chiều: request → `http::api` (actor, ID, DTO
+`deny_unknown_fields`) → `application::endorsement` (key/order/intent → `EndorsementCommand`) →
+`PgStore::set_endorsement` (khóa facts → `decide_endorsement` → state + receipt → count → commit) →
+`settle` → DTO; và DB → hydrate (`tokens`, `placement`, `ReceiptRow::receipt`) → `public_count`/`own`
+→ DTO `no-store`. Không có reducer thứ hai: HTTP/SQL không tự quyết eligibility, order hay replay.
+
+| ID | Nguồn | Quan sát | Rủi ro | Test có sẵn | Bảo đảm thiếu | Phương án | Mức / xử lý |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| R1 | `EndorsementState::restore`; `*_tokens_check`, `guard_endorsement_update`; `evidence/…/scale-1m.sql` | Lõi chỉ đạt `selected ⇔ version chẵn`; restore và schema nhận ON@v1, OFF@v2, đảo `selected` không tăng version. Script bằng chứng đã commit ghi OFF@v2 và DB nhận | Tổng số công khai là `count(*) … WHERE selected`, không qua restore, nên đếm hàng không lệnh nào tạo ra; lệnh kế tiếp lấy nó làm nền | `the_database_alone_enforces…` chỉ kiểm token | Hàng bền = trạng thái đạt được | A: chỉ restore (không che SQL count); **B: CHECK parity + restore**; C: trigger mã hóa bước chuyển (reducer thứ hai, loại) | P1 — sửa (B), migration tiến `20261105120000` |
+| R2 | `PgStore::set_endorsement` | Lỗi sau khi đã ghi state (INSERT receipt) dựa vào rollback; chỉ có test refusal trước khi ghi | State/count lệch hoặc key bị tiêu nếu sau này commit sớm | `a_refused_or_failed_write…` | Rollback giữa transaction | Thêm test tiêm lỗi (trigger test) cho cả nhánh UPDATE và INSERT | P2 — hành vi đúng, thêm regression |
+| R3 | doc module/`decide_endorsement`, header `endorsement-core.md` | Còn ghi "chưa adapter nào gọi", "ngoài PR1" sau #81 | Đọc sai readiness | — | Tài liệu đúng | Cập nhật | P3 — sửa |
+| R4 | `application::endorsement::settle` | Replay lệnh Select đã commit khi đích nay ẩn/revision cũ trả `404`/`409 revision_changed` ("nothing was written"), không `replayed` — đúng policy #80 | Client mất ACK không biết Select cũ đã commit; hàng ON của revision cũ hiệu lực lại nếu revision đó được đăng lại | `each_revision…`, test replay | Quyết định sản phẩm | Xem OPEN-R4 | OPEN — giữ hành vi, ghi chú trong code |
+| R5 | `settle` (map `RevisionChanged`) | Select với revision không thuộc tác phẩm cũng nhận `409 revision_changed` kèm revision hiện hành | Thông điệp "republished" không đúng với ID rác; không lộ gì (revision hiện hành công khai) | `a_refused_or_failed_write…` | — | A giữ; B adapter kiểm revision ∈ work → `404` | P3 — giữ (A), ghi chú |
+| R6 | `persistence::classify` / `vink-store-postgres` | `40P01`/`40001` thành `Integrity` → `500` | Deadlock (chưa tái hiện) sẽ thành lỗi nội bộ thay vì retry | Test chờ khóa hai chiều | Chính sách lỗi chung của store | Chung cho mọi adapter, ngoài LVE | P3 — ghi nhận |
+| R7 | `own()` / `GET …/endorsements/me` | Hàng riêng trên đích ẩn/revision cũ đọc ra `unavailable`, không có order; gỡ cần `observed` từ `409` | UX gỡ riêng tư; không lộ dữ liệu | `each_revision…` | Thuộc CHOICE-10 | — | OPEN (CHOICE-10) |
+
+Đã kiểm và **không đổi**: actor từ resolver, `401` trước body; ID sai dạng `404`; binding đích
+(bình luận chỉ đọc trong thread của tác phẩm trên route, receipt bình luận lấy work từ thread, FK
+revision cùng tác phẩm); fence accepted order và namespace receipt trên mọi đích (advisory lock);
+INSERT thua → quyết định lại; thứ tự khóa là tiền tố của discussion; đọc batch ≤ 100, hai câu SQL,
+một snapshot `REPEATABLE READ`; `unavailable` ≠ 0; own state chỉ cho đích visible; quyền role runtime.
+
+**Quyết định của lần rà soát:** DECISION_A = A (giữ cấu trúc, thêm kiểm/test); DECISION_B = C chỉ cho
+R1 (migration tiến vì tổng số SQL không thể được bảo vệ ở Rust), còn lại A; DECISION_C = A (giữ batch
+read, không index/aggregate mới vì không có số đo mới).
+
+**OPEN-R4 (cần product owner, giữ hành vi hiện tại):** A — giữ: Select lịch sử trên đích không còn
+visible không replay (riêng tư trước, client đối soát bằng own state của revision hiện hành);
+B — replay `200 replayed` với `summary: unavailable` cho chính actor (chỉ lộ dữ liệu của họ, client
+biết lệnh cũ đã commit); C — mã riêng `409 replay_target_unavailable` kèm `committed`. Phép thử phân
+định: kịch bản mất ACK → tái bản → retry cùng key; đo client có hiển thị đúng "đã ghi nhận bản cũ"
+và có gỡ được hàng cũ không.
+
+**Kiểm chứng của lần rà soát** (06/11/2026, Linux x86_64, Rust 1.99.1, Node 24.22.2, Quint 0.33.1
+theo lockfile, Kani 0.67.0/CBMC 6.8.0, PostgreSQL 17.11 trong container tạm; `psql`/`pg_dump` 17.11
+qua `PATH`/`VINK_PG_BIN`):
+
+| Lệnh / ranh giới | Kết quả |
+| --- | --- |
+| `cargo xtask verify quick` | PASS — fmt, clippy ×3, doctest type-boundary, 136 unit/contract `vink-app`, repo checks (lần đầu FAIL `fmt` trên test mới, đã `cargo fmt`) |
+| `cargo xtask verify discussion` | PASS — 4 model, drift, negative controls, 32 test Rust gồm replay LVE bắt buộc |
+| `cargo xtask verify kani` | PASS — App 19/19, expressions 3/3; 42/42 cover SATISFIED; harness `acceptance_fences…` mới kiểm parity |
+| `cargo xtask verify postgres` | 47/47 test App trên PostgreSQL thật PASS (14 LVE, gồm 2 mới), provision/role runtime/worker PASS; bước Identity "invalid configuration" **FAIL do môi trường**: đường dẫn worktree dài làm `VINK_IDENTITY_SOCKET` vượt 100 byte; các bước Identity sau đó NOT_RUN. Chạy lại từ checkout có đường dẫn ngắn (≤ ~55 ký tự) |
+| Độ nhạy (tay) | Bỏ parity khỏi `restore`: `accepted_states_keep_selection_parity…` và `an_unreachable_stored_state…` FAIL; bỏ migration: `the_database_alone_enforces…` FAIL. Source khôi phục |
+
+Test rollback R2 khóa hành vi đã đúng; không có mutant adapter cho nó. Quint không chứng minh khóa
+PostgreSQL; Kani không chứng minh HTTP/auth/SQL; LocalFixture/Identity giả không chứng minh auth thật.
 
 ## Chưa có hoặc phụ thuộc lát khác
 

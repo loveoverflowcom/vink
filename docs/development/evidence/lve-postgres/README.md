@@ -39,7 +39,7 @@ sau `VACUUM (ANALYZE)`.
 | File | Nội dung |
 | --- | --- |
 | [dataset.sql](dataset.sql) | 20 000 principal; tác phẩm nóng 3 revision (công khai r3) với 15 000 hàng ghi nhận (6 000 chọn ở r3, 5 000 ở r2, 2 000 ở r1, 2 000 đã bỏ ở r3); receipt không được nạp vì không đường đọc nào chạm tới; 200 tác phẩm nền × 50 hàng; thread 500 gốc + 1 500 phản hồi (≈80 % duyệt, 10 % chờ, 5 % từ chối, 5 % bị gỡ); ghi nhận bình luận lệch: gốc nóng 5 000 hàng (4 000 chọn), bình luận hạng k ≈ 2 000/k, 1/5 đã bỏ. `setseed(0.73)` |
-| [scale-1m.sql](scale-1m.sql) | Thêm 1 000 000 hàng ghi nhận bình luận (500 người × 2 000 bình luận) |
+| [scale-1m.sql](scale-1m.sql) | Thêm 1 000 000 hàng ghi nhận bình luận (500 người × 2 000 bình luận). Bản đo ban đầu ghi hàng đã bỏ với `version = 2` — trạng thái lõi không đạt được, schema khi đó vẫn nhận; từ migration `20261105120000` script ghi `version = 3` (OFF ở version lẻ). Phân bố `selected` và plan không đổi |
 | [queries.sql](queries.sql) | Đúng các câu lệnh `PgStore` phát ra, với ID literal (custom plan) và một trang thảo luận mặc định 80 ID (20 gốc + 60 phản hồi, lẫn trạng thái, có gốc nóng) |
 | `plans-25k-*.txt`, `plans-1m-*.txt` | Toàn văn `EXPLAIN (ANALYZE, BUFFERS)`, danh sách 80 ID được rút gọn |
 | [hot-target-count-on-read.pgbench](hot-target-count-on-read.pgbench) | Hình dạng transaction ghi bình luận (các khóa, khóa lệnh, UPDATE, receipt, đếm) trên **một** bình luận, người ghi khác nhau |

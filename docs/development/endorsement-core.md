@@ -6,7 +6,8 @@ Baseline ban đầu `develop@be2b69e490d7637f6021c4b97062ed3859e09189`; lần me
 [quyết định/transaction contract](../architecture/literary-endorsement.md),
 [epic #73](https://github.com/loveoverflowcom/vink/issues/73).
 Owner: `vink-app::domain::endorsement`; PR2/PR3 phải dùng cùng seam, không viết lại luật trong
-handler/SQL. Chưa có transaction/HTTP/UI consumer: epic AC-03 **PARTIAL**.
+handler/SQL. Consumer transaction/HTTP có từ #81 ([runtime](literary-endorsement-runtime.md));
+chưa có UI consumer và auth thật: epic AC-03 **PARTIAL**.
 
 ## Registry traceability duy nhất cho LVE
 
@@ -21,7 +22,7 @@ Tên harness trong `src/domain/endorsement/proofs.rs` viết tắt bỏ tiền t
 | LVE-INV-04 / FR-03 / UC-04/06 | Receipt exact command; `refusalAndReplayDoNotWrite` | `EndorsementReceipt`, `Replay{committed,observed}`; `replay_is_historical…` | `receipt_replays_history_separately_and_rejects_changed_payload` | Atomic receipt/write, concurrent khác key/target, retention chưa có |
 | LVE-INV-05 / FR-03 / UC-05/07 | `acceptedAgainstLatest`, `acceptedFence`, `retained`; mutant no-op | `AcceptedOrder`, `StoredEndorsement`; `off_noop_fences…`, replay và ABA tests | `noop_then_delayed_on_and_remove_recreate_cannot_reset_order`, `acceptance_fences…` | SQL state không reset, client ACK fence chưa có; không latest creation intent xuyên thiết bị |
 | LVE-INV-06 / FR-05 / UC-09/17 | Hide/withdraw/authority shell, public projection | `visible`, own-removal guard; `hidden_withdrawn_missing…` | `eligibility_and_scoped_private_removal_fail_closed`, `comment_scope…` | Recheck current facts tại commit/read, account lifecycle còn OPEN |
-| LVE-INV-07 / FR-02/09 / UC-04/14/17 | `exactCounts` theo selected source; count 0..3 | `EndorsementCount::apply`, `EndorsementDelta`; `exhausted_tokens_and_counts…` | `scalars_and_count_arithmetic_are_total` | Query/transaction aggregate, reconciliation/rebuild, freshness chưa có |
+| LVE-INV-07 / FR-02/09 / UC-04/14/17 | `exactCounts` theo selected source; count 0..3 | `EndorsementCount::apply`, `EndorsementDelta`; `exhausted_tokens_and_counts…`; `EndorsementState::restore` chỉ nhận trạng thái đạt được (selected ⇔ version chẵn), `accepted_states_keep_selection_parity…` | `scalars_and_count_arithmetic_are_total`; `acceptance_fences…` kiểm restore đúng parity và mọi state được chấp nhận restore lại được | Query/transaction aggregate, reconciliation/rebuild, freshness chưa có |
 | LVE-INV-08 / FR-05 / UC-01/09 | `hiddenCountsStayHidden` | `public_count` → Option; private own state chỉ đúng scope | `eligibility…`, `comment_scope…` | Cache/HTTP/SQL/voter consent chưa có, CHOICE-12 OPEN |
 | LVE-INV-09 / FR-06 / UC-03/13 | Ngoài model | Không đổi discussion order/structure/reaction | Harness cũ giữ nguyên | Ranking/cursor slice sau; không nhận hoàn tất invariant này |
 | LVE-INV-10 / FR-03/08 / UC-05/08/14/16 | Không model transport ACK | Core tách replay history/current; không có UI consumer | Không proof ACK/session UI | Consumer phải bind actor/session/target/intent generation; toàn bộ UI còn thiếu |
