@@ -21,6 +21,8 @@ geometry/typography, kiểm editor, evidence và giới hạn; đây là review-
 Phần đối chiếu cập nhật của báo cáo ghi lại trạng thái trước khi ba PR R1/R2
 (#74, #76, #77) được triển khai và merge vào `develop`.
 
+Bổ sung [#66 — Hình học hàng bản thảo dài](ui-repair-66-draft-rows.md) ghi replay trên develop sau #88, CHOICE-04 và số đo trước–sau.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

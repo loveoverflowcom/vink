@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -281,10 +281,15 @@ class Page {
         const r = el.getBoundingClientRect(), style = getComputedStyle(el);
         return { x: r.x, y: r.y, width: r.width, height: r.height, fontSize: style.fontSize, lineHeight: style.lineHeight };
       };
+      const rowTitle = document.querySelector('.vk-draft-row__title');
+      const titleLines = rowTitle ? (() => {
+        const range = document.createRange(); range.selectNodeContents(rowTitle);
+        return new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size;
+      })() : null;
       return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
         appearance: { effectiveTheme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: document.documentElement.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
-        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]') },
+        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('#draft-tools > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
@@ -1551,7 +1556,7 @@ async function draftDashboard(page) {
   await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
   check(await page.eval(`document.querySelector('${toggleTitle}').getAttribute('aria-expanded') === 'false' && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'Space collapses the title without changing the resume work ID');
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
-  check(deskAX.some(node => node.role?.value === 'heading' && node.name?.value === cards[0].title) && deskAX.some(node => node.role?.value === 'button' && node.name?.value === 'Xem đầy đủ tiêu đề' && node.properties?.some(p => p.name === 'expanded' && p.value.value === false)) && deskAX.some(node => node.role?.value === 'link' && node.name?.value === 'Viết tiếp'), 'accessibility tree keeps the full title, named primary link and collapsed disclosure button');
+  check(deskAX.some(node => node.role?.value === 'link' && node.name?.value.includes(cards[0].title)) && deskAX.some(node => node.role?.value === 'heading' && node.name?.value === cards[0].title) && deskAX.some(node => node.role?.value === 'button' && node.name?.value === 'Xem đầy đủ tiêu đề' && node.properties?.some(p => p.name === 'expanded' && p.value.value === false)) && deskAX.some(node => node.role?.value === 'link' && node.name?.value === 'Viết tiếp'), 'accessibility tree keeps the full title, named primary link and collapsed disclosure button');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
     await page.eval(`Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})))`);
@@ -1576,7 +1581,41 @@ async function draftDashboard(page) {
         }
         await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
         await page.capture(`desk-list-${width}-${scale}-${theme}`);
+        if (width === 320 && scale === 200) {
+          await page.eval(`document.querySelector('.vk-draft-row__title').scrollIntoView({block:'start'})`);
+          await page.capture(`desk-row-start-${width}-${scale}-${theme}`);
+          await page.eval(`document.querySelector('.vk-draft-row__open').scrollIntoView({block:'center'})`);
+          await page.capture(`desk-row-end-${width}-${scale}-${theme}`);
+          await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
+        }
         check(await page.eval(`['#draft-search', '#draft-sort', '#refresh-drafts'].every(s => { const r = document.querySelector(s).getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth; })`), `${theme} ${width}px / ${scale}%: search, sort and refresh reflow within the viewport`);
+        check(await page.eval(`(() => {
+          const row = document.querySelector('.vk-draft-row__link'), title = row.querySelector('.vk-draft-row__title');
+          const t = title.getBoundingClientRect(), r = row.getBoundingClientRect(), meta = row.querySelector('.vk-draft-meta').getBoundingClientRect();
+          const range = document.createRange(); range.selectNodeContents(title);
+          return title.textContent === ${JSON.stringify(cards[0].title)} && getComputedStyle(title).overflow === 'visible' &&
+            [...range.getClientRects()].every(line => line.left >= t.left - 1 && line.right <= t.right + 1 && line.top >= r.top - 1 && line.bottom <= r.bottom + 1) &&
+            meta.top >= t.bottom && meta.bottom <= r.bottom && row.getAttribute('href') === ${JSON.stringify(resumeHref)} &&
+            row.querySelectorAll('button, input, a').length === 0;
+        })()`), `${theme} ${width}px / ${scale}%: recent row keeps every title line, metadata and one navigation target`);
+        if (width <= 390) {
+          check(await page.eval(`(() => {
+            const row = document.querySelector('.vk-draft-row__link'), r = row.getBoundingClientRect(), style = getComputedStyle(row);
+            const text = row.querySelector('.vk-draft-row__text').getBoundingClientRect(), open = row.querySelector('.vk-draft-row__open').getBoundingClientRect();
+            const available = r.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+            return text.width >= available - 1 && open.top >= text.bottom && open.left >= text.left - 1 && open.right <= text.right + 1 &&
+              row.querySelector('.vk-draft-row__open-label').getBoundingClientRect().width > 1;
+          })()`), `${theme} ${width}px / ${scale}%: recent title uses the whole inner measure, with a readable open affordance below`);
+        }
+        check(await page.eval(`(() => {
+          const rect = s => document.querySelector(s).getBoundingClientRect();
+          const heading = rect('#heading'), resume = rect('#resume'), list = rect('#drafts'), tools = rect('#draft-tools'), results = rect('#draft-results');
+          const search = rect('#draft-search'), sort = rect('#draft-sort'), reload = rect('#refresh-drafts');
+          return [resume, list, tools, results, search].every(r => Math.abs(r.left - heading.left) < 1) &&
+            Math.abs(resume.right - list.right) < 1 && Math.abs(results.right - tools.right) < 1 &&
+            ((Math.abs(search.bottom - sort.bottom) < 1 && Math.abs(sort.bottom - reload.bottom) < 1) ||
+             (sort.top >= search.bottom && Math.abs(sort.bottom - reload.bottom) < 1) || reload.top >= sort.bottom);
+        })()`), `${theme} ${width}px / ${scale}%: heading, resume, tools and list share an axis; controls align or stack`);
       }
     }
     const wholeWords = await page.eval(`(() => {
@@ -1745,6 +1784,31 @@ async function draftDashboard(page) {
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('[data-testid=resume-draft]')`, 'return to dashboard');
   check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(renamed)} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(created[0])} && document.querySelector('#resume .vk-draft-meta').textContent.includes('Phiên bản 2')`), 'return after a real title save shows the same work with its acknowledged title and version');
+  // The same real row opens by keyboard and by a browser touch event, without a
+  // second nested target or a tooltip/disclosure needed to read its full title.
+  await page.viewport(390);
+  const realRow = '.vk-draft-row__link[href="/ban-viet/' + created[0] + '"]';
+  await page.eval(`document.querySelector(${JSON.stringify(realRow)}).focus()`);
+  await page.key('Tab'); await page.key('Tab', SHIFT);
+  check(await page.eval(`document.activeElement.matches(${JSON.stringify(realRow)} + ':focus-visible')`), 'recent row has visible keyboard focus');
+  const { nodes: rowAX } = await page.send('Accessibility.getFullAXTree');
+  check(rowAX.some(node => node.role?.value === 'link' && node.name?.value.includes(renamed)), 'recent row accessibility name retains the complete title');
+  await page.key('Enter');
+  await page.waitFor(`${EDITOR_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'keyboard opens the same real row');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector(${JSON.stringify(realRow)})`, 'return to the same recent row');
+  const point = await page.eval(`(() => {
+    const title = document.querySelector(${JSON.stringify(realRow)} + ' .vk-draft-row__title');
+    title.scrollIntoView({block:'center'}); const r = title.getBoundingClientRect();
+    return {x:r.left + r.width / 2, y:r.top + r.height / 2};
+  })()`);
+  await page.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+  await page.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ ...point, id: 1 }] });
+  await page.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitFor(`${EDITOR_READY} && location.pathname === '/ban-viet/${created[0]}'`, 'touch opens the same real row');
+  await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector(${JSON.stringify(realRow)})`, 'return after touch navigation');
   await page.viewport(1440);
   await page.click('#create-draft');
   const late = await gate.next('posts');
@@ -2995,6 +3059,7 @@ try {
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
+  else if (args.phase === 'desk-layout') { await draftDashboard(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);
   else if (args.phase === 'first-paint') {
