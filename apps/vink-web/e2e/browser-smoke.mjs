@@ -286,9 +286,36 @@ class Page {
         const range = document.createRange(); range.selectNodeContents(rowTitle);
         return new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size;
       })() : null;
-      return { route: location.pathname, width: innerWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
+      return { route: location.pathname, width: innerWidth, layoutWidth: document.documentElement.clientWidth, height: innerHeight, dpr: devicePixelRatio, scrollX, scrollY,
         theme: document.documentElement.dataset.theme || 'system', fontSize: getComputedStyle(document.documentElement).fontSize, userAgent: navigator.userAgent,
         appearance: { effectiveTheme: document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'), osTheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light', hydrated: document.documentElement.dataset.hydrated === 'true', rail: geometry('.vk-ui-rail'), railScrollWidth: document.querySelector('.vk-ui-rail')?.scrollWidth, railClientWidth: document.querySelector('.vk-ui-rail')?.clientWidth, pageChoice: document.querySelector('#page-theme input:checked')?.value, overlayChoice: document.querySelector('#overlay-theme input:checked')?.value, overlayOpen: document.querySelector('#profile-menu')?.open, overlayScroll: document.querySelector('#profile-menu')?.scrollTop, overlay: geometry('#profile-menu'), account: geometry('#page-account'), themeGroup: geometry('#page-theme') },
+        mePanel: (() => {
+          const panel = document.querySelector('#profile-menu');
+          const prefix = panel?.open ? 'overlay' : document.querySelector('#me') ? 'page' : null;
+          if (!prefix) return null;
+          const bounds = selector => {
+            const el = document.querySelector(selector);
+            if (!el || !el.getClientRects().length) return null;
+            const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+            const range = document.createRange(); range.selectNodeContents(el);
+            return { ...geometry(selector), clientWidth: el.clientWidth, scrollWidth: el.scrollWidth,
+              contentLeft: r.left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft),
+              contentWidth: el.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight),
+              paddingLeft: s.paddingLeft, paddingRight: s.paddingRight,
+              textLines: new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size };
+          };
+          return { prefix, surface: bounds(prefix === 'page' ? '#me' : '#profile-menu'),
+            heading: bounds(prefix === 'page' ? '#me-title' : '.vk-profile-heading'),
+            account: bounds('#' + prefix + '-account'), identity: bounds('#' + prefix + '-account .vk-account-status'),
+            avatar: bounds('#' + prefix + '-account .vk-ui-avatar'),
+            accountText: bounds('#' + prefix + '-account .vk-account-status > div'),
+            accountLabel: bounds('#' + prefix + '-account .vk-ui-type-label'),
+            accountHelp: bounds('#' + prefix + '-account .vk-ui-tone-muted'),
+            appearanceHeading: bounds('#' + prefix + '-theme-title'),
+            choices: bounds('#' + prefix + '-theme-title + .vk-appearance-region__choices'), group: bounds('#' + prefix + '-theme'), helper: bounds('#' + prefix + '-theme-help'),
+            action: prefix === 'overlay' ? bounds('#open-me') : null,
+            footer: prefix === 'page' ? bounds('.vk-footer') : null };
+        })(),
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('#draft-tools > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
@@ -300,6 +327,7 @@ class Page {
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
     contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, ...evidence } };
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
+    return context;
   }
 
   async click(selector) {
@@ -962,6 +990,35 @@ async function textContrast(page, theme, surface = 'shell') {
   check(pairs.every(p => p.exempt || p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.filter(p => !p.exempt).map(p => p.ratio)).toFixed(2)}; disabled controls exempt)`);
 }
 
+// #67: overflow alone misses readable width lost to nested insets. Compare content boxes,
+// leaving the existing recipe's icon/choice padding and the native scrollbar to their owners.
+function accountLayoutGeometry(context, scenario) {
+  const m = context.mePanel, near = (a, b) => Math.abs(a - b) <= 1;
+  check(Boolean(m), `${scenario}: account geometry is present`);
+  const fullWidth = [m.heading, m.account, m.identity, m.appearanceHeading, m.choices, m.helper];
+  check(fullWidth.every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
+    `${scenario}: heading, account, choices and helper share the surface content axes`);
+  check(near(m.accountText.contentLeft, m.accountText.x) && near(m.accountText.contentWidth, m.accountText.width) &&
+    [m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1) &&
+    near(m.accountLabel.width, m.accountText.contentWidth) && near(m.accountHelp.width, m.accountText.contentWidth),
+    `${scenario}: truthful account text uses its whole column without clipping`);
+  if (m.prefix === 'page' && context.width < 760) {
+    // Browser scrollbars are outside the layout viewport; do not compensate their width in CSS.
+    check(near(m.surface.x, 16) && near(m.surface.width, context.layoutWidth - 32),
+      `${scenario}: narrow Me keeps one 16px gutter on both sides at the current text size`);
+    if (context.width <= 390 && parseFloat(context.fontSize) >= 32) {
+      check(m.accountText.y >= m.avatar.y + m.avatar.height &&
+        near(m.accountText.x, m.account.x) && near(m.accountText.width, m.account.width),
+        `${scenario}: large-text account stacks and keeps the full readable measure`);
+    }
+  }
+  if (m.prefix === 'overlay') {
+    check(m.surface.paddingLeft === m.surface.paddingRight && near(m.action.x, m.surface.contentLeft) &&
+      m.action.x + m.action.width <= m.surface.contentLeft + m.surface.contentWidth + 1,
+      `${scenario}: panel owns equal client insets and its final action shares the content axis`);
+  }
+}
+
 async function accountAppearance(page) {
   console.log('shared account presentation and bounded appearance overlay:');
   await page.viewport(1440);
@@ -1054,7 +1111,7 @@ async function accountAppearance(page) {
           return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom;
         })()`), `${scenario}: Tab reveals the close action at the start`);
         await page.eval(`document.querySelector('#profile-menu').scrollTop = 0`);
-        await page.capture(`account-overlay-${scenario}`);
+        accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
         await page.key('Escape');
         check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
       }
@@ -1283,7 +1340,7 @@ async function adaptiveShell(page) {
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
         await bottomNavigationAlignment(page, `shell ${width}px/${scale}%/${theme}`);
-        await page.capture(`${width}-me-${theme}-text${scale}`);
+        accountLayoutGeometry(await page.capture(`${width}-me-${theme}-text${scale}`), `${width}px/${scale}% ${theme}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
         check(await page.eval(`(() => {
@@ -1298,6 +1355,14 @@ async function adaptiveShell(page) {
         if (width < 760 && scale === 200) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
           await page.capture(`${width}-me-${theme}-text${scale}-appearance`);
+          await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
+          check(await page.eval(`(() => {
+            const footer = document.querySelector('.vk-footer').getBoundingClientRect();
+            const bar = document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect();
+            const help = document.querySelector('#page-theme-help').getBoundingClientRect();
+            return footer.bottom <= bar.top + 1 && help.bottom <= bar.top + 1;
+          })()`), `${width}px/${scale}% ${theme}: Me helper and final footer remain reachable above navigation`);
+          await page.capture(`${width}-me-${theme}-text${scale}-end`);
           await page.eval(`scrollTo(0, 0)`);
         }
       }

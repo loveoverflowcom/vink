@@ -23,6 +23,9 @@ Phần đối chiếu cập nhật của báo cáo ghi lại trạng thái trư�
 
 Bổ sung [#66 — Hình học hàng bản thảo dài](ui-repair-66-draft-rows.md) ghi replay trên develop sau #88, CHOICE-04 và số đo trước–sau.
 
+Bổ sung [#67 — Hình học Tôi và panel](ui-repair-67-me-panel-geometry.md) ghi recapture sau #66,
+content bounds và bằng chứng R2 hiện đạt; giữ source presentation và bổ sung regression.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |
