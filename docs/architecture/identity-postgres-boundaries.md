@@ -88,7 +88,9 @@ provisioning).
    tình publish. Đánh đổi: chỉ cùng host; xác thực theo uid nên mọi tiến trình chạy bằng uid caller
    và tới được socket đều qua; chế độ mạng (mTLS) chưa thiết kế. Consumer (commit 3) nên kiểm cả uid
    của server qua socket. Readiness từ chối role có quyền DDL/superuser.
-8. **Mapping subject → principal (đề xuất, chưa triển khai):** App sở hữu một binding
+8. **Mapping subject → principal** (đề xuất ngày 02/11; hiện thực bởi spike S-03 ngày 07/11/2026 dưới
+   dạng `principal_bindings` bất biến, thêm ràng buộc một subject/principal — xem
+   [ADR D-05](auth-authority.md)): App sở hữu một binding
    `(authority, subject_id) → principal_id` với unique trên cặp đầu, tạo ở App database khi luồng
    đăng nhập thật tồn tại. Không dùng email/bút danh làm khóa, không tự nối tài khoản theo email,
    không foreign key xuyên database. Tạo binding là idempotent theo unique: retry sau mất phản hồi
@@ -99,12 +101,14 @@ provisioning).
 9. **Tích hợp App (commit 3):** resolver phía server trả về một trong ba kết quả: principal,
    ẩn danh (`401`), hoặc không xác định (`503 dependency_unavailable`). App chỉ hỏi Identity khi
    request trình `Authorization: Bearer` — **carrier tạm thời**, D-05 có thể thay bằng mô hình
-   session. Không credential luôn là `401`, kể cả khi Identity dừng. Không authority, bị từ chối
+   session. *(Spike S-03 07/11/2026: thêm cookie `__Host-vink_session` cho Web, kết quả
+   `Unbound`/`Suspended`, và **phiên do Identity phát** thay vì App — lý do ở
+   [ADR D-05 §7](auth-authority.md#7-kiến-trúc-của-spike).)* Không credential luôn là `401`, kể cả khi Identity dừng. Không authority, bị từ chối
    hay subject chưa có binding cũng là `401`; Identity dừng, quá hạn, trả lời ngoài contract hay
    socket do user khác phục vụ là `503`. Không bao giờ fallback sang principal mẫu. Đọc công
    khai/SSR không gọi Identity; readiness App báo Identity nhưng không phụ thuộc nó. Local fixture
    chỉ còn ở profile local + loopback và vẫn thắng khi được bật.
-10. **Chưa quyết định:** auth authority và authority cho suspension (D-05/S-03); có tách instance
+10. **Chưa quyết định:** chấp nhận auth authority (D-05 đề xuất A, [ADR](auth-authority.md)); có tách instance
    PostgreSQL cho Identity ở production hay không; cách áp dụng trên PostgreSQL managed không có
    superuser; giao thức mạng cho Identity nếu App và Identity khác host.
 
@@ -129,8 +133,8 @@ Bằng chứng từng commit nằm ở
 | Identity process, socket, caller = peer uid | Có | Cơ chế caller | Có | `verify postgres` (binary thật) |
 | Contract `vink.identity.v1` | Có | Tên path/field (draft) | Có | Unit + binary thật |
 | App ↔ Identity, carrier Bearer | Có | Carrier tạm thời | Có (chế độ unavailable) | `verify postgres` (hai binary thật), unit với Identity giả |
-| Mapping subject → principal | — | Thiết kế ở mục 8 | Không | — |
-| Auth authority, đăng nhập, session | — | D-05/S-03 mở | Không (NOT_IMPLEMENTED) | — |
+| Mapping subject → principal | — | Thiết kế ở mục 8 | Có (spike S-03) | `verify postgres` (đồng thời, bất biến, hai binary thật) |
+| Auth authority, đăng nhập, session | — | D-05 đề xuất A (Provisional) | Spike: mã email + phiên opaque, outbox cục bộ; production NOT_IMPLEMENTED | `verify quick`/`postgres` ([bằng chứng](../development/auth-authority-s03-evidence.md)) |
 | Backup/restore từng owner | Có | — | Runbook + bước lane | `verify postgres` (cùng cluster) |
 
 ## Giới hạn đã biết

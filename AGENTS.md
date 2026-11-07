@@ -12,9 +12,12 @@ a Cargo workspace with the Leptos SSR + Axum app and its hydration bundle (`apps
 database/role provisioning (`services/postgres`: App `vink` and Identity `vink_identity`;
 runtime and migrator credentials split) and a shared pool/migration package
 (`packages/store-postgres`), a separate `services/vink-identity` process (own database,
-migrations and draft private contract on a Unix socket; no auth authority, so it answers
-`authority_not_configured`; the App consults it through its own client only for a presented
-`Authorization: Bearer` credential and never maps a subject to a principal), a draft/reader slice with a
+migrations and draft private contract on a Unix socket; by default no authority, answering
+`authority_not_configured`; the D-05/S-03 spike adds an opt-in native email-code authority —
+accounts, verified addresses, one-time challenges and opaque sessions stored as hashes — whose only
+mail transport is a local outbox), App sign-in routes `/api/v1/auth/*` with `__Host-` HttpOnly
+cookies, an App-owned immutable `principal_bindings` table and `principal_suspensions` (operator
+`vink-app principal …`; Identity `vink-identity account disable|enable`), a draft/reader slice with a
 CodeMirror 6 body editor
 (`apps/vink-web/editor`, pinned npm runtime), an adaptive 220/96 rail/mobile bar with local
 appearance preferences and a truthful `/toi` utility, a finite v4 public reading stream with
@@ -68,8 +71,10 @@ production writes answer `401`, real writes run only with the loopback LocalFixt
 No native consumer, ranking or voter list exists; the glyph (CHOICE-07) stays OPEN. See [policy](docs/architecture/literary-endorsement.md),
 [registry/gaps](docs/development/endorsement-core.md) and
 [runtime](docs/development/literary-endorsement-runtime.md).
-No auth authority, login/session, publish/moderation workflow, AI provider or job exists;
-production authentication is NOT_IMPLEMENTED. Vink owns discussion (owner decision 03/11/2026,
+D-05 is **Provisional** (native email-code authority recommended for the pilot,
+[ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
+limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so
+production authentication is NOT_IMPLEMENTED. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
 paging), application use cases, a PostgreSQL adapter/migration with real-database tests, HTTP API

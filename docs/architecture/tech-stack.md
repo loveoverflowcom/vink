@@ -24,7 +24,7 @@ Stack đề xuất:
 | Job Vink | PostgreSQL jobs + transactional outbox/inbox | Khởi điểm ít thành phần, có thể gắn việc gửi job vào giao dịch nghiệp vụ |
 | Thảo luận | Module `discussion` trong `vink-app`: Rust core thuần + PostgreSQL của App | Một owner ghi/kiểm duyệt; bình luận gốc + một danh sách phản hồi phẳng; tác giả bật/tắt bình luận theo tác phẩm |
 | AI | Adapter provider + worker giới hạn quyền | Đổi model mà không đổi luật xuất bản |
-| Xác thực | Vink principal/session độc lập; auth authority cần chốt (D-05) | Tránh ghép session/password với Cantos |
+| Xác thực | Vink principal/session độc lập; D-05 đề xuất authority native mã email + phiên opaque (Provisional, [ADR](auth-authority.md)) | Tránh ghép session/password với Cantos |
 | Xác minh | Rust/integration tests + contract fixtures + cargo xtask nhỏ + Quint có chọn lọc | Kiểm cả quy tắc và hành vi tại ranh giới thực tế |
 
 Đây là đề xuất kiến trúc. Khả năng cụ thể của Leptos SSR/Axum, SQLx và editor có nguồn chính thức [T1], [T4], [T5]; việc chúng đáp ứng trải nghiệm Vink phải được thử nghiệm.
@@ -190,6 +190,11 @@ chứng riêng ở Vink; không suy ra chúng đã có vì Discourse có.
 | --- | --- | --- |
 | Auth provider độc lập được duy trì, Vink giữ session ứng dụng | Có thêm dependency nhưng giảm phần credential lifecycle tự xây | Ưu tiên khảo sát nếu Vink độc lập là mục tiêu dài hạn |
 | Native auth do Vink quản lý | Kiểm soát UX và hạ tầng, nhưng phải làm verify/reset/session/security lifecycle | Chỉ chọn khi có người chịu trách nhiệm; học Cantos nhưng không mặc định sao chép |
+
+Spike S-03 ngày 07/11/2026 so cả hai hàng trên với Keycloak và Supabase/Clerk và đề xuất (Provisional)
+hướng native thu hẹp: đăng nhập bằng mã email một lần, không mật khẩu, phiên opaque do Identity giữ
+([ADR D-05](auth-authority.md)). Điều kiện “có người chịu trách nhiệm” ở trên là một blocker trước
+khi Accepted.
 
 Discourse/DiscourseConnect không còn là phương án xác thực vì Discourse không chạy trong hệ
 thống. Liên kết Vink–Cantos tương lai cần người dùng chứng minh quyền sở hữu ở cả hai phía,
