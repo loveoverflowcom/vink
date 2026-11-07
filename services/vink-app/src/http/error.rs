@@ -51,6 +51,18 @@ pub enum ApiError {
     RevisionChanged {
         published: RevisionId,
     },
+    /// Sign-in (D-05/S-03 spike): no authority resolves requests in this deployment.
+    AuthorityNotConfigured,
+    /// Too many codes were requested for the address.
+    RateLimited,
+    /// Wrong code; the same sign-in accepts another attempt.
+    CodeRejected,
+    /// The sign-in challenge is expired, used, exhausted or missing: request a new code.
+    ChallengeClosed,
+    /// The mailbox was proven but its Identity account is disabled.
+    AccountDisabled,
+    /// The principal is suspended by Vink.
+    PrincipalSuspended,
     DependencyUnavailable,
     Internal,
 }
@@ -76,6 +88,11 @@ impl ApiError {
             | Self::EndorsementConflict { .. }
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
             Self::KeyReused | Self::EndorsementKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
+            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::ChallengeClosed => StatusCode::CONFLICT,
+            Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -194,6 +211,42 @@ impl ApiError {
             Self::RevisionChanged { .. } => (
                 "revision_changed",
                 "the work was republished since the page was read; nothing was written".to_string(),
+                None,
+                None,
+            ),
+            Self::AuthorityNotConfigured => (
+                "authority_not_configured",
+                "sign-in is not available in this deployment".to_string(),
+                None,
+                None,
+            ),
+            Self::RateLimited => (
+                "rate_limited",
+                "too many codes were requested for this address; try later".to_string(),
+                None,
+                None,
+            ),
+            Self::CodeRejected => (
+                "code_rejected",
+                "the code is not correct; try again".to_string(),
+                None,
+                Some("code"),
+            ),
+            Self::ChallengeClosed => (
+                "challenge_closed",
+                "this code can no longer be used; request a new one".to_string(),
+                None,
+                None,
+            ),
+            Self::AccountDisabled => (
+                "account_disabled",
+                "this account is disabled; no session was started".to_string(),
+                None,
+                None,
+            ),
+            Self::PrincipalSuspended => (
+                "principal_suspended",
+                "this Vink account is suspended".to_string(),
                 None,
                 None,
             ),

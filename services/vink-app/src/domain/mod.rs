@@ -6,4 +6,5 @@ pub mod document;
 pub mod draft;
 pub mod endorsement;
 pub mod ids;
+pub mod principal;
 pub mod revision;

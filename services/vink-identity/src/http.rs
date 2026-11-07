@@ -18,14 +18,33 @@ use axum::routing::{any, get, post};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use crate::authority::{Authority, AuthorityError};
+use crate::accounts::{ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, SignInOutcome};
+use crate::authority::{self, Authority, AuthorityError};
 use crate::contract::{
-    CONTRACT, Capabilities, ContractError, MAX_BODY_BYTES, Operations, VerifyCredentialRequest,
+    CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
+    EmailChangeChallengeRequest, EmailChangeCompleteRequest, EmailChangeResponse, IssuedSession,
+    MAX_BODY_BYTES, Operations, RevokeSessionRequest, RevokeSessionResponse,
+    SignInChallengeRequest, SignInCompleteRequest, SignInResponse, VerifyCredentialRequest,
 };
+use crate::email_code::{ChallengeHandle, Code, EmailAddress};
 use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
 /// Server-side bound on one contract call, body upload included.
 pub const DEADLINE: Duration = Duration::from_secs(2);
+/// Bound on the email-code operations that commit (sign-in, revoke, email change). They are rare
+/// and user-initiated; a commit on a busy disk was observed to take 1.5 s, which must not turn a
+/// valid sign-in into "unavailable". `verify-credential`, on every request, keeps [`DEADLINE`].
+pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
+
+fn writes(path: &str) -> bool {
+    [
+        "/identity/v1/sign-in/",
+        "/identity/v1/sessions/",
+        "/identity/v1/email-change/",
+    ]
+    .iter()
+    .any(|prefix| path.starts_with(prefix))
+}
 
 /// The OS user of the connecting process, read from the socket (`SO_PEERCRED`/`getpeereid`) by
 /// [`crate::server`] and attached to each request as `ConnectInfo<Peer>`.
@@ -44,13 +63,19 @@ struct Inner {
     authority: Authority,
     caller_uid: Option<u32>,
     deadline: Duration,
+    write_deadline: Duration,
 }
 
 impl IdentityState {
     pub fn new(pool: PgPool, authority: Authority, caller_uid: Option<u32>) -> Self {
-        Self::with_deadline(pool, authority, caller_uid, DEADLINE)
+        let mut state = Self::with_deadline(pool, authority, caller_uid, DEADLINE);
+        if let Some(inner) = Arc::get_mut(&mut state.inner) {
+            inner.write_deadline = WRITE_DEADLINE;
+        }
+        state
     }
 
+    /// One deadline for every call (tests use a short one).
     pub fn with_deadline(
         pool: PgPool,
         authority: Authority,
@@ -63,6 +88,7 @@ impl IdentityState {
                 authority,
                 caller_uid,
                 deadline,
+                write_deadline: deadline,
             }),
         }
     }
@@ -78,6 +104,10 @@ impl IntoResponse for ContractError {
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::DependencyUnavailable | Self::DeadlineExceeded => StatusCode::SERVICE_UNAVAILABLE,
+            Self::InvalidEmail => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            Self::CredentialRejected => StatusCode::FORBIDDEN,
+            Self::AddressUnavailable => StatusCode::CONFLICT,
         };
         (status, Json(self.envelope())).into_response()
     }
@@ -87,6 +117,17 @@ pub fn router(state: IdentityState) -> Router {
     let contract = Router::new()
         .route("/identity/v1/capabilities", get(capabilities))
         .route("/identity/v1/verify-credential", post(verify_credential))
+        .route("/identity/v1/sign-in/challenges", post(sign_in_challenge))
+        .route("/identity/v1/sign-in/complete", post(sign_in_complete))
+        .route("/identity/v1/sessions/revoke", post(revoke_session))
+        .route(
+            "/identity/v1/email-change/challenges",
+            post(email_change_challenge),
+        )
+        .route(
+            "/identity/v1/email-change/complete",
+            post(email_change_complete),
+        )
         .route("/identity/{version}", any(unknown_operation))
         .route("/identity/{version}/{*rest}", any(unknown_operation))
         .method_not_allowed_fallback(method_not_allowed)
@@ -105,7 +146,12 @@ pub fn router(state: IdentityState) -> Router {
 
 /// Bounds the whole call, so a stalled upload or slow authority cannot hold the caller.
 async fn deadline(State(state): State<IdentityState>, request: Request, next: Next) -> Response {
-    match tokio::time::timeout(state.inner.deadline, next.run(request)).await {
+    let limit = if writes(request.uri().path()) {
+        state.inner.write_deadline
+    } else {
+        state.inner.deadline
+    };
+    match tokio::time::timeout(limit, next.run(request)).await {
         Ok(response) => response,
         Err(_) => {
             tracing::warn!("contract call exceeded its deadline");
@@ -145,37 +191,177 @@ async fn authenticate_caller(
 
 async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> {
     let availability = state.inner.authority.availability();
+    let email_code = state.inner.authority.email_code_availability();
     Json(Capabilities {
         contract: CONTRACT.into(),
         authority: availability,
         operations: Operations {
             verify_credential: availability,
+            sign_in: email_code,
+            revoke_session: email_code,
+            email_change: email_code,
         },
     })
 }
 
-async fn verify_credential(State(state): State<IdentityState>, body: Body) -> Response {
+/// Reads and decodes a bounded JSON body. The parse error is not logged or returned: it may quote
+/// a credential, a code or an address.
+async fn read_json<T: serde::de::DeserializeOwned>(body: Body) -> Result<T, ContractError> {
     let bytes = match axum::body::to_bytes(body, MAX_BODY_BYTES).await {
         Ok(bytes) => bytes,
         Err(error) => {
             let too_large = std::error::Error::source(&error)
                 .is_some_and(|source| source.is::<http_body_util::LengthLimitError>());
-            return if too_large {
+            return Err(if too_large {
                 ContractError::PayloadTooLarge
             } else {
                 ContractError::MalformedRequest
-            }
-            .into_response();
+            });
         }
     };
-    // The parse error is not logged or returned: it may quote the credential.
-    let Ok(request) = serde_json::from_slice::<VerifyCredentialRequest>(&bytes) else {
-        return ContractError::MalformedRequest.into_response();
+    serde_json::from_slice::<T>(&bytes).map_err(|_| ContractError::MalformedRequest)
+}
+
+impl From<AuthorityError> for ContractError {
+    fn from(error: AuthorityError) -> Self {
+        match error {
+            AuthorityError::NotConfigured => ContractError::AuthorityNotConfigured,
+            AuthorityError::Unavailable => ContractError::DependencyUnavailable,
+        }
+    }
+}
+
+impl From<crate::accounts::StoreError> for ContractError {
+    fn from(_: crate::accounts::StoreError) -> Self {
+        ContractError::DependencyUnavailable
+    }
+}
+
+async fn verify_credential(State(state): State<IdentityState>, body: Body) -> Response {
+    let request = match read_json::<VerifyCredentialRequest>(body).await {
+        Ok(request) => request,
+        Err(error) => return error.into_response(),
     };
     match state.inner.authority.verify(&request.credential).await {
         Ok(answer) => Json(answer).into_response(),
-        Err(AuthorityError::NotConfigured) => ContractError::AuthorityNotConfigured.into_response(),
-        Err(AuthorityError::Unavailable) => ContractError::DependencyUnavailable.into_response(),
+        Err(error) => ContractError::from(error).into_response(),
+    }
+}
+
+fn issued(handle: &ChallengeHandle, expires_at: time::OffsetDateTime) -> Response {
+    let body = ChallengeIssued {
+        challenge: handle.encode(),
+        expires_at,
+    };
+    (StatusCode::ACCEPTED, Json(body)).into_response()
+}
+
+/// Sends a code to any valid address. Account existence is not read, so the answer cannot
+/// disclose it; only the per-address throttle can refuse.
+async fn sign_in_challenge(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: SignInChallengeRequest = read_json(body).await?;
+    let store = state.inner.authority.email_code()?;
+    let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
+    match store.start_sign_in(&address).await? {
+        ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
+        ChallengeOutcome::RateLimited => {
+            tracing::warn!("sign-in code refused: per-address throttle");
+            Err(ContractError::RateLimited)
+        }
+    }
+}
+
+async fn sign_in_complete(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<SignInResponse>, ContractError> {
+    let request: SignInCompleteRequest = read_json(body).await?;
+    let store = state.inner.authority.email_code()?;
+    let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
+    let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
+        return Ok(Json(SignInResponse::Rejected {
+            reason: ChallengeRejection::ChallengeClosed,
+        }));
+    };
+    Ok(Json(match store.complete_sign_in(&handle, &code).await? {
+        SignInOutcome::Authenticated(session) => {
+            tracing::info!(
+                session = %session.session_id,
+                subject = %session.account_id,
+                "session issued"
+            );
+            SignInResponse::Authenticated {
+                subject: authority::subject(session.account_id),
+                authenticated_at: session.authenticated_at,
+                session: IssuedSession {
+                    id: session.session_id.to_string(),
+                    credential: session.credential.encode(),
+                    expires_at: session.expires_at,
+                },
+            }
+        }
+        SignInOutcome::Rejected(reason) => SignInResponse::Rejected { reason },
+    }))
+}
+
+async fn revoke_session(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<RevokeSessionResponse>, ContractError> {
+    let request: RevokeSessionRequest = read_json(body).await?;
+    let store = state.inner.authority.email_code()?;
+    let revoked = store.revoke(request.credential.expose()).await?;
+    if revoked {
+        tracing::info!("session revoked (logout)");
+    }
+    Ok(Json(RevokeSessionResponse { revoked }))
+}
+
+async fn email_change_challenge(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: EmailChangeChallengeRequest = read_json(body).await?;
+    let store = state.inner.authority.email_code()?;
+    let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
+    match store
+        .start_email_change(request.credential.expose(), &address)
+        .await?
+    {
+        EmailChangeStart::Issued(ChallengeOutcome::Issued { handle, expires_at }) => {
+            Ok(issued(&handle, expires_at))
+        }
+        EmailChangeStart::Issued(ChallengeOutcome::RateLimited) => Err(ContractError::RateLimited),
+        EmailChangeStart::AddressUnavailable => Err(ContractError::AddressUnavailable),
+        EmailChangeStart::CredentialRejected => Err(ContractError::CredentialRejected),
+    }
+}
+
+async fn email_change_complete(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<EmailChangeResponse>, ContractError> {
+    let request: EmailChangeCompleteRequest = read_json(body).await?;
+    let store = state.inner.authority.email_code()?;
+    let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
+    let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
+        return Ok(Json(EmailChangeResponse::Rejected {
+            reason: ChallengeRejection::ChallengeClosed,
+        }));
+    };
+    match store
+        .complete_email_change(request.credential.expose(), &handle, &code)
+        .await?
+    {
+        EmailChangeOutcome::Changed => {
+            tracing::info!("account address changed; other sessions revoked");
+            Ok(Json(EmailChangeResponse::Changed))
+        }
+        EmailChangeOutcome::Rejected(reason) => Ok(Json(EmailChangeResponse::Rejected { reason })),
+        EmailChangeOutcome::CredentialRejected => Err(ContractError::CredentialRejected),
     }
 }
 
@@ -245,6 +431,12 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
                 "callers": if callers { "configured" } else { "not_configured" },
             },
             "authority": state.inner.authority.availability(),
+            // The email-code authority has only the local outbox: nobody outside this machine
+            // can receive a code, so production authentication is still not implemented.
+            "mail_transport": match state.inner.authority.email_code_availability() {
+                crate::contract::Availability::Available => "local_outbox",
+                crate::contract::Availability::NotConfigured => "not_configured",
+            },
             "production_authentication": "not_implemented",
         })),
     )
@@ -502,6 +694,10 @@ mod tests {
             ContractError::AuthorityNotConfigured,
             ContractError::DependencyUnavailable,
             ContractError::DeadlineExceeded,
+            ContractError::InvalidEmail,
+            ContractError::RateLimited,
+            ContractError::CredentialRejected,
+            ContractError::AddressUnavailable,
         ] {
             let name = format!("error.{}.json", error.code());
             let envelope: ErrorEnvelope = serde_json::from_value(fixture(&name)).unwrap();
@@ -513,5 +709,304 @@ mod tests {
         let request: VerifyCredentialRequest =
             serde_json::from_str(r#"{"credential":"secret-marker"}"#).unwrap();
         assert!(!format!("{request:?}").contains("secret-marker"));
+    }
+
+    #[test]
+    fn only_committing_email_code_operations_get_the_longer_deadline() {
+        for path in [
+            "/identity/v1/sign-in/challenges",
+            "/identity/v1/sign-in/complete",
+            "/identity/v1/sessions/revoke",
+            "/identity/v1/email-change/challenges",
+            "/identity/v1/email-change/complete",
+        ] {
+            assert!(writes(path), "{path}");
+        }
+        for path in [
+            "/identity/v1/verify-credential",
+            "/identity/v1/capabilities",
+            "/identity/v2/sign-in/complete",
+            "/health/ready",
+        ] {
+            assert!(!writes(path), "{path}");
+        }
+        assert!(WRITE_DEADLINE > DEADLINE);
+    }
+
+    fn post(path: &str, body: &str) -> HttpRequest<Body> {
+        HttpRequest::post(path)
+            .header(header::CONTENT_TYPE, "application/json")
+            .body(Body::from(body.to_string()))
+            .unwrap()
+    }
+
+    /// The email-code authority over a database that never answers: everything decided before
+    /// storage is observable without PostgreSQL (the real database is `tests/postgres.rs`).
+    fn email_code_app() -> (Router, PathBuf) {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("vink-outbox-http-{}", uuid::Uuid::now_v7()));
+        std::fs::create_dir(&dir).unwrap();
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let store = crate::accounts::AccountStore::new(
+            outage_pool(),
+            crate::mail::LocalOutbox::open(&dir).unwrap(),
+            crate::email_code::Policy::default(),
+        );
+        (
+            app(Authority::EmailCode(store), Some(CALLER), Some(CALLER)),
+            dir,
+        )
+    }
+
+    #[tokio::test]
+    async fn email_code_operations_are_closed_without_that_authority() {
+        for authority in [
+            Authority::NotConfigured,
+            Authority::Fixture(Fixture::Answers),
+        ] {
+            let router = app(authority, Some(CALLER), Some(CALLER));
+            for (path, body) in [
+                (
+                    "/identity/v1/sign-in/challenges",
+                    r#"{"email":"a@vi-du.vn"}"#,
+                ),
+                (
+                    "/identity/v1/sign-in/complete",
+                    r#"{"challenge":"x","code":"123456"}"#,
+                ),
+                ("/identity/v1/sessions/revoke", r#"{"credential":"x"}"#),
+                (
+                    "/identity/v1/email-change/challenges",
+                    r#"{"credential":"x","email":"a@vi-du.vn"}"#,
+                ),
+                (
+                    "/identity/v1/email-change/complete",
+                    r#"{"credential":"x","challenge":"x","code":"123456"}"#,
+                ),
+            ] {
+                let (status, answer) = send(&router, post(path, body)).await;
+                assert_eq!(status, StatusCode::NOT_IMPLEMENTED, "{path}");
+                assert_eq!(answer, fixture("error.authority_not_configured.json"));
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn email_code_requests_are_validated_before_storage_and_never_choose_a_subject() {
+        let (router, dir) = email_code_app();
+        let (status, body) = send(
+            &router,
+            HttpRequest::get("/identity/v1/capabilities")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, fixture("capabilities.email_code.json"));
+
+        let cases = [
+            // Unknown fields (a forged subject, account or session) are refused.
+            (
+                "/identity/v1/sign-in/challenges",
+                r#"{"email":"a@vi-du.vn","account":"018f3c2e-0000-7000-8000-00000000a001"}"#,
+                StatusCode::BAD_REQUEST,
+                "malformed_request",
+            ),
+            (
+                "/identity/v1/sign-in/complete",
+                r#"{"challenge":"x","code":"123456","subject":{"authority":"vink-identity","id":"admin"}}"#,
+                StatusCode::BAD_REQUEST,
+                "malformed_request",
+            ),
+            (
+                "/identity/v1/sign-in/challenges",
+                r#"{"email":"khong-phai-email"}"#,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "invalid_email",
+            ),
+            (
+                "/identity/v1/sign-in/complete",
+                r#"{"challenge":"x","code":"12345a"}"#,
+                StatusCode::BAD_REQUEST,
+                "malformed_request",
+            ),
+            (
+                "/identity/v1/email-change/challenges",
+                r#"{"credential":"x","email":"@vi-du.vn"}"#,
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "invalid_email",
+            ),
+        ];
+        for (path, body, status, code_name) in cases {
+            let (got, answer) = send(&router, post(path, body)).await;
+            assert_eq!((got, code(&answer)), (status, code_name), "{path} {body}");
+        }
+        // A valid address reaches storage, which is down: nothing is decided (the pool may give
+        // up before or after the test deadline; both answers are 503 "not decided").
+        let (status, answer) = send(
+            &router,
+            post(
+                "/identity/v1/sign-in/challenges",
+                r#"{"email":"a@vi-du.vn"}"#,
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(
+            ["dependency_unavailable", "deadline_exceeded"].contains(&code(&answer)),
+            "{answer}"
+        );
+
+        // Not a handle / not a credential: decided without storage.
+        let (status, answer) = send(
+            &router,
+            post(
+                "/identity/v1/sign-in/complete",
+                r#"{"challenge":"vink_c1.garbled","code":"123456"}"#,
+            ),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(answer["outcome"], "rejected");
+        assert_eq!(answer["reason"], "challenge_closed");
+        let (status, answer) = send(
+            &router,
+            post(
+                "/identity/v1/sessions/revoke",
+                r#"{"credential":"not-ours"}"#,
+            ),
+        )
+        .await;
+        assert_eq!(
+            (status, answer["revoked"].clone()),
+            (StatusCode::OK, Value::Bool(false))
+        );
+        let (status, answer) = send(&router, verify(r#"{"credential":"not-ours"}"#)).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(
+            answer,
+            serde_json::json!({"outcome":"rejected","reason":"unknown"})
+        );
+        // A well-formed credential needs storage: an outage is never "rejected".
+        let credential = crate::email_code::SessionCredential::generate()
+            .unwrap()
+            .encode();
+        let (status, answer) = send(
+            &router,
+            verify(&format!(r#"{{"credential":"{credential}"}}"#)),
+        )
+        .await;
+        assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(
+            ["dependency_unavailable", "deadline_exceeded"].contains(&code(&answer)),
+            "{answer}"
+        );
+        // Nothing reached the outbox.
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn email_code_shapes_match_their_fixtures() {
+        use crate::contract::*;
+        use time::macros::datetime;
+        let subject = Subject {
+            authority: "vink-identity".into(),
+            id: "018f3c2e-0000-7000-8000-00000000a001".into(),
+        };
+        let handle = fixture("challenge.issued.json")["challenge"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let credential = fixture("session.revoke.request.json")["credential"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let shapes: [(&str, Value); 9] = [
+            (
+                "challenge.issued.json",
+                serde_json::to_value(ChallengeIssued {
+                    challenge: handle,
+                    expires_at: datetime!(2026-11-07 10:10:00 UTC),
+                })
+                .unwrap(),
+            ),
+            (
+                "sign_in.authenticated.json",
+                serde_json::to_value(SignInResponse::Authenticated {
+                    subject: subject.clone(),
+                    authenticated_at: datetime!(2026-11-07 10:01:00 UTC),
+                    session: IssuedSession {
+                        id: "018f3c2e-0000-7000-8000-00000000b001".into(),
+                        credential,
+                        expires_at: datetime!(2026-12-07 10:01:00 UTC),
+                    },
+                })
+                .unwrap(),
+            ),
+            (
+                "sign_in.rejected.json",
+                serde_json::to_value(SignInResponse::Rejected {
+                    reason: ChallengeRejection::InvalidCode,
+                })
+                .unwrap(),
+            ),
+            (
+                "verify.authenticated.session.json",
+                serde_json::to_value(VerifyCredentialResponse::Authenticated {
+                    subject,
+                    authenticated_at: datetime!(2026-11-07 10:01:00 UTC),
+                    session: Some(SessionFacts {
+                        id: "018f3c2e-0000-7000-8000-00000000b001".into(),
+                        expires_at: datetime!(2026-12-07 10:01:00 UTC),
+                    }),
+                })
+                .unwrap(),
+            ),
+            (
+                "verify.rejected.revoked.json",
+                serde_json::to_value(VerifyCredentialResponse::Rejected {
+                    reason: Some(CredentialRejection::Revoked),
+                })
+                .unwrap(),
+            ),
+            (
+                "verify.rejected.json",
+                serde_json::to_value(VerifyCredentialResponse::Rejected { reason: None }).unwrap(),
+            ),
+            (
+                "session.revoked.json",
+                serde_json::to_value(RevokeSessionResponse { revoked: true }).unwrap(),
+            ),
+            (
+                "email_change.changed.json",
+                serde_json::to_value(EmailChangeResponse::Changed).unwrap(),
+            ),
+            (
+                "email_change.rejected.json",
+                serde_json::to_value(EmailChangeResponse::Rejected {
+                    reason: ChallengeRejection::AddressUnavailable,
+                })
+                .unwrap(),
+            ),
+        ];
+        for (name, value) in shapes {
+            assert_eq!(value, fixture(name), "{name}");
+        }
+        // Request fixtures decode; the issued credential never reaches Debug.
+        let _: SignInChallengeRequest =
+            serde_json::from_value(fixture("sign_in.challenge.request.json")).unwrap();
+        let _: SignInCompleteRequest =
+            serde_json::from_value(fixture("sign_in.complete.request.json")).unwrap();
+        let _: RevokeSessionRequest =
+            serde_json::from_value(fixture("session.revoke.request.json")).unwrap();
+        let _: EmailChangeChallengeRequest =
+            serde_json::from_value(fixture("email_change.challenge.request.json")).unwrap();
+        let change: EmailChangeCompleteRequest =
+            serde_json::from_value(fixture("email_change.complete.request.json")).unwrap();
+        assert!(!format!("{change:?}").contains("FIXTURE"));
+        let issued: SignInResponse =
+            serde_json::from_value(fixture("sign_in.authenticated.json")).unwrap();
+        assert!(!format!("{issued:?}").contains("FIXTURE"));
     }
 }

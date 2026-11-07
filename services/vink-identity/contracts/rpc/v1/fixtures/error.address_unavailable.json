@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "address_unavailable",
+    "message": "the address cannot be used for this account"
+  }
+}

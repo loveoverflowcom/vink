@@ -1,0 +1,10 @@
+{
+  "contract": "vink.identity.v1",
+  "authority": "available",
+  "operations": {
+    "verify_credential": "available",
+    "sign_in": "available",
+    "revoke_session": "available",
+    "email_change": "available"
+  }
+}

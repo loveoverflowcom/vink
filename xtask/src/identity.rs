@@ -1,7 +1,10 @@
 //! `verify postgres` checks for the real `vink-identity` executable: configuration errors, the
 //! migration lifecycle with provisioned roles, and the private contract over a real Unix socket
 //! whose caller is authenticated by the OS peer user. The scratch Identity owner comes from
-//! [`crate::provision`]; no authority exists, so no check expects an authenticated answer.
+//! [`crate::provision`]. Without an authority no check expects an authenticated answer; the
+//! D-05/S-03 email-code spike has its own end-to-end step ([`email_code`]) with both binaries.
+
+mod email_code;
 
 use std::io::{Read, Write};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -73,6 +76,9 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
     ) && report.step(
         "App readiness refuses a privileged role (production) and an untrusted Identity server",
         || run.app_refusals(),
+    ) && report.step(
+        "S-03 email-code spike, two real binaries: sign-in, binding, isolation, logout, email change, suspension, disable, outage",
+        || run.email_code_end_to_end(),
     ) && report.step("identity: logs contain no credential or password", || {
         run.no_secrets_in_logs()
     })
@@ -391,7 +397,7 @@ impl Run<'_> {
             return Err("a refused migration created a history table".into());
         }
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
-        if code != Some(0) || !stderr.contains("applied=[20261102000000]") {
+        if code != Some(0) || !stderr.contains("applied=[20261102000000, 20261107000000]") {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.identity_migrator)?;
@@ -423,6 +429,16 @@ impl Run<'_> {
     }
 
     fn start(&self, name: &str, database_url: &str, caller: Option<u32>) -> Result<Guard, String> {
+        self.start_with(name, database_url, caller, &[])
+    }
+
+    fn start_with(
+        &self,
+        name: &str,
+        database_url: &str,
+        caller: Option<u32>,
+        extra: &[(&str, &std::ffi::OsStr)],
+    ) -> Result<Guard, String> {
         let log = std::fs::File::create(self.log(name)).map_err(|e| e.to_string())?;
         let mut command = self.binary();
         command
@@ -431,6 +447,9 @@ impl Run<'_> {
             .env("VINK_IDENTITY_SOCKET", &self.socket)
             .stdout(Stdio::null())
             .stderr(log);
+        for (key, value) in extra {
+            command.env(key, value);
+        }
         if let Some(uid) = caller {
             command.env("VINK_IDENTITY_CALLER_UID", uid.to_string());
         }

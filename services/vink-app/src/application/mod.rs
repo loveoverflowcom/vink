@@ -1,6 +1,7 @@
 //! Use cases. Application code authenticates the actor, validates input through the domain and
 //! delegates I/O to the ports in [`ports`]; it imports no HTTP, SQL or Leptos types.
 
+pub mod account;
 pub mod discussion;
 pub mod endorsement;
 pub mod ports;

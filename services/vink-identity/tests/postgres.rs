@@ -16,6 +16,9 @@ use vink_identity::persistence::{SchemaState, migrate, schema_state};
 
 const CALLER: u32 = 501;
 
+#[path = "postgres/email_code.rs"]
+mod email_code;
+
 fn app(pool: PgPool, caller: Option<u32>) -> Router {
     router(IdentityState::new(pool, Authority::NotConfigured, caller))
         .layer(axum::Extension(ConnectInfo(Peer { uid: Some(CALLER) })))
@@ -41,7 +44,7 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
     assert_eq!(body["checks"]["schema"], "pending_migrations");
 
     let first = migrate(&pool).await.unwrap();
-    assert_eq!(first.applied, vec![20261102000000]);
+    assert_eq!(first.applied, vec![20261102000000, 20261107000000]);
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
 
     // The schema is now current, but this pool is the test harness superuser: serving with a
@@ -65,14 +68,24 @@ async fn a_current_schema_without_a_caller_is_still_not_ready(pool: PgPool) {
 }
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
-async fn identity_creates_no_tables_until_an_authority_exists(pool: PgPool) {
+async fn identity_owns_only_credential_and_session_tables(pool: PgPool) {
     let tables: Vec<String> = sqlx::query_scalar(
         "SELECT tablename::text FROM pg_tables WHERE schemaname = 'public' ORDER BY 1",
     )
     .fetch_all(&pool)
     .await
     .unwrap();
-    assert_eq!(tables, vec!["_sqlx_migrations".to_string()]);
+    // No principal, permission, work or draft: those are the App's.
+    assert_eq!(
+        tables,
+        [
+            "_sqlx_migrations",
+            "account_emails",
+            "accounts",
+            "email_challenges",
+            "sessions"
+        ]
+    );
 }
 
 #[sqlx::test(migrations = false)]

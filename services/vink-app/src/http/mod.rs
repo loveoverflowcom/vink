@@ -1,6 +1,7 @@
 //! HTTP adapter: API v1, health probes and the Leptos SSR host on one Axum router.
 
 mod api;
+mod auth;
 mod conditional;
 pub mod contract;
 mod error;
@@ -21,13 +22,18 @@ pub use error::ApiError;
 
 use crate::application::Vink;
 use crate::domain::ids::PrincipalId;
-use crate::identity::{IdentityClient, IdentityResolver, Resolution};
+use crate::identity::{IdentityClient, IdentityResolver, PrincipalDirectory};
 use crate::persistence::PgStore;
 
 #[derive(Clone)]
 pub struct AppState {
     pub vink: Arc<Vink<PgStore>>,
     pub identity: Arc<dyn IdentityResolver>,
+    /// The App's subject → principal bindings and suspensions, as read by sign-in (the same
+    /// store the resolver reads; replaceable in tests).
+    pub directory: Arc<dyn PrincipalDirectory>,
+    /// Identity client for the sign-in routes; `None` answers `501 authority_not_configured`.
+    pub sign_in: Option<IdentityClient>,
     /// The Identity process, probed by readiness (informational: public reading never waits on it).
     pub identity_probe: Option<IdentityClient>,
     /// Readiness refuses a database role that can change schema or roles (production profile).
@@ -54,14 +60,27 @@ impl AppState {
             .site_root(site_root.to_string_lossy().into_owned())
             .site_pkg_dir("pkg")
             .build();
+        let vink = Arc::new(vink);
         Self {
-            vink: Arc::new(vink),
+            directory: vink.clone(),
+            vink,
             identity,
+            sign_in: None,
             identity_probe: None,
             require_restricted_role: false,
             public_origin: Arc::from(public_origin),
             leptos,
         }
+    }
+
+    pub fn with_sign_in(mut self, client: Option<IdentityClient>) -> Self {
+        self.sign_in = client;
+        self
+    }
+
+    pub fn with_directory(mut self, directory: Arc<dyn PrincipalDirectory>) -> Self {
+        self.directory = directory;
+        self
     }
 
     pub fn with_identity_probe(mut self, client: Option<IdentityClient>) -> Self {
@@ -75,9 +94,10 @@ impl AppState {
     }
 }
 
-/// The authenticated principal of a request, as decided by the server-side resolver. When the
-/// identity dependency cannot decide, the request fails with `dependency_unavailable` instead of
-/// being treated as anonymous or as anyone.
+/// The authenticated principal of a request, as decided by the server-side resolver. Only a
+/// bound, unsuspended principal acts; an unbound subject or a suspended principal is `None` like
+/// an anonymous request (`GET /api/v1/auth/session` tells them apart). When a dependency cannot
+/// decide, the request fails with `dependency_unavailable` instead of being treated as anyone.
 pub struct Actor(pub Option<PrincipalId>);
 
 impl FromRequestParts<AppState> for Actor {
@@ -91,10 +111,10 @@ impl FromRequestParts<AppState> for Actor {
             .extensions
             .get::<ConnectInfo<SocketAddr>>()
             .map(|info| info.0);
-        match state.identity.resolve(parts, peer).await {
-            Resolution::Principal(principal) => Ok(Self(Some(principal))),
-            Resolution::Anonymous => Ok(Self(None)),
-            Resolution::Unavailable => Err(ApiError::DependencyUnavailable),
+        let resolution = state.identity.resolve(parts, peer).await;
+        match resolution {
+            crate::identity::Resolution::Unavailable => Err(ApiError::DependencyUnavailable),
+            other => Ok(Self(other.principal())),
         }
     }
 }
@@ -328,8 +348,115 @@ mod identity_tests {
     use tower::ServiceExt;
 
     use super::*;
-    use crate::identity::{IdentityClient, IdentityService};
+    use crate::application::ports::BoundPrincipal;
+    use crate::domain::principal::{Standing, SubjectKey};
+    use crate::identity::{
+        DirectoryFuture, DirectoryUnavailable, IdentityClient, IdentityService, PrincipalDirectory,
+    };
     use crate::persistence::lazy_pool;
+
+    const BOUND: &str = "22222222-2222-4222-8222-222222222222";
+    const SUSPENDED: &str = "33333333-3333-4333-8333-333333333333";
+
+    /// The App's binding table as the tests need it, keyed by subject id.
+    struct Directory;
+
+    impl PrincipalDirectory for Directory {
+        fn lookup<'a>(&'a self, subject: &'a SubjectKey) -> DirectoryFuture<'a> {
+            let principal = |raw| PrincipalId::parse(raw).unwrap();
+            let answer = match subject.id() {
+                "bound-subject" => Ok(Some(BoundPrincipal {
+                    principal: principal(BOUND),
+                    standing: Standing::Active,
+                })),
+                "suspended-subject" => Ok(Some(BoundPrincipal {
+                    principal: principal(SUSPENDED),
+                    standing: Standing::Suspended,
+                })),
+                "directory-down" => Err(DirectoryUnavailable),
+                _ => Ok(None),
+            };
+            Box::pin(std::future::ready(answer))
+        }
+    }
+
+    fn authenticated(subject: &str) -> Value {
+        json!({
+            "outcome": "authenticated",
+            "subject": { "authority": "vink-identity", "id": subject },
+            "authenticated_at": "2026-11-07T10:01:00Z",
+            "session": { "id": "s", "expires_at": "2026-12-07T10:01:00Z" }
+        })
+    }
+
+    static REVOKED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+    async fn fake_challenge(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
+        use axum::response::IntoResponse;
+        match body["email"].as_str().unwrap_or_default() {
+            "invalid" => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                axum::Json(json!({ "error": { "code": "invalid_email", "message": "x" } })),
+            )
+                .into_response(),
+            "limited@vi-du.vn" => (
+                StatusCode::TOO_MANY_REQUESTS,
+                axum::Json(json!({ "error": { "code": "rate_limited", "message": "x" } })),
+            )
+                .into_response(),
+            "down@vi-du.vn" => (StatusCode::BAD_GATEWAY, "proxy").into_response(),
+            _ => (
+                StatusCode::ACCEPTED,
+                axum::Json(json!({
+                    "challenge": "vink_c1.handle-for-tests",
+                    "expires_at": "2099-01-01T00:00:00Z"
+                })),
+            )
+                .into_response(),
+        }
+    }
+
+    /// The challenge cookie names the subject the fake authenticates; the code decides refusals.
+    async fn fake_complete(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
+        use axum::response::IntoResponse;
+        let subject = body["challenge"].as_str().unwrap_or_default().to_string();
+        let rejected = |reason: &str| {
+            axum::Json(json!({ "outcome": "rejected", "reason": reason })).into_response()
+        };
+        match body["code"].as_str().unwrap_or_default() {
+            "000000" => rejected("invalid_code"),
+            "111111" => rejected("challenge_closed"),
+            "222222" => rejected("account_disabled"),
+            "333333" => rejected("promoted_to_admin"),
+            _ => axum::Json(json!({
+                "outcome": "authenticated",
+                "subject": { "authority": "vink-identity", "id": subject },
+                "authenticated_at": "2026-11-07T10:01:00Z",
+                "session": {
+                    "id": "s",
+                    "credential": format!("vink_s1_for-{subject}"),
+                    "expires_at": "2099-01-01T00:00:00Z"
+                }
+            }))
+            .into_response(),
+        }
+    }
+
+    async fn fake_revoke(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
+        use axum::response::IntoResponse;
+        let credential = body["credential"].as_str().unwrap_or_default().to_string();
+        if credential == "unavailable" {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                axum::Json(
+                    json!({ "error": { "code": "dependency_unavailable", "message": "x" } }),
+                ),
+            )
+                .into_response();
+        }
+        REVOKED.lock().unwrap().push(credential);
+        axum::Json(json!({ "revoked": true })).into_response()
+    }
 
     /// Answers by the presented credential, in the provider's wire format.
     async fn fake_verify(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
@@ -343,12 +470,19 @@ mod identity_tests {
         };
         match body["credential"].as_str().unwrap_or_default() {
             "rejected" => axum::Json(json!({ "outcome": "rejected" })).into_response(),
+            "revoked" => {
+                axum::Json(json!({ "outcome": "rejected", "reason": "revoked" })).into_response()
+            }
             "authenticated" => axum::Json(json!({
                 "outcome": "authenticated",
                 "subject": { "authority": "test-fixture", "id": "fixture-subject-0001" },
                 "authenticated_at": "2026-11-02T00:00:00Z"
             }))
             .into_response(),
+            "bound" => axum::Json(authenticated("bound-subject")).into_response(),
+            "suspended" => axum::Json(authenticated("suspended-subject")).into_response(),
+            "directory-down" => axum::Json(authenticated("directory-down")).into_response(),
+            "bad-subject" => axum::Json(authenticated("has space")).into_response(),
             "no-authority" => error(501, "authority_not_configured"),
             "unavailable" => error(503, "dependency_unavailable"),
             "caller" => error(401, "caller_unauthenticated"),
@@ -383,6 +517,9 @@ mod identity_tests {
         let listener = tokio::net::UnixListener::bind(&socket).unwrap();
         let app = Router::new()
             .route("/identity/v1/verify-credential", post(fake_verify))
+            .route("/identity/v1/sign-in/challenges", post(fake_challenge))
+            .route("/identity/v1/sign-in/complete", post(fake_complete))
+            .route("/identity/v1/sessions/revoke", post(fake_revoke))
             .route(
                 "/identity/v1/capabilities",
                 get(|| async {
@@ -408,12 +545,359 @@ mod identity_tests {
         router(
             AppState::new(
                 Vink::new(PgStore::new(pool)),
-                Arc::new(IdentityService::new(client.clone())),
+                Arc::new(IdentityService::new(client.clone(), Arc::new(Directory))),
                 "http://127.0.0.1:3000",
                 Path::new("target/site"),
             )
+            .with_directory(Arc::new(Directory))
+            .with_sign_in(Some(client.clone()))
             .with_identity_probe(Some(client)),
         )
+    }
+
+    async fn call(
+        router: &Router,
+        method: &str,
+        path: &str,
+        headers: &[(&str, &str)],
+        body: Option<&str>,
+    ) -> (StatusCode, axum::http::HeaderMap, String) {
+        let mut request = Request::builder().method(method).uri(path);
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+        let request = match body {
+            Some(body) => request
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body.to_string())),
+            None => request.body(Body::empty()),
+        }
+        .unwrap();
+        let response = router.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let headers = response.headers().clone();
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        (status, headers, String::from_utf8_lossy(&body).into_owned())
+    }
+
+    fn set_cookies(headers: &axum::http::HeaderMap) -> Vec<String> {
+        headers
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect()
+    }
+
+    const ORIGIN: (&str, &str) = ("origin", "http://127.0.0.1:3000");
+
+    #[tokio::test]
+    async fn bindings_and_suspensions_decide_after_identity_authenticates() {
+        let fake = fake_identity("bindings").await;
+        let router = app(&fake.socket, fake.uid);
+        for (credential, drafts_status, state) in [
+            ("authenticated", 401, Some("needs_principal")),
+            ("suspended", 401, Some("suspended")),
+            ("revoked", 401, Some("anonymous")),
+            ("directory-down", 503, None),
+            ("bad-subject", 503, None),
+        ] {
+            for carrier in [
+                (
+                    header::AUTHORIZATION.as_str(),
+                    format!("Bearer {credential}"),
+                ),
+                (
+                    header::COOKIE.as_str(),
+                    format!("__Host-vink_session={credential}"),
+                ),
+            ] {
+                let headers = [(carrier.0, carrier.1.as_str())];
+                let (got, body) = drafts(&router, &headers).await;
+                assert_eq!(
+                    got.as_u16(),
+                    drafts_status,
+                    "{credential} {}: {body}",
+                    carrier.0
+                );
+                let (got, _, body) =
+                    call(&router, "GET", "/api/v1/auth/session", &headers, None).await;
+                match state {
+                    Some(state) => {
+                        assert_eq!(got, StatusCode::OK, "{credential}");
+                        assert!(body.contains(&format!(r#""state":"{state}""#)), "{body}");
+                    }
+                    None => assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE, "{credential}"),
+                }
+            }
+        }
+        // A bound, active principal acts (the session endpoint needs no database).
+        let (got, _, body) = call(
+            &router,
+            "GET",
+            "/api/v1/auth/session",
+            &[("cookie", "__Host-vink_session=bound")],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::OK);
+        assert!(body.contains(BOUND), "{body}");
+        // A suspended principal cannot provision itself a fresh principal.
+        let (got, _, body) = call(
+            &router,
+            "POST",
+            "/api/v1/auth/principal",
+            &[ORIGIN, ("cookie", "__Host-vink_session=suspended")],
+            Some(r#"{"pen_name":"Tên mới"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::FORBIDDEN, "{body}");
+        assert!(body.contains("principal_suspended"), "{body}");
+        let (got, _, _) = call(
+            &router,
+            "POST",
+            "/api/v1/auth/principal",
+            &[ORIGIN],
+            Some(r#"{"pen_name":"Tên mới"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn sign_in_keeps_secrets_in_host_cookies_and_never_grants_by_itself() {
+        let fake = fake_identity("sign-in").await;
+        let router = app(&fake.socket, fake.uid);
+        // Cross-site or origin-less unsafe requests are refused before Identity is asked.
+        let (got, _, _) = call(
+            &router,
+            "POST",
+            "/api/v1/auth/sign-in/challenges",
+            &[],
+            Some(r#"{"email":"a@vi-du.vn"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::FORBIDDEN);
+
+        let (got, headers, body) = call(
+            &router,
+            "POST",
+            "/api/v1/auth/sign-in/challenges",
+            &[ORIGIN],
+            Some(r#"{"email":"a@vi-du.vn"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::ACCEPTED, "{body}");
+        assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+        assert!(
+            !body.contains("vink_c1"),
+            "the handle never reaches page scripts: {body}"
+        );
+        let cookies = set_cookies(&headers);
+        assert_eq!(cookies.len(), 1, "{cookies:?}");
+        assert!(cookies[0].starts_with("__Host-vink_sign_in=vink_c1.handle-for-tests; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age="), "{cookies:?}");
+
+        for (email, status, code) in [
+            ("invalid", 422, "validation_failed"),
+            ("limited@vi-du.vn", 429, "rate_limited"),
+            ("down@vi-du.vn", 503, "dependency_unavailable"),
+        ] {
+            let (got, _, body) = call(
+                &router,
+                "POST",
+                "/api/v1/auth/sign-in/challenges",
+                &[ORIGIN],
+                Some(&format!(r#"{{"email":"{email}"}}"#)),
+            )
+            .await;
+            assert_eq!(got.as_u16(), status, "{email}: {body}");
+            assert!(body.contains(code), "{body}");
+        }
+        // A forged subject in the body is refused.
+        let (got, _, _) = call(
+            &router,
+            "POST",
+            "/api/v1/auth/sign-in/complete",
+            &[ORIGIN, ("cookie", "__Host-vink_sign_in=new-subject")],
+            Some(r#"{"code":"123456","subject":"bound-subject"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::UNPROCESSABLE_ENTITY);
+
+        let complete = |cookie: &'static str, code: &'static str| {
+            let router = router.clone();
+            async move {
+                call(
+                    &router,
+                    "POST",
+                    "/api/v1/auth/sign-in/complete",
+                    &[ORIGIN, ("cookie", cookie)],
+                    Some(&format!(r#"{{"code":"{code}"}}"#)),
+                )
+                .await
+            }
+        };
+        // New subject: a session cookie, no principal, the challenge cookie cleared.
+        let (got, headers, body) = complete("__Host-vink_sign_in=new-subject", "123 456").await;
+        assert_eq!(got, StatusCode::OK, "{body}");
+        assert_eq!(body, r#"{"state":"needs_principal"}"#);
+        let cookies = set_cookies(&headers);
+        assert!(cookies.iter().any(|c| c.starts_with(
+            "__Host-vink_session=vink_s1_for-new-subject; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age="
+        )), "{cookies:?}");
+        assert!(
+            cookies
+                .iter()
+                .any(|c| c.starts_with("__Host-vink_sign_in=; ")),
+            "{cookies:?}"
+        );
+        assert!(!body.contains("vink_s1"));
+        // Existing, active principal.
+        let (got, _, body) = complete("__Host-vink_sign_in=bound-subject", "123456").await;
+        assert_eq!(got, StatusCode::OK);
+        assert!(
+            body.contains(r#""state":"active""#) && body.contains(BOUND),
+            "{body}"
+        );
+
+        // Refusals keep their meaning; a wrong code keeps the challenge for another attempt.
+        for (code, status, error, clears) in [
+            ("000000", 422, "code_rejected", false),
+            ("111111", 409, "challenge_closed", true),
+            ("222222", 403, "account_disabled", true),
+            ("333333", 503, "dependency_unavailable", false),
+            ("12345", 422, "validation_failed", false),
+        ] {
+            let (got, headers, body) = complete("__Host-vink_sign_in=new-subject", code).await;
+            assert_eq!(got.as_u16(), status, "{code}: {body}");
+            assert!(body.contains(error), "{code}: {body}");
+            let cookies = set_cookies(&headers);
+            assert!(
+                !cookies.iter().any(|c| c.starts_with("__Host-vink_session")),
+                "{code}"
+            );
+            assert_eq!(!cookies.is_empty(), clears, "{code}: {cookies:?}");
+        }
+        // No challenge cookie: closed, Identity not asked for a session.
+        let (got, _, _) = complete("theme=dark", "123456").await;
+        assert_eq!(got, StatusCode::CONFLICT);
+
+        // Suspended principal or an undecidable directory: the fresh session is revoked and
+        // never delivered.
+        REVOKED.lock().unwrap().clear();
+        let (got, headers, body) =
+            complete("__Host-vink_sign_in=suspended-subject", "123456").await;
+        assert_eq!(got, StatusCode::FORBIDDEN, "{body}");
+        assert!(body.contains("principal_suspended"));
+        assert!(
+            !set_cookies(&headers)
+                .iter()
+                .any(|c| c.starts_with("__Host-vink_session"))
+        );
+        let (got, headers, _) = complete("__Host-vink_sign_in=directory-down", "123456").await;
+        assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(
+            !set_cookies(&headers)
+                .iter()
+                .any(|c| c.starts_with("__Host-vink_session"))
+        );
+        assert_eq!(
+            REVOKED.lock().unwrap().as_slice(),
+            [
+                "vink_s1_for-suspended-subject",
+                "vink_s1_for-directory-down"
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn logout_clears_the_cookie_only_after_identity_revoked() {
+        let fake = fake_identity("logout").await;
+        let router = app(&fake.socket, fake.uid);
+        let (got, headers, _) = call(
+            &router,
+            "DELETE",
+            "/api/v1/auth/session",
+            &[ORIGIN, ("cookie", "__Host-vink_session=vink_s1_logout-me")],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::NO_CONTENT);
+        assert_eq!(
+            set_cookies(&headers),
+            ["__Host-vink_session=; Path=/; Secure; HttpOnly; SameSite=Lax; Max-Age=0"]
+        );
+        assert!(
+            REVOKED
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|c| c == "vink_s1_logout-me")
+        );
+        // Identity down: the cookie stays so logout can be retried.
+        let (got, headers, _) = call(
+            &router,
+            "DELETE",
+            "/api/v1/auth/session",
+            &[ORIGIN, ("cookie", "__Host-vink_session=unavailable")],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE);
+        assert!(set_cookies(&headers).is_empty());
+        // Nothing presented: idempotent success. Cross-site: refused.
+        let (got, _, _) = call(&router, "DELETE", "/api/v1/auth/session", &[ORIGIN], None).await;
+        assert_eq!(got, StatusCode::NO_CONTENT);
+        let (got, _, _) = call(
+            &router,
+            "DELETE",
+            "/api/v1/auth/session",
+            &[
+                ("origin", "https://evil.example"),
+                ("cookie", "__Host-vink_session=x"),
+            ],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn sign_in_is_closed_without_an_identity_service() {
+        let pool = lazy_pool("postgres://vink:unused@127.0.0.1:1/vink").unwrap();
+        let router = router(AppState::new(
+            Vink::new(PgStore::new(pool)),
+            Arc::new(crate::identity::NoAuthority),
+            "http://127.0.0.1:3000",
+            Path::new("target/site"),
+        ));
+        for (method, path, body) in [
+            (
+                "POST",
+                "/api/v1/auth/sign-in/challenges",
+                Some(r#"{"email":"a@vi-du.vn"}"#),
+            ),
+            (
+                "POST",
+                "/api/v1/auth/sign-in/complete",
+                Some(r#"{"code":"123456"}"#),
+            ),
+        ] {
+            let (got, _, body) = call(&router, method, path, &[ORIGIN], body).await;
+            assert_eq!(got, StatusCode::NOT_IMPLEMENTED, "{path}: {body}");
+            assert!(body.contains("authority_not_configured"));
+        }
+        let (got, _, body) = call(
+            &router,
+            "GET",
+            "/api/v1/auth/session",
+            &[("cookie", "__Host-vink_session=x")],
+            None,
+        )
+        .await;
+        assert_eq!(
+            (got, body.as_str()),
+            (StatusCode::OK, r#"{"state":"anonymous"}"#)
+        );
     }
 
     async fn drafts(router: &Router, headers: &[(&str, &str)]) -> (StatusCode, String) {
@@ -439,6 +923,7 @@ mod identity_tests {
             ("rejected", 401, "unauthenticated"),
             // No principal binding exists: an authenticated subject is still nobody.
             ("authenticated", 401, "unauthenticated"),
+            ("suspended", 401, "unauthenticated"),
             ("no-authority", 401, "unauthenticated"),
             ("unavailable", 503, "dependency_unavailable"),
             ("caller", 503, "dependency_unavailable"),

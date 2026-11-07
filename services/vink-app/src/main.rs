@@ -2,8 +2,9 @@
 //!
 //! `serve`, `dev-seed` and `moderator` use the runtime credential (`DATABASE_URL`); `migrate` uses
 //! only the migration credential (`VINK_MIGRATE_DATABASE_URL`). `moderator grant|revoke|list` is
-//! the operator's only way to give or take comment-moderation authority; no HTTP route does it. Exit codes: 0 success, 1 runtime
-//! failure, 2 invalid configuration or usage.
+//! the operator's only way to give or take comment-moderation authority; no HTTP route does it.
+//! `principal suspend|reinstate|list` likewise is the only way to suspend a principal (D-05/S-03
+//! spike). Exit codes: 0 success, 1 runtime failure, 2 invalid configuration or usage.
 
 use std::net::SocketAddr;
 use std::process::ExitCode;
@@ -13,11 +14,12 @@ use vink_app::application::Vink;
 use vink_app::config::{Config, MigrateConfig, Profile};
 use vink_app::domain::discussion::moderation::GrantNote;
 use vink_app::domain::ids::PrincipalId;
+use vink_app::domain::principal::SuspensionReason;
 use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list";
+const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list";
 
 /// Operator command on comment-moderation grants, parsed before any configuration is read.
 #[derive(Debug, PartialEq, Eq)]
@@ -44,6 +46,35 @@ fn parse_moderator(args: &[String]) -> Result<ModeratorCommand, String> {
     }
 }
 
+/// Operator command on principal suspensions, parsed before any configuration is read.
+#[derive(Debug, PartialEq, Eq)]
+enum PrincipalCommand {
+    Suspend(PrincipalId, SuspensionReason),
+    Reinstate(PrincipalId),
+    List,
+}
+
+fn parse_principal(args: &[String]) -> Result<PrincipalCommand, String> {
+    let principal = |raw: Option<&String>| {
+        raw.and_then(|raw| PrincipalId::parse(raw))
+            .ok_or_else(|| "expected a principal UUID".to_string())
+    };
+    match args.first().map(String::as_str) {
+        Some("suspend") => {
+            let reason = SuspensionReason::parse(&args.get(2..).unwrap_or_default().join(" "))
+                .ok_or("suspend needs a one-line reason of at most 200 characters")?;
+            Ok(PrincipalCommand::Suspend(principal(args.get(1))?, reason))
+        }
+        Some("reinstate") if args.len() == 2 => {
+            Ok(PrincipalCommand::Reinstate(principal(args.get(1))?))
+        }
+        Some("list") if args.len() == 1 => Ok(PrincipalCommand::List),
+        _ => {
+            Err("expected `suspend <principal> <reason>`, `reinstate <principal>` or `list`".into())
+        }
+    }
+}
+
 enum Loaded {
     App(Config),
     Migrate(MigrateConfig),
@@ -53,7 +84,7 @@ fn main() -> ExitCode {
     let command = std::env::args().nth(1).unwrap_or_else(|| "serve".into());
     if !matches!(
         command.as_str(),
-        "serve" | "migrate" | "dev-seed" | "moderator"
+        "serve" | "migrate" | "dev-seed" | "moderator" | "principal"
     ) {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
@@ -64,6 +95,18 @@ fn main() -> ExitCode {
             Ok(parsed) => Some(parsed),
             Err(error) => {
                 eprintln!("vink-app moderator: {error}\n{USAGE}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
+    let principal_command = if command == "principal" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_principal(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app principal: {error}\n{USAGE}");
                 return ExitCode::from(2);
             }
         }
@@ -98,6 +141,9 @@ fn main() -> ExitCode {
             Loaded::App(config) if command == "dev-seed" => seed(&config).await,
             Loaded::App(config) if let Some(operation) = moderator_command => {
                 moderator(&config, operation).await
+            }
+            Loaded::App(config) if let Some(operation) = principal_command => {
+                principal(&config, operation).await
             }
             Loaded::App(config) => serve(config).await,
         }
@@ -201,10 +247,58 @@ async fn moderator(config: &Config, command: ModeratorCommand) -> Result<(), Fai
     Ok(())
 }
 
+async fn principal(config: &Config, command: PrincipalCommand) -> Result<(), Failure> {
+    let pool = connect(&config.database_url, "vink-app principal").await?;
+    let failed = |error: vink_app::application::ports::StoreError| match error {
+        vink_app::application::ports::StoreError::UnknownPrincipal => {
+            Failure::Usage("the principal has no Vink record".into())
+        }
+        other => Failure::Runtime(format!("principal command failed: {other}")),
+    };
+    match command {
+        PrincipalCommand::Suspend(principal, reason) => {
+            match persistence::suspend_principal(&pool, principal, &reason)
+                .await
+                .map_err(failed)?
+            {
+                persistence::SuspensionOutcome::Suspended(id) => {
+                    println!("suspended {principal} ({id})");
+                }
+                persistence::SuspensionOutcome::AlreadySuspended(id) => {
+                    println!("{principal} is already suspended ({id}); nothing changed");
+                }
+            }
+        }
+        PrincipalCommand::Reinstate(principal) => {
+            match persistence::reinstate_principal(&pool, principal)
+                .await
+                .map_err(failed)?
+            {
+                Some(id) => println!("lifted suspension {id} of {principal}"),
+                None => println!("{principal} is not suspended; nothing changed"),
+            }
+        }
+        PrincipalCommand::List => {
+            for record in persistence::active_suspensions(&pool)
+                .await
+                .map_err(failed)?
+            {
+                println!(
+                    "{}\t{}\t{}\t{}",
+                    record.principal, record.display_name, record.suspended_at, record.reason
+                );
+            }
+        }
+    }
+    pool.close().await;
+    Ok(())
+}
+
 async fn serve(config: Config) -> Result<(), Failure> {
     let pool = lazy_pool(&config.database_url)
         .map_err(|error| Failure::Usage(format!("DATABASE_URL is not usable: {error}")))?;
-    let resolver = identity::from_config(&config);
+    let directory = Arc::new(Vink::new(PgStore::new(pool.clone())));
+    let resolver = identity::from_config(&config, directory);
     if config.dev_principal.is_some() {
         tracing::warn!(
             "local identity fixture enabled: loopback requests act as VINK_DEV_PRINCIPAL; this is not authentication"
@@ -224,6 +318,7 @@ async fn serve(config: Config) -> Result<(), Failure> {
         &config.public_origin,
         &config.site_root,
     )
+    .with_sign_in(identity::sign_in_client(&config))
     .with_identity_probe(probe)
     .with_restricted_role_required(config.profile == Profile::Production);
     if !config.site_root.join("pkg").join("vink.js").exists() {
@@ -259,6 +354,36 @@ mod tests {
 
     fn args(raw: &[&str]) -> Vec<String> {
         raw.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn principal_arguments_are_validated_before_any_configuration() {
+        let principal = "22222222-2222-4222-8222-222222222222";
+        let id = PrincipalId::parse(principal).unwrap();
+        assert_eq!(
+            parse_principal(&args(&["suspend", principal, "Spam", "lặp", "lại"])),
+            Ok(PrincipalCommand::Suspend(
+                id,
+                SuspensionReason::parse("Spam lặp lại").unwrap()
+            ))
+        );
+        assert_eq!(
+            parse_principal(&args(&["reinstate", principal])),
+            Ok(PrincipalCommand::Reinstate(id))
+        );
+        assert_eq!(
+            parse_principal(&args(&["list"])),
+            Ok(PrincipalCommand::List)
+        );
+        for bad in [
+            &["suspend", principal][..],
+            &["suspend", "not-a-uuid", "lý do"][..],
+            &["reinstate"][..],
+            &["reinstate", principal, "x"][..],
+            &["delete", principal][..],
+        ] {
+            assert!(parse_principal(&args(bad)).is_err(), "{bad:?}");
+        }
     }
 
     #[test]

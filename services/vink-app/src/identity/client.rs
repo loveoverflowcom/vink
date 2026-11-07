@@ -15,10 +15,14 @@ use axum::http::{Method, Request, StatusCode, header};
 use http_body_util::{BodyExt, Full, Limited};
 use hyper_util::rt::TokioIo;
 use serde::Deserialize;
+use time::OffsetDateTime;
 use tokio::net::UnixStream;
 
 /// Below the server's 2 s deadline, so the client gives up first.
 pub const CALL_TIMEOUT: Duration = Duration::from_millis(1500);
+/// Sign-in, logout and other committing operations: below the server's 5 s write deadline. Rare
+/// and user-initiated, so a slow commit is waited for rather than reported as an outage.
+pub const WRITE_TIMEOUT: Duration = Duration::from_millis(4500);
 /// Longest credential the contract accepts, in bytes.
 pub const MAX_CREDENTIAL_BYTES: usize = 4096;
 const MAX_RESPONSE_BYTES: usize = 16 * 1024;
@@ -71,6 +75,66 @@ impl Failure {
     }
 }
 
+/// A sign-in challenge: the handle is a client-held secret (it goes into an HttpOnly cookie).
+#[derive(Clone, PartialEq, Eq)]
+pub struct IssuedChallenge {
+    pub handle: String,
+    pub expires_at: OffsetDateTime,
+}
+
+impl std::fmt::Debug for IssuedChallenge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IssuedChallenge")
+            .field("handle", &"<redacted>")
+            .field("expires_at", &self.expires_at)
+            .finish()
+    }
+}
+
+/// Why a challenge was not issued.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StartError {
+    InvalidEmail,
+    RateLimited,
+    Call(CallError),
+}
+
+/// A new session for an authenticated subject. The credential is handed to the client once.
+#[derive(Clone, PartialEq, Eq)]
+pub struct IssuedSession {
+    pub authority: String,
+    pub subject: String,
+    pub credential: String,
+    pub expires_at: OffsetDateTime,
+}
+
+impl std::fmt::Debug for IssuedSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IssuedSession")
+            .field("authority", &self.authority)
+            .field("subject", &self.subject)
+            .field("credential", &"<redacted>")
+            .field("expires_at", &self.expires_at)
+            .finish()
+    }
+}
+
+/// Identity's reason for not completing a challenge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChallengeRefusal {
+    /// Wrong code; another attempt is allowed.
+    InvalidCode,
+    /// Expired, used, out of attempts or unknown: request a new code.
+    ChallengeClosed,
+    AccountDisabled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SignIn {
+    Authenticated(IssuedSession),
+    Refused(ChallengeRefusal),
+}
+
 /// Availability reported by `GET /identity/v1/capabilities`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Authority {
@@ -95,6 +159,43 @@ enum WireVerification {
 struct WireSubject {
     authority: String,
     id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct WireChallenge {
+    challenge: String,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+enum WireSignIn {
+    Authenticated {
+        subject: WireSubject,
+        session: WireIssuedSession,
+    },
+    Rejected {
+        reason: String,
+    },
+}
+
+#[derive(Deserialize)]
+struct WireIssuedSession {
+    credential: String,
+    #[serde(with = "time::serde::rfc3339")]
+    expires_at: OffsetDateTime,
+}
+
+impl std::fmt::Debug for WireIssuedSession {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("WireIssuedSession(<redacted>)")
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct WireRevoked {
+    revoked: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -125,18 +226,24 @@ pub struct IdentityClient {
     socket: PathBuf,
     server_uid: u32,
     timeout: Duration,
+    write_timeout: Duration,
 }
 
 impl IdentityClient {
     pub fn new(socket: PathBuf, server_uid: u32) -> Self {
-        Self::with_timeout(socket, server_uid, CALL_TIMEOUT)
+        Self {
+            write_timeout: WRITE_TIMEOUT,
+            ..Self::with_timeout(socket, server_uid, CALL_TIMEOUT)
+        }
     }
 
+    /// One timeout for every call (tests use a short one).
     pub fn with_timeout(socket: PathBuf, server_uid: u32, timeout: Duration) -> Self {
         Self {
             socket,
             server_uid,
             timeout,
+            write_timeout: timeout,
         }
     }
 
@@ -162,6 +269,88 @@ impl IdentityClient {
         }
     }
 
+    /// `POST /identity/v1/sign-in/challenges`. Identity sends the code; the answer never says
+    /// whether an account exists.
+    pub async fn start_sign_in(&self, email: &str) -> Result<IssuedChallenge, StartError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "email": email }))
+            .map_err(|_| StartError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/sign-in/challenges",
+                body,
+            )
+            .await
+            .map_err(StartError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (202, _) => serde_json::from_slice::<WireChallenge>(&bytes)
+                .map(|wire| IssuedChallenge {
+                    handle: wire.challenge,
+                    expires_at: wire.expires_at,
+                })
+                .map_err(|_| StartError::Call(CallError::Unavailable(Failure::MalformedResponse))),
+            (422, "invalid_email") => Err(StartError::InvalidEmail),
+            (429, "rate_limited") => Err(StartError::RateLimited),
+            _ => Err(StartError::Call(error_for(status, &bytes))),
+        }
+    }
+
+    /// `POST /identity/v1/sign-in/complete`. A refusal is an answer, not an outage.
+    pub async fn complete_sign_in(&self, handle: &str, code: &str) -> Result<SignIn, CallError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "challenge": handle, "code": code }))
+            .map_err(|_| CallError::Unavailable(Failure::Transport))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/sign-in/complete",
+                body,
+            )
+            .await?;
+        if status != StatusCode::OK {
+            return Err(error_for(status, &bytes));
+        }
+        let malformed = CallError::Unavailable(Failure::MalformedResponse);
+        match serde_json::from_slice::<WireSignIn>(&bytes).map_err(|_| malformed)? {
+            WireSignIn::Authenticated { subject, session } => {
+                Ok(SignIn::Authenticated(IssuedSession {
+                    authority: subject.authority,
+                    subject: subject.id,
+                    credential: session.credential,
+                    expires_at: session.expires_at,
+                }))
+            }
+            WireSignIn::Rejected { reason } => Ok(SignIn::Refused(match reason.as_str() {
+                "invalid_code" => ChallengeRefusal::InvalidCode,
+                "challenge_closed" => ChallengeRefusal::ChallengeClosed,
+                "account_disabled" => ChallengeRefusal::AccountDisabled,
+                // An unknown reason is outside the contract: nothing is decided.
+                _ => return Err(malformed),
+            })),
+        }
+    }
+
+    /// `POST /identity/v1/sessions/revoke` (logout). `false`: nothing active was revoked.
+    pub async fn revoke(&self, credential: &str) -> Result<bool, CallError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
+            .map_err(|_| CallError::Unavailable(Failure::Transport))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/sessions/revoke",
+                body,
+            )
+            .await?;
+        if status != StatusCode::OK {
+            return Err(error_for(status, &bytes));
+        }
+        serde_json::from_slice::<WireRevoked>(&bytes)
+            .map(|wire| wire.revoked)
+            .map_err(|_| CallError::Unavailable(Failure::MalformedResponse))
+    }
+
     /// `GET /identity/v1/capabilities`, for readiness reporting.
     pub async fn authority(&self) -> Result<Authority, CallError> {
         let (status, bytes) = self
@@ -185,7 +374,17 @@ impl IdentityClient {
         path: &str,
         body: Vec<u8>,
     ) -> Result<(StatusCode, Bytes), CallError> {
-        tokio::time::timeout(self.timeout, self.exchange(method, path, body))
+        self.call_within(self.timeout, method, path, body).await
+    }
+
+    async fn call_within(
+        &self,
+        limit: Duration,
+        method: Method,
+        path: &str,
+        body: Vec<u8>,
+    ) -> Result<(StatusCode, Bytes), CallError> {
+        tokio::time::timeout(limit, self.exchange(method, path, body))
             .await
             .unwrap_or(Err(CallError::Unavailable(Failure::Timeout)))
     }
@@ -235,11 +434,15 @@ impl IdentityClient {
     }
 }
 
+fn error_code(bytes: &[u8]) -> String {
+    serde_json::from_slice::<WireError>(bytes)
+        .map(|error| error.error.code)
+        .unwrap_or_default()
+}
+
 /// Error answers by status and `code`; anything outside the contract is malformed.
 fn error_for(status: StatusCode, bytes: &[u8]) -> CallError {
-    let code = serde_json::from_slice::<WireError>(bytes)
-        .map(|error| error.error.code)
-        .unwrap_or_default();
+    let code = error_code(bytes);
     match (status.as_u16(), code.as_str()) {
         (501, "authority_not_configured") => CallError::NoAuthority,
         (503, "dependency_unavailable" | "deadline_exceeded") => {
@@ -281,6 +484,51 @@ mod tests {
             serde_json::from_slice(&fixture("capabilities.not_configured.json")).unwrap();
         assert_eq!(caps.contract, "vink.identity.v1");
         assert!(matches!(caps.authority, WireAvailability::NotConfigured));
+    }
+
+    #[test]
+    fn email_code_fixtures_decode_into_the_app_representation() {
+        let challenge: WireChallenge =
+            serde_json::from_slice(&fixture("challenge.issued.json")).unwrap();
+        assert!(challenge.challenge.starts_with("vink_c1."));
+        match serde_json::from_slice::<WireSignIn>(&fixture("sign_in.authenticated.json")).unwrap()
+        {
+            WireSignIn::Authenticated { subject, session } => {
+                assert_eq!(subject.authority, "vink-identity");
+                assert!(session.credential.starts_with("vink_s1_"));
+                assert!(!format!("{session:?}").contains("vink_s1_"));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            serde_json::from_slice::<WireSignIn>(&fixture("sign_in.rejected.json")).unwrap(),
+            WireSignIn::Rejected { ref reason } if reason == "invalid_code"
+        ));
+        // Additive v1 fields on verify are ignored by this consumer; the outcome is unchanged.
+        assert!(matches!(
+            serde_json::from_slice::<WireVerification>(&fixture(
+                "verify.authenticated.session.json"
+            ))
+            .unwrap(),
+            WireVerification::Authenticated { .. }
+        ));
+        assert!(matches!(
+            serde_json::from_slice::<WireVerification>(&fixture("verify.rejected.revoked.json"))
+                .unwrap(),
+            WireVerification::Rejected
+        ));
+        let revoked: WireRevoked =
+            serde_json::from_slice(&fixture("session.revoked.json")).unwrap();
+        assert!(revoked.revoked);
+        let caps: WireCapabilities =
+            serde_json::from_slice(&fixture("capabilities.email_code.json")).unwrap();
+        assert!(matches!(caps.authority, WireAvailability::Available));
+        for (name, code) in [
+            ("error.invalid_email.json", "invalid_email"),
+            ("error.rate_limited.json", "rate_limited"),
+        ] {
+            assert_eq!(error_code(&fixture(name)), code);
+        }
     }
 
     #[test]

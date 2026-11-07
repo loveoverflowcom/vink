@@ -24,7 +24,7 @@ Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **
 - **Ưu tiên từ yêu cầu mới:** AI hỗ trợ kiểm duyệt ngay từ MVP. Mức tự động hóa tăng sau khi có kết quả đánh giá và khả năng vận hành phù hợp.
 - **Đã chốt 03/11/2026:** Vink sở hữu bình luận (module trong app, PostgreSQL); tác giả bật/tắt bình luận theo tác phẩm, không sửa/xóa bình luận người khác.
 - **Khuyến nghị:** Vink sở hữu nội dung văn học, Rust modular monolith, một nguồn định danh Vink ổn định.
-- **Chưa chốt:** Nhà cung cấp xác thực, authority và màn tiền kiểm bình luận, nhóm tuổi phục vụ, thời điểm mở nhiều chương và ngân sách hiệu suất/AI.
+- **Chưa chốt:** Nhà cung cấp xác thực (D-05 có đề xuất provisional từ spike S-03: authority native mã email), authority và màn tiền kiểm bình luận, nhóm tuổi phục vụ, thời điểm mở nhiều chương và ngân sách hiệu suất/AI.
 - **Đã đối chiếu nguồn:** Cantos `develop` tại commit `a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330`; tài liệu chính thức Discourse và các công nghệ tham chiếu ngày 30/10/2026. Đây là bằng chứng về nguồn được đọc, không xác nhận trạng thái production.
 
 ## Những thay đổi chính so với vision ban đầu
@@ -47,7 +47,7 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Nhóm | Vị trí | Cách sử dụng |
 | --- | --- | --- |
 | Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
-| Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; chưa phải ADR Accepted |
+| Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md), [Auth authority D-05](architecture/auth-authority.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; D-05 đề xuất authority native mã email (Provisional, spike S-03); chưa phải ADR Accepted |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
 | Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
 | Discussion hai tầng | [Core/registry](development/discussion-core.md), [ownership đã chốt](architecture/discussion-ownership.md), [LayoutSpec UI](design/discussion-ui.md) | Core/lifecycle + Quint replay, PostgreSQL/API và Web reader hai tầng; ghi cục bộ qua LocalFixture, production auth và Google assets còn thiếu |

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "principal_suspended",
+    "message": "this Vink account is suspended"
+  }
+}

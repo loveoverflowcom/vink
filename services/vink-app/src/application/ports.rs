@@ -21,6 +21,7 @@ use crate::domain::endorsement::{
     EndorsementTargetFacts,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
+use crate::domain::principal::{PenName, Standing, SubjectKey};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StoreError {
@@ -241,4 +242,36 @@ pub trait EndorsementStore: Send + Sync {
         work_id: WorkId,
         comments: &CommentBatch,
     ) -> impl Future<Output = Result<OwnEndorsementFacts, StoreError>> + Send;
+}
+
+/// The principal an authenticated subject acts as, and whether it may act now.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BoundPrincipal {
+    pub principal: PrincipalId,
+    pub standing: Standing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Provisioned {
+    pub bound: BoundPrincipal,
+    /// `false` when the subject was already bound (a retry or a concurrent first request).
+    pub created: bool,
+}
+
+/// Subject → principal bindings (D-05/S-03 spike). Implementations create the principal and its
+/// binding atomically and never move a binding to another principal.
+pub trait PrincipalStore: Send + Sync {
+    fn principal_for_subject(
+        &self,
+        subject: &SubjectKey,
+    ) -> impl Future<Output = Result<Option<BoundPrincipal>, StoreError>> + Send;
+
+    /// Binds `subject` to a new principal `candidate` named `pen_name`, or returns the principal
+    /// it is already bound to. Exactly one principal per subject under concurrency.
+    fn provision_principal(
+        &self,
+        subject: &SubjectKey,
+        candidate: PrincipalId,
+        pen_name: &PenName,
+    ) -> impl Future<Output = Result<Provisioned, StoreError>> + Send;
 }
