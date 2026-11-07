@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -90,6 +90,75 @@ async function bottomNavigationGeometry(page, scenario) {
     });
   })()`), `${scenario}: all three labels fit in at most two lines inside targets >=44px`);
   check(await page.eval(`document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height <= innerHeight * 0.18`), `${scenario}: bottom navigation leaves at least 82% of viewport height for the page`);
+}
+
+// Compare the icon row and the first rendered text line, never the centre of the
+// whole label: one- and two-line labels intentionally have different heights.
+async function bottomNavigationAlignment(page, scenario) {
+  if (!await page.eval(`document.querySelector('.vk-ui-bottom-nav').getClientRects().length > 0`)) return;
+  await bottomNavigationGeometry(page, scenario);
+  const geometry = await page.eval(`(() => [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => {
+    const target = a.getBoundingClientRect(), icon = a.querySelector('.vk-ui-icon').getBoundingClientRect();
+    const label = a.querySelector('.vk-ui-nav-item__label'), style = getComputedStyle(label);
+    const range = document.createRange(); range.selectNodeContents(label);
+    const first = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0);
+    return { name: a.textContent, x: target.x, y: target.y, width: target.width, height: target.height,
+      iconCenterY: icon.y + icon.height / 2, firstLineY: first?.y,
+      font: style.font, lineHeight: style.lineHeight };
+  }))()`);
+  check(geometry.length === 3 && geometry.every(g => Number.isFinite(g.firstLineY)) &&
+    ['y', 'width', 'height', 'iconCenterY', 'firstLineY'].every(key =>
+      Math.max(...geometry.map(g => g[key])) - Math.min(...geometry.map(g => g[key])) <= 1) &&
+    geometry.every(g => g.font === geometry[0].font && g.lineHeight === geometry[0].lineHeight),
+  `${scenario}: equal targets, icon centres and first label lines align within 1px: ${JSON.stringify(geometry)}`);
+  return geometry;
+}
+
+async function bottomNavigationRegression(page) {
+  for (const theme of ['dark', 'light']) {
+    await page.viewport(320);
+    await page.goto(`${args.base}/toi`);
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation hydration');
+    await chooseTheme(page, theme, 'page-theme');
+    for (const width of [320, 390]) {
+      await page.viewport(width);
+      for (const scale of [100, 200]) {
+        let reference;
+        for (const route of ['/toi', '/', '/ban-viet']) {
+          await page.goto(`${args.base}${route}`);
+          await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'navigation route hydration');
+          await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+          const name = `nav-${route === '/' ? 'explore' : route.slice(1)}-${width}-${scale}-${theme}`;
+          await page.capture(name);
+          const geometry = await bottomNavigationAlignment(page, name);
+          // Routes may add/remove the desktop scrollbar; compare their vertical tracks.
+          if (reference) check(geometry.every((g, i) => ['y', 'height', 'iconCenterY', 'firstLineY'].every(k => Math.abs(g[k] - reference[i][k]) <= 1)), `${name}: selected route preserves geometry`);
+          reference = geometry;
+          await page.eval(`document.querySelector('.vk-ui-bottom-nav a').focus()`);
+          await page.key('Tab');
+          check(await page.eval(`document.activeElement === document.querySelectorAll('.vk-ui-bottom-nav a')[1] && getComputedStyle(document.activeElement).outlineStyle !== 'none'`), `${name}: keyboard order and visible focus`);
+          const focused = await bottomNavigationAlignment(page, `${name} focused`);
+          check(focused.every((g, i) => ['y', 'width', 'height', 'iconCenterY', 'firstLineY'].every(k => Math.abs(g[k] - geometry[i][k]) <= 1)), `${name}: focus preserves geometry`);
+          await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
+          check(await page.eval(`(() => {
+            const content = document.querySelector('.vk-ui-scaffold__content'), bar = document.querySelector('.vk-ui-bottom-nav');
+            return parseFloat(getComputedStyle(content).paddingBottom) >= bar.getBoundingClientRect().height + 27;
+          })()`), `${name}: measured content clearance follows the bar`);
+        }
+      }
+    }
+  }
+  // Font-size and viewport changes above exercise ResizeObserver after hydration.
+  await page.eval(`document.documentElement.style.fontSize = ''`);
+  await page.viewport(834);
+  await page.goto(`${args.base}/toi`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'rail hydration');
+  check(await page.eval(`document.querySelector('.vk-ui-rail').getClientRects().length > 0 && document.querySelector('.vk-ui-bottom-nav').getClientRects().length === 0`), '834px keeps the rail and hides the bottom bar');
+  await page.capture('nav-rail-834');
+  await page.viewport(320);
+  await page.goto(`${args.base}/ban-viet/${SAMPLE_WORK}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'editor hydration');
+  check(await page.eval(`document.querySelector('.vk-ui-scaffold').hasAttribute('data-hide-bar') && document.querySelector('.vk-ui-bottom-nav').getClientRects().length === 0`), 'mobile editor still hides the bottom bar');
 }
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -219,7 +288,7 @@ class Page {
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
-        navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label') })) },
+        navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
       };
     })()`);
     const manifest = join(dir, 'contexts.json');
@@ -1208,7 +1277,7 @@ async function adaptiveShell(page) {
       if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
-        await bottomNavigationGeometry(page, `shell ${width}px/${scale}%/${theme}`);
+        await bottomNavigationAlignment(page, `shell ${width}px/${scale}%/${theme}`);
         await page.capture(`${width}-me-${theme}-text${scale}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
@@ -2926,6 +2995,7 @@ try {
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
+  else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);
   else if (args.phase === 'first-paint') {
     await page.goto(`${args.base}/toi`);

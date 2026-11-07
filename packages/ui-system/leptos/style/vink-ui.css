@@ -1626,9 +1626,11 @@
   z-index: 5;
 }
 
+/* Equal grid targets stretch to the tallest label. Start each icon/label stack at
+ * the same inset so a one-line label shares the first row of a two-line label. */
 .vk-ui-bottom-nav .vk-ui-nav-item {
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: var(--vk-space-1);
   padding: var(--vk-space-1) 0;
   text-align: center;

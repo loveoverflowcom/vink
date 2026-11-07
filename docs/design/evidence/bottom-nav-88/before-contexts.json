@@ -1,0 +1,498 @@
+{
+  "nav-toi-320-100-dark": {
+    "route": "/toi",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "navigation": {
+      "bar": {
+        "x": 0,
+        "y": 820,
+        "width": 320,
+        "height": 80,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": {
+            "x": 8,
+            "y": 824,
+            "width": 98.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 45.328125,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 24.828125,
+            "y": 864.90625,
+            "width": 65,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 24.828125,
+            "y": 865.90625,
+            "width": 65,
+            "height": 16
+          }
+        },
+        {
+          "label": "Bàn viết",
+          "target": {
+            "x": 110.65625,
+            "y": 824,
+            "width": 98.671875,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 147.984375,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 133.390625,
+            "y": 864.90625,
+            "width": 53.203125,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 133.390625,
+            "y": 865.90625,
+            "width": 53.203125,
+            "height": 16
+          }
+        },
+        {
+          "label": "Tôi",
+          "target": {
+            "x": 213.328125,
+            "y": 824,
+            "width": 98.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 250.65625,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 252.78125,
+            "y": 864.90625,
+            "width": 19.734375,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 252.78125,
+            "y": 865.90625,
+            "width": 19.734375,
+            "height": 16
+          }
+        }
+      ]
+    },
+    "captured_at": "2026-11-07T15:25:30.061Z",
+    "evidence": {
+      "build": "4348b1d7bbf97641d3db5901f6d93970c069749b"
+    }
+  },
+  "nav-explore-320-100-dark": {
+    "route": "/",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "navigation": {
+      "bar": {
+        "x": 0,
+        "y": 820,
+        "width": 305,
+        "height": 80,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": {
+            "x": 8,
+            "y": 824,
+            "width": 93.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 42.828125,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 22.328125,
+            "y": 864.90625,
+            "width": 65,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 22.328125,
+            "y": 865.90625,
+            "width": 65,
+            "height": 16
+          }
+        },
+        {
+          "label": "Bàn viết",
+          "target": {
+            "x": 105.65625,
+            "y": 824,
+            "width": 93.671875,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 140.484375,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 125.890625,
+            "y": 864.90625,
+            "width": 53.203125,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 125.890625,
+            "y": 865.90625,
+            "width": 53.203125,
+            "height": 16
+          }
+        },
+        {
+          "label": "Tôi",
+          "target": {
+            "x": 203.328125,
+            "y": 824,
+            "width": 93.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 238.15625,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 240.28125,
+            "y": 864.90625,
+            "width": 19.734375,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 240.28125,
+            "y": 865.90625,
+            "width": 19.734375,
+            "height": 16
+          }
+        }
+      ]
+    },
+    "captured_at": "2026-11-07T15:25:30.630Z",
+    "evidence": {
+      "build": "4348b1d7bbf97641d3db5901f6d93970c069749b"
+    }
+  },
+  "nav-ban-viet-320-100-dark": {
+    "route": "/ban-viet",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "navigation": {
+      "bar": {
+        "x": 0,
+        "y": 820,
+        "width": 305,
+        "height": 80,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": {
+            "x": 8,
+            "y": 824,
+            "width": 93.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 42.828125,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 22.328125,
+            "y": 864.90625,
+            "width": 65,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 22.328125,
+            "y": 865.90625,
+            "width": 65,
+            "height": 16
+          }
+        },
+        {
+          "label": "Bàn viết",
+          "target": {
+            "x": 105.65625,
+            "y": 824,
+            "width": 93.671875,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 140.484375,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 125.890625,
+            "y": 864.90625,
+            "width": 53.203125,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 125.890625,
+            "y": 865.90625,
+            "width": 53.203125,
+            "height": 16
+          }
+        },
+        {
+          "label": "Tôi",
+          "target": {
+            "x": 203.328125,
+            "y": 824,
+            "width": 93.65625,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 238.15625,
+            "y": 836.90625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "text": {
+            "x": 240.28125,
+            "y": 864.90625,
+            "width": 19.734375,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 240.28125,
+            "y": 865.90625,
+            "width": 19.734375,
+            "height": 16
+          }
+        }
+      ]
+    },
+    "captured_at": "2026-11-07T15:25:31.291Z",
+    "evidence": {
+      "build": "4348b1d7bbf97641d3db5901f6d93970c069749b"
+    }
+  },
+  "nav-toi-320-200-dark": {
+    "route": "/toi",
+    "width": 320,
+    "height": 900,
+    "dpr": 1,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+    "navigation": {
+      "bar": {
+        "x": 0,
+        "y": 763.21875,
+        "width": 305,
+        "height": 136.78125,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": {
+            "x": 16,
+            "y": 771.21875,
+            "width": 85.65625,
+            "height": 120.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "icon": {
+            "x": 46.828125,
+            "y": 779.21875,
+            "width": 24,
+            "height": 24,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "text": {
+            "x": 16,
+            "y": 811.21875,
+            "width": 85.65625,
+            "height": 72.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "firstLine": {
+            "x": 21.6875,
+            "y": 812.21875,
+            "width": 74.265625,
+            "height": 33
+          }
+        },
+        {
+          "label": "Bàn viết",
+          "target": {
+            "x": 109.65625,
+            "y": 771.21875,
+            "width": 85.671875,
+            "height": 120.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "icon": {
+            "x": 140.484375,
+            "y": 779.21875,
+            "width": 24,
+            "height": 24,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "text": {
+            "x": 109.65625,
+            "y": 811.21875,
+            "width": 85.671875,
+            "height": 72.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "firstLine": {
+            "x": 127.140625,
+            "y": 812.21875,
+            "width": 50.703125,
+            "height": 33
+          }
+        },
+        {
+          "label": "Tôi",
+          "target": {
+            "x": 203.328125,
+            "y": 771.21875,
+            "width": 85.65625,
+            "height": 120.78125,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "icon": {
+            "x": 234.15625,
+            "y": 797.40625,
+            "width": 24,
+            "height": 24,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "text": {
+            "x": 226.421875,
+            "y": 829.40625,
+            "width": 39.453125,
+            "height": 36.390625,
+            "fontSize": "26px",
+            "lineHeight": "36.4px"
+          },
+          "firstLine": {
+            "x": 226.421875,
+            "y": 830.40625,
+            "width": 39.453125,
+            "height": 33
+          }
+        }
+      ]
+    },
+    "captured_at": "2026-11-07T15:25:32.594Z",
+    "evidence": {
+      "build": "4348b1d7bbf97641d3db5901f6d93970c069749b"
+    }
+  }
+}
