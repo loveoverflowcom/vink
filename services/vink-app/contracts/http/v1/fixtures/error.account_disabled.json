@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "account_disabled",
+    "message": "this account is disabled; no session was started"
+  }
+}

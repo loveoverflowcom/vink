@@ -91,6 +91,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(drafts)
         .merge(discussion)
         .merge(endorsement)
+        .merge(super::auth::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(middleware::from_fn_with_state(state, require_same_origin))
 }

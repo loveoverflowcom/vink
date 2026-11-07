@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "invalid_email",
+    "message": "the address is not a deliverable mailbox address"
+  }
+}

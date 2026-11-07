@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "authority_not_configured",
+    "message": "sign-in is not available in this deployment"
+  }
+}

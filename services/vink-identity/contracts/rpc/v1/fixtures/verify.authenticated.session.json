@@ -1,0 +1,12 @@
+{
+  "outcome": "authenticated",
+  "subject": {
+    "authority": "vink-identity",
+    "id": "018f3c2e-0000-7000-8000-00000000a001"
+  },
+  "authenticated_at": "2026-11-07T10:01:00Z",
+  "session": {
+    "id": "018f3c2e-0000-7000-8000-00000000b001",
+    "expires_at": "2026-12-07T10:01:00Z"
+  }
+}

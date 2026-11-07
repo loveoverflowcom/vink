@@ -33,6 +33,8 @@ mod conditional_reads;
 mod discussion;
 #[path = "postgres/endorsement.rs"]
 mod endorsement;
+#[path = "postgres/principal.rs"]
+mod principal;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

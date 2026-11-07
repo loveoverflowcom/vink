@@ -50,6 +50,7 @@ fn classify_inner(error: sqlx::Error) -> StoreError {
                     | "work_endorsements_actor_id_fkey"
                     | "comment_endorsements_actor_id_fkey"
                     | "endorsement_receipts_actor_id_fkey"
+                    | "principal_suspensions_principal_id_fkey"
             )
         )
     {

@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "code_rejected",
+    "message": "the code is not correct; try again",
+    "field": "code"
+  }
+}

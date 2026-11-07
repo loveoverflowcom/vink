@@ -7,6 +7,7 @@
 mod discussion;
 mod endorsement;
 mod postgres;
+mod principal;
 
 use sqlx::migrate::Migrator;
 use sqlx::postgres::PgPool;
@@ -16,6 +17,9 @@ pub use discussion::{
     GrantOutcome, ModeratorRecord, active_moderators, grant_moderator, revoke_moderator,
 };
 pub use postgres::PgStore;
+pub use principal::{
+    SuspensionOutcome, SuspensionRecord, active_suspensions, reinstate_principal, suspend_principal,
+};
 pub use vink_store_postgres::{MigrationError, MigrationReport, SchemaState, role_is_privileged};
 
 /// Versioned migrations, embedded at build time from `services/vink-app/migrations`.

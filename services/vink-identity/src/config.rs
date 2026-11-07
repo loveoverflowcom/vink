@@ -17,6 +17,16 @@ pub enum LogFormat {
     Json,
 }
 
+/// Which authority `serve` runs (D-05/S-03 spike).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AuthorityChoice {
+    /// Default: every verification answers `authority_not_configured`.
+    NotConfigured,
+    /// `VINK_IDENTITY_AUTHORITY=email-code`: native accounts proven by a one-time code. Codes are
+    /// written to `outbox` (`VINK_IDENTITY_LOCAL_OUTBOX`), the only transport that exists.
+    EmailCode { outbox: PathBuf },
+}
+
 #[derive(Clone)]
 pub struct ServeConfig {
     pub database_url: String,
@@ -25,6 +35,7 @@ pub struct ServeConfig {
     /// The only OS user whose connections may call the contract. `None` keeps the contract
     /// closed: every call is refused and readiness reports `callers: not_configured`.
     pub caller_uid: Option<u32>,
+    pub authority: AuthorityChoice,
     pub log_format: LogFormat,
 }
 
@@ -34,8 +45,51 @@ impl fmt::Debug for ServeConfig {
             .field("database_url", &"<redacted>")
             .field("socket", &self.socket)
             .field("caller_uid", &self.caller_uid)
+            .field("authority", &self.authority)
             .field("log_format", &self.log_format)
             .finish()
+    }
+}
+
+/// `vink-identity account …`: operator commands on the runtime credential.
+#[derive(Clone)]
+pub struct OperatorConfig {
+    pub database_url: String,
+    pub log_format: LogFormat,
+}
+
+impl fmt::Debug for OperatorConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("OperatorConfig")
+            .field("database_url", &"<redacted>")
+            .field("log_format", &self.log_format)
+            .finish()
+    }
+}
+
+impl OperatorConfig {
+    pub fn from_env() -> Result<Self, ConfigError> {
+        Self::from_lookup(|key| std::env::var(key).ok())
+    }
+
+    pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> Result<Self, ConfigError> {
+        let mut problems = Vec::new();
+        let value = |key: &str| get(key).filter(|v| !v.trim().is_empty());
+        let database_url = database_url(
+            "VINK_IDENTITY_DATABASE_URL",
+            value("VINK_IDENTITY_DATABASE_URL"),
+            "PostgreSQL URL of the Identity runtime role",
+            &mut problems,
+        );
+        let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
+        if problems.is_empty() {
+            Ok(Self {
+                database_url,
+                log_format,
+            })
+        } else {
+            Err(ConfigError { problems })
+        }
     }
 }
 
@@ -109,12 +163,43 @@ impl ServeConfig {
                 }
             },
         };
+        let authority = match (
+            value("VINK_IDENTITY_AUTHORITY").as_deref().map(str::trim),
+            value("VINK_IDENTITY_LOCAL_OUTBOX"),
+        ) {
+            (None, None) => AuthorityChoice::NotConfigured,
+            (Some("email-code"), Some(outbox)) => AuthorityChoice::EmailCode {
+                outbox: PathBuf::from(outbox),
+            },
+            (Some("email-code"), None) => {
+                problems.push(
+                    "VINK_IDENTITY_LOCAL_OUTBOX: missing (the email-code authority has no other \
+                     mail transport; production SMTP is not implemented)"
+                        .into(),
+                );
+                AuthorityChoice::NotConfigured
+            }
+            (None, Some(_)) => {
+                problems.push(
+                    "VINK_IDENTITY_LOCAL_OUTBOX: only valid with VINK_IDENTITY_AUTHORITY=email-code"
+                        .into(),
+                );
+                AuthorityChoice::NotConfigured
+            }
+            (Some(other), _) => {
+                problems.push(format!(
+                    "VINK_IDENTITY_AUTHORITY: expected `email-code` or unset, got `{other}`"
+                ));
+                AuthorityChoice::NotConfigured
+            }
+        };
         let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
         if problems.is_empty() {
             Ok(Self {
                 database_url,
                 socket,
                 caller_uid,
+                authority,
                 log_format,
             })
         } else {
@@ -247,6 +332,58 @@ mod tests {
             error.to_string().contains("Unix socket path limit"),
             "{error}"
         );
+    }
+
+    #[test]
+    fn the_email_code_authority_needs_its_outbox_and_nothing_else_is_accepted() {
+        let base = [
+            ("VINK_IDENTITY_DATABASE_URL", URL),
+            ("VINK_IDENTITY_SOCKET", "/run/vink/identity.sock"),
+        ];
+        let with = |extra: &[(&str, &str)]| {
+            let mut pairs = base.to_vec();
+            pairs.extend_from_slice(extra);
+            let vars = env(&pairs);
+            ServeConfig::from_lookup(|k| vars.get(k).cloned())
+        };
+        assert_eq!(with(&[]).unwrap().authority, AuthorityChoice::NotConfigured);
+        assert_eq!(
+            with(&[
+                ("VINK_IDENTITY_AUTHORITY", "email-code"),
+                ("VINK_IDENTITY_LOCAL_OUTBOX", "/run/vink/outbox"),
+            ])
+            .unwrap()
+            .authority,
+            AuthorityChoice::EmailCode {
+                outbox: PathBuf::from("/run/vink/outbox")
+            }
+        );
+        for (extra, expected) in [
+            (
+                &[("VINK_IDENTITY_AUTHORITY", "email-code")][..],
+                "VINK_IDENTITY_LOCAL_OUTBOX: missing",
+            ),
+            (
+                &[("VINK_IDENTITY_LOCAL_OUTBOX", "/run/vink/outbox")][..],
+                "only valid with",
+            ),
+            (
+                &[("VINK_IDENTITY_AUTHORITY", "password")][..],
+                "VINK_IDENTITY_AUTHORITY: expected",
+            ),
+        ] {
+            let error = with(extra).unwrap_err().to_string();
+            assert!(error.contains(expected), "{error}");
+        }
+    }
+
+    #[test]
+    fn operator_commands_use_the_runtime_credential_only() {
+        let vars = env(&[("VINK_IDENTITY_MIGRATE_DATABASE_URL", URL)]);
+        assert!(OperatorConfig::from_lookup(|k| vars.get(k).cloned()).is_err());
+        let vars = env(&[("VINK_IDENTITY_DATABASE_URL", URL)]);
+        let config = OperatorConfig::from_lookup(|k| vars.get(k).cloned()).unwrap();
+        assert!(!format!("{config:?}").contains("secret"));
     }
 
     #[test]
