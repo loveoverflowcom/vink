@@ -1,0 +1,307 @@
+{
+  "base_sha": "b4134a7759dc693cf9781c5dfced5b815da5e838",
+  "source_sha256": {
+    "before": {
+      "apps/vink-web/src/appearance.rs": "bfcfba914041114ec0cc50b8128d72b82bcf2873e4949baee3c00bfa481eb773",
+      "apps/vink-web/src/lib.rs": "16d0588e652442ac86aed091fe0754a75b0f8b4252f0f05149b0990a0890606f",
+      "apps/vink-web/src/pages/discussion.rs": "2fd5adb775fc58a045ae9534f1a98d1a5f2633cb94306a7c93393d77e644348f",
+      "apps/vink-web/src/shell.rs": "1e8dd4d52a0eac8c54182d46e2cd25f6cceeed55d6fdfce4e281f494dfb0665a",
+      "apps/vink-web/style/vink.css": "c787ca59ede561d9f7d7136ce624b8daea68a32da916a6242822ce9234fac1ca",
+      "apps/vink-web/src/pages/me.rs": "1528492b452d7a58ab55fce1e39617d4d296c8b6857e6a98832bc0aaba62cd32",
+      "packages/ui-system/shared/tokens.json": "750bbce1661b6657bd3d571b17ac6b7048bd0fa47a059e7c758e6470b3d5e62c",
+      "packages/ui-system/leptos/src/support.rs": "9590d5038513c5051b46c9ea7e6ca4f3473fcd7c943cfd44198bbf7d9d6cbeed"
+    },
+    "after": {
+      "apps/vink-web/src/appearance.rs": "5dbee0534b26ff0f2ba2220a5122cd6f85ca006d99cd166b7f0d8698daa41ac1",
+      "apps/vink-web/src/lib.rs": "a4b045a9764d452e3c54661206418a936b7cbc2389a8b866ee67c88e2dce9561",
+      "apps/vink-web/src/pages/discussion.rs": "2e5d7b974147865defc7f833f0e39baed532293cd144be79b5562430c186ee4f",
+      "apps/vink-web/src/shell.rs": "ebcc3c4578838c6f5754eaf24d502afc4f7b954319b367b1d9e09d64afe900e1",
+      "apps/vink-web/style/vink.css": "c2d1518658b7aa60ba5b086cbd2498f5ac6cf89853087014654a10cd83c7a567",
+      "apps/vink-web/src/pages/me.rs": "1528492b452d7a58ab55fce1e39617d4d296c8b6857e6a98832bc0aaba62cd32",
+      "packages/ui-system/shared/tokens.json": "750bbce1661b6657bd3d571b17ac6b7048bd0fa47a059e7c758e6470b3d5e62c",
+      "packages/ui-system/leptos/src/support.rs": "9590d5038513c5051b46c9ea7e6ca4f3473fcd7c943cfd44198bbf7d9d6cbeed"
+    }
+  },
+  "runner_sha256": {
+    "before": "e6a7828cbceb9a7983714267f6aaf694021848643a42b2874d192bb391b1615e",
+    "after": "8b68037f68f532e6a365a7c3e013af007dbb83e55b0a1768eee0478261b1dbc5"
+  },
+  "environment": {
+    "os": "macOS",
+    "browser": "Headless Chrome 156",
+    "dpr": 1,
+    "root_font_px": [
+      16,
+      32
+    ],
+    "data": "repository-owned synthetic LocalFixture; unavailable account"
+  },
+  "captures": [
+    {
+      "file": "before-390-me-light-text100.png",
+      "phase": "before",
+      "sha256": "f5ec71e3a989eb7d4cd681fc6470161cb9cfc10df10ba70fc4e850d685b920b9",
+      "png_size": [
+        390,
+        844
+      ],
+      "opened": true,
+      "viewport": [
+        390,
+        844
+      ],
+      "root_font": "16px",
+      "theme": "light",
+      "scroll_y": 0
+    },
+    {
+      "file": "before-390-me-dark-text100.png",
+      "phase": "before",
+      "sha256": "edfa0d97188eb6cb0a323e27041ef1c2f0d984caf4b42299a85517af4a796ba8",
+      "png_size": [
+        390,
+        844
+      ],
+      "opened": true,
+      "viewport": [
+        390,
+        844
+      ],
+      "root_font": "16px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "before-320-me-dark-text200.png",
+      "phase": "before",
+      "sha256": "241e99c0b7c0f33a698ac2e1fdbf1f50f31c1d7b9758001029ff847e95a04ea3",
+      "png_size": [
+        320,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        320,
+        900
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "before-320-me-dark-text200-appearance.png",
+      "phase": "before",
+      "sha256": "ebea235feaa751cf99cde620c1cce03b79359d5b4bb3505d8f992e4b0dd5dd02",
+      "png_size": [
+        320,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        320,
+        900
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 632
+    },
+    {
+      "file": "after-390-me-light-text100.png",
+      "phase": "after",
+      "sha256": "863e06b40f2f6121e07fdf41d9e9ce8e9a0b022383729e7fb2a85b15e5e62f36",
+      "png_size": [
+        390,
+        844
+      ],
+      "opened": true,
+      "viewport": [
+        390,
+        844
+      ],
+      "root_font": "16px",
+      "theme": "light",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-390-me-dark-text100.png",
+      "phase": "after",
+      "sha256": "5c828c57ca7fa011eb8a90e12019d4d09ddc6685b4f8294755529ea515635bb5",
+      "png_size": [
+        390,
+        844
+      ],
+      "opened": true,
+      "viewport": [
+        390,
+        844
+      ],
+      "root_font": "16px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-320-me-dark-text200.png",
+      "phase": "after",
+      "sha256": "66ac41a5994a4c1d68113e8212df57e15d321833b4122f589271829d1f8d5ce7",
+      "png_size": [
+        320,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        320,
+        900
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-320-me-dark-text200-appearance.png",
+      "phase": "after",
+      "sha256": "8b621afd62b281bcf75280776f3a6a455ecf7f3bce5b9f4d72c386fc9df54fad",
+      "png_size": [
+        320,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        320,
+        900
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 643
+    },
+    {
+      "file": "after-panel-1440-dark.png",
+      "phase": "after",
+      "sha256": "5f27be3dc409da1010248e22ee3ccc586e2bd7360127e75fb47735de8bfedf0c",
+      "png_size": [
+        1440,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        1440,
+        900
+      ],
+      "root_font": "16px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-panel-834x360-text200-end.png",
+      "phase": "after",
+      "sha256": "4bb8fa0a83802bc6e1d61d87fab10fc60b20b4cefdb2656d9349305b380b50ed",
+      "png_size": [
+        834,
+        360
+      ],
+      "opened": true,
+      "viewport": [
+        834,
+        360
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-panel-help-dark.png",
+      "phase": "after",
+      "sha256": "65fa442390e24fb2141b52ec76851698712d4785a52d721879ba8ad8319b9c15",
+      "png_size": [
+        1440,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        1440,
+        900
+      ],
+      "root_font": "16px",
+      "theme": "dark",
+      "scroll_y": 0
+    },
+    {
+      "file": "after-touch-help-320-text200.png",
+      "phase": "after",
+      "sha256": "2ef93c0fd77c3515c1587c1711dd5320ed03b3f291bc29f6784774ac37b4b556",
+      "png_size": [
+        320,
+        900
+      ],
+      "opened": true,
+      "viewport": [
+        320,
+        900
+      ],
+      "root_font": "32px",
+      "theme": "dark",
+      "scroll_y": 258
+    },
+    {
+      "file": "after-selected-focus-dark.png",
+      "phase": "after",
+      "sha256": "f7a99c04dab2a91f4b9e9963f40dbf22b69f1c733d4208d44be11c2effeaabd2",
+      "png_size": [
+        390,
+        844
+      ],
+      "opened": true,
+      "viewport": [
+        390,
+        844
+      ],
+      "root_font": "16px",
+      "theme": "dark",
+      "scroll_y": 0
+    }
+  ],
+  "runs": {
+    "baseline_build": {
+      "result": "PASS",
+      "command": "cargo xtask build",
+      "log_sha256": "95e160128c36fc36343870bd53e0cf8b5ec64f04ad5763a242af5741f359d009"
+    },
+    "baseline_appearance": {
+      "result": "PASS",
+      "command": "browser-smoke --phase appearance",
+      "log_sha256": "5d0e0c86636f13032c937697e57f466c002f73e84328d353ceaff84b95efe455"
+    },
+    "final_build": {
+      "result": "PASS",
+      "command": "cargo xtask build",
+      "log_sha256": "a58168cc52cc131be552fe833422df2e0f774e35746204a0570cb9510f4d6a89"
+    },
+    "appearance": {
+      "result": "PASS",
+      "command": "browser-smoke --phase appearance",
+      "log_sha256": "85eef512fde16d793aead96f85e22cdff7eb1c0ca9ec1cbfcb0f05afdeed79e7",
+      "summary": "appearance-summary.txt"
+    },
+    "quick": {
+      "result": "PASS",
+      "command": "cargo xtask verify quick",
+      "log_sha256": "6586185d08356af2f1cd517e9160cdcaceefce2c029223d8fca4e4400ab74620",
+      "summary": "quick-summary.txt"
+    },
+    "reader": {
+      "result": "PASS",
+      "command": "browser-smoke --phase public-search",
+      "log_sha256": "98e4449e32136e428798e75955c8e513c17400cb29d786b96e0d837ff48fa965",
+      "summary": "reader-summary.txt"
+    },
+    "web": {
+      "result": "PASS",
+      "command": "cargo xtask verify web",
+      "log_sha256": "dcee414cbd37bf857ed9635540dbb516e9699b92b189c6bf476a496a3553f2c4",
+      "summary": "web-summary.txt"
+    }
+  },
+  "limits": [
+    "CSS viewport/root-text and CDP input; actual zoom, OS IME, mobile hardware, screen reader and native targets NOT_RUN",
+    "same-fixture before/after on /toi; panel captures are after-only"
+  ]
+}

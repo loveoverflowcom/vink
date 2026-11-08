@@ -1,0 +1,24 @@
+  ok  forced-colors: selected keyboard perimeter contrasts with the filled face >=3:1 (19.04)
+R5 preference surfaces and shared native disclosures:
+  ok  light: selected keyboard perimeter contrasts with the filled face >=3:1 (6.98)
+  ok  light: flat account/appearance groups, solid selected fill + check and no idle frames
+  ok  light: concise true account copy and one borderless build entrypoint
+  ok  light: Enter opens native help without moving focus
+  ok  light: Space toggles native help closed
+  ok  light: panel uses one flat surface without rim or nested appearance shell
+  ok  light: native help participates in modal Tab order
+  ok  light: expanded help at 834x360/text200 keeps one scroller and final action reachable
+  ok  dark: selected keyboard perimeter contrasts with the filled face >=3:1 (8.16)
+  ok  dark: flat account/appearance groups, solid selected fill + check and no idle frames
+  ok  dark: concise true account copy and one borderless build entrypoint
+  ok  dark: Enter opens native help without moving focus
+  ok  dark: Space toggles native help closed
+  ok  dark: panel uses one flat surface without rim or nested appearance shell
+  ok  dark: native help participates in modal Tab order
+  ok  dark: expanded help at 834x360/text200 keeps one scroller and final action reachable
+  ok  appearance info has a >=48px touch target at 320/text200
+  ok  320/text200 expanded help reflows without clipping
+  ok  page-theme-help: SSR native detail works without page JavaScript
+  ok  build-info: SSR native detail works without page JavaScript
+  ok  no-JS disclosure check produces only expected blocked imports
+browser-smoke: PASS (appearance)

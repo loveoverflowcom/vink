@@ -1,0 +1,9 @@
+verification summary
+  PASS  prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)
+  PASS  build server + browser bundle
+  PASS  browser bundle carries no database URL, credential setting or local password
+  PASS  scratch database: create, migrate, seed
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview
+  PASS  server stops gracefully on SIGTERM
+  PASS  confirmed draft survives server restart (browser reload), export
+  PASS  literary endorsement: real writes, double tap, lost ACK + replay, 409, keyboard, 401
