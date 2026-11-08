@@ -187,7 +187,6 @@ fn shell(frame: Frame, host: Host, page: AnyView, overlays: ViewFn) -> AnyView {
                 on_toggle=toggle
                 destinations=rail_items.clone()
                 on_navigate=navigate
-                brand=brand
                 account=move || view! {
                     <NavUtility
                         id="nav-profile-trigger"

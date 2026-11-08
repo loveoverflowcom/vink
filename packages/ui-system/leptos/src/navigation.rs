@@ -8,7 +8,7 @@ use leptos::html;
 use leptos::prelude::*;
 
 use crate::icons::IconName;
-use crate::media::Icon;
+use crate::media::{Icon, IconSize};
 
 /// Available window width class. The host measures its own available width; thresholds are
 /// Web CSS px from the #7 shell and Material dp on CMP.
@@ -390,8 +390,8 @@ fn items(
         .into_any()
 }
 
-/// Rail anatomy: brand → permanent toggle → primary destinations → account foot. The tooltip is
-/// rendered after the rail, outside its scrolling container, so containment cannot clip it.
+/// Rail anatomy: optional host brand → permanent toggle → primary destinations → account foot.
+/// The tooltip is outside the rail’s scrolling container so containment cannot clip it.
 /// IDs derive from `id`: `{id}-toggle`, `{id}-tooltip`, `{id}-primary`, `{id}-account`.
 #[component]
 pub fn NavigationRail(
@@ -406,7 +406,7 @@ pub fn NavigationRail(
     on_toggle: Callback<()>,
     destinations: Vec<(NavDestination, Signal<bool>)>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
-    #[prop(optional, into)] brand: ViewFn,
+    #[prop(optional, into)] brand: Option<ViewFn>,
     #[prop(optional, into)] account: ViewFn,
 ) -> impl IntoView {
     let tooltip = RwSignal::new(false);
@@ -446,32 +446,30 @@ pub fn NavigationRail(
 
     view! {
         <aside id=id class="vk-ui-rail" aria-label=label>
-            <div class="vk-ui-rail__brand">{brand.run()}</div>
-            <div class="vk-ui-rail__toggle">
-                <button
-                    type="button"
-                    id=toggle_id
-                    class="vk-ui-rail-toggle"
-                    node_ref=toggle
-                    aria-label=accessible_name
-                    aria-expanded=move || expanded.get().to_string()
-                    aria-controls=controls
-                    aria-describedby=move || tooltip.get().then(|| described.clone())
-                    on:click=move |_| {
-                        on_toggle.run(());
-                        tooltip.set(false);
-                    }
-                    on:mouseenter=move |_| show()
-                    on:mouseleave=move |_| tooltip.set(false)
-                    on:focus=move |_| show()
-                    on:blur=move |_| tooltip.set(false)
-                >
-                    {move || {
-                        let icon = if expanded.get() { IconName::MenuOpen } else { IconName::Menu };
-                        view! { <Icon name=icon /> }
-                    }}
-                </button>
-            </div>
+            {brand.map(|brand| view! { <div class="vk-ui-rail__brand">{brand.run()}</div> })}
+            <button
+                type="button"
+                id=toggle_id
+                class="vk-ui-rail-toggle"
+                node_ref=toggle
+                aria-label=accessible_name
+                aria-expanded=move || expanded.get().to_string()
+                aria-controls=controls
+                aria-describedby=move || tooltip.get().then(|| described.clone())
+                on:click=move |_| {
+                    on_toggle.run(());
+                    tooltip.set(false);
+                }
+                on:mouseenter=move |_| show()
+                on:mouseleave=move |_| tooltip.set(false)
+                on:focus=move |_| show()
+                on:blur=move |_| tooltip.set(false)
+            >
+                {move || {
+                    let icon = if expanded.get() { IconName::MenuOpen } else { IconName::Menu };
+                    view! { <Icon name=icon size=IconSize::Small /> }
+                }}
+            </button>
             <nav id=primary_id class="vk-ui-rail__primary" aria-label=nav_label>
                 {primary}
             </nav>
@@ -786,6 +784,7 @@ mod tests {
         }
         assert_eq!(html.matches("aria-current=\"page\"").count(), 1, "{html}");
         assert!(!html.contains("role=\"tab"), "{html}");
+        assert!(!html.contains("vk-ui-rail__brand"), "{html}");
         // The tooltip is a sibling after </aside>, outside the scrolling rail.
         assert!(
             html.find("</aside>").unwrap() < html.find("role=\"tooltip\"").unwrap(),

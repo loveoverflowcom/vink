@@ -375,7 +375,7 @@ class Page {
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
-        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
+        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
       };
     })()`);
@@ -883,6 +883,7 @@ async function serverHtml() {
   const home = await fetch(args.base);
   const homeHtml = await home.text();
   check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Đã tải 1 tác phẩm · tối đa 12.') && homeHtml.includes('vk-public-row__link'), 'Explore HTML contains its finite public collection and actual inventory before JavaScript');
+  check(homeHtml.match(/class="vk-brand"/g)?.length === 1 && !homeHtml.includes('vk-ui-top-bar') && !homeHtml.includes('vk-ui-rail__brand'), 'SSR places exactly one brand on Explore and omits empty shell chrome');
   check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
   for (const query of ['mua tren pho cu', 'TÁC GIẢ MẪU'.normalize('NFD')]) {
     const response = await fetch(`${args.base}/?q=${encodeURIComponent(query)}`);
@@ -904,6 +905,8 @@ async function serverHtml() {
   const desk = await (await fetch(`${args.base}/ban-viet/${SAMPLE_WORK}`)).text();
   check(!desk.includes(DRAFT_ONLY_LINE), 'desk HTML is a shell without draft text');
   const index = await (await fetch(`${args.base}/ban-viet`)).text();
+  const me = await (await fetch(`${args.base}/toi`)).text();
+  check([html, desk, index, me].every(text => !text.includes('class="vk-brand"') && !text.includes('vk-ui-top-bar')), 'direct reader, editor, Desk and Tôi HTML has no global brand or empty header');
   const privateList = await (await fetch(`${args.base}/api/v1/drafts`)).json();
   check(!index.includes(DRAFT_ONLY_LINE) && privateList.drafts.every(d => !d.title || !index.includes(d.title)), 'dashboard SSR contains no private title/body or list hydration payload');
   const anonymous = await fetch(`${args.base}/api/v1/drafts`);
@@ -957,8 +960,47 @@ async function assertBrand(page, preference) {
     ? await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
     : preference;
   await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/vink-mark-${theme}-compact.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
-  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].every(el => getComputedStyle(el).backgroundImage.includes('vink-mark-${theme}.svg') && getComputedStyle(el).filter === 'none' && el.textContent === '')`), `${theme} rail/mobile marks use the approved asset without inversion or placeholder text`);
-  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].filter(el => el.getClientRects().length).every(el => { const r = el.getBoundingClientRect(); return r.width === r.height && r.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize); })`), `${theme} brand reserves its square before image decoding`);
+  await assertBrandPlacement(page);
+  if (await page.eval(`location.pathname === '/'`)) {
+    check(await page.eval(`(() => {
+      const mark = document.querySelector('#discovery-tools .vk-brand__mark');
+      const style = getComputedStyle(mark), rect = mark.getBoundingClientRect();
+      return style.backgroundImage.includes('vink-mark-${theme}.svg') && style.filter === 'none' &&
+        rect.width === rect.height && rect.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    })()`), `${theme} Explore mark uses the approved asset and reserves its square before decoding`);
+  }
+}
+
+async function assertBrandPlacement(page) {
+  check(await page.eval(`(() => {
+    const brands = document.querySelectorAll('.vk-brand');
+    if (document.querySelector('#navigation .vk-ui-rail__brand, .vk-ui-top-bar')) return false;
+    if (location.pathname !== '/') return brands.length === 0;
+    return brands.length === 1 && brands[0].closest('#explore #discovery-tools') &&
+      brands[0].getClientRects().length > 0 && brands[0].getAttribute('href') === '/' &&
+      brands[0].getAttribute('aria-label') === 'Vink — trang chủ';
+  })()`), 'brand appears once in the Explore tools, links home, and is absent on other routes');
+}
+
+async function assertExploreHeader(page, scenario) {
+  await page.eval(`document.fonts.ready`);
+  check(await page.eval(`(() => {
+    const rect = selector => document.querySelector(selector).getBoundingClientRect();
+    const brand = rect('#discovery-tools .vk-brand'), tools = rect('#discovery-tools');
+    const search = rect('#public-search'), field = rect('#public-search .vk-ui-search__shell');
+    const heading = rect('#explore-heading h1'), bar = rect('.vk-ui-bottom-nav');
+    const mobile = matchMedia('(max-width: 759px)').matches;
+    const layout = mobile
+      ? brand.bottom < field.top && search.right === tools.right && brand.bottom < bar.top
+      : field.right < brand.left && Math.abs((field.top + field.bottom - brand.top - brand.bottom) / 2) <= 8;
+    const input = document.querySelector('#public-query');
+    const text = document.createElement('canvas').getContext('2d');
+    text.font = getComputedStyle(input, '::placeholder').font;
+    const placeholderFits = !mobile || input.value || text.measureText(input.placeholder).width <= input.clientWidth;
+    return layout && placeholderFits && brand.height >= 44 && brand.right === tools.right && brand.right <= innerWidth &&
+      heading.left === search.left && heading.top >= search.bottom &&
+      document.documentElement.scrollWidth <= innerWidth;
+  })()`), `${scenario}: Explore brand stays top-right with a separate heading and no overlap`);
 }
 
 async function brandAssets(page) {
@@ -996,10 +1038,11 @@ async function brandAssets(page) {
   for (const [theme, system] of [['light', 'light'], ['dark', 'light'], ['system', 'dark'], ['system', 'light']]) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: system }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
-    await page.goto(`${args.base}/toi`);
+    await page.goto(`${args.base}/`);
     const selected = theme === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${theme}'`;
     check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${selected}`), `${theme}/${system} bootstrap selects the preference without hydration`);
     await assertBrand(page, theme);
+    await assertExploreHeader(page, `${theme}/${system} before hydration`);
     await page.capture(`brand-before-hydration-${theme}${theme === 'system' ? '-' + system : ''}`);
   }
   await page.send('Network.setBlockedURLs', { urls: [] });
@@ -1019,7 +1062,7 @@ async function textContrast(page, theme, surface = 'shell') {
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help summary', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-account h2', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help summary', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -1265,7 +1308,7 @@ async function accountAppearance(page) {
         await openProfile(page);
         await chooseTheme(page, theme);
         const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
-        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling, including its brand`);
+        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling`);
         check(await page.eval(`(() => {
           const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
           return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
@@ -1343,16 +1386,114 @@ async function shellFragmentHistory(page) {
   await page.viewport(1440);
 }
 
+async function railReview(page) {
+  const cases = [
+    [1440, 900, 100, 'light', 220], [1440, 900, 100, 'light', 96],
+    [1440, 900, 100, 'dark', 220], [1440, 900, 100, 'dark', 96],
+    [1024, 900, 200, 'light', 96], [1024, 900, 200, 'light', 220],
+    [834, 360, 100, 'light', 96], [834, 360, 200, 'light', 96],
+  ];
+  for (const [width, height, scale, theme, railWidth] of cases) {
+    await page.viewport(width, height);
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'`);
+    if ((await page.eval(RAIL_WIDTH)) !== railWidth) await page.click('#navigation-toggle');
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: width - 10, y: 10 });
+    await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
+    const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
+    await assertExploreHeader(page, name);
+    await page.capture(name);
+    check(await page.eval(`(() => {
+      const rail = document.querySelector('#navigation'), toggle = document.querySelector('#navigation-toggle');
+      const centerX = rect => rect.left + rect.width / 2;
+      const r = toggle.getBoundingClientRect(), glyph = toggle.querySelector('svg').getBoundingClientRect();
+      const navIcons = [...rail.querySelectorAll('.vk-ui-nav-item .vk-ui-icon')];
+      const aligned = navIcons.length === 3 && navIcons.every(icon =>
+        Math.abs(centerX(glyph) - centerX(icon.getBoundingClientRect())) <= 1);
+      const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].every(label =>
+        [...label.textContent.matchAll(/\\S+/g)].every(word => {
+          const range = document.createRange();
+          range.setStart(label.firstChild, word.index);
+          range.setEnd(label.firstChild, word.index + word[0].length);
+          return range.getClientRects().length === 1;
+        }));
+      return location.pathname === '/' && rail.firstElementChild === toggle &&
+        rail.getBoundingClientRect().width === ${railWidth} && r.width >= 48 && r.height >= 48 &&
+        aligned && glyph.width < navIcons[0].getBoundingClientRect().width && rail.scrollWidth <= rail.clientWidth &&
+        document.documentElement.scrollWidth <= innerWidth && wordsFit &&
+        document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button') === toggle;
+    })()`), `${name}: toggle is first, icon axes align, target is reachable and words fit`);
+    if (height === 360) {
+      await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
+      await page.key('Tab');
+      check(await page.eval(`(() => {
+        const tip = document.querySelector('#navigation-tooltip');
+        const r = tip.getBoundingClientRect();
+        return document.activeElement?.id === 'navigation-toggle' && !tip.hidden &&
+          r.left >= document.querySelector('#navigation').getBoundingClientRect().right &&
+          r.top >= 0 && r.bottom <= innerHeight;
+      })()`), `${name}: the focus tooltip clears the short rail`);
+      await page.capture(`${name}-tooltip`);
+      await page.key('Escape');
+      for (let i = 0; i < 3; i++) await page.key('Tab');
+      check(await page.eval(`(() => {
+        const r = document.querySelector('#profile-trigger').getBoundingClientRect();
+        return document.activeElement?.id === 'profile-trigger' && r.top >= 0 && r.bottom <= innerHeight;
+      })()`), `${name}: Tab reaches and reveals Tôi at the foot`);
+      await page.capture(`${name}-account`);
+    }
+  }
+  await page.viewport(1440);
+  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
+  await page.reload();
+}
+
 async function adaptiveShell(page) {
   console.log('adaptive navigation and appearance:');
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration');
   await brandAssets(page);
+  await railReview(page);
   check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('#navigation-primary a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
   check((await page.eval(RAIL_WIDTH)) === 220, 'desktop defaults to a 220px rail');
   check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); return b.getAttribute('aria-expanded') === 'true' && b.getAttribute('aria-label') === 'Thu gọn điều hướng' && b.getAttribute('aria-controls') === 'navigation'; })()`), 'expanded rail toggle names the collapse it performs');
   check(await page.eval(`document.querySelectorAll('[role=tablist], [role=tab]').length === 0 && [...document.querySelectorAll('#navigation-primary a, .vk-ui-bottom-nav a')].every(a => a.getAttribute('href')?.startsWith('/'))`), 'route destinations are real links, not tabs');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM,
+    { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' },
+  ] });
+  await page.eval(`window.__railToggle = document.querySelector('#navigation-toggle'); document.querySelector('.vk-ui-skip-link').focus()`);
+  await page.key('Tab');
+  const forcedFocus = await page.eval(`(() => {
+    const style = getComputedStyle(window.__railToggle);
+    return { focused: document.activeElement === window.__railToggle,
+      visible: window.__railToggle.matches(':focus-visible'), outline: style.outlineStyle,
+      width: parseFloat(style.outlineWidth),
+      forcedColors: matchMedia('(forced-colors: active)').matches,
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      transition: getComputedStyle(document.querySelector('#navigation-primary a')).transitionDuration };
+  })()`);
+  check(forcedFocus.focused && forcedFocus.visible && forcedFocus.outline === 'solid' && forcedFocus.width >= 2 &&
+    forcedFocus.forcedColors && forcedFocus.reducedMotion && parseFloat(forcedFocus.transition) <= 0.001,
+  `Tab reaches a visible toggle focus ring in forced colors and reduced motion: ${JSON.stringify(forcedFocus)}`);
+  await page.capture('rail-r1-1440-forced-colors-focus');
+  await page.eval(`window.__exploreRailProbe = {
+    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query')
+  }; window.__exploreRailProbe.right = window.__exploreRailProbe.brand.getBoundingClientRect().right;
+  window.__exploreRailProbe.input.focus()`);
+  await page.send('Input.insertText', { text: 'Mưa trên phố' });
+  await page.eval(`document.querySelector('#navigation-toggle').focus()`);
+  await page.key('Enter');
+  check((await page.eval(RAIL_WIDTH)) === 96 && await page.eval(`document.activeElement === window.__railToggle`), 'Enter collapses once and retains the toggle');
+  check(await page.eval(`(() => {
+    const { brand, input, right } = window.__exploreRailProbe;
+    return brand === document.querySelector('.vk-brand') && brand.getBoundingClientRect().right === right &&
+      input === document.querySelector('#public-query') && input.value === 'Mưa trên phố' && !location.search;
+  })()`), 'collapsing the rail keeps the brand aligned and retains the unsubmitted search');
+  await page.key('Space');
+  check((await page.eval(RAIL_WIDTH)) === 220 && await page.eval(`document.activeElement === window.__railToggle`), 'Space expands once and retains the toggle');
+  await page.click('#clear-public-search');
+  await page.waitFor(`document.querySelector('#public-query').value === ''`, 'clear rail probe text');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact rail is 96px');
   check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); const r = b.getBoundingClientRect(); const rail = document.querySelector('.vk-ui-rail').getBoundingClientRect(); return location.pathname === '/' && b.getAttribute('aria-expanded') === 'false' && b.getAttribute('aria-label') === 'Mở rộng điều hướng' && r.width >= 44 && r.height >= 44 && r.left >= rail.left && r.right <= rail.right && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#navigation-toggle'); })()`), 'compact rail keeps a visible, unobstructed >=44px expand control on the same page');
@@ -1395,18 +1536,23 @@ async function adaptiveShell(page) {
   })()`), 'modifier click on a destination is left to the browser (new tab/window), not routed');
   for (const path of ['/ban-vietnam', '/tac-pham/a/b', '/toi/khac']) {
     const response = await fetch(`${args.base}${path}`);
-    check(response.status === 404 && (await response.text()).includes('Không tìm thấy trang này.'), `${path} is a 404 page on the server`);
+    const missingHtml = await response.text();
+    check(response.status === 404 && missingHtml.includes('Không tìm thấy trang này.'), `${path} is a 404 page on the server`);
+    check(!missingHtml.includes('class="vk-brand"'), `${path} omits the brand before hydration`);
     await page.goto(`${args.base}${path}`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, `${path} NotFound`);
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
+    await assertBrandPlacement(page);
   }
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration after unknown routes');
   await page.eval(`(() => { for (const href of ['/ban-viet', '/', '/ban-viet']) document.querySelector('#navigation-primary a[href="' + href + '"]').click(); })()`);
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'rapid navigations settle on the last intent');
   check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
+  await assertBrandPlacement(page);
   await page.click('#navigation-primary a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'back to Khám phá');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'back to Khám phá with its brand');
+  await assertBrandPlacement(page);
 
   await openProfile(page);
   check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
@@ -1571,7 +1717,13 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
   await page.capture('320-desk-dark-text200');
   await page.click('.vk-ui-bottom-nav a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'mobile discovery destination');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'mobile discovery destination');
+  await assertBrandPlacement(page);
+  await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the Explore brand with a visible focus ring');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'the next Tab reaches the search action below the brand');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
@@ -1685,8 +1837,9 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
   check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
   await page.capture('390-editor-dirty-dark');
-  await page.click('.vk-mobile-brand');
-  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'mobile brand uses guard');
+  await assertBrandPlacement(page);
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
   await page.key('Escape');
   await page.viewport(1280);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
@@ -2166,6 +2319,7 @@ async function publicReading(page) {
   };
   const exploreGeometry = async scenario => {
     await page.eval(`document.fonts.ready`);
+    await assertExploreHeader(page, scenario);
     await searchBarGeometry(page, '#public-query', scenario);
     check(await page.eval(`(() => {
       const input = document.querySelector('#public-query'), button = document.querySelector('#public-search button[type=submit]');
@@ -2221,7 +2375,7 @@ async function publicReading(page) {
   const captureExplore = async state => {
     for (const theme of ['light', 'dark']) {
       await setPublicTheme(theme);
-      for (const width of [1440, 1024, 834, 390, 320]) {
+      for (const width of [1440, 1024, 834, 430, 390, 360, 320]) {
         await page.viewport(width);
         for (const scale of [100, 200]) {
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
@@ -2292,6 +2446,7 @@ async function publicReading(page) {
   await page.click('.vk-public-row__link');
   await page.waitFor(`document.querySelector('.vk-reader')?.textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`, 'real reader from collection');
   check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/#work-${SAMPLE_WORK}' && document.querySelector('#navigation-primary a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and returns to the opened row');
+  await assertBrandPlacement(page);
   await captureReal('reader');
   await page.click('#reader-return');
   await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row')`, 'return to real collection');
@@ -3083,9 +3238,9 @@ async function mainPhase(page) {
   await page.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
   check((await page.eval(selected)) === LAST_LINE, 'selection is back when the text regains focus');
 
-  await page.click('.vk-brand');
-  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from the brand link');
-  check((await page.eval(`location.pathname`)) === editorPath, 'brand link held while text is unsaved');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from the Khám phá rail link');
+  check((await page.eval(`location.pathname`)) === editorPath, 'Khám phá link held while text is unsaved');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog closed by Escape');
   check((await page.eval(`location.pathname`)) === editorPath, 'Escape stays in the editor');
