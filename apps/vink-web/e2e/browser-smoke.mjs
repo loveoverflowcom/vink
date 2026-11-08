@@ -883,6 +883,7 @@ async function serverHtml() {
   const home = await fetch(args.base);
   const homeHtml = await home.text();
   check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Đã tải 1 tác phẩm · tối đa 12.') && homeHtml.includes('vk-public-row__link'), 'Explore HTML contains its finite public collection and actual inventory before JavaScript');
+  check(homeHtml.match(/class="vk-brand"/g)?.length === 1 && !homeHtml.includes('vk-ui-top-bar') && !homeHtml.includes('vk-ui-rail__brand'), 'SSR places exactly one brand on Explore and omits empty shell chrome');
   check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
   for (const query of ['mua tren pho cu', 'TÁC GIẢ MẪU'.normalize('NFD')]) {
     const response = await fetch(`${args.base}/?q=${encodeURIComponent(query)}`);
@@ -904,6 +905,8 @@ async function serverHtml() {
   const desk = await (await fetch(`${args.base}/ban-viet/${SAMPLE_WORK}`)).text();
   check(!desk.includes(DRAFT_ONLY_LINE), 'desk HTML is a shell without draft text');
   const index = await (await fetch(`${args.base}/ban-viet`)).text();
+  const me = await (await fetch(`${args.base}/toi`)).text();
+  check([html, desk, index, me].every(text => !text.includes('class="vk-brand"') && !text.includes('vk-ui-top-bar')), 'direct reader, editor, Desk and Tôi HTML has no global brand or empty header');
   const privateList = await (await fetch(`${args.base}/api/v1/drafts`)).json();
   check(!index.includes(DRAFT_ONLY_LINE) && privateList.drafts.every(d => !d.title || !index.includes(d.title)), 'dashboard SSR contains no private title/body or list hydration payload');
   const anonymous = await fetch(`${args.base}/api/v1/drafts`);
@@ -957,8 +960,25 @@ async function assertBrand(page, preference) {
     ? await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
     : preference;
   await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/vink-mark-${theme}-compact.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
-  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].every(el => getComputedStyle(el).backgroundImage.includes('vink-mark-${theme}.svg') && getComputedStyle(el).filter === 'none' && el.textContent === '')`), `${theme} rail/mobile marks use the approved asset without inversion or placeholder text`);
-  check(await page.eval(`[...document.querySelectorAll('.vk-brand__mark')].filter(el => el.getClientRects().length).every(el => { const r = el.getBoundingClientRect(); return r.width === r.height && r.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize); })`), `${theme} brand reserves its square before image decoding`);
+  await assertBrandPlacement(page);
+  if (await page.eval(`location.pathname === '/'`)) {
+    check(await page.eval(`(() => {
+      const mark = document.querySelector('#explore-heading .vk-brand__mark');
+      const style = getComputedStyle(mark), rect = mark.getBoundingClientRect();
+      return style.backgroundImage.includes('vink-mark-${theme}.svg') && style.filter === 'none' &&
+        rect.width === rect.height && rect.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    })()`), `${theme} Explore mark uses the approved asset and reserves its square before decoding`);
+  }
+}
+
+async function assertBrandPlacement(page) {
+  check(await page.eval(`(() => {
+    const brands = document.querySelectorAll('.vk-brand');
+    if (document.querySelector('#navigation .vk-ui-rail__brand, .vk-ui-top-bar')) return false;
+    if (location.pathname !== '/') return brands.length === 0;
+    return brands.length === 1 && brands[0].closest('#explore-heading') &&
+      brands[0].getClientRects().length > 0 && brands[0].getAttribute('aria-label') === 'Vink — trang chủ';
+  })()`), 'brand appears once within the Explore heading and only on that route');
 }
 
 async function brandAssets(page) {
@@ -996,7 +1016,7 @@ async function brandAssets(page) {
   for (const [theme, system] of [['light', 'light'], ['dark', 'light'], ['system', 'dark'], ['system', 'light']]) {
     await page.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: system }] });
     await page.eval(theme === 'system' ? `localStorage.removeItem('vink.ui.theme')` : `localStorage.setItem('vink.ui.theme', '${theme}')`);
-    await page.goto(`${args.base}/toi`);
+    await page.goto(`${args.base}/`);
     const selected = theme === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${theme}'`;
     check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${selected}`), `${theme}/${system} bootstrap selects the preference without hydration`);
     await assertBrand(page, theme);
@@ -1019,7 +1039,7 @@ async function textContrast(page, theme, surface = 'shell') {
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account .vk-ui-type-label', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-account .vk-ui-type-label', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -1149,7 +1169,7 @@ async function accountAppearance(page) {
         await openProfile(page);
         await chooseTheme(page, theme);
         const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
-        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling, including its brand`);
+        check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling`);
         check(await page.eval(`(() => {
           const dialog = document.querySelector('#profile-menu'), r = dialog.getBoundingClientRect();
           return dialog.matches(':modal') && r.left >= document.querySelector('.vk-ui-rail').getBoundingClientRect().right &&
@@ -1227,16 +1247,100 @@ async function shellFragmentHistory(page) {
   await page.viewport(1440);
 }
 
+async function railReview(page) {
+  const cases = [
+    [1440, 900, 100, 'light', 220], [1440, 900, 100, 'light', 96],
+    [1440, 900, 100, 'dark', 220], [1440, 900, 100, 'dark', 96],
+    [1024, 900, 200, 'light', 96], [1024, 900, 200, 'light', 220],
+    [834, 360, 100, 'light', 96], [834, 360, 200, 'light', 96],
+  ];
+  for (const [width, height, scale, theme, railWidth] of cases) {
+    await page.viewport(width, height);
+    await page.eval(`document.documentElement.dataset.theme = '${theme}'; document.documentElement.style.fontSize = '${scale}%'`);
+    if ((await page.eval(RAIL_WIDTH)) !== railWidth) await page.click('#navigation-toggle');
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: width - 10, y: 10 });
+    await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
+    const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
+    await page.capture(name);
+    check(await page.eval(`(() => {
+      const rail = document.querySelector('#navigation'), toggle = document.querySelector('#navigation-toggle');
+      const centerX = rect => rect.left + rect.width / 2;
+      const r = toggle.getBoundingClientRect(), glyph = toggle.querySelector('svg').getBoundingClientRect();
+      const navIcons = [...rail.querySelectorAll('.vk-ui-nav-item .vk-ui-icon')];
+      const aligned = navIcons.length === 3 && navIcons.every(icon =>
+        Math.abs(centerX(glyph) - centerX(icon.getBoundingClientRect())) <= 1);
+      const wordsFit = [...rail.querySelectorAll('.vk-ui-nav-item__label')].every(label =>
+        [...label.textContent.matchAll(/\\S+/g)].every(word => {
+          const range = document.createRange();
+          range.setStart(label.firstChild, word.index);
+          range.setEnd(label.firstChild, word.index + word[0].length);
+          return range.getClientRects().length === 1;
+        }));
+      return location.pathname === '/' && rail.firstElementChild === toggle &&
+        rail.getBoundingClientRect().width === ${railWidth} && r.width >= 48 && r.height >= 48 &&
+        aligned && glyph.width < navIcons[0].getBoundingClientRect().width && rail.scrollWidth <= rail.clientWidth &&
+        document.documentElement.scrollWidth <= innerWidth && wordsFit &&
+        document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button') === toggle;
+    })()`), `${name}: toggle is first, icon axes align, target is reachable and words fit`);
+    if (height === 360) {
+      await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
+      await page.key('Tab');
+      check(await page.eval(`(() => {
+        const tip = document.querySelector('#navigation-tooltip');
+        const r = tip.getBoundingClientRect();
+        return document.activeElement?.id === 'navigation-toggle' && !tip.hidden &&
+          r.left >= document.querySelector('#navigation').getBoundingClientRect().right &&
+          r.top >= 0 && r.bottom <= innerHeight;
+      })()`), `${name}: the focus tooltip clears the short rail`);
+      await page.capture(`${name}-tooltip`);
+      await page.key('Escape');
+      for (let i = 0; i < 3; i++) await page.key('Tab');
+      check(await page.eval(`(() => {
+        const r = document.querySelector('#profile-trigger').getBoundingClientRect();
+        return document.activeElement?.id === 'profile-trigger' && r.top >= 0 && r.bottom <= innerHeight;
+      })()`), `${name}: Tab reaches and reveals Tôi at the foot`);
+      await page.capture(`${name}-account`);
+    }
+  }
+  await page.viewport(1440);
+  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
+  await page.reload();
+}
+
 async function adaptiveShell(page) {
   console.log('adaptive navigation and appearance:');
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration');
   await brandAssets(page);
+  await railReview(page);
   check(await page.eval(`location.pathname === '/' && [...document.querySelectorAll('#navigation-primary a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết'`), 'launch route stays /, Khám phá precedes Bàn viết');
   check((await page.eval(RAIL_WIDTH)) === 220, 'desktop defaults to a 220px rail');
   check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); return b.getAttribute('aria-expanded') === 'true' && b.getAttribute('aria-label') === 'Thu gọn điều hướng' && b.getAttribute('aria-controls') === 'navigation'; })()`), 'expanded rail toggle names the collapse it performs');
   check(await page.eval(`document.querySelectorAll('[role=tablist], [role=tab]').length === 0 && [...document.querySelectorAll('#navigation-primary a, .vk-ui-bottom-nav a')].every(a => a.getAttribute('href')?.startsWith('/'))`), 'route destinations are real links, not tabs');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM,
+    { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' },
+  ] });
+  await page.eval(`window.__railToggle = document.querySelector('#navigation-toggle'); document.querySelector('.vk-ui-skip-link').focus()`);
+  await page.key('Tab');
+  const forcedFocus = await page.eval(`(() => {
+    const style = getComputedStyle(window.__railToggle);
+    return { focused: document.activeElement === window.__railToggle,
+      visible: window.__railToggle.matches(':focus-visible'), outline: style.outlineStyle,
+      width: parseFloat(style.outlineWidth),
+      forcedColors: matchMedia('(forced-colors: active)').matches,
+      reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      transition: getComputedStyle(document.querySelector('#navigation-primary a')).transitionDuration };
+  })()`);
+  check(forcedFocus.focused && forcedFocus.visible && forcedFocus.outline === 'solid' && forcedFocus.width >= 2 &&
+    forcedFocus.forcedColors && forcedFocus.reducedMotion && parseFloat(forcedFocus.transition) <= 0.001,
+  `Tab reaches a visible toggle focus ring in forced colors and reduced motion: ${JSON.stringify(forcedFocus)}`);
+  await page.capture('rail-r1-1440-forced-colors-focus');
+  await page.key('Enter');
+  check((await page.eval(RAIL_WIDTH)) === 96 && await page.eval(`document.activeElement === window.__railToggle`), 'Enter collapses once and retains the toggle');
+  await page.key('Space');
+  check((await page.eval(RAIL_WIDTH)) === 220 && await page.eval(`document.activeElement === window.__railToggle`), 'Space expands once and retains the toggle');
+  await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact rail is 96px');
   check(await page.eval(`(() => { const b = document.querySelector('#navigation-toggle'); const r = b.getBoundingClientRect(); const rail = document.querySelector('.vk-ui-rail').getBoundingClientRect(); return location.pathname === '/' && b.getAttribute('aria-expanded') === 'false' && b.getAttribute('aria-label') === 'Mở rộng điều hướng' && r.width >= 44 && r.height >= 44 && r.left >= rail.left && r.right <= rail.right && document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#navigation-toggle'); })()`), 'compact rail keeps a visible, unobstructed >=44px expand control on the same page');
@@ -1279,18 +1383,23 @@ async function adaptiveShell(page) {
   })()`), 'modifier click on a destination is left to the browser (new tab/window), not routed');
   for (const path of ['/ban-vietnam', '/tac-pham/a/b', '/toi/khac']) {
     const response = await fetch(`${args.base}${path}`);
-    check(response.status === 404 && (await response.text()).includes('Không tìm thấy trang này.'), `${path} is a 404 page on the server`);
+    const missingHtml = await response.text();
+    check(response.status === 404 && missingHtml.includes('Không tìm thấy trang này.'), `${path} is a 404 page on the server`);
+    check(!missingHtml.includes('class="vk-brand"'), `${path} omits the brand before hydration`);
     await page.goto(`${args.base}${path}`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, `${path} NotFound`);
     check(await page.eval(`document.querySelectorAll('[aria-current=page]').length === 0`), `${path} marks no destination active`);
+    await assertBrandPlacement(page);
   }
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'shell hydration after unknown routes');
   await page.eval(`(() => { for (const href of ['/ban-viet', '/', '/ban-viet']) document.querySelector('#navigation-primary a[href="' + href + '"]').click(); })()`);
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'rapid navigations settle on the last intent');
   check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
+  await assertBrandPlacement(page);
   await page.click('#navigation-primary a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'back to Khám phá');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#explore-heading .vk-brand')`, 'back to Khám phá with its brand');
+  await assertBrandPlacement(page);
 
   await openProfile(page);
   check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
@@ -1451,7 +1560,8 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
   await page.capture('320-desk-dark-text200');
   await page.click('.vk-ui-bottom-nav a[href="/"]');
-  await page.waitFor(`location.pathname === '/'`, 'mobile discovery destination');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#explore-heading .vk-brand')`, 'mobile discovery destination');
+  await assertBrandPlacement(page);
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
@@ -1565,8 +1675,9 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`!${PROFILE_OPEN}`, 'editor overlay closes on mobile resize');
   check(await page.eval(view) && (await page.body()) === written && await page.eval(`location.pathname === '${editorPath}' && getComputedStyle(document.querySelector('.vk-ui-bottom-nav')).display === 'none'`), 'mobile resize retains editor and hides bottom bar');
   await page.capture('390-editor-dirty-dark');
-  await page.click('.vk-mobile-brand');
-  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'mobile brand uses guard');
+  await assertBrandPlacement(page);
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
   await page.key('Escape');
   await page.viewport(1280);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
@@ -2172,6 +2283,7 @@ async function publicReading(page) {
   await page.click('.vk-public-row__link');
   await page.waitFor(`document.querySelector('.vk-reader')?.textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`, 'real reader from collection');
   check(await page.eval(`window.__publicNavigation === 'kept' && document.querySelector('#reader-return').getAttribute('href') === '/#work-${SAMPLE_WORK}' && document.querySelector('#navigation-primary a[href="/"]').getAttribute('aria-current') === 'page'`), 'reader navigation is hydrated, belongs to Explore and returns to the opened row');
+  await assertBrandPlacement(page);
   await captureReal('reader');
   await page.click('#reader-return');
   await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row')`, 'return to real collection');
@@ -2961,9 +3073,9 @@ async function mainPhase(page) {
   await page.eval(`document.querySelector('[data-testid=editor-body] .cm-content').focus()`);
   check((await page.eval(selected)) === LAST_LINE, 'selection is back when the text regains focus');
 
-  await page.click('.vk-brand');
-  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from the brand link');
-  check((await page.eval(`location.pathname`)) === editorPath, 'brand link held while text is unsaved');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog from the Khám phá rail link');
+  check((await page.eval(`location.pathname`)) === editorPath, 'Khám phá link held while text is unsaved');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog closed by Escape');
   check((await page.eval(`location.pathname`)) === editorPath, 'Escape stays in the editor');

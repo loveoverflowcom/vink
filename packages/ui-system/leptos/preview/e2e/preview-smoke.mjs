@@ -1046,6 +1046,7 @@ async function navigation(page) {
   const labels = (scope) => page.eval(`[...document.querySelectorAll(${JSON.stringify(scope + ' .vk-ui-nav-item__label')})].map((s) => s.textContent).join('|')`);
 
   await page.open('navigation.rail');
+  check(await page.eval(`document.querySelector('#nav-rail').firstElementChild.id === 'nav-rail-toggle' && !document.querySelector('#nav-rail .vk-ui-rail__brand')`), 'brandless rail begins directly with the toggle');
   check((await labels('#nav-rail-primary')) === 'Khám phá|Bàn viết' && (await labels('#nav-rail-account')) === 'Tôi', 'rail: Khám phá → Bàn viết, Tôi at the foot');
   check((await width('#nav-rail')) === 220 && JSON.stringify(await current('#nav-rail')) === '["explore"]', 'expanded rail is 220px with Khám phá current');
   check(await page.eval(`document.querySelectorAll('#specimen [role=tab], #specimen [role=tablist]').length === 0 && [...document.querySelectorAll('#nav-rail-primary a')].every((a) => a.getAttribute('href').startsWith('/'))`), 'destinations are real links, not tabs');
@@ -1067,6 +1068,7 @@ async function navigation(page) {
   await page.eval(`(() => { const t = document.getElementById('nav-draft'); t.focus(); t.setSelectionRange(5, 12); })()`);
   const text = await page.eval(`document.getElementById('nav-draft').value`);
   const before = await route();
+  const initialToggles = ((await page.log()).match(/toggle →/g) ?? []).length;
   const compact = await page.eval(`(() => { const b = document.querySelector('${toggle}'); const r = b.getBoundingClientRect(); return { w: r.width, h: r.height, label: b.getAttribute('aria-label'), expanded: b.getAttribute('aria-expanded'), icon: b.querySelector('[data-icon]').dataset.icon }; })()`);
   check((await width('#nav-rail')) === 96 && compact.w >= 44 && compact.h >= 44 && compact.label === 'Mở rộng điều hướng' && compact.expanded === 'false' && compact.icon === 'menu', 'compact rail keeps a named ≥44px expand control');
   await page.capture('navigation.scaffold--toggle--light--1440--96');
@@ -1074,7 +1076,7 @@ async function navigation(page) {
   await page.settle();
   check((await width('#nav-rail')) === 220 && (await page.eval(`document.querySelector('${toggle}').getAttribute('aria-label')`)) === 'Thu gọn điều hướng', 'pointer toggle expands to 220px and renames the action');
   await page.capture('navigation.scaffold--toggle--light--1440--220');
-  await page.eval(`document.querySelector('${toggle}').focus()`);
+  await page.eval(`window.__railToggle = document.querySelector('${toggle}'); window.__railToggle.focus()`);
   await page.key('Enter');
   check((await width('#nav-rail')) === 96, 'Enter on the toggle collapses back to 96px');
   await page.key('Space');
@@ -1083,7 +1085,7 @@ async function navigation(page) {
   await page.capture('navigation.scaffold--toggle--light--1440--96-again');
   check((await route()) === before && (await page.eval(`(() => { const t = document.getElementById('nav-draft'); return [t.value, t.selectionStart, t.selectionEnd]; })()`)).join('|') === `${text}|5|12`, 'toggling keeps the page, the text and its selection');
   const toggles = ((await page.log()).match(/toggle →/g) ?? []).length;
-  check(toggles >= 4, `each activation dispatched once (${toggles} toggles logged)`);
+  check(toggles - initialToggles === 4 && await page.eval(`document.activeElement === window.__railToggle`), 'four activations dispatch four intents and retain the focused toggle');
 
   // Tooltip: focus/hover, outside the rail, Escape hides it.
   await page.eval(`document.querySelector('${toggle}').blur(); document.querySelector('${toggle}').focus()`);

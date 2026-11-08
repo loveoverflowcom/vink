@@ -58,7 +58,7 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
   Tôi và preference Sáng/Tối/Hệ thống; spec và owner ở dưới.
 - **Logo vòng mực + ngòi bút selected #34** dùng nguyên SVG Light/Dark của bộ được chọn.
   [Nguồn và cách dùng](../../apps/vink-web/assets/brand/README.md) giữ 6 SVG, 12 PNG và provenance;
-  [ZIP/board](brand/final-selected/README.md) là hồ sơ lựa chọn. Shell dùng SVG chuẩn, favicon
+  [ZIP/board](brand/final-selected/README.md) là hồ sơ lựa chọn. Heading Khám phá dùng SVG chuẩn, favicon
   dùng compact; manifest dùng PNG. Enso #10 và các concept trước là lịch sử.
 
 ## Màu và theme
@@ -204,7 +204,7 @@ Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc
 [shell.rs](../../apps/vink-web/src/shell.rs) giữ đích Vink (`Destination::for_path` khớp nguyên
 segment như route: `/ban-vietnam`, `/tac-pham/a/b` là NotFound, không sáng đích nào), lớp phủ Tôi
 và chính sách responsive; từ UIS-04 (#22) shell render bằng `AdaptiveScaffold`, `NavigationRail`,
-`BottomNavigation`, `TopBar`, `NavUtility` của UI system, nên ID con của rail suy từ `navigation`
+`BottomNavigation`, `NavUtility` của UI system, nên ID con của rail suy từ `navigation`
 (`#navigation-toggle`, `#navigation-primary`, `#navigation-account`, `#navigation-tooltip`) thay cho
 `#nav-primary`/`#account-bottom` trong cây trên;
 [appearance.rs](../../apps/vink-web/src/appearance.rs) giữ preference và initials;
@@ -215,7 +215,7 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 
 - Từ 1100px mặc định 220px; 760–1099px và editor mặc định 96px. Preference `vink.ui.rail`
   ghi đè ngữ cảnh. Rail compact đặt icon trên/nhãn dưới; rail cuộn khi thiếu chiều cao.
-- Dưới 760px rail ẩn, header brand trong luồng trang, bottom bar ba đích. Editor ẩn bottom bar,
+- Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
 - Nội dung/CTA chính thuộc route hiện tại. Trong Tôi, tác vụ chính là chọn giao diện; thông tin
@@ -381,22 +381,21 @@ không suy ra PASS chỉ từ các assertions tồn tại.
 
 ## Logo Final Selected #34
 
-LayoutSpec vùng r1, trình bày trước patch ngày 03/11/2026, nền `develop@cbcbe0d`.
-Nguồn: [selected pack, board và quy tắc trung thực](brand/final-selected/README.md).
+LayoutSpec vị trí hiện hành theo [Navigation Rail R1](https://github.com/loveoverflowcom/vink/issues/102).
+Nguồn artwork: [selected pack, board và quy tắc trung thực](brand/final-selected/README.md).
 
 ```text
-Region #brand — link trang chủ và chữ Vink hiện có
+Khám phá / → heading → link trang chủ và chữ Vink
   Region #brand-mark — SVG chuẩn Light/Dark, khung vuông 2,25rem
-  Region #brand-name — Literata, ẩn như cũ khi rail thu
+  Region #brand-name — Literata
 Region #head-icons — compact favicon + PNG/SVG trong manifest
 Region #source-record — ZIP nguyên bản + SHA, không phục vụ trong site
 ```
 
-Rail mở/thu 220/96px và header mobile dùng cùng mark chuẩn, theo `data-theme`/OS bằng CSS;
-favicon compact theo cùng authority qua bootstrap trước stylesheet, fallback không JS theo OS.
-Giữ frame cố định trước/sau decode, không scale lệch hai trục. Không thay token, wordmark,
-CTA, đường link, accessible name hay editor/dirty guard. Không có consumer logo trong CMP
-product hiện hành; không đưa branding app vào thư viện primitive hoặc mẫu chẩn đoán.
+Logo chỉ xuất hiện trong heading Khám phá trên desktop và mobile. CSS chọn mark chuẩn theo
+`data-theme`/OS và giữ khung vuông trước khi decode. Favicon compact theo cùng preference qua
+bootstrap trước stylesheet, với fallback theo OS. Link Khám phá của rail và thanh dưới vẫn
+là đường điều hướng chính.
 
 Board có hiệu ứng và hình khối khác SVG/PNG; source production là asset đã chọn nguyên byte,
 board chỉ tham khảo trình bày. Không khẳng định visual parity với board hay nghiệm thu app

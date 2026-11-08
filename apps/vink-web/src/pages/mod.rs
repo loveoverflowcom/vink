@@ -88,7 +88,13 @@ pub fn Home() -> impl IntoView {
                 </Form>
             </div>
             <header id="explore-heading" class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
+                <div class="vk-explore__identity">
+                    <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+                        <span class="vk-brand__mark" aria-hidden="true"></span>
+                        <span>"Vink"</span>
+                    </a>
+                    <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
+                </div>
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
             <div class="vk-discover-grid">

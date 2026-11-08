@@ -49,7 +49,7 @@ a {
 }
 
 /* Shell geometry, rail, bars, skip link and tooltip come from the UI system (vink-ui.css,
- * shared/navigation.md). The app keeps its brand slot and the Tôi overlay content. */
+ * shared/navigation.md). The app owns the Tôi overlay content and the Khám phá brand. */
 
 .vk-brand {
   display: inline-flex;
@@ -76,16 +76,6 @@ a {
   :root:not([data-theme="light"]) .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
 }
 :root[data-theme="dark"] .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
-
-/* Collapsed rail: the mark alone, centred by the rail's brand slot. */
-@container vk-ui-rail (max-width: 100px) {
-  .vk-rail-brand .vk-brand__name { display: none; }
-}
-
-/* Large text plus a short rail's scrollbar can leave less room than the brand's row. */
-@container vk-ui-rail (min-width: 101px) {
-  .vk-rail-brand { max-inline-size: 100%; flex-wrap: wrap; }
-}
 
 .vk-profile-menu {
   position: fixed;
@@ -211,6 +201,13 @@ a {
 
 .vk-explore__heading { margin-bottom: var(--vk-space-6); }
 
+.vk-explore__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vk-space-2) var(--vk-space-4);
+}
+
 .vk-explore__heading p {
   margin: var(--vk-space-2) 0 0;
   color: var(--vk-on-surface-variant);
@@ -220,7 +217,7 @@ a {
 
 /* H1 stays one step above the stream's Title H2; Display on wide pages, Headline when narrow. */
 @media (max-width: 759px) {
-  .vk-explore__heading > .vk-ui-heading {
+  .vk-explore__identity > .vk-ui-heading {
     font-size: var(--vk-type-headline-size);
     line-height: var(--vk-type-headline-line-height);
     letter-spacing: var(--vk-type-headline-tracking);

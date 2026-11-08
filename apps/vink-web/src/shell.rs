@@ -7,7 +7,7 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 use vink_ui::{
     AdaptiveScaffold, BottomNavigation, CloseReason, IconName, NavContext, NavDestination,
-    NavLayout, NavUtility, NavigationRail, OverlayLayer, TopBar, WindowClass,
+    NavLayout, NavUtility, NavigationRail, OverlayLayer, WindowClass,
 };
 
 use crate::appearance::{AccountStatus, Appearance, ThemePicker};
@@ -65,16 +65,6 @@ fn editor_context(path: &str) -> NavContext {
     NavContext {
         compact_rail: editor,
         hide_bar: editor,
-    }
-}
-
-#[component]
-fn Brand(#[prop(optional)] mobile: bool) -> impl IntoView {
-    view! {
-        <a class=if mobile { "vk-brand vk-mobile-brand" } else { "vk-brand vk-rail-brand" } href="/" aria-label="Vink — trang chủ">
-            <span class="vk-brand__mark" aria-hidden="true"></span>
-            <span class="vk-brand__name">"Vink"</span>
-        </a>
     }
 }
 
@@ -189,7 +179,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     collapse_label="Thu gọn điều hướng"
                     on_toggle=toggle
                     destinations=primary()
-                    brand=|| view! { <Brand /> }
                     account=move || view! {
                         <Show when=move || current.get() == Some(Destination::Me)
                             fallback=move || view! {
@@ -211,7 +200,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     }
                 />
             }
-            top_bar=|| view! { <TopBar brand=|| view! { <Brand mobile=true /> } /> }
             bar=move || view! {
                 <BottomNavigation
                     id="bottom-navigation"

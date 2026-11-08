@@ -16,12 +16,12 @@ lưu ở đâu, focus/cuộn sau khi đổi route.
 AdaptiveScaffold #shell                   — .vk-ui-scaffold[data-layout][data-compact-rail][data-hide-bar]
   SkipLink #skip                          — "Bỏ qua tới nội dung" → #<main id> (host cấp id)
   NavigationRail #navigation              — <aside aria-label>; rộng/hẹp/ẩn theo NavLayout
-    Slot #brand                           — host (logo, link về /)
+    Slot #brand                           — tùy chọn, host cấp; Web Vink bỏ slot (#102)
     RailToggle #rail-toggle               — disclosure thường trực: aria-expanded, aria-controls, tên + tooltip
     NavList #nav-primary                  — <nav aria-label>: NavItem* theo thứ tự host
     Slot #account                         — chân rail: NavUtility (mở lớp phủ) hoặc NavItem
   Column #content
-    TopBar #top-bar                       — chỉ khi Bar: brand + hành động của route
+    TopBar #top-bar                       — tùy host; chỉ hiện ở layout Bar
     Slot #main                            — <main id tabindex=-1> của host; giữ instance khi đổi khung
   BottomNavigation #bottom-navigation     — <nav aria-label>: NavItem* (Web: fixed, đo chiều cao)
   Tooltip #rail-tooltip                   — ngoài vùng rail cuộn (không bị containment cắt)
@@ -67,6 +67,11 @@ Preview và CMP đặt `NavLayout` tường minh (`data-layout="rail:compact"`�
 | `BottomNavigation` | ≥`size.bottom-bar`, safe-area, đo chiều cao → `--vk-ui-bar-height` | `NavigationBar` | Đích chia đều, nhãn xuống dòng, không cắt chữ 200% |
 | `TopBar` | `<header>` brand + actions | `VinkTopBar` | Không chứa đích chính |
 | `AdaptiveScaffold` | `ScaffoldLayout::Auto { context }` \| `Fixed(NavLayout)` | `layout: NavLayout` | Đổi khung chỉ đổi khung: `#main` và editor không remount |
+
+Web Vink (#102) bắt đầu rail bằng toggle, sau đó đến danh sách đích và Tôi ở chân rail.
+Leptos chỉ render wrapper brand khi host truyền slot. Toggle dùng cặp icon hiện có ở cỡ
+`size.icon-sm` (20px), căn theo trục icon của đích. Trang Khám phá tự render logo trong
+heading, nên Web shell bỏ TopBar. Specimen TopBar độc lập và Compose giữ contract hiện có.
 
 Kích thước: rail `size.rail-expanded` 220 / `size.rail-compact` 96 (px Web, dp CMP), đích
 `size.nav-item` 52. Rail thu đặt icon trên/nhãn dưới; rail cuộn khi thấp/ngang nên toggle và Tôi luôn tới

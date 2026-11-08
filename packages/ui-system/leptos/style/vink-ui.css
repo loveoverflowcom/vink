@@ -1548,20 +1548,25 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--vk-space-6);
-  padding: var(--vk-space-6) 12px;
+  gap: var(--vk-space-4);
+  /* Cap the inline inset so enlarged labels keep their room in the fixed-width rail. */
+  padding: var(--vk-space-4) min(var(--vk-space-3), 12px);
+  scroll-padding-block: var(--vk-space-2);
   background: var(--vk-surface-container-low);
   container: vk-ui-rail / inline-size;
   z-index: 5;
 }
 
 .vk-ui-rail__brand { padding-inline: var(--vk-space-2); }
-.vk-ui-rail__toggle { align-self: start; }
 .vk-ui-rail__primary { display: flex; flex-direction: column; gap: var(--vk-space-2); }
 .vk-ui-rail__account { margin-block-start: auto; }
 .vk-ui-rail__account .vk-ui-nav-item { inline-size: 100%; }
 
 .vk-ui-rail-toggle {
+  flex: none;
+  align-self: start;
+  /* The target centre follows the icon column even when density changes. */
+  margin-inline-start: calc(var(--vk-space-3) + (var(--vk-size-icon) - var(--vk-density-control-height)) / 2);
   display: inline-grid;
   place-items: center;
   box-sizing: border-box;
@@ -1576,6 +1581,11 @@
 }
 
 .vk-ui-rail-toggle:hover { background: var(--vk-state-hover); }
+.vk-ui-rail-toggle:active { background: var(--vk-state-pressed); }
+
+@media (forced-colors: active) {
+  .vk-ui-rail-toggle:focus-visible { outline-color: Highlight; }
+}
 
 .vk-ui-nav-item {
   box-sizing: border-box;
@@ -1607,6 +1617,11 @@
   color: var(--vk-on-primary-container);
 }
 
+/* The toggle follows the centred items in either stacked layout. */
+@container vk-ui-rail (max-width: 100px) or (max-width: 10rem) {
+  .vk-ui-rail-toggle { align-self: center; margin-inline-start: 0; }
+}
+
 /* A 220px rail at enlarged text needs the full label line. Keep the requested rail
    width and text size; only reflow its icon above the label within the same rail. */
 @container vk-ui-rail (min-width: 101px) and (max-width: 10rem) {
@@ -1622,7 +1637,6 @@
 /* Compact rail: icon above label, centred. */
 @container vk-ui-rail (max-width: 100px) {
   .vk-ui-rail__brand { display: flex; justify-content: center; padding: 0; }
-  .vk-ui-rail__toggle { align-self: center; }
   .vk-ui-rail .vk-ui-nav-item {
     flex-direction: column;
     justify-content: center;
@@ -1633,6 +1647,8 @@
     text-align: center;
     font-size: var(--vk-type-caption-size);
   }
+  /* Match the links' reclaimed side space on the account button with an explicit width. */
+  .vk-ui-rail__account .vk-ui-nav-item { inline-size: calc(100% + 2 * var(--vk-space-1)); }
   /* A short frame's scrollbar also consumes width. Labels may use the side padding while
      the clickable surface and its focus ring stay inside the rail's scroll viewport. */
   .vk-ui-rail .vk-ui-nav-item__label { inline-size: calc(100% + var(--vk-space-1)); }
