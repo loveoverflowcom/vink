@@ -54,6 +54,7 @@ a {
 .vk-brand {
   display: inline-flex;
   align-items: center;
+  min-block-size: var(--vk-density-control-height);
   gap: var(--vk-space-2);
   color: var(--vk-on-surface);
   text-decoration: none;
@@ -209,14 +210,14 @@ a {
 
 .vk-explore { container: vk-explore / inline-size; margin-block: var(--vk-space-4); }
 
-.vk-explore__heading { margin-bottom: var(--vk-space-6); }
-
-.vk-explore__identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--vk-space-2) var(--vk-space-4);
+/* Let Explore gain the width released by the rail while keeping its right edge fixed. */
+@media (min-width: 760px) {
+  .vk-main:has(> .vk-explore) {
+    max-inline-size: calc(72rem + var(--vk-size-rail-expanded) - var(--vk-ui-rail-width));
+  }
 }
+
+.vk-explore__heading { margin-bottom: var(--vk-space-6); }
 
 .vk-explore__heading p {
   margin: var(--vk-space-2) 0 0;
@@ -227,7 +228,7 @@ a {
 
 /* H1 stays one step above the stream's Title H2; Display on wide pages, Headline when narrow. */
 @media (max-width: 759px) {
-  .vk-explore__identity > .vk-ui-heading {
+  .vk-explore__heading > .vk-ui-heading {
     font-size: var(--vk-type-headline-size);
     line-height: var(--vk-type-headline-line-height);
     letter-spacing: var(--vk-type-headline-tracking);
@@ -259,8 +260,22 @@ a {
 }
 #community-stream [data-testid^=public-] .vk-ui-panel__actions { justify-content: center; }
 
-.vk-discovery-tools { max-width: 48rem; margin-bottom: var(--vk-space-6); }
-.vk-public-search { margin: 0; }
+.vk-discovery-tools {
+  display: grid;
+  grid-template-areas: "search brand";
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--vk-space-2) var(--vk-space-4);
+  margin-bottom: var(--vk-space-6);
+}
+.vk-discovery-tools > .vk-brand { grid-area: brand; justify-self: end; }
+.vk-public-search { grid-area: search; max-inline-size: 48rem; margin: 0; }
+@media (max-width: 759px) {
+  .vk-discovery-tools {
+    grid-template-areas: "brand" "search";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
 .vk-public-list {

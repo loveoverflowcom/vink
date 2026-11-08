@@ -381,18 +381,21 @@ không suy ra PASS chỉ từ các assertions tồn tại.
 
 ## Logo Final Selected #34
 
-LayoutSpec vị trí hiện hành theo [Navigation Rail R1](https://github.com/loveoverflowcom/vink/issues/102).
+LayoutSpec vị trí hiện hành theo Explore Header R2 của [PR #105](https://github.com/loveoverflowcom/vink/pull/105).
 Nguồn artwork: [selected pack, board và quy tắc trung thực](brand/final-selected/README.md).
 
 ```text
-Khám phá / → heading → link trang chủ và chữ Vink
-  Region #brand-mark — SVG chuẩn Light/Dark, khung vuông 2,25rem
-  Region #brand-name — Literata
+Khám phá /
+  Region #discovery-tools — ô tìm và link Vink
+    #brand-mark — SVG chuẩn Light/Dark, khung vuông 2,25rem
+    #brand-name — Literata
+  Region #explore-heading — H1 Khám phá và lời dẫn
 Region #head-icons — compact favicon + PNG/SVG trong manifest
 Region #source-record — ZIP nguyên bản + SHA, không phục vụ trong site
 ```
 
-Logo chỉ xuất hiện trong heading Khám phá trên desktop và mobile. CSS chọn mark chuẩn theo
+Logo căn phải ở đầu trang Khám phá. Desktop đặt ô tìm cùng hàng bên trái ở cả hai độ rộng rail.
+Mobile đặt ô tìm ở hàng dưới logo, trước H1 và lời dẫn. CSS chọn mark chuẩn theo
 `data-theme`/OS và giữ khung vuông trước khi decode. Favicon compact theo cùng preference qua
 bootstrap trước stylesheet, với fallback theo OS. Link Khám phá của rail và thanh dưới vẫn
 là đường điều hướng chính.

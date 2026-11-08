@@ -70,6 +70,10 @@ pub fn Home() -> impl IntoView {
         <Link rel="canonical" href=canonical_url("/") />
         <div id="explore" class="vk-explore">
             <div id="discovery-tools" class="vk-discovery-tools">
+                <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
+                    <span class="vk-brand__mark" aria-hidden="true"></span>
+                    <span>"Vink"</span>
+                </a>
                 <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search"
                     on:compositionstart=move |_| composing.set_value(true)
                     on:compositionend=move |_| composing.set_value(false)
@@ -88,13 +92,7 @@ pub fn Home() -> impl IntoView {
                 </Form>
             </div>
             <header id="explore-heading" class="vk-explore__heading">
-                <div class="vk-explore__identity">
-                    <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                        <span class="vk-brand__mark" aria-hidden="true"></span>
-                        <span>"Vink"</span>
-                    </a>
-                    <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
-                </div>
+                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
                 <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
             </header>
             <div class="vk-discover-grid">

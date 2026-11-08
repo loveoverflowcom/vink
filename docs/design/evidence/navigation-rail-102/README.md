@@ -3,6 +3,8 @@
 [Nguồn issue](https://github.com/loveoverflowcom/vink/issues/102) ·
 [LayoutSpec trên Drive](https://drive.google.com/file/d/1ymjidgI_NN0IT3f5ouoWXv4QCmHd8afF/view)
 
+Ảnh dưới đây ghi lại R1. Vị trí logo hiện hành được mô tả ở [Explore Header R2](../../README.md#logo-final-selected-34).
+
 ## Bố cục đã triển khai
 
 ```text

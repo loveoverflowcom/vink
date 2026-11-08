@@ -81,14 +81,16 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
 
 ## Điểm vào và trạng thái cần nhận biết
 
-Logo selected #34 nằm trong heading của Khám phá (`/`). Owner: `pages/mod.rs`,
+Logo selected #34 nằm góc trên bên phải của Khám phá (`/`). Owner: `pages/mod.rs`,
 `appearance.rs`, `vink.css`, [assets/brand](../../apps/vink-web/assets/brand/README.md)
 và pipeline `xtask`. `serverHtml` kiểm brand đúng trang trước JS. `brandAssets` kiểm
 SVG/PNG thật (MIME và decode 24–512px), manifest và mark trong bốn cấu hình
 Light/Dark/System trước hydration. `assertBrandPlacement` kiểm hiện diện duy nhất
-trên Khám phá và vắng ở các đích khác sau hydration. `railReview` đo trục icon, vùng
-bấm, chữ tiếng Việt và focus khi cửa sổ thấp. Xem ảnh `brand-before-hydration-*`
-và `rail-r1-*` từ runner Web với fixture local.
+trên Khám phá và vắng ở các đích khác sau hydration. `assertExploreHeader` kiểm vị trí
+logo với ô tìm và H1 ở hai độ rộng rail và trên mobile 320–430px với chữ 100/200%.
+`adaptiveShell` kiểm đổi rail giữ vị trí logo và nội dung đang nhập trong ô tìm.
+`railReview` đo trục icon, vùng bấm, chữ tiếng Việt và focus khi cửa sổ thấp.
+Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runner Web.
 
 | Luồng | Đường đi / thao tác | Kết quả và trạng thái hiện có | Owner |
 | --- | --- | --- | --- |

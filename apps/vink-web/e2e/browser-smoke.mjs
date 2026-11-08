@@ -375,7 +375,7 @@ class Page {
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
-        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
+        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
       };
     })()`);
@@ -963,7 +963,7 @@ async function assertBrand(page, preference) {
   await assertBrandPlacement(page);
   if (await page.eval(`location.pathname === '/'`)) {
     check(await page.eval(`(() => {
-      const mark = document.querySelector('#explore-heading .vk-brand__mark');
+      const mark = document.querySelector('#discovery-tools .vk-brand__mark');
       const style = getComputedStyle(mark), rect = mark.getBoundingClientRect();
       return style.backgroundImage.includes('vink-mark-${theme}.svg') && style.filter === 'none' &&
         rect.width === rect.height && rect.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -976,9 +976,26 @@ async function assertBrandPlacement(page) {
     const brands = document.querySelectorAll('.vk-brand');
     if (document.querySelector('#navigation .vk-ui-rail__brand, .vk-ui-top-bar')) return false;
     if (location.pathname !== '/') return brands.length === 0;
-    return brands.length === 1 && brands[0].closest('#explore-heading') &&
-      brands[0].getClientRects().length > 0 && brands[0].getAttribute('aria-label') === 'Vink — trang chủ';
-  })()`), 'brand appears once within the Explore heading and only on that route');
+    return brands.length === 1 && brands[0].closest('#explore #discovery-tools') &&
+      brands[0].getClientRects().length > 0 && brands[0].getAttribute('href') === '/' &&
+      brands[0].getAttribute('aria-label') === 'Vink — trang chủ';
+  })()`), 'brand appears once in the Explore tools, links home, and is absent on other routes');
+}
+
+async function assertExploreHeader(page, scenario) {
+  check(await page.eval(`(() => {
+    const rect = selector => document.querySelector(selector).getBoundingClientRect();
+    const brand = rect('#discovery-tools .vk-brand'), tools = rect('#discovery-tools');
+    const search = rect('#public-search'), field = rect('#public-search .vk-ui-search__shell');
+    const heading = rect('#explore-heading h1'), bar = rect('.vk-ui-bottom-nav');
+    const mobile = matchMedia('(max-width: 759px)').matches;
+    const layout = mobile
+      ? brand.bottom < field.top && search.right === tools.right && brand.bottom < bar.top
+      : field.right < brand.left && Math.abs((field.top + field.bottom - brand.top - brand.bottom) / 2) <= 8;
+    return layout && brand.height >= 44 && brand.right === tools.right && brand.right <= innerWidth &&
+      heading.left === search.left && heading.top >= search.bottom &&
+      document.documentElement.scrollWidth <= innerWidth;
+  })()`), `${scenario}: Explore brand stays top-right with a separate heading and no overlap`);
 }
 
 async function brandAssets(page) {
@@ -1020,6 +1037,7 @@ async function brandAssets(page) {
     const selected = theme === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${theme}'`;
     check(await page.eval(`document.documentElement.dataset.hydrated !== 'true' && ${selected}`), `${theme}/${system} bootstrap selects the preference without hydration`);
     await assertBrand(page, theme);
+    await assertExploreHeader(page, `${theme}/${system} before hydration`);
     await page.capture(`brand-before-hydration-${theme}${theme === 'system' ? '-' + system : ''}`);
   }
   await page.send('Network.setBlockedURLs', { urls: [] });
@@ -1377,6 +1395,7 @@ async function railReview(page) {
     await page.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: width - 10, y: 10 });
     await page.eval(`document.activeElement?.blur(); document.querySelector('#navigation').scrollTop = 0`);
     const name = `rail-r1-${width}x${height}-${railWidth}-${theme}-text${scale}`;
+    await assertExploreHeader(page, name);
     await page.capture(name);
     check(await page.eval(`(() => {
       const rail = document.querySelector('#navigation'), toggle = document.querySelector('#navigation-toggle');
@@ -1452,10 +1471,23 @@ async function adaptiveShell(page) {
     forcedFocus.forcedColors && forcedFocus.reducedMotion && parseFloat(forcedFocus.transition) <= 0.001,
   `Tab reaches a visible toggle focus ring in forced colors and reduced motion: ${JSON.stringify(forcedFocus)}`);
   await page.capture('rail-r1-1440-forced-colors-focus');
+  await page.eval(`window.__exploreRailProbe = {
+    brand: document.querySelector('.vk-brand'), input: document.querySelector('#public-query')
+  }; window.__exploreRailProbe.right = window.__exploreRailProbe.brand.getBoundingClientRect().right;
+  window.__exploreRailProbe.input.focus()`);
+  await page.send('Input.insertText', { text: 'Mưa trên phố' });
+  await page.eval(`document.querySelector('#navigation-toggle').focus()`);
   await page.key('Enter');
   check((await page.eval(RAIL_WIDTH)) === 96 && await page.eval(`document.activeElement === window.__railToggle`), 'Enter collapses once and retains the toggle');
+  check(await page.eval(`(() => {
+    const { brand, input, right } = window.__exploreRailProbe;
+    return brand === document.querySelector('.vk-brand') && brand.getBoundingClientRect().right === right &&
+      input === document.querySelector('#public-query') && input.value === 'Mưa trên phố' && !location.search;
+  })()`), 'collapsing the rail keeps the brand aligned and retains the unsubmitted search');
   await page.key('Space');
   check((await page.eval(RAIL_WIDTH)) === 220 && await page.eval(`document.activeElement === window.__railToggle`), 'Space expands once and retains the toggle');
+  await page.click('#clear-public-search');
+  await page.waitFor(`document.querySelector('#public-query').value === ''`, 'clear rail probe text');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
   await page.click('#navigation-toggle');
   check((await page.eval(RAIL_WIDTH)) === 96, 'manual compact rail is 96px');
@@ -1514,7 +1546,7 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' && [...document.querySelectorAll('[aria-current=page]')].filter(el => el.getClientRects().length).length === 1`), 'rapid navigations leave exactly the final destination active');
   await assertBrandPlacement(page);
   await page.click('#navigation-primary a[href="/"]');
-  await page.waitFor(`location.pathname === '/' && document.querySelector('#explore-heading .vk-brand')`, 'back to Khám phá with its brand');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'back to Khám phá with its brand');
   await assertBrandPlacement(page);
 
   await openProfile(page);
@@ -1680,8 +1712,13 @@ async function adaptiveShell(page) {
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'mobile desk destination');
   await page.capture('320-desk-dark-text200');
   await page.click('.vk-ui-bottom-nav a[href="/"]');
-  await page.waitFor(`location.pathname === '/' && document.querySelector('#explore-heading .vk-brand')`, 'mobile discovery destination');
+  await page.waitFor(`location.pathname === '/' && document.querySelector('#discovery-tools .vk-brand')`, 'mobile discovery destination');
   await assertBrandPlacement(page);
+  await page.eval(`document.querySelector('.vk-ui-skip-link').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('.vk-brand:focus-visible') && getComputedStyle(document.activeElement).outlineStyle === 'solid'`), 'at 320px / 200% text, Tab reaches the Explore brand with a visible focus ring');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'the next Tab reaches the search action below the brand');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
@@ -2277,6 +2314,7 @@ async function publicReading(page) {
   };
   const exploreGeometry = async scenario => {
     await page.eval(`document.fonts.ready`);
+    await assertExploreHeader(page, scenario);
     await searchBarGeometry(page, '#public-query', scenario);
     check(await page.eval(`(() => {
       const input = document.querySelector('#public-query'), button = document.querySelector('#public-search button[type=submit]');
@@ -2332,7 +2370,7 @@ async function publicReading(page) {
   const captureExplore = async state => {
     for (const theme of ['light', 'dark']) {
       await setPublicTheme(theme);
-      for (const width of [1440, 1024, 834, 390, 320]) {
+      for (const width of [1440, 1024, 834, 430, 390, 360, 320]) {
         await page.viewport(width);
         for (const scale of [100, 200]) {
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);

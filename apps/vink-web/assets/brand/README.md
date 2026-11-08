@@ -11,7 +11,7 @@ Logo Enso trích raster của #10/PR #17 là lịch sử, đã được thay tro
 
 - Sáu `vink-mark-*.svg` và 12 `vink-{light,dark}-{24,32,48,96,192,512}.png`
   được chép **nguyên byte** từ selected pack. Không crop, vẽ lại, invert, nén lossy hay đổi gradient.
-- Heading Khám phá (`/`) dùng SVG chuẩn Light/Dark, khung vuông 2,25rem và chữ Vink
+- Vùng đầu trang Khám phá (`/`) dùng SVG chuẩn Light/Dark, khung vuông 2,25rem và chữ Vink
   bằng Literata. CSS chọn theme qua `data-theme`/`prefers-color-scheme`; preload hai SVG
   nhỏ trước stylesheet.
 - Favicon có JS dùng SVG compact theo preference thật. `favicon.svg` ghép nguyên defs/path
