@@ -186,7 +186,7 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify` | Giữ smoke/matrix raw hiện có; thêm 36 capture specimen chọn lọc (6 entry × light/dark × 390/1440 text100, 390 text200), `focus-manifest.json` và PNG `--focus[--partN]`. Clip theo geometry, padding 12 CSS px; specimen cao chia tile cân bằng, tối đa 4096px và không quá chiều cao viewport (mặc định 900px), không thu ảnh. Cuộn trong viewport thật, không dùng CDP resize ngầm. Kiểm PNG/bounds/ảnh không trắng, phục hồi viewport/scroll/focus và source fingerprint | Cùng prerequisite với preview; identity/theme/clip/PNG/restore hoặc source đổi trong lúc chụp |
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
 | `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json`, phiên bản pin của runtime editor, mọi crate kế thừa lint workspace (`unsafe_code = "forbid"`) và mỗi doctest `compile_fail` có lawful twin | Một bước lỗi |
-| `cargo xtask verify postgres` | Test vòng đời migration của `vink-store-postgres` và test App trên PostgreSQL thật; config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
+| `cargo xtask verify postgres` | Test integration của Store, App và Identity trên PostgreSQL thật ([mặc định 2 luồng mỗi gói](#giới-hạn-song-song-khi-kiểm-thử)); config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
 | `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production; trước khi chạy, đòi filter test chọn đúng ba test replay có tên | Thiếu Node/npm, sai tool version, model/test/drift, negative control không phát hiện lỗi hoặc test replay không được chọn |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A); test replay có tên phải được chọn | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
@@ -218,6 +218,21 @@ nhất cấp/thu hồi quyền kiểm duyệt bình luận (dùng `DATABASE_URL`
 này, quyền sở hữu tác phẩm không bao giờ kéo theo quyền kiểm duyệt). Mã thoát: `0` thành công,
 `1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
 hoặc cách gọi sai. `vink-worker` dùng cùng cấu hình với `serve`.
+
+### Giới hạn song song khi kiểm thử
+
+`verify postgres` chạy lần lượt các gói Store, App và Identity, mặc định tối đa hai test
+integration cùng lúc trong mỗi gói. Mỗi test SQLx dùng database tạm và pool riêng.
+Các test tranh chấp vẫn tạo kết nối đồng thời bên trong test. Mức mặc định này áp dụng
+cả khi chạy qua `verify all` và CI. Đặt `RUST_TEST_THREADS` thành số nguyên dương để chọn
+mức khác. Biến môi trường được ưu tiên hơn giá trị trong `.env`.
+
+```sh
+CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 cargo xtask verify postgres
+```
+
+`CARGO_BUILD_JOBS` giới hạn các tác vụ biên dịch của Cargo. `RUST_TEST_THREADS` điều chỉnh
+số test chạy cùng lúc.
 
 ## Cấu hình
 
@@ -384,6 +399,19 @@ production, không chép luật và không đổi toolchain 1.99.1 của workspa
 không tìm thấy harness, nên lane đòi dòng tổng kết khớp **đúng số `#[kani::proof]`** trong các file
 harness đã đăng ký của manifest (`xtask/src/kani.rs`) với 0 failure: module harness bị compile-out là FAIL, không phải PASS rỗng. Job CI `kani`
 cài bản pin rồi gọi cùng lệnh. Thiếu verifier là FAIL/NOT_RUN, không thay bằng unit test.
+
+Kani 0.67.0 chạy các harness tuần tự theo mặc định. Khi cần kiểm nhanh hoặc đo tài nguyên
+của một harness, chọn tên đầy đủ và manifest sở hữu nó. Ví dụ trên macOS:
+
+```sh
+/usr/bin/time -l cargo kani \
+  --manifest-path services/vink-app/kani/Cargo.toml \
+  --exact --harness domain::taxonomy::proofs::taxonomy_catalog_aliases_point_only_at_active_canonical_tags
+```
+
+Trên Linux, dùng `/usr/bin/time -v`. Ghi thời gian thực và RSS cực đại cùng với tên harness
+để so sánh các lần chạy. Kiểm dòng tổng kết `Complete - 1 successfully verified harnesses, 0 failures, 1 total.`
+để xác nhận đã chạy đúng một harness. Dùng `cargo xtask verify kani` để kiểm đủ cả hai manifest.
 
 | Manifest | Harness và bounds | Không chứng minh |
 | --- | --- | --- |
