@@ -49,11 +49,12 @@ usage: cargo xtask <command>
   verify quick           fmt, clippy (server + wasm), unit/contract tests, repository checks
   verify expressions     Noto manifest, Quint lifecycle/negative control and Rust replay
   verify discussion      pinned Quint structure/lifecycle checks, trace drift and Rust replays
-  verify kani            owner-local Kani harnesses (expressions policy, discussion core);
-                         needs the pinned cargo-kani, which xtask never installs
+  verify kani            all owner-local Kani harnesses (expressions and App domain)
+                         requires the pinned cargo-kani
   verify postgres        migration lifecycle, persistence/concurrency/HTTP tests, provisioning
                          and role isolation, worker and vink-identity processes
                          (VINK_TEST_DATABASE_URL, psql)
+                         integration tests default to 2 threads (RUST_TEST_THREADS overrides)
   verify web             SSR + hydration + desk interactions in headless Chrome
   verify all             quick, discussion, expressions, postgres and web in order
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
@@ -540,7 +541,10 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
     }) {
         return false;
     }
-    // `#[sqlx::test]` creates a database per test from DATABASE_URL.
+    // Each SQLx test provisions its own database and pool. Bound libtest's scheduling
+    // so fewer of those databases are active at once.
+    let test_threads = env.get("RUST_TEST_THREADS").unwrap_or_else(|| "2".into());
+    let threads_arg = format!("--test-threads={test_threads}");
     for (name, package) in [
         (
             "shared store: migration lifecycle and error classes",
@@ -556,7 +560,9 @@ fn postgres(report: &mut Report, env: &env::Env) -> bool {
         ),
     ] {
         let mut tests = cargo(&root);
-        tests.args(["test", "--locked", "-p", package, "--test", "postgres"]);
+        tests
+            .args(["test", "--locked", "-p", package, "--test", "postgres"])
+            .args(["--", &threads_arg]);
         env.apply(&mut tests);
         tests.env("DATABASE_URL", &url);
         if !report.step(name, || process::run(&mut tests, name)) {
