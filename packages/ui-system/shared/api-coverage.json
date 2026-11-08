@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "components": [
     {
       "renderer": "leptos",
@@ -715,6 +715,30 @@
       "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Patterns.kt",
       "symbol": "EndorsementAction",
       "entry": "composition.endorsement"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/tags.rs",
+      "symbol": "TagChip",
+      "entry": "composition.tag-selector"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/tags.rs",
+      "symbol": "TagSelector",
+      "entry": "composition.tag-selector"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Tags.kt",
+      "symbol": "TagChip",
+      "entry": "composition.tag-selector"
+    },
+    {
+      "renderer": "cmp",
+      "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Tags.kt",
+      "symbol": "TagSelector",
+      "entry": "composition.tag-selector"
     }
   ],
   "style_exceptions": [

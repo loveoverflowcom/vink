@@ -25,6 +25,7 @@ pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;
 mod shell;
+pub mod tag_state;
 pub mod ui;
 
 use leptos::prelude::*;

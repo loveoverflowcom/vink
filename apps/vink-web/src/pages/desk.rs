@@ -15,12 +15,13 @@ use vink_ui::{
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
 use crate::desk_state::{
-    EditorSession, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
+    DraftSession, DraftTicket, Failure, LeaveGuard, LeaveNotice, LeaveStage, SaveStatus, SaveTicket,
 };
 use crate::document::DocumentView;
 use crate::draft_list::{CreateState, DraftSort, display_title as untitled, visible_drafts};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
+use crate::tag_state::{TagStatus, TagTicket};
 use crate::ui::{
     adapters,
     patterns::{DraftResume, DraftRow},
@@ -424,6 +425,7 @@ pub fn DraftEditor() -> impl IntoView {
 enum Field {
     Title,
     Body,
+    Tags,
 }
 
 #[component]
@@ -431,8 +433,9 @@ fn Editor(draft: Draft) -> impl IntoView {
     let work_id = StoredValue::new(draft.work_id.clone());
     let title = RwSignal::new(draft.title.clone());
     let body = BodySource::new(crate::document::document_to_text(&draft.document));
-    let session = RwSignal::new(EditorSession::loaded(draft.version));
-    let leave = RwSignal::new(LeaveGuard::default());
+    let session = RwSignal::new(DraftSession::loaded(draft.version));
+    let leave = RwSignal::new(LeaveGuard::<DraftTicket>::default());
+    let labels = RwSignal::new(crate::ui::adapters::TagLabels::default());
     let navigation = use_context::<NavigationGuard>();
     let title_input = NodeRef::<html::Input>::new();
     let leave_open = RwSignal::new(false);
@@ -443,9 +446,22 @@ fn Editor(draft: Draft) -> impl IntoView {
     let page_scroll = StoredValue::new(0.0_f64);
     let preview = RwSignal::new(None::<(String, DocumentDto)>);
 
+    // Leaves once every save the pending intent waits for has settled with nothing unconfirmed.
+    let settle_leave = move || {
+        let destination = leave
+            .try_update(|g| session.with_untracked(|s| g.save_settled(s)))
+            .flatten();
+        if let Some(destination) = destination {
+            leave_open.set(false);
+            restore_scroll(page_scroll);
+            if let Some(navigation) = navigation {
+                navigation.go(&destination);
+            }
+        }
+    };
     // Sends the text as it is now. The ticket was taken in the same turn, so it covers exactly
     // this text. The outcome settles the session first; only then may the leave intent go.
-    let send = move |ticket: SaveTicket, reconcile: bool| {
+    let send_text = move |ticket: SaveTicket, reconcile: bool| {
         let request = crate::contract::SaveDraftRequest {
             expected_version: ticket.expected_version,
             title: title.get_untracked(),
@@ -474,7 +490,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 // A GET can outlive the editor or an explicit discard. Never start a new
                 // mutation after that boundary. Staying only cancels navigation, not saving.
                 if !session
-                    .try_with_untracked(|s| s.in_flight() == Some(ticket))
+                    .try_with_untracked(|s| s.text.in_flight() == Some(ticket))
                     .unwrap_or(false)
                     || leave
                         .try_with_untracked(LeaveGuard::released)
@@ -488,33 +504,91 @@ fn Editor(draft: Draft) -> impl IntoView {
                 };
                 // The editor may have closed while the request was in flight.
                 let applied = session.try_update(|s| match outcome {
-                    Ok(saved) => s.save_succeeded(ticket, saved.version),
-                    Err(ApiError::VersionConflict { current_version }) => {
-                        s.save_rejected(ticket, SaveRejection::Conflict { current_version })
-                    }
-                    Err(error) => s.save_rejected(ticket, SaveRejection::Failed(failure(&error))),
+                    Ok(saved) => s.text.save_succeeded(ticket, saved.version),
+                    Err(ApiError::VersionConflict { current_version }) => s
+                        .text
+                        .save_rejected(ticket, SaveRejection::Conflict { current_version }),
+                    Err(error) => s
+                        .text
+                        .save_rejected(ticket, SaveRejection::Failed(failure(&error))),
                 });
                 if applied.is_none() {
                     return;
                 }
-                let destination = leave
-                    .try_update(|g| session.with_untracked(|s| g.save_settled(s, ticket)))
-                    .flatten();
-                if let Some(destination) = destination {
-                    leave_open.set(false);
-                    restore_scroll(page_scroll);
-                    if let Some(navigation) = navigation {
-                        navigation.go(&destination);
-                    }
-                }
+                settle_leave();
             });
         }
         #[cfg(not(feature = "hydrate"))]
-        let _ = (request, work_id, navigation, page_scroll, reconcile);
+        let _ = (request, work_id, reconcile, settle_leave);
+    };
+    // Sends exactly the selection the ticket recorded. A lost answer is reconciled by the next
+    // explicit save with the same expected version (TAG-PR-03 CHOICE-03), never resent here.
+    let send_tags = move |ticket: TagTicket| {
+        let Some(request) = session.with_untracked(|s| {
+            let selection = s.tags.as_ref()?.submitted(ticket)?;
+            Some(crate::contract::SaveDraftTagsRequest {
+                expected_version: ticket.expected_version,
+                form: selection.form.clone(),
+                themes: selection.themes.clone(),
+            })
+        }) else {
+            return;
+        };
+        #[cfg(feature = "hydrate")]
+        {
+            let id = work_id.get_value();
+            leptos::task::spawn_local(async move {
+                use crate::tag_state::{Selection, TagRejection};
+                let outcome = crate::api::save_draft_tags(&id, &request).await;
+                let applied = session.try_update(|s| {
+                    let Some(tags) = s.tags.as_mut() else {
+                        return;
+                    };
+                    match outcome {
+                        Ok(saved) => tags.save_succeeded(
+                            ticket,
+                            saved.version,
+                            Selection::new(saved.form, saved.themes),
+                        ),
+                        Err(ApiError::TagConflict {
+                            current_version,
+                            stored,
+                        }) => tags.save_rejected(
+                            ticket,
+                            TagRejection::Conflict {
+                                current_version,
+                                stored: Selection::new(stored.form, stored.themes),
+                            },
+                        ),
+                        Err(ApiError::TagRefused(refusal)) => {
+                            tags.save_rejected(ticket, TagRejection::Refused(refusal))
+                        }
+                        Err(error) => {
+                            tags.save_rejected(ticket, TagRejection::Failed(failure(&error)))
+                        }
+                    }
+                });
+                if applied.is_none() {
+                    return;
+                }
+                settle_leave();
+            });
+        }
+        #[cfg(not(feature = "hydrate"))]
+        let _ = (request, settle_leave);
+    };
+    let send = move |ticket: DraftTicket, reconcile: bool| {
+        if let Some(text) = ticket.text {
+            send_text(text, reconcile);
+        }
+        if let Some(tags) = ticket.tags {
+            send_tags(tags);
+        }
     };
     let save = move || {
-        let reconcile = session.with_untracked(|s| matches!(s.status(), SaveStatus::Failed(_)));
-        if let Some(ticket) = session.try_update(EditorSession::begin_save).flatten() {
+        let reconcile =
+            session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
+        if let Some(ticket) = session.try_update(DraftSession::begin_save) {
             send(ticket, reconcile);
         }
     };
@@ -539,6 +613,17 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         }
         Field::Body => body.focus(),
+        Field::Tags => {
+            #[cfg(feature = "hydrate")]
+            if let Some(input) = document().get_element_by_id(crate::pages::work_info::QUERY_ID) {
+                use wasm_bindgen::JsCast;
+                if let Ok(input) = input.dyn_into::<web_sys::HtmlElement>() {
+                    let options = web_sys::FocusOptions::new();
+                    options.set_prevent_scroll(true);
+                    let _ = input.focus_with_options(&options);
+                }
+            }
+        }
     };
     let stay = move || {
         leave.update(LeaveGuard::stay);
@@ -550,7 +635,8 @@ fn Editor(draft: Draft) -> impl IntoView {
         });
     };
     let save_and_leave = move || {
-        let reconcile = session.with_untracked(|s| matches!(s.status(), SaveStatus::Failed(_)));
+        let reconcile =
+            session.with_untracked(|s| matches!(s.text.status(), SaveStatus::Failed(_)));
         let ticket = leave
             .try_update(|g| session.try_update(|s| g.save_and_leave(s)))
             .flatten()
@@ -633,7 +719,8 @@ fn Editor(draft: Draft) -> impl IntoView {
     #[cfg(feature = "hydrate")]
     {
         let guard = window_event_listener(leptos::ev::beforeunload, move |event| {
-            let unsaved = session.with_untracked(EditorSession::has_unsaved_text);
+            let unsaved =
+                session.with_untracked(<DraftSession as crate::desk_state::Guarded>::has_unsaved);
             if unsaved && !leave.with_untracked(LeaveGuard::released) {
                 event.prevent_default();
             }
@@ -649,14 +736,15 @@ fn Editor(draft: Draft) -> impl IntoView {
         focus_last_field();
     });
     let on_body_change = Callback::new(move |()| {
-        session.try_update(EditorSession::edited);
+        session.try_update(|s| s.text.edited());
     });
 
     // Deduplicate status changes: typing another character while already unsaved must not
     // mutate the polite live region. The acknowledged version stays in optional detail.
-    let save_status = Memo::new(move |_| session.with(EditorSession::status));
+    let save_status = Memo::new(move |_| session.with(|s| s.text.status()));
+    let tag_status = Memo::new(move |_| session.with(DraftSession::tag_status));
     let status = move || save_status.get();
-    let status_label = Memo::new(move |_| status_text(status()));
+    let status_label = Memo::new(move |_| draft_status_text(status(), tag_status.get().as_ref()));
     let shortcut = RwSignal::new("Lưu nháp (Ctrl/⌘ + S)".to_string());
     #[cfg(feature = "hydrate")]
     Effect::new(move |_| {
@@ -699,8 +787,8 @@ fn Editor(draft: Draft) -> impl IntoView {
         >
             <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
                 status=Signal::derive(move || status_label.get())
-                status_token=Signal::derive(move || status().token().to_string())
-                status_detail=Signal::derive(move || status_detail(status()))>
+                status_token=Signal::derive(move || draft_status_token(status(), tag_status.get().as_ref()).to_string())
+                status_detail=Signal::derive(move || draft_status_detail(status(), tag_status.get().as_ref()))>
                     <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
                         on_press=move |_| open_preview() />
                     <TooltipIconButton id="export" icon=IconName::Download label="Tải bản thảo (.txt)"
@@ -708,7 +796,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     <PlainTooltip id="save-tooltip" text=Signal::derive(move || shortcut.get())>
                         <Button variant=ButtonVariant::Filled kind=ButtonKind::Submit id="save"
                             described_by="save-tooltip"
-                            state=Signal::derive(move || if status() == SaveStatus::Saving { ActionState::pending("") } else { blocked(!session.with(EditorSession::can_save)) })>
+                            state=Signal::derive(move || if !session.with(|s| s.in_flight().is_empty()) { ActionState::pending("") } else { blocked(!session.with(DraftSession::can_save)) })>
                             "Lưu"
                         </Button>
                     </PlainTooltip>
@@ -737,7 +825,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Text id="keep-mine"
                             on_press=move |_| {
-                                session.update(EditorSession::keep_local_text);
+                                session.update(|s| s.text.keep_local_text());
                                 save();
                             }>"Lưu đè bằng nội dung đang viết"</Button>
                         <Button variant=ButtonVariant::Text leading=IconName::Download on_press=move |_| export()>"Tải .txt"</Button>
@@ -756,7 +844,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     on_input=move |input: vink_ui::TextInput| {
                         if title.get_untracked() != input.value {
                             title.set(input.value);
-                            session.update(EditorSession::edited);
+                            session.update(|s| s.text.edited());
                         }
                     } />
                 <div class="vk-field" on:focusin=move |_| last_field.set_value(Field::Body)>
@@ -785,6 +873,10 @@ fn Editor(draft: Draft) -> impl IntoView {
                     </details>
                 </div>
             </div>
+            <div class="vk-editor-work-info" on:focusin=move |_| last_field.set_value(Field::Tags)>
+                <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
+                    on_save=Callback::new(move |()| save()) />
+            </div>
         </form>
         <vink_ui::Dialog id="leave-editor" open=leave_open
             title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ chữ chưa lưu và rời trang?" } else { "Rời trang khi còn chữ chưa lưu?" }.to_string())
@@ -796,7 +888,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                     let saving = move || matches!(stage(), Some(LeaveStage::Saving { .. }));
                     view! {
                         <p class="vk-dialog__body" data-testid="leave-message">
-                            {move || leave_message(stage(), status())}
+                            {move || leave_message(stage(), status(), tag_status.get().as_ref(), session.with(|s| (s.text.has_unsaved_text(), s.tags.as_ref().is_some_and(|t| t.has_unsaved()))))}
                         </p>
                         <div class="vk-dialog__actions">
                             <Button variant=ButtonVariant::Text
@@ -808,7 +900,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                             </Button>
                             <Button variant=ButtonVariant::Filled
                                 id="leave-save"
-                                state=Signal::derive(move || blocked(saving() || matches!(status(), SaveStatus::Conflict { .. })))
+                                state=Signal::derive(move || blocked(saving() || matches!(status(), SaveStatus::Conflict { .. }) || matches!(tag_status.get(), Some(TagStatus::Conflict { .. }))))
                                 on_press=move |_| save_and_leave()
                             >
                                 {move || if saving() { "Đang lưu…" } else { "Lưu và rời trang" }}
@@ -978,7 +1070,7 @@ fn save_is_uncertain(status: SaveStatus) -> bool {
     )
 }
 
-fn failure_reason(failure: Failure) -> &'static str {
+pub(crate) fn failure_reason(failure: Failure) -> &'static str {
     match failure {
         Failure::Network => "Mất phản hồi từ máy chủ; chưa rõ bản nháp đã được lưu hay chưa.",
         Failure::Unavailable => "Máy chủ tạm không phục vụ.",
@@ -990,7 +1082,26 @@ fn failure_reason(failure: Failure) -> &'static str {
     }
 }
 
-fn leave_message(stage: Option<LeaveStage>, status: SaveStatus) -> String {
+fn leave_message(
+    stage: Option<LeaveStage<DraftTicket>>,
+    status: SaveStatus,
+    tags: Option<&TagStatus>,
+    (text_unsaved, tags_unsaved): (bool, bool),
+) -> String {
+    let tags_not_saved = match tags {
+        Some(TagStatus::Conflict { .. }) => Some(
+            "Thẻ đã được lưu khác ở nơi khác, nên không lưu đè từ đây. Ở lại để chọn thẻ nào được giữ."
+                .to_string(),
+        ),
+        Some(TagStatus::Refused(_)) => Some(
+            "Thẻ chưa lưu được: máy chủ từ chối một thẻ. Ở lại để bỏ hoặc thay thẻ đó.".to_string(),
+        ),
+        Some(TagStatus::Failed(failure)) => Some(format!(
+            "Thẻ chưa lưu được. {} Lựa chọn vẫn còn trên trang này.",
+            tag_failure_reason(*failure)
+        )),
+        _ => None,
+    };
     let not_saved = match status {
         SaveStatus::Conflict { server_version } => format!(
             "Bản nháp đã được lưu ở nơi khác (phiên bản {server_version}), nên không lưu đè từ đây. Ở lại để chọn lưu đè, hoặc tải bản đang viết."
@@ -999,25 +1110,104 @@ fn leave_message(stage: Option<LeaveStage>, status: SaveStatus) -> String {
             "Chưa lưu được. {} Chữ vẫn còn trên trang này.",
             failure_reason(failure)
         ),
-        _ => "Chữ vẫn còn trên trang này.".into(),
+        _ => tags_not_saved
+            .clone()
+            .unwrap_or_else(|| "Chữ vẫn còn trên trang này.".into()),
     };
+    let blocked = matches!(status, SaveStatus::Failed(_) | SaveStatus::Conflict { .. })
+        || tags_not_saved.is_some();
     match stage {
         Some(LeaveStage::Saving { .. }) => {
             "Đang lưu… Trang sẽ rời khi máy chủ xác nhận bản mới nhất.".into()
         }
         Some(LeaveStage::Choosing {
             notice: Some(LeaveNotice::NewerEdits),
-        }) => "Đã lưu, nhưng còn chữ mới hơn chưa lưu. Lưu tiếp rồi rời, hoặc ở lại.".into(),
+        }) => "Đã lưu, nhưng còn thay đổi mới hơn chưa lưu. Lưu tiếp rồi rời, hoặc ở lại.".into(),
         Some(LeaveStage::Choosing {
             notice: Some(LeaveNotice::NotSaved),
         }) => not_saved,
-        _ if matches!(status, SaveStatus::Failed(_) | SaveStatus::Conflict { .. }) => not_saved,
+        _ if blocked => not_saved,
+        _ if tags_unsaved && !text_unsaved => "Thẻ đã chọn chưa được máy chủ xác nhận. Ở lại để chọn tiếp, hoặc lưu rồi rời trang.".into(),
+        _ if tags_unsaved => "Chữ và thẻ gần nhất chưa được máy chủ xác nhận. Ở lại để viết tiếp, hoặc lưu rồi rời trang.".into(),
         _ => "Những thay đổi gần nhất chưa được máy chủ xác nhận. Ở lại để viết tiếp, hoặc lưu rồi rời trang.".into(),
     }
 }
 
+/// The toolbar's one status line for both parts. Text states keep their words; tag states are
+/// named as tags, so a saved text never reads as saved tags.
+fn draft_status_text(text: SaveStatus, tags: Option<&TagStatus>) -> String {
+    match (text, tags) {
+        (SaveStatus::Saving, _) | (_, Some(TagStatus::Saving)) => "Đang lưu…".into(),
+        (SaveStatus::Conflict { .. } | SaveStatus::Failed(_), _) => status_text(text),
+        (_, Some(TagStatus::Conflict { .. })) => "Thẻ đã đổi ở nơi khác.".into(),
+        (_, Some(TagStatus::Failed(failure))) if crate::tag_state::uncertain(*failure) => {
+            "Chưa xác nhận lưu thẻ.".into()
+        }
+        (_, Some(TagStatus::Failed(_) | TagStatus::Refused(_))) => "Thẻ chưa lưu được.".into(),
+        (SaveStatus::Unsaved, _) | (_, Some(TagStatus::Unsaved)) => "Chưa lưu".into(),
+        (SaveStatus::Saved { .. }, _) => "Đã lưu".into(),
+    }
+}
+
+fn draft_status_token(text: SaveStatus, tags: Option<&TagStatus>) -> &'static str {
+    match (text, tags) {
+        (SaveStatus::Saving, _) | (_, Some(TagStatus::Saving)) => "saving",
+        (SaveStatus::Conflict { .. } | SaveStatus::Failed(_), _) => text.token(),
+        (_, Some(TagStatus::Conflict { .. })) => "conflict",
+        (_, Some(TagStatus::Failed(_) | TagStatus::Refused(_))) => "failed",
+        (SaveStatus::Unsaved, _) | (_, Some(TagStatus::Unsaved)) => "unsaved",
+        (SaveStatus::Saved { .. }, _) => "saved",
+    }
+}
+
+fn draft_status_detail(text: SaveStatus, tags: Option<&TagStatus>) -> String {
+    let text = status_detail(text);
+    match tags {
+        None => text,
+        Some(tags) => format!("{text} {}", tag_status_detail(tags)),
+    }
+}
+
+/// The short state shown beside “Thông tin tác phẩm”.
+pub(crate) fn tag_status_label(status: &TagStatus) -> &'static str {
+    match status {
+        TagStatus::Saved { .. } => "Đã lưu thẻ",
+        TagStatus::Unsaved => "Chưa lưu thẻ",
+        TagStatus::Saving => "Đang lưu thẻ…",
+        TagStatus::Conflict { .. } => "Thẻ đã đổi ở nơi khác",
+        TagStatus::Failed(failure) if crate::tag_state::uncertain(*failure) => {
+            "Chưa xác nhận lưu thẻ"
+        }
+        TagStatus::Failed(_) | TagStatus::Refused(_) => "Thẻ chưa lưu được",
+    }
+}
+
+pub(crate) fn tag_status_detail(status: &TagStatus) -> String {
+    match status {
+        TagStatus::Saved { .. } => "Thẻ đã lưu.".into(),
+        TagStatus::Unsaved => "Thẻ có thay đổi chưa lưu.".into(),
+        TagStatus::Saving => "Đang chờ máy chủ xác nhận thẻ đã gửi.".into(),
+        TagStatus::Conflict { .. } => {
+            "Thẻ đã được lưu khác ở nơi khác; chưa ghi đè lựa chọn nào.".into()
+        }
+        TagStatus::Refused(refusal) => crate::ui::adapters::tag_refusal_text(refusal),
+        TagStatus::Failed(failure) => format!(
+            "{} Lựa chọn còn trên trang này.",
+            tag_failure_reason(*failure)
+        ),
+    }
+}
+
+pub(crate) fn tag_failure_reason(failure: Failure) -> &'static str {
+    match failure {
+        Failure::Network => "Mất phản hồi từ máy chủ; chưa rõ thẻ đã được lưu hay chưa.",
+        Failure::Unexpected => "Phản hồi không xác định; chưa rõ thẻ đã được lưu hay chưa.",
+        other => failure_reason(other),
+    }
+}
+
 #[cfg(feature = "hydrate")]
-fn failure(error: &ApiError) -> Failure {
+pub(crate) fn failure(error: &ApiError) -> Failure {
     match error {
         ApiError::Network => Failure::Network,
         ApiError::Unavailable => Failure::Unavailable,
@@ -1036,6 +1226,8 @@ fn failure(error: &ApiError) -> Failure {
         | ApiError::EndorsementNotPermitted
         | ApiError::EndorsementConflict { .. }
         | ApiError::RevisionChanged { .. }
+        | ApiError::TagConflict { .. }
+        | ApiError::TagRefused(_)
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }
@@ -1052,6 +1244,88 @@ fn blocked(disabled: bool) -> ActionState {
 #[cfg(test)]
 mod editor_presentation_tests {
     use super::*;
+    use crate::desk_state::EditorSession;
+    use crate::tag_state::TagStatus;
+
+    #[test]
+    fn the_toolbar_names_tag_states_and_keeps_text_words_when_tags_are_saved() {
+        let saved_tags = TagStatus::Saved { version: 2 };
+        let text = SaveStatus::Saved { version: 7 };
+        assert_eq!(draft_status_text(text, Some(&saved_tags)), "Đã lưu");
+        assert_eq!(draft_status_token(text, Some(&saved_tags)), "saved");
+        assert_eq!(draft_status_text(text, None), "Đã lưu", "tags not loaded");
+        assert_eq!(
+            draft_status_text(text, Some(&TagStatus::Unsaved)),
+            "Chưa lưu",
+            "a tag-only change is unsaved work"
+        );
+        assert_eq!(draft_status_token(text, Some(&TagStatus::Saving)), "saving");
+        assert_eq!(
+            draft_status_text(text, Some(&TagStatus::Failed(Failure::Network))),
+            "Chưa xác nhận lưu thẻ."
+        );
+        assert_eq!(
+            draft_status_text(text, Some(&TagStatus::Failed(Failure::Unauthenticated))),
+            "Thẻ chưa lưu được."
+        );
+        // A text problem keeps its own words; it is the one to act on first.
+        let conflict = SaveStatus::Conflict { server_version: 9 };
+        assert_eq!(
+            draft_status_text(conflict, Some(&TagStatus::Unsaved)),
+            "Có bản mới trên máy chủ."
+        );
+        let detail = draft_status_detail(text, Some(&TagStatus::Unsaved));
+        assert!(detail.contains("phiên bản 7") && detail.contains("Thẻ có thay đổi chưa lưu."));
+        assert!(!draft_status_detail(text, Some(&saved_tags)).contains("phiên bản 2"));
+    }
+
+    #[test]
+    fn the_leave_dialog_says_which_part_is_unsaved_or_blocked() {
+        let text = SaveStatus::Saved { version: 3 };
+        let saved = TagStatus::Saved { version: 1 };
+        assert!(
+            leave_message(None, text, Some(&TagStatus::Unsaved), (false, true))
+                .starts_with("Thẻ đã chọn")
+        );
+        assert!(
+            leave_message(
+                None,
+                SaveStatus::Unsaved,
+                Some(&TagStatus::Unsaved),
+                (true, true)
+            )
+            .starts_with("Chữ và thẻ")
+        );
+        assert!(
+            leave_message(None, SaveStatus::Unsaved, Some(&saved), (true, false))
+                .starts_with("Những thay đổi gần nhất")
+        );
+        let notice = Some(LeaveStage::Choosing {
+            notice: Some(LeaveNotice::NotSaved),
+        });
+        assert!(
+            leave_message(
+                notice,
+                text,
+                Some(&TagStatus::Failed(Failure::Unavailable)),
+                (false, true)
+            )
+            .starts_with("Thẻ chưa lưu được.")
+        );
+        let stored = crate::tag_state::Selection::default();
+        assert!(
+            leave_message(
+                None,
+                text,
+                Some(&TagStatus::Conflict {
+                    server_version: 4,
+                    stored
+                }),
+                (false, true)
+            )
+            .contains("không lưu đè từ đây")
+        );
+    }
 
     #[test]
     fn compact_saved_status_keeps_only_the_acknowledged_version_in_detail() {

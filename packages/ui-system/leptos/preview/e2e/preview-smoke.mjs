@@ -160,6 +160,7 @@ class Page {
       Space: { key: ' ', code: 'Space', windowsVirtualKeyCode: 32, text: ' ' },
       Tab: { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 },
       ArrowDown: { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 },
+      ArrowUp: { key: 'ArrowUp', code: 'ArrowUp', windowsVirtualKeyCode: 38 },
       ArrowRight: { key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 },
       Escape: { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 },
     };
@@ -785,6 +786,46 @@ async function toggles(page) {
   const guest = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.getAttribute('aria-disabled'), b.dataset.pressed])`);
   const text = await page.eval(`document.getElementById('specimen-scope').textContent`);
   check(guest.every(([d, p]) => d === 'true' && p === 'unknown') && text.includes('Cần đăng nhập để đánh giá.') && !/Đăng nhập\b/.test(text), 'EndorsementAction: a guest sees counts and a reason, no fake login or own state');
+
+  // TagSelector (TAG-PR-05): names, groups, status, keyboard and IME through the public API.
+  await page.open('composition.tag-selector');
+  const removeNames = await page.eval(`[...document.querySelectorAll('#sample-tags .vk-tag-chip .vk-ui-icon-button')].map((b) => b.getAttribute('aria-label'))`);
+  check(removeNames.length === 1 && removeNames[0] === 'Bỏ chủ đề Ký ức', `TagSelector: each selected chip has its own remove name (${removeNames})`);
+  const legends = await page.eval(`[...document.querySelectorAll('#sample-tags fieldset > legend')].map((l) => l.textContent.trim())`);
+  check(legends.length === 2 && legends[0].startsWith('Dạng bài') && legends[1].includes('1/3'), `TagSelector: two labelled groups and the themes count (${legends})`);
+  check(await page.eval(`(() => { const s = document.getElementById('sample-tags-status'); return s.getAttribute('role') === 'status' && s.textContent.includes('2 gợi ý cho “hồi”'); })()`), 'TagSelector: the candidate count is a polite status');
+  check(await page.eval(`document.querySelector('[id^=sample-tags-form-][aria-pressed=true]')?.textContent.includes('Tản văn')`), 'TagSelector: the chosen form chip is pressed, with a check mark slot');
+  check(await page.eval(`document.getElementById('sample-tags-option-1').getAttribute('aria-describedby') === 'sample-tags-option-1-description' && document.getElementById('sample-tags-option-1').textContent.includes('qua tên “Hồi ức”')`), 'TagSelector: a candidate names its alias and links its description');
+  await page.eval(`document.getElementById('sample-tags-query').focus()`);
+  await page.key('ArrowDown');
+  check((await page.eval(`document.activeElement.id`)) === 'sample-tags-option-0', 'TagSelector: ArrowDown moves from the field to the first candidate');
+  await page.key('ArrowDown');
+  check((await page.eval(`document.activeElement.id`)) === 'sample-tags-option-1', 'TagSelector: ArrowDown moves between candidates');
+  await page.key('ArrowUp');
+  await page.key('Escape');
+  check((await page.eval(`document.activeElement.id`)) === 'sample-tags-query', 'TagSelector: Escape returns from the candidates to the field');
+  await page.open('composition.tag-selector', 'refused');
+  check(await page.eval(`(() => { const b = document.getElementById('sample-tags-theme-1-remove'); const note = document.getElementById(b.getAttribute('aria-describedby')); return note && note.textContent.includes('Chưa lưu thay đổi nào') && document.getElementById('sample-tags-theme-1').dataset.status === 'problem'; })()`), 'TagSelector: a refused tag is written next to its chip and linked to its remove action');
+  await page.open('composition.tag-selector', 'interactive');
+  await page.click('#sample-tags-theme-0-replace');
+  await page.settle();
+  check((await page.log()).includes('thay do-thi → mua') && (await page.eval(`document.getElementById('sample-tags-theme-0').textContent`)).includes('Mùa'), 'TagSelector: a retired tag is replaced in place by the hinted successor, never removed silently');
+  await page.eval(`document.getElementById('sample-tags-query').focus()`);
+  await page.send('Input.imeSetComposition', { text: 'Gia đì', selectionStart: 6, selectionEnd: 6 });
+  await page.key('Enter');
+  check(!(await page.log()).includes('thêm chủ đề'), 'TagSelector: Enter during composition chooses nothing');
+  await page.send('Input.insertText', { text: 'Gia đình' });
+  await page.settle();
+  await page.key('Enter');
+  await page.settle();
+  check((await page.log()).includes('thêm chủ đề → gia-dinh'), 'TagSelector: after composition, Enter adds the exact match');
+  check(await page.eval(`document.getElementById('sample-tags-query').value === '' && document.activeElement.id === 'sample-tags-query'`), 'TagSelector: the field clears and keeps focus after adding');
+  await page.click('#sample-tags-theme-0-remove');
+  await page.settle();
+  check(await page.eval(`document.activeElement.id === 'sample-tags-theme-0-remove' && document.getElementById('sample-tags-theme-0').textContent.includes('Gia đình')`), 'TagSelector: removing a chip focuses the next remove action');
+  await page.click('#sample-tags-theme-0-remove');
+  await page.settle();
+  check((await page.eval(`document.activeElement.id`)) === 'sample-tags-query', 'TagSelector: removing the last chip returns focus to the field');
 }
 
 async function states(page, cdp) {

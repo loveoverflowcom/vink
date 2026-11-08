@@ -1,7 +1,13 @@
 # Compatibility và nguồn authoring
 
-Token source hiện hành 0.5.0, catalog 0.6.0, API admission map 0.2.0. Package nội bộ chưa phát
+Token source hiện hành 0.5.0, catalog 0.7.0, API admission map 0.3.0. Package nội bộ chưa phát
 hành registry.
+
+TAG-PR-05 (#99) thêm entry `composition.tag-selector` (catalog 0.7.0, 9 kịch bản giống nhau ở hai
+gallery) và composition `TagSelector`/`TagChip` trong `vink-patterns` (Leptos `src/tags.rs`, CMP
+`Tags.kt`; admission map 0.3.0). Chỉ ghép primitive hiện có (`FilterChip`, `SearchField`, `Button`,
+`IconButton`, `SupportingDetails`; CMP thay disclosure bằng nút Text vì chưa có support API); không
+thêm token, primitive hay đổi API cũ. Facts DTO-free, consumer giữ request, version và lưu.
 
 LVE #73 (UI System) thêm role recipe `action.toggle.content`, `action.toggle.selected-container`,
 `action.toggle.selected-content` (alias của `on-surface-variant`, `secondary-container`,

@@ -96,7 +96,7 @@ carrying the stored tags for reconciliation, no receipt). Catalog governance is 
 command `vink-app tag list|history|create|rename|describe|alias|retire` (`CuratorAuthority::operator`,
 never constructed in `src/http`); each accepted change writes a `tag_catalog_changes` row in the same
 transaction (migration `20261109000000_tag_catalog_audit`; the schema refuses a version step without
-it). No UI or production authority; see [API](docs/development/taxonomy-api.md).
+it). No production authority; see [API](docs/development/taxonomy-api.md).
 TAG-PR-04 (#98) evolves `GET /api/v1/works` into the public discovery read (`q`, repeatable `tag`,
 `limit`, `cursor`; the default request is still the 12-item home page and SSR's in-process call):
 pure `domain::discovery` (query/filter/page/cursor bound to the canonical search, `filter_tags`:
@@ -105,7 +105,15 @@ only active tags are facets, AND semantics), `application::discovery`, `persiste
 `20261110000000_public_discovery` (`vink_search_key` mirroring `SearchKey::of`, stored generated keys
 on revision titles and display names). Cards and `GET …/publication` carry active public tags. No
 total count; unknown/retired filter slugs answer `200` with a resolution; the web consumer only
-decodes the new fields (UI #99/#100). See [discovery](docs/development/discovery-api.md).
+decodes the new fields (discovery UI: #100). See [discovery](docs/development/discovery-api.md).
+TAG-PR-05 (#99) adds the first consumer: “Thông tin tác phẩm” after the manuscript in the Web editor
+(`pages/work_info.rs`) over the DTO-free `TagSelector`/`TagChip` (`vink-patterns`, Leptos + CMP,
+catalog entry `composition.tag-selector`). A pure `TagSession`/`QueryState` (`tag_state.rs`) keeps the
+exact submitted selection and the query generation; `DraftSession` + a generic `LeaveGuard<T: Guarded>`
+make one “Lưu” send only the changed parts and leave only after every awaited ACK. Lost ACKs reconcile
+through the contract's `409` with stored tags, never a blind resend. Production still answers `401`;
+`verify web` seeds the catalog through `vink-app tag` and writes only via the LocalFixture. See
+[editor](docs/development/taxonomy-editor.md) and [LayoutSpec](docs/design/tag-selector.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
 limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so

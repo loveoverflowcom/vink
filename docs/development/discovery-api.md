@@ -4,7 +4,7 @@
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline `develop@f23df33` (sau
 #95–#97). **Trạng thái:** use case, adapter PostgreSQL, migration, hợp đồng HTTP v1 và consumer DTO của
 web đã có; kiểm bằng unit, store giả, PostgreSQL thật qua router production và một phép đo 20 000 tác
-phẩm. Chưa có UI tìm/lọc/phân trang (#99/#100), workflow publish (PUB-01..03) hay authority production
+phẩm. Chưa có UI tìm/lọc/phân trang (#100), workflow publish (PUB-01..03) hay authority production
 (D-05): mọi publication trong test là fixture SQL có nhãn, nên epic #94 chưa có lát nào chạy end-to-end cho
 người dùng thật.
 
@@ -232,7 +232,7 @@ PostgreSQL thật qua router production. Kết quả chạy ở mục 10.
 
 ## 9. Còn thiếu
 
-- **UI** (#99/#100): Khám phá vẫn tìm trong 12 card đã tải; chưa có ô lọc thẻ, trang thẻ, phân trang hay
+- **UI** (#100; #99 chỉ thêm bộ chọn thẻ cho bản nháp): Khám phá vẫn tìm trong 12 card đã tải; chưa có ô lọc thẻ, trang thẻ, phân trang hay
   hiển thị thẻ trên card/reader. Trình duyệt: không đổi UI nên `verify web` chỉ là hồi quy (mục 10); không
   có ảnh chụp mới vì không có thay đổi hiển thị.
 - **Publication**: chưa có writer production của `publications`/`metadata_snapshot_id`; mọi kết quả trong

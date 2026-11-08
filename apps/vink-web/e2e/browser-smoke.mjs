@@ -3349,9 +3349,176 @@ async function mainPhase(page) {
     rmSync(downloads, { recursive: true, force: true });
   }
 
+  await draftTags(page, workId);
+
   const kept = await page.draft(workId);
   const text = kept.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
   writeFileSync(args.state, JSON.stringify({ workId, title: kept.title, text, version: kept.version }));
+}
+
+const TAGS_READY = `document.querySelector('[data-testid=tag-status]') && document.querySelector('#work-tags-query')`;
+
+function tagStatus(page) {
+  return page.eval(`document.querySelector('[data-testid=tag-status]')?.dataset.status ?? null`);
+}
+
+function waitTagStatus(page, status, what = `tags ${status}`) {
+  return page.waitFor(`document.querySelector('[data-testid=tag-status]')?.dataset.status === ${JSON.stringify(status)}`, what);
+}
+
+function draftTagsOf(page, workId) {
+  return page.eval(`fetch('/api/v1/drafts/${workId}/tags').then((r) => r.json())`);
+}
+
+function chipLabels(page) {
+  return page.eval(`[...document.querySelectorAll('#work-tags-themes .vk-tag-chip__label')].map((l) => l.textContent)`);
+}
+
+/** TAG-PR-05 against the labelled loopback LocalFixture and the scratch PostgreSQL catalog that
+ * `verify web` seeded through `vink-app tag` (Tản văn, Thơ; Ký ức + alias Hồi ức, Gia đình, Mùa,
+ * Đô thị). Tag saves are real writes; every outcome is read back from the server. */
+async function draftTags(page, workId) {
+  console.log('draft tags: real catalog, metadata-only leave guard, IME, save/reload, conflict, lost ACK:');
+  const editorPath = `/ban-viet/${workId}`;
+  // The previous step leaves another draft with unsaved text on purpose; accept only that
+  // browser unload prompt to load this editor without writing the other draft.
+  const acceptUnload = (message) => {
+    if (message.sessionId === page.sessionId && message.method === 'Page.javascriptDialogOpening' && message.params.type === 'beforeunload') {
+      page.send('Page.handleJavaScriptDialog', { accept: true }).catch(() => {});
+    }
+  };
+  page.cdp.listeners.push(acceptUnload);
+  await page.goto(`${args.base}${editorPath}`);
+  page.cdp.listeners = page.cdp.listeners.filter((item) => item !== acceptUnload);
+  await page.waitFor(`${EDITOR_READY} && ${TAGS_READY} && document.documentElement.dataset.hydrated === 'true'`, 'editor with tags');
+  const textVersion = (await page.draft(workId)).version;
+  check((await tagStatus(page)) === 'saved' && (await page.status()) === 'saved', 'a draft without tags starts saved');
+  const html = await (await fetch(`${args.base}${editorPath}`)).text();
+  check(!html.includes('Thông tin tác phẩm') && !html.includes('work-tags'), 'SSR never renders the private tag section or its data');
+  await page.waitFor(`document.querySelectorAll('#work-tags-form .vk-ui-chip').length === 2`, 'form choices from the real catalog');
+  await page.eval(`document.querySelector('.cm-editor').__vinkTagsView = 'kept'`);
+  const view = `document.querySelector('.cm-editor')?.__vinkTagsView === 'kept' && document.querySelectorAll('.cm-editor').length === 1`;
+  const bodyBefore = await page.body();
+
+  // A metadata-only change is unsaved work: the toolbar says so and leaving is held.
+  await page.click('#work-tags-form .vk-ui-chip');
+  await waitTagStatus(page, 'unsaved');
+  check((await page.status()) === 'unsaved', 'the toolbar status covers a tag-only change');
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for a tag-only change');
+  check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Thẻ đã chọn'), 'the dialog names the unsaved tags');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed');
+  check((await page.eval(`location.pathname`)) === editorPath, 'a tag-only change held the navigation');
+
+  // IME: Enter while composing neither chooses a theme nor submits the editor form.
+  let puts = 0;
+  const countPuts = (message) => {
+    if (message.sessionId === page.sessionId && message.method === 'Network.requestWillBeSent' && message.params.request.method === 'PUT') puts++;
+  };
+  page.cdp.listeners.push(countPuts);
+  await page.eval(`document.getElementById('work-tags-query').focus()`);
+  await page.send('Input.imeSetComposition', { text: 'hồ', selectionStart: 2, selectionEnd: 2 });
+  await page.key('Enter');
+  check(puts === 0 && (await chipLabels(page)).length === 0, 'Enter during composition chose nothing and saved nothing');
+  await page.send('Input.insertText', { text: 'hồi' });
+  await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('gợi ý cho “hồi”')`, 'suggestions for the committed query');
+  const alias = await page.eval(`[...document.querySelectorAll('#work-tags-options .vk-ui-button')].find((b) => b.textContent.includes('Ký ức'))?.textContent ?? ''`);
+  check(alias.includes('qua tên “Hồi ức”'), `the alias that matched is named (${alias})`);
+  await page.eval(`[...document.querySelectorAll('#work-tags-options .vk-ui-button')].find((b) => b.textContent.includes('Ký ức')).id = 'tag-pick-ky-uc'`);
+  await page.click('#tag-pick-ky-uc');
+  await page.waitFor(`document.querySelector('#work-tags-themes .vk-tag-chip__label')?.textContent === 'Ký ức'`, 'theme chosen from a suggestion');
+  await page.waitFor(`document.getElementById('work-tags-query').value === '' && document.activeElement.id === 'work-tags-query'`, 'the field clears and keeps focus after choosing');
+  check(true, 'the field clears and keeps focus after choosing');
+  await page.send('Input.insertText', { text: 'Đô thị' });
+  await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('“Đô thị”')`, 'exact suggestion');
+  await page.key('Enter');
+  await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'Enter chose the exact match');
+  check(puts === 0, 'choosing tags does not save by itself');
+  check(await page.eval(view) && (await page.body()) === bodyBefore, 'tag edits kept the same EditorView and text');
+
+  await page.key('s', page.mod);
+  await waitTagStatus(page, 'saved', 'tags saved by Ctrl/Cmd+S');
+  await page.waitStatus('saved', 'toolbar saved');
+  page.cdp.listeners = page.cdp.listeners.filter((item) => item !== countPuts);
+  check(puts === 1, `only the tags were sent (${puts} PUT)`);
+  let stored = await draftTagsOf(page, workId);
+  check(stored.version === 2 && stored.form?.label === 'Tản văn' && stored.themes.map((t) => t.label).join() === 'Ký ức,Đô thị', `server stored the exact selection (v${stored.version})`);
+  check((await page.draft(workId)).version === textVersion, 'a tag save does not change the text version');
+  const publication = await fetch(`${args.base}/api/v1/works/${workId}/publication`);
+  check(publication.status === 404, 'saving tags published nothing');
+
+  await page.eval(`window.__vinkBeforeReload = true`);
+  await page.send('Page.reload');
+  await page.waitFor(`window.__vinkBeforeReload === undefined && ${EDITOR_READY} && ${TAGS_READY} && document.documentElement.dataset.hydrated === 'true'`, 'editor after reload');
+  await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'tags restored');
+  check((await chipLabels(page)).join() === 'Ký ức,Đô thị' && await page.eval(`(() => { const pressed = [...document.querySelectorAll('#work-tags-form .vk-ui-chip[aria-pressed=true]')]; return pressed.length === 1 && pressed[0].textContent.includes('Tản văn'); })()`), 'reload shows the confirmed tags');
+
+  // Another tab saves first: the stale save writes nothing; the author chooses.
+  const mua = (await page.eval(`fetch('/api/v1/tags?facet=theme').then((r) => r.json())`)).tags.find((t) => t.label === 'Mùa');
+  const other = await page.eval(`fetch('/api/v1/drafts/${workId}/tags', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expected_version: 2, form: null, themes: [${JSON.stringify(mua.tag_id)}] }) }).then((r) => r.status)`);
+  check(other === 200, 'another tab saved tags version 3');
+  await page.click('#work-tags-theme-0-remove');
+  await waitTagStatus(page, 'unsaved');
+  await page.click('#save');
+  await waitTagStatus(page, 'conflict', 'tag conflict');
+  check((await page.eval(`document.querySelector('[data-testid=tag-conflict]').textContent`)).includes('Đang lưu: Mùa'), 'the conflict shows the stored tags by name');
+  stored = await draftTagsOf(page, workId);
+  check(stored.version === 3 && stored.themes.map((t) => t.label).join() === 'Mùa', 'the stale tag save wrote nothing');
+  check((await chipLabels(page)).join() === 'Đô thị', 'the conflict keeps the author\'s selection on the page');
+  await page.click('#tags-keep-mine');
+  await waitTagStatus(page, 'saved', 'explicit tag overwrite');
+  stored = await draftTagsOf(page, workId);
+  check(stored.version === 4 && stored.form?.label === 'Tản văn' && stored.themes.map((t) => t.label).join() === 'Đô thị', 'the author chose their selection: version 4');
+
+  // Lost acknowledgement: the server commits, the answer is dropped, the retry reconciles.
+  const responses = new SaveGate(page, 'Response');
+  await responses.enable();
+  await page.eval(`document.getElementById('work-tags-query').focus()`);
+  await page.send('Input.insertText', { text: 'Gia đình' });
+  await page.waitFor(`document.getElementById('work-tags-status').textContent.includes('“Gia đình”')`, 'exact suggestion');
+  await page.key('Enter');
+  await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'second theme');
+  await page.click('#save');
+  await responses.fail(await responses.next());
+  await responses.disable();
+  await waitTagStatus(page, 'failed', 'unconfirmed tag save');
+  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Chưa xác nhận lưu thẻ.', 'the toolbar says the tag save is unconfirmed, not saved or failed outright');
+  stored = await draftTagsOf(page, workId);
+  check(stored.version === 5, 'the dropped answer belonged to a committed save');
+  await page.click('#tags-retry');
+  await waitTagStatus(page, 'saved', 'reconciled by the stored tags');
+  stored = await draftTagsOf(page, workId);
+  check(stored.version === 5 && stored.themes.map((t) => t.label).join() === 'Đô thị,Gia đình', 'the retry reconciled through 409 without writing again');
+
+  // Text and tags together: leaving waits for both confirmations.
+  await page.typeInBody(' Cùng thẻ.');
+  await page.click('#work-tags-theme-1-remove');
+  await waitTagStatus(page, 'unsaved');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for text and tags');
+  check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Chữ và thẻ'), 'the dialog names both parts');
+  await page.click('#leave-save');
+  await page.waitFor(`location.pathname === '/ban-viet'`, 'left after both saves');
+  stored = await draftTagsOf(page, workId);
+  const text = await page.draft(workId);
+  check(stored.version === 6 && stored.themes.map((t) => t.label).join() === 'Đô thị' && text.version === textVersion + 1 && text.document.blocks.at(-1).lines.at(-1).endsWith(' Cùng thẻ.'), 'left only after the text and the tags were both confirmed');
+}
+
+/** After `verify web` retired Đô thị (successor Mùa) between the phases: the tag stays on the
+ * draft, is written as retired and is replaced in place only by the author's action. */
+async function retiredTagAfterRestart(page, workId) {
+  console.log('a tag retired by the curator stays on the draft until the author replaces it:');
+  await page.waitFor(`${TAGS_READY} && document.querySelector('#work-tags-theme-0')`, 'tags after restart');
+  check(await page.eval(`(() => { const chip = document.getElementById('work-tags-theme-0'); return chip.dataset.status === 'retired' && chip.textContent.includes('Đô thị') && chip.textContent.includes('Đã ngừng dùng'); })()`), 'the retired tag is kept and written as retired');
+  check((await tagStatus(page)) === 'saved' && (await page.status()) === 'saved', 'a kept retired tag is not an unsaved change');
+  await page.click('#work-tags-theme-0-replace');
+  await waitTagStatus(page, 'unsaved');
+  check((await chipLabels(page)).join() === 'Mùa', 'the curator\'s successor replaced it in place');
+  await page.click('#save');
+  await waitTagStatus(page, 'saved', 'replacement saved');
+  const stored = await draftTagsOf(page, workId);
+  check(stored.themes.map((t) => `${t.label}:${t.status}`).join() === 'Mùa:active', 'the server holds the successor');
 }
 
 /** Real local fixture identity + scratch PostgreSQL writes. Rendering fixtures used below
@@ -3564,6 +3731,7 @@ async function afterRestartPhase(page) {
   check((await page.body()) === state.text, 'confirmed text survived the restart');
   check((await page.eval(`document.querySelector('input[name=title]').value`)) === state.title, 'title survived the restart');
   check((await page.eval(`document.querySelector('#editor-save-details').textContent`)).includes(`phiên bản ${state.version}`), 'version survived the restart');
+  await retiredTagAfterRestart(page, state.workId);
 
   console.log('export keeps the text being written:');
   const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));

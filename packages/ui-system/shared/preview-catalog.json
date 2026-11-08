@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -1429,6 +1429,54 @@
         {
           "id": "unavailable",
           "label": "Không thể đánh giá lúc này"
+        }
+      ],
+      "status": {
+        "leptos": "implemented-unverified",
+        "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "composition.tag-selector",
+      "family": "composition",
+      "label": "Bộ chọn thẻ — Mẫu",
+      "summary": "Chọn một dạng bài và tối đa 3 chủ đề từ danh mục do caller cấp; mỗi chip có nút bỏ có tên riêng, thẻ ngừng dùng hoặc bị từ chối ghi bằng chữ kèm gợi ý thay; Enter khi đang gõ dấu không chọn, ngoài composition chỉ chọn thẻ trùng khớp. Dữ liệu Mẫu, không gọi dịch vụ, không lưu.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Đã chọn, đang tìm “hồi”"
+        },
+        {
+          "id": "empty",
+          "label": "Chưa chọn thẻ nào"
+        },
+        {
+          "id": "full",
+          "label": "Đủ 3 chủ đề"
+        },
+        {
+          "id": "retired",
+          "label": "Thẻ đã ngừng dùng, có gợi ý thay"
+        },
+        {
+          "id": "refused",
+          "label": "Máy chủ từ chối một thẻ"
+        },
+        {
+          "id": "no-results",
+          "label": "Không có gợi ý khớp"
+        },
+        {
+          "id": "unavailable",
+          "label": "Danh mục và gợi ý tạm không tải được"
+        },
+        {
+          "id": "long-label",
+          "label": "Nhãn và mô tả dài"
+        },
+        {
+          "id": "interactive",
+          "label": "Chọn, bỏ, thay bằng owner trong bộ nhớ"
         }
       ],
       "status": {

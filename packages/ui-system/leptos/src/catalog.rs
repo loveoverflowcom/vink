@@ -5,7 +5,7 @@
 
 use crate::values::{CatalogEntry, Scenario};
 
-pub const CATALOG_VERSION: &str = "0.6.0";
+pub const CATALOG_VERSION: &str = "0.7.0";
 pub const STATUSES: &[&str] = &["implemented-unverified", "unsupported", "verified"];
 pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp"), ("screen", "Màn Vink — Mẫu")];
 
@@ -1287,6 +1287,52 @@ pub const ENTRIES: &[CatalogEntry] = &[
             Scenario {
                 id: "unavailable",
                 label: "Không thể đánh giá lúc này",
+            },
+        ],
+        leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "composition.tag-selector",
+        family: "composition",
+        label: "Bộ chọn thẻ — Mẫu",
+        summary: "Chọn một dạng bài và tối đa 3 chủ đề từ danh mục do caller cấp; mỗi chip có nút bỏ có tên riêng, thẻ ngừng dùng hoặc bị từ chối ghi bằng chữ kèm gợi ý thay; Enter khi đang gõ dấu không chọn, ngoài composition chỉ chọn thẻ trùng khớp. Dữ liệu Mẫu, không gọi dịch vụ, không lưu.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "Đã chọn, đang tìm “hồi”",
+            },
+            Scenario {
+                id: "empty",
+                label: "Chưa chọn thẻ nào",
+            },
+            Scenario {
+                id: "full",
+                label: "Đủ 3 chủ đề",
+            },
+            Scenario {
+                id: "retired",
+                label: "Thẻ đã ngừng dùng, có gợi ý thay",
+            },
+            Scenario {
+                id: "refused",
+                label: "Máy chủ từ chối một thẻ",
+            },
+            Scenario {
+                id: "no-results",
+                label: "Không có gợi ý khớp",
+            },
+            Scenario {
+                id: "unavailable",
+                label: "Danh mục và gợi ý tạm không tải được",
+            },
+            Scenario {
+                id: "long-label",
+                label: "Nhãn và mô tả dài",
+            },
+            Scenario {
+                id: "interactive",
+                label: "Chọn, bỏ, thay bằng owner trong bộ nhớ",
             },
         ],
         leptos: "implemented-unverified",

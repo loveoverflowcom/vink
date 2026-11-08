@@ -14,6 +14,7 @@ mod endorsement;
 mod navigation;
 mod screens;
 mod states;
+mod tags;
 
 use leptos::prelude::*;
 use unicode_normalization::UnicodeNormalization;
@@ -25,7 +26,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 51] = [
+pub const REGISTERED: [&str; 52] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -77,6 +78,7 @@ pub const REGISTERED: [&str; 51] = [
     "screen.me",
     "composition.feedback",
     "composition.endorsement",
+    "composition.tag-selector",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.
@@ -477,6 +479,7 @@ pub fn specimen(id: &str, scenario: &str) -> AnyView {
         "foundation.motion" => motion_specimen(),
         other => screens::specimen(other, scenario)
             .or_else(|| endorsement::specimen(other, scenario))
+            .or_else(|| tags::specimen(other, scenario))
             .or_else(|| components::specimen(other, scenario))
             .unwrap_or_else(|| view! { <p>"Chưa đăng ký trong preview Leptos."</p> }.into_any()),
     };

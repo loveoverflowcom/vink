@@ -417,6 +417,53 @@ pub async fn save_draft(
     http::send("PUT", &format!("/api/v1/drafts/{work_id}"), Some(&request)).await
 }
 
+/// `GET /api/v1/drafts/{id}/tags` (and its `PUT`), with the work ID encoded as one segment.
+pub fn draft_tags_path(work_id: &str) -> String {
+    use percent_encoding::utf8_percent_encode;
+    format!(
+        "/api/v1/drafts/{}/tags",
+        utf8_percent_encode(work_id, &DISCUSSION_ID)
+    )
+}
+
+/// `GET /api/v1/tags/suggestions?q=…&facet=…`: the query is the author's raw text, encoded so
+/// it can never add a parameter.
+pub fn tag_suggestions_path(q: &str, facet: &str) -> String {
+    use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+    format!(
+        "/api/v1/tags/suggestions?q={}&facet={}",
+        utf8_percent_encode(q, NON_ALPHANUMERIC),
+        utf8_percent_encode(facet, NON_ALPHANUMERIC)
+    )
+}
+
+/// The active catalog (forms first, at most 200, `truncated` beyond). Public, no actor.
+#[cfg(feature = "hydrate")]
+pub async fn load_tag_catalog() -> Result<crate::contract::TagList, ApiError> {
+    http::get("/api/v1/tags").await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn suggest_tags(
+    q: &str,
+    facet: &str,
+) -> Result<crate::contract::TagSuggestions, ApiError> {
+    http::get(&tag_suggestions_path(q, facet)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_draft_tags(work_id: &str) -> Result<crate::contract::DraftTags, ApiError> {
+    http::get(&draft_tags_path(work_id)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn save_draft_tags(
+    work_id: &str,
+    request: &crate::contract::SaveDraftTagsRequest,
+) -> Result<crate::contract::SavedDraftTags, ApiError> {
+    http::send("PUT", &draft_tags_path(work_id), Some(request)).await
+}
+
 #[cfg(feature = "hydrate")]
 mod http {
     use gloo_net::http::{Request, Response};
@@ -463,9 +510,9 @@ mod http {
         }
     }
 
-    /// Discussion and endorsement calls end after 30 s; a lost write is then uncertain.
+    /// Discussion, endorsement and tag calls end after 30 s; a lost write is then uncertain.
     fn bounded(path: &str) -> bool {
-        path.contains("/discussion") || path.contains("/endorsement")
+        path.contains("/discussion") || path.contains("/endorsement") || path.contains("/tags")
     }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
@@ -562,6 +609,25 @@ mod http {
         }
         let envelope = response.json::<ErrorEnvelope>().await.ok();
         Err(ApiError::from_response(status, envelope))
+    }
+}
+
+#[cfg(test)]
+mod tag_path_tests {
+    #[test]
+    fn tag_paths_keep_the_raw_query_and_the_work_in_their_own_parameter() {
+        assert_eq!(
+            super::draft_tags_path("33333333-3333-4333-8333-333333333333"),
+            "/api/v1/drafts/33333333-3333-4333-8333-333333333333/tags"
+        );
+        assert_eq!(
+            super::draft_tags_path("../x?y"),
+            "/api/v1/drafts/%2E%2E%2Fx%3Fy/tags"
+        );
+        assert_eq!(
+            super::tag_suggestions_path("hồi & x=1#", "theme"),
+            "/api/v1/tags/suggestions?q=h%E1%BB%93i%20%26%20x%3D1%23&facet=theme"
+        );
     }
 }
 

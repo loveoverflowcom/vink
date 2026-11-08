@@ -461,6 +461,91 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
     ok
 }
 
+/// Tag IDs the browser phases need from the seeded catalog.
+struct TagSeed {
+    /// Đô thị: saved on a draft in the main phase, retired before the after-restart phase.
+    city: String,
+    /// Mùa: the curator's successor for Đô thị.
+    season: String,
+    /// The catalog version after seeding; the retire step names it.
+    version: u32,
+}
+
+/// One `vink-app tag …` operator command against the scratch database; returns its stdout.
+fn tag_command(root: &Path, server: &Server, args: &[&str]) -> Result<String, String> {
+    let mut all = vec!["tag"];
+    all.extend_from_slice(args);
+    let out = server
+        .command(root, &all)
+        .output()
+        .map_err(|e| format!("vink-app tag: {e}"))?;
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    if !out.status.success() {
+        return Err(format!(
+            "vink-app tag {}: {} / {}",
+            args.join(" "),
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(stdout)
+}
+
+/// The ID in the `tag\t<id>\t…` line the operator command prints for the changed tag.
+fn changed_tag_id(stdout: &str) -> Option<String> {
+    stdout
+        .lines()
+        .find_map(|line| line.strip_prefix("tag\t"))
+        .and_then(|rest| rest.split('\t').next())
+        .map(str::to_string)
+}
+
+/// TAG-PR-05: a small curated catalog for the editor checks, written through the operator command
+/// (`CuratorAuthority::operator`, audited), never by SQL.
+fn seed_tag_catalog(root: &Path, server: &Server) -> Result<TagSeed, String> {
+    let mut version = 1_u32;
+    let mut ids = Vec::new();
+    for (facet, label) in [
+        ("form", "Tản văn"),
+        ("form", "Thơ"),
+        ("theme", "Ký ức"),
+        ("theme", "Gia đình"),
+        ("theme", "Mùa"),
+        ("theme", "Đô thị"),
+    ] {
+        let stdout = tag_command(
+            root,
+            server,
+            &["create", &version.to_string(), facet, label],
+        )?;
+        ids.push(changed_tag_id(&stdout).ok_or(format!("no tag id in: {stdout}"))?);
+        version += 1;
+    }
+    tag_command(
+        root,
+        server,
+        &["alias", &version.to_string(), &ids[2], "Hồi ức"],
+    )?;
+    version += 1;
+    tag_command(
+        root,
+        server,
+        &[
+            "describe",
+            &version.to_string(),
+            &ids[2],
+            "Những điều đã qua còn ở lại trong người viết.",
+        ],
+    )?;
+    version += 1;
+    println!("==> scratch tag catalog seeded at version {version}");
+    Ok(TagSeed {
+        city: ids[5].clone(),
+        season: ids[4].clone(),
+        version,
+    })
+}
+
 fn run_web_checks(
     report: &mut Report,
     root: &Path,
@@ -476,6 +561,13 @@ fn run_web_checks(
             return false;
         }
     }
+    let seed = match seed_tag_catalog(root, server) {
+        Ok(seed) => seed,
+        Err(e) => {
+            report.fail("scratch database: tag catalog through `vink-app tag`", &e);
+            return false;
+        }
+    };
     let mut guard = match server.start(root) {
         Ok(guard) => guard,
         Err(e) => {
@@ -484,7 +576,7 @@ fn run_web_checks(
         }
     };
     if !report.step(
-        "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview",
+        "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
         || smoke(root, &["--phase", "main"], chrome, origin, state),
     ) {
         return false;
@@ -498,6 +590,20 @@ fn run_web_checks(
     }) {
         return false;
     }
+    // The curator retires a tag the main phase saved on a draft; it must stay there.
+    if let Err(e) = tag_command(
+        root,
+        server,
+        &[
+            "retire",
+            &seed.version.to_string(),
+            &seed.city,
+            &seed.season,
+        ],
+    ) {
+        report.fail("scratch database: retire a tag through `vink-app tag`", &e);
+        return false;
+    }
     let mut restarted = match server.start(root) {
         Ok(guard) => guard,
         Err(e) => {
@@ -506,7 +612,7 @@ fn run_web_checks(
         }
     };
     let ok = report.step(
-        "confirmed draft survives server restart (browser reload), export",
+        "confirmed draft survives server restart (browser reload), retired tag kept, export",
         || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
     );
     let _ = restarted.terminate(Duration::from_secs(15));
@@ -577,6 +683,13 @@ mod tests {
             with_database("postgres://u@h", "x").unwrap(),
             "postgres://u@h/x"
         );
+    }
+
+    #[test]
+    fn reads_the_changed_tag_id_from_the_operator_output() {
+        let stdout = "catalog version 2: create 0192\ntag\t0192-a\ttheme\tactive\tký-ức\tKý ức\t-\t-\nname\t0192-a\tcanonical\tký-ức\tKý ức\n";
+        assert_eq!(changed_tag_id(stdout).as_deref(), Some("0192-a"));
+        assert_eq!(changed_tag_id("catalog version 3: alias x\n"), None);
     }
 
     #[test]
