@@ -55,7 +55,7 @@ records provenance, licensing, model/proof bounds and remaining acceptance.
 LVE-PR-01 adds the owner-local pure `domain::endorsement` seam for work revisions and original
 root/flat replies, accepted-order fencing including same-state intents, exact receipts and checked
 counts. Its Quint/replay shares `verify discussion`; its six Kani obligations are registered in the
-existing App manifest/runner (19 App harnesses total). The API/PostgreSQL slice calls it from
+existing App manifest/runner (25 App harnesses with taxonomy). The API/PostgreSQL slice calls it from
 use cases, HTTP API v1 routes (desired-state `PUT` with an actor-scoped command key and expected
 order per work revision/comment; public summary and own-state batch reads, all `no-store`) and a
 `PgStore` adapter/migrations (state rows per target and append-only receipts, never deleted; stored
@@ -71,6 +71,14 @@ production writes answer `401`, real writes run only with the loopback LocalFixt
 No native consumer, ranking or voter list exists; the glyph (CHOICE-07) stays OPEN. See [policy](docs/architecture/literary-endorsement.md),
 [registry/gaps](docs/development/endorsement-core.md) and
 [runtime](docs/development/literary-endorsement-runtime.md).
+TAG-PR-01 (#95) adds the owner-local pure `domain::taxonomy` core: Vietnamese tag label, slug
+(marks kept, never reassigned) and search key (folded, never identity); a curated catalog with closed
+form/theme facets and alias/rename/retire decisions; versioned private draft tags
+(`decide_tag_change`, every accepted save advances the version, retired tags stay but are never
+added); an immutable metadata snapshot with its own digest beside the revision (hash v1 and the LVE
+anchor unchanged). `application::taxonomy` use cases and the `WorkTagStore` port have no PostgreSQL
+adapter, route or UI yet (#96–#100); six Kani harnesses join the App manifest. See
+[decision](docs/architecture/work-taxonomy.md) and [registry](docs/development/taxonomy-core.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
 limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so

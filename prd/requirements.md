@@ -174,3 +174,49 @@ traceability/evidence/gaps. Snapshot handoff r1 không còn normative cho phần
 
 Vote không là điểm nghệ thuật khách quan, danh hiệu chuyên môn hay quyền publish/moderation/curation.
 Downvote, sao, leaderboard, AI chấm văn, native product app không được mở bởi slice này.
+
+## 13. Phân loại tác phẩm (TAG)
+
+Nguồn [epic #94](https://github.com/loveoverflowcom/vink/issues/94), lát lõi
+[#95](https://github.com/loveoverflowcom/vink/issues/95) (TAG-PR-01, 08/11/2026).
+[Quyết định slice](../docs/architecture/work-taxonomy.md) ghi thuật ngữ, CHOICE-01/02/03, đánh đổi và
+điều kiện xem lại; [registry](../docs/development/taxonomy-core.md) giữ requirement → function → kiểm
+chứng và gap. Đây là yêu cầu và scope, không phải checklist production PASS. Liên quan WR-01/03,
+PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của LVE/COM.
+
+| ID | Yêu cầu | Phạm vi TAG-PR-01 |
+| --- | --- | --- |
+| TAG-FR-01 | Catalog do curator quản; mỗi thẻ có danh tính bền vững, nhãn, slug, facet, mô tả, trạng thái; tác giả chỉ chọn thẻ có sẵn | Pure decision + port; entrypoint curator, store và API ở #96/#97 |
+| TAG-FR-02 | Hai facet đóng: dạng bài (≤ 1) và chủ đề (≤ 3 thẻ khác nhau sau alias/khử trùng); nháp không bắt buộc dạng bài | Hằng có lý do + type `Option`; bắt buộc khi gửi duyệt còn OPEN |
+| TAG-FR-03 | Chữ tiếng Việt: NFC/NFD tương đương; slug giữ dấu; bỏ dấu chỉ để tìm ứng viên, không quyết định danh tính/alias | `TagLabel`, `TagSlug`, `SearchKey`, `TagQuery` |
+| TAG-FR-04 | Alias do curator tạo, trỏ thẻ canonical đang hoạt động; không chuỗi, vòng, tự trỏ hay dangling | `decide_catalog_change` (AddAlias), `rank_matches` |
+| TAG-FR-05 | Đổi tên giữ danh tính; slug cũ vẫn dẫn về thẻ; slug không bao giờ được gán cho thẻ khác | Rename + `resolve_slug`; unique index ở #96 |
+| TAG-FR-06 | Ngừng dùng: không nhận dùng mới, giữ tham chiếu cũ (nháp giữ được, công khai không hiện), kế nhiệm chỉ là gợi ý | Retire + `decide_tag_change` + `public_tags` |
+| TAG-FR-07 | Thẻ nháp riêng tư, có version; mọi lệnh được chấp nhận tăng version; lệnh cũ là xung đột kèm trạng thái quan sát, không ghi | `decide_tag_change`, `Vink::save_work_tags` |
+| TAG-FR-08 | Thẻ công khai chỉ đến từ snapshot metadata bất biến được bind cùng publication; sửa thẻ không đổi hash v1, revision hay anchor “Đánh giá cao” | `MetadataSnapshot`, `MetadataDigest`, `public_tags`; binding/publish ở owner publication |
+| TAG-FR-09 | Thẻ không cấp quyền, không xuất bản, không tuyển chọn, không kiểm duyệt, không là điểm chất lượng | Outcome chỉ có metadata; không caller nào dùng thẻ làm ACL |
+| TAG-FR-10 | Lỗi phân biệt: chưa xác thực, bị đình chỉ, không tìm thấy (gồm của người khác), xung đột, input sai, bị từ chối theo catalog, không khả dụng, lỗi nội bộ | `TagError`, `TagRejection`, `TagInput::field` |
+
+| Use case | Hành vi phải giữ |
+| --- | --- |
+| TAG-UC-01 | Chọn/xóa thẻ nháp: lưu có version, thứ tự chủ đề của tác giả được giữ |
+| TAG-UC-02 | Trùng/alias: chọn cùng thẻ hai lần (trực tiếp và qua alias) còn một danh tính, không tính hai lần |
+| TAG-UC-03 | Chưa có thẻ: danh tính lạ bị từ chối rõ, không tạo thẻ, không có đề xuất giả |
+| TAG-UC-04 | Thẻ ngừng dùng: không thêm mới (kèm gợi ý kế nhiệm), giữ được trên nháp đã có, ẩn khỏi bản công khai |
+| TAG-UC-05 | Đổi nhãn/slug: danh tính giữ nguyên, URL cũ chuyển hướng, nhãn mới hiện ở mọi nơi |
+| TAG-UC-06 | Sửa thẻ nháp không đổi thẻ đang công khai hay danh tính revision |
+| TAG-UC-07 | Lệnh từ tab cũ: xung đột, không ghi, trả trạng thái hiện tại để đối chiếu |
+| TAG-UC-08 | Người khác sửa: không phân biệt được với tác phẩm không tồn tại, không ghi |
+| TAG-UC-09 | Tìm có/không dấu: `ma` tìm thấy `má`/`mà`/…; bản có dấu đúng xếp trước; chung khóa tìm không thành cùng thẻ |
+| TAG-UC-10 | Mất ACK: gửi lại là xung đột; trạng thái quan sát cho biết mong muốn đã đúng, không giả là receipt |
+
+| Bất biến | Thuộc tính |
+| --- | --- |
+| TAG-INV-01 | Slug → thẻ không bao giờ đổi; mỗi thẻ đúng một slug canonical; ghi slug chỉ cho chính thẻ được thay đổi |
+| TAG-INV-02 | Alias chỉ được tạo cho thẻ canonical đang hoạt động; resolve không đi qua chuỗi |
+| TAG-INV-03 | Thẻ nháp được chấp nhận: ≤ 1 dạng bài, ≤ 3 chủ đề khác nhau, đúng facet, đều có trong catalog, không trùng giữa hai ô |
+| TAG-INV-04 | Thẻ ngừng dùng không bao giờ được thêm mới vào nháp |
+| TAG-INV-05 | Lưu được chấp nhận khi và chỉ khi actor là chủ, đang hoạt động và expected = version hiện tại; version tăng đúng 1, không wrap |
+| TAG-INV-06 | Search key trùng không bao giờ suy ra cùng danh tính |
+| TAG-INV-07 | Công khai chỉ chiếu từ snapshot được bind; lưu nháp không ghi snapshot, binding hay revision |
+| TAG-INV-08 | Thay đổi catalog chỉ bởi curator, có CAS version; mọi thay đổi được chấp nhận tăng version |
