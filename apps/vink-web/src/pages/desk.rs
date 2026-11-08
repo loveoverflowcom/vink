@@ -9,7 +9,7 @@ use leptos_router::hooks::use_params_map;
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind,
     FieldVariant, Heading, HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind,
-    SearchField, Select, StatePanel, TextField, Tone, TypeRole,
+    SearchField, SearchVariant, Select, StatePanel, TextField, Tone, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
@@ -34,15 +34,32 @@ pub fn DeskIndex() -> impl IntoView {
     let creation = RwSignal::new(CreateState::Ready);
     let loading = RwSignal::new(true);
     let recovery_focus = RwSignal::new(false);
+    let last_success = RwSignal::new(None::<DraftList>);
+    let load_error = RwSignal::new(None::<ApiError>);
     let drafts: LocalResource<Result<DraftList, ApiError>> =
         LocalResource::new(move || async move {
             let result = load_drafts().await;
-            if result.is_ok() {
-                creation.try_update(CreateState::reconciled);
+            match &result {
+                Ok(list) => {
+                    creation.try_update(CreateState::reconciled);
+                    last_success.try_set(Some(list.clone()));
+                    load_error.try_set(None);
+                }
+                Err(error) => {
+                    // A temporary outage keeps the last loaded private list. A loss
+                    // of authority clears it; stale content must not bypass denial.
+                    if !matches!(error, ApiError::Network | ApiError::Unavailable) {
+                        last_success.try_set(None);
+                    }
+                    load_error.try_set(Some(error.clone()));
+                }
             }
             loading.try_update(|value| *value = false);
             if recovery_focus.try_update(std::mem::take).unwrap_or(false) {
-                let target = if result.as_ref().is_ok_and(|list| !list.drafts.is_empty()) {
+                let target = if last_success
+                    .get_untracked()
+                    .is_some_and(|list| !list.drafts.is_empty())
+                {
                     "draft-search"
                 } else {
                     "desk-title"
@@ -110,25 +127,22 @@ pub fn DeskIndex() -> impl IntoView {
             <noscript><p class="vk-desk-noscript">{DESK_UNAVAILABLE_SSR}</p></noscript>
             <CreateNotice creation loading refresh />
             <div aria-busy=move || if loading.get() { "true" } else { "false" } data-testid="draft-content">
-                <Suspense fallback=|| view! {
+                <Show when=move || last_success.get().is_none() && loading.get()>
                     <p class="vk-desk-loading vk-muted" role="status" data-testid="draft-loading">"Đang mở Bàn viết…"</p>
-                }>
-                    {move || Suspend::new(async move {
-                        match drafts.await {
-                            Ok(list) if list.drafts.is_empty() => view! {
-                                <div class="vk-desk-empty" data-testid="draft-empty">
-                                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
-                                        <CreateDraftButton creation can_create create first=true />
-                                    </StatePanel>
-                                </div>
-                            }.into_any(),
-                            Ok(list) => view! { <DraftListView list query sort refresh refresh_disabled /> }.into_any(),
-                            Err(error) => view! {
-                                <DeskError error refresh retry_disabled=loading />
-                            }.into_any(),
-                        }
-                    })}
-                </Suspense>
+                </Show>
+                {move || load_error.get().map(|error| view! {
+                    <DeskError error refresh retry_disabled=loading retained=last_success.get().is_some() />
+                })}
+                <Show when=move || last_success.get().is_some_and(|list| list.drafts.is_empty())>
+                    <div class="vk-desk-empty" data-testid="draft-empty">
+                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
+                            <CreateDraftButton creation can_create create first=true />
+                        </StatePanel>
+                    </div>
+                </Show>
+                <Show when=move || last_success.get().is_some_and(|list| !list.drafts.is_empty())>
+                    <DraftListView list=Signal::derive(move || last_success.get().unwrap_or(DraftList { drafts: vec![] })) query sort refresh refresh_disabled />
+                </Show>
             </div>
             <p class="vk-desk-privacy vk-muted">
                 "Bản nháp chỉ bạn đọc được. Lưu nháp không gửi duyệt hay công khai."
@@ -226,7 +240,7 @@ fn CreateNotice(
 
 #[component]
 fn DraftListView(
-    list: DraftList,
+    list: Signal<DraftList>,
     query: RwSignal<String>,
     sort: RwSignal<DraftSort>,
     refresh: Callback<()>,
@@ -234,26 +248,30 @@ fn DraftListView(
 ) -> impl IntoView {
     // GET /drafts already returns the newest accessible card first. Search/sort only changes
     // the list below; resume never fetches a manuscript or changes with a title query.
-    let newest = list.drafts[0].clone();
-    let count = list.drafts.len();
-    let cards = StoredValue::new(list.drafts);
-    let visible = Memo::new(move |_| {
-        cards.with_value(|cards| visible_drafts(cards, &query.get(), sort.get()))
-    });
-    let scope = if count >= 100 {
-        "Đã tải 100 bản thảo gần đây nhất. Tìm kiếm chỉ trong danh sách này; có thể còn bản thảo khác.".to_string()
-    } else {
-        format!("Đã tải {count} bản thảo gần đây. Tìm kiếm chỉ trong danh sách này.")
+    let count = Memo::new(move |_| list.read().drafts.len());
+    let visible = Memo::new(move |_| visible_drafts(&list.read().drafts, &query.get(), sort.get()));
+    let scope = move || {
+        if count.get() >= 100 {
+            "Đã tải 100 bản thảo gần đây nhất. Tìm kiếm chỉ trong danh sách này; có thể còn bản thảo khác.".to_string()
+        } else {
+            format!(
+                "Đã tải {} bản thảo gần đây. Tìm kiếm chỉ trong danh sách này.",
+                count.get()
+            )
+        }
     };
     view! {
         <section id="resume" class="vk-resume" aria-labelledby="resume-label" data-testid="draft-resume">
-            <DraftResume draft=adapters::draft_summary(&newest) />
+            {move || list.read().drafts.first().map(|newest| view! { <DraftResume draft=adapters::draft_summary(newest) /> })}
         </section>
         <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
             <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title>"Bản thảo gần đây"</Heading>
             <div id="draft-tools" class="vk-draft-tools">
-                <SearchField id="draft-search" label="Tìm theo tiêu đề" value=query
-                    placeholder="Có dấu hoặc không dấu" on_input=move |input: vink_ui::TextInput| query.set(input.value) />
+                <form role="search" class="vk-draft-search" on:submit=move |event| event.prevent_default()>
+                    <SearchField id="draft-search" label="Tìm bản thảo" value=query variant=SearchVariant::Bar
+                        help="Tiêu đề · tối đa 100 nháp đã tải"
+                        on_input=move |input: vink_ui::TextInput| query.set(input.value) />
+                </form>
                 <Select id="draft-sort" label="Sắp xếp"
                     options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z (không dấu)")]
                     value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
@@ -263,7 +281,7 @@ fn DraftListView(
             </div>
             <p id="draft-scope" class="vk-muted" data-testid="draft-scope">{scope}</p>
             <p class="vk-muted" role="status" data-testid="draft-result-count">
-                {move || format!("Hiển thị {} / {count} bản thảo đã tải", visible.with(Vec::len))}
+                {move || format!("Hiển thị {} / {} bản thảo đã tải", visible.with(Vec::len), count.get())}
             </p>
             <Show when=move || visible.with(Vec::is_empty)>
                 <div data-testid="draft-no-results">
@@ -277,7 +295,7 @@ fn DraftListView(
                 </div>
             </Show>
             <ul id="draft-results" class="vk-draft-rows" aria-label="Bản thảo đã tải" role="list">
-                <For each=move || visible.get() key=|draft| draft.work_id.clone() children=move |draft| view! {
+                <For each=move || visible.get() key=|draft| (draft.work_id.clone(), draft.version, draft.updated_at.clone(), draft.title.clone()) children=move |draft| view! {
                     <li class="vk-draft-row" data-testid="draft-row">
                         <DraftRow draft=adapters::draft_summary(&draft) />
                     </li>
@@ -292,6 +310,7 @@ fn DeskError(
     error: ApiError,
     #[prop(optional)] refresh: Option<Callback<()>>,
     #[prop(optional, into)] retry_disabled: Signal<bool>,
+    #[prop(optional)] retained: bool,
 ) -> impl IntoView {
     let kind = match error {
         ApiError::Unauthenticated => ProblemKind::AuthRequired,
@@ -300,6 +319,10 @@ fn DeskError(
         _ => ProblemKind::Unavailable,
     };
     let (title, detail) = match error {
+        ApiError::Unavailable | ApiError::Network if retained => (
+            "Chưa tải lại được bản thảo.",
+            "Đang giữ danh sách tải thành công gần nhất và chữ tìm kiếm. Hãy thử tải lại.",
+        ),
         ApiError::Unauthenticated => (
             "Bạn chưa đăng nhập.",
             "Cần đăng nhập để mở bản thảo riêng. Bạn vẫn có thể đọc các tác phẩm công khai.",

@@ -40,6 +40,11 @@ CTA chính của panel recovery Explore/Reader đối chiếu ngày 04/11/2026 t
 Assertions hài hòa thị giác sau R2 ([#82](https://github.com/loveoverflowcom/vink/pull/82): icon avatar Tôi,
 viền focus editor, status thảo luận rỗng), smoke Explore không JavaScript và các hàng thảo luận/LVE
 đối chiếu lại ngày 05/11/2026 trên nền `e9d8316`.
+Search R3 đối chiếu ngày 08/11/2026 trên nền `f7bd0c4` cho #90: `SearchVariant::Bar`
+dùng chung Khám phá/Bàn viết; `searchBarGeometry`/`searchBarFocus` trong `publicReading`
+kiểm anatomy/focus, raw NFD/caret qua theme/resize, native GET/clear và reader return.
+`draftDashboard` giữ last-success/query/input identity qua 503, xóa snapshot khi 401/403;
+thứ tự Tab Viết tiếp → submit → input → sort khi query rỗng. [LayoutSpec R3](../design/search-r3.md).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với

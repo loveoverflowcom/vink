@@ -27,6 +27,15 @@ pub enum FieldVariant {
     FloatingTonal,
 }
 
+/// `Bar` composes a native form submit and an optional clear target in one tonal surface.
+/// It is a Web presentation; the host still owns its form, query and navigation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum SearchVariant {
+    #[default]
+    Field,
+    Bar,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TextKind {
     #[default]
@@ -207,6 +216,9 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
                     on:keydown=move |ev| {
                         // 229: Safari's keydown for the key that ends a composition.
                         let ime = composing.get_value() || ev.is_composing() || ev.key_code() == 229;
+                        if ev.key() == "Enter" && ime {
+                            ev.prevent_default();
+                        }
                         if let (Some(submit), false, "Enter") = (on_submit, ime, ev.key().as_str()) {
                             ev.prevent_default();
                             submit.run(event_target_value(&ev));
@@ -404,7 +416,22 @@ pub fn SearchField(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional)] mode: FieldMode,
     #[prop(optional, into)] placeholder: Option<String>,
+    #[prop(optional)] variant: SearchVariant,
+    #[prop(optional, into)] name: Option<String>,
+    /// Bar-only native fallback. The host callback handles unmodified hydrated activation.
+    #[prop(optional, into)]
+    clear_href: Option<String>,
+    #[prop(optional, into)] clear_id: Option<String>,
+    #[prop(optional, into)] on_clear: Option<Callback<()>>,
+    #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
 ) -> impl IntoView {
+    if variant == SearchVariant::Bar {
+        return search_bar(
+            id, label, value, on_input, on_submit, help, mode, name, clear_href, clear_id,
+            on_clear, input_ref,
+        )
+        .into_any();
+    }
     text_field(
         TextControl::Search,
         id,
@@ -418,12 +445,99 @@ pub fn SearchField(
         mode,
         placeholder,
         None,
+        name,
         None,
-        None,
-        None,
+        input_ref,
         None,
         FieldVariant::ExternalLabel,
     )
+    .into_any()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn search_bar(
+    id: String,
+    label: String,
+    value: Signal<String>,
+    on_input: Callback<TextInput>,
+    on_submit: Option<Callback<String>>,
+    help: Option<String>,
+    mode: FieldMode,
+    name: Option<String>,
+    clear_href: Option<String>,
+    clear_id: Option<String>,
+    on_clear: Option<Callback<()>>,
+    input_ref: Option<NodeRef<leptos::html::Input>>,
+) -> impl IntoView {
+    let node = input_ref.unwrap_or_default();
+    let clear_id = clear_id.unwrap_or_else(|| format!("{id}-clear"));
+    let help =
+        help.or_else(|| (mode == FieldMode::Disabled).then(|| "Tính năng chưa khả dụng.".into()));
+    let described = described_by(&id, help.is_some(), false);
+    let props = TextProps {
+        id: id.clone(),
+        value,
+        on_input,
+        on_submit,
+        mode,
+        invalid: Signal::default(),
+        required: false,
+        described: Signal::stored(described),
+        placeholder: Some(" ".into()),
+        autocomplete: None,
+        name,
+        max_length: None,
+        on_focus: None,
+    };
+    let clear = Callback::new(move |()| {
+        on_input.run(TextInput {
+            value: String::new(),
+            composing: false,
+        });
+        if let Some(clear) = on_clear {
+            clear.run(());
+        }
+        if let Some(input) = node.get_untracked() {
+            let _ = input.focus();
+        }
+    });
+    view! {
+        <div class="vk-ui-field vk-ui-search">
+            <div class="vk-ui-search__shell">
+                <button type="submit" class="vk-ui-icon-button" aria-label="Tìm kiếm"
+                    disabled=move || mode != FieldMode::Editable
+                    on:click=move |event| {
+                        if let Some(submit) = on_submit {
+                            event.prevent_default();
+                            submit.run(value.get_untracked());
+                        }
+                    }>
+                    <Icon name=IconName::Search />
+                </button>
+                <div class="vk-ui-search__query">
+                    {text_control(TextControl::Search, props, node)}
+                    <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>{label}</label>
+                </div>
+                {move || (!value.get().is_empty() && mode == FieldMode::Editable).then(|| {
+                    if let Some(href) = clear_href.clone() {
+                        view! {
+                            <crate::action::Link href=href variant=crate::action::LinkVariant::Standalone
+                                attr:class="vk-ui-search__clear" attr:id=clear_id.clone() attr:aria-label="Xóa tìm kiếm"
+                                on:click=move |event: leptos::ev::MouseEvent| {
+                                    if on_clear.is_some() && event.button() == 0 && !event.meta_key() && !event.ctrl_key() && !event.shift_key() && !event.alt_key() {
+                                        event.prevent_default();
+                                        clear.run(());
+                                    }
+                                }><Icon name=IconName::Close /></crate::action::Link>
+                        }.into_any()
+                    } else {
+                        view! { <IconButton icon=IconName::Close label="Xóa chữ tìm" id=clear_id.clone() on_press=clear /> }.into_any()
+                    }
+                })}
+            </div>
+            {messages(id, help, Signal::default())}
+        </div>
+    }
 }
 
 /// After a change, put the DOM back to the caller's value: a caller that rejects the change
@@ -728,6 +842,49 @@ fn focus_field(ev: &leptos::ev::MouseEvent, id: &str) {
 mod tests {
     use super::*;
     use crate::tests::render;
+
+    #[test]
+    fn search_bar_keeps_native_form_name_raw_unicode_and_clear_fallback() {
+        let html = render(|| {
+            view! {
+            <form method="get" action="/">
+                <SearchField id="q" name="q" label="Tìm kiếm" variant=SearchVariant::Bar
+                    value=Signal::stored("  Đường & 0  ".to_string()) on_input=|_| {}
+                    help="Tiêu đề, tác giả · tối đa 12 tác phẩm đã tải" clear_href="/" clear_id="clear-q" />
+            </form>
+        }.into_any()
+        });
+        for needle in [
+            "method=\"get\"",
+            "name=\"q\"",
+            "value=\"  Đường &amp; 0  \"",
+            "for=\"q\"",
+            "aria-describedby=\"q-help\"",
+            "href=\"/\"",
+            "id=\"clear-q\"",
+            "aria-label=\"Xóa tìm kiếm\"",
+        ] {
+            assert!(html.contains(needle), "{needle} in {html}");
+        }
+        assert_eq!(html.matches("<input").count(), 1, "{html}");
+        assert_eq!(html.matches("type=\"submit\"").count(), 1, "{html}");
+        assert!(!html.contains("<input type=\"hidden\""), "{html}");
+        let private = render(|| {
+            view! {
+                <SearchField id="drafts" label="Tìm bản thảo" variant=SearchVariant::Bar
+                    value=Signal::stored("nháp".to_string()) on_input=|_| {} />
+            }
+            .into_any()
+        });
+        assert!(
+            !private.contains("name=") && !private.contains("href="),
+            "{private}"
+        );
+        assert!(
+            private.contains("type=\"button\"") && private.contains("id=\"drafts-clear\""),
+            "{private}"
+        );
+    }
 
     #[test]
     fn text_fields_link_label_help_and_error_without_touching_the_value() {
