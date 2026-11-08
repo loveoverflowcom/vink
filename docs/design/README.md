@@ -406,3 +406,5 @@ Owner: `apps/vink-web/assets/brand` giữ source/provenance, `vink.css` chọn m
 và kiểm SHA. `brandAssets`/`assertBrand` theo tên mới, giữ các kịch bản hydration, reload,
 OS theme, denied storage và editor guard. Kết quả chạy và ảnh được mở ghi ở PR cho đúng HEAD;
 không suy ra PASS từ sự tồn tại của assertions.
+
+[#102 — LayoutSpec R1 và ảnh trước/sau](evidence/navigation-rail-102/README.md).
