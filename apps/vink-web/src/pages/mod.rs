@@ -23,9 +23,9 @@ use crate::ui::{
     patterns::{ReaderHeader, WorkCard as WorkCardPattern},
 };
 use vink_ui::{
-    Button, ButtonKind, ButtonVariant, EmptyKind, Heading, HeadingLevel, Icon, IconName,
-    InlineNotice, ListEnd, PanelContent, PanelKind, ProblemKind, Radius, RecoveryAction,
-    RecoveryIntent, Space, StatePanel, Surface, SurfaceTone, TextField, TextKind, Tone, TypeRole,
+    EmptyKind, Heading, HeadingLevel, Icon, IconName, InlineNotice, ListEnd, PanelContent,
+    PanelKind, ProblemKind, Radius, RecoveryAction, RecoveryIntent, SearchField, SearchVariant,
+    Space, StatePanel, Surface, SurfaceTone, Tone, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -55,6 +55,11 @@ pub fn Home() -> impl IntoView {
     let status = ResponseStatus::capture();
     let params = use_query_map();
     let query = Memo::new(move |_| params.read().get("q").unwrap_or_default());
+    // Editing is raw and local until the native GET form commits it. URL navigation
+    // (including Back/Forward and reader return) remains the applied-query owner.
+    let buffer = RwSignal::new(query.get_untracked());
+    Effect::new(move || buffer.set(query.get()));
+    let navigate = leptos_router::hooks::use_navigate();
     let composing = StoredValue::new(false);
     view! {
         <Title text="Khám phá — Vink" />
@@ -64,10 +69,6 @@ pub fn Home() -> impl IntoView {
         />
         <Link rel="canonical" href=canonical_url("/") />
         <div id="explore" class="vk-explore">
-            <header id="explore-heading" class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
-                <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
-            </header>
             <div id="discovery-tools" class="vk-discovery-tools">
                 <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search"
                     on:compositionstart=move |_| composing.set_value(true)
@@ -77,19 +78,19 @@ pub fn Home() -> impl IntoView {
                             event.prevent_default();
                         }
                     }>
-                    <TextField id="public-query" label="Tìm trong danh sách" name="q" kind=TextKind::Search
-                        help="Tìm tiêu đề, tác giả trong tối đa 12 tác phẩm mới công khai đã tải. Không tìm toàn bộ thư viện."
-                        value=query on_input=|_| {} />
-                    <Show when=move || !query.get().is_empty()>
-                        <vink_ui::Link href="/" attr:id="clear-public-search" attr:aria-label="Xóa tìm kiếm" variant=vink_ui::LinkVariant::Standalone>
-                            <Icon name=IconName::Close />
-                        </vink_ui::Link>
-                    </Show>
-                    <div class="vk-public-search__actions">
-                        <Button variant=ButtonVariant::Tonal kind=ButtonKind::Submit>"Tìm"</Button>
-                    </div>
+                    <SearchField id="public-query" label="Tìm kiếm" name="q" variant=SearchVariant::Bar
+                        help="Tiêu đề, tác giả · tối đa 12 tác phẩm đã tải. Không tìm toàn bộ thư viện."
+                        value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
+                        clear_href="/" clear_id="clear-public-search" on_clear=move |_| {
+                            navigate("/", leptos_router::NavigateOptions { scroll: false, ..Default::default() });
+                            focus_recovery("public-query");
+                        } />
                 </Form>
             </div>
+            <header id="explore-heading" class="vk-explore__heading">
+                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
+                <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
+            </header>
             <div class="vk-discover-grid">
             <section id="community-stream" aria-labelledby="works-title">
                 <Heading level=HeadingLevel::H2 role=TypeRole::Title id="works-title">"Tác phẩm công khai"</Heading>

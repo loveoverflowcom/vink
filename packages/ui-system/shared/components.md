@@ -78,7 +78,14 @@ control giữ chiều cao tối thiểu nhưng được cao thêm. Sáng/Tối: 
 `ExternalLabel` (mặc định) và `FloatingTonal`. `FloatingTonal` là short field một dòng;
 PR-02 dùng `variant=FieldVariant::FloatingTonal` cho `draft-title` và giữ nguyên `id`, `name`,
 `max_length`, `input_ref`, `on_focus`, callback và value. `TextArea` luôn dùng nhãn ngoài;
-`SearchField` giữ contract hiện có (Web chưa có `name`, không thay thế máy móc form GET).
+`SearchField` mặc định giữ anatomy nhãn ngoài. Search R3 (#90) bổ sung trên Web
+`SearchVariant::Bar`, optional `name`, `clear_href`, `clear_id`, `on_clear`, `input_ref`.
+Bar dùng cùng native `text_control`, một kính lúp `type=submit`, nhãn thật intrinsic và
+clear trong một tonal shell; caller sở hữu form/URL/query. `clear_href` là fallback link thật
+khi không JS, hydrated clear phát raw empty + callback rồi focus input; modifier click giữ
+nghĩa link. Không có name thì không serialize query riêng vào form. Enter đang composition
+luôn chặn native submit (kể cả Safari keyCode229). CMP giữ API/hình học hiện có;
+Bar là Web-only, chưa tuyên bố parity/native qualification. [LayoutSpec scoped](../../../docs/design/search-r3.md).
 
 Cây floating Web: `Field → Control [Input + Label] → Help/Error`. Input và label dùng hai hàng
 intrinsic để nhãn dài tiếng Việt reflow ở 200%; empty blur đặt nhãn giữa shell, focus/filled/

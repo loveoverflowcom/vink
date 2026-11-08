@@ -47,8 +47,8 @@ pub use feedback::{
     use_snackbar_timeout,
 };
 pub use field::{
-    Checkbox, ChoiceOption, FieldMode, FieldVariant, FormSummary, RadioGroup, SearchField, Select,
-    Switch, TextArea, TextField, TextInput, TextKind,
+    Checkbox, ChoiceOption, FieldMode, FieldVariant, FormSummary, RadioGroup, SearchField,
+    SearchVariant, Select, Switch, TextArea, TextField, TextInput, TextKind,
 };
 pub use icons::IconName;
 pub use layout::{

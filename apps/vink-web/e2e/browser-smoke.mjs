@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout|public-search
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -70,6 +70,45 @@ function fail(message) {
 function check(condition, message) {
   if (!condition) throw new Error(message);
   console.log(`  ok  ${message}`);
+}
+
+async function searchBarGeometry(page, selector, scenario) {
+  const result = await page.eval(`(() => {
+    const input = document.querySelector(${JSON.stringify(selector)}), label = input.labels[0];
+    const shell = input.closest('.vk-ui-search__shell'), s = shell.getBoundingClientRect();
+    const controls = [...shell.querySelectorAll('button,a[href]')];
+    const a = input.getBoundingClientRect(), l = label.getBoundingClientRect();
+    const range = document.createRange(); range.selectNodeContents(label);
+    return { width: s.width, inputWidth: a.width, firstContentTop: document.querySelector('.vk-public-row,#draft-results')?.getBoundingClientRect().top,
+      ok: a.width >= 100 && s.height >= 56 && a.left >= s.left && a.right <= s.right &&
+        controls.every(el => { const r=el.getBoundingClientRect(); return r.width>=48 && r.height>=48 &&
+          r.left>=s.left && r.right<=s.right && r.top>=s.top && r.bottom<=s.bottom && (r.right<=a.left || r.left>=a.right); }) &&
+        [...range.getClientRects()].every(r => r.left>=l.left-1 && r.right<=l.right+1 && r.top>=s.top && r.bottom<=s.bottom) &&
+        shell.querySelectorAll('input').length===1 && shell.querySelectorAll('button[type=submit]').length===1 &&
+        getComputedStyle(shell).boxShadow==='none' && document.documentElement.scrollWidth<=innerWidth };
+  })()`);
+  check(result.ok, `${scenario}: one labelled tonal search, separate >=48px actions, no clipped label or horizontal overflow (${result.inputWidth}px query)`);
+}
+
+async function searchBarFocus(page) {
+  for (const forced of [false, true]) {
+    await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM,
+      {name: 'forced-colors', value: forced ? 'active' : 'none'},
+      {name: 'prefers-reduced-motion', value: 'reduce'}]});
+    for (const selector of ['#public-query', '#clear-public-search', '#public-search button[type=submit]']) {
+      await page.eval(`document.querySelector(${JSON.stringify(selector)}).focus()`);
+      await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+      const focus = await page.eval(`(() => {
+        const input=document.querySelector('#public-query'), shell=input.closest('.vk-ui-search__shell'), active=document.activeElement;
+        const outline=el=>getComputedStyle(el).outlineStyle==='none' ? 0 : parseFloat(getComputedStyle(el).outlineWidth);
+        return {active:active===document.querySelector(${JSON.stringify(selector)}), input:outline(input), shell:outline(shell), target:outline(active)};
+      })()`);
+      check(focus.active && focus.input===0 && (selector==='#public-query' ? focus.shell===2 : focus.shell===0 && focus.target===2),
+        `${forced ? 'forced colors' : 'tonal'} / reduced motion / ${selector}: exactly one focus perimeter ${JSON.stringify(focus)}`);
+    }
+    await page.capture(`search-focus-${forced ? 'forced-colors' : 'tonal'}-320-200`);
+  }
+  await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM]});
 }
 
 async function bottomNavigationGeometry(page, scenario) {
@@ -316,10 +355,10 @@ class Page {
             action: prefix === 'overlay' ? bounds('#open-me') : null,
             footer: prefix === 'page' ? bounds('.vk-footer') : null };
         })(),
-        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('#draft-tools > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
+        desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
         editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
-        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
+        explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
       };
     })()`);
@@ -1609,7 +1648,9 @@ async function draftDashboard(page) {
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
   await page.eval(`document.querySelector('[data-testid=resume-draft]').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard order moves from Viết tiếp to search with visible focus');
+  check(await page.eval(`document.activeElement.matches('.vk-draft-search button[type=submit]:focus-visible')`), 'keyboard order moves from Viết tiếp to the leading search submit');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard continues to the stable search input with visible focus');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'draft-sort'`), 'empty search has no clear target; sort follows in keyboard order');
   await page.viewport(390);
@@ -1645,6 +1686,7 @@ async function draftDashboard(page) {
           check(await page.eval(`document.querySelector('#draft-tools').getBoundingClientRect().top < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top && document.querySelector('[data-testid=resume-draft]').getBoundingClientRect().bottom < document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().top`), `${theme} 390px first viewport exposes Viết tiếp and the list tools`);
         }
         await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
+        await searchBarGeometry(page, '#draft-search', `Desk ${width}/${scale}/${theme}`);
         await page.capture(`desk-list-${width}-${scale}-${theme}`);
         if (width === 320 && scale === 200) {
           await page.eval(`document.querySelector('.vk-draft-row__title').scrollIntoView({block:'start'})`);
@@ -1675,7 +1717,7 @@ async function draftDashboard(page) {
         check(await page.eval(`(() => {
           const rect = s => document.querySelector(s).getBoundingClientRect();
           const heading = rect('#heading'), resume = rect('#resume'), list = rect('#drafts'), tools = rect('#draft-tools'), results = rect('#draft-results');
-          const search = rect('#draft-search'), sort = rect('#draft-sort'), reload = rect('#refresh-drafts');
+          const search = rect('.vk-draft-search .vk-ui-search__shell'), sort = rect('#draft-sort'), reload = rect('#refresh-drafts');
           return [resume, list, tools, results, search].every(r => Math.abs(r.left - heading.left) < 1) &&
             Math.abs(resume.right - list.right) < 1 && Math.abs(results.right - tools.right) < 1 &&
             ((Math.abs(search.bottom - sort.bottom) < 1 && Math.abs(sort.bottom - reload.bottom) < 1) ||
@@ -1714,8 +1756,8 @@ async function draftDashboard(page) {
   for (const [variant, title] of [['blank', ''], ['word', '[Fixture] ' + 'Đườngỹỷữợ'.repeat(20)]]) {
     gate.list = { body: { drafts: [{ ...cards[0], title }] } };
     await page.click('#refresh-drafts');
-    await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, `one ${variant} draft`);
-    check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo')`), `one ${variant} summary preserves title, scope and resume identity`);
+    await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1 && document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, `one ${variant} draft refreshed`);
+    check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo') && document.querySelector('.vk-draft-row__title').textContent === ${JSON.stringify(title || 'Chưa đặt tên')}`), `one ${variant} summary preserves title, scope and resume identity`);
     for (const scale of [100, 200]) {
       await page.viewport(320);
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
@@ -1757,10 +1799,24 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#resume .vk-draft-meta').textContent.includes('Phiên bản 1') && document.querySelector('#resume time').dateTime === '2026-11-01T08:30:00Z'`), 'sorting preserves the newest resume work, version and timestamp');
   await search('duong ve');
+  await page.eval(`window.__draftSearchInput = document.querySelector('#draft-search'); window.__draftSubmits=0; document.querySelector('.vk-draft-search').addEventListener('submit',()=>window.__draftSubmits++)`);
+  await page.key('Enter');
+  await page.click('.vk-draft-search button[type=submit]');
+  check(await page.eval(`!location.search && window.__draftSubmits===2 && document.querySelectorAll('[data-testid=draft-row]').length===2 && document.querySelector('[data-testid=resume-draft]').getAttribute('href')===${JSON.stringify(resumeHref)}`), 'Desk Enter and click submit stay local and preserve sort/resume/scope');
+  await page.eval(`window.__draftSearchInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))`);
+  await page.eval(`window.__draftSearchInput.focus()`);
+  await page.key('Enter');
+  check(await page.eval(`window.__draftSubmits===2 && !location.search && window.__draftSearchInput.value==='duong ve'`), 'Desk synthetic composition Enter never submits or clears the private query');
+  await page.eval(`window.__draftSearchInput.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`);
   gate.list = { status: 503, body: { error: { code: 'dependency_unavailable', message: 'test fixture' } } };
+  gate.holdGets = true;
   await page.click('#refresh-drafts');
+  const pendingRefresh = await gate.next('gets');
+  check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && document.querySelectorAll('[data-testid=draft-row]').length === 2 && window.__draftSearchInput === document.querySelector('#draft-search') && document.querySelector('#draft-search').value === 'duong ve' && !location.search`), 'pending refresh keeps loaded rows and private query/input without URL persistence');
+  gate.holdGets = false;
+  await gate.answerGet(pendingRefresh);
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')`, 'dependency failure');
-  check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !document.querySelector('[data-testid=draft-row]')`), 'load failure never becomes an empty or stale draft list');
+  check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && document.querySelectorAll('[data-testid=draft-row]').length === 2 && document.querySelector('#draft-search').value === 'duong ve' && document.querySelector('[data-testid=desk-error]').textContent.includes('tải thành công gần nhất') && window.__draftSearchInput === document.querySelector('#draft-search')`), 'temporary refresh failure preserves the labelled last-success list, query and input identity');
   check(await page.eval(`!!document.querySelector('[data-testid=desk-error] .vk-ui-panel__actions #retry-drafts')`), 'draft retry belongs to the error panel');
   await captureRecovery(page, 'desk-unavailable', '[data-testid=desk-error]');
   for (const theme of ['light', 'dark']) {
@@ -1954,17 +2010,18 @@ async function publicReading(page) {
   };
   const exploreGeometry = async scenario => {
     await page.eval(`document.fonts.ready`);
+    await searchBarGeometry(page, '#public-query', scenario);
     check(await page.eval(`(() => {
       const input = document.querySelector('#public-query'), button = document.querySelector('#public-search button[type=submit]');
       const a = input.getBoundingClientRect(), b = button.getBoundingClientRect();
       const separated = a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
       const clear = document.querySelector('#clear-public-search'), c = clear?.getBoundingClientRect();
+      const shell = input.closest('.vk-ui-search__shell').getBoundingClientRect();
       const integrated = !clear || (clear.tagName === 'A' && clear.getAttribute('href') === '/' && clear.getAttribute('aria-label') === 'Xóa tìm kiếm' &&
-        c.width >= 44 && c.height >= 44 && c.left >= a.left && c.right <= a.right && c.top >= a.top && c.bottom <= a.bottom &&
-        parseFloat(getComputedStyle(input).paddingInlineEnd) >= a.right - c.left);
-      return document.documentElement.scrollWidth <= innerWidth && a.width >= 100 && a.height >= 44 && b.width >= 44 && b.height >= 44 && separated &&
+        c.width >= 48 && c.height >= 48 && c.left >= a.right && c.right <= shell.right && c.top >= shell.top && c.bottom <= shell.bottom);
+      return document.documentElement.scrollWidth <= innerWidth && a.width >= 100 && a.height >= 20 && b.width >= 48 && b.height >= 48 && separated &&
         integrated &&
-        input.labels[0]?.textContent === 'Tìm trong danh sách' && input.getAttribute('aria-describedby') === 'public-query-help' &&
+        input.labels[0]?.textContent === 'Tìm kiếm' && input.getAttribute('aria-describedby') === 'public-query-help' &&
         document.querySelector('#public-query-help').textContent.includes('tối đa 12') &&
         document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện');
     })()`), `${scenario}: labelled search, honest described scope and targets >=44px reflow without overlap`);
@@ -2038,6 +2095,25 @@ async function publicReading(page) {
   await page.key('Enter');
   check(await page.eval(`!location.search && window.__querySubmits === 0 && window.__queryInput === document.querySelector('#public-query')`), 'IME composition Enter does not submit or remount the public input (CDP simulation)');
   await page.send('Input.insertText', { text: 'đ' });
+  const editing = '  Đường về ỹ ỷ ữ ợ  '.normalize('NFD');
+  await page.eval(`window.__queryInput.select()`);
+  await page.send('Input.insertText', {text: editing});
+  await page.eval(`window.__queryInput.setSelectionRange(2, 7); window.__querySelection = [window.__queryInput.selectionStart,window.__queryInput.selectionEnd]; document.documentElement.dataset.theme = 'dark'`);
+  await page.viewport(320);
+  await page.eval(`document.documentElement.style.fontSize='200%'`);
+  check(await page.eval(`window.__queryInput === document.querySelector('#public-query') && window.__queryInput.value === ${JSON.stringify(editing)} && JSON.stringify([window.__queryInput.selectionStart,window.__queryInput.selectionEnd]) === JSON.stringify(window.__querySelection) && !location.search && window.__querySubmits === 0 && document.querySelectorAll('.vk-public-row').length === 1`), 'raw NFD/whitespace, selection and input identity survive theme/resize/text without applying an unsubmitted query');
+  await searchBarGeometry(page, '#public-query', 'raw-NFD-320-200');
+  await page.capture('search-editing-320-200-dark');
+  await searchBarFocus(page);
+  const clearPoint = await page.eval(`(() => {const el=document.querySelector('#clear-public-search');el.scrollIntoView({block:'center'});const r=el.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+  await page.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+  await page.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{...clearPoint,id:1}]});
+  await page.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  await page.send('Emulation.setTouchEmulationEnabled',{enabled:false});
+  await page.waitFor(`document.activeElement?.id === 'public-query' && document.querySelector('#public-query').value === '' && !location.search`, 'clear unsubmitted buffer and committed query without navigation/remount');
+  check(await page.eval(`window.__queryInput === document.querySelector('#public-query')`), 'clearing an unsubmitted query retains native input identity');
+  await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
+  await page.viewport(1440);
   await page.eval(`document.querySelector('#public-query').select()`);
   await page.send('Input.insertText', { text: '' });
   check(await page.eval(`document.querySelectorAll('.vk-public-row').length === 1 && document.querySelector('.vk-public-row__link').getAttribute('href') === '/tac-pham/${SAMPLE_WORK}'`), 'one real publication is shown once, with its exact reader link');
@@ -2165,15 +2241,20 @@ async function publicReading(page) {
     return clear.matches('#clear-public-search:focus-visible') && clear.getBoundingClientRect().height >= 44 &&
       style.outlineWidth === '2px' && style.outlineOffset === '-2px' && style.boxShadow === 'none' && !input.matches(':focus');
   })()`), 'keyboard reaches the integrated full-sized clear link with its own single inset focus perimeter');
-  await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the compact GET search action after clear');
   await page.key('Tab', SHIFT);
+  await page.key('Tab', SHIFT);
+  check(await page.eval(`document.activeElement.matches('#public-search button[type=submit]:focus-visible')`), 'keyboard reaches the leading GET search action before input');
+  await page.key('Tab');
+  await page.key('Tab');
   await page.key('Enter');
   await page.waitFor(`!location.search && document.querySelectorAll('.vk-public-row').length === 12`, 'keyboard clear restores loaded items and URL');
   // Keep the existing same-fixture matrix names for before/after comparison.
   await searchPublic('không có tác phẩm này');
   await page.click('#clear-public-search');
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'clear restores all loaded public cards');
+  // Compare the loaded/default matrix with the same idle baseline; focus/clear
+  // have their own explicit state captures above.
+  await page.eval(`document.activeElement?.blur()`);
   for (const theme of ['light', 'dark']) {
     await setPublicTheme(theme);
     await textContrast(page, theme, 'explore');
@@ -2181,6 +2262,9 @@ async function publicReading(page) {
       await page.viewport(width);
       for (const scale of [100, 200]) {
         await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        await page.eval(`new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+        await page.eval(`document.activeElement?.blur(); new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
+        check(await page.eval(`document.activeElement !== document.querySelector('#public-query')`), 'loaded matrix uses the same idle input state as baseline');
         await exploreGeometry(`Explore ${width}px/${scale}%/${theme}`);
         await page.capture(`explore-${width}-${scale}-${theme}`);
         await captureNarrowWork('loaded', width, scale, theme);
@@ -3124,6 +3208,7 @@ try {
   if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
+  else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);
