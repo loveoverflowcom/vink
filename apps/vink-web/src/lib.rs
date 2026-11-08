@@ -110,9 +110,9 @@ fn Chrome() -> impl IntoView {
                 </Routes>
             </main>
             <footer class="vk-footer">
-                <p>
-                    "Vink · Việt Ink — bản dựng nền tảng. Chưa mở đăng ký; tác phẩm gắn nhãn [Mẫu] là dữ liệu phát triển."
-                </p>
+                <vink_ui::SupportingDetails id="build-info" summary="Bản thử nghiệm">
+                    <p>"Chưa mở đăng nhập. Nội dung gắn Mẫu là dữ liệu thử."</p>
+                </vink_ui::SupportingDetails>
             </footer>
         </AdaptiveShell>
     }

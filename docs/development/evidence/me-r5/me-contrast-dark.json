@@ -1,0 +1,56 @@
+[
+  {
+    "selector": "#me-title",
+    "foreground": "rgb(240, 231, 248)",
+    "background": "rgb(23, 18, 29)",
+    "ratio": 15.333518122767964
+  },
+  {
+    "selector": "#page-account h2",
+    "foreground": "rgb(240, 231, 248)",
+    "background": "rgb(43, 36, 52)",
+    "ratio": 12.452079071977757
+  },
+  {
+    "selector": "#page-account .vk-ui-tone-muted",
+    "foreground": "rgb(209, 195, 219)",
+    "background": "rgb(43, 36, 52)",
+    "ratio": 8.927455639794895
+  },
+  {
+    "selector": "#page-theme-title",
+    "foreground": "rgb(240, 231, 248)",
+    "background": "rgb(23, 18, 29)",
+    "ratio": 15.333518122767964
+  },
+  {
+    "selector": "#page-theme legend",
+    "foreground": "rgb(240, 231, 248)",
+    "background": "rgb(23, 18, 29)",
+    "ratio": 15.333518122767964
+  },
+  {
+    "selector": "#page-theme-help summary",
+    "foreground": "rgb(240, 231, 248)",
+    "background": "rgb(55, 46, 66)",
+    "ratio": 10.718025816688883
+  },
+  {
+    "selector": "#page-theme label:has([value=\"light\"])",
+    "foreground": "rgb(209, 195, 219)",
+    "background": "rgb(43, 36, 52)",
+    "ratio": 8.927455639794895
+  },
+  {
+    "selector": "#page-theme label:has([value=\"dark\"])",
+    "foreground": "rgb(56, 28, 99)",
+    "background": "rgb(212, 187, 255)",
+    "ratio": 8.155939339697696
+  },
+  {
+    "selector": "#page-theme label:has([value=\"system\"])",
+    "foreground": "rgb(209, 195, 219)",
+    "background": "rgb(43, 36, 52)",
+    "ratio": 8.927455639794895
+  }
+]

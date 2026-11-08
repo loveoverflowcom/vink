@@ -22,6 +22,7 @@ use crate::domain::endorsement::{
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 use crate::domain::principal::{PenName, Standing, SubjectKey};
+use crate::domain::taxonomy::{CatalogTag, MetadataVersion, TagChange, TagOutcome, WorkTags};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StoreError {
@@ -242,6 +243,38 @@ pub trait EndorsementStore: Send + Sync {
         work_id: WorkId,
         comments: &CommentBatch,
     ) -> impl Future<Output = Result<OwnEndorsementFacts, StoreError>> + Send;
+}
+
+/// The owner's draft tags as stored, with the catalog rows of those tags (retired ones too).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredWorkTags {
+    pub version: MetadataVersion,
+    pub tags: WorkTags,
+    pub catalog: Vec<CatalogTag>,
+}
+
+/// Draft tag storage. The contract is TAG-PR-01 (#95); the PostgreSQL adapter is TAG-PR-02 (#96)
+/// and no production store implements it yet. A save is ONE transaction that reads the work row
+/// (owner), the draft metadata row (FOR UPDATE), the actor's standing and the catalog rows of
+/// the selected tags (FOR SHARE, so a retirement serializes with it), calls
+/// [`crate::domain::taxonomy::decide_tag_change`], writes exactly an accepted
+/// [`crate::domain::taxonomy::TagWrite`] and commits before answering. It never writes draft
+/// text, a revision, a metadata snapshot or the publication binding. An actor without a
+/// principal row is [`StoreError::UnknownPrincipal`].
+pub trait WorkTagStore: Send + Sync {
+    /// `None` when the work is missing or owned by someone else (indistinguishable).
+    fn work_tags(
+        &self,
+        owner: PrincipalId,
+        work_id: WorkId,
+    ) -> impl Future<Output = Result<Option<StoredWorkTags>, StoreError>> + Send;
+
+    fn save_work_tags(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+        change: &TagChange,
+    ) -> impl Future<Output = Result<TagOutcome, StoreError>> + Send;
 }
 
 /// The principal an authenticated subject acts as, and whether it may act now.

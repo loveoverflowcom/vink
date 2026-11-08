@@ -274,7 +274,8 @@ fn trap_profile_tab(event: leptos::ev::KeyboardEvent, profile: NodeRef<html::Dia
         let Some(dialog) = profile.get_untracked() else {
             return;
         };
-        let Ok(stops) = dialog.query_selector_all("button:not(:disabled), input:checked, a[href]")
+        let Ok(stops) =
+            dialog.query_selector_all("button:not(:disabled), input:checked, a[href], summary")
         else {
             return;
         };

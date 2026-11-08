@@ -198,7 +198,7 @@ fn DiscussionLoaded(
     view! {
         <div id="comments-mode" class="vk-discussion-mode">
             <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open)}</p>
-            {fixture.is_some().then(|| view! { <p class="vk-muted">"Mẫu định danh cục bộ · Không phải đăng nhập production."</p> })}
+            {fixture.is_some().then(|| view! { <p class="vk-muted">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
             <Show when=move || !state.read().unavailable && state.read().page.viewer_is_work_author>
                 <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
                     {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}

@@ -73,6 +73,11 @@ id_type!(
     /// Stable identity of a root comment or a flat reply, not a tree path.
     CommentId
 );
+id_type!(
+    /// Canonical identity of a catalog tag (#95). Its label, slug and search key may change or
+    /// collide; this identity never does, and assignments and snapshots reference only it.
+    TagId
+);
 
 impl WorkId {
     /// Time-ordered identifier for a newly created work.
@@ -96,6 +101,13 @@ impl CommentId {
     }
 }
 
+impl TagId {
+    /// Server-chosen identity for a new catalog tag; authors and curators never pick one.
+    pub fn generate() -> Self {
+        Self(Uuid::now_v7())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -113,6 +125,7 @@ mod tests {
             assert_eq!(RevisionId::parse(raw), None);
             assert_eq!(ThreadId::parse(raw), None);
             assert_eq!(CommentId::parse(raw), None);
+            assert_eq!(TagId::parse(raw), None);
         }
     }
 

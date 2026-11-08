@@ -1,0 +1,200 @@
+//! Author tag use cases (TAG-PR-01, #95): read and save the private tags of the actor's draft.
+//!
+//! Each save authenticates the actor, validates raw input into a [`TagChange`] (expected
+//! metadata version, form + deduplicated themes as tag identities) and hands it to ONE
+//! [`WorkTagStore`] transaction, which loads the facts under locks and calls
+//! [`crate::domain::taxonomy::decide_tag_change`]. This module only maps the outcome; it restates
+//! no catalog, bound or version rule. Saving tags publishes nothing.
+//!
+//! Retry semantics: every accepted save advances the version, so resending a command whose
+//! acknowledgement was lost is a [`TagError::VersionConflict`]. Its `observed` tags tell the
+//! client whether its desired state holds now ([`WorkTags::matches`]); that is a statement
+//! about state, not a receipt naming the command that produced it (an exact receipt, if
+//! needed, is #97's CHOICE-03).
+//!
+//! Catalog lookup and curator changes have pure decisions in `domain::taxonomy`; their use
+//! cases and entrypoints belong to TAG-PR-03 (#97).
+
+use super::Vink;
+use super::ports::{StoreError, WorkTagStore};
+use crate::domain::ids::{PrincipalId, TagId, WorkId};
+use crate::domain::taxonomy::{
+    CatalogTag, MetadataVersion, SelectionError, TagChange, TagFacet, TagOutcome, TagRefusal,
+    TagSelection, WorkTags, draft_tags,
+};
+
+/// Untrusted save input. Only [`Vink::save_work_tags`] turns it into a [`TagChange`]. `form:
+/// None` clears the form slot; presence semantics for clients that omit fields are #97's.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SaveWorkTags {
+    pub work_id: WorkId,
+    pub expected_version: i64,
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SavedWorkTags {
+    pub work_id: WorkId,
+    pub version: MetadataVersion,
+    pub tags: WorkTags,
+    /// `false` for an accepted save that changed nothing (the version still advanced).
+    pub changed: bool,
+}
+
+/// The author's view of their draft tags: the stored assignment and its catalog rows in display
+/// order (form, then themes), retired tags included so they can be kept or removed.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DraftWorkTags {
+    pub work_id: WorkId,
+    pub version: MetadataVersion,
+    pub tags: WorkTags,
+    pub shown: Vec<CatalogTag>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum TagInput {
+    #[error("expected_version must be >= 1")]
+    ExpectedVersion,
+    #[error("{0}")]
+    Selection(#[from] SelectionError),
+}
+
+impl TagInput {
+    pub fn field(&self) -> &'static str {
+        match self {
+            Self::ExpectedVersion => "expected_version",
+            Self::Selection(SelectionError::Form) => "form",
+            Self::Selection(SelectionError::Theme { .. } | SelectionError::TooManyThemeRefs) => {
+                "themes"
+            }
+        }
+    }
+}
+
+/// Catalog-dependent refusals the author can act on. Nothing was written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagRejection {
+    /// "Chưa có thẻ này": not in the curated catalog; the pilot has no author proposals.
+    UnknownTag(TagId),
+    RetiredTag {
+        tag: TagId,
+        successor: Option<TagId>,
+    },
+    WrongFacet {
+        tag: TagId,
+        slot: TagFacet,
+    },
+    TooManyThemes,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum TagError {
+    #[error("unauthenticated")]
+    Unauthenticated,
+    #[error("suspended")]
+    Suspended,
+    /// Missing, or owned by someone else; deliberately indistinguishable.
+    #[error("not found")]
+    NotFound,
+    /// Nothing written; reconcile from `observed` instead of resending with `current`.
+    #[error("version conflict; current version is {}", current.get())]
+    VersionConflict {
+        current: MetadataVersion,
+        observed: WorkTags,
+    },
+    #[error("invalid input: {0}")]
+    Invalid(#[from] TagInput),
+    #[error("tag selection rejected")]
+    Rejected(TagRejection),
+    #[error("storage unavailable")]
+    Unavailable,
+    #[error("internal error")]
+    Internal,
+}
+
+impl From<StoreError> for TagError {
+    fn from(error: StoreError) -> Self {
+        match error {
+            StoreError::Unavailable(_) => Self::Unavailable,
+            StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::Integrity(_) => Self::Internal,
+        }
+    }
+}
+
+fn refused(refusal: TagRefusal) -> TagError {
+    match refusal {
+        TagRefusal::NotFound => TagError::NotFound,
+        TagRefusal::Suspended => TagError::Suspended,
+        TagRefusal::UnknownTag(tag) => TagError::Rejected(TagRejection::UnknownTag(tag)),
+        TagRefusal::RetiredTag { tag, successor } => {
+            TagError::Rejected(TagRejection::RetiredTag { tag, successor })
+        }
+        TagRefusal::WrongFacet { tag, slot } => {
+            TagError::Rejected(TagRejection::WrongFacet { tag, slot })
+        }
+        TagRefusal::TooManyThemes => TagError::Rejected(TagRejection::TooManyThemes),
+        TagRefusal::InvalidFacts | TagRefusal::VersionExhausted => TagError::Internal,
+    }
+}
+
+impl<S> Vink<S>
+where
+    S: WorkTagStore,
+{
+    pub async fn work_tags(
+        &self,
+        actor: Option<PrincipalId>,
+        work_id: WorkId,
+    ) -> Result<DraftWorkTags, TagError> {
+        let owner = actor.ok_or(TagError::Unauthenticated)?;
+        let stored = self
+            .store
+            .work_tags(owner, work_id)
+            .await?
+            .ok_or(TagError::NotFound)?;
+        let shown = draft_tags(&stored.tags, &stored.catalog)
+            .map_err(|_| TagError::Internal)?
+            .into_iter()
+            .cloned()
+            .collect();
+        Ok(DraftWorkTags {
+            work_id,
+            version: stored.version,
+            tags: stored.tags,
+            shown,
+        })
+    }
+
+    /// Conditional write of the draft tags: authentication, then input validation, then one
+    /// store transaction that decides on current facts. Invalid input never reaches the store.
+    pub async fn save_work_tags(
+        &self,
+        actor: Option<PrincipalId>,
+        command: SaveWorkTags,
+    ) -> Result<SavedWorkTags, TagError> {
+        let owner = actor.ok_or(TagError::Unauthenticated)?;
+        let expected =
+            MetadataVersion::new(command.expected_version).ok_or(TagInput::ExpectedVersion)?;
+        let selection = TagSelection::parse(command.form.as_deref(), &command.themes)
+            .map_err(TagInput::from)?;
+        let change = TagChange::new(expected, selection);
+        match self
+            .store
+            .save_work_tags(owner, command.work_id, &change)
+            .await?
+        {
+            TagOutcome::Accepted(write) => Ok(SavedWorkTags {
+                work_id: command.work_id,
+                version: write.version(),
+                tags: write.tags().clone(),
+                changed: write.changed(),
+            }),
+            TagOutcome::Conflict { current, observed } => {
+                Err(TagError::VersionConflict { current, observed })
+            }
+            TagOutcome::Refused(refusal) => Err(refused(refusal)),
+        }
+    }
+}
