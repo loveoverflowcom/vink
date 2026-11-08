@@ -983,6 +983,7 @@ async function assertBrandPlacement(page) {
 }
 
 async function assertExploreHeader(page, scenario) {
+  await page.eval(`document.fonts.ready`);
   check(await page.eval(`(() => {
     const rect = selector => document.querySelector(selector).getBoundingClientRect();
     const brand = rect('#discovery-tools .vk-brand'), tools = rect('#discovery-tools');
@@ -992,7 +993,11 @@ async function assertExploreHeader(page, scenario) {
     const layout = mobile
       ? brand.bottom < field.top && search.right === tools.right && brand.bottom < bar.top
       : field.right < brand.left && Math.abs((field.top + field.bottom - brand.top - brand.bottom) / 2) <= 8;
-    return layout && brand.height >= 44 && brand.right === tools.right && brand.right <= innerWidth &&
+    const input = document.querySelector('#public-query');
+    const text = document.createElement('canvas').getContext('2d');
+    text.font = getComputedStyle(input, '::placeholder').font;
+    const placeholderFits = !mobile || input.value || text.measureText(input.placeholder).width <= input.clientWidth;
+    return layout && placeholderFits && brand.height >= 44 && brand.right === tools.right && brand.right <= innerWidth &&
       heading.left === search.left && heading.top >= search.bottom &&
       document.documentElement.scrollWidth <= innerWidth;
   })()`), `${scenario}: Explore brand stays top-right with a separate heading and no overlap`);

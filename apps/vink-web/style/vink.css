@@ -212,7 +212,8 @@ a {
 
 /* Let Explore gain the width released by the rail while keeping its right edge fixed. */
 @media (min-width: 760px) {
-  .vk-main:has(> .vk-explore) {
+  .vk-main:has(> .vk-explore),
+  .vk-main:has(> .vk-explore) + .vk-footer {
     max-inline-size: calc(72rem + var(--vk-size-rail-expanded) - var(--vk-ui-rail-width));
   }
 }
@@ -271,10 +272,15 @@ a {
 .vk-discovery-tools > .vk-brand { grid-area: brand; justify-self: end; }
 .vk-public-search { grid-area: search; max-inline-size: 48rem; margin: 0; }
 @media (max-width: 759px) {
+  .vk-explore { margin-inline: min(0px, calc(16px - var(--vk-space-4))); }
   .vk-discovery-tools {
     grid-template-areas: "brand" "search";
     grid-template-columns: minmax(0, 1fr);
   }
+}
+/* Give the single-line placeholder room at 320px / 200% without shrinking either target. */
+@container vk-explore (max-width: 10rem) {
+  .vk-public-search .vk-ui-search__shell { padding-inline: min(var(--vk-space-1), 4px); column-gap: 0; }
 }
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
