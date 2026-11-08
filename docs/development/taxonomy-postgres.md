@@ -3,8 +3,9 @@
 **Ngày:** 08/11/2026. **Nguồn:** [#96](https://github.com/loveoverflowcom/vink/issues/96) (TAG-PR-02, một
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline
 `develop@6d5e224` (sau #95). **Trạng thái:** storage slice của App — migration, adapter, seam
-binding công khai và test PostgreSQL thật. Không có HTTP, UI, workflow publish/kiểm duyệt hay
-authority production; epic #94 chưa có lát nào chạy end-to-end cho người dùng.
+binding công khai và test PostgreSQL thật. HTTP và lệnh operator là của #97 ([API](taxonomy-api.md));
+không có UI, workflow publish/kiểm duyệt hay authority production; epic #94 chưa có lát nào chạy
+end-to-end cho người dùng.
 
 Semantics thuộc [decision record #95](../architecture/work-taxonomy.md) và
 [registry core](taxonomy-core.md); tài liệu này chỉ ghi cách lưu, khóa, kiểm và vận hành.
@@ -56,7 +57,7 @@ metadata: khi đó transaction publish khóa cả hai hàng (văn bản trước
 | Hàng metadata nháp tạo lười; vắng = version 1, không thẻ | Không backfill, không đổi `create_draft`/seed; mọi đường ghi (save, capture) `INSERT … ON CONFLICT DO NOTHING` rồi khóa hàng; save bị từ chối/xung đột rollback cả insert | Backfill mọi work + thêm vào `create_draft`: thêm bất biến “mọi work có hàng” mà fixture SQL khác dễ phá |
 | Binding là cột `publications.metadata_snapshot_id`, FK ghép `(work_id, metadata_snapshot_id)` | Cặp (revision, snapshot) đổi bằng **một** `UPDATE` một hàng; đọc công khai không thể ghép hai lần publish; snapshot phải cùng work | Bảng binding riêng: hai lần ghi, có thể quên một nửa |
 | Standing fence bằng `principals … FOR UPDATE` | Xung đột với `FOR KEY SHARE` mà FK của `principal_suspensions` lấy khi chèn, nên **mọi** cách chèn đình chỉ (kể cả SQL tay) đều tuần tự với save, không sửa lệnh `suspend`. Đánh đổi: trong lúc một lần lưu thẻ ngắn đang chạy, các insert khác có FK tới chính principal đó (work mới, bình luận, receipt của họ) và các lần lưu thẻ khác của cùng tác giả phải chờ; chấp nhận được vì sửa thẻ hiếm. Xem lại nếu đo thấy chờ đáng kể | Advisory lock: phải sửa lệnh đình chỉ và mọi writer tương lai phải nhớ giao thức. SERIALIZABLE: chỉ phát hiện khi cả hai phía cùng mức |
-| Catalog đổi bằng quyền operator (`can_curate: true`) | Giống `grant_moderator`; entrypoint curator là CHOICE-02 của #97 | Bảng grant curator ở #96: đoán trước quyết định của #97 |
+| Catalog đổi bằng quyền operator (`can_curate: true`) | Giống `grant_moderator`; entrypoint curator là CHOICE-02 của #97 (đã chọn lệnh operator, [API](taxonomy-api.md); `change_catalog` nhận `CuratorAuthority` và ghi audit) | Bảng grant curator ở #96: đoán trước quyết định của #97 |
 | Không lưu `search_key` | Chiến lược tìm ứng viên (prefix index, trigram hay nạp cả catalog nhỏ) là của #97/#98; cột suy ra từ Rust mà không có consumer chỉ là nghĩa vụ đồng bộ | — |
 
 ## 2. Schema: database giữ gì, core giữ gì
@@ -167,9 +168,11 @@ thật, “fixture” là thao tác publication bằng SQL có nhãn.
 
 **Còn thiếu cho #97/#98 và owner publication (kiểm lại khi tích hợp):**
 
-- #97: use case/entrypoint curator gọi `change_catalog` (hoặc grant DB kiểm `FOR SHARE` trong cùng
-  transaction); HTTP cho thẻ nháp với `no-store`, presence semantics khi client cũ bỏ trường; đọc
-  catalog/lookup bằng `rank_matches`/`resolve_slug` (cần truy vấn ứng viên — chưa có index tìm).
+- #97 (đã có, [API](taxonomy-api.md)): lệnh operator `vink-app tag …` gọi `Vink::change_catalog` →
+  `change_catalog` với `CuratorAuthority` và hàng audit `tag_catalog_changes` cùng transaction (migration
+  cộng thêm `20261109000000_tag_catalog_audit`); HTTP thẻ nháp `no-store` là resource riêng với mọi field
+  bắt buộc; đọc catalog/lookup nạp cả catalog đang hoạt động rồi `rank_matches`/`resolve_slug` (chưa có
+  index tìm; điều kiện xem lại ở tài liệu API). `work_tags` giờ trả kèm hàng của thẻ kế nhiệm.
 - #98: truy vấn discovery qua `publications.metadata_snapshot_id → work_metadata_snapshot_tags`
   (thêm index `(tag_id, snapshot_id)` khi đo query plan); không bao giờ đếm từ `work_draft_tags`.
   Consumer render văn bản và thẻ từ hai lần đọc phải so `revision_id` (hoặc gộp một truy vấn).

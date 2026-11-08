@@ -119,10 +119,20 @@ impl WorkTagStore for FactStore {
         if work_id != work() || owner != state.owner {
             return Ok(None);
         }
+        // The contract: rows of the assigned tags and of the successors they name, each once.
+        let hinted = |t: &CatalogTag| {
+            state.catalog.iter().any(|assigned| {
+                state.tags.contains(assigned.id())
+                    && assigned.status()
+                        == TagStatus::Retired {
+                            successor: Some(t.id()),
+                        }
+            })
+        };
         let catalog = state
             .catalog
             .iter()
-            .filter(|t| state.tags.contains(t.id()))
+            .filter(|t| state.tags.contains(t.id()) || hinted(t))
             .cloned()
             .collect();
         Ok(Some(StoredWorkTags {
@@ -278,7 +288,18 @@ async fn refusals_stay_distinct_and_write_nothing() {
         (
             save(4, None, &[999]),
             owner(),
-            TagError::Rejected(TagRejection::UnknownTag(tag_id(999))),
+            TagError::Rejected(TagRejection::UnknownTag {
+                tag: tag_id(999),
+                slot: TagFacet::Theme,
+            }),
+        ),
+        (
+            save(4, Some(999), &[999]),
+            owner(),
+            TagError::Rejected(TagRejection::UnknownTag {
+                tag: tag_id(999),
+                slot: TagFacet::Form,
+            }),
         ),
         (
             save(4, None, &[MUA, GIA_DINH, KY_UC, DO_THI]),
@@ -322,6 +343,7 @@ async fn refusals_stay_distinct_and_write_nothing() {
             .await,
         Err(TagError::Rejected(TagRejection::RetiredTag {
             tag: tag_id(DO_THI),
+            slot: TagFacet::Theme,
             successor: Some(tag_id(MUA)),
         }))
     );
@@ -392,6 +414,10 @@ async fn author_view_shows_retired_tags_hides_foreign_drafts_and_fails_closed() 
     assert_eq!(view.version.get(), 2);
     assert_eq!(view.shown.len(), 2);
     assert!(!view.shown[1].status().is_active());
+    // The retired tag's successor hint comes with the view (Mùa is not on the draft).
+    let hint = view.successor_of(&view.shown[1]).map(CatalogTag::id);
+    assert_eq!(hint, Some(tag_id(MUA)));
+    assert_eq!(view.successor_of(&view.shown[0]), None);
     assert_eq!(
         vink.work_tags(Some(stranger()), work()).await,
         Err(TagError::NotFound)
@@ -408,6 +434,20 @@ async fn author_view_shows_retired_tags_hides_foreign_drafts_and_fails_closed() 
         .clear();
     assert_eq!(
         Vink::new(broken).work_tags(Some(owner()), work()).await,
+        Err(TagError::Internal)
+    );
+    // So is a named successor whose row the store did not return.
+    let hintless = FactStore::at(2, tags(None, &[DO_THI]));
+    hintless
+        .state
+        .lock()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .catalog
+        .retain(|t| t.id() != tag_id(MUA));
+    assert_eq!(
+        Vink::new(hintless).work_tags(Some(owner()), work()).await,
         Err(TagError::Internal)
     );
 }

@@ -37,6 +37,8 @@ mod endorsement;
 mod principal;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
+#[path = "postgres/taxonomy_api.rs"]
+mod taxonomy_api;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

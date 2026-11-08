@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "unknown_tag",
+    "message": "the tag is not in the curated catalog; nothing was written",
+    "field": "themes",
+    "tag_id": "a0000000-0000-4000-8000-000000000099"
+  }
+}

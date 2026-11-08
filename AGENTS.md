@@ -86,8 +86,17 @@ binding `publications.metadata_snapshot_id` beside `revision_id`. `PgStore` impl
 `WorkTagStore` (principal FOR UPDATE standing fence → work → catalog FOR SHARE → metadata FOR
 UPDATE) and `PublicTagStore`/`Vink::public_work_tags` (current binding only);
 `change_catalog` (operator authority) and `capture_metadata_snapshot` (publication-owner seam)
-have no route or production caller. Publication changes in tests are labelled SQL fixtures; no
-HTTP/UI (#97–#100). See [storage](docs/development/taxonomy-postgres.md).
+have no route or production caller. Publication changes in tests are labelled SQL fixtures. See
+[storage](docs/development/taxonomy-postgres.md).
+TAG-PR-03 (#97) adds `application::catalog` and HTTP v1 tag routes: public catalog reads
+(`/api/v1/tags`, `/tags/suggestions`, `/tags/slugs/{slug}`; no actor, `no-store`, active tags only,
+`rank_matches`/`resolve_slug` over the active catalog loaded per request) and private draft tags
+(`/api/v1/drafts/{work_id}/tags`: own version, every field required so omission never clears, `409`
+carrying the stored tags for reconciliation, no receipt). Catalog governance is only the operator
+command `vink-app tag list|history|create|rename|describe|alias|retire` (`CuratorAuthority::operator`,
+never constructed in `src/http`); each accepted change writes a `tag_catalog_changes` row in the same
+transaction (migration `20261109000000_tag_catalog_audit`; the schema refuses a version step without
+it). No UI, discovery (#98) or production authority; see [API](docs/development/taxonomy-api.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
 limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so

@@ -186,7 +186,7 @@ PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của
 
 | ID | Yêu cầu | Phạm vi TAG-PR-01 |
 | --- | --- | --- |
-| TAG-FR-01 | Catalog do curator quản; mỗi thẻ có danh tính bền vững, nhãn, slug, facet, mô tả, trạng thái; tác giả chỉ chọn thẻ có sẵn | Pure decision + port; entrypoint curator, store và API ở #96/#97 |
+| TAG-FR-01 | Catalog do curator quản; mỗi thẻ có danh tính bền vững, nhãn, slug, facet, mô tả, trạng thái; tác giả chỉ chọn thẻ có sẵn | Pure decision + port; store ở #96; entrypoint curator (lệnh operator) và API ở #97 ([API](../docs/development/taxonomy-api.md)) |
 | TAG-FR-02 | Hai facet đóng: dạng bài (≤ 1) và chủ đề (≤ 3 thẻ khác nhau sau alias/khử trùng); nháp không bắt buộc dạng bài | Hằng có lý do + type `Option`; bắt buộc khi gửi duyệt còn OPEN |
 | TAG-FR-03 | Chữ tiếng Việt: NFC/NFD tương đương; slug giữ dấu; bỏ dấu chỉ để tìm ứng viên, không quyết định danh tính/alias | `TagLabel`, `TagSlug`, `SearchKey`, `TagQuery` |
 | TAG-FR-04 | Alias do curator tạo, trỏ thẻ canonical đang hoạt động; không chuỗi, vòng, tự trỏ hay dangling | `decide_catalog_change` (AddAlias), `rank_matches` |

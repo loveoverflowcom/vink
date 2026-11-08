@@ -11,7 +11,9 @@ D-05/S-03 spike adds [Sign-in](#sign-in-d-05s-03-spike) only. Discussion
 (comments) is Vink-owned (owner decision 03/11/2026; no Discourse) and has the endpoints in
 [Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c). Literary
 endorsement has the endpoints in [Literary endorsement](#literary-endorsement-lve-73); no web or
-native consumer uses them yet.
+native consumer uses them yet. Work tags have the endpoints in [Work tags](#work-tags-tag-pr-03):
+public catalog reads and the author's private draft tags; no route changes the catalog and no web
+or native consumer uses them yet.
 
 ## Conventions
 
@@ -229,6 +231,71 @@ from the body: unknown fields are `422`.
   or the publication read (READ-01 bodies and validators are unchanged), reasons or facets, rate
   limits, receipt expiry.
 
+## Work tags (TAG-PR-03)
+
+Semantics are owned by the [decision record](../../../../../docs/architecture/work-taxonomy.md)
+(`decide_tag_change`, `rank_matches`, `resolve_slug`); choices, data flow and the operator runbook by
+[the API guide](../../../../../docs/development/taxonomy-api.md). A tag describes a work: one
+optional **form** (`facet: "form"`, dạng bài) and up to three distinct **themes** (`"theme"`, chủ
+đề) chosen from a curated catalog. Labels keep case and Vietnamese marks; `slug` is lowercase with
+marks kept (`ký-ức`), never reassigned; accent folding only finds candidates (`ma`, `má`, `mà` are
+three tags). Every response of these routes, success or error, carries `Cache-Control: no-store`.
+
+| Method and path | Success | Errors | Fixture |
+| --- | --- | --- | --- |
+| `GET /api/v1/tags?facet=` | `200` active tags, forms first, then by accent-folded label; at most 200 (`truncated: true` when more exist) | `422` (`facet`, `query`), `503` | [tags.list.json](fixtures/tags.list.json) |
+| `GET /api/v1/tags/suggestions?q=&facet=&limit=` | `200` ranked suggestions of active tags for `q` | `422` (`q`, `facet`, `limit`, `query`), `503` | [tags.suggestions.json](fixtures/tags.suggestions.json) |
+| `GET /api/v1/tags/slugs/{slug}` | `200` what the slug names: `canonical`, `redirect` or `retired` | `404`, `503` | [redirect](fixtures/tag.resolve.redirect.json), [retired](fixtures/tag.resolve.retired.json) |
+| `GET /api/v1/drafts/{work_id}/tags` | `200` the actor's draft tags with `version` | `401`, `404`, `503` | [draft.tags.get.json](fixtures/draft.tags.get.json) |
+| `PUT /api/v1/drafts/{work_id}/tags` | `200` new `version` and the saved identities | `401`, `403` (`forbidden`, `principal_suspended`), `404`, `409` (`version_conflict`, `tag_retired`), `422` (`validation_failed`, `unknown_tag`, `wrong_facet`, `too_many_themes`), `503` | [request](fixtures/draft.tags.put.request.json), [response](fixtures/draft.tags.put.response.json) |
+
+- **A tag.** `{tag_id, facet, label, slug, description, status, successor}`. `status` is `active`
+  (selectable) or `retired` (kept where it already is, never added); `successor` is
+  `{tag_id, label, slug}` of the curator's hint on a retired tag, or `null`. `description` is the
+  curator's one-paragraph note or `null`.
+- **Catalog reads are public.** They never resolve an actor, so an Identity outage does not affect
+  them; a database outage is `503`, never an empty list. Only active tags are listed or suggested;
+  aliases, former names, retired tags, audit and usage counts are never listed. Unknown query
+  parameters are `422` (`field: query`).
+- **Suggestions.** `q` is required: 1–40 characters after NFC with at least one letter or digit.
+  `limit` is 1–10 (default 10); `facet` is `form` or `theme`. `query` echoes `q`, so a client drops
+  answers to an older input. `match` is `exact` (same slug: same letters and marks, any case or
+  NFC/NFD), `folded` (same accent-folded key, e.g. `ma` for `má`) or `prefix` (the folded query
+  starts the name or one of its words). `via_alias` is the alias spelling that matched (`Hồi ức`
+  for `Ký ức`), or `null`; the suggestion is always the canonical tag, once.
+- **Slugs.** The path segment is percent-decoded and normalized (NFD and uppercase spell the same
+  slug); a malformed slug is `404`. `canonical`: the tag's own slug. `redirect`: an alias or a
+  former name (after a rename) of an active tag; use `tag.slug` from now on. `retired`: any slug of
+  a retired tag, with `tag.successor` when the curator named one. Unknown: `404`.
+- **Draft tags are private** and act for the server-resolved principal (`401` without one; production
+  answers `401` until D-05). Another owner's work and a missing work are both `404`. They have their
+  own `version`, separate from the draft text's: `PUT /api/v1/drafts/{work_id}` neither carries nor
+  clears tags, and a tag save does not change the text version. Saving tags publishes nothing: the
+  public reads above and `GET …/publication` are unchanged.
+- **Saving.** The body is the whole desired state and **every field is required**:
+  `{"expected_version", "form", "themes"}`. `form` is a form tag ID or `null` (clears it); `themes`
+  is a list of theme tag IDs (`[]` clears them), at most 6 references, deduplicated in first-seen
+  order, at most 3 distinct. An omitted field, an unknown field (`actor_id`, `owner_id`…) or a
+  malformed body is `422 validation_failed` (`field: body`), so a client that does not know a field
+  cannot clear it by omission. A malformed ID is `422` with `field: form` or `themes`.
+- **Outcomes.**
+  - `expected_version` equal to the stored one and every tag admissible: **accepted**, `200` with
+    `version` + 1 and the saved `form`/`themes` IDs — also when nothing changed (`changed: false`):
+    that advance fences every older request still in flight.
+  - Another version: `409 version_conflict` with `current_version` and `tags` (`{form, themes}`, the
+    stored IDs); nothing written. If `tags` equal what the client wanted, its desired state holds:
+    adopt `current_version` (this is how a lost acknowledgement is reconciled; it does not say
+    which request committed). Otherwise show the stored tags; never resend the old intent with the
+    new version.
+  - `422 unknown_tag` (“chưa có thẻ này”; no proposal exists), `422 wrong_facet` (a theme as `form`
+    or a form in `themes`), `409 tag_retired` (`successor_id` when hinted; a retired tag already on
+    the draft may stay, never be added) and `422 too_many_themes`. `field` names `form` or `themes`
+    and `tag_id` the refused tag. Nothing is written.
+  - `403 principal_suspended`: the author was suspended before the save committed.
+- **Not provided:** catalog writes over HTTP (the operator command `vink-app tag …` is the only
+  entrypoint), tag proposals by authors, work discovery by tag (#98), public tags on the works list
+  or publication read, validators/`304` for catalog reads, rate limits.
+
 ## Sign-in (D-05/S-03 spike)
 
 The browser-facing side of the native email-code authority ([ADR](../../../../../docs/architecture/auth-authority.md)).
@@ -261,8 +328,8 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
 
 ## Errors
 
-Every error body is `{"error": {"code", "message", "current_version"?, "field"?}}`. Branch on
-`code`; `message` is developer text.
+Every error body is `{"error": {"code", "message", "current_version"?, "field"?}}`, plus the
+code-specific members named below. Branch on `code`; `message` is developer text.
 
 | Status | `code` | Meaning | Fixture |
 | --- | --- | --- | --- |
@@ -270,7 +337,11 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 | 401 | `unauthenticated` | No authenticated Vink principal | [error.unauthenticated.json](fixtures/error.unauthenticated.json) |
 | 403 | `forbidden` | Origin check failed for an unsafe method | [error.forbidden.json](fixtures/error.forbidden.json) |
 | 404 | `not_found` | Missing, private to someone else, or not published | [error.not_found.json](fixtures/error.not_found.json) |
-| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings set to the other state since `expected_generation`, a comment's moderation state since `expected_version`, or an endorsement's order moved past `expected_order`; `current_version` is the stored one (endorsements also carry `endorsement` and `field: expected_order`) | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json), [endorsement](fixtures/error.endorsement_conflict.json) |
+| 409 | `version_conflict` | Draft changed since `expected_version`, comments settings set to the other state since `expected_generation`, a comment's moderation state since `expected_version`, an endorsement's order moved past `expected_order`, or draft tags changed since `expected_version`; `current_version` is the stored one (endorsements also carry `endorsement` and `field: expected_order`; draft tags carry `tags` and `field: expected_version`) | [draft](fixtures/error.version_conflict.json), [settings](fixtures/error.discussion_conflict.json), [moderation](fixtures/error.moderation_conflict.json), [endorsement](fixtures/error.endorsement_conflict.json), [tags](fixtures/error.tag_version_conflict.json) |
+| 422 | `unknown_tag` | A draft tag that is not in the curated catalog; `field` (`form`/`themes`) and `tag_id` | [error.unknown_tag.json](fixtures/error.unknown_tag.json) |
+| 409 | `tag_retired` | A retired tag that is not already on the draft; `field`, `tag_id`, `successor_id` when hinted | [error.tag_retired.json](fixtures/error.tag_retired.json) |
+| 422 | `wrong_facet` | A theme tag as `form` or a form tag in `themes`; `field`, `tag_id` | [error.wrong_facet.json](fixtures/error.wrong_facet.json) |
+| 422 | `too_many_themes` | More than three distinct themes; `field: themes` | [error.too_many_themes.json](fixtures/error.too_many_themes.json) |
 | 409 | `revision_changed` | Selecting a revision that is no longer the public one; `current_revision_id` names the public revision | [error.revision_changed.json](fixtures/error.revision_changed.json) |
 | 403 | `self_endorsement` | The work's author or the comment's writer tried to endorse their own content | [error.self_endorsement.json](fixtures/error.self_endorsement.json) |
 | 403 | `endorsement_not_permitted` | The actor has no current endorsement capability | [error.endorsement_not_permitted.json](fixtures/error.endorsement_not_permitted.json) |
@@ -286,7 +357,7 @@ Every error body is `{"error": {"code", "message", "current_version"?, "field"?}
 | 422 | `code_rejected` | Wrong sign-in code; `field` is `code`; retry allowed | [error.code_rejected.json](fixtures/error.code_rejected.json) |
 | 409 | `challenge_closed` | Sign-in code expired, used, exhausted or no challenge cookie | [error.challenge_closed.json](fixtures/error.challenge_closed.json) |
 | 403 | `account_disabled` | The mailbox was proven but the Identity account is disabled | [error.account_disabled.json](fixtures/error.account_disabled.json) |
-| 403 | `principal_suspended` | The Vink principal is suspended (sign-in and provisioning) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
+| 403 | `principal_suspended` | The Vink principal is suspended (sign-in, provisioning, and a draft-tag save that commits after the suspension) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
 | 503 | `dependency_unavailable` | PostgreSQL or Identity unreachable; retry later | [error.dependency_unavailable.json](fixtures/error.dependency_unavailable.json) |
 | 500 | `internal` | Stored data failed validation, an unexpected database error, or an exhausted endorsement token | — |
 

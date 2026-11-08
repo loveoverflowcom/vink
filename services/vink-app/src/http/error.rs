@@ -2,12 +2,14 @@ use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 
-use super::contract::{ErrorBody, ErrorEnvelope};
+use super::contract::{ErrorBody, ErrorEnvelope, TagIds};
+use crate::application::catalog::{CatalogQueryInput, CatalogReadError};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
 use crate::application::endorsement::{EndorsementError, EndorsementInput};
+use crate::application::taxonomy::{TagError, TagInput, TagRejection};
 use crate::application::{DraftError, InvalidInput, ReadError};
 use crate::domain::endorsement::EndorsementState;
-use crate::domain::ids::RevisionId;
+use crate::domain::ids::{RevisionId, TagId};
 
 /// Outcome classes of HTTP API v1. Messages are for developers; clients branch on `code`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,6 +65,28 @@ pub enum ApiError {
     AccountDisabled,
     /// The principal is suspended by Vink.
     PrincipalSuspended,
+    /// The draft tags moved past `expected_version`; `observed` is what is stored now.
+    TagConflict {
+        current_version: i64,
+        observed: TagIds,
+    },
+    /// The tag is not in the curated catalog ("chưa có thẻ này"); no proposal exists.
+    UnknownTag {
+        field: &'static str,
+        tag_id: TagId,
+    },
+    /// The tag was retired and is not already on the draft.
+    TagRetired {
+        field: &'static str,
+        tag_id: TagId,
+        successor_id: Option<TagId>,
+    },
+    /// A form tag in `themes` or a theme tag in `form`.
+    WrongFacet {
+        field: &'static str,
+        tag_id: TagId,
+    },
+    TooManyThemes,
     DependencyUnavailable,
     Internal,
 }
@@ -93,6 +117,10 @@ impl ApiError {
             Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
+            Self::TagConflict { .. } | Self::TagRetired { .. } => StatusCode::CONFLICT,
+            Self::UnknownTag { .. } | Self::WrongFacet { .. } | Self::TooManyThemes => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
             Self::DependencyUnavailable => StatusCode::SERVICE_UNAVAILABLE,
             Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
         }
@@ -250,6 +278,38 @@ impl ApiError {
                 None,
                 None,
             ),
+            Self::TagConflict {
+                current_version, ..
+            } => (
+                "version_conflict",
+                "the draft tags changed since expected_version; nothing was written".to_string(),
+                Some(*current_version),
+                Some("expected_version"),
+            ),
+            Self::UnknownTag { field, .. } => (
+                "unknown_tag",
+                "the tag is not in the curated catalog; nothing was written".to_string(),
+                None,
+                Some(*field),
+            ),
+            Self::TagRetired { field, .. } => (
+                "tag_retired",
+                "the tag was retired and cannot be added; nothing was written".to_string(),
+                None,
+                Some(*field),
+            ),
+            Self::WrongFacet { field, .. } => (
+                "wrong_facet",
+                "the tag belongs to the other slot; nothing was written".to_string(),
+                None,
+                Some(*field),
+            ),
+            Self::TooManyThemes => (
+                "too_many_themes",
+                "a work has at most three distinct themes; nothing was written".to_string(),
+                None,
+                Some("themes"),
+            ),
             Self::DependencyUnavailable => (
                 "dependency_unavailable",
                 "a required dependency is unavailable; retry later".to_string(),
@@ -270,6 +330,23 @@ impl ApiError {
                 },
                 endorsement: match self {
                     Self::EndorsementConflict { observed } => Some((*observed).into()),
+                    _ => None,
+                },
+                tags: match self {
+                    Self::TagConflict { observed, .. } => Some(observed.clone()),
+                    _ => None,
+                },
+                tag_id: match self {
+                    Self::UnknownTag { tag_id, .. }
+                    | Self::TagRetired { tag_id, .. }
+                    | Self::WrongFacet { tag_id, .. } => Some(tag_id.to_string()),
+                    _ => None,
+                },
+                successor_id: match self {
+                    Self::TagRetired {
+                        successor_id: Some(id),
+                        ..
+                    } => Some(id.to_string()),
                     _ => None,
                 },
             },
@@ -373,6 +450,65 @@ impl From<EndorsementError> for ApiError {
             EndorsementError::Invalid(invalid) => invalid.into(),
             EndorsementError::Unavailable => Self::DependencyUnavailable,
             EndorsementError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<TagInput> for ApiError {
+    fn from(error: TagInput) -> Self {
+        Self::Validation {
+            field: error.field(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<TagError> for ApiError {
+    fn from(error: TagError) -> Self {
+        match error {
+            TagError::Unauthenticated => Self::Unauthenticated,
+            TagError::Suspended => Self::PrincipalSuspended,
+            TagError::NotFound => Self::NotFound,
+            TagError::VersionConflict { current, observed } => Self::TagConflict {
+                current_version: current.get(),
+                observed: TagIds::from(&observed),
+            },
+            TagError::Invalid(invalid) => invalid.into(),
+            TagError::Rejected(rejection) => {
+                let field = rejection.field();
+                match rejection {
+                    TagRejection::UnknownTag { tag, .. } => Self::UnknownTag { field, tag_id: tag },
+                    TagRejection::RetiredTag { tag, successor, .. } => Self::TagRetired {
+                        field,
+                        tag_id: tag,
+                        successor_id: successor,
+                    },
+                    TagRejection::WrongFacet { tag, .. } => Self::WrongFacet { field, tag_id: tag },
+                    TagRejection::TooManyThemes => Self::TooManyThemes,
+                }
+            }
+            TagError::Unavailable => Self::DependencyUnavailable,
+            TagError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<CatalogQueryInput> for ApiError {
+    fn from(error: CatalogQueryInput) -> Self {
+        Self::Validation {
+            field: error.field(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<CatalogReadError> for ApiError {
+    fn from(error: CatalogReadError) -> Self {
+        match error {
+            CatalogReadError::Invalid(invalid) => invalid.into(),
+            CatalogReadError::NotFound => Self::NotFound,
+            CatalogReadError::Unavailable => Self::DependencyUnavailable,
+            CatalogReadError::Internal => Self::Internal,
         }
     }
 }

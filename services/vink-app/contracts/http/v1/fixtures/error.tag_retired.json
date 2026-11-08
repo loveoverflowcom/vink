@@ -1,0 +1,9 @@
+{
+  "error": {
+    "code": "tag_retired",
+    "message": "the tag was retired and cannot be added; nothing was written",
+    "field": "themes",
+    "tag_id": "a0000000-0000-4000-8000-000000000013",
+    "successor_id": "a0000000-0000-4000-8000-000000000014"
+  }
+}

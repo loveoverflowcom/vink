@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::application::catalog::{CatalogPage, TagResolution, TagSuggestion, facet_code};
 use crate::application::discussion::{
     CommentItem, ModerationAction, ModerationQueue, OwnStatus, ReplyPage, RootEntry, RootItem,
     RootPage, SubmittedComment,
@@ -12,6 +13,7 @@ use crate::application::endorsement::{
     Capability, EndorsementOutcomeView, EndorsementResult, EndorsementSummaries, OwnEndorsement,
     OwnEndorsements, Summary,
 };
+use crate::application::taxonomy::{DraftWorkTags, SavedWorkTags};
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
 use crate::domain::discussion::lifecycle::{CommentState, Review};
 use crate::domain::discussion::settings::DiscussionSettings;
@@ -20,6 +22,7 @@ use crate::domain::document::DocumentData;
 use crate::domain::draft::{DraftSummary, WorkingDraft};
 use crate::domain::endorsement::{EndorsementState, EndorsementTarget};
 use crate::domain::ids::{CommentId, PrincipalId, WorkId};
+use crate::domain::taxonomy::{CatalogTag, MatchTier, TagFacet, WorkTags};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct WorkList {
@@ -365,6 +368,119 @@ pub struct OwnEndorsementList {
     pub comments: Vec<CommentOwnEndorsement>,
 }
 
+/// One catalog tag as clients see it. `status` is `active` (selectable) or `retired` (kept where
+/// it already is, never added); `successor` is the curator's hint on a retired tag, if any.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagView {
+    pub tag_id: String,
+    pub facet: &'static str,
+    pub label: String,
+    pub slug: String,
+    pub description: Option<String>,
+    pub status: &'static str,
+    pub successor: Option<TagRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagRef {
+    pub tag_id: String,
+    pub label: String,
+    pub slug: String,
+}
+
+/// `GET /api/v1/tags?facet=`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TagListQuery {
+    pub facet: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagList {
+    pub tags: Vec<TagView>,
+    pub truncated: bool,
+}
+
+/// `GET /api/v1/tags/suggestions?q=&facet=&limit=`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TagSuggestionQuery {
+    pub q: Option<String>,
+    pub facet: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagSuggestionList {
+    /// The `q` this answer is for, so a client can drop answers to an older input.
+    pub query: String,
+    pub suggestions: Vec<TagSuggestionView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagSuggestionView {
+    pub tag: TagView,
+    /// `exact`, `folded` or `prefix`.
+    #[serde(rename = "match")]
+    pub matched: &'static str,
+    /// The alias spelling that matched, when it was not the tag's own label.
+    pub via_alias: Option<String>,
+}
+
+/// `GET /api/v1/tags/slugs/{slug}`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagResolutionView {
+    /// `canonical`, `redirect` (use `tag.slug`) or `retired`.
+    pub resolution: &'static str,
+    pub tag: TagView,
+}
+
+/// `GET /api/v1/drafts/{work_id}/tags`: the author's private draft tags.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct DraftTags {
+    pub work_id: String,
+    pub version: i64,
+    pub form: Option<TagView>,
+    pub themes: Vec<TagView>,
+}
+
+/// `PUT /api/v1/drafts/{work_id}/tags`: the whole desired state. Every field is required, so a
+/// client that does not know about a field cannot clear it by omission; `null`/`[]` clear.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SaveDraftTagsRequest {
+    pub expected_version: i64,
+    #[serde(deserialize_with = "present")]
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
+/// A nullable field that must still be present: `deserialize_with` turns off serde's implicit
+/// "missing `Option` is `None`".
+fn present<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer)
+}
+
+/// Tag identities of a draft, form then themes in the author's order.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagIds {
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SavedDraftTagsResponse {
+    pub work_id: String,
+    pub version: i64,
+    /// `false` for an accepted save that changed nothing (the version still advanced).
+    pub changed: bool,
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
@@ -384,6 +500,15 @@ pub struct ErrorBody {
     /// Endorsement `version_conflict` only: the actor's current state, to reconcile from.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub endorsement: Option<EndorsementStateView>,
+    /// Draft tags `version_conflict` only: the stored tags, to reconcile from.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<TagIds>,
+    /// `unknown_tag`, `tag_retired`, `wrong_facet`: the refused tag.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<String>,
+    /// `tag_retired` with a curator's hint: the suggested replacement.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub successor_id: Option<String>,
 }
 
 impl From<&PublicWorkSummary> for WorkCard {
@@ -719,6 +844,129 @@ impl From<&OwnEndorsements> for OwnEndorsementList {
                     own: entry.own.into(),
                 })
                 .collect(),
+        }
+    }
+}
+
+impl TagRef {
+    fn new(tag: &CatalogTag) -> Self {
+        Self {
+            tag_id: tag.id().to_string(),
+            label: tag.label().as_str().to_owned(),
+            slug: tag.slug().as_str().to_owned(),
+        }
+    }
+}
+
+impl TagView {
+    /// `successor` is the row of the hint `tag` names; the caller looked it up.
+    pub fn new(tag: &CatalogTag, successor: Option<&CatalogTag>) -> Self {
+        Self {
+            tag_id: tag.id().to_string(),
+            facet: facet_code(tag.facet()),
+            label: tag.label().as_str().to_owned(),
+            slug: tag.slug().as_str().to_owned(),
+            description: tag.description().map(|d| d.as_str().to_owned()),
+            status: if tag.status().is_active() {
+                "active"
+            } else {
+                "retired"
+            },
+            successor: successor.map(TagRef::new),
+        }
+    }
+
+    fn active(tag: &CatalogTag) -> Self {
+        Self::new(tag, None)
+    }
+}
+
+impl From<&CatalogPage> for TagList {
+    fn from(page: &CatalogPage) -> Self {
+        Self {
+            tags: page.tags.iter().map(TagView::active).collect(),
+            truncated: page.truncated,
+        }
+    }
+}
+
+pub const fn match_tier(tier: MatchTier) -> &'static str {
+    match tier {
+        MatchTier::Exact => "exact",
+        MatchTier::Folded => "folded",
+        MatchTier::Prefix => "prefix",
+    }
+}
+
+impl TagSuggestionList {
+    pub fn new(query: String, suggestions: &[TagSuggestion]) -> Self {
+        Self {
+            query,
+            suggestions: suggestions
+                .iter()
+                .map(|found| TagSuggestionView {
+                    tag: TagView::active(&found.tag),
+                    matched: match_tier(found.tier),
+                    via_alias: found.via_alias.as_ref().map(|l| l.as_str().to_owned()),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<&TagResolution> for TagResolutionView {
+    fn from(resolution: &TagResolution) -> Self {
+        match resolution {
+            TagResolution::Canonical(tag) => Self {
+                resolution: "canonical",
+                tag: TagView::active(tag),
+            },
+            TagResolution::Redirect(tag) => Self {
+                resolution: "redirect",
+                tag: TagView::active(tag),
+            },
+            TagResolution::Retired { tag, successor } => Self {
+                resolution: "retired",
+                tag: TagView::new(tag, successor.as_ref()),
+            },
+        }
+    }
+}
+
+impl From<&DraftWorkTags> for DraftTags {
+    fn from(draft: &DraftWorkTags) -> Self {
+        let view = |tag: &CatalogTag| TagView::new(tag, draft.successor_of(tag));
+        let (form, themes): (Vec<&CatalogTag>, Vec<&CatalogTag>) = draft
+            .shown
+            .iter()
+            .partition(|tag| tag.facet() == TagFacet::Form);
+        Self {
+            work_id: draft.work_id.to_string(),
+            version: draft.version.get(),
+            form: form.first().map(|tag| view(tag)),
+            themes: themes.into_iter().map(view).collect(),
+        }
+    }
+}
+
+impl From<&WorkTags> for TagIds {
+    fn from(tags: &WorkTags) -> Self {
+        Self {
+            form: tags.form().map(|id| id.to_string()),
+            themes: tags.themes().iter().map(ToString::to_string).collect(),
+        }
+    }
+}
+
+impl From<&SavedWorkTags> for SavedDraftTagsResponse {
+    fn from(saved: &SavedWorkTags) -> Self {
+        let ids = TagIds::from(&saved.tags);
+        Self {
+            work_id: saved.work_id.to_string(),
+            version: saved.version.get(),
+            changed: saved.changed,
+            form: ids.form,
+            themes: ids.themes,
         }
     }
 }
@@ -1462,6 +1710,259 @@ mod tests {
                 ApiError::from(EndorsementError::Internal).status().as_u16(),
                 500
             );
+        }
+    }
+
+    mod taxonomy {
+        use super::*;
+        use crate::application::catalog::{CatalogPage, TagResolution, TagSuggestion};
+        use crate::application::taxonomy::{
+            DraftWorkTags, SavedWorkTags, TagError, TagInput, TagRejection,
+        };
+        use crate::domain::ids::TagId;
+        use crate::domain::taxonomy::{
+            CatalogTag, MatchTier, MetadataVersion, SelectionError, TagDescription, TagFacet,
+            TagLabel, TagStatus, WorkTags,
+        };
+
+        fn tid(n: u64) -> TagId {
+            TagId::parse(&format!("a0000000-0000-4000-8000-{n:012}")).unwrap()
+        }
+
+        fn tag(n: u64, facet: TagFacet, label: &str, description: Option<&str>) -> CatalogTag {
+            status(n, facet, label, description, TagStatus::Active)
+        }
+
+        fn status(
+            n: u64,
+            facet: TagFacet,
+            label: &str,
+            description: Option<&str>,
+            status: TagStatus,
+        ) -> CatalogTag {
+            let label = TagLabel::parse(label).unwrap();
+            CatalogTag::restore(
+                tid(n),
+                facet,
+                label.clone(),
+                label.slug(),
+                description.map(|d| TagDescription::parse(d).unwrap()),
+                status,
+            )
+            .unwrap()
+        }
+
+        fn tan_van() -> CatalogTag {
+            tag(
+                1,
+                TagFacet::Form,
+                "Tản văn",
+                Some("Văn xuôi ngắn viết từ trải nghiệm và cảm xúc riêng."),
+            )
+        }
+
+        fn ky_uc() -> CatalogTag {
+            tag(
+                11,
+                TagFacet::Theme,
+                "Ký ức",
+                Some("Những điều đã qua còn ở lại trong người viết."),
+            )
+        }
+
+        fn do_thi() -> CatalogTag {
+            status(
+                13,
+                TagFacet::Theme,
+                "Đô thị",
+                None,
+                TagStatus::Retired {
+                    successor: Some(tid(14)),
+                },
+            )
+        }
+
+        fn mua() -> CatalogTag {
+            tag(14, TagFacet::Theme, "Mùa", None)
+        }
+
+        #[test]
+        fn catalog_reads_match_fixtures() {
+            let page = CatalogPage {
+                tags: vec![tan_van(), tag(2, TagFacet::Form, "Thơ", None), ky_uc()],
+                truncated: false,
+            };
+            assert_matches("tags.list.json", &TagList::from(&page));
+            let suggestions = [
+                TagSuggestion {
+                    tag: tag(15, TagFacet::Theme, "Hội họa", None),
+                    tier: MatchTier::Prefix,
+                    via_alias: None,
+                },
+                TagSuggestion {
+                    tag: ky_uc(),
+                    tier: MatchTier::Prefix,
+                    via_alias: Some(TagLabel::parse("Hồi ức").unwrap()),
+                },
+            ];
+            assert_matches(
+                "tags.suggestions.json",
+                &TagSuggestionList::new("hồi".into(), &suggestions),
+            );
+            assert_matches(
+                "tag.resolve.redirect.json",
+                &TagResolutionView::from(&TagResolution::Redirect(ky_uc())),
+            );
+            assert_matches(
+                "tag.resolve.retired.json",
+                &TagResolutionView::from(&TagResolution::Retired {
+                    tag: do_thi(),
+                    successor: Some(mua()),
+                }),
+            );
+        }
+
+        #[test]
+        fn draft_tag_messages_match_fixtures() {
+            let tags = WorkTags::restore(Some(tid(1)), vec![tid(11), tid(13)]).unwrap();
+            let draft = DraftWorkTags {
+                work_id: work(),
+                version: MetadataVersion::new(4).unwrap(),
+                tags,
+                shown: vec![tan_van(), ky_uc(), do_thi()],
+                successors: vec![mua()],
+            };
+            assert_matches("draft.tags.get.json", &DraftTags::from(&draft));
+            let request: SaveDraftTagsRequest = parse("draft.tags.put.request.json");
+            assert_eq!(request.expected_version, 4);
+            assert_eq!(request.form, Some(tid(1).to_string()));
+            assert_eq!(request.themes, [tid(11).to_string(), tid(14).to_string()]);
+            let saved = SavedWorkTags {
+                work_id: work(),
+                version: MetadataVersion::new(5).unwrap(),
+                tags: WorkTags::restore(Some(tid(1)), vec![tid(11), tid(14)]).unwrap(),
+                changed: true,
+            };
+            assert_matches(
+                "draft.tags.put.response.json",
+                &SavedDraftTagsResponse::from(&saved),
+            );
+        }
+
+        /// The request is the whole desired state: an omitted field is never a clear, and no
+        /// client field can name an actor, owner or grant.
+        #[test]
+        fn tag_request_requires_every_field_and_refuses_authority_fields() {
+            let valid = fixture("draft.tags.put.request.json");
+            for field in ["expected_version", "form", "themes"] {
+                let mut raw = valid.clone();
+                raw.as_object_mut().unwrap().remove(field);
+                assert!(
+                    serde_json::from_value::<SaveDraftTagsRequest>(raw).is_err(),
+                    "missing {field} must be refused"
+                );
+            }
+            let mut cleared = valid.clone();
+            cleared["form"] = Value::Null;
+            cleared["themes"] = Value::Array(Vec::new());
+            let cleared: SaveDraftTagsRequest = serde_json::from_value(cleared).unwrap();
+            assert_eq!((cleared.form, cleared.themes.len()), (None, 0));
+            for forged in ["actor_id", "owner_id", "can_curate", "version"] {
+                let mut raw = valid.clone();
+                raw[forged] = Value::from("22222222-2222-4222-8222-222222222222");
+                assert!(
+                    serde_json::from_value::<SaveDraftTagsRequest>(raw).is_err(),
+                    "{forged}"
+                );
+            }
+        }
+
+        #[test]
+        fn tag_error_envelopes_match_fixtures() {
+            let cases = [
+                (
+                    "error.tag_version_conflict.json",
+                    ApiError::from(TagError::VersionConflict {
+                        current: MetadataVersion::new(5).unwrap(),
+                        observed: WorkTags::restore(Some(tid(1)), vec![tid(11), tid(12)]).unwrap(),
+                    }),
+                    409,
+                ),
+                (
+                    "error.unknown_tag.json",
+                    TagError::Rejected(TagRejection::UnknownTag {
+                        tag: tid(99),
+                        slot: TagFacet::Theme,
+                    })
+                    .into(),
+                    422,
+                ),
+                (
+                    "error.tag_retired.json",
+                    TagError::Rejected(TagRejection::RetiredTag {
+                        tag: tid(13),
+                        slot: TagFacet::Theme,
+                        successor: Some(tid(14)),
+                    })
+                    .into(),
+                    409,
+                ),
+                (
+                    "error.wrong_facet.json",
+                    TagError::Rejected(TagRejection::WrongFacet {
+                        tag: tid(11),
+                        slot: TagFacet::Form,
+                    })
+                    .into(),
+                    422,
+                ),
+                (
+                    "error.too_many_themes.json",
+                    TagError::Rejected(TagRejection::TooManyThemes).into(),
+                    422,
+                ),
+            ];
+            for (name, error, status) in cases {
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
+            }
+            // Existing codes are reused where the meaning is the same.
+            for (error, status, code) in [
+                (TagError::Unauthenticated, 401, "unauthenticated"),
+                (TagError::Suspended, 403, "principal_suspended"),
+                (TagError::NotFound, 404, "not_found"),
+                (TagError::Unavailable, 503, "dependency_unavailable"),
+                (TagError::Internal, 500, "internal"),
+            ] {
+                let error = ApiError::from(error);
+                assert_eq!(error.status().as_u16(), status, "{code}");
+                assert_eq!(error.envelope().error.code, code);
+            }
+            let retired = ApiError::from(TagError::Rejected(TagRejection::RetiredTag {
+                tag: tid(13),
+                slot: TagFacet::Form,
+                successor: None,
+            }));
+            let body = serde_json::to_value(retired.envelope()).unwrap();
+            assert_eq!(body["error"]["field"], "form");
+            assert!(body["error"].get("successor_id").is_none(), "{body}");
+            for (input, field) in [
+                (TagInput::ExpectedVersion, "expected_version"),
+                (TagInput::Selection(SelectionError::Form), "form"),
+                (
+                    TagInput::Selection(SelectionError::Theme { index: 1 }),
+                    "themes",
+                ),
+                (
+                    TagInput::Selection(SelectionError::TooManyThemeRefs),
+                    "themes",
+                ),
+            ] {
+                let error = ApiError::from(TagError::Invalid(input));
+                assert_eq!(error.status().as_u16(), 422);
+                assert_eq!(error.envelope().error.code, "validation_failed");
+                assert_eq!(error.envelope().error.field, Some(field));
+            }
         }
     }
 }

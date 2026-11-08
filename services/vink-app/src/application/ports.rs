@@ -4,6 +4,7 @@ use std::future::Future;
 
 use time::OffsetDateTime;
 
+use super::catalog::{CatalogOperation, CuratorAuthority};
 use super::discussion::{
     Guarded, ModerationAction, ModerationQueue, NewComment, ReplyPage, RootPage, SubmitOutcome,
 };
@@ -20,10 +21,11 @@ use crate::domain::endorsement::{
     EndorsementCommand, EndorsementCount, EndorsementFacts, EndorsementOutcome, EndorsementState,
     EndorsementTargetFacts,
 };
-use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
+use crate::domain::ids::{CommentId, PrincipalId, RevisionId, TagId, WorkId};
 use crate::domain::principal::{PenName, Standing, SubjectKey};
 use crate::domain::taxonomy::{
-    CatalogTag, MetadataSnapshot, MetadataVersion, TagChange, TagOutcome, WorkTags,
+    CatalogCommand, CatalogOutcome, CatalogTag, CatalogVersion, MetadataSnapshot, MetadataVersion,
+    SlugHolder, SlugKind, TagAlias, TagChange, TagLabel, TagOutcome, TagSlug, WorkTags,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -247,7 +249,8 @@ pub trait EndorsementStore: Send + Sync {
     ) -> impl Future<Output = Result<OwnEndorsementFacts, StoreError>> + Send;
 }
 
-/// The owner's draft tags as stored, with the catalog rows of those tags (retired ones too).
+/// The owner's draft tags as stored, with the catalog rows of those tags (retired ones too) and
+/// of the successor hints of retired ones, each row once.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoredWorkTags {
     pub version: MetadataVersion,
@@ -299,6 +302,90 @@ pub trait PublicTagStore: Send + Sync {
         &self,
         work_id: WorkId,
     ) -> impl Future<Output = Result<Option<PublicTagFacts>, StoreError>> + Send;
+}
+
+/// The active part of the curated catalog, read in ONE snapshot: every active tag and every alias
+/// of an active tag. Retired tags, former names and audit rows are not part of it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ActiveCatalog {
+    pub tags: Vec<CatalogTag>,
+    pub aliases: Vec<TagAlias>,
+}
+
+/// What one slug names, read in ONE snapshot: its row in the slug table, the tag it names and,
+/// for a retired tag with a successor hint, the successor's row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlugFacts {
+    pub holder: Option<SlugHolder>,
+    pub tag: Option<CatalogTag>,
+    pub successor: Option<CatalogTag>,
+}
+
+/// Public catalog reads (TAG-PR-03, #97). They never resolve an actor, read a draft or an audit
+/// row, so an Identity outage cannot hide the catalog.
+pub trait CatalogReadStore: Send + Sync {
+    fn active_catalog(&self) -> impl Future<Output = Result<ActiveCatalog, StoreError>> + Send;
+
+    fn slug_facts(
+        &self,
+        slug: &TagSlug,
+    ) -> impl Future<Output = Result<SlugFacts, StoreError>> + Send;
+}
+
+/// One name of a tag in the operator listing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogName {
+    pub slug: TagSlug,
+    pub kind: SlugKind,
+    /// The curated spelling of an alias; `None` for canonical and former names.
+    pub alias_label: Option<TagLabel>,
+}
+
+/// Every tag, retired ones included, with all its names: the operator's view.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogEntry {
+    pub tag: CatalogTag,
+    pub names: Vec<CatalogName>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogListing {
+    pub version: CatalogVersion,
+    pub entries: Vec<CatalogEntry>,
+}
+
+/// One audit row: the catalog version an accepted change produced and what it did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CatalogAuditRecord {
+    pub version: CatalogVersion,
+    pub operation: CatalogOperation,
+    pub tag: TagId,
+    pub slug: Option<TagSlug>,
+    pub successor: Option<TagId>,
+    pub changed: bool,
+    pub authority: &'static str,
+    pub database_role: String,
+    pub recorded_at: OffsetDateTime,
+}
+
+/// Curated catalog governance (TAG-PR-03, #97 CHOICE-02 A). A change is ONE transaction: the
+/// facts under the #96 lock order, [`crate::domain::taxonomy::decide_catalog_change`] with
+/// `can_curate` decided from `authority` in that transaction, exactly the accepted write plus
+/// its audit row, then commit. A refusal or conflict writes nothing, audit included.
+pub trait CatalogStore: Send + Sync {
+    fn change_catalog(
+        &self,
+        authority: CuratorAuthority,
+        command: &CatalogCommand,
+    ) -> impl Future<Output = Result<CatalogOutcome, StoreError>> + Send;
+
+    fn catalog_listing(&self) -> impl Future<Output = Result<CatalogListing, StoreError>> + Send;
+
+    /// Newest first, at most `limit` rows.
+    fn catalog_history(
+        &self,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<CatalogAuditRecord>, StoreError>> + Send;
 }
 
 /// The principal an authenticated subject acts as, and whether it may act now.

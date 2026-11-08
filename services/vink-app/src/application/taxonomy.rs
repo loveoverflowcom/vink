@@ -9,26 +9,30 @@
 //! Retry semantics: every accepted save advances the version, so resending a command whose
 //! acknowledgement was lost is a [`TagError::VersionConflict`]. Its `observed` tags tell the
 //! client whether its desired state holds now ([`WorkTags::matches`]); that is a statement
-//! about state, not a receipt naming the command that produced it (an exact receipt, if
-//! needed, is #97's CHOICE-03).
+//! about state, not a receipt naming the command that produced it. #97 CHOICE-03 A keeps it
+//! that way: no command-key receipt, because the author needs the current tags, not the
+//! history of which tab's command committed.
 //!
 //! Public tags (TAG-PR-02, #96) are read through the current publication's metadata binding
 //! only ([`Vink::public_work_tags`]); nothing here writes a snapshot or a binding, which belong
 //! to the publication owner's transaction.
 //!
-//! Catalog lookup and curator changes have pure decisions in `domain::taxonomy`; their use
-//! cases and entrypoints belong to TAG-PR-03 (#97).
+//! Catalog lookup and curator changes are `application::catalog` (TAG-PR-03, #97). HTTP v1 maps
+//! these use cases to `/api/v1/drafts/{work_id}/tags`, a resource of its own with this version
+//! (#97 CHOICE-01 B): saving text never carries or clears tags, and a stale tag save is a
+//! conflict whose `observed` tags the client reconciles from (#97 CHOICE-03 A).
 
 use super::ports::{PublicTagStore, StoreError, WorkTagStore};
 use super::{ReadError, Vink};
 use crate::domain::ids::{PrincipalId, RevisionId, TagId, WorkId};
 use crate::domain::taxonomy::{
     CatalogTag, MetadataVersion, SelectionError, TagChange, TagFacet, TagOutcome, TagRefusal,
-    TagSelection, WorkTags, draft_tags, public_tags,
+    TagSelection, TagStatus, WorkTags, draft_tags, public_tags,
 };
 
-/// Untrusted save input. Only [`Vink::save_work_tags`] turns it into a [`TagChange`]. `form:
-/// None` clears the form slot; presence semantics for clients that omit fields are #97's.
+/// Untrusted save input. Only [`Vink::save_work_tags`] turns it into a [`TagChange`]. It is the
+/// whole desired state: `form: None` clears the form slot and empty `themes` clears the themes.
+/// The HTTP contract requires both fields to be present, so an omitted field is never a clear.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaveWorkTags {
     pub work_id: WorkId,
@@ -47,13 +51,27 @@ pub struct SavedWorkTags {
 }
 
 /// The author's view of their draft tags: the stored assignment and its catalog rows in display
-/// order (form, then themes), retired tags included so they can be kept or removed.
+/// order (form, then themes), retired tags included so they can be kept or removed, and the rows
+/// of the successor hints those retired tags name.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DraftWorkTags {
     pub work_id: WorkId,
     pub version: MetadataVersion,
     pub tags: WorkTags,
     pub shown: Vec<CatalogTag>,
+    pub successors: Vec<CatalogTag>,
+}
+
+impl DraftWorkTags {
+    /// The successor row a shown retired tag names, if any.
+    pub fn successor_of(&self, tag: &CatalogTag) -> Option<&CatalogTag> {
+        match tag.status() {
+            TagStatus::Retired {
+                successor: Some(id),
+            } => self.successors.iter().find(|row| row.id() == id),
+            _ => None,
+        }
+    }
 }
 
 /// What a public reader sees: the active tags of the snapshot bound to the current publication,
@@ -85,13 +103,18 @@ impl TagInput {
     }
 }
 
-/// Catalog-dependent refusals the author can act on. Nothing was written.
+/// Catalog-dependent refusals the author can act on. Nothing was written. `slot` is where the
+/// request put the tag: the form when it was the requested form, otherwise the themes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TagRejection {
     /// "Chưa có thẻ này": not in the curated catalog; the pilot has no author proposals.
-    UnknownTag(TagId),
+    UnknownTag {
+        tag: TagId,
+        slot: TagFacet,
+    },
     RetiredTag {
         tag: TagId,
+        slot: TagFacet,
         successor: Option<TagId>,
     },
     WrongFacet {
@@ -99,6 +122,21 @@ pub enum TagRejection {
         slot: TagFacet,
     },
     TooManyThemes,
+}
+
+impl TagRejection {
+    /// The request field the rejection is about.
+    pub const fn field(&self) -> &'static str {
+        match self {
+            Self::UnknownTag { slot, .. }
+            | Self::RetiredTag { slot, .. }
+            | Self::WrongFacet { slot, .. } => match slot {
+                TagFacet::Form => "form",
+                TagFacet::Theme => "themes",
+            },
+            Self::TooManyThemes => "themes",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -136,14 +174,27 @@ impl From<StoreError> for TagError {
     }
 }
 
-fn refused(refusal: TagRefusal) -> TagError {
+fn refused(refusal: TagRefusal, selection: &TagSelection) -> TagError {
+    // The core checks the form first, so a tag that is the requested form was refused there.
+    let slot = |tag| {
+        if selection.form() == Some(tag) {
+            TagFacet::Form
+        } else {
+            TagFacet::Theme
+        }
+    };
     match refusal {
         TagRefusal::NotFound => TagError::NotFound,
         TagRefusal::Suspended => TagError::Suspended,
-        TagRefusal::UnknownTag(tag) => TagError::Rejected(TagRejection::UnknownTag(tag)),
-        TagRefusal::RetiredTag { tag, successor } => {
-            TagError::Rejected(TagRejection::RetiredTag { tag, successor })
-        }
+        TagRefusal::UnknownTag(tag) => TagError::Rejected(TagRejection::UnknownTag {
+            tag,
+            slot: slot(tag),
+        }),
+        TagRefusal::RetiredTag { tag, successor } => TagError::Rejected(TagRejection::RetiredTag {
+            tag,
+            slot: slot(tag),
+            successor,
+        }),
         TagRefusal::WrongFacet { tag, slot } => {
             TagError::Rejected(TagRejection::WrongFacet { tag, slot })
         }
@@ -167,16 +218,33 @@ where
             .work_tags(owner, work_id)
             .await?
             .ok_or(TagError::NotFound)?;
-        let shown = draft_tags(&stored.tags, &stored.catalog)
+        let shown: Vec<CatalogTag> = draft_tags(&stored.tags, &stored.catalog)
             .map_err(|_| TagError::Internal)?
             .into_iter()
             .cloned()
             .collect();
+        // Catalog rows are never deleted: a named successor without its row is corruption.
+        let mut successors: Vec<CatalogTag> = Vec::new();
+        for tag in &shown {
+            if let TagStatus::Retired {
+                successor: Some(id),
+            } = tag.status()
+                && !successors.iter().any(|row| row.id() == id)
+            {
+                let row = stored
+                    .catalog
+                    .iter()
+                    .find(|row| row.id() == id)
+                    .ok_or(TagError::Internal)?;
+                successors.push(row.clone());
+            }
+        }
         Ok(DraftWorkTags {
             work_id,
             version: stored.version,
             tags: stored.tags,
             shown,
+            successors,
         })
     }
 
@@ -192,7 +260,7 @@ where
             MetadataVersion::new(command.expected_version).ok_or(TagInput::ExpectedVersion)?;
         let selection = TagSelection::parse(command.form.as_deref(), &command.themes)
             .map_err(TagInput::from)?;
-        let change = TagChange::new(expected, selection);
+        let change = TagChange::new(expected, selection.clone());
         match self
             .store
             .save_work_tags(owner, command.work_id, &change)
@@ -207,7 +275,7 @@ where
             TagOutcome::Conflict { current, observed } => {
                 Err(TagError::VersionConflict { current, observed })
             }
-            TagOutcome::Refused(refusal) => Err(refused(refusal)),
+            TagOutcome::Refused(refusal) => Err(refused(refusal, &selection)),
         }
     }
 }

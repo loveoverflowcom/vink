@@ -1,7 +1,7 @@
 //! Work taxonomy (TAG-PR-02, #96) on real PostgreSQL. Draft saves run through `Vink` and
 //! `PgStore`, so every write is the production transaction that locks the facts, calls
-//! `decide_tag_change` and commits; catalog changes run through `change_catalog`, which calls
-//! `decide_catalog_change`. Integrity negatives bypass Rust with direct SQL.
+//! `decide_tag_change` and commits; catalog changes run through `change_catalog` with operator
+//! authority, which calls `decide_catalog_change` and audits each accepted change (#97). Integrity negatives bypass Rust with direct SQL.
 //!
 //! Races use a second connection that holds a real lock (or an uncommitted row) and then commits
 //! or rolls back, so both commit orders are exercised on purpose. Waiting is OBSERVED, not
@@ -20,6 +20,7 @@ use sqlx::migrate::Migrator;
 use sqlx::postgres::PgConnection;
 use sqlx::{AssertSqlSafe, Connection};
 use vink_app::application::ReadError;
+use vink_app::application::catalog::CuratorAuthority;
 use vink_app::application::ports::StoreError;
 use vink_app::application::taxonomy::{SaveWorkTags, SavedWorkTags, TagError, TagRejection};
 use vink_app::domain::ids::{RevisionId, TagId};
@@ -75,9 +76,13 @@ async fn catalog_version(pool: &PgPool) -> CatalogVersion {
 /// One catalog change at the current catalog version (operator authority).
 async fn curate(pool: &PgPool, change: CatalogChange) -> CatalogOutcome {
     let expected = catalog_version(pool).await;
-    change_catalog(pool, &CatalogCommand { expected, change })
-        .await
-        .unwrap()
+    change_catalog(
+        pool,
+        CuratorAuthority::operator(),
+        &CatalogCommand { expected, change },
+    )
+    .await
+    .unwrap()
 }
 
 async fn create(pool: &PgPool, id: TagId, facet: TagFacet, text: &str) {
@@ -409,7 +414,9 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
 
     // Upgrade through the shared migration lifecycle.
     let report = migrate(&pool).await.unwrap();
-    assert_eq!(report.applied, [TAXONOMY_MIGRATION]);
+    // This slice's migration first; later additive slices (the #97 audit) may follow.
+    assert_eq!(report.applied.first(), Some(&TAXONOMY_MIGRATION));
+    assert!(report.applied.iter().all(|v| *v >= TAXONOMY_MIGRATION));
     assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Current);
 
     // Nothing was inferred or backfilled; old rows read as untagged.
@@ -885,7 +892,10 @@ async fn catalog_refusals_and_suspension_write_nothing(pool: PgPool) {
     let refusals = [
         (
             save_tags(&vink, author(), 2, None, &[unknown]).await,
-            TagRejection::UnknownTag(unknown),
+            TagRejection::UnknownTag {
+                tag: unknown,
+                slot: TagFacet::Theme,
+            },
         ),
         (
             save_tags(&vink, author(), 2, Some(KY_UC), &[]).await,
@@ -921,6 +931,7 @@ async fn catalog_refusals_and_suspension_write_nothing(pool: PgPool) {
         .await,
         Err(TagError::Rejected(TagRejection::RetiredTag {
             tag: DO_THI,
+            slot: TagFacet::Theme,
             successor: Some(MUA),
         }))
     );
@@ -1089,6 +1100,7 @@ async fn retirement_and_assignment_serialize_on_the_catalog_row(pool: PgPool) {
         adding.await.unwrap(),
         Err(TagError::Rejected(TagRejection::RetiredTag {
             tag: DO_THI,
+            slot: TagFacet::Theme,
             successor: Some(MUA),
         }))
     );
@@ -1404,6 +1416,7 @@ async fn a_failure_after_partial_work_rolls_the_whole_transaction_back(pool: PgP
     let before = catalog_version(&pool).await;
     let created = change_catalog(
         &pool,
+        CuratorAuthority::operator(),
         &CatalogCommand {
             expected: before,
             change: CatalogChange::Create {
@@ -1552,6 +1565,7 @@ async fn catalog_changes_keep_every_slug_with_its_tag(pool: PgPool) {
     );
     let stale = change_catalog(
         &pool,
+        CuratorAuthority::operator(),
         &CatalogCommand {
             expected: CatalogVersion::FIRST,
             change: CatalogChange::Describe {
@@ -1588,6 +1602,7 @@ async fn catalog_changes_keep_every_slug_with_its_tag(pool: PgPool) {
                 barrier.wait().await;
                 change_catalog(
                     &pool,
+                    CuratorAuthority::operator(),
                     &CatalogCommand {
                         expected,
                         change: CatalogChange::Create {

@@ -1,0 +1,16 @@
+{
+  "resolution": "retired",
+  "tag": {
+    "tag_id": "a0000000-0000-4000-8000-000000000013",
+    "facet": "theme",
+    "label": "Đô thị",
+    "slug": "đô-thị",
+    "description": null,
+    "status": "retired",
+    "successor": {
+      "tag_id": "a0000000-0000-4000-8000-000000000014",
+      "label": "Mùa",
+      "slug": "mùa"
+    }
+  }
+}
