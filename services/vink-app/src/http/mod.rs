@@ -330,6 +330,110 @@ mod tests {
         .await;
         assert_eq!(status, StatusCode::NOT_FOUND);
     }
+
+    /// Catalog reads (TAG-PR-03) need no actor: with the database down they say so (503, never an
+    /// empty catalog), validate first, and are never stored. Private draft tags fail closed.
+    #[tokio::test]
+    async fn tag_routes_validate_report_outages_and_fail_closed() {
+        let router = outage_router();
+        let origin = Some("http://127.0.0.1:3000");
+        for path in [
+            "/api/v1/tags",
+            "/api/v1/tags?facet=form",
+            "/api/v1/tags/suggestions?q=h%E1%BB%93i&facet=theme&limit=5",
+            "/api/v1/tags/slugs/k%C3%BD-%E1%BB%A9c",
+        ] {
+            let (status, cache, body) = send(&router, "GET", path, None, "").await;
+            assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{path}: {body}");
+            assert!(body.contains("dependency_unavailable"), "{body}");
+            assert!(!body.contains(r#""tags""#) && !body.contains("suggestions"));
+            assert_eq!(cache.as_deref(), Some("no-store"), "{path}");
+        }
+        for (path, field) in [
+            ("/api/v1/tags?facet=genre", "facet"),
+            ("/api/v1/tags?sort=label", "query"),
+            ("/api/v1/tags/suggestions", "q"),
+            ("/api/v1/tags/suggestions?q=%20-%20", "q"),
+            ("/api/v1/tags/suggestions?q=ma&limit=11", "limit"),
+            ("/api/v1/tags/suggestions?q=ma&limit=x", "query"),
+            ("/api/v1/tags/suggestions?q=ma&facet=Theme", "facet"),
+            ("/api/v1/tags/suggestions?q=ma&actor_id=1", "query"),
+        ] {
+            let (status, cache, body) = send(&router, "GET", path, None, "").await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{path}: {body}");
+            assert!(
+                body.contains(&format!(r#""field":"{field}""#)),
+                "{path}: {body}"
+            );
+            assert_eq!(cache.as_deref(), Some("no-store"));
+        }
+        // A malformed slug cannot name a tag.
+        let (status, _, _) = send(
+            &router,
+            "GET",
+            "/api/v1/tags/slugs/k%C3%BD--%E1%BB%A9c",
+            None,
+            "",
+        )
+        .await;
+        assert_eq!(status, StatusCode::NOT_FOUND);
+        // There is no catalog write route, whatever the Origin or a forged identity header says.
+        for (method, path) in [
+            ("POST", "/api/v1/tags"),
+            ("PUT", "/api/v1/tags/slugs/k%C3%BD-%E1%BB%A9c"),
+            ("DELETE", "/api/v1/tags/slugs/k%C3%BD-%E1%BB%A9c"),
+        ] {
+            let (status, _, _) = send(&router, method, path, origin, r#"{"label":"Ký ức"}"#).await;
+            assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED, "{method} {path}");
+        }
+        let tags = "/api/v1/drafts/33333333-3333-4333-8333-333333333333/tags";
+        let save = r#"{"expected_version":1,"form":null,"themes":[]}"#;
+        for (method, body) in [
+            ("GET", ""),
+            ("PUT", save),
+            // Authentication precedes body validation.
+            (
+                "PUT",
+                r#"{"actor_id":"22222222-2222-4222-8222-222222222222"}"#,
+            ),
+        ] {
+            let (status, cache, response) = send(&router, method, tags, origin, body).await;
+            assert_eq!(status, StatusCode::UNAUTHORIZED, "{method}: {response}");
+            assert!(
+                response.contains(r#""code":"unauthenticated""#),
+                "{response}"
+            );
+            assert_eq!(cache.as_deref(), Some("no-store"));
+        }
+        let (status, _, _) = send(&router, "PUT", tags, None, save).await;
+        assert_eq!(
+            status,
+            StatusCode::FORBIDDEN,
+            "Origin is required for writes"
+        );
+    }
+
+    /// Catalog governance authority is constructed by the operator command only (#97 CHOICE-02
+    /// A). No HTTP source may name it, so no route can change the catalog.
+    #[test]
+    fn http_never_holds_curator_authority() {
+        // Spelled in pieces so that this test does not match itself.
+        let authority = concat!("Curator", "Authority");
+        let change = concat!("change_", "catalog");
+        for (file, source) in [
+            ("api.rs", include_str!("api.rs")),
+            ("auth.rs", include_str!("auth.rs")),
+            ("conditional.rs", include_str!("conditional.rs")),
+            ("contract.rs", include_str!("contract.rs")),
+            ("error.rs", include_str!("error.rs")),
+            ("health.rs", include_str!("health.rs")),
+            ("mod.rs", include_str!("mod.rs")),
+            ("ssr.rs", include_str!("ssr.rs")),
+        ] {
+            assert!(!source.contains(authority), "{file} names {authority}");
+            assert!(!source.contains(change), "{file} calls {change}");
+        }
+    }
 }
 
 /// The App against a fake Identity process on a real Unix socket: the production resolver,

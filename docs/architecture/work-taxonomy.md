@@ -88,7 +88,8 @@ Curator (operator) tạo/đổi tên/mô tả/thêm alias/ngừng dùng; tác gi
 này” trả `UnknownTag`, không có nút hay endpoint đề xuất giả. Phương án B (đề xuất chờ duyệt) cần hàng
 đợi, quyền, chống lạm dụng và bảo đảm đề xuất không lộ; chưa có dữ liệu pilot cho thấy thiếu thẻ
 thường xuyên. Xem lại khi pilot ghi nhận nhiều lượt tìm không ra thẻ. Entrypoint curator (CLI operator
-hay HTTP có grant) là CHOICE-02 của #97; core chỉ nhận fact `can_curate` được kiểm lại tại commit.
+hay HTTP có grant) là CHOICE-02 của #97 — đã chọn lệnh operator `vink-app tag …` có audit
+([API](../development/taxonomy-api.md)); core chỉ nhận fact `can_curate` được kiểm lại tại commit.
 
 ## 4. Luật của core
 
@@ -118,7 +119,9 @@ thẻ không đổi (`changed = false`), nên lệnh cũ cùng expected version 
 
 **Thử lại.** Mất ACK rồi gửi lại cùng lệnh → `Conflict`; `observed.matches(desired)` cho biết trạng thái
 mong muốn đang đúng, **không** chứng minh lệnh nào đã commit. Receipt chính xác theo command key là
-CHOICE-03 của #97 nếu cần. Không làm mới expected version rồi gửi lại ý định cũ một cách mù quáng.
+CHOICE-03 của #97 nếu cần — #97 chọn không receipt: `409` mang thẻ đang lưu để đối soát
+([API](../development/taxonomy-api.md), CHOICE-03 A).
+Không làm mới expected version rồi gửi lại ý định cũ một cách mù quáng.
 
 **Công khai.** `public_tags` chỉ đọc snapshot đang được bind, theo thứ tự snapshot, với nhãn hiện hành
 của catalog (đổi tên hiện ở mọi nơi vì snapshot giữ danh tính); thẻ đã ngừng dùng ở lại trong snapshot
@@ -141,7 +144,8 @@ rỗng. `draft_tags` cho tác giả thấy cả thẻ đã ngừng dùng.
 - **Ánh xạ lỗi**: `TagError` giữ riêng unauthenticated, suspended, not found, conflict (kèm observed),
   invalid input (`field()`), rejected (unknown/retired + gợi ý/wrong facet/too many), unavailable,
   internal; outage không thành danh sách rỗng hay số 0.
-- **Tìm/URL** (#97/#98): adapter nạp ứng viên theo tiền tố search key; `rank_matches` xếp exact (cùng
+- **Tìm/URL** (#97/#98): adapter nạp ứng viên (#97 nạp cả catalog đang hoạt động vì catalog curated nhỏ;
+  index tiền tố search key khi catalog lớn); `rank_matches` xếp exact (cùng
   slug) → folded → prefix, một gợi ý mỗi thẻ canonical, bỏ thẻ ngừng dùng; `resolve_slug` trả
   canonical/redirect/retired/not found. Slug bỏ dấu (`ky-uc`) là slug khác, có thể dùng để gợi ý.
 
@@ -180,7 +184,9 @@ Cách kiểm từng tình huống: tên test tương ứng trong
 
 ## 7. Ngoài phạm vi và còn mở
 
-SQL/migration (#96, đã có: [storage](../development/taxonomy-postgres.md)), HTTP/contract, use case catalog/curator và receipt (#97), discovery/query/ETag (#98),
-UI (#99/#100), AI gắn thẻ, reputation/follow tag, publication workflow. Còn OPEN: dạng bài có bắt buộc khi
-gửi duyệt; snapshot metadata có cần duyệt lại; entrypoint curator; presence semantics khi client cũ bỏ
-trường; đề xuất thẻ của tác giả; ngôn ngữ thẻ ngoài Latin/Việt. D-05/06/12 giữ trạng thái hiện hành.
+SQL/migration (#96, đã có: [storage](../development/taxonomy-postgres.md)), HTTP/contract, use case
+catalog/curator và đối soát (#97, đã có: [API](../development/taxonomy-api.md) — resource thẻ nháp riêng với
+mọi field bắt buộc, lệnh operator có audit, không receipt), discovery/query/ETag (#98), UI (#99/#100), AI
+gắn thẻ, reputation/follow tag, publication workflow. Còn OPEN: dạng bài có bắt buộc khi gửi duyệt; snapshot
+metadata có cần duyệt lại; curator theo người (grant/HTTP) khi có authority production; đề xuất thẻ của tác
+giả; ngôn ngữ thẻ ngoài Latin/Việt. D-05/06/12 giữ trạng thái hiện hành.

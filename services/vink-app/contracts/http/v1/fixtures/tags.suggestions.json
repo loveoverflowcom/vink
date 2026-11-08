@@ -1,0 +1,31 @@
+{
+  "query": "hồi",
+  "suggestions": [
+    {
+      "tag": {
+        "tag_id": "a0000000-0000-4000-8000-000000000015",
+        "facet": "theme",
+        "label": "Hội họa",
+        "slug": "hội-họa",
+        "description": null,
+        "status": "active",
+        "successor": null
+      },
+      "match": "prefix",
+      "via_alias": null
+    },
+    {
+      "tag": {
+        "tag_id": "a0000000-0000-4000-8000-000000000011",
+        "facet": "theme",
+        "label": "Ký ức",
+        "slug": "ký-ức",
+        "description": "Những điều đã qua còn ở lại trong người viết.",
+        "status": "active",
+        "successor": null
+      },
+      "match": "prefix",
+      "via_alias": "Hồi ức"
+    }
+  ]
+}

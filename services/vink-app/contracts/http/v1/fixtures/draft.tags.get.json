@@ -1,0 +1,37 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "version": 4,
+  "form": {
+    "tag_id": "a0000000-0000-4000-8000-000000000001",
+    "facet": "form",
+    "label": "Tản văn",
+    "slug": "tản-văn",
+    "description": "Văn xuôi ngắn viết từ trải nghiệm và cảm xúc riêng.",
+    "status": "active",
+    "successor": null
+  },
+  "themes": [
+    {
+      "tag_id": "a0000000-0000-4000-8000-000000000011",
+      "facet": "theme",
+      "label": "Ký ức",
+      "slug": "ký-ức",
+      "description": "Những điều đã qua còn ở lại trong người viết.",
+      "status": "active",
+      "successor": null
+    },
+    {
+      "tag_id": "a0000000-0000-4000-8000-000000000013",
+      "facet": "theme",
+      "label": "Đô thị",
+      "slug": "đô-thị",
+      "description": null,
+      "status": "retired",
+      "successor": {
+        "tag_id": "a0000000-0000-4000-8000-000000000014",
+        "label": "Mùa",
+        "slug": "mùa"
+      }
+    }
+  ]
+}

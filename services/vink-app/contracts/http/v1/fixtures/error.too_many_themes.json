@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "too_many_themes",
+    "message": "a work has at most three distinct themes; nothing was written",
+    "field": "themes"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "the draft tags changed since expected_version; nothing was written",
+    "current_version": 5,
+    "field": "expected_version",
+    "tags": {
+      "form": "a0000000-0000-4000-8000-000000000001",
+      "themes": [
+        "a0000000-0000-4000-8000-000000000011",
+        "a0000000-0000-4000-8000-000000000012"
+      ]
+    }
+  }
+}

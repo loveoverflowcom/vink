@@ -10,16 +10,19 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
     CommentEndorsementRequest, CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft,
-    DraftCard, DraftList, EndorsementQuery, EndorsementSummaryList, EndorsementWriteResponse,
-    ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse,
-    OwnEndorsementList, PageQuery, Publication, RemovedCommentResponse, ReplyList,
-    SaveDraftRequest, SavedDraftResponse, SubmitCommentRequest, SubmittedCommentResponse, WorkCard,
-    WorkEndorsementRequest, WorkList,
+    DraftCard, DraftList, DraftTags, EndorsementQuery, EndorsementSummaryList,
+    EndorsementWriteResponse, ModerationDecisionRequest, ModerationDecisionResponse,
+    ModerationQueueResponse, OwnEndorsementList, PageQuery, Publication, RemovedCommentResponse,
+    ReplyList, SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
+    SubmitCommentRequest, SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView,
+    TagSuggestionList, TagSuggestionQuery, WorkCard, WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
+use crate::application::catalog::SearchTags;
 use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
 use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
+use crate::application::taxonomy::SaveWorkTags;
 use crate::domain::discussion::settings::CommentsMode;
 use crate::domain::ids::{CommentId, WorkId};
 
@@ -27,6 +30,12 @@ pub fn routes(state: AppState) -> Router<AppState> {
     let drafts = Router::new()
         .route("/drafts", get(list_drafts).post(create_draft))
         .route("/drafts/{work_id}", get(get_draft).put(save_draft))
+        // Draft tags (TAG-PR-03): a resource of its own with its own version (#96 CHOICE-02 B),
+        // so a text save never carries, needs or clears tags.
+        .route(
+            "/drafts/{work_id}/tags",
+            get(get_draft_tags).put(save_draft_tags),
+        )
         // Account-scoped responses must never enter a shared cache.
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
@@ -77,6 +86,17 @@ pub fn routes(state: AppState) -> Router<AppState> {
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
         ));
+    // Curated catalog (TAG-PR-03). Public: no actor is resolved, so an Identity outage never
+    // hides the catalog. No validator yet, so nothing may be stored by a cache. There is no
+    // write route: catalog governance is the operator command `vink-app tag …`.
+    let catalog = Router::new()
+        .route("/tags", get(list_tags))
+        .route("/tags/suggestions", get(suggest_tags))
+        .route("/tags/slugs/{slug}", get(resolve_tag))
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ));
     // Public reads (READ-01): a success sets its own validator and `private, no-cache`; errors
     // carry `no-store` so a 404/503 never outlives recovery in a cache.
     let public = Router::new()
@@ -91,6 +111,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(drafts)
         .merge(discussion)
         .merge(endorsement)
+        .merge(catalog)
         .merge(super::auth::routes())
         .fallback(|| async { ApiError::NotFound })
         .layer(middleware::from_fn_with_state(state, require_same_origin))
@@ -142,6 +163,15 @@ fn page_query(query: Result<Query<PageQuery>, QueryRejection>) -> Result<PageQue
 fn endorsement_query(
     query: Result<Query<EndorsementQuery>, QueryRejection>,
 ) -> Result<EndorsementQuery, ApiError> {
+    query
+        .map(|Query(query)| query)
+        .map_err(|rejection| ApiError::Validation {
+            field: "query",
+            message: rejection.body_text(),
+        })
+}
+
+fn query_params<T>(query: Result<Query<T>, QueryRejection>) -> Result<T, ApiError> {
     query
         .map(|Query(query)| query)
         .map_err(|rejection| ApiError::Validation {
@@ -492,4 +522,77 @@ async fn set_comment_endorsement(
         )
         .await?;
     Ok(Json(EndorsementWriteResponse::from(&outcome)))
+}
+
+async fn list_tags(
+    State(state): State<AppState>,
+    query: Result<Query<TagListQuery>, QueryRejection>,
+) -> Result<Json<TagList>, ApiError> {
+    let query = query_params(query)?;
+    let page = state.vink.catalog_tags(query.facet.as_deref()).await?;
+    Ok(Json(TagList::from(&page)))
+}
+
+async fn suggest_tags(
+    State(state): State<AppState>,
+    query: Result<Query<TagSuggestionQuery>, QueryRejection>,
+) -> Result<Json<TagSuggestionList>, ApiError> {
+    let query = query_params(query)?;
+    let echoed = query.q.clone().unwrap_or_default();
+    let suggestions = state
+        .vink
+        .search_tags(SearchTags {
+            query: query.q,
+            facet: query.facet,
+            limit: query.limit,
+        })
+        .await?;
+    Ok(Json(TagSuggestionList::new(echoed, &suggestions)))
+}
+
+async fn resolve_tag(
+    State(state): State<AppState>,
+    Path(raw): Path<String>,
+) -> Result<Json<TagResolutionView>, ApiError> {
+    let resolution = state.vink.resolve_tag(&raw).await?;
+    Ok(Json(TagResolutionView::from(&resolution)))
+}
+
+async fn get_draft_tags(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+) -> Result<Json<DraftTags>, ApiError> {
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let tags = state.vink.work_tags(actor, work_id(&raw)?).await?;
+    Ok(Json(DraftTags::from(&tags)))
+}
+
+async fn save_draft_tags(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<SaveDraftTagsRequest>, JsonRejection>,
+) -> Result<Json<SavedDraftTagsResponse>, ApiError> {
+    // Authentication is decided before the body is inspected.
+    if actor.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let work_id = work_id(&raw)?;
+    let body = json_body(body)?;
+    let saved = state
+        .vink
+        .save_work_tags(
+            actor,
+            SaveWorkTags {
+                work_id,
+                expected_version: body.expected_version,
+                form: body.form,
+                themes: body.themes,
+            },
+        )
+        .await?;
+    Ok(Json(SavedDraftTagsResponse::from(&saved)))
 }

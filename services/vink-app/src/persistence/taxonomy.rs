@@ -24,24 +24,35 @@
 //! Draft metadata is created lazily: an absent row is version 1 with no tags. The first save (or a
 //! capture) inserts it with `ON CONFLICT DO NOTHING` and then locks it, so two first saves meet on
 //! the same row; a refused or conflicting save rolls the insert back.
+//!
+//! Catalog reads (TAG-PR-03, #97) run in one read-only snapshot each and never touch principals,
+//! drafts or the audit. Lookup loads the active catalog (tags + aliases of active tags) and ranks
+//! it in Rust: no stored search key or index exists, which is right for a small curated catalog
+//! and is revisited when it is not (docs/development/taxonomy-api.md). Every accepted catalog
+//! change writes its `tag_catalog_changes` row in the change's transaction; the schema refuses a
+//! version step without one.
 
 use sqlx::postgres::{PgConnection, PgPool};
 use sqlx::{Postgres, Transaction};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot};
 use super::postgres::classify;
+use crate::application::catalog::{CatalogOperation, CuratorAuthority};
 use crate::application::ports::{
-    PublicTagFacts, PublicTagStore, StoreError, StoredWorkTags, WorkTagStore,
+    ActiveCatalog, CatalogAuditRecord, CatalogEntry, CatalogListing, CatalogName, CatalogReadStore,
+    CatalogStore, PublicTagFacts, PublicTagStore, SlugFacts, StoreError, StoredWorkTags,
+    WorkTagStore,
 };
 use crate::domain::ids::{PrincipalId, RevisionId, TagId, WorkId};
 use crate::domain::principal::Standing;
 use crate::domain::taxonomy::{
     CatalogCommand, CatalogFacts, CatalogOutcome, CatalogTag, CatalogVersion, CatalogWrite,
-    MetadataSnapshot, MetadataVersion, NameKind, SlugHolder, SlugKind, TagChange, TagDescription,
-    TagFacet, TagFacts, TagLabel, TagOutcome, TagSlug, TagStatus, TagWrite, WorkTagFacts, WorkTags,
-    decide_catalog_change, decide_tag_change,
+    MetadataSnapshot, MetadataVersion, NameKind, SlugHolder, SlugKind, TagAlias, TagChange,
+    TagDescription, TagFacet, TagFacts, TagLabel, TagOutcome, TagSlug, TagStatus, TagWrite,
+    WorkTagFacts, WorkTags, decide_catalog_change, decide_tag_change,
 };
 
 /// Column list of [`TagRow`], as a literal so that statements stay `&'static str`.
@@ -395,7 +406,20 @@ impl WorkTagStore for PgStore {
         };
         let slots = draft_slots(&mut tx, work_id).await?;
         let tags = tags_from_slots(&slots, work_id.as_uuid())?;
-        let catalog = catalog_rows(&mut tx, &ids_of(&tags)).await?;
+        // The assigned rows and, in the same snapshot, the successor hints of retired ones.
+        let mut catalog = catalog_rows(&mut tx, &ids_of(&tags)).await?;
+        let successors: Vec<Uuid> = catalog
+            .iter()
+            .filter_map(|tag| match tag.status() {
+                TagStatus::Retired {
+                    successor: Some(id),
+                } if !tags.contains(id) => Some(id.as_uuid()),
+                _ => None,
+            })
+            .collect();
+        let mut successors = catalog_rows(&mut tx, &successors).await?;
+        successors.retain(|row| !catalog.iter().any(|known| known.id() == row.id()));
+        catalog.extend(successors);
         tx.commit().await.map_err(classify)?;
         let version = match stored_version {
             None => MetadataVersion::FIRST,
@@ -564,16 +588,17 @@ pub async fn capture_metadata_snapshot(
     Ok(SnapshotCapture::Captured { id, snapshot })
 }
 
-/// Applies one curated catalog change with operator authority, in one transaction: the facts
-/// under locks (module docs), `decide_catalog_change` with `can_curate: true`, then exactly the
-/// accepted write, committed before answering.
+/// Applies one curated catalog change in one transaction: the facts under locks (module docs),
+/// `decide_catalog_change` with `can_curate` decided from `authority`, then exactly the accepted
+/// write and its audit row, committed before answering. A refusal or conflict writes nothing.
 ///
-/// Operator authority means whoever runs this holds the App database credential, as for
-/// `grant_moderator`. Choosing the curator entrypoint is #97's CHOICE-02; a DB-held curator grant
-/// must be read under a share lock in this same transaction and turned into `can_curate`, as
-/// moderation rechecks its grant at commit. No route calls this.
+/// [`CuratorAuthority::operator`] means whoever runs this holds the App database credential, as
+/// for `grant_moderator`; the operator command `vink-app tag …` is the only caller in production
+/// (#97 CHOICE-02 A). A future principal grant must be read under a share lock in this same
+/// transaction and turned into `can_curate`, as moderation rechecks its grant at commit.
 pub async fn change_catalog(
     pool: &PgPool,
+    authority: CuratorAuthority,
     command: &CatalogCommand,
 ) -> Result<CatalogOutcome, StoreError> {
     let change = &command.change;
@@ -629,7 +654,9 @@ pub async fn change_catalog(
         }
     };
     let facts = CatalogFacts {
-        can_curate: true,
+        // The operator is the only authority, and holding its witness is the whole check; a
+        // principal grant would be read here, under a share lock.
+        can_curate: authority == CuratorAuthority::operator(),
         version,
         subject: subject.as_ref().map(TagRow::tag).transpose()?,
         slug_holder,
@@ -638,11 +665,39 @@ pub async fn change_catalog(
     let outcome = decide_catalog_change(command, &facts);
     if let CatalogOutcome::Accepted(write) = &outcome {
         write_catalog(&mut tx, version, subject.is_some(), write).await?;
+        audit_change(&mut tx, authority, command, write).await?;
         tx.commit().await.map_err(classify)?;
     } else {
         tx.rollback().await.map_err(classify)?;
     }
     Ok(outcome)
+}
+
+/// The audit row of an accepted change, in the change's transaction. The schema checks at commit
+/// that it names exactly the version the change produced.
+async fn audit_change(
+    tx: &mut Transaction<'_, Postgres>,
+    authority: CuratorAuthority,
+    command: &CatalogCommand,
+    write: &CatalogWrite,
+) -> Result<(), StoreError> {
+    let change = &command.change;
+    sqlx::query(
+        "INSERT INTO tag_catalog_changes
+                (catalog_version, operation, tag_id, slug, successor_id, changed, authority)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    )
+    .bind(write.version().get())
+    .bind(CatalogOperation::of(change).name())
+    .bind(change.subject().as_uuid())
+    .bind(change.claimed_slug().as_ref().map(TagSlug::as_str))
+    .bind(change.successor().map(|id| id.as_uuid()))
+    .bind(write.changed())
+    .bind(authority.audit_name())
+    .execute(&mut **tx)
+    .await
+    .map_err(classify)?;
+    Ok(())
 }
 
 async fn write_catalog(
@@ -728,4 +783,200 @@ async fn write_catalog(
         }
     }
     Ok(())
+}
+
+fn stored_label(raw: &str, what: &'static str) -> Result<TagLabel, StoreError> {
+    exact(raw, TagLabel::parse(raw).ok(), TagLabel::as_str).ok_or_else(|| integrity(what, raw))
+}
+
+fn stored_slug(raw: &str) -> Result<TagSlug, StoreError> {
+    exact(raw, TagSlug::parse(raw).ok(), TagSlug::as_str)
+        .ok_or_else(|| integrity("stored slug", raw))
+}
+
+fn catalog_version_of(raw: i64) -> Result<CatalogVersion, StoreError> {
+    CatalogVersion::new(raw).ok_or_else(|| integrity("stored catalog version", raw))
+}
+
+impl CatalogReadStore for PgStore {
+    async fn active_catalog(&self) -> Result<ActiveCatalog, StoreError> {
+        // One snapshot: an alias is listed only with the active tag it names.
+        let mut tx = read_snapshot(self.pool()).await?;
+        let rows: Vec<TagRow> = sqlx::query_as(concat!(
+            "SELECT ",
+            tag_columns!(),
+            " FROM tags WHERE status = 'active' ORDER BY id"
+        ))
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+        let names: Vec<(String, Uuid, Option<String>)> = sqlx::query_as(
+            "SELECT n.slug, n.tag_id, n.alias_label
+               FROM tag_names n JOIN tags t ON t.id = n.tag_id
+              WHERE n.kind = 'alias' AND t.status = 'active'
+              ORDER BY n.slug",
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+        tx.commit().await.map_err(classify)?;
+        let tags = rows
+            .iter()
+            .map(TagRow::tag)
+            .collect::<Result<Vec<_>, _>>()?;
+        let aliases = names
+            .iter()
+            .map(|(slug, target, label)| {
+                let label = stored_label(
+                    label
+                        .as_deref()
+                        .ok_or_else(|| integrity("alias without label", slug))?,
+                    "stored alias label",
+                )?;
+                TagAlias::restore(label, stored_slug(slug)?, TagId::from_uuid(*target))
+                    .ok_or_else(|| integrity("stored alias", slug))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(ActiveCatalog { tags, aliases })
+    }
+
+    async fn slug_facts(&self, slug: &TagSlug) -> Result<SlugFacts, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let holder: Option<(Uuid, String)> =
+            sqlx::query_as("SELECT tag_id, kind FROM tag_names WHERE slug = $1")
+                .bind(slug.as_str())
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(classify)?;
+        let Some((tag_id, kind)) = holder else {
+            tx.commit().await.map_err(classify)?;
+            return Ok(SlugFacts {
+                holder: None,
+                tag: None,
+                successor: None,
+            });
+        };
+        let holder = SlugHolder {
+            tag: TagId::from_uuid(tag_id),
+            kind: slug_kind(&kind)?,
+        };
+        let mut rows = catalog_rows(&mut tx, &[tag_id]).await?;
+        let tag = rows.pop();
+        let successor = match tag.as_ref().map(CatalogTag::status) {
+            Some(TagStatus::Retired {
+                successor: Some(id),
+            }) => catalog_rows(&mut tx, &[id.as_uuid()]).await?.pop(),
+            _ => None,
+        };
+        tx.commit().await.map_err(classify)?;
+        Ok(SlugFacts {
+            holder: Some(holder),
+            tag,
+            successor,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct AuditRow {
+    catalog_version: i64,
+    operation: String,
+    tag_id: Uuid,
+    slug: Option<String>,
+    successor_id: Option<Uuid>,
+    changed: bool,
+    authority: String,
+    database_role: String,
+    recorded_at: OffsetDateTime,
+}
+
+impl AuditRow {
+    fn record(self) -> Result<CatalogAuditRecord, StoreError> {
+        let authority = match self.authority.as_str() {
+            "operator" => CuratorAuthority::operator().audit_name(),
+            other => return Err(integrity("stored audit authority", other)),
+        };
+        Ok(CatalogAuditRecord {
+            version: catalog_version_of(self.catalog_version)?,
+            operation: CatalogOperation::parse(&self.operation)
+                .ok_or_else(|| integrity("stored audit operation", &self.operation))?,
+            tag: TagId::from_uuid(self.tag_id),
+            slug: self.slug.as_deref().map(stored_slug).transpose()?,
+            successor: self.successor_id.map(TagId::from_uuid),
+            changed: self.changed,
+            authority,
+            database_role: self.database_role,
+            recorded_at: self.recorded_at,
+        })
+    }
+}
+
+impl CatalogStore for PgStore {
+    async fn change_catalog(
+        &self,
+        authority: CuratorAuthority,
+        command: &CatalogCommand,
+    ) -> Result<CatalogOutcome, StoreError> {
+        change_catalog(self.pool(), authority, command).await
+    }
+
+    async fn catalog_listing(&self) -> Result<CatalogListing, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let version: i64 = sqlx::query_scalar("SELECT version FROM tag_catalog")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+        let rows: Vec<TagRow> = sqlx::query_as(concat!(
+            "SELECT ",
+            tag_columns!(),
+            " FROM tags ORDER BY facet, slug COLLATE \"C\", id"
+        ))
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+        let names: Vec<(Uuid, String, String, Option<String>)> = sqlx::query_as(
+            "SELECT tag_id, slug, kind, alias_label FROM tag_names
+              ORDER BY tag_id, kind, slug COLLATE \"C\"",
+        )
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+        tx.commit().await.map_err(classify)?;
+        let mut entries = Vec::with_capacity(rows.len());
+        for row in &rows {
+            let tag = row.tag()?;
+            let names = names
+                .iter()
+                .filter(|(owner, ..)| *owner == row.id)
+                .map(|(_, slug, kind, alias_label)| {
+                    Ok(CatalogName {
+                        slug: stored_slug(slug)?,
+                        kind: slug_kind(kind)?,
+                        alias_label: alias_label
+                            .as_deref()
+                            .map(|raw| stored_label(raw, "stored alias label"))
+                            .transpose()?,
+                    })
+                })
+                .collect::<Result<Vec<_>, StoreError>>()?;
+            entries.push(CatalogEntry { tag, names });
+        }
+        Ok(CatalogListing {
+            version: catalog_version_of(version)?,
+            entries,
+        })
+    }
+
+    async fn catalog_history(&self, limit: i64) -> Result<Vec<CatalogAuditRecord>, StoreError> {
+        let rows: Vec<AuditRow> = sqlx::query_as(
+            "SELECT catalog_version, operation, tag_id, slug, successor_id, changed, authority,
+                    database_role, recorded_at
+               FROM tag_catalog_changes ORDER BY catalog_version DESC LIMIT $1",
+        )
+        .bind(limit)
+        .fetch_all(self.pool())
+        .await
+        .map_err(classify)?;
+        rows.into_iter().map(AuditRow::record).collect()
+    }
 }

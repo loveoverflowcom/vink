@@ -2,6 +2,7 @@
 //! delegates I/O to the ports in [`ports`]; it imports no HTTP, SQL or Leptos types.
 
 pub mod account;
+pub mod catalog;
 pub mod discussion;
 pub mod endorsement;
 pub mod ports;
@@ -225,3 +226,7 @@ mod endorsement_tests;
 #[cfg(test)]
 #[path = "taxonomy_tests.rs"]
 mod taxonomy_tests;
+
+#[cfg(test)]
+#[path = "catalog_tests.rs"]
+mod catalog_tests;
