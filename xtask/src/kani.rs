@@ -24,6 +24,7 @@ pub const MANIFESTS: [(&str, &[&str]); 2] = [
         &[
             "services/vink-app/src/domain/discussion/proofs.rs",
             "services/vink-app/src/domain/endorsement/proofs.rs",
+            "services/vink-app/src/domain/taxonomy/proofs.rs",
         ],
     ),
 ];

@@ -8,3 +8,4 @@ pub mod endorsement;
 pub mod ids;
 pub mod principal;
 pub mod revision;
+pub mod taxonomy;

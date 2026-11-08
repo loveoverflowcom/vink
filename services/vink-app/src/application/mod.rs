@@ -5,6 +5,7 @@ pub mod account;
 pub mod discussion;
 pub mod endorsement;
 pub mod ports;
+pub mod taxonomy;
 
 use time::OffsetDateTime;
 
@@ -220,3 +221,7 @@ mod discussion_tests;
 #[cfg(test)]
 #[path = "endorsement_tests.rs"]
 mod endorsement_tests;
+
+#[cfg(test)]
+#[path = "taxonomy_tests.rs"]
+mod taxonomy_tests;

@@ -51,6 +51,8 @@ tonal full-row links có gap thay divider/ListEnd. `quietListSurfaces` kiểm re
 surfaces trong matrix, `draftDashboard` kiểm một settled result status và named refresh
 tooltip; preview `components` kiểm shared tooltip hover/focus/Escape và native details
 keyboard/no-JS. Source assertions không tự là bằng chứng chạy; xem [run R5.1](search-r5-evidence.md).
+Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
+[#95](https://github.com/loveoverflowcom/vink/issues/95); xem mục TAG-PR-01 cuối trang.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với
@@ -374,3 +376,17 @@ qua LocalFixture loopback.
 | Trình duyệt, tác giả (`main`) | `endorsementAsAuthor` ([endorsement-smoke.mjs](../../apps/vink-web/e2e/endorsement-smoke.mjs)): vị trí sau văn bản trong SSR, tổng số SSR, `Unknown` trước own read, lý do “chính mình” sau hydration, bấm không gửi lệnh, `403 self_endorsement` | LocalFixture = tác giả |
 | Trình duyệt, người đọc (`endorsement`) | `endorsementAsReader` với server thứ ba (principal mẫu thứ hai + grant kiểm duyệt): duyệt gốc + phản hồi, SSR “Hữu ích”, chạm đúp/pending/xác nhận sau ACK, mất ACK sau commit → replay `replayed`, tab khác → `409` hiện trạng thái quan sát, Enter/Space trên phản hồi giữ focus, không cascade, không đổi thứ tự, số trong PostgreSQL, ma trận 320–1440 sáng/tối + 200%, own read `401` → lý do đăng nhập | Interception chỉ giữ/bỏ phản hồi thật và trả `401` cho own read; không auth production, screen reader thật, native |
 
+
+## TAG-PR-01 — taxonomy core (#95, 08/11/2026)
+
+Chưa có điểm vào người dùng: không route, không UI, không adapter PostgreSQL. Owner, lựa chọn và gap:
+[decision record](../architecture/work-taxonomy.md), [registry](taxonomy-core.md); store ở #96,
+catalog/author API ở #97, discovery ở #98, UI ở #99/#100.
+
+| Điểm vào / scope | Owner / assertions | Coverage limit |
+| --- | --- | --- |
+| Chữ thẻ tiếng Việt: nhãn, slug giữ dấu, search key bỏ dấu, mô tả, truy vấn | `domain::taxonomy::text`; `domain::taxonomy::tests` (`quick`): NFC/NFD, `ma/má/mà/mả/mã/mạ` sáu slug chung khóa `ma`, chữ viết khác/dạng tương thích/`İ`/dấu lạc, biên 40 ký tự, slug parse ↔ derive | Unit/golden viết tay; không Kani cho Unicode |
+| Catalog curated: tạo, đổi tên (slug cũ thành redirect), mô tả, alias, ngừng dùng có gợi ý kế nhiệm; resolve slug; xếp gợi ý | `decide_catalog_change`, `resolve_slug`, `rank_matches`; unit tests catalog/lookup; bốn harness Kani `taxonomy_catalog_*` (tạo/mô tả, đổi tên, alias, ngừng dùng) | Không có store/entrypoint curator; unique slug là việc của #96 |
+| Thẻ nháp: owner/standing/version, facet, ≤ 3 chủ đề, thẻ ngừng dùng giữ được nhưng không thêm mới, lệnh cũ → xung đột kèm observed | `decide_tag_change`; unit tests (TEACH: Tản văn/Ký ức/Gia đình, alias, tab cũ, mất ACK, fence lệnh trùng trạng thái); khử trùng vét cạn 3 280 input; Kani `taxonomy_tag_change_respects_owner_version_slots_bounds_and_retired_tags`, `taxonomy_version_tokens_are_total` | Facts là giả định từ adapter; khóa/transaction chưa có |
+| Snapshot metadata và chiếu công khai/nháp | `MetadataDigest` (golden độc lập), `MetadataSnapshot::restore`, `public_tags`, `draft_tags`; test hash v1 không đổi | Không có binding/publish thật; rút bài chặn metadata là việc của owner publication |
+| Use case `Vink::{work_tags, save_work_tags}` + port `WorkTagStore` | [taxonomy_tests.rs](../../services/vink-app/src/application/taxonomy_tests.rs) (`quick`): store giả gọi policy thật; chưa xác thực/input sai không chạm store; refusal/xung đột/outage giữ riêng; hai tab | Không chứng minh SQL, HTTP hay quyền production |
