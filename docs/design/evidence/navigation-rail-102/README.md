@@ -3,7 +3,7 @@
 [Nguồn issue](https://github.com/loveoverflowcom/vink/issues/102) ·
 [LayoutSpec trên Drive](https://drive.google.com/file/d/1ymjidgI_NN0IT3f5ouoWXv4QCmHd8afF/view)
 
-Ảnh dưới đây ghi lại R1. Vị trí logo hiện hành được mô tả ở [Explore Header R2](../../README.md#logo-final-selected-34).
+Ảnh R1 ghi lại vị trí logo cũ. Xem [Explore Header R2](#explore-header-r2) ở cuối trang.
 
 ## Bố cục đã triển khai
 
@@ -65,3 +65,20 @@ editor R5 để ghi lại đúng UI đã kiểm.
 - **PASS** `cargo xtask verify web` tại `3234129`. Cả ba phase browser `main`, `after-restart` và `endorsement` hoàn tất với PostgreSQL cục bộ. Lượt trước rebase có một lần lỗi timing ở mốc 119 giây của READ-02. Lượt trên nền R5 đi qua cùng assertion.
 - **PASS** `cargo xtask ui-preview leptos verify` tại `2f9916a` trước rebase, 774 ảnh. Trên `3234129`, build lại preview và chạy ba ca `navigation`, `navigationFit` và `compactVietnameseWords` từ cùng smoke runner. Cả ba qua, sinh 12 ảnh.
 - **NOT_RUN** thiết bị thật, screen reader và Compose. Bằng chứng ở đây là Web trên Chrome headless với viewport và media mô phỏng.
+
+## Explore Header R2
+
+Ảnh từ `0ae0377` trên Chrome Headless 157, DPR 1, dùng ứng dụng SSR/hydration và PostgreSQL 17 cục bộ.
+
+| Kịch bản | Ảnh |
+| --- | --- |
+| 1440 × 900, sáng, chữ 100%, rail 220px | [Desktop mở rộng](r2-desktop-220.png) |
+| 1440 × 900, sáng, chữ 100%, rail 96px | [Desktop thu gọn](r2-desktop-96.png) |
+| 390 × 900, sáng, chữ 100% | [Mobile 390px](r2-mobile-390.png) |
+| 320 × 900, tối, chữ 200% | [Mobile 320px](r2-mobile-320-dark-text200.png) |
+
+Ca kiểm tập trung xác nhận mép phải của logo ở `1374px` trong cả hai trạng thái rail tại 1440px.
+Đổi rail giữ cùng phần tử input và nội dung tìm đang gõ. Ma trận mobile 320/360/390/430px
+qua cả hai theme ở chữ 100/200%. Ở 320px, chữ 200%, vùng nhập rộng 217px và hiển thị đủ
+“Tìm tác phẩm”. Tab từ skip link tới logo có vòng focus, rồi tới nút tìm. Ca kiểm theme trước
+hydration dùng cả Light, Dark và System với OS sáng/tối.
