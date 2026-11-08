@@ -93,7 +93,7 @@ help ngoài shell. ExternalLabel mặc định và các field khác không đổ
 dùng tonal surface và gap thay rules; ListEnd bỏ pseudo rules. [Delta hiện hành](../../../docs/design/search-r5.md).
 
 Web support API chung: `PlainTooltip { id, text, children }` chứa text thuần; trigger
-giữ tên riêng và tham chiếu ID bằng `aria-describedby`. Hover/focus duy trì, pointer
+giữ tên riêng và tham chiếu ID bằng `aria-describedby`. Hover/focus duy trì (focus tự cuộn được đặt lại vị trí; Escape không tự mở lại), tooltip chỉ nhận pointer sau khi đã đặt đúng vị trí để không chặn click action. Pointer
 có thể đi vào tooltip, Escape đóng tooltip mà không chuyển focus hoặc đóng panel cha.
 `TooltipIconButton { id, icon, label, tooltip?, state?, pressed?, on_press? }` ghép
 IconButton cùng tooltip `{id}-tooltip`; disabled/pending vẫn chặn action và giữ note.
@@ -209,7 +209,7 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `Stack` | `direction: Direction`, `gap: Space`, `align: Align`, `wrap: bool` | — | Thứ tự đọc khác thứ tự nguồn. CMP: `Stretch` = `Start` (con tự quyết bề rộng) |
 | `Grid` | `min: GridMin`, `gap: Space` | — | Masonry, cột cố định |
 | `Divider` | `decorative: bool` | — | — |
-| `Button` | `variant: ButtonVariant` (Filled/Tonal/Outlined/Text/Danger), `state: ActionState`, `leading: IconName?`; Web: `kind: ButtonKind` (Button mặc định / Submit), `id?` | `on_press` ×1 | Fetch, retry, permission, spinner (UIS-03). CMP: không có Submit |
+| `Button` | `variant: ButtonVariant` (Filled/Tonal/Outlined/Text/Danger), `state: ActionState`, `leading: IconName?`; Web: `kind: ButtonKind` (Button mặc định / Submit), `id?`, `described_by?` liên kết mô tả vào native target và nối note của state | `on_press` ×1 | Fetch, retry, permission, spinner (UIS-03). CMP: không có Submit |
 | `IconButton` | `icon`, `label` (bắt buộc), `state`, `pressed: bool?`; Web: `id?` | `on_press` ×1 | Tooltip hover-only |
 | `Link` | `href`, `variant: LinkVariant` (Inline/Standalone); Web: `target: LinkTarget` (SameTab/NewTab); CMP: `external`, `onNavigate` | Web: trình duyệt điều hướng, giữ modifier-click; CMP: `onNavigate(href)` | Router. URL ngoài allow-list hiện như chữ ở cả hai |
 | `FilterChip` | `label`, `selected`, `state`; Web: `id?` | `on_toggle(bool)` ×1 | Danh sách lọc, query |

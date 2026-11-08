@@ -17,23 +17,41 @@ pub fn PlainTooltip(
     let hovered = RwSignal::new(false);
     let focused = RwSignal::new(false);
     let dismissed = RwSignal::new(false);
+    let positioned = RwSignal::new(false);
     let visible = Memo::new(move |_| (hovered.get() || focused.get()) && !dismissed.get());
     let anchor = NodeRef::<leptos::html::Span>::new();
     let tip = NodeRef::<leptos::html::Span>::new();
     let show = move || {
+        // A newly unhidden fixed element has its static position until placement. Keep it
+        // out of pointer hit-testing in that frame so focus on pointerdown cannot steal the
+        // following pointerup (and the action's click).
+        positioned.set(false);
         dismissed.set(false);
         #[cfg(target_arch = "wasm32")]
         request_animation_frame(move || {
             if visible.try_get_untracked().unwrap_or(false) {
                 place_tooltip(anchor, tip);
+                positioned.try_set(true);
             }
         });
     };
     #[cfg(target_arch = "wasm32")]
     {
-        // A moving viewport invalidates the anchor. Do not leave a detached tooltip behind.
+        // Keyboard focus may scroll its target into view. Keep that tooltip anchored rather
+        // than dismissing it immediately after focus; never revive one dismissed by Escape.
+        // Pointer-only tooltips still close when the viewport moves.
         let resize = window_event_listener(leptos::ev::resize, move |_| dismissed.set(true));
-        let scroll = window_event_listener(leptos::ev::scroll, move |_| dismissed.set(true));
+        let scroll = window_event_listener(leptos::ev::scroll, move |_| {
+            if focused.get_untracked() && !dismissed.get_untracked() {
+                request_animation_frame(move || {
+                    if visible.try_get_untracked().unwrap_or(false) {
+                        place_tooltip(anchor, tip);
+                    }
+                });
+            } else {
+                dismissed.set(true);
+            }
+        });
         on_cleanup(move || {
             resize.remove();
             scroll.remove();
@@ -53,6 +71,7 @@ pub fn PlainTooltip(
             }>
             {children()}
             <span id=id role="tooltip" class="vk-ui-plain-tooltip__text" node_ref=tip
+                style:visibility=move || if positioned.get() { "visible" } else { "hidden" }
                 hidden=move || !visible.get()>{move || text.get()}</span>
         </span>
     }

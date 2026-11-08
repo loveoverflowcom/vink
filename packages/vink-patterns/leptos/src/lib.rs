@@ -133,13 +133,21 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
 pub fn EditorToolbar(
     #[prop(into)] status: Signal<String>,
     #[prop(into)] status_token: Signal<String>,
+    #[prop(optional, into)] status_detail: Option<Signal<String>>,
     children: Children,
 ) -> impl IntoView {
     view! {
         <div class="vk-editor-toolbar">
-            <p class="vk-save-status" role="status" aria-live="polite" data-testid="save-status" data-status=move || status_token.get()>
-                {move || status.get()}
-            </p>
+            <div class="vk-editor-toolbar__status">
+                <p class="vk-save-status" role="status" aria-live="polite" aria-atomic="true" data-testid="save-status" data-status=move || status_token.get()>
+                    {move || status.get()}
+                </p>
+                {status_detail.map(|detail| view! {
+                    <SupportingDetails id="editor-save-details" summary="Chi tiết trạng thái lưu" compact=true>
+                        <p>{move || detail.get()}</p>
+                    </SupportingDetails>
+                })}
+            </div>
             <div class="vk-editor-toolbar__actions">{children()}</div>
         </div>
     }
