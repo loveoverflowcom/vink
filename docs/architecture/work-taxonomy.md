@@ -4,7 +4,8 @@
 một phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), do người dùng giao thực thi;
 baseline `develop@6c97917b6a7aa4c51f3b2fe816462c8a0a47fc64`. **Trạng thái:** lựa chọn triển khai cho
 **pure core** của App, đủ để #96 (PostgreSQL), #97 (catalog/author API) và #98 (discovery) tiêu thụ.
-Đây không phải product Accepted, không mở UI, không có store/route production. Yêu cầu có ID ở
+Đây không phải product Accepted, không mở UI hay route production; store PostgreSQL là
+[TAG-PR-02 (#96)](../development/taxonomy-postgres.md). Yêu cầu có ID ở
 [PRD §13](../../prd/requirements.md#13-phân-loại-tác-phẩm-tag); requirement → function → test/proof
 ở [registry](../development/taxonomy-core.md).
 
@@ -179,7 +180,7 @@ Cách kiểm từng tình huống: tên test tương ứng trong
 
 ## 7. Ngoài phạm vi và còn mở
 
-SQL/migration (#96), HTTP/contract, use case catalog/curator và receipt (#97), discovery/query/ETag (#98),
+SQL/migration (#96, đã có: [storage](../development/taxonomy-postgres.md)), HTTP/contract, use case catalog/curator và receipt (#97), discovery/query/ETag (#98),
 UI (#99/#100), AI gắn thẻ, reputation/follow tag, publication workflow. Còn OPEN: dạng bài có bắt buộc khi
 gửi duyệt; snapshot metadata có cần duyệt lại; entrypoint curator; presence semantics khi client cũ bỏ
 trường; đề xuất thẻ của tác giả; ngôn ngữ thẻ ngoài Latin/Việt. D-05/06/12 giữ trạng thái hiện hành.

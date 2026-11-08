@@ -76,9 +76,18 @@ TAG-PR-01 (#95) adds the owner-local pure `domain::taxonomy` core: Vietnamese ta
 form/theme facets and alias/rename/retire decisions; versioned private draft tags
 (`decide_tag_change`, every accepted save advances the version, retired tags stay but are never
 added); an immutable metadata snapshot with its own digest beside the revision (hash v1 and the LVE
-anchor unchanged). `application::taxonomy` use cases and the `WorkTagStore` port have no PostgreSQL
-adapter, route or UI yet (#96–#100); six Kani harnesses join the App manifest. See
+anchor unchanged). Six Kani harnesses join the App manifest. See
 [decision](docs/architecture/work-taxonomy.md) and [registry](docs/development/taxonomy-core.md).
+TAG-PR-02 (#96) adds migration `20261108000000_work_taxonomy` and `persistence::taxonomy`: a
+normalized catalog (one `tag_names` row per slug forever, one canonical name per tag, facet by
+composite FK, retirement terminal, nothing deleted), draft tags as slot rows with their own version
+(lazy row; no backfill), immutable metadata snapshots sealed by a SQL digest at commit, and the
+binding `publications.metadata_snapshot_id` beside `revision_id`. `PgStore` implements
+`WorkTagStore` (principal FOR UPDATE standing fence → work → catalog FOR SHARE → metadata FOR
+UPDATE) and `PublicTagStore`/`Vink::public_work_tags` (current binding only);
+`change_catalog` (operator authority) and `capture_metadata_snapshot` (publication-owner seam)
+have no route or production caller. Publication changes in tests are labelled SQL fixtures; no
+HTTP/UI (#97–#100). See [storage](docs/development/taxonomy-postgres.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
 limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so

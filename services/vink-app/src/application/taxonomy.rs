@@ -12,15 +12,19 @@
 //! about state, not a receipt naming the command that produced it (an exact receipt, if
 //! needed, is #97's CHOICE-03).
 //!
+//! Public tags (TAG-PR-02, #96) are read through the current publication's metadata binding
+//! only ([`Vink::public_work_tags`]); nothing here writes a snapshot or a binding, which belong
+//! to the publication owner's transaction.
+//!
 //! Catalog lookup and curator changes have pure decisions in `domain::taxonomy`; their use
 //! cases and entrypoints belong to TAG-PR-03 (#97).
 
-use super::Vink;
-use super::ports::{StoreError, WorkTagStore};
-use crate::domain::ids::{PrincipalId, TagId, WorkId};
+use super::ports::{PublicTagStore, StoreError, WorkTagStore};
+use super::{ReadError, Vink};
+use crate::domain::ids::{PrincipalId, RevisionId, TagId, WorkId};
 use crate::domain::taxonomy::{
     CatalogTag, MetadataVersion, SelectionError, TagChange, TagFacet, TagOutcome, TagRefusal,
-    TagSelection, WorkTags, draft_tags,
+    TagSelection, WorkTags, draft_tags, public_tags,
 };
 
 /// Untrusted save input. Only [`Vink::save_work_tags`] turns it into a [`TagChange`]. `form:
@@ -50,6 +54,15 @@ pub struct DraftWorkTags {
     pub version: MetadataVersion,
     pub tags: WorkTags,
     pub shown: Vec<CatalogTag>,
+}
+
+/// What a public reader sees: the active tags of the snapshot bound to the current publication,
+/// in snapshot order with current catalog labels, and the revision bound in that same row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicWorkTags {
+    pub work_id: WorkId,
+    pub revision_id: RevisionId,
+    pub tags: Vec<CatalogTag>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -196,5 +209,34 @@ where
             }
             TagOutcome::Refused(refusal) => Err(refused(refusal)),
         }
+    }
+}
+
+impl<S> Vink<S>
+where
+    S: PublicTagStore,
+{
+    /// Public tags of a work: no actor, no draft. A publication without a bound snapshot shows no
+    /// tags; a snapshot whose catalog rows are missing or of the wrong facet is an integrity
+    /// failure, never an empty list.
+    pub async fn public_work_tags(&self, work_id: WorkId) -> Result<PublicWorkTags, ReadError> {
+        let facts = self
+            .store
+            .public_work_tags(work_id)
+            .await?
+            .ok_or(ReadError::NotFound)?;
+        let tags = match &facts.snapshot {
+            None => Vec::new(),
+            Some(snapshot) => public_tags(snapshot, &facts.catalog)
+                .map_err(|_| ReadError::Internal)?
+                .into_iter()
+                .cloned()
+                .collect(),
+        };
+        Ok(PublicWorkTags {
+            work_id,
+            revision_id: facts.revision_id,
+            tags,
+        })
     }
 }
