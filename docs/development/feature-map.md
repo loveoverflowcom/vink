@@ -45,6 +45,12 @@ dùng chung Khám phá/Bàn viết; `searchBarGeometry`/`searchBarFocus` trong `
 kiểm anatomy/focus, raw NFD/caret qua theme/resize, native GET/clear và reader return.
 `draftDashboard` giữ last-success/query/input identity qua 503, xóa snapshot khi 401/403;
 thứ tự Tab Viết tiếp → submit → input → sort khi query rỗng. [LayoutSpec R3](../design/search-r3.md).
+Delta [R5.1](../design/search-r5.md) trên nền `6c97917` giữ GET/IME/private query,
+chuyển Bar sang hidden native label + placeholder một dòng và short scope ngoài shell;
+tonal full-row links có gap thay divider/ListEnd. `quietListSurfaces` kiểm resting
+surfaces trong matrix, `draftDashboard` kiểm một settled result status và named refresh
+tooltip; preview `components` kiểm shared tooltip hover/focus/Escape và native details
+keyboard/no-JS. Source assertions không tự là bằng chứng chạy; xem [run R5.1](search-r5-evidence.md).
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,
 không chạy lại ứng dụng. Cột kiểm thử cho biết nơi có assertion, không phải kết quả `PASS`.
 Khi code đổi, đối chiếu lại các hàng liên quan và ghi mốc mới; kết quả chạy phải gắn với

@@ -16,6 +16,24 @@
     },
     {
       "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/support.rs",
+      "symbol": "PlainTooltip",
+      "entry": "action.icon-button"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/support.rs",
+      "symbol": "TooltipIconButton",
+      "entry": "action.icon-button"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/support.rs",
+      "symbol": "SupportingDetails",
+      "entry": "action.icon-button"
+    },
+    {
+      "renderer": "leptos",
       "source": "packages/ui-system/leptos/src/action.rs",
       "symbol": "Link",
       "entry": "action.link"

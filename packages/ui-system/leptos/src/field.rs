@@ -483,7 +483,7 @@ fn search_bar(
         invalid: Signal::default(),
         required: false,
         described: Signal::stored(described),
-        placeholder: Some(" ".into()),
+        placeholder: Some(label.clone()),
         autocomplete: None,
         name,
         max_length: None,
@@ -516,7 +516,7 @@ fn search_bar(
                 </button>
                 <div class="vk-ui-search__query">
                     {text_control(TextControl::Search, props, node)}
-                    <label class="vk-ui-field__label" for=id.clone() id=format!("{id}-label")>{label}</label>
+                    <label class="vk-ui-visually-hidden" for=id.clone() id=format!("{id}-label")>{label}</label>
                 </div>
                 {move || (!value.get().is_empty() && mode == FieldMode::Editable).then(|| {
                     if let Some(href) = clear_href.clone() {

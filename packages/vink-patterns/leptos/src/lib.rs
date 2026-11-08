@@ -42,9 +42,9 @@ pub fn WorkCard(
     #[prop(optional, into)] on_open: Option<Callback<leptos::ev::MouseEvent>>,
 ) -> impl IntoView {
     view! {
-        <WorkByline author />
         <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
             on:click=move |event| { if let Some(open) = on_open { open.run(event); } }>
+            <WorkByline author />
             <Heading level=HeadingLevel::H3 role=TypeRole::Title>{title}</Heading>
             <span class="vk-public-row__open">"Đọc tác phẩm →"</span>
         </Link>
@@ -121,8 +121,7 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
                 <span class="vk-draft-row__title">{draft.title}</span>
                 <DraftMetadata version=draft.version updated_at=draft.updated_at />
             </span>
-            <span class="vk-draft-row__open">
-                <span class="vk-draft-row__open-label">"Mở bản thảo"</span>
+            <span class="vk-draft-row__open" aria-hidden="true">
                 <Icon name=IconName::ArrowBack />
             </span>
         </Link>

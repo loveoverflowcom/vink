@@ -25,6 +25,7 @@ pub mod navigation;
 pub mod navigation_vectors;
 pub mod root;
 pub mod state;
+pub mod support;
 #[rustfmt::skip]
 pub mod state_vectors;
 pub mod text;
@@ -72,6 +73,7 @@ pub use state::{
     RecoveryIntent, RegionCopy, RegionLayout, RegionNotice, RegionState, SkeletonShape,
     SnackbarMessage, Tone, placement_for,
 };
+pub use support::{PlainTooltip, SupportingDetails, TooltipIconButton};
 pub use text::{Heading, HeadingLevel, Text, TextTag, TextTone, TypeRole};
 pub use theme::{
     Density, MotionPreference, OverrideError, Preferences, ResolvedTheme, RoleOverride,

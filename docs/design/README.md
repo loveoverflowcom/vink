@@ -26,6 +26,10 @@ Bổ sung [#66 — Hình học hàng bản thảo dài](ui-repair-66-draft-rows.
 Bổ sung [#67 — Hình học Tôi và panel](ui-repair-67-me-panel-geometry.md) ghi recapture sau #66,
 content bounds và bằng chứng R2 hiện đạt; giữ source presentation và bổ sung regression.
 
+Bổ sung [Surface R5.1 — Khám phá/Bàn viết](search-r5.md) thay anatomy search R3 bằng
+input một dòng, hidden native label, nhóm tonal không divider và shared tooltip/details.
+Placement, GET/IME/private scope và phần chưa được thay thế giữ contract cũ.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

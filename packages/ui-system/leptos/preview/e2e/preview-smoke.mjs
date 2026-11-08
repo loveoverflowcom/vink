@@ -504,6 +504,51 @@ async function components(page) {
   const focused = await page.eval(`document.activeElement.id`);
   check(Math.abs(after - before) < 0.5 && focused === 'pending-save', `Button: pending keeps width (${before}→${after}) and focus`);
 
+  await page.open('action.icon-button');
+  await page.eval(`document.querySelector('#tooltip-back').focus()`);
+  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden`, 'shared tooltip focused');
+  check(await page.eval(`document.activeElement.id==='tooltip-back' && document.querySelector('#tooltip-back').getAttribute('aria-label')==='Quay lại' && !document.querySelector('#tooltip-back-tooltip :is(button,a,input,[tabindex])')`), 'Tooltip: independent action name, plain text and no extra focus target');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('#tooltip-back-tooltip').hidden && document.activeElement.id==='tooltip-back'`), 'Tooltip: Escape dismisses without moving focus');
+  await page.eval(`document.activeElement.blur()`);
+  const hover = async selector => {
+    const point = await page.eval(`(() => {const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+    await page.send('Input.dispatchMouseEvent', {type:'mouseMoved',...point});
+  };
+  await hover('#tooltip-back');
+  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden`, 'shared tooltip hover');
+  await hover('#tooltip-back-tooltip');
+  check(await page.eval(`!document.querySelector('#tooltip-back-tooltip').hidden`), 'Tooltip: pointer can enter and remain over its text');
+  await page.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:1,y:1});
+  await page.waitFor(`document.querySelector('#tooltip-back-tooltip').hidden`, 'tooltip ends when hover and focus leave');
+  await page.eval(`document.querySelector('#support-details summary').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('#support-details').open && document.activeElement.matches('#support-details summary')`), 'Details: Enter opens in flow and keeps native summary focus');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('#support-details').open`), 'Details: Escape does not impersonate an overlay close');
+  await page.key('Space');
+  check(await page.eval(`!document.querySelector('#support-details').open`), 'Details: Space closes with native behavior');
+  await page.send('Emulation.setScriptExecutionDisabled', {value:true});
+  try {
+    await page.send('Input.dispatchKeyEvent', {type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r'});
+    await page.send('Input.dispatchKeyEvent', {type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});
+    check(await page.eval(`document.querySelector('#support-details').open`), 'Details: native toggle remains functional with page scripts disabled');
+    await page.send('Emulation.setTouchEmulationEnabled', {enabled:true});
+    const tap = await page.eval(`(() => {const r=document.querySelector('#support-details summary').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+    await page.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[tap]});
+    await page.send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]});
+    await page.waitFor(`!document.querySelector('#support-details').open`, 'native touch closes details without page scripts');
+    check(true, 'Details: CDP touch tap toggles the same native summary without JavaScript');
+  } finally {
+    await page.send('Emulation.setTouchEmulationEnabled', {enabled:false});
+    await page.send('Emulation.setScriptExecutionDisabled', {value:false});
+  }
+
+  await page.eval(`document.querySelector('#tooltip-back').focus(); history.replaceState(null, '', '#action.link/default'); dispatchEvent(new HashChangeEvent('hashchange'))`);
+  await page.waitFor(`document.querySelector('#specimen-scope[data-catalog-id="action.link"]')`, 'unmount tooltip before its queued frame');
+  await page.settle();
+  check(await page.eval(`!document.querySelector('#tooltip-back-tooltip')`), 'Tooltip: queued placement tolerates immediate owner disposal during navigation');
+
   await page.open('action.link');
   const links = await page.eval(`(() => { const ext = document.querySelector('a[target=_blank]'); const bad = document.querySelector('[data-testid=refused-link] [data-invalid-href]'); return [ext?.rel, ext?.textContent.includes('(mở tab mới)'), bad && !bad.hasAttribute('href'), document.querySelectorAll('a[href^="javascript"]').length]; })()`);
   check(links[0] === 'noopener noreferrer' && links[1], 'Link: a new tab is announced and isolated');

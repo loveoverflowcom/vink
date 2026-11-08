@@ -23,9 +23,9 @@ use crate::ui::{
     patterns::{ReaderHeader, WorkCard as WorkCardPattern},
 };
 use vink_ui::{
-    EmptyKind, Heading, HeadingLevel, Icon, IconName, InlineNotice, ListEnd, PanelContent,
-    PanelKind, ProblemKind, Radius, RecoveryAction, RecoveryIntent, SearchField, SearchVariant,
-    Space, StatePanel, Surface, SurfaceTone, Tone, TypeRole,
+    EmptyKind, Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind,
+    ProblemKind, Radius, RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Space,
+    StatePanel, Surface, SurfaceTone, Tone, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -78,8 +78,8 @@ pub fn Home() -> impl IntoView {
                             event.prevent_default();
                         }
                     }>
-                    <SearchField id="public-query" label="Tìm kiếm" name="q" variant=SearchVariant::Bar
-                        help="Tiêu đề, tác giả · tối đa 12 tác phẩm đã tải. Không tìm toàn bộ thư viện."
+                    <SearchField id="public-query" label="Tìm tác phẩm" name="q" variant=SearchVariant::Bar
+                        help="Trong danh sách đã tải"
                         value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
                         clear_href="/" clear_id="clear-public-search" on_clear=move |_| {
                             navigate("/", leptos_router::NavigateOptions { scroll: false, ..Default::default() });
@@ -172,15 +172,19 @@ fn PublicListView(works: Signal<WorkList>, query: Memo<String>) -> impl IntoView
     restore_public_position(visible);
     view! {
         <div id="public-results">
-            <p class="vk-muted vk-public-scope" role="status">
-                {move || format!("{} trong {} tác phẩm đã tải.", visible.read().len(), total.get())}
+            <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">
+                {move || if query.get().trim().is_empty() {
+                    format!("Đã tải {} tác phẩm · tối đa 12.", total.get())
+                } else {
+                    format!("{} trong {} tác phẩm đã tải · tối đa 12.", visible.read().len(), total.get())
+                }}
             </p>
             {move || {
                 let works = visible.get();
                 if works.is_empty() {
                     view! {
                         <div data-testid="public-no-results">
-                            <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tác phẩm khớp trong danh sách này.".into(), message: "Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm để xem lại danh sách đã tải.".into(), actions: vec![], code: None }>
+                            <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy trong danh sách đã tải.".into(), message: "Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
                                 <vink_ui::Link href="/" attr:id="clear-public-results" variant=vink_ui::LinkVariant::Standalone
                                     on:click=move |event: leptos::ev::MouseEvent| {
                                         if event.button() == 0 && !event.meta_key() && !event.ctrl_key() && !event.shift_key() && !event.alt_key() {
@@ -195,7 +199,6 @@ fn PublicListView(works: Signal<WorkList>, query: Memo<String>) -> impl IntoView
                         <ul class="vk-public-list" role="list" aria-describedby="public-query-help">
                             <For each=move || works.clone() key=|work| work.work_id.clone() children=move |work| view! { <WorkCardView work query /> } />
                         </ul>
-                        <ListEnd label="Bạn đã xem hết danh sách này." attr:id="feed-end" />
                     }.into_any()
                 }
             }}

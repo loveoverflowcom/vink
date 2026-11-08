@@ -9,7 +9,7 @@ use leptos_router::hooks::use_params_map;
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind,
     FieldVariant, Heading, HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind,
-    SearchField, SearchVariant, Select, StatePanel, TextField, Tone, TypeRole,
+    SearchField, SearchVariant, Select, StatePanel, TextField, Tone, TooltipIconButton, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
@@ -250,16 +250,35 @@ fn DraftListView(
     // the list below; resume never fetches a manuscript or changes with a title query.
     let count = Memo::new(move |_| list.read().drafts.len());
     let visible = Memo::new(move |_| visible_drafts(&list.read().drafts, &query.get(), sort.get()));
-    let scope = move || {
-        if count.get() >= 100 {
-            "Đã tải 100 bản thảo gần đây nhất. Tìm kiếm chỉ trong danh sách này; có thể còn bản thảo khác.".to_string()
+    let composing = RwSignal::new(false);
+    // Filtering stays immediate and local. Announce only a settled query, never every key or
+    // an intermediate IME composition. The debounce helper cancels its timer on owner cleanup.
+    let result_status = RwSignal::new(format!(
+        "Đã tải {} bản thảo · tối đa 100.",
+        count.get_untracked()
+    ));
+    let announce = StoredValue::new_local(debounce(
+        std::time::Duration::from_millis(700),
+        move |text: String| {
+            if !composing.get_untracked() {
+                result_status.set(text);
+            }
+        },
+    ));
+    Effect::new(move || {
+        let text = if query.get().trim().is_empty() {
+            format!("Đã tải {} bản thảo · tối đa 100.", count.get())
         } else {
             format!(
-                "Đã tải {} bản thảo gần đây. Tìm kiếm chỉ trong danh sách này.",
+                "{} trong {} bản thảo đã tải · tối đa 100.",
+                visible.with(Vec::len),
                 count.get()
             )
-        }
-    };
+        };
+        // Read composition as well: committing the same text still schedules its result.
+        let _ = composing.get();
+        announce.update_value(|announce| announce(text));
+    });
     view! {
         <section id="resume" class="vk-resume" aria-labelledby="resume-label" data-testid="draft-resume">
             {move || list.read().drafts.first().map(|newest| view! { <DraftResume draft=adapters::draft_summary(newest) /> })}
@@ -269,23 +288,25 @@ fn DraftListView(
             <div id="draft-tools" class="vk-draft-tools">
                 <form role="search" class="vk-draft-search" on:submit=move |event| event.prevent_default()>
                     <SearchField id="draft-search" label="Tìm bản thảo" value=query variant=SearchVariant::Bar
-                        help="Tiêu đề · tối đa 100 nháp đã tải"
-                        on_input=move |input: vink_ui::TextInput| query.set(input.value) />
+                        help="Trong danh sách đã tải"
+                        on_input=move |input: vink_ui::TextInput| {
+                            composing.set(input.composing);
+                            query.set(input.value);
+                        } />
                 </form>
                 <Select id="draft-sort" label="Sắp xếp"
                     options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z (không dấu)")]
                     value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
                     on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
-                <Button variant=ButtonVariant::Text id="refresh-drafts"
-                    state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(())>"Tải lại"</Button>
+                <TooltipIconButton icon=vink_ui::IconName::Refresh label="Tải lại" id="refresh-drafts"
+                    state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(()) />
             </div>
-            <p id="draft-scope" class="vk-muted" data-testid="draft-scope">{scope}</p>
-            <p class="vk-muted" role="status" data-testid="draft-result-count">
-                {move || format!("Hiển thị {} / {} bản thảo đã tải", visible.with(Vec::len), count.get())}
+            <p id="draft-scope" class="vk-muted" role="status" aria-atomic="true" data-testid="draft-result-count">
+                {move || result_status.get()}
             </p>
             <Show when=move || visible.with(Vec::is_empty)>
                 <div data-testid="draft-no-results">
-                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không có tiêu đề phù hợp".into(), message: "Thử một từ khác hoặc xem lại các bản thảo đã tải.".into(), actions: vec![], code: None }>
+                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy trong danh sách đã tải.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
                         <Button variant=ButtonVariant::Filled id="clear-draft-search"
                             on_press=move |_| {
                                 query.set(String::new());

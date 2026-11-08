@@ -87,6 +87,23 @@ nghĩa link. Không có name thì không serialize query riêng vào form. Enter
 luôn chặn native submit (kể cả Safari keyCode229). CMP giữ API/hình học hiện có;
 Bar là Web-only, chưa tuyên bố parity/native qualification. [LayoutSpec scoped](../../../docs/design/search-r3.md).
 
+Surface R5.1 (#90) thay phần label của Web Bar: native label visually-hidden, placeholder
+và query cùng một dòng; chỉ kính lúp/input/conditional clear trong shell. Scope ngắn ở
+help ngoài shell. ExternalLabel mặc định và các field khác không đổi. WorkCard/DraftRow
+dùng tonal surface và gap thay rules; ListEnd bỏ pseudo rules. [Delta hiện hành](../../../docs/design/search-r5.md).
+
+Web support API chung: `PlainTooltip { id, text, children }` chứa text thuần; trigger
+giữ tên riêng và tham chiếu ID bằng `aria-describedby`. Hover/focus duy trì, pointer
+có thể đi vào tooltip, Escape đóng tooltip mà không chuyển focus hoặc đóng panel cha.
+`TooltipIconButton { id, icon, label, tooltip?, state?, pressed?, on_press? }` ghép
+IconButton cùng tooltip `{id}-tooltip`; disabled/pending vẫn chặn action và giữ note.
+`SupportingDetails { id, summary, compact?, children }` dùng native details/summary
+trong flow; compact chỉ ẩn chữ summary bằng visually-hidden. Native toggle, keyboard,
+focus và no-JS giữ nguyên; không áp Escape/focus-return của overlay. Essential warning,
+blocker và unsaved state không được đưa vào detail tùy chọn. Rail giữ exception tooltip
+ngoài scroll containment. Leptos preview và Desk refresh dùng owner này; CMP chưa có
+support API/parity, không có native qualification từ Web checks.
+
 Cây floating Web: `Field → Control [Input + Label] → Help/Error`. Input và label dùng hai hàng
 intrinsic để nhãn dài tiếng Việt reflow ở 200%; empty blur đặt nhãn giữa shell, focus/filled/
 restored/autofill đặt nhãn trên hàng chữ. CSS đọc giá trị DOM (`:placeholder-shown`, `:autofill`),
