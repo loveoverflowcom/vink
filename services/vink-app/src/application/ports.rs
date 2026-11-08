@@ -22,7 +22,9 @@ use crate::domain::endorsement::{
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, WorkId};
 use crate::domain::principal::{PenName, Standing, SubjectKey};
-use crate::domain::taxonomy::{CatalogTag, MetadataVersion, TagChange, TagOutcome, WorkTags};
+use crate::domain::taxonomy::{
+    CatalogTag, MetadataSnapshot, MetadataVersion, TagChange, TagOutcome, WorkTags,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum StoreError {
@@ -253,10 +255,11 @@ pub struct StoredWorkTags {
     pub catalog: Vec<CatalogTag>,
 }
 
-/// Draft tag storage. The contract is TAG-PR-01 (#95); the PostgreSQL adapter is TAG-PR-02 (#96)
-/// and no production store implements it yet. A save is ONE transaction that reads the work row
-/// (owner), the draft metadata row (FOR UPDATE), the actor's standing and the catalog rows of
-/// the selected tags (FOR SHARE, so a retirement serializes with it), calls
+/// Draft tag storage. The contract is TAG-PR-01 (#95); the PostgreSQL adapter is TAG-PR-02 (#96,
+/// `persistence::taxonomy`). A save is ONE transaction that, in this lock order, reads the actor's
+/// principal row (FOR UPDATE, so a suspension commits before or after the whole save) and
+/// standing, the work row (owner, FOR SHARE), the catalog rows of the selected tags (FOR SHARE,
+/// so a retirement serializes with it) and the draft metadata row (FOR UPDATE), calls
 /// [`crate::domain::taxonomy::decide_tag_change`], writes exactly an accepted
 /// [`crate::domain::taxonomy::TagWrite`] and commits before answering. It never writes draft
 /// text, a revision, a metadata snapshot or the publication binding. An actor without a
@@ -275,6 +278,27 @@ pub trait WorkTagStore: Send + Sync {
         work_id: WorkId,
         change: &TagChange,
     ) -> impl Future<Output = Result<TagOutcome, StoreError>> + Send;
+}
+
+/// The current publication of a work and the metadata snapshot bound beside its revision, read
+/// from ONE publication row in one snapshot, with the catalog rows of the snapshot's tags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicTagFacts {
+    /// The revision bound in the same publication row as `snapshot`. A consumer that renders
+    /// text from another read pairs the two by this identity.
+    pub revision_id: RevisionId,
+    /// `None`: published without metadata (every publication before TAG-PR-02).
+    pub snapshot: Option<MetadataSnapshot>,
+    pub catalog: Vec<CatalogTag>,
+}
+
+/// Public tag reads (TAG-PR-02, #96). Reads go through the current publication's binding only;
+/// draft metadata is never joined. A missing or withdrawn work is `None`.
+pub trait PublicTagStore: Send + Sync {
+    fn public_work_tags(
+        &self,
+        work_id: WorkId,
+    ) -> impl Future<Output = Result<Option<PublicTagFacts>, StoreError>> + Send;
 }
 
 /// The principal an authenticated subject acts as, and whether it may act now.

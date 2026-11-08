@@ -1,18 +1,19 @@
 //! Application wiring for draft tags. `FactStore` behaves like the contract of `WorkTagStore`:
 //! it holds deterministic facts and calls the REAL `decide_tag_change`, so the policy is never
-//! mocked; `NoStore` panics on any call. Neither establishes SQL locking or atomicity (#96).
+//! mocked; `NoStore` panics on any call; `PublicFacts` returns fixed public facts. None of them
+//! establishes SQL locking, snapshots or atomicity: the PostgreSQL tests of #96 do.
 use std::sync::Mutex;
 
 use uuid::Uuid;
 
-use super::ports::{StoreError, StoredWorkTags, WorkTagStore};
+use super::ports::{PublicTagFacts, PublicTagStore, StoreError, StoredWorkTags, WorkTagStore};
 use super::taxonomy::{SaveWorkTags, TagError, TagInput, TagRejection};
 use super::*;
-use crate::domain::ids::TagId;
+use crate::domain::ids::{RevisionId, TagId};
 use crate::domain::principal::Standing;
 use crate::domain::taxonomy::{
-    CatalogTag, MetadataVersion, SelectionError, TagChange, TagFacet, TagLabel, TagOutcome,
-    TagStatus, WorkTagFacts, WorkTags, decide_tag_change,
+    CatalogTag, MetadataSnapshot, MetadataVersion, SelectionError, TagChange, TagFacet, TagLabel,
+    TagOutcome, TagStatus, WorkTagFacts, WorkTags, decide_tag_change,
 };
 
 fn tag_id(n: u128) -> TagId {
@@ -408,5 +409,66 @@ async fn author_view_shows_retired_tags_hides_foreign_drafts_and_fails_closed() 
     assert_eq!(
         Vink::new(broken).work_tags(Some(owner()), work()).await,
         Err(TagError::Internal)
+    );
+}
+
+/// Public tag facts as a store would return them; checks wiring only (no SQL snapshot).
+struct PublicFacts(Result<Option<PublicTagFacts>, StoreError>);
+
+impl PublicTagStore for PublicFacts {
+    async fn public_work_tags(
+        &self,
+        _work_id: WorkId,
+    ) -> Result<Option<PublicTagFacts>, StoreError> {
+        self.0.clone()
+    }
+}
+
+fn published(snapshot: Option<WorkTags>, catalog: Vec<CatalogTag>) -> PublicFacts {
+    PublicFacts(Ok(Some(PublicTagFacts {
+        revision_id: RevisionId::from_uuid(Uuid::from_u128(0x44)),
+        snapshot: snapshot.map(MetadataSnapshot::capture),
+        catalog,
+    })))
+}
+
+#[tokio::test]
+async fn public_tags_come_only_from_the_bound_snapshot_and_fail_closed() {
+    // Snapshot order, active tags only: the retired theme stays in the snapshot but is hidden.
+    let vink = Vink::new(published(
+        Some(tags(Some(TAN_VAN), &[GIA_DINH, DO_THI, KY_UC])),
+        catalog(),
+    ));
+    let view = vink.public_work_tags(work()).await.unwrap();
+    assert_eq!(view.revision_id.as_uuid(), Uuid::from_u128(0x44));
+    let shown: Vec<_> = view.tags.iter().map(|t| t.id()).collect();
+    assert_eq!(shown, [tag_id(TAN_VAN), tag_id(GIA_DINH), tag_id(KY_UC)]);
+
+    // Published without metadata: no tags, not an error.
+    let legacy = Vink::new(published(None, Vec::new()));
+    assert!(
+        legacy
+            .public_work_tags(work())
+            .await
+            .unwrap()
+            .tags
+            .is_empty()
+    );
+
+    // Missing or withdrawn work, missing catalog rows and outages stay distinct.
+    let missing = Vink::new(PublicFacts(Ok(None)));
+    assert_eq!(
+        missing.public_work_tags(work()).await,
+        Err(ReadError::NotFound)
+    );
+    let broken = Vink::new(published(Some(tags(None, &[KY_UC])), Vec::new()));
+    assert_eq!(
+        broken.public_work_tags(work()).await,
+        Err(ReadError::Internal)
+    );
+    let down = Vink::new(PublicFacts(Err(StoreError::Unavailable("test".into()))));
+    assert_eq!(
+        down.public_work_tags(work()).await,
+        Err(ReadError::Unavailable)
     );
 }
