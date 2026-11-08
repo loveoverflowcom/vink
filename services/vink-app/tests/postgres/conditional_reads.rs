@@ -392,7 +392,10 @@ async fn every_displayed_change_produces_a_new_validator(pool: PgPool) {
         .unwrap();
     let empty = get(&app, LIST, &[list.etag()]).await;
     empty.assert_full();
-    assert_eq!(empty.json(), json!({ "works": [] }));
+    assert_eq!(
+        empty.json(),
+        json!({ "works": [], "filters": { "q": null, "tags": [] }, "next_cursor": null })
+    );
     get(&app, LIST, &[empty.etag()])
         .await
         .assert_not_modified(empty.etag());

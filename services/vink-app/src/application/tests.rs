@@ -64,16 +64,6 @@ impl DraftStore for RecordingStore {
     }
 }
 
-impl PublicationStore for RecordingStore {
-    async fn list_publications(&self, _: i64) -> Result<Vec<PublicWorkSummary>, StoreError> {
-        panic!("save must not read publications")
-    }
-
-    async fn publication(&self, _: WorkId) -> Result<Option<PublicWork>, StoreError> {
-        panic!("save must not read a publication")
-    }
-}
-
 fn actor() -> PrincipalId {
     PrincipalId::parse("11111111-1111-4111-8111-111111111111").unwrap()
 }

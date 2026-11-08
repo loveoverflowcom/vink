@@ -18,9 +18,56 @@ pub struct BlockDto {
     pub lines: Vec<String>,
 }
 
+/// `GET /api/v1/works` (TAG-PR-04): one page of the public library. Only the default request
+/// (the home page) is consumed today; search, filter and paging UI belong to #100.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkList {
     pub works: Vec<WorkCard>,
+    pub filters: WorkFilters,
+    /// `None` is the end of the list.
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkFilters {
+    pub q: Option<String>,
+    pub tags: Vec<TagFilter>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagFilter {
+    pub requested: String,
+    /// `canonical`, `redirect`, `retired` or `not_found`.
+    pub resolution: String,
+    pub tag: Option<TagDto>,
+}
+
+/// A catalog tag with its description and status (filters, tag resolution).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagDto {
+    pub tag_id: String,
+    pub facet: String,
+    pub label: String,
+    pub slug: String,
+    pub description: Option<String>,
+    pub status: String,
+    pub successor: Option<TagRefDto>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagRefDto {
+    pub tag_id: String,
+    pub label: String,
+    pub slug: String,
+}
+
+/// A public tag on a card or a publication: active, current label.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PublicTagDto {
+    pub tag_id: String,
+    pub facet: String,
+    pub label: String,
+    pub slug: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,6 +76,7 @@ pub struct WorkCard {
     pub title: String,
     pub author_display_name: String,
     pub published_at: String,
+    pub tags: Vec<PublicTagDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,6 +87,7 @@ pub struct Publication {
     pub author_display_name: String,
     pub published_at: String,
     pub document: DocumentDto,
+    pub tags: Vec<PublicTagDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -440,6 +489,20 @@ mod tests {
     fn decodes_public_fixtures() {
         let list: WorkList = round_trip("works.list.json");
         assert!(!list.works.is_empty());
+        assert!(list.next_cursor.is_none() && list.filters.tags.is_empty());
+        let search: WorkList = round_trip("works.search.json");
+        assert!(search.next_cursor.is_some());
+        assert_eq!(search.filters.tags[0].resolution, "redirect");
+        assert!(search.works.iter().all(|w| !w.tags.is_empty()));
+        let unmatched: WorkList = round_trip("works.search.unmatched.json");
+        assert!(unmatched.works.is_empty());
+        let resolutions: Vec<&str> = unmatched
+            .filters
+            .tags
+            .iter()
+            .map(|t| t.resolution.as_str())
+            .collect();
+        assert_eq!(resolutions, ["retired", "not_found"]);
         let publication: Publication = round_trip("publication.get.json");
         assert!(
             publication

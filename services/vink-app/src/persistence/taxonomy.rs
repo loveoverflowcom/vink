@@ -85,7 +85,7 @@ fn slug_kind_name(kind: SlugKind) -> &'static str {
     }
 }
 
-fn slug_kind(raw: &str) -> Result<SlugKind, StoreError> {
+pub(super) fn slug_kind(raw: &str) -> Result<SlugKind, StoreError> {
     match raw {
         "canonical" => Ok(SlugKind::Canonical),
         "alias" => Ok(SlugKind::Alias),
@@ -167,9 +167,9 @@ impl TagRow {
 }
 
 /// One stored tag slot: (slot, tag, facet). Slot 0 is the form, 1..3 the themes.
-type SlotRow = (i16, Uuid, String);
+pub(super) type SlotRow = (i16, Uuid, String);
 
-fn tags_from_slots(slots: &[SlotRow], owner: Uuid) -> Result<WorkTags, StoreError> {
+pub(super) fn tags_from_slots(slots: &[SlotRow], owner: Uuid) -> Result<WorkTags, StoreError> {
     let mut form = None;
     let mut themes = Vec::with_capacity(slots.len());
     for (slot, id, raw_facet) in slots {
@@ -204,7 +204,7 @@ fn ids_of(tags: &WorkTags) -> Vec<Uuid> {
     tags.ids().map(|id| id.as_uuid()).collect()
 }
 
-async fn catalog_rows(
+pub(super) async fn catalog_rows(
     conn: &mut PgConnection,
     ids: &[Uuid],
 ) -> Result<Vec<CatalogTag>, StoreError> {

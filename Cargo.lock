@@ -3102,6 +3102,7 @@ name = "vink-app"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "form_urlencoded",
  "http-body-util",
  "hyper",
  "hyper-util",

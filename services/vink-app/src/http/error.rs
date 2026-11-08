@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Response};
 
 use super::contract::{ErrorBody, ErrorEnvelope, TagIds};
 use crate::application::catalog::{CatalogQueryInput, CatalogReadError};
+use crate::application::discovery::{DiscoveryError, DiscoveryInput};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
 use crate::application::endorsement::{EndorsementError, EndorsementInput};
 use crate::application::taxonomy::{TagError, TagInput, TagRejection};
@@ -509,6 +510,25 @@ impl From<CatalogReadError> for ApiError {
             CatalogReadError::NotFound => Self::NotFound,
             CatalogReadError::Unavailable => Self::DependencyUnavailable,
             CatalogReadError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<DiscoveryInput> for ApiError {
+    fn from(error: DiscoveryInput) -> Self {
+        Self::Validation {
+            field: error.field(),
+            message: error.to_string(),
+        }
+    }
+}
+
+impl From<DiscoveryError> for ApiError {
+    fn from(error: DiscoveryError) -> Self {
+        match error {
+            DiscoveryError::Invalid(invalid) => invalid.into(),
+            DiscoveryError::Unavailable => Self::DependencyUnavailable,
+            DiscoveryError::Internal => Self::Internal,
         }
     }
 }

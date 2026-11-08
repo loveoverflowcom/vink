@@ -193,7 +193,7 @@ PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của
 | TAG-FR-05 | Đổi tên giữ danh tính; slug cũ vẫn dẫn về thẻ; slug không bao giờ được gán cho thẻ khác | Rename + `resolve_slug`; unique index ở #96 |
 | TAG-FR-06 | Ngừng dùng: không nhận dùng mới, giữ tham chiếu cũ (nháp giữ được, công khai không hiện), kế nhiệm chỉ là gợi ý | Retire + `decide_tag_change` + `public_tags` |
 | TAG-FR-07 | Thẻ nháp riêng tư, có version; mọi lệnh được chấp nhận tăng version; lệnh cũ là xung đột kèm trạng thái quan sát, không ghi | `decide_tag_change`, `Vink::save_work_tags` |
-| TAG-FR-08 | Thẻ công khai chỉ đến từ snapshot metadata bất biến được bind cùng publication; sửa thẻ không đổi hash v1, revision hay anchor “Đánh giá cao” | `MetadataSnapshot`, `MetadataDigest`, `public_tags`; binding/publish ở owner publication |
+| TAG-FR-08 | Thẻ công khai chỉ đến từ snapshot metadata bất biến được bind cùng publication; sửa thẻ không đổi hash v1, revision hay anchor “Đánh giá cao” | `MetadataSnapshot`, `MetadataDigest`, `public_tags`; binding/publish ở owner publication; chiếu lên card/publication và lọc theo thẻ ở #98 ([discovery](../docs/development/discovery-api.md)) |
 | TAG-FR-09 | Thẻ không cấp quyền, không xuất bản, không tuyển chọn, không kiểm duyệt, không là điểm chất lượng | Outcome chỉ có metadata; không caller nào dùng thẻ làm ACL |
 | TAG-FR-10 | Lỗi phân biệt: chưa xác thực, bị đình chỉ, không tìm thấy (gồm của người khác), xung đột, input sai, bị từ chối theo catalog, không khả dụng, lỗi nội bộ | `TagError`, `TagRejection`, `TagInput::field` |
 

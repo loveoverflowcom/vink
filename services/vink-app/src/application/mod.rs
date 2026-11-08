@@ -3,6 +3,7 @@
 
 pub mod account;
 pub mod catalog;
+pub mod discovery;
 pub mod discussion;
 pub mod endorsement;
 pub mod ports;
@@ -13,10 +14,8 @@ use time::OffsetDateTime;
 use crate::domain::document::{Document, DocumentData, DocumentError, Title, TitleError};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
-use ports::{DraftStore, PublicationStore, SaveOutcome, StoreError};
-
-/// Number of public works the home page lists. The home page is finite by design (ED-01).
-pub const HOME_LIMIT: i64 = 12;
+use crate::domain::taxonomy::CatalogTag;
+use ports::{DraftStore, SaveOutcome, StoreError};
 
 /// Read model of the current public snapshot of a work.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,14 +26,19 @@ pub struct PublicWork {
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
     pub document: Document,
+    /// Public tags of the bound metadata snapshot: active only, snapshot order, current labels.
+    pub tags: Vec<CatalogTag>,
 }
 
+/// One work of a public list (home page or search, TAG-PR-04).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicWorkSummary {
     pub work_id: WorkId,
     pub title: Title,
     pub author_display_name: String,
     pub published_at: OffsetDateTime,
+    /// As in [`PublicWork::tags`].
+    pub tags: Vec<CatalogTag>,
 }
 
 /// Untrusted save input. Only `save_draft` turns its raw fields into a [`DraftChange`].
@@ -139,19 +143,8 @@ impl<S> Vink<S> {
 
 impl<S> Vink<S>
 where
-    S: DraftStore + PublicationStore,
+    S: DraftStore,
 {
-    pub async fn public_works(&self) -> Result<Vec<PublicWorkSummary>, ReadError> {
-        Ok(self.store.list_publications(HOME_LIMIT).await?)
-    }
-
-    pub async fn publication(&self, work_id: WorkId) -> Result<PublicWork, ReadError> {
-        self.store
-            .publication(work_id)
-            .await?
-            .ok_or(ReadError::NotFound)
-    }
-
     pub async fn list_drafts(
         &self,
         actor: Option<PrincipalId>,
@@ -230,3 +223,7 @@ mod taxonomy_tests;
 #[cfg(test)]
 #[path = "catalog_tests.rs"]
 mod catalog_tests;
+
+#[cfg(test)]
+#[path = "discovery_tests.rs"]
+mod discovery_tests;

@@ -1,5 +1,5 @@
 use axum::extract::rejection::{JsonRejection, QueryRejection};
-use axum::extract::{Path, Query, Request, State};
+use axum::extract::{Path, Query, RawQuery, Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
@@ -15,14 +15,16 @@ use super::contract::{
     ModerationQueueResponse, OwnEndorsementList, PageQuery, Publication, RemovedCommentResponse,
     ReplyList, SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
     SubmitCommentRequest, SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView,
-    TagSuggestionList, TagSuggestionQuery, WorkCard, WorkEndorsementRequest, WorkList,
+    TagSuggestionList, TagSuggestionQuery, WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
 use crate::application::catalog::SearchTags;
+use crate::application::discovery::DiscoverWorks;
 use crate::application::discussion::{ModerateComment, SetCommentsMode, SubmitComment};
 use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement};
 use crate::application::taxonomy::SaveWorkTags;
+use crate::domain::discovery::MAX_FILTER_REFS;
 use crate::domain::discussion::settings::CommentsMode;
 use crate::domain::ids::{CommentId, WorkId};
 
@@ -188,19 +190,54 @@ fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
         })
 }
 
+/// `?q=&tag=&tag=&limit=&cursor=` as untrusted strings. `tag` repeats, as a native GET form
+/// with several tag fields submits it; the others appear at most once; anything else is refused,
+/// so a misspelled parameter never silently widens a search. Values are percent-decoded here
+/// and validated only by the use case.
+fn works_query(raw: Option<&str>) -> Result<DiscoverWorks, ApiError> {
+    let mut search = DiscoverWorks::default();
+    let invalid = |message: String| ApiError::Validation {
+        field: "query",
+        message,
+    };
+    for (key, value) in form_urlencoded::parse(raw.unwrap_or_default().as_bytes()) {
+        let once = |slot: &mut Option<String>| {
+            if slot.replace(value.clone().into_owned()).is_some() {
+                Err(invalid(format!("{key} appears more than once")))
+            } else {
+                Ok(())
+            }
+        };
+        match &*key {
+            "q" => once(&mut search.query)?,
+            "limit" => once(&mut search.limit)?,
+            "cursor" => once(&mut search.cursor)?,
+            "tag" => {
+                // Bounded before anything is kept; the use case reports the same limit.
+                if search.tags.len() > MAX_FILTER_REFS {
+                    return Err(ApiError::Validation {
+                        field: "tag",
+                        message: "too many tag parameters".into(),
+                    });
+                }
+                search.tags.push(value.into_owned());
+            }
+            _ => return Err(invalid(format!("unknown query parameter `{key}`"))),
+        }
+    }
+    Ok(search)
+}
+
 /// Visibility and every error are decided by the use case first; only an existing representation
 /// is evaluated against `If-None-Match` (GET and HEAD share this handler).
 async fn list_works(
     State(state): State<AppState>,
+    RawQuery(raw): RawQuery,
     headers: HeaderMap,
 ) -> Result<Response, ApiError> {
-    let works = state.vink.public_works().await?;
-    conditional::respond(
-        &headers,
-        &WorkList {
-            works: works.iter().map(WorkCard::from).collect(),
-        },
-    )
+    let search = works_query(raw.as_deref())?;
+    let page = state.vink.discover_works(search).await?;
+    conditional::respond(&headers, &WorkList::from(&page))
 }
 
 async fn get_publication(

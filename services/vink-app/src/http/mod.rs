@@ -413,6 +413,68 @@ mod tests {
         );
     }
 
+    /// Public search (TAG-PR-04): every malformed parameter is refused before the database is
+    /// touched (the outage router would answer `503` otherwise), with the field to fix; a valid
+    /// search during an outage is `503`, never an empty page, a validator or a stored error.
+    #[tokio::test]
+    async fn work_search_validates_before_reading_and_reports_outages() {
+        let router = outage_router();
+        let nine_tags = format!("/api/v1/works?{}", ["tag=a"; 9].join("&"));
+        for (path, field) in [
+            ("/api/v1/works?sort=newest", "query"),
+            ("/api/v1/works?q=a&q=b", "query"),
+            ("/api/v1/works?limit=3&limit=3", "query"),
+            ("/api/v1/works?cursor=&cursor=", "query"),
+            ("/api/v1/works?actor_id=1", "query"),
+            ("/api/v1/works?q=%21%21%21", "q"),
+            ("/api/v1/works?q=%25_", "q"),
+            ("/api/v1/works?tag=k%C3%BD--%E1%BB%A9c", "tag"),
+            ("/api/v1/works?tag=%E2%80%A6", "tag"),
+            ("/api/v1/works?tag=a&tag=b&tag=c&tag=d&tag=e", "tag"),
+            (nine_tags.as_str(), "tag"),
+            ("/api/v1/works?limit=0", "limit"),
+            ("/api/v1/works?limit=25", "limit"),
+            ("/api/v1/works?limit=x", "limit"),
+            ("/api/v1/works?cursor=zz", "cursor"),
+            // `q` is checked first, then `tag`, `limit` and `cursor`.
+            ("/api/v1/works?cursor=zz&limit=0&tag=-&q=%21", "q"),
+            ("/api/v1/works?cursor=zz&limit=0&tag=-", "tag"),
+            ("/api/v1/works?cursor=zz&limit=0", "limit"),
+        ] {
+            let (status, cache, body) = send(&router, "GET", path, None, "").await;
+            assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{path}: {body}");
+            assert!(
+                body.contains(&format!(r#""field":"{field}""#)),
+                "{path}: {body}"
+            );
+            assert_eq!(cache.as_deref(), Some("no-store"), "{path}");
+        }
+        for path in [
+            "/api/v1/works?q=m%C6%B0a&tag=k%C3%BD-%E1%BB%A9c&tag=h%E1%BB%93i-%E1%BB%A9c&limit=24",
+            // Blank values are absent, as an empty native form field submits them.
+            "/api/v1/works?q=&tag=&limit=&cursor=",
+            "/api/v1/works?q=+m%C6%B0a+",
+        ] {
+            let response = router
+                .clone()
+                .oneshot(
+                    Request::get(path)
+                        .header(header::IF_NONE_MATCH, "*")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE, "{path}");
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            assert!(response.headers().get(header::ETAG).is_none());
+            let body = response.into_body().collect().await.unwrap().to_bytes();
+            let body = String::from_utf8_lossy(&body);
+            assert!(body.contains("dependency_unavailable"), "{body}");
+            assert!(!body.contains(r#""works""#), "{body}");
+        }
+    }
+
     /// Catalog governance authority is constructed by the operator command only (#97 CHOICE-02
     /// A). No HTTP source may name it, so no route can change the catalog.
     #[test]
