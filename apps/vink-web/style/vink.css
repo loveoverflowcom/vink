@@ -393,7 +393,8 @@ a {
    actual sticky height; narrow/short windows keep all controls in the document flow. */
 @media (min-height: 40rem) {
   @container vk-editor-page (min-width: 44rem) {
-    .vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; box-shadow: 0 0 0 var(--vk-space-2) var(--vk-surface); }
+    .vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; }
+    .vk-editor-toolbar:has(.vk-ui-supporting-details[open]) { position: static; }
   }
 }
 
@@ -406,16 +407,37 @@ a {
   display: flex;
   flex-direction: column;
   gap: var(--vk-space-6);
+  min-inline-size: 0;
+  padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
+  border-radius: var(--vk-radius-lg);
+  background: var(--vk-surface-container-low);
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
 .vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-title-size); line-height: var(--vk-type-title-line-height); }
+/* The title retains the shared native field/label contract, while the sheet owns its fill.
+   Focus perimeters remain local to the focused control, including in forced colours. */
+.vk-editor-paper > .vk-ui-field .vk-ui-field__control { background: transparent; }
+.vk-editor-paper > .vk-ui-field .vk-ui-field__label { margin-inline: 0; }
+.vk-editor-paper > .vk-ui-field .vk-ui-input { padding-inline: 0; }
+.vk-editor-paper > .vk-field { min-inline-size: 0; }
+.vk-editor-paper .vk-editor-body { background: transparent; }
+.vk-editor-paper .vk-editor-body .cm-editor .cm-content { padding: var(--vk-space-2) 0 var(--vk-space-6); }
 .vk-editor-help { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
 .vk-editor-help summary { min-height: var(--vk-size-hit-target); padding-block: var(--vk-space-3); cursor: pointer; }
 .vk-editor-help p { margin: 0 0 var(--vk-space-3); }
 .vk-desk--editor .vk-notice__actions { margin-top: var(--vk-space-2); }
 .vk-desk--editor .vk-notice__actions > .vk-ui-action { flex: 0 1 auto; min-width: 0; }
 .vk-desk--editor .vk-notice__actions .vk-ui-button__label { overflow-wrap: normal; }
+.vk-editor-recovery { display: grid; gap: var(--vk-space-2); min-inline-size: 0; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-error-container); color: var(--vk-on-error-container); }
+.vk-editor-recovery[data-tone="warning"] { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
+.vk-editor-recovery > .vk-ui-notice { padding: 0; background: transparent; color: inherit; }
+.vk-desk--editor .vk-editor-recovery .vk-notice__actions { margin: 0; }
+.vk-editor-recovery :is(.vk-ui-button--text, .vk-ui-supporting-details > summary) { color: inherit; }
+.vk-editor-recovery .vk-ui-supporting-details > summary { background: transparent; justify-self: start; }
+.vk-editor-recovery .vk-ui-supporting-details__content { background: transparent; padding: 0; }
+.vk-editor-recovery .vk-ui-supporting-details__content > p { margin: 0; overflow-wrap: break-word; }
+.vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
 
 .vk-field {
   display: flex;

@@ -20,6 +20,8 @@ pub enum IconName {
     Check,
     /// Xóa chữ, đóng
     Close,
+    /// Tải bản thảo về máy
+    Download,
     /// Sửa
     Edit,
     /// Lỗi field, tóm tắt lỗi
@@ -55,7 +57,7 @@ pub enum IconName {
 }
 
 impl IconName {
-    pub const ALL: [IconName; 21] = [Self::Add, Self::ArrowBack, Self::Block, Self::Check, Self::Close, Self::Edit, Self::Error, Self::ExpandMore, Self::Explore, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::OpenInNew, Self::Person, Self::Refresh, Self::Search, Self::Visibility, Self::Warning];
+    pub const ALL: [IconName; 22] = [Self::Add, Self::ArrowBack, Self::Block, Self::Check, Self::Close, Self::Download, Self::Edit, Self::Error, Self::ExpandMore, Self::Explore, Self::Help, Self::Image, Self::Info, Self::Lock, Self::Menu, Self::MenuOpen, Self::OpenInNew, Self::Person, Self::Refresh, Self::Search, Self::Visibility, Self::Warning];
 
     pub const fn id(self) -> &'static str {
         match self {
@@ -64,6 +66,7 @@ impl IconName {
             Self::Block => "block",
             Self::Check => "check",
             Self::Close => "close",
+            Self::Download => "download",
             Self::Edit => "edit",
             Self::Error => "error",
             Self::ExpandMore => "expand-more",
@@ -90,6 +93,7 @@ impl IconName {
             Self::Block => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z",
             Self::Check => "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
             Self::Close => "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
+            Self::Download => "M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
             Self::Edit => "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
             Self::Error => "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z",
             Self::ExpandMore => "M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z",
@@ -116,6 +120,7 @@ impl IconName {
             Self::Block => "src/content/block/materialicons/24px.svg",
             Self::Check => "src/navigation/check/materialicons/24px.svg",
             Self::Close => "src/navigation/close/materialicons/24px.svg",
+            Self::Download => "src/file/file_download/materialicons/24px.svg",
             Self::Edit => "src/image/edit/materialicons/24px.svg",
             Self::Error => "src/alert/error/materialicons/24px.svg",
             Self::ExpandMore => "src/navigation/expand_more/materialicons/24px.svg",

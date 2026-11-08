@@ -506,7 +506,7 @@ async function components(page) {
 
   await page.open('action.icon-button');
   await page.eval(`document.querySelector('#tooltip-back').focus()`);
-  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden`, 'shared tooltip focused');
+  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden && getComputedStyle(document.querySelector('#tooltip-back-tooltip')).visibility === 'visible'`, 'shared tooltip focused');
   check(await page.eval(`document.activeElement.id==='tooltip-back' && document.querySelector('#tooltip-back').getAttribute('aria-label')==='Quay lại' && !document.querySelector('#tooltip-back-tooltip :is(button,a,input,[tabindex])')`), 'Tooltip: independent action name, plain text and no extra focus target');
   await page.key('Escape');
   check(await page.eval(`document.querySelector('#tooltip-back-tooltip').hidden && document.activeElement.id==='tooltip-back'`), 'Tooltip: Escape dismisses without moving focus');
@@ -516,9 +516,9 @@ async function components(page) {
     await page.send('Input.dispatchMouseEvent', {type:'mouseMoved',...point});
   };
   await hover('#tooltip-back');
-  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden`, 'shared tooltip hover');
+  await page.waitFor(`!document.querySelector('#tooltip-back-tooltip').hidden && getComputedStyle(document.querySelector('#tooltip-back-tooltip')).visibility === 'visible'`, 'shared tooltip hover');
   await hover('#tooltip-back-tooltip');
-  check(await page.eval(`!document.querySelector('#tooltip-back-tooltip').hidden`), 'Tooltip: pointer can enter and remain over its text');
+  check(await page.eval(`!document.querySelector('#tooltip-back-tooltip').hidden && getComputedStyle(document.querySelector('#tooltip-back-tooltip')).visibility === 'visible'`), 'Tooltip: pointer can enter and remain over its text');
   await page.send('Input.dispatchMouseEvent', {type:'mouseMoved',x:1,y:1});
   await page.waitFor(`document.querySelector('#tooltip-back-tooltip').hidden`, 'tooltip ends when hover and focus leave');
   await page.eval(`document.querySelector('#support-details summary').focus()`);

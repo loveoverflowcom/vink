@@ -129,6 +129,9 @@ pub fn Button(
     /// Needed to link a disabled reason or pending status (`{id}-note`).
     #[prop(optional, into)]
     id: Option<String>,
+    /// Supporting text belongs to the native target; pending/disabled notes are appended.
+    #[prop(optional, into)]
+    described_by: Option<String>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
     /// Disclosure state belongs on the focusable button, not its action-note wrapper.
     #[prop(optional, into)]
@@ -152,7 +155,11 @@ pub fn Button(
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
                 aria-expanded=move || expanded.map(|value| value.get().to_string())
-                aria-describedby=move || state.with(ActionState::note).and(described.clone())
+                aria-describedby=move || {
+                    let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
+                    if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }
+                    (!ids.is_empty()).then(|| ids.join(" "))
+                }
                 on:click=press_handler(state, on_press)
             >
                 {leading.map(|name| view! { <Icon name=name size=IconSize::Small /> })}
@@ -364,6 +371,29 @@ mod tests {
         ] {
             assert!(html.contains(needle), "{needle} in {html}");
         }
+    }
+
+    #[test]
+    fn button_supporting_description_and_state_note_belong_to_the_native_target() {
+        let html = render(|| {
+            view! {
+                <Button id="save" described_by="save-tooltip"
+                    state=ActionState::pending("Đang lưu…")>"Lưu"</Button>
+            }
+            .into_any()
+        });
+        let button = html
+            .split("<button")
+            .nth(1)
+            .expect("native target")
+            .split('>')
+            .next()
+            .unwrap();
+        assert!(
+            button.contains("aria-describedby=\"save-tooltip save-note\""),
+            "{html}"
+        );
+        assert!(html.contains("id=\"save-note\""), "{html}");
     }
 
     #[test]

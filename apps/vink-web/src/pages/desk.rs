@@ -8,8 +8,9 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption, EmptyKind,
-    FieldVariant, Heading, HeadingLevel, InlineNotice, PanelContent, PanelKind, ProblemKind,
-    SearchField, SearchVariant, Select, StatePanel, TextField, Tone, TooltipIconButton, TypeRole,
+    FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent, PanelKind,
+    PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel, SupportingDetails,
+    TextField, Tone, TooltipIconButton, TypeRole,
 };
 
 use crate::contract::{ApiError, DocumentDto, Draft, DraftList};
@@ -651,7 +652,29 @@ fn Editor(draft: Draft) -> impl IntoView {
         session.try_update(EditorSession::edited);
     });
 
-    let status = move || session.with(EditorSession::status);
+    // Deduplicate status changes: typing another character while already unsaved must not
+    // mutate the polite live region. The acknowledged version stays in optional detail.
+    let save_status = Memo::new(move |_| session.with(EditorSession::status));
+    let status = move || save_status.get();
+    let status_label = Memo::new(move |_| status_text(status()));
+    let shortcut = RwSignal::new("Lưu nháp (Ctrl/⌘ + S)".to_string());
+    #[cfg(feature = "hydrate")]
+    Effect::new(move |_| {
+        let platform = js_sys::Reflect::get(&js_sys::global(), &"navigator".into())
+            .ok()
+            .and_then(|navigator| js_sys::Reflect::get(&navigator, &"platform".into()).ok())
+            .and_then(|value| value.as_string())
+            .unwrap_or_default();
+        shortcut.set(
+            if platform.contains("Mac") || platform.contains("iPhone") || platform.contains("iPad")
+            {
+                "Lưu nháp (⌘ + S)"
+            } else {
+                "Lưu nháp (Ctrl + S)"
+            }
+            .to_string(),
+        );
+    });
     let stage = move || leave.with(|g| g.pending().map(|intent| intent.stage));
     let can_discard = move || leave.with(|g| session.with(|s| g.can_discard(s)));
     view! {
@@ -675,70 +698,55 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         >
             <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
-                status=Signal::derive(move || status_text(status()).to_string())
-                status_token=Signal::derive(move || status().token().to_string())>
-                    <Button variant=ButtonVariant::Text
-                        id="preview"
-                        on_press=move |_| open_preview()
-                    >
-                        "Xem trước"
-                    </Button>
-                    <Button variant=ButtonVariant::Text
-                        id="export"
-                        on_press=move |_| export()
-                    >
-                        "Tải .txt"
-                    </Button>
-                    <Button variant=ButtonVariant::Filled
-                        kind=ButtonKind::Submit
-
-                        id="save"
-                        state=Signal::derive(move || if status() == SaveStatus::Saving { ActionState::pending("Đang lưu…") } else { blocked(!session.with(EditorSession::can_save)) })
-                    >
-                        "Lưu nháp"
-                    </Button>
+                status=Signal::derive(move || status_label.get())
+                status_token=Signal::derive(move || status().token().to_string())
+                status_detail=Signal::derive(move || status_detail(status()))>
+                    <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
+                        on_press=move |_| open_preview() />
+                    <TooltipIconButton id="export" icon=IconName::Download label="Tải bản thảo (.txt)"
+                        on_press=move |_| export() />
+                    <PlainTooltip id="save-tooltip" text=Signal::derive(move || shortcut.get())>
+                        <Button variant=ButtonVariant::Filled kind=ButtonKind::Submit id="save"
+                            described_by="save-tooltip"
+                            state=Signal::derive(move || if status() == SaveStatus::Saving { ActionState::pending("") } else { blocked(!session.with(EditorSession::can_save)) })>
+                            "Lưu"
+                        </Button>
+                    </PlainTooltip>
             </crate::ui::patterns::EditorToolbar>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
-                <div data-testid="save-failed">
-                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Polite
-                        title=if save_is_uncertain(status()) { "Chưa xác nhận lưu bản nháp." } else { "Chưa lưu được bản nháp." }
-                        message=format!("{} Chữ vẫn còn nguyên trên trang này. Chọn Thử lưu lại để đối chiếu bản trên máy chủ, hoặc tải bản đang viết để giữ trên máy.", match status() { SaveStatus::Failed(failure) => failure_reason(failure), _ => "" }) /> }}
+                <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
+                    // The toolbar is the sole polite announcement owner for this state.
+                    {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
+                        title=status_text(status()) message="Tải bản sao trước khi rời trang." /> }}
                     <div class="vk-notice__actions">
-                        <Button variant=ButtonVariant::Tonal
-                            id="retry-save"
-                            on_press=move |_| save()
-                        >
-                            "Thử lưu lại"
-                        </Button>
-                        <Button variant=ButtonVariant::Text
-                            on_press=move |_| export()
-                        >
-                            "Tải bản đang viết"
-                        </Button>
+                        <Button variant=ButtonVariant::Text id="retry-save" leading=IconName::Refresh on_press=move |_| save()>"Thử lại"</Button>
+                        <Button variant=ButtonVariant::Text leading=IconName::Download on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
-                </div>
+                    <SupportingDetails id="save-failure-details" summary="Chi tiết">
+                        <p>{move || match status() {
+                            SaveStatus::Failed(failure) => failure_detail(failure),
+                            _ => String::new(),
+                        }}</p>
+                    </SupportingDetails>
+                </section>
             </Show>
             <Show when=move || matches!(status(), SaveStatus::Conflict { .. })>
-                <div data-testid="conflict">
-                    <InlineNotice tone=Tone::Warning announce=Announce::Polite title="Có phiên bản mới trên máy chủ."
-                        message="Nội dung bạn đang viết vẫn còn nguyên trên trang này. Bạn có thể lưu đè bằng nội dung này, hoặc tải bản đang viết trước khi mở lại bản trên máy chủ." />
+                <section class="vk-editor-recovery" data-testid="conflict" data-tone="warning" aria-label="Xung đột bản nháp">
+                    <InlineNotice tone=Tone::Warning announce=Announce::Off title="Có bản mới trên máy chủ."
+                        message="Tải bản sao trước khi rời trang." />
                     <div class="vk-notice__actions">
-                        <Button variant=ButtonVariant::Tonal
-                            id="keep-mine"
+                        <Button variant=ButtonVariant::Text id="keep-mine"
                             on_press=move |_| {
                                 session.update(EditorSession::keep_local_text);
                                 save();
-                            }
-                        >
-                            "Lưu đè bằng nội dung đang viết"
-                        </Button>
-                        <Button variant=ButtonVariant::Text
-                            on_press=move |_| export()
-                        >
-                            "Tải bản đang viết"
-                        </Button>
+                            }>"Lưu đè bằng nội dung đang viết"</Button>
+                        <Button variant=ButtonVariant::Text leading=IconName::Download on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
-                </div>
+                    <SupportingDetails id="save-conflict-details" summary="Chi tiết">
+                        <p>{move || status_detail(status())}</p>
+                        <p>"Nội dung còn trên trang này; chưa có bản khôi phục tự động. Lưu đè sẽ thay bản trên máy chủ bằng nội dung đang viết."</p>
+                    </SupportingDetails>
+                </section>
             </Show>
             <div class="vk-editor-paper">
                 <TextField id="draft-title" label="Tiêu đề" name="title" max_length=200 input_ref=title_input
@@ -759,8 +767,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                     >
                         "Nội dung"
                     </span>
-                    <span id=BODY_HINT_ID class="vk-field__hint">
-                        "Ctrl/⌘ + S để lưu nháp."
+                    <span id=BODY_HINT_ID class="vk-ui-visually-hidden">
+                        {move || shortcut.get()}
                     </span>
                     <BodyEditor source=body on_change=on_body_change on_ready=on_body_ready />
                     <Show when=move || body.state.get() == BodyState::Loading>
@@ -927,15 +935,40 @@ fn download_text(file_name: &str, text: &str) -> Result<(), wasm_bindgen::JsValu
 
 fn status_text(status: SaveStatus) -> String {
     match status {
-        SaveStatus::Saved { version } => format!("Đã lưu · phiên bản {version}"),
-        SaveStatus::Unsaved => "Chưa lưu thay đổi".into(),
-        SaveStatus::Saving => "Đang lưu…".into(),
-        SaveStatus::Conflict { server_version } => {
-            format!("Xung đột · máy chủ ở phiên bản {server_version}")
-        }
-        failed @ SaveStatus::Failed(_) if save_is_uncertain(failed) => "Chưa xác nhận lưu".into(),
-        SaveStatus::Failed(_) => "Chưa lưu được".into(),
+        SaveStatus::Saved { .. } => "Đã lưu",
+        SaveStatus::Unsaved => "Chưa lưu",
+        SaveStatus::Saving => "Đang lưu…",
+        SaveStatus::Conflict { .. } => "Có bản mới trên máy chủ.",
+        failed @ SaveStatus::Failed(_) if save_is_uncertain(failed) => "Chưa xác nhận lưu.",
+        SaveStatus::Failed(_) => "Chưa lưu được.",
     }
+    .into()
+}
+
+fn status_detail(status: SaveStatus) -> String {
+    match status {
+        SaveStatus::Saved { version } => format!("Đã lưu bản nháp phiên bản {version}."),
+        SaveStatus::Unsaved => "Thay đổi trên trang này chưa được lưu lên máy chủ.".into(),
+        SaveStatus::Saving => {
+            "Đang chờ máy chủ xác nhận bản nháp đã gửi. Chữ gõ thêm vẫn cần được lưu.".into()
+        }
+        SaveStatus::Conflict { server_version } => format!(
+            "Máy chủ đang ở phiên bản {server_version}. Nội dung đang viết chưa được lưu vào bản đó."
+        ),
+        SaveStatus::Failed(failure) => failure_detail(failure),
+    }
+}
+
+fn failure_detail(failure: Failure) -> String {
+    let uncertainty = if save_is_uncertain(SaveStatus::Failed(failure)) {
+        " Máy chủ chưa xác nhận."
+    } else {
+        ""
+    };
+    format!(
+        "{}{uncertainty} Nội dung còn trên trang này; chưa có bản khôi phục tự động.",
+        failure_reason(failure)
+    )
 }
 
 fn save_is_uncertain(status: SaveStatus) -> bool {
@@ -1013,5 +1046,59 @@ fn blocked(disabled: bool) -> ActionState {
         ActionState::Disabled { reason: None }
     } else {
         ActionState::Enabled
+    }
+}
+
+#[cfg(test)]
+mod editor_presentation_tests {
+    use super::*;
+
+    #[test]
+    fn compact_saved_status_keeps_only_the_acknowledged_version_in_detail() {
+        let mut session = EditorSession::loaded(6);
+        session.edited();
+        let ticket = session.begin_save().expect("edited snapshot");
+        session.edited();
+        session.save_succeeded(ticket, 7);
+        assert_eq!(status_text(session.status()), "Chưa lưu");
+        assert!(!status_detail(session.status()).contains("Đã lưu"));
+        let ticket = session.begin_save().expect("newer text still needs saving");
+        session.save_succeeded(ticket, 8);
+        assert_eq!(status_text(session.status()), "Đã lưu");
+        assert_eq!(
+            status_detail(session.status()),
+            "Đã lưu bản nháp phiên bản 8."
+        );
+    }
+
+    #[test]
+    fn unknown_rejected_and_conflict_have_distinct_truthful_recovery_copy() {
+        for failure in [Failure::Network, Failure::Unavailable, Failure::Unexpected] {
+            assert_eq!(
+                status_text(SaveStatus::Failed(failure)),
+                "Chưa xác nhận lưu."
+            );
+            assert!(failure_detail(failure).contains("Máy chủ chưa xác nhận."));
+        }
+        for failure in [
+            Failure::Unauthenticated,
+            Failure::Forbidden,
+            Failure::NotFound,
+            Failure::Invalid,
+        ] {
+            assert_eq!(status_text(SaveStatus::Failed(failure)), "Chưa lưu được.");
+            assert!(failure_detail(failure).starts_with(failure_reason(failure)));
+            assert!(!failure_detail(failure).contains("Máy chủ chưa xác nhận."));
+        }
+        for failure in [Failure::Network, Failure::Unauthenticated] {
+            assert!(
+                failure_detail(failure)
+                    .contains("Nội dung còn trên trang này; chưa có bản khôi phục tự động.")
+            );
+        }
+        let conflict = SaveStatus::Conflict { server_version: 9 };
+        assert_eq!(status_text(conflict), "Có bản mới trên máy chủ.");
+        assert!(status_detail(conflict).contains("phiên bản 9"));
+        assert!(status_detail(conflict).contains("chưa được lưu vào bản đó"));
     }
 }

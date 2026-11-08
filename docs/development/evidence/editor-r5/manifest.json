@@ -1,0 +1,315 @@
+{
+  "base": "82e86aef70f5a55b13e1293c747ea3d6dd026c7b",
+  "branch": "codex/editor-r5-writing-surface",
+  "source_state": "tracked task edits before commit; SHA-256 pins executable inputs below",
+  "source_inputs": {
+    "apps/vink-web/src/pages/desk.rs": "cac59f20b3cfaf8a65d08a5eb2d9484a9184ebad858d3a70e31cc9d0801c34f6",
+    "apps/vink-web/style/vink.css": "c787ca59ede561d9f7d7136ce624b8daea68a32da916a6242822ce9234fac1ca",
+    "apps/vink-web/e2e/browser-smoke.mjs": "e6a7828cbceb9a7983714267f6aaf694021848643a42b2874d192bb391b1615e",
+    "packages/vink-patterns/leptos/src/lib.rs": "ff204fe64dc40054a98486460a77dea331366fda1bd31add432eb5d47af90a19",
+    "packages/vink-patterns/leptos/patterns.css": "f965a217f12729ac3d8a27fce096e116124770dc7a430885317e97fbc2c35b6b",
+    "packages/ui-system/leptos/src/action.rs": "07c6bf7d972721d56ba56810bf4800c1f18c2524bb9aa15690489e89ce3e2732",
+    "packages/ui-system/leptos/src/support.rs": "9590d5038513c5051b46c9ea7e6ca4f3473fcd7c943cfd44198bbf7d9d6cbeed",
+    "packages/ui-system/shared/icons.json": "e0847724a3e55157cfb76e52760a3d08de51733108a9f332fe187e19eed1fa91",
+    "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "286e3b38027f5a33cca19f637a24ce4b4ce3e48ae18eb08726ce8dd1e1710cfd"
+  },
+  "before": {
+    "build_source": "develop@82e86ae; browser bundle generated before the UI patch, cached baseline server",
+    "fixture": "editorChrome: 200-character title, eight poem stanzas; clean or failed transport state",
+    "primary_comparison_scroll": "scrollY=0 for clean-390-100-light and failed-390-100-dark; writing/recovery crops use the same scrollIntoView anchor policy",
+    "geometry_manifest": "NOT_AVAILABLE: baseline contexts.json was truncated by ENOSPC; PNGs retained and inspected",
+    "build_limit": "fresh full baseline build failed ENOSPC after browser bundle generation; no fresh-server-build PASS claimed"
+  },
+  "after": {
+    "editor-clean-390-100-light": {
+      "route": "/ban-viet/01a1b95b-7cf1-7777-81e1-76f332558f35",
+      "width": 390,
+      "layoutWidth": 375,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 16,
+          "y": 141.1875,
+          "width": 343,
+          "height": 120,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "save": {
+          "x": 132,
+          "y": 205.1875,
+          "width": 75.671875,
+          "height": 48,
+          "fontSize": "14px",
+          "lineHeight": "19.6px"
+        },
+        "title": {
+          "x": 28,
+          "y": 324.6875,
+          "width": 319,
+          "height": 48,
+          "fontSize": "22px",
+          "lineHeight": "28.6px"
+        },
+        "body": {
+          "x": 28,
+          "y": 430.28125,
+          "width": 319,
+          "height": 1039.84375,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "captured_at": "2026-11-08T04:12:26.659Z",
+      "evidence": {
+        "build": "82e86aef70f5a55b13e1293c747ea3d6dd026c7b"
+      }
+    },
+    "editor-failed-390-100-dark": {
+      "route": "/ban-viet/01a1b95b-7cf1-7777-81e1-76f332558f35",
+      "width": 390,
+      "layoutWidth": 375,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "editor": {
+        "status": "failed",
+        "toolbar": {
+          "x": 16,
+          "y": 141.1875,
+          "width": 343,
+          "height": 120,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "save": {
+          "x": 132,
+          "y": 205.1875,
+          "width": 75.671875,
+          "height": 48,
+          "fontSize": "14px",
+          "lineHeight": "19.6px"
+        },
+        "title": {
+          "x": 28,
+          "y": 547.875,
+          "width": 319,
+          "height": 48,
+          "fontSize": "22px",
+          "lineHeight": "28.6px"
+        },
+        "body": {
+          "x": 28,
+          "y": 653.46875,
+          "width": 319,
+          "height": 1100.875,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "captured_at": "2026-11-08T04:12:45.440Z",
+      "evidence": {
+        "build": "82e86aef70f5a55b13e1293c747ea3d6dd026c7b"
+      }
+    },
+    "editor-clean-320-200-light-writing": {
+      "route": "/ban-viet/01a1b95b-7cf1-7777-81e1-76f332558f35",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 940,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 32,
+          "y": -609.03125,
+          "width": 241,
+          "height": 277.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "save": {
+          "x": 56,
+          "y": -437.03125,
+          "width": 149.328125,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "title": {
+          "x": 56,
+          "y": -204.84375,
+          "width": 193,
+          "height": 89.1875,
+          "fontSize": "44px",
+          "lineHeight": "57.2px"
+        },
+        "body": {
+          "x": 56,
+          "y": -0.46875,
+          "width": 193,
+          "height": 5661.265625,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "captured_at": "2026-11-08T04:12:28.737Z",
+      "evidence": {
+        "build": "82e86aef70f5a55b13e1293c747ea3d6dd026c7b"
+      }
+    },
+    "editor-failed-320-200-light-recovery": {
+      "route": "/ban-viet/01a1b95b-7cf1-7777-81e1-76f332558f35",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 740,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/156.0.0.0 Safari/537.36",
+      "editor": {
+        "status": "failed",
+        "toolbar": {
+          "x": 32,
+          "y": -409.03125,
+          "width": 241,
+          "height": 361.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "save": {
+          "x": 56,
+          "y": -153.03125,
+          "width": 149.328125,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "title": {
+          "x": 56,
+          "y": 989.40625,
+          "width": 193,
+          "height": 89.1875,
+          "fontSize": "44px",
+          "lineHeight": "57.2px"
+        },
+        "body": {
+          "x": 56,
+          "y": 1193.78125,
+          "width": 193,
+          "height": 5975.71875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "captured_at": "2026-11-08T04:12:47.344Z",
+      "evidence": {
+        "build": "82e86aef70f5a55b13e1293c747ea3d6dd026c7b"
+      }
+    }
+  },
+  "geometry_after": {
+    "editor-clean-320-200-light": {
+      "status": "saved",
+      "toolbar": {
+        "x": 32,
+        "y": 330.96875,
+        "width": 241,
+        "height": 277.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": 502.96875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 56,
+        "y": 735.15625,
+        "width": 193,
+        "height": 89.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 56,
+        "y": 939.53125,
+        "width": 193,
+        "height": 5472.515625,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "editor-failed-320-200-light": {
+      "status": "failed",
+      "toolbar": {
+        "x": 32,
+        "y": 330.96875,
+        "width": 241,
+        "height": 361.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": 586.96875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 56,
+        "y": 1729.40625,
+        "width": 193,
+        "height": 89.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 56,
+        "y": 1933.78125,
+        "width": 193,
+        "height": 4937.890625,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    }
+  },
+  "qualification": "Chrome 156 headless macOS, DPR 1, root text scaling, loopback App/PostgreSQL with LocalFixture; not OS IME/real mobile/browser zoom/screen reader",
+  "after_test_delta": "The final e2e-only change measures theme fill on .vk-editor-paper, the R5 background owner, rather than the intentionally transparent body; the image-producing app/CSS inputs are unchanged."
+}

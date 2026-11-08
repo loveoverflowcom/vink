@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout|public-search
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout|public-search|editor-chrome
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -2510,10 +2510,26 @@ async function editorChrome(page) {
             const toolbar = document.querySelector('#editor-toolbar'), t = toolbar.getBoundingClientRect();
             return [...toolbar.querySelectorAll('button')].every(button => {
               const r = button.getBoundingClientRect(), label = button.querySelector('.vk-ui-button__label');
-              return r.width >= 44 && r.height >= 44 && r.left >= t.left && r.right <= t.right && label.scrollWidth <= label.clientWidth + 1;
+              return r.width >= 48 && r.height >= 48 && r.left >= t.left && r.right <= t.right && r.top >= t.top && r.bottom <= t.bottom && (!label || label.scrollWidth <= label.clientWidth + 1);
             }) && document.querySelector('[data-testid=save-status]').textContent.trim().length > 0;
           })()`), `${scenario}: status text and all toolbar targets fit`);
           if (width <= 834 || scale === 200) check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), `${scenario}: toolbar stays in document flow`);
+          check(await page.eval(`(() => {
+            const nodes = ['.vk-editor-paper', '.vk-editor-paper .vk-ui-field__control', '#draft-title', '[data-testid=editor-body]', '#editor-toolbar', '.vk-editor-recovery'].flatMap(s => [...document.querySelectorAll(s)]);
+            const flat = nodes.every(el => {
+              const s = getComputedStyle(el);
+              return ['Top','Right','Bottom','Left'].every(side => parseFloat(s['border'+side+'Width']) === 0) && s.boxShadow === 'none' && s.backgroundImage === 'none' && (s.outlineStyle === 'none' || parseFloat(s.outlineWidth) === 0);
+            });
+            const expected = { clean:'Đã lưu', dirty:'Chưa lưu', saving:'Đang lưu…', failed:'Chưa xác nhận lưu.', conflict:'Có bản mới trên máy chủ.' };
+            return flat && document.querySelector('[data-testid=save-status]').textContent === expected['${state}'] &&
+              getComputedStyle(document.querySelector('[data-testid=editor-body]')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+              getComputedStyle(document.querySelector('.vk-editor-paper .vk-ui-field__control')).backgroundColor === 'rgba(0, 0, 0, 0)' &&
+              document.querySelectorAll('#editor-toolbar [role=status],.vk-editor-recovery [role=status],.vk-editor-recovery [role=alert]').length === 1 &&
+              [...document.querySelectorAll('.vk-editor [aria-describedby]')].every(el => el.getAttribute('aria-describedby').split(/\\s+/).every(id => document.getElementById(id))) &&
+              !document.querySelector('.vk-editor-paper [aria-invalid=true]') &&
+              getComputedStyle(document.querySelector('#editor-body-hint')).position === 'absolute';
+          })()`), `${scenario}: one uninterrupted writing sheet, flat resting chrome, complete descriptions and one live status owner`);
+
           await page.capture(scenario);
           if (width <= 390 && scale === 200) {
             await page.eval(`document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
@@ -2537,8 +2553,40 @@ async function editorChrome(page) {
     await page.eval(`document.documentElement.style.fontSize = ''; document.documentElement.dataset.theme = 'light'; scrollTo(0,0)`);
   };
   await geometry('clean');
+  await page.eval(`document.querySelector('#editor-save-details > summary').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('#editor-save-details').open && document.querySelector('#editor-save-details').textContent.includes('phiên bản 2') && getComputedStyle(document.querySelector('#editor-toolbar')).position==='static' && ${live}`), 'expanded save detail releases sticky positioning and keeps the acknowledged version and editor');
+  await page.key('Enter');
+  for (const id of ['preview', 'export', 'save']) {
+    await page.eval(`document.querySelector('#${id}').focus()`);
+    await page.waitFor(`!document.querySelector('#${id}-tooltip').hidden && getComputedStyle(document.querySelector('#${id}-tooltip')).visibility === 'visible'`, `${id} focus tooltip`);
+    check(await page.eval(`document.querySelector('#${id}').getAttribute('aria-describedby').includes('${id}-tooltip') && document.querySelector('#${id}-tooltip').getAttribute('role') === 'tooltip' && document.activeElement.id === '${id}'`), `${id} has its own native description and focus tooltip`);
+    await page.key('Escape');
+    check(await page.eval(`document.querySelector('#${id}-tooltip').hidden && document.activeElement.id === '${id}'`), `${id} Escape dismisses only the tooltip`);
+  }
+  check(await page.eval(`document.querySelector('#save-tooltip').textContent.includes(${JSON.stringify(page.mac ? '⌘ + S' : 'Ctrl + S')})`), 'save shortcut tooltip matches the browser platform');
+  for (const forced of [false, true]) {
+    await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:forced?'active':'none'}]});
+    await page.eval(`document.querySelector('#draft-title').focus()`);
+    check(await page.eval(`(() => { const s=getComputedStyle(document.querySelector('#draft-title').closest('.vk-ui-field__control')); return s.outlineStyle==='solid' && parseFloat(s.outlineWidth)===2; })()`), `title focus remains visible with forced-colors=${forced}`);
+    await page.eval(`document.querySelector('.cm-content').focus()`);
+    check(await page.eval(`(() => { const s=getComputedStyle(document.querySelector('[data-testid=editor-body]')), cm=getComputedStyle(document.querySelector('.cm-editor')); return s.outlineStyle==='solid' && parseFloat(s.outlineWidth)===2 && (cm.outlineStyle==='none'||parseFloat(cm.outlineWidth)===0); })()`), `body has one visible focus perimeter with forced-colors=${forced}`);
+  }
+  await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM,{name:'forced-colors',value:'none'}]});
   await page.typeInBody('\n\nChữ mới e\u0302\u0301 — chưa lưu.');
+  // Give this input its own native history group before the observer's edit/undo pair.
+  await sleep(700);
+  const dirtyText = await page.body();
+  await page.eval(`window.__statusMutations = 0; window.__statusObserver = new MutationObserver(records => window.__statusMutations += records.length); window.__statusObserver.observe(document.querySelector('[data-testid=save-status]'), { subtree:true, childList:true, characterData:true });`);
+  await page.typeInBody('x');
+  await page.key('z', page.mod);
+  await page.eval(`new Promise(r => requestAnimationFrame(r))`);
+  check(await page.eval(`window.__statusMutations === 0`), 'typing and undo within Unsaved do not repeatedly mutate the polite status');
+  check((await page.body()) === dirtyText, 'announcement probe restores the same dirty fixture after undo');
+  await page.eval(`window.__statusObserver.disconnect()`);
   await geometry('dirty');
+  await page.eval(`document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', {key:'s',ctrlKey:true,isComposing:true,bubbles:true,cancelable:true}))`);
+  check((await page.status()) === 'unsaved', 'composing shortcut never saves a partial syllable (synthetic guard check)');
   await page.eval(`document.querySelector('.vk-editor-help summary').focus()`);
   await page.key('Enter');
   check(await page.eval(`document.querySelector('.vk-editor-help').open && ${live}`), 'keyboard opens writing help without remounting the text');
@@ -2576,7 +2624,24 @@ async function editorChrome(page) {
   await gate.fail(await gate.next());
   await page.waitStatus('failed');
   await geometry('failed');
-  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ')`), 'lost response copy never promises a definite failure');
+  check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ') && document.querySelector('[data-testid=save-failed] .vk-ui-notice__message').textContent === 'Tải bản sao trước khi rời trang.' && !document.querySelector('#save-failure-details').open && !document.querySelector('#save-failure-details').contains(document.querySelector('#retry-save'))`), 'unconfirmed notice keeps backup reminder and recovery actions outside optional detail');
+  await page.click('#save-failure-details > summary');
+  check(await page.eval(`document.querySelector('#save-failure-details').open && document.querySelector('#save-failure-details').textContent.includes('chưa có bản khôi phục tự động') && ${live}`), 'pointer opens truthful native failure detail without remounting the editor');
+  await page.key('Space');
+  check(await page.eval(`!document.querySelector('#save-failure-details').open && document.activeElement.matches('#save-failure-details > summary')`), 'Space closes native detail while retaining its trigger focus');
+  await page.viewport(320);
+  await page.eval(`document.documentElement.style.fontSize='200%';document.querySelector('#save-failure-details > summary').scrollIntoView({block:'center'})`);
+  const detailPoint = await page.eval(`(() => {const r=document.querySelector('#save-failure-details > summary').getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`);
+  await page.send('Emulation.setTouchEmulationEnabled', {enabled:true});
+  await page.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{...detailPoint,id:1}]});
+  await page.send('Input.dispatchTouchEvent', {type:'touchEnd',touchPoints:[]});
+  await page.waitFor(`document.querySelector('#save-failure-details').open`, 'touch opens failure detail');
+  check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && ${live}`), 'native recovery detail supports touch and complete 200% text at 320px without losing the editor');
+  await page.capture('editor-failure-detail-touch-320-200-light');
+  await page.send('Emulation.setTouchEmulationEnabled', {enabled:false});
+  await page.eval(`document.querySelector('#save-failure-details').open=false;document.documentElement.style.fontSize=''`);
+  await page.viewport(1440);
+
   await page.click('#retry-save');
   await gate.release(await gate.next());
   await page.waitStatus('saved');
@@ -2808,7 +2873,7 @@ async function mainPhase(page) {
   check((await page.status()) === 'unsaved', 'status shows unsaved after typing');
   await page.click('#save');
   await page.waitStatus('saved', 'save confirmation');
-  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)).includes('phiên bản 2'), 'saved only after server confirmed version 2');
+  check((await page.eval(`document.querySelector('#editor-save-details').textContent`)).includes('phiên bản 2'), 'saved only after server confirmed version 2');
 
   const stored = await page.draft(workId);
   check(stored.title === TITLE, 'server stored the title');
@@ -2872,7 +2937,8 @@ async function mainPhase(page) {
   const selected = `getSelection().toString()`;
   check((await page.eval(selected)) === LAST_LINE, 'platform line-start shortcut selects the last line');
   await shellWithDirtyEditor(page, editorPath, written, view, selected);
-  const surface = `getComputedStyle(document.querySelector('[data-testid=editor-body]')).backgroundColor`;
+  // R5: the shared writing sheet owns the theme fill; the body remains transparent.
+  const surface = `getComputedStyle(document.querySelector('.vk-editor-paper')).backgroundColor`;
   const lightSurface = await page.eval(surface);
   await page.eval(`document.documentElement.dataset.theme = 'dark'`);
   await page.waitFor(`${surface} !== ${JSON.stringify(lightSurface)}`, 'dark theme applied');
@@ -3217,7 +3283,7 @@ async function afterRestartPhase(page) {
   await page.waitFor(`${EDITOR_READY} && document.documentElement.dataset.hydrated === 'true'`, 'editor');
   check((await page.body()) === state.text, 'confirmed text survived the restart');
   check((await page.eval(`document.querySelector('input[name=title]').value`)) === state.title, 'title survived the restart');
-  check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)).includes(`phiên bản ${state.version}`), 'version survived the restart');
+  check((await page.eval(`document.querySelector('#editor-save-details').textContent`)).includes(`phiên bản ${state.version}`), 'version survived the restart');
 
   console.log('export keeps the text being written:');
   const downloads = mkdtempSync(join(tmpdir(), 'vink-downloads-'));
@@ -3237,6 +3303,7 @@ async function afterRestartPhase(page) {
   }
 }
 
+mkdirSync(dirname(args.state), { recursive: true });
 const chrome = await launchChrome();
 let exitCode = 0;
 let activePage;
@@ -3251,7 +3318,8 @@ try {
   });
   const page = await openPage(cdp);
   activePage = page;
-  if (args.phase === 'main') await mainPhase(page);
+  if (args.phase === 'editor-chrome') await editorChrome(page);
+  else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'public-search') await publicReading(page);
