@@ -173,9 +173,9 @@ thật, “fixture” là thao tác publication bằng SQL có nhãn.
   cộng thêm `20261109000000_tag_catalog_audit`); HTTP thẻ nháp `no-store` là resource riêng với mọi field
   bắt buộc; đọc catalog/lookup nạp cả catalog đang hoạt động rồi `rank_matches`/`resolve_slug` (chưa có
   index tìm; điều kiện xem lại ở tài liệu API). `work_tags` giờ trả kèm hàng của thẻ kế nhiệm.
-- #98: truy vấn discovery qua `publications.metadata_snapshot_id → work_metadata_snapshot_tags`
-  (thêm index `(tag_id, snapshot_id)` khi đo query plan); không bao giờ đếm từ `work_draft_tags`.
-  Consumer render văn bản và thẻ từ hai lần đọc phải so `revision_id` (hoặc gộp một truy vấn).
+- #98 (đã có, [discovery](discovery-api.md)): tìm qua `publications.metadata_snapshot_id →
+  work_metadata_snapshot_tags` (index `(tag_id, snapshot_id)` thêm sau khi đo plan); không đọc
+  `work_draft_tags`; `GET …/publication` đọc văn bản và thẻ trong **một** snapshot (gộp một truy vấn).
 - Owner publication: gọi `capture_metadata_snapshot` trong transaction publish **sau** khi kiểm ý định
   tác giả, quyền và moderation; khóa văn bản nháp trước metadata; bind bằng một `UPDATE` cả cặp; rút bài
   xóa pointer (snapshot giữ làm lịch sử). Có duyệt lại snapshot metadata hay bắt buộc dạng bài khi gửi

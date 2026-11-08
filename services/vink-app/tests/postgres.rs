@@ -29,6 +29,8 @@ const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/conditional_reads.rs"]
 mod conditional_reads;
+#[path = "postgres/discovery.rs"]
+mod discovery;
 #[path = "postgres/discussion.rs"]
 mod discussion;
 #[path = "postgres/endorsement.rs"]
@@ -303,7 +305,11 @@ async fn public_read_serves_the_published_snapshot_not_the_draft(pool: PgPool) {
             .iter()
             .any(|l| l.contains("riêng tư") || l == dev_seed::DRAFT_ONLY_LINE)
     );
-    let listed = vink.public_works().await.unwrap();
+    let listed = vink
+        .discover_works(vink_app::application::discovery::DiscoverWorks::default())
+        .await
+        .unwrap()
+        .works;
     assert_eq!(listed.len(), 1);
     assert_eq!(listed[0].title.as_str(), dev_seed::SAMPLE_TITLE);
 }
@@ -694,7 +700,10 @@ async fn no_publications_is_an_empty_collection_and_not_an_outage(pool: PgPool) 
     assert!(!html.contains(dev_seed::SAMPLE_TITLE) && !html.contains(dev_seed::DRAFT_ONLY_LINE));
     let (status, _, body) = call(&app, "GET", "/api/v1/works", None, None, None).await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(json(&body), json!({ "works": [] }));
+    assert_eq!(
+        json(&body),
+        json!({ "works": [], "filters": { "q": null, "tags": [] }, "next_cursor": null })
+    );
     let (status, _, _) = call(
         &app,
         "GET",

@@ -16,7 +16,8 @@ use vink_web::server::{
 use vink_web::{App, shell};
 
 use super::AppState;
-use super::contract::{Publication, WorkCard, WorkList};
+use super::contract::{Publication, WorkList};
+use crate::application::discovery::DiscoverWorks;
 use crate::application::{ReadError, Vink};
 use crate::domain::ids::WorkId;
 use crate::persistence::PgStore;
@@ -86,10 +87,12 @@ impl PublicReads for PublicReadsAdapter {
     fn works(&self) -> PortFuture<Result<web::WorkList, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {
-            let works = vink.public_works().await.map_err(load_error)?;
-            to_web(&WorkList {
-                works: works.iter().map(WorkCard::from).collect(),
-            })
+            // The home page is the first page of the unfiltered public search (ED-01: finite).
+            let page = vink
+                .discover_works(DiscoverWorks::default())
+                .await
+                .map_err(|_| LoadError::Unavailable)?;
+            to_web(&WorkList::from(&page))
         })
     }
 

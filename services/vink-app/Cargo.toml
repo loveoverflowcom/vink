@@ -33,6 +33,7 @@ hyper = { version = "1.12.0", features = ["http1", "client"] }
 hyper-util = { version = "0.1.21", features = ["tokio"] }
 http-body-util = "0.1.5"
 sha2 = "0.11.1"
+form_urlencoded = "1.2.2"
 unicode-normalization = "0.1.26"
 
 [dev-dependencies]

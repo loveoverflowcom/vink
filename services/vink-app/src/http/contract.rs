@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::application::catalog::{CatalogPage, TagResolution, TagSuggestion, facet_code};
+use crate::application::discovery::{AppliedFilter, WorkPage};
 use crate::application::discussion::{
     CommentItem, ModerationAction, ModerationQueue, OwnStatus, ReplyPage, RootEntry, RootItem,
     RootPage, SubmittedComment,
@@ -24,9 +25,43 @@ use crate::domain::endorsement::{EndorsementState, EndorsementTarget};
 use crate::domain::ids::{CommentId, PrincipalId, WorkId};
 use crate::domain::taxonomy::{CatalogTag, MatchTier, TagFacet, WorkTags};
 
+/// `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` (TAG-PR-04): one page of the public library.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct WorkList {
+    /// Newest first, at most `limit` (default 12, at most 24).
     pub works: Vec<WorkCard>,
+    /// What this answer is for, so a client can drop answers to an older search and canonicalize
+    /// its URL.
+    pub filters: WorkFilters,
+    /// Present only when another matching work exists after this page; `null` is the end.
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct WorkFilters {
+    /// The query text exactly as received; `null` when absent or blank.
+    pub q: Option<String>,
+    /// One entry per distinct requested slug, in request order.
+    pub tags: Vec<TagFilterView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagFilterView {
+    /// The requested slug, normalized (NFC, lowercase).
+    pub requested: String,
+    /// `canonical`, `redirect` (filtering by `tag.slug`), `retired` (matches no work; `tag`
+    /// carries the successor hint) or `not_found` (no tag has this slug; `tag` is `null`).
+    pub resolution: &'static str,
+    pub tag: Option<TagView>,
+}
+
+/// A tag as a public card or reader shows it: always active, current label.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicTag {
+    pub tag_id: String,
+    pub facet: &'static str,
+    pub label: String,
+    pub slug: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -36,6 +71,8 @@ pub struct WorkCard {
     pub author_display_name: String,
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
+    /// Form first, then themes, in the snapshot's order.
+    pub tags: Vec<PublicTag>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -47,6 +84,7 @@ pub struct Publication {
     #[serde(with = "time::serde::rfc3339")]
     pub published_at: OffsetDateTime,
     pub document: DocumentData,
+    pub tags: Vec<PublicTag>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -511,6 +549,17 @@ pub struct ErrorBody {
     pub successor_id: Option<String>,
 }
 
+impl From<&CatalogTag> for PublicTag {
+    fn from(tag: &CatalogTag) -> Self {
+        Self {
+            tag_id: tag.id().to_string(),
+            facet: facet_code(tag.facet()),
+            label: tag.label().as_str().to_owned(),
+            slug: tag.slug().as_str().to_owned(),
+        }
+    }
+}
+
 impl From<&PublicWorkSummary> for WorkCard {
     fn from(work: &PublicWorkSummary) -> Self {
         Self {
@@ -518,6 +567,37 @@ impl From<&PublicWorkSummary> for WorkCard {
             title: work.title.as_str().to_string(),
             author_display_name: work.author_display_name.clone(),
             published_at: work.published_at,
+            tags: work.tags.iter().map(PublicTag::from).collect(),
+        }
+    }
+}
+
+impl From<&AppliedFilter> for TagFilterView {
+    fn from(filter: &AppliedFilter) -> Self {
+        let (resolution, tag) = match &filter.resolution {
+            None => ("not_found", None),
+            Some(resolved) => {
+                let view = TagResolutionView::from(resolved);
+                (view.resolution, Some(view.tag))
+            }
+        };
+        Self {
+            requested: filter.requested.as_str().to_owned(),
+            resolution,
+            tag,
+        }
+    }
+}
+
+impl From<&WorkPage> for WorkList {
+    fn from(page: &WorkPage) -> Self {
+        Self {
+            works: page.works.iter().map(WorkCard::from).collect(),
+            filters: WorkFilters {
+                q: page.query.clone(),
+                tags: page.filters.iter().map(TagFilterView::from).collect(),
+            },
+            next_cursor: page.next.map(|cursor| cursor.encode()),
         }
     }
 }
@@ -531,6 +611,7 @@ impl From<&PublicWork> for Publication {
             author_display_name: work.author_display_name.clone(),
             published_at: work.published_at,
             document: work.document.to_data(),
+            tags: work.tags.iter().map(PublicTag::from).collect(),
         }
     }
 }
@@ -1034,27 +1115,20 @@ mod tests {
 
     #[test]
     fn public_responses_match_fixtures() {
-        let summary = PublicWorkSummary {
-            work_id: work(),
-            title: title(),
-            author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
-            published_at: AT,
+        // The home page: the first page of the unfiltered search, an untagged publication.
+        let page = WorkPage {
+            query: None,
+            filters: vec![],
+            works: vec![PublicWorkSummary {
+                work_id: work(),
+                title: title(),
+                author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
+                published_at: AT,
+                tags: vec![],
+            }],
+            next: None,
         };
-        assert_matches(
-            "works.list.json",
-            &WorkList {
-                works: vec![WorkCard::from(&summary)],
-            },
-        );
-        let public = PublicWork {
-            work_id: work(),
-            revision_id: RevisionId::parse("44444444-4444-4444-8444-444444444444").unwrap(),
-            title: title(),
-            author_display_name: summary.author_display_name.clone(),
-            published_at: AT,
-            document: document(),
-        };
-        assert_matches("publication.get.json", &Publication::from(&public));
+        assert_matches("works.list.json", &WorkList::from(&page));
     }
 
     #[test]
@@ -1784,6 +1858,77 @@ mod tests {
 
         fn mua() -> CatalogTag {
             tag(14, TagFacet::Theme, "Mùa", None)
+        }
+
+        #[test]
+        fn discovery_reads_match_fixtures() {
+            use crate::application::discovery::AppliedFilter;
+            use crate::domain::discovery::{DiscoveryCursor, PagePosition, SearchScope, WorkQuery};
+            use crate::domain::taxonomy::TagSlug;
+
+            let author = "Lê Thu".to_string();
+            let card =
+                |n: u64, title: &str, minutes: i64, tags: Vec<CatalogTag>| PublicWorkSummary {
+                    work_id: WorkId::parse(&format!("33333333-3333-4333-8333-{n:012}")).unwrap(),
+                    title: Title::parse(title).unwrap(),
+                    author_display_name: author.clone(),
+                    published_at: AT - time::Duration::minutes(minutes),
+                    tags,
+                };
+            let works = vec![
+                card(1, "Mưa tháng Bảy", 0, vec![tan_van(), ky_uc()]),
+                card(2, "Mùa mưa ở phố cũ", 90, vec![ky_uc()]),
+            ];
+            let last = &works[1];
+            let query = WorkQuery::parse("mưa").unwrap().unwrap();
+            let next = DiscoveryCursor::new(
+                PagePosition {
+                    published_at: last.published_at,
+                    work_id: last.work_id,
+                },
+                SearchScope::of(Some(query.key()), &[ky_uc().id()]),
+            );
+            let page = WorkPage {
+                query: Some("mưa".into()),
+                filters: vec![AppliedFilter {
+                    requested: TagSlug::parse("hồi-ức").unwrap(),
+                    resolution: Some(TagResolution::Redirect(ky_uc())),
+                }],
+                works,
+                next: Some(next),
+            };
+            assert_matches("works.search.json", &WorkList::from(&page));
+
+            let unmatched = WorkPage {
+                query: None,
+                filters: vec![
+                    AppliedFilter {
+                        requested: TagSlug::parse("đô-thị").unwrap(),
+                        resolution: Some(TagResolution::Retired {
+                            tag: do_thi(),
+                            successor: Some(mua()),
+                        }),
+                    },
+                    AppliedFilter {
+                        requested: TagSlug::parse("không-có").unwrap(),
+                        resolution: None,
+                    },
+                ],
+                works: vec![],
+                next: None,
+            };
+            assert_matches("works.search.unmatched.json", &WorkList::from(&unmatched));
+
+            let public = PublicWork {
+                work_id: work(),
+                revision_id: RevisionId::parse("44444444-4444-4444-8444-444444444444").unwrap(),
+                title: title(),
+                author_display_name: "Tác giả mẫu (dữ liệu phát triển)".into(),
+                published_at: AT,
+                document: document(),
+                tags: vec![tan_van(), ky_uc()],
+            };
+            assert_matches("publication.get.json", &Publication::from(&public));
         }
 
         #[test]

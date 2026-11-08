@@ -96,7 +96,16 @@ carrying the stored tags for reconciliation, no receipt). Catalog governance is 
 command `vink-app tag list|history|create|rename|describe|alias|retire` (`CuratorAuthority::operator`,
 never constructed in `src/http`); each accepted change writes a `tag_catalog_changes` row in the same
 transaction (migration `20261109000000_tag_catalog_audit`; the schema refuses a version step without
-it). No UI, discovery (#98) or production authority; see [API](docs/development/taxonomy-api.md).
+it). No UI or production authority; see [API](docs/development/taxonomy-api.md).
+TAG-PR-04 (#98) evolves `GET /api/v1/works` into the public discovery read (`q`, repeatable `tag`,
+`limit`, `cursor`; the default request is still the 12-item home page and SSR's in-process call):
+pure `domain::discovery` (query/filter/page/cursor bound to the canonical search, `filter_tags`:
+only active tags are facets, AND semantics), `application::discovery`, `persistence::discovery` (one
+`REPEATABLE READ` snapshot, keyset on an order index, tag semi-join, never a draft table) and migration
+`20261110000000_public_discovery` (`vink_search_key` mirroring `SearchKey::of`, stored generated keys
+on revision titles and display names). Cards and `GET …/publication` carry active public tags. No
+total count; unknown/retired filter slugs answer `200` with a resolution; the web consumer only
+decodes the new fields (UI #99/#100). See [discovery](docs/development/discovery-api.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
 limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so

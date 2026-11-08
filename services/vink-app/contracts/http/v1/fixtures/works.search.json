@@ -1,0 +1,57 @@
+{
+  "works": [
+    {
+      "work_id": "33333333-3333-4333-8333-000000000001",
+      "title": "Mưa tháng Bảy",
+      "author_display_name": "Lê Thu",
+      "published_at": "2026-10-30T08:00:00Z",
+      "tags": [
+        {
+          "tag_id": "a0000000-0000-4000-8000-000000000001",
+          "facet": "form",
+          "label": "Tản văn",
+          "slug": "tản-văn"
+        },
+        {
+          "tag_id": "a0000000-0000-4000-8000-000000000011",
+          "facet": "theme",
+          "label": "Ký ức",
+          "slug": "ký-ức"
+        }
+      ]
+    },
+    {
+      "work_id": "33333333-3333-4333-8333-000000000002",
+      "title": "Mùa mưa ở phố cũ",
+      "author_display_name": "Lê Thu",
+      "published_at": "2026-10-30T06:30:00Z",
+      "tags": [
+        {
+          "tag_id": "a0000000-0000-4000-8000-000000000011",
+          "facet": "theme",
+          "label": "Ký ức",
+          "slug": "ký-ức"
+        }
+      ]
+    }
+  ],
+  "filters": {
+    "q": "mưa",
+    "tags": [
+      {
+        "requested": "hồi-ức",
+        "resolution": "redirect",
+        "tag": {
+          "tag_id": "a0000000-0000-4000-8000-000000000011",
+          "facet": "theme",
+          "label": "Ký ức",
+          "slug": "ký-ức",
+          "description": "Những điều đã qua còn ở lại trong người viết.",
+          "status": "active",
+          "successor": null
+        }
+      }
+    ]
+  },
+  "next_cursor": "0100065f08ecf32a00333333333333433383330000000000022474fcd91a280fda"
+}

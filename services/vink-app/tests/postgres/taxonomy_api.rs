@@ -502,7 +502,9 @@ async fn draft_tags_round_trip_privately_with_presence_and_catalog_rules(pool: P
     let publication = format!("/api/v1/works/{}/publication", dev_seed::SAMPLE_WORK);
     let (status, _, public) = call(&app, "GET", &publication, None, None, None).await;
     assert_eq!(status, StatusCode::OK);
-    assert!(json(&public).get("tags").is_none() && !public.contains("Tản văn"));
+    // No snapshot is bound, so the public tags are empty whatever the draft says.
+    assert_eq!(json(&public)["tags"], json!([]));
+    assert!(!public.contains("Tản văn"));
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -916,7 +918,9 @@ async fn upgrading_an_unaudited_catalog_keeps_it_and_audits_from_then_on(pool: P
     .unwrap();
 
     let report = migrate(&pool).await.unwrap();
-    assert_eq!(report.applied, [AUDIT_MIGRATION]);
+    // This slice's migration first; later additive slices (#98 discovery) may follow.
+    assert_eq!(report.applied.first(), Some(&AUDIT_MIGRATION));
+    assert!(report.applied.iter().all(|v| *v >= AUDIT_MIGRATION));
     assert_eq!(catalog_version(&pool).await, 2);
     assert!(
         audit(&pool).await.is_empty(),

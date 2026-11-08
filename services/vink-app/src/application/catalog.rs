@@ -17,7 +17,7 @@
 
 use super::Vink;
 use super::ports::{
-    CatalogAuditRecord, CatalogListing, CatalogReadStore, CatalogStore, StoreError,
+    CatalogAuditRecord, CatalogListing, CatalogReadStore, CatalogStore, SlugFacts, StoreError,
 };
 use crate::domain::ids::TagId;
 use crate::domain::taxonomy::{
@@ -276,30 +276,39 @@ where
     pub async fn resolve_tag(&self, raw_slug: &str) -> Result<TagResolution, CatalogReadError> {
         let slug = TagSlug::parse(raw_slug).map_err(|_| CatalogReadError::NotFound)?;
         let facts = self.store.slug_facts(&slug).await?;
-        let resolution = resolve_slug(&slug, facts.holder, facts.tag.as_ref())
-            .map_err(|_| CatalogReadError::Internal)?;
-        match resolution {
-            SlugResolution::NotFound => Err(CatalogReadError::NotFound),
-            SlugResolution::Canonical(tag) => Ok(TagResolution::Canonical(tag.clone())),
-            SlugResolution::Redirect(tag) => Ok(TagResolution::Redirect(tag.clone())),
-            SlugResolution::Retired(tag) => {
-                // The successor row must be exactly the hint the retired tag names.
-                let hinted = match tag.status() {
-                    TagStatus::Retired { successor } => successor,
-                    TagStatus::Active => None,
-                };
-                let successor = match (hinted, facts.successor) {
-                    (None, None) => None,
-                    (Some(id), Some(row)) if row.id() == id => Some(row),
-                    _ => return Err(CatalogReadError::Internal),
-                };
-                Ok(TagResolution::Retired {
-                    tag: tag.clone(),
-                    successor,
-                })
-            }
-        }
+        resolution(&slug, &facts)?.ok_or(CatalogReadError::NotFound)
     }
+}
+
+/// What `slug` names according to `facts` (read in one snapshot); `None` when it names no tag.
+/// Shared by tag URLs and discovery filters (TAG-PR-04), so both resolve a slug the same way.
+pub(super) fn resolution(
+    slug: &TagSlug,
+    facts: &SlugFacts,
+) -> Result<Option<TagResolution>, CatalogReadError> {
+    let resolution = resolve_slug(slug, facts.holder, facts.tag.as_ref())
+        .map_err(|_| CatalogReadError::Internal)?;
+    Ok(match resolution {
+        SlugResolution::NotFound => None,
+        SlugResolution::Canonical(tag) => Some(TagResolution::Canonical(tag.clone())),
+        SlugResolution::Redirect(tag) => Some(TagResolution::Redirect(tag.clone())),
+        SlugResolution::Retired(tag) => {
+            // The successor row must be exactly the hint the retired tag names.
+            let hinted = match tag.status() {
+                TagStatus::Retired { successor } => successor,
+                TagStatus::Active => None,
+            };
+            let successor = match (hinted, &facts.successor) {
+                (None, None) => None,
+                (Some(id), Some(row)) if row.id() == id => Some(row.clone()),
+                _ => return Err(CatalogReadError::Internal),
+            };
+            Some(TagResolution::Retired {
+                tag: tag.clone(),
+                successor,
+            })
+        }
+    })
 }
 
 /// Untrusted operator input for one catalog change. Labels and descriptions are raw text.

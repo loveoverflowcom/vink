@@ -405,7 +405,16 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
     assert_eq!(schema_state(&pool).await.unwrap(), SchemaState::Pending);
     let vink = seeded(&pool).await;
     let untitled = vink.create_draft(author()).await.unwrap().work_id;
-    let before = vink.publication(sample_work()).await.unwrap();
+    // Read the old public state with SQL: today's public read needs today's schema.
+    let before: (Uuid, String) = sqlx::query_as(
+        "SELECT r.id, r.title FROM publications p
+           JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
+          WHERE p.work_id = $1",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
     let hash: String = sqlx::query_scalar("SELECT content_hash FROM revisions WHERE id = $1")
         .bind(dev_seed::SAMPLE_REVISION)
         .fetch_one(&pool)
@@ -429,9 +438,14 @@ async fn upgrade_keeps_existing_untagged_works_readable_without_backfill(pool: P
         assert_eq!(view.tags, WorkTags::EMPTY);
     }
     let public = vink.public_work_tags(sample_work()).await.unwrap();
-    assert_eq!(public.revision_id, before.revision_id);
+    assert_eq!(public.revision_id.as_uuid(), before.0);
     assert!(public.tags.is_empty());
-    assert_eq!(vink.publication(sample_work()).await.unwrap(), before);
+    let read = vink.publication(sample_work()).await.unwrap();
+    assert_eq!(
+        (read.revision_id.as_uuid(), read.title.as_str()),
+        (before.0, before.1.as_str())
+    );
+    assert!(read.tags.is_empty());
     let after: String = sqlx::query_scalar("SELECT content_hash FROM revisions WHERE id = $1")
         .bind(dev_seed::SAMPLE_REVISION)
         .fetch_one(&pool)

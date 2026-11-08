@@ -2474,7 +2474,10 @@ async function publicReading(page) {
     title: i === 0 ? longTitle.normalize('NFD') : `[Mẫu kiểm tra] Một trang viết ${i}`,
     author_display_name: i % 2 ? '[Mẫu kiểm tra] Trần Linh' : '[Mẫu kiểm tra] Nguyễn Hoài Thương',
     published_at: '2026-11-01T08:30:00Z',
+    tags: [],
   }));
+  // The default `GET /api/v1/works` page (TAG-PR-04): no query, no tag filter, last page.
+  const workList = works => ({ works, filters: { q: null, tags: [] }, next_cursor: null });
   const publicationPath = `/api/v1/works/${cards[0].work_id}/publication`;
   const literal = '<script>window.__manuscriptExecuted = true</script> & chữ Việt';
   const publication = {
@@ -2486,7 +2489,7 @@ async function publicReading(page) {
     ] },
   };
   const answers = new Map([
-    ['/api/v1/works', { status: 200, body: { works: cards } }],
+    ['/api/v1/works', { status: 200, body: workList(cards) }],
     [publicationPath, { status: 200, body: publication }],
   ]);
   let holdList = false;
@@ -2686,7 +2689,7 @@ async function publicReading(page) {
   await page.eval(`document.documentElement.style.fontSize = ''`);
   await page.viewport(1440);
   const recoveryPublicationPath = `/api/v1/works/${SAMPLE_WORK}/publication`;
-  answers.set('/api/v1/works', { status: 200, body: { works: [{ ...cards[0], work_id: SAMPLE_WORK, title: '[Mẫu kiểm tra] Mưa trên phố cũ' }] } });
+  answers.set('/api/v1/works', { status: 200, body: workList([{ ...cards[0], work_id: SAMPLE_WORK, title: '[Mẫu kiểm tra] Mưa trên phố cũ' }]) });
   for (const status of [404, 503]) {
     answers.set(recoveryPublicationPath, { status, body: { error: { code: status === 404 ? 'not_found' : 'dependency_unavailable' } } });
     await openCollection();
@@ -2717,7 +2720,7 @@ async function publicReading(page) {
   await page.click('[data-testid=public-unavailable] a[rel=external]');
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')?.value === '${realQuery}' && document.querySelectorAll('.vk-public-row').length === 1`, 'reload retry keeps the query and recovers from the fixture outage using real SSR data');
   for (const state of ['empty', 'unavailable']) {
-    answers.set('/api/v1/works', { status: state === 'empty' ? 200 : 503, body: state === 'empty' ? { works: [] } : { error: { code: 'dependency_unavailable' } } });
+    answers.set('/api/v1/works', { status: state === 'empty' ? 200 : 503, body: state === 'empty' ? workList([]) : { error: { code: 'dependency_unavailable' } } });
     await openCollection();
     await page.waitFor(`document.querySelector('[data-testid=public-${state}]')`, `Explore ${state}`);
     check(await page.eval(`!document.querySelector('[data-testid=public-${state === 'empty' ? 'unavailable' : 'empty'}]') && document.querySelector('#writing-prompt a').getAttribute('href') === '/ban-viet'`), `${state} is distinct and keeps a truthful participation route`);
@@ -2726,7 +2729,7 @@ async function publicReading(page) {
     await captureExplore(state);
     await captureRecovery(page, `explore-${state}`, `[data-testid=public-${state}]`);
   }
-  answers.set('/api/v1/works', { status: 200, body: { works: cards.slice(0, 3) } });
+  answers.set('/api/v1/works', { status: 200, body: workList(cards.slice(0, 3)) });
   await openCollection();
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 3`, 'several public works');
   await captureExplore('several');

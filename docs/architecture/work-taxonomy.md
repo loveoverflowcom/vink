@@ -13,7 +13,7 @@ baseline `develop@6c97917b6a7aa4c51f3b2fe816462c8a0a47fc64`. **Trạng thái:** 
 
 | Finding | Source | Hệ quả cho core |
 | --- | --- | --- |
-| `PublicWork`, `PublicWorkSummary`, `SaveDraft` chưa có tag; trang chủ giới hạn 12 | [application/mod.rs](../../services/vink-app/src/application/mod.rs) | Cần owner metadata riêng; discovery toàn thư viện là #98 |
+| `PublicWork`, `PublicWorkSummary`, `SaveDraft` chưa có tag; trang chủ giới hạn 12 (trước #98; nay `tags` công khai và trang chủ là trang đầu của [discovery](../development/discovery-api.md)) | [application/mod.rs](../../services/vink-app/src/application/mod.rs) | Cần owner metadata riêng; discovery toàn thư viện là #98 |
 | `ContentHash` v1 chỉ phủ title + document; revision bất biến; endorsement neo `RevisionId` | [revision.rs](../../services/vink-app/src/domain/revision.rs), [LVE CHOICE-02 B](literary-endorsement.md) | Tag không được vào hash v1 hay đổi revision; sửa tag mà tạo revision mới sẽ tách số “Đánh giá cao” |
 | `PgStore::save_draft` đặt owner + version trong UPDATE; public read chỉ JOIN publication → revision | [persistence/postgres.rs](../../services/vink-app/src/persistence/postgres.rs) | Metadata nháp và công khai phải tách; kiểm owner/version tại commit (#96) |
 | Bật/tắt bình luận và LVE: mọi lệnh được chấp nhận (kể cả trùng trạng thái) tăng version/order | [decisions D-13](decisions.md), [LVE](literary-endorsement.md) | Áp cùng nguyên tắc fence cho metadata, tránh lệnh cũ hồi sinh ý định cũ |

@@ -3,11 +3,10 @@ use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::application::ports::{DraftStore, PublicationStore, SaveOutcome, StoreError};
-use crate::application::{PublicWork, PublicWorkSummary};
+use crate::application::ports::{DraftStore, SaveOutcome, StoreError};
 use crate::domain::document::{Document, DocumentData, Title};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
-use crate::domain::ids::{PrincipalId, RevisionId, WorkId};
+use crate::domain::ids::{PrincipalId, WorkId};
 
 #[derive(Debug, Clone)]
 pub struct PgStore {
@@ -67,11 +66,11 @@ fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
     StoreError::Integrity(format!("{what}: {detail}"))
 }
 
-fn title(raw: &str) -> Result<Title, StoreError> {
+pub(super) fn title(raw: &str) -> Result<Title, StoreError> {
     Title::parse(raw).map_err(|e| integrity("stored title", e))
 }
 
-fn document(Json(data): Json<DocumentData>) -> Result<Document, StoreError> {
+pub(super) fn document(Json(data): Json<DocumentData>) -> Result<Document, StoreError> {
     Document::parse(data).map_err(|e| integrity("stored document", e))
 }
 
@@ -220,69 +219,5 @@ impl DraftStore for PgStore {
             },
             None => SaveOutcome::NotFound,
         })
-    }
-}
-
-impl PublicationStore for PgStore {
-    async fn list_publications(&self, limit: i64) -> Result<Vec<PublicWorkSummary>, StoreError> {
-        let rows: Vec<(Uuid, String, String, OffsetDateTime)> = sqlx::query_as(
-            "SELECT p.work_id, r.title, a.display_name, p.published_at
-               FROM publications p
-               JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
-               JOIN works w ON w.id = p.work_id
-               JOIN principals a ON a.id = w.owner_id
-              ORDER BY p.published_at DESC, p.work_id
-              LIMIT $1",
-        )
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(classify)?;
-        rows.into_iter()
-            .map(|(work_id, raw_title, author, published_at)| {
-                Ok(PublicWorkSummary {
-                    work_id: WorkId::from_uuid(work_id),
-                    title: title(&raw_title)?,
-                    author_display_name: author,
-                    published_at,
-                })
-            })
-            .collect()
-    }
-
-    async fn publication(&self, work_id: WorkId) -> Result<Option<PublicWork>, StoreError> {
-        // Reads the pointed revision only; working_drafts is never joined on a public path.
-        let row: Option<(
-            Uuid,
-            Uuid,
-            String,
-            String,
-            OffsetDateTime,
-            Json<DocumentData>,
-        )> = sqlx::query_as(
-            "SELECT p.work_id, r.id, r.title, a.display_name, p.published_at, r.document
-                   FROM publications p
-                   JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
-                   JOIN works w ON w.id = p.work_id
-                   JOIN principals a ON a.id = w.owner_id
-                  WHERE p.work_id = $1",
-        )
-        .bind(work_id.as_uuid())
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(classify)?;
-        row.map(
-            |(work_id, revision_id, raw_title, author, published_at, raw_document)| {
-                Ok(PublicWork {
-                    work_id: WorkId::from_uuid(work_id),
-                    revision_id: RevisionId::from_uuid(revision_id),
-                    title: title(&raw_title)?,
-                    author_display_name: author,
-                    published_at,
-                    document: document(raw_document)?,
-                })
-            },
-        )
-        .transpose()
     }
 }

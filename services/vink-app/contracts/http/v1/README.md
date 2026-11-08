@@ -45,12 +45,57 @@ or native consumer uses them yet.
 
 | Method and path | Success | Errors | Fixture |
 | --- | --- | --- | --- |
-| `GET /api/v1/works` | `200` list of current publications (at most 12); `304` on a matching `If-None-Match` | `503` | [works.list.json](fixtures/works.list.json) |
-| `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft); `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
+| `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` | `200` one page of current publications, newest first (default and home page: the first 12); `304` on a matching `If-None-Match` | `422` (`q`, `tag`, `limit`, `cursor`, `query`), `503` | [default](fixtures/works.list.json), [search](fixtures/works.search.json), [unmatched filters](fixtures/works.search.unmatched.json) |
+| `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) with its public `tags`; `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
 | `GET /api/v1/drafts` | `200` the actor's drafts | `401`, `503` | [drafts.list.json](fixtures/drafts.list.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
 | `PUT /api/v1/drafts/{work_id}` | `200` new version | `401`, `403`, `404`, `409`, `422`, `503` | [request](fixtures/draft.save.request.json), [response](fixtures/draft.save.response.json) |
+
+### Public discovery (TAG-PR-04)
+
+`GET /api/v1/works` searches the whole public library; there is no other discovery route. No
+actor is resolved (an Identity outage never hides it) and only publications are read: a working
+draft, private draft tags, an unpublished or a withdrawn work never matches, appears or changes a
+page. Choices, plans and measurements: [discovery](../../../../../docs/development/discovery-api.md).
+
+- **Parameters** (all optional; a blank value is absent, as an empty native form field submits it):
+  - `q`: text, at most 100 characters after NFC. It matches a **word prefix** of the public title
+    or of the author's current display name after folding (NFC/NFD, `đ`/`Đ`, marks and case:
+    `hoi uc` finds “Hồi ức tuổi thơ”, `ma` finds “Má” and “Mẫu”, `oi` finds neither). It is a
+    literal: `%` and `_` are separators, never wildcards. Text without a letter or digit is `422`.
+  - `tag`: a tag slug, repeatable (`tag=ký-ức&tag=thơ`), at most 4 distinct after NFC/lowercase
+    (8 raw values). **Every** selected tag must be on the work's public metadata snapshot (AND).
+    An alias or former slug filters its tag; a slug that names no tag, or a retired tag, matches
+    no work and says so in `filters` (not an error). A malformed slug is `422` (`field: tag`).
+  - `limit`: `1..=24`, default 12. `cursor`: the previous page's `next_cursor`, unchanged.
+  - Anything else, or `q`/`limit`/`cursor` twice, is `422` with `field: query`. Validation order:
+    `query` (while reading the URL), then `q`, `tag`, `limit`, `cursor`, before any database read.
+- **Answer.** `works`: cards (`work_id`, `title`, `author_display_name`, `published_at`, `tags`).
+  `tags` on a card or a publication are the **active** tags of the bound snapshot, form first, with
+  current labels (`tag_id`, `facet`, `label`, `slug`); a retired tag stays in the snapshot but is
+  not shown; a publication without a snapshot shows `[]`. `filters.q` echoes the query exactly as
+  received (or `null`); `filters.tags` has one entry per distinct requested slug, in request order:
+  `requested` (normalized), `resolution` (`canonical`, `redirect`, `retired`, `not_found`) and the
+  catalog `tag` (with `description` and, when retired, the `successor` hint; `null` for
+  `not_found`). A client moves a `redirect` URL to `tag.slug`. `next_cursor` is present only when
+  another matching work was read after this page; `null` is the end. There is **no total count**.
+- **Order and pages.** Newest `published_at` first, then `work_id` ascending. A page is one
+  database snapshot; the list across pages is not: a work published after page 1 is not inserted
+  into later pages, a withdrawn one disappears, a republished one moves to the top (it may be
+  missed by a client already past it). Nothing is repeated or skipped for works that did not
+  change. A cursor carries its position and a digest of the normalized search (folded query and
+  canonical tag identities): the same search under another spelling or an alias continues it; any
+  other search answers `422` (`field: cursor`) — restart from the first page. A cursor is not a
+  capability: forging one only moves inside the same public result.
+- **Caching.** As READ-01: strong `ETag` over the exact body (cards, labels, filters, cursor),
+  `Cache-Control: private, no-cache`, `304` only after the search succeeded. Each distinct URL is
+  its own representation. A label rename, a retirement, a withdrawal or a republish changes the
+  body; a private draft-tag edit cannot. Errors are `no-store`; an outage is `503`, never an empty
+  page, a zero or a `304`.
+- **Not provided:** total counts, sort choices, full-text search of manuscripts, ranking,
+  personalization, tag search by `q` (use `GET /api/v1/tags/suggestions`), snapshot-consistent
+  paging across pages.
 
 `PUT` writes only if the stored version equals `expected_version` and the actor owns the work;
 the check and the write are one statement. Otherwise nothing is written. A draft that does not
@@ -293,8 +338,8 @@ three tags). Every response of these routes, success or error, carries `Cache-Co
     and `tag_id` the refused tag. Nothing is written.
   - `403 principal_suspended`: the author was suspended before the save committed.
 - **Not provided:** catalog writes over HTTP (the operator command `vink-app tag …` is the only
-  entrypoint), tag proposals by authors, work discovery by tag (#98), public tags on the works list
-  or publication read, validators/`304` for catalog reads, rate limits.
+  entrypoint), tag proposals by authors, validators/`304` for catalog reads, rate limits. Discovery
+  by tag and public tags on cards/publications: [Public discovery](#public-discovery-tag-pr-04).
 
 ## Sign-in (D-05/S-03 spike)
 

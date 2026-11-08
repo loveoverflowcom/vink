@@ -9,13 +9,14 @@ use super::discussion::{
     Guarded, ModerationAction, ModerationQueue, NewComment, ReplyPage, RootPage, SubmitOutcome,
 };
 use super::endorsement::CommentBatch;
-use super::{PublicWork, PublicWorkSummary};
+use crate::domain::discovery::{PagePosition, PageSize, TagFilter, WorkQuery};
 use crate::domain::discussion::lifecycle::{LifecycleError, ModerationVersion, Transition};
 use crate::domain::discussion::moderation::ModerationReason;
 use crate::domain::discussion::page::{PageCursor, PageLimit};
 use crate::domain::discussion::settings::{
     CommentsMode, ModeChange, SettingsError, SettingsGeneration,
 };
+use crate::domain::document::{Document, Title};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
 use crate::domain::endorsement::{
     EndorsementCommand, EndorsementCount, EndorsementFacts, EndorsementOutcome, EndorsementState,
@@ -82,17 +83,67 @@ pub trait DraftStore: Send + Sync {
     ) -> impl Future<Output = Result<SaveOutcome, StoreError>> + Send;
 }
 
+/// One public work as a discovery row shows it, read through the publication pointer.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicCardFacts {
+    pub work_id: WorkId,
+    pub title: Title,
+    pub author_display_name: String,
+    pub published_at: OffsetDateTime,
+    /// The metadata snapshot bound in the same publication row; `None`: published without one.
+    pub snapshot: Option<MetadataSnapshot>,
+}
+
+/// A search of the public library (TAG-PR-04, #98), already validated by the domain.
+#[derive(Debug, Clone, Copy)]
+pub struct DiscoveryRequest<'a> {
+    pub query: Option<&'a WorkQuery>,
+    pub filter: &'a TagFilter,
+    /// Start after this position (a cursor's), newest first.
+    pub after: Option<PagePosition>,
+    /// The adapter reads at most `size.fetch()` works: one more than a page.
+    pub size: PageSize,
+}
+
+/// Everything one search read, in ONE snapshot: the slug facts of each filter slug (in the
+/// filter's order), the matching works newest first, and the catalog rows of every tag on their
+/// snapshots. When `filter_tags` says the filter can match nothing, no work was searched.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiscoveryFacts {
+    pub filters: Vec<SlugFacts>,
+    pub works: Vec<PublicCardFacts>,
+    pub catalog: Vec<CatalogTag>,
+}
+
+/// The current public snapshot of a work, read in ONE snapshot through the publication pointer:
+/// the pointed revision, the author's current display name, the bound metadata snapshot and the
+/// catalog rows of its tags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicationFacts {
+    pub work_id: WorkId,
+    pub revision_id: RevisionId,
+    pub title: Title,
+    pub author_display_name: String,
+    pub published_at: OffsetDateTime,
+    pub document: Document,
+    pub snapshot: Option<MetadataSnapshot>,
+    pub catalog: Vec<CatalogTag>,
+}
+
+/// Public reads. Every read goes through the publication pointer: no working draft, private
+/// draft tag, unpublished or withdrawn work is joined, matched or counted.
 pub trait PublicationStore: Send + Sync {
-    fn list_publications(
+    /// A bounded page of the public library matching `request` (TAG-PR-04, #98).
+    fn discover_works(
         &self,
-        limit: i64,
-    ) -> impl Future<Output = Result<Vec<PublicWorkSummary>, StoreError>> + Send;
+        request: &DiscoveryRequest<'_>,
+    ) -> impl Future<Output = Result<DiscoveryFacts, StoreError>> + Send;
 
     /// Current public snapshot of a work, read through the publication pointer only.
     fn publication(
         &self,
         work_id: WorkId,
-    ) -> impl Future<Output = Result<Option<PublicWork>, StoreError>> + Send;
+    ) -> impl Future<Output = Result<Option<PublicationFacts>, StoreError>> + Send;
 }
 
 /// Vink-owned discussion storage. Every write method runs one transaction that loads the facts

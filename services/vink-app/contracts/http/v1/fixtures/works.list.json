@@ -4,7 +4,13 @@
       "work_id": "33333333-3333-4333-8333-333333333333",
       "title": "[Mẫu] Mưa trên phố cũ",
       "author_display_name": "Tác giả mẫu (dữ liệu phát triển)",
-      "published_at": "2026-10-30T08:00:00Z"
+      "published_at": "2026-10-30T08:00:00Z",
+      "tags": []
     }
-  ]
+  ],
+  "filters": {
+    "q": null,
+    "tags": []
+  },
+  "next_cursor": null
 }

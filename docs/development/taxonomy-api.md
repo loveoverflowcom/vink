@@ -3,7 +3,7 @@
 **Ngày:** 08/11/2026. **Nguồn:** [#97](https://github.com/loveoverflowcom/vink/issues/97) (TAG-PR-03, một
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline `develop@f5a266b` (sau
 #95 và #96). **Trạng thái:** use case, hợp đồng HTTP v1, lệnh operator và audit của App, kiểm bằng store
-giả và PostgreSQL thật. Chưa có UI (#99/#100), discovery theo thẻ (#98), workflow publish hay authority
+giả và PostgreSQL thật. Chưa có UI (#99/#100), workflow publish hay authority
 production (D-05 Provisional): production vẫn trả `401` cho mọi route riêng tư, nên epic #94 chưa có lát
 nào chạy end-to-end cho người dùng thật.
 
@@ -223,7 +223,8 @@ PostgreSQL thật qua router production; “binary” là chạy `vink-app tag` 
   với LocalFixture loopback hoặc resolver test.
 - **UI** (#99/#100): chưa consumer nào; consumer phải đọc [hợp đồng](../../services/vink-app/contracts/http/v1/README.md#work-tags-tag-pr-03),
   không suy route hay quyền từ prototype.
-- **Discovery** (#98): tìm tác phẩm theo thẻ, đếm, ETag; không bao giờ đếm từ `work_draft_tags`.
+- **Discovery** (#98): đã có ([discovery](discovery-api.md)): tìm theo thẻ/chữ, ETag, thẻ công khai trên
+  card/publication; không đọc `work_draft_tags`; không có tổng số.
 - **Publication**: chưa có caller production của `capture_metadata_snapshot`; thẻ công khai chưa xuất hiện
   trên route đọc công khai nào.
 - **Curator theo người**: audit quy về credential; grant taxonomy/HTTP admin là CHOICE-02 B khi có authority.

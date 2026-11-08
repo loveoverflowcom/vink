@@ -74,6 +74,7 @@ mod tests {
             title: title.into(),
             author_display_name: author.into(),
             published_at: "2026-11-01T08:30:00Z".into(),
+            tags: vec![],
         }
     }
 
