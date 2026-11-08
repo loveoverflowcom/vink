@@ -388,10 +388,13 @@ fn action_icon_button(scenario: &str) -> AnyView {
         }
         _ => view! {
             <Stack direction=Direction::Row gap=Space::S2 align=Align::Center>
-                <IconButton icon=IconName::ArrowBack label="Quay lại" on_press=|_| log("icon-button → Quay lại") />
+                <vink_ui::TooltipIconButton id="tooltip-back" icon=IconName::ArrowBack label="Quay lại" on_press=|_| log("icon-button → Quay lại") />
                 <IconButton icon=IconName::Edit label="Sửa tiêu đề" on_press=|_| log("icon-button → Sửa tiêu đề") />
                 <IconButton icon=IconName::Add label="Tạo bản nháp" on_press=|_| log("icon-button → Tạo bản nháp") />
                 <IconButton icon=IconName::Close label="Đóng" on_press=|_| log("icon-button → Đóng") />
+                <vink_ui::SupportingDetails id="support-details" summary="Thông tin thêm">
+                    <p>"Mẫu · Chi tiết tùy chọn, mở được bằng bàn phím hoặc chạm."</p>
+                </vink_ui::SupportingDetails>
             </Stack>
         }
         .into_any(),

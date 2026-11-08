@@ -574,7 +574,8 @@
 
 .vk-ui-input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 
-/* Search R3: one tonal surface. The native input remains in place across value,
+/* Search R5.1: one input line and an associated visually-hidden native label.
+ * The native input remains in place across value,
  * theme and viewport changes; only its own focus paints the shell perimeter. */
 .vk-ui-search__shell {
   display: flex;
@@ -592,36 +593,18 @@
   outline-offset: -2px;
 }
 .vk-ui-search__query {
-  display: grid;
-  grid-template-rows: minmax(calc(var(--vk-space-1) + 1.5 * var(--vk-type-caption-size)), auto) auto;
+  display: flex;
   flex: 1;
   min-inline-size: 0;
   align-self: stretch;
 }
 .vk-ui-search .vk-ui-input {
-  grid-area: 2 / 1;
-  min-block-size: 0;
-  padding: 0 0 var(--vk-space-1);
+  min-block-size: 48px;
+  padding: var(--vk-space-1) 0;
   border-radius: 0;
   background: transparent;
 }
 .vk-ui-search .vk-ui-input:focus { outline: 0; }
-.vk-ui-search .vk-ui-field__label {
-  grid-area: 1 / 1;
-  margin: var(--vk-space-1) 0 0;
-  align-self: start;
-  font-size: var(--vk-type-caption-size);
-  line-height: var(--vk-type-caption-line-height);
-  color: var(--vk-on-surface-variant);
-  pointer-events: none;
-}
-.vk-ui-search .vk-ui-input:placeholder-shown:not(:focus):not(:autofill) + .vk-ui-field__label {
-  grid-row: 1 / 3;
-  align-self: center;
-  margin-block: var(--vk-space-1);
-  font-size: var(--vk-type-body-size);
-  line-height: var(--vk-type-body-line-height);
-}
 .vk-ui-search__shell > .vk-ui-icon-button,
 .vk-ui-search__shell .vk-ui-action,
 .vk-ui-search__clear { flex: none; }
@@ -1354,13 +1337,6 @@
   color: var(--vk-on-surface-variant);
 }
 
-.vk-ui-list-end::before,
-.vk-ui-list-end::after {
-  content: "";
-  flex: 1;
-  border-block-start: 1px solid var(--vk-outline-variant);
-}
-
 /* Snackbar ------------------------------------------------------------------------------------- */
 
 .vk-ui-snackbar-host {
@@ -1680,6 +1656,48 @@
 }
 
 .vk-ui-tooltip[hidden] { display: none; }
+
+/* Shared support recipe. Rail's tooltip stays a special sibling outside its scroll owner. */
+.vk-ui-plain-tooltip { display: inline-flex; min-inline-size: 0; align-self: end; }
+.vk-ui-plain-tooltip__text {
+  position: fixed;
+  left: 8px;
+  top: 8px;
+  z-index: 120;
+  max-inline-size: min(20rem, calc(100vw - 16px));
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border-radius: var(--vk-radius-sm);
+  background: var(--vk-inverse-surface);
+  color: var(--vk-inverse-on-surface);
+  font-size: var(--vk-type-label-size);
+  line-height: var(--vk-type-label-line-height);
+  overflow-wrap: anywhere;
+}
+.vk-ui-plain-tooltip__text[hidden] { display: none; }
+/* The transparent bridge lets a pointer reach the tooltip without crossing a dismissal gap. */
+.vk-ui-plain-tooltip__text::before { content: ""; position: absolute; inset: -8px 0 100%; }
+.vk-ui-plain-tooltip__text[data-side="above"]::before { inset: 100% 0 -8px; }
+.vk-ui-supporting-details { min-inline-size: 0; }
+.vk-ui-supporting-details > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--vk-space-2);
+  min-inline-size: 48px;
+  min-block-size: 48px;
+  padding: var(--vk-space-2) var(--vk-space-3);
+  border-radius: var(--vk-radius-md);
+  background: var(--vk-surface-container-high);
+  color: var(--vk-on-surface);
+  cursor: pointer;
+  list-style: none;
+}
+.vk-ui-supporting-details > summary::-webkit-details-marker { display: none; }
+.vk-ui-supporting-details > summary:focus-visible { outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset: var(--vk-size-focus-offset); }
+.vk-ui-supporting-details__content { margin-block-start: var(--vk-space-2); padding: var(--vk-space-3); border-radius: var(--vk-radius-md); background: var(--vk-surface-container-low); }
+@media (forced-colors: active) {
+  .vk-ui-plain-tooltip__text { outline: 1px solid CanvasText; }
+  .vk-ui-supporting-details > summary:focus-visible { outline-color: Highlight; }
+}
 
 .vk-ui-top-bar,
 .vk-ui-bottom-nav { display: none; }

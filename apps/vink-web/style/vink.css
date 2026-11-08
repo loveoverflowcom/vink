@@ -257,13 +257,14 @@ a {
 .vk-public-row { scroll-margin-block: var(--vk-space-4); }
 
 .vk-public-list {
+  display: grid;
+  gap: var(--vk-space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.vk-public-row { padding-block: var(--vk-space-4); overflow-wrap: anywhere; }
-.vk-public-row + .vk-public-row { border-top: 1px solid var(--vk-outline-variant); }
+.vk-public-row { overflow-wrap: anywhere; }
 
 
 .vk-writing-prompt { overflow-wrap: anywhere; }
@@ -345,9 +346,8 @@ a {
 .vk-draft-tools > .vk-ui-field:first-child { flex: 2 1 18rem; }
 .vk-draft-list > .vk-muted { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* DraftRow owns the horizontal content inset, shared with the resume surface. */
-.vk-draft-rows { margin: 0; padding: var(--vk-space-2) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-draft-rows { display: grid; gap: var(--vk-space-2); margin: 0; padding: 0; list-style: none; }
 .vk-draft-rows:empty { display: none; }
-.vk-draft-row + .vk-draft-row { border-top: 1px solid var(--vk-outline-variant); }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
 .vk-desk-empty { max-width: none; }
 

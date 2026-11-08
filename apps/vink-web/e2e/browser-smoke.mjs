@@ -78,16 +78,18 @@ async function searchBarGeometry(page, selector, scenario) {
     const shell = input.closest('.vk-ui-search__shell'), s = shell.getBoundingClientRect();
     const controls = [...shell.querySelectorAll('button,a[href]')];
     const a = input.getBoundingClientRect(), l = label.getBoundingClientRect();
-    const range = document.createRange(); range.selectNodeContents(label);
+    const hidden = getComputedStyle(label);
     return { width: s.width, inputWidth: a.width, firstContentTop: document.querySelector('.vk-public-row,#draft-results')?.getBoundingClientRect().top,
       ok: a.width >= 100 && s.height >= 56 && a.left >= s.left && a.right <= s.right &&
         controls.every(el => { const r=el.getBoundingClientRect(); return r.width>=48 && r.height>=48 &&
           r.left>=s.left && r.right<=s.right && r.top>=s.top && r.bottom<=s.bottom && (r.right<=a.left || r.left>=a.right); }) &&
-        [...range.getClientRects()].every(r => r.left>=l.left-1 && r.right<=l.right+1 && r.top>=s.top && r.bottom<=s.bottom) &&
+        input.placeholder===label.textContent && l.width<=1 && l.height<=1 && hidden.position==='absolute' && hidden.display!=='none' &&
+        input.getAttribute('aria-label')===null && input.getAttribute('aria-hidden')===null &&
+        !shell.querySelector('.vk-ui-field__help,details,[aria-haspopup]') &&
         shell.querySelectorAll('input').length===1 && shell.querySelectorAll('button[type=submit]').length===1 &&
         getComputedStyle(shell).boxShadow==='none' && document.documentElement.scrollWidth<=innerWidth };
   })()`);
-  check(result.ok, `${scenario}: one labelled tonal search, separate >=48px actions, no clipped label or horizontal overflow (${result.inputWidth}px query)`);
+  check(result.ok, `${scenario}: one-line search with hidden native name, separate >=48px actions and no horizontal overflow (${result.inputWidth}px query)`);
 }
 
 async function searchBarFocus(page) {
@@ -109,6 +111,21 @@ async function searchBarFocus(page) {
     await page.capture(`search-focus-${forced ? 'forced-colors' : 'tonal'}-320-200`);
   }
   await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM]});
+}
+
+async function quietListSurfaces(page, selector, scenario) {
+  check(await page.eval(`(() => {
+    const rows = [...document.querySelectorAll(${JSON.stringify(selector)})];
+    const flat = el => {
+      const s = getComputedStyle(el);
+      return ['Top','Right','Bottom','Left'].every(side => parseFloat(s['border'+side+'Width'])===0) &&
+        s.boxShadow==='none' && s.backgroundImage==='none';
+    };
+    return rows.length>0 && rows.every(el => flat(el) && flat(el.parentElement) &&
+      el.getBoundingClientRect().height>=48 && el.querySelectorAll('button,input,a').length===0) &&
+      rows.every((el,i) => i===0 || el.getBoundingClientRect().top>rows[i-1].getBoundingClientRect().bottom) &&
+      !document.querySelector('#feed-end');
+  })()`), `${scenario}: full-row links are separated by space and flat tone, without row rules or endpoint chrome`);
 }
 
 async function bottomNavigationGeometry(page, scenario) {
@@ -865,7 +882,7 @@ async function serverHtml() {
   console.log('server HTML before any JavaScript:');
   const home = await fetch(args.base);
   const homeHtml = await home.text();
-  check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Bạn đã xem hết danh sách này.'), 'Explore HTML contains its finite public collection before JavaScript');
+  check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Đã tải 1 tác phẩm · tối đa 12.') && homeHtml.includes('vk-public-row__link'), 'Explore HTML contains its finite public collection and actual inventory before JavaScript');
   check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
   for (const query of ['mua tren pho cu', 'TÁC GIẢ MẪU'.normalize('NFD')]) {
     const response = await fetch(`${args.base}/?q=${encodeURIComponent(query)}`);
@@ -998,7 +1015,7 @@ async function brandAssets(page) {
 async function textContrast(page, theme, surface = 'shell') {
   const selectors = surface.startsWith('editor-') ? ['[data-testid=save-status]', '#preview', '#export', '#save', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]', '.vk-editor-help'] : {
     desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-tools input', '#draft-scope'],
-    explore: ['#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
+    explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-row__open', '#writing-prompt h2', '#writing-prompt p', '#writing-prompt a', '.vk-reading-note'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account .vk-ui-type-label', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-account .vk-ui-type-label', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
@@ -1015,14 +1032,18 @@ async function textContrast(page, theme, surface = 'shell') {
       }
       throw new Error('missing opaque background');
     };
-    return ${JSON.stringify(selectors)}.map(selector => {
+    return ${JSON.stringify(selectors)}.flatMap(selector => {
       const el = document.querySelector(selector);
       if (!el) throw new Error('missing contrast target: ' + selector);
       if (el.dataset.state === 'disabled') return { selector, exempt: 'disabled control' };
       const foreground = getComputedStyle(el).color;
       const bg = background(el);
       const [a, b] = [luminance(foreground), luminance(bg)].sort((a, b) => b - a);
-      return { selector, foreground, background: bg, ratio: (a + 0.05) / (b + 0.05) };
+      const pair = { selector, foreground, background: bg, ratio: (a + 0.05) / (b + 0.05) };
+      if (el.type !== 'search') return [pair];
+      const placeholder = getComputedStyle(el, '::placeholder').color;
+      const [p, q] = [luminance(placeholder), luminance(bg)].sort((a,b)=>b-a);
+      return [pair, { selector: selector+'::placeholder', foreground: placeholder, background: bg, ratio: (p+0.05)/(q+0.05) }];
     });
   })()`);
   writeFileSync(join(dirname(args.state), `${surface}-contrast-${theme}.json`), JSON.stringify(pairs, null, 2));
@@ -1594,7 +1615,8 @@ async function captureRecovery(page, state, selector) {
               // The first recovery carries the panel's primary emphasis, link or button alike.
               const background=getComputedStyle(el).backgroundColor;
               const primary=${index}!==0 || !/^rgba\(0, 0, 0, 0\)$|^transparent$/.test(background);
-              return {ok:!!el.closest(${JSON.stringify(selector)}) && r.height>=44 && r.top>=0 && r.bottom<=limit+1
+              // Native scroll positions round to CSS pixels; use the same 1px tolerance at both edges.
+              return {ok:!!el.closest(${JSON.stringify(selector)}) && r.height>=44 && r.top>=-1 && r.bottom<=limit+1
                 && document.documentElement.scrollWidth<=innerWidth && wordCount>0 && !brokenWords.length && primary,
                 rect:r.toJSON(),limit,scrollWidth:document.documentElement.scrollWidth,wordCount,brokenWords,background};
             })()`);
@@ -1642,7 +1664,7 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, '100 loaded rows');
   const resumeHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#resume h2').textContent === ${JSON.stringify(cards[0].title)}`), 'resume opens exactly the first authorized card and preserves its full combining title');
-  check(await page.eval(`document.querySelector('[data-testid=draft-scope]').textContent.includes('100 bản thảo gần đây nhất') && document.querySelector('[data-testid=draft-scope]').textContent.includes('có thể còn')`), '100 loaded rows are not claimed as a global total');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Đã tải 100 bản thảo · tối đa 100') && document.querySelector('#draft-search-help').textContent === 'Trong danh sách đã tải'`), '100 loaded rows are not claimed as a global total');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && row.textContent.includes('Phiên bản ' + (i + 1)) && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row shows the provider work_id, version and update timestamp');
   check(manuscriptRequests === 0, 'list/resume never fetch full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
@@ -1653,6 +1675,11 @@ async function draftDashboard(page) {
   check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard continues to the stable search input with visible focus');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'draft-sort'`), 'empty search has no clear target; sort follows in keyboard order');
+  await page.eval(`document.querySelector('#refresh-drafts').focus()`);
+  await page.waitFor(`!document.querySelector('#refresh-drafts-tooltip').hidden`, 'refresh tooltip on keyboard focus');
+  check(await page.eval(`document.activeElement.id === 'refresh-drafts' && document.querySelector('#refresh-drafts').getAttribute('aria-label') === 'Tải lại' && !document.querySelector('#refresh-drafts-tooltip :is(button,a,input,[tabindex])')`), 'refresh has its own name and the shared tooltip never takes focus');
+  await page.key('Escape');
+  check(await page.eval(`document.querySelector('#refresh-drafts-tooltip').hidden && document.activeElement.id === 'refresh-drafts'`), 'Escape dismisses only the tooltip and keeps trigger focus');
   await page.viewport(390);
   const toggleTitle = '#resume-title-toggle';
   await page.eval(`document.querySelector('${toggleTitle}').focus()`);
@@ -1662,6 +1689,7 @@ async function draftDashboard(page) {
   await page.send('Input.dispatchKeyEvent', { type: 'keyUp', key: ' ', code: 'Space', windowsVirtualKeyCode: 32 });
   check(await page.eval(`document.querySelector('${toggleTitle}').getAttribute('aria-expanded') === 'false' && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'Space collapses the title without changing the resume work ID');
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
+  check(deskAX.some(node => node.role?.value==='searchbox' && node.name?.value==='Tìm bản thảo'), 'hidden native Desk label remains the searchbox accessible name');
   check(deskAX.some(node => node.role?.value === 'link' && node.name?.value.includes(cards[0].title)) && deskAX.some(node => node.role?.value === 'heading' && node.name?.value === cards[0].title) && deskAX.some(node => node.role?.value === 'button' && node.name?.value === 'Xem đầy đủ tiêu đề' && node.properties?.some(p => p.name === 'expanded' && p.value.value === false)) && deskAX.some(node => node.role?.value === 'link' && node.name?.value === 'Viết tiếp'), 'accessibility tree keeps the full title, named primary link and collapsed disclosure button');
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme = '${theme}'`);
@@ -1687,6 +1715,7 @@ async function draftDashboard(page) {
         }
         await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
         await searchBarGeometry(page, '#draft-search', `Desk ${width}/${scale}/${theme}`);
+        await quietListSurfaces(page, '.vk-draft-row__link', `Desk ${width}/${scale}/${theme}`);
         await page.capture(`desk-list-${width}-${scale}-${theme}`);
         if (width === 320 && scale === 200) {
           await page.eval(`document.querySelector('.vk-draft-row__title').scrollIntoView({block:'start'})`);
@@ -1711,7 +1740,7 @@ async function draftDashboard(page) {
             const text = row.querySelector('.vk-draft-row__text').getBoundingClientRect(), open = row.querySelector('.vk-draft-row__open').getBoundingClientRect();
             const available = r.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
             return text.width >= available - 1 && open.top >= text.bottom && open.left >= text.left - 1 && open.right <= text.right + 1 &&
-              row.querySelector('.vk-draft-row__open-label').getBoundingClientRect().width > 1;
+              row.querySelector('.vk-draft-row__open').getAttribute('aria-hidden') === 'true' && row.querySelector('.vk-draft-row__open .vk-ui-icon').getBoundingClientRect().width >= 18 && !row.textContent.includes('Mở bản thảo');
           })()`), `${theme} ${width}px / ${scale}%: recent title uses the whole inner measure, with a readable open affordance below`);
         }
         check(await page.eval(`(() => {
@@ -1757,6 +1786,7 @@ async function draftDashboard(page) {
     gate.list = { body: { drafts: [{ ...cards[0], title }] } };
     await page.click('#refresh-drafts');
     await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1 && document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, `one ${variant} draft refreshed`);
+    await page.waitFor(`document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo')`, 'settled one-row inventory');
     check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo') && document.querySelector('.vk-draft-row__title').textContent === ${JSON.stringify(title || 'Chưa đặt tên')}`), `one ${variant} summary preserves title, scope and resume identity`);
     for (const scale of [100, 200]) {
       await page.viewport(320);
@@ -1780,12 +1810,18 @@ async function draftDashboard(page) {
     await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
     await page.send('Input.insertText', { text });
   };
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Đã tải 100')`, 'settled inventory before typing');
+  await page.eval(`window.__resultAnnouncements=[]; window.__resultObserver = new MutationObserver(() => window.__resultAnnouncements.push(document.querySelector('[data-testid=draft-result-count]').textContent)); window.__resultObserver.observe(document.querySelector('[data-testid=draft-result-count]'), {childList:true,subtree:true,characterData:true})`);
   await search('duong ve');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
   await search('ĐƯỜNG VỀ CÓ NẮNG'.normalize('NFD'));
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, 'combining accented results');
   await search('không có tên này');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
+  check(await page.eval(`window.__resultAnnouncements.length===0 && document.activeElement.id==='draft-search'`), 'filtering successive input does not announce every keystroke or move focus');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='0 trong 100 bản thảo đã tải · tối đa 100.'`, 'one settled no-result announcement');
+  check(await page.eval(`window.__resultAnnouncements.length===1 && document.querySelectorAll('#drafts [role=status]').length===1`), 'only one live result status announces the settled query');
+  await page.eval(`window.__resultObserver.disconnect()`);
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'search never changes the most recent resume target');
   await page.viewport(390);
   await page.eval(`document.querySelector('#drafts').scrollIntoView({ block: 'start' })`);
@@ -2021,9 +2057,8 @@ async function publicReading(page) {
         c.width >= 48 && c.height >= 48 && c.left >= a.right && c.right <= shell.right && c.top >= shell.top && c.bottom <= shell.bottom);
       return document.documentElement.scrollWidth <= innerWidth && a.width >= 100 && a.height >= 20 && b.width >= 48 && b.height >= 48 && separated &&
         integrated &&
-        input.labels[0]?.textContent === 'Tìm kiếm' && input.getAttribute('aria-describedby') === 'public-query-help' &&
-        document.querySelector('#public-query-help').textContent.includes('tối đa 12') &&
-        document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện');
+        input.labels[0]?.textContent === 'Tìm tác phẩm' && input.getAttribute('aria-describedby') === 'public-query-help' &&
+        document.querySelector('#public-query-help').textContent === 'Trong danh sách đã tải';
     })()`), `${scenario}: labelled search, honest described scope and targets >=44px reflow without overlap`);
     check(await page.eval(`(() => {
       const context = document.querySelector('#context').getBoundingClientRect(), stream = document.querySelector('#community-stream').getBoundingClientRect();
@@ -2032,8 +2067,16 @@ async function publicReading(page) {
     check(await page.eval(`[...document.querySelectorAll('.vk-public-row')].every(row => {
       const name = row.querySelector('.vk-ui-byline__name'), date = row.querySelector('time'), title = row.querySelector('h3'), link = row.querySelector('.vk-public-row__link');
       const n = name.getBoundingClientRect(), d = date.getBoundingClientRect(), t = title.getBoundingClientRect(), a = link.getBoundingClientRect();
+      const walker=document.createTreeWalker(name,NodeFilter.SHOW_TEXT), segmenter=new Intl.Segmenter('vi',{granularity:'word'});
+      let intact=true;
+      for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of segmenter.segment(node.textContent)) {
+        if(!word.isWordLike || word.segment.normalize('NFC').length>6) continue;
+        const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word.segment.length);
+        const lines=[...range.getClientRects()];
+        if(lines.some(r=>Math.abs(r.top-lines[0].top)>1)) intact=false;
+      }
       return parseInt(getComputedStyle(name).fontWeight) >= 600 && Math.abs(n.left - d.left) <= 1 && d.top >= n.bottom - 1 && t.top >= d.bottom &&
-        title.scrollWidth <= title.clientWidth && a.height >= 44 && a.right <= innerWidth && link.getAttribute('href').startsWith('/tac-pham/');
+        intact && title.scrollWidth <= title.clientWidth && a.height >= 44 && a.right <= innerWidth && link.getAttribute('href').startsWith('/tac-pham/');
     })`), `${scenario}: full author/title, aligned date and reachable real reader link`);
   };
   const captureNarrowWork = async (state, width, scale, theme) => {
@@ -2089,6 +2132,8 @@ async function publicReading(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('.vk-public-row__link')`, 'real Explore hydration');
+  const { nodes: searchAX } = await page.send('Accessibility.getFullAXTree');
+  check(searchAX.some(node => node.role?.value==='searchbox' && node.name?.value==='Tìm tác phẩm'), 'hidden native public label remains the searchbox accessible name');
   await page.eval(`window.__queryInput = document.querySelector('#public-query'); window.__querySubmits = 0; document.querySelector('#public-search').addEventListener('submit', () => window.__querySubmits++); window.__queryInput.focus()`);
   await page.send('Input.imeSetComposition', { text: 'd', selectionStart: 1, selectionEnd: 1 });
   await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
@@ -2118,7 +2163,7 @@ async function publicReading(page) {
   await page.send('Input.insertText', { text: '' });
   check(await page.eval(`document.querySelectorAll('.vk-public-row').length === 1 && document.querySelector('.vk-public-row__link').getAttribute('href') === '/tac-pham/${SAMPLE_WORK}'`), 'one real publication is shown once, with its exact reader link');
   await captureExplore('real');
-  check(await page.eval(`document.querySelector('.vk-public-row h3').getBoundingClientRect().bottom < innerHeight && document.querySelector('#feed-end')`), 'one public work is readable in the first desktop viewport with an honest endpoint');
+  check(await page.eval(`document.querySelector('.vk-public-row h3').getBoundingClientRect().bottom < innerHeight && !document.querySelector('#feed-end')`), 'one public work is readable in the first desktop viewport without a redundant endpoint');
   await page.eval(`window.__publicNavigation = 'kept'; document.querySelector('.vk-public-row__link').focus()`);
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#writing-prompt a:focus-visible')`), 'keyboard moves from the real read link to the secondary writing action');
@@ -2208,8 +2253,8 @@ async function publicReading(page) {
   await respond(heldList, answers.get('/api/v1/works'));
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 12`, 'finite public fixture collection');
   check(publicationRequests === 0, 'Explore never fetches full manuscripts to populate cards (no N+1)');
-  check(await page.eval(`new Set([...document.querySelectorAll('.vk-public-row__link')].map(a => a.href)).size === 12 && document.querySelector('#feed-end') && document.querySelector('.vk-public-row time').getAttribute('datetime') === '2026-11-01T08:30:00Z'`), 'all 12 distinct public fields/links and the finite endpoint are rendered');
-  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore select') && document.querySelector('#public-query-help').textContent.includes('Không tìm toàn bộ thư viện')`), 'search discloses its finite scope without fabricated metadata, filters or social actions');
+  check(await page.eval(`new Set([...document.querySelectorAll('.vk-public-row__link')].map(a => a.href)).size === 12 && !document.querySelector('#feed-end') && document.querySelector('.vk-public-row time').getAttribute('datetime') === '2026-11-01T08:30:00Z'`), 'all 12 distinct public fields/links and one truthful inventory are rendered without an endpoint');
+  check(await page.eval(`!document.querySelector('#explore').textContent.match(/tuyển chọn|Dành cho bạn|bình luận|bookmark|AI|lượt đọc/) && !document.querySelector('#explore select') && document.querySelector('#public-query-help').textContent === 'Trong danh sách đã tải' && document.querySelector('.vk-public-scope').textContent.includes('tối đa 12')`), 'search discloses its finite scope without fabricated metadata, filters or social actions');
   const loadedRequests = listRequests;
   await searchPublic('duong ve');
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 1`, 'unaccented public title match');
@@ -2266,6 +2311,7 @@ async function publicReading(page) {
         await page.eval(`document.activeElement?.blur(); new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))`);
         check(await page.eval(`document.activeElement !== document.querySelector('#public-query')`), 'loaded matrix uses the same idle input state as baseline');
         await exploreGeometry(`Explore ${width}px/${scale}%/${theme}`);
+        await quietListSurfaces(page, '.vk-public-row__link', `Explore ${width}/${scale}/${theme}`);
         await page.capture(`explore-${width}-${scale}-${theme}`);
         await captureNarrowWork('loaded', width, scale, theme);
       }
@@ -2407,7 +2453,7 @@ async function publicReading(page) {
   await openCollection();
   await page.waitFor(`document.querySelectorAll('.vk-public-row').length === 3`, 'several public works');
   await captureExplore('several');
-  check(await page.eval(`document.querySelector('#feed-end') && new Set([...document.querySelectorAll('.vk-public-row')].map(row => row.dataset.workId)).size === 3`), 'low-content list has three unique works and its endpoint, without filler');
+  check(await page.eval(`!document.querySelector('#feed-end') && new Set([...document.querySelectorAll('.vk-public-row')].map(row => row.dataset.workId)).size === 3`), 'low-content list has three unique works and no redundant endpoint or filler');
   await page.send('Fetch.disable');
   page.cdp.listeners = page.cdp.listeners.filter(l => l !== listener);
   if (gateError) throw gateError;

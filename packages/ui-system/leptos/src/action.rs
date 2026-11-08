@@ -178,6 +178,9 @@ pub fn IconButton(
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional, into)] pressed: Option<Signal<bool>>,
     #[prop(optional, into)] id: Option<String>,
+    /// Optional supporting information; the accessible name remains `label`.
+    #[prop(optional, into)]
+    described_by: Option<String>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
 ) -> impl IntoView {
     let note_id = id.as_ref().map(|id| format!("{id}-note"));
@@ -193,7 +196,11 @@ pub fn IconButton(
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")
-                aria-describedby=move || state.with(ActionState::note).and(described.clone())
+                aria-describedby=move || {
+                    let mut ids = described_by.clone().into_iter().collect::<Vec<_>>();
+                    if let Some(note) = state.with(ActionState::note).and(described.clone()) { ids.push(note); }
+                    (!ids.is_empty()).then(|| ids.join(" "))
+                }
                 on:click=press_handler(state, on_press)
             >
                 <Icon name=icon />

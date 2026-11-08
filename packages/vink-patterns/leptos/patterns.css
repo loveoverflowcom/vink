@@ -9,13 +9,21 @@
 .vk-reader__header { display: grid; justify-items: start; row-gap: var(--vk-space-2); }
 .vk-reader__header > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
 .vk-reader__header > .vk-work-byline { margin: var(--vk-space-2) 0 0; }
-.vk-public-row__link { display: block; text-align: start; color: var(--vk-on-surface); text-decoration: none; }
+.vk-public-row__link { container: vk-work-card / inline-size; display: block; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); text-align: start; color: var(--vk-on-surface); text-decoration: none; }
+.vk-public-row__link:hover { background: var(--vk-surface-container); }
 .vk-public-row__link:hover h3 { text-decoration: underline; }
 .vk-public-row__link > .vk-ui-heading { margin: 0; }
 .vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
+/* Let the real author name use the card measure when text enlargement leaves too little
+   space beside a decorative avatar. Reader bylines outside this container stay unchanged. */
+@container vk-work-card (max-width: 18rem) {
+  .vk-work-byline { grid-template-columns: minmax(0, 1fr); }
+  .vk-work-byline .vk-ui-avatar { display: none; }
+  .vk-work-byline .vk-ui-byline__text, .vk-work-byline__date { grid-column: 1; }
+}
 /* DraftRow: mark | title + metadata | open at wide measures. The row width (not
    the viewport) drives reflow, so enlarged text and narrow galleries behave alike. */
-.vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); color: var(--vk-on-surface); text-align: start; text-decoration: none; }
+.vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); background: var(--vk-surface-container-low); color: var(--vk-on-surface); text-align: start; text-decoration: none; }
 .vk-draft-row__mark { grid-column: 1; display: inline-grid; margin-inline-end: var(--vk-space-4); place-items: center; inline-size: 2.5rem; block-size: 2.5rem; border-radius: var(--vk-radius-md); background: var(--vk-secondary-container); color: var(--vk-on-secondary-container); }
 .vk-draft-row__mark .vk-ui-icon { margin: 0; inline-size: 1.25rem; block-size: 1.25rem; }
 .vk-draft-row__text { grid-column: 2; display: grid; gap: var(--vk-space-1); min-width: 0; }
@@ -99,7 +107,7 @@
 
 .vk-draft-row__title { font-family: var(--vk-type-title-font); font-size: var(--vk-type-title-size); font-weight: var(--vk-type-title-weight); line-height: var(--vk-type-title-line-height); overflow-wrap: anywhere; }
 
-.vk-draft-row__link:hover { text-decoration: none; background: var(--vk-state-hover); }
+.vk-draft-row__link:hover { text-decoration: none; background: var(--vk-surface-container); }
 .vk-draft-meta > span { min-width: 0; overflow-wrap: anywhere; }
 
 /* EndorsementAction (LVE #73): sits with the target's other interactions, never as the CTA. */
