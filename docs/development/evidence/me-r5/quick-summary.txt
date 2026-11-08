@@ -1,0 +1,10 @@
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)

@@ -115,16 +115,19 @@ pub(crate) fn ThemePicker(group: &'static str) -> impl IntoView {
     let help = format!("{group}-help");
     view! {
         <section class="vk-preference-region vk-appearance-region" aria-labelledby=labelled_by>
-            <vink_ui::Heading id=title level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Giao diện"</vink_ui::Heading>
+            <div class="vk-appearance-heading">
+                <vink_ui::Heading id=title level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Chế độ màu"</vink_ui::Heading>
+                <vink_ui::SupportingDetails id=help summary="Về chế độ màu" compact=true>
+                    <p>"Áp dụng trên thiết bị này. Hệ thống theo giao diện thiết bị."</p>
+                </vink_ui::SupportingDetails>
+            </div>
             <div class="vk-appearance-region__choices">
                 <vink_ui::RadioGroup id=group legend="Chế độ màu"
                     options=vec![vink_ui::ChoiceOption::new("light", "Sáng"), vink_ui::ChoiceOption::new("dark", "Tối"), vink_ui::ChoiceOption::new("system", "Hệ thống")]
                     value=Signal::derive(move || Some(appearance.theme.get().value().to_string()))
-                    on_change=move |value: String| appearance.set_theme(Theme::parse(&value))
-                    attr:aria-describedby=help.clone() />
+                    on_change=move |value: String| appearance.set_theme(Theme::parse(&value)) />
                 <script inner_html=THEME_PICKER_BOOTSTRAP></script>
             </div>
-            <p id=help.clone() class="vk-ui-field__help">"Chỉ áp dụng trên thiết bị này. Hệ thống theo giao diện thiết bị."</p>
         </section>
     }
 }
@@ -136,8 +139,8 @@ pub(crate) fn AccountStatus(id: &'static str) -> impl IntoView {
             <div class="vk-account-status">
                 <vink_ui::Avatar kind=vink_ui::AvatarKind::Account decorative=true />
                 <div>
-                    <vink_ui::Text role=vink_ui::TypeRole::Label>"Chưa có thông tin tài khoản"</vink_ui::Text>
-                    <vink_ui::Text tone=vink_ui::TextTone::Muted>"Vink chưa mở đăng nhập."</vink_ui::Text>
+                    <vink_ui::Heading level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Tài khoản"</vink_ui::Heading>
+                    <vink_ui::Text tone=vink_ui::TextTone::Muted>"Chưa mở đăng nhập."</vink_ui::Text>
                 </div>
             </div>
         </section>

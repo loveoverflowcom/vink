@@ -1,0 +1,3 @@
+  ok  Tab reaches the one build disclosure above navigation after the reader feedback controls
+  ok  Tab reaches bottom Explore with a visible focus ring after the build disclosure
+browser-smoke: PASS (public-search)
