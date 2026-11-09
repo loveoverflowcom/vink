@@ -187,7 +187,9 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 <DraftResume draft=draft(long) />
                 <SearchField id="sample-draft-search" label="Tìm trong bản thảo đã tải" value=search on_input=move |e: TextInput| search.set(e.value) />
                 <Text role=TypeRole::Caption>"Mẫu · Tối đa 100 nháp trong app; bản nháp chỉ bạn đọc được."</Text>
-                <DraftRow draft=draft(long) />
+                <Surface tone=SurfaceTone::Low padding=Space::None>
+                    <DraftRow draft=draft(long) />
+                </Surface>
             }.into_any(),
             "screen.editor" => view! {
                 <Heading level=HeadingLevel::H1 role=TypeRole::Title>"Bản nháp — mẫu chrome"</Heading>

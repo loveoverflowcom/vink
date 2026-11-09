@@ -84,47 +84,46 @@ pub fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
     view! {
         <span class="vk-draft-meta">
             <span>"Phiên bản " {version}</span>
-            <span>"Cập nhật " <time datetime=updated_at>{label}</time></span>
+            <span><span aria-hidden="true">"· "</span><span class="vk-ui-visually-hidden">"Cập nhật "</span><time datetime=updated_at>{label}</time></span>
         </span>
     }
 }
 
 #[component]
 pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
-    // Only presentation expands: the complete Unicode title and destination stay untouched.
-    // Short titles wrap in full; long ones have a disclosure in the compact layout.
-    // The container query also follows text enlargement without a viewport resize.
+    // Disclosure only changes presentation; the full Unicode title and destination stay intact.
     let expandable = draft.title.chars().count() > 60;
     let expanded = RwSignal::new(false);
     view! {
         <div class="vk-draft-resume">
-            <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S4>
+            <Surface tone=SurfaceTone::Container radius=Radius::Xl padding=Space::S4>
                 <div class="vk-draft-resume__content">
-                    <Text role=TypeRole::Label id="resume-label">"Trở lại trang đang viết"</Text>
+                    <Text role=TypeRole::Label id="resume-label">"Bản thảo gần nhất"</Text>
                     <Heading level=HeadingLevel::H2 role=TypeRole::Title class:vk-draft-resume__title=true>{draft.title}</Heading>
+                    <DraftMetadata version=draft.version updated_at=draft.updated_at />
+                </div>
+                <div class="vk-draft-resume__actions">
+                    <Link variant=LinkVariant::Standalone class:vk-draft-resume__continue=true
+                        attr:data-testid="resume-draft" href=draft.href>"Viết tiếp"</Link>
                     {expandable.then(|| view! {
                         <Button variant=ButtonVariant::Text class:vk-draft-resume__disclosure=true
                             id="resume-title-toggle" expanded
                             on_press=move |_| expanded.update(|value| *value = !*value)>
-                            {move || if expanded.get() { "Thu gọn tiêu đề" } else { "Xem đầy đủ tiêu đề" }}
+                            {move || if expanded.get() { "Thu gọn tên" } else { "Xem đủ tên" }}
+                            <span class="vk-ui-visually-hidden">" bản thảo"</span>
                         </Button>
                     })}
-                    <DraftMetadata version=draft.version updated_at=draft.updated_at />
                 </div>
-                <Link variant=LinkVariant::Standalone class:vk-draft-resume__continue=true
-                    attr:data-testid="resume-draft" href=draft.href>"Viết tiếp"</Link>
             </Surface>
         </div>
     }
 }
 
-/// One scannable row: a constant writing mark (not a genre or status), the complete title with
-/// its version/date, then the open action. The whole row is the link; its name keeps all three.
+/// One flat navigation target with the complete title and its version/update date.
 #[component]
 pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     view! {
         <Link href=draft.href attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
-            <span class="vk-draft-row__mark"><Icon name=IconName::Edit /></span>
             <span class="vk-draft-row__text">
                 <span class="vk-draft-row__title">{draft.title}</span>
                 <DraftMetadata version=draft.version updated_at=draft.updated_at />
