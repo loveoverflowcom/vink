@@ -1,7 +1,7 @@
 //! Subject → principal bindings and principal suspensions (D-05/S-03 spike).
 
-use sqlx::Row;
 use sqlx::postgres::PgPool;
+use sqlx::{Postgres, Row, Transaction};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -24,6 +24,45 @@ fn bound(row: &sqlx::postgres::PgRow) -> Result<BoundPrincipal, sqlx::Error> {
         } else {
             Standing::Active
         },
+    })
+}
+
+/// The standing fence of a write transaction. Locks the actor's principal row FOR UPDATE, which
+/// conflicts with the FOR KEY SHARE lock that inserting a suspension takes through
+/// `principal_suspensions_principal_id_fkey`: a suspension commits wholly before this reads the
+/// standing, or waits until the caller's transaction ends. The standing is read in a SEPARATE
+/// statement after the lock, because in READ COMMITTED a subquery of the locking statement would
+/// still use the snapshot taken before the wait. Lifting a suspension is not fenced (a stale
+/// "suspended" fails closed). Take this lock before any statement of the same transaction that
+/// references the principal through a foreign key: upgrading an already held FOR KEY SHARE can
+/// deadlock with a concurrent transaction of the same principal. Used by draft tag saves and by
+/// discussion submissions.
+pub(super) async fn locked_standing(
+    tx: &mut Transaction<'_, Postgres>,
+    actor: PrincipalId,
+) -> Result<Standing, StoreError> {
+    let known: Option<i32> =
+        sqlx::query_scalar("SELECT 1 FROM principals WHERE id = $1 FOR UPDATE")
+            .bind(actor.as_uuid())
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(classify)?;
+    if known.is_none() {
+        tracing::info!("principal has no Vink record");
+        return Err(StoreError::UnknownPrincipal);
+    }
+    let suspended: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM principal_suspensions
+                         WHERE principal_id = $1 AND lifted_at IS NULL)",
+    )
+    .bind(actor.as_uuid())
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(classify)?;
+    Ok(if suspended {
+        Standing::Suspended
+    } else {
+        Standing::Active
     })
 }
 

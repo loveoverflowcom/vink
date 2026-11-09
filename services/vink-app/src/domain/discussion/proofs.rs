@@ -491,15 +491,22 @@ fn reply_placement_keeps_two_tiers_inside_one_thread() {
     );
 }
 
-/// D2T-INV-06 with INV-02/03: a receipt for the key decides first, replaying exactly the same
-/// payload and refusing any other, whatever the work, mode or target now are. Without one, an
-/// insert happens only when the work is public, comments are open and a named target is a public
-/// comment of this thread; the new reply always sits under that target's root.
+/// D2T-INV-06 with INV-02/03 and #120: standing that is not active refuses first, even a retry.
+/// Then a receipt for the key decides, replaying exactly the same payload and refusing any other,
+/// whatever the work, mode or target now are. Without one, an insert happens only when the work is
+/// public, comments are open and a named target is a public comment of this thread; the new reply
+/// always sits under that target's root, and its initial state is the premoderation admission
+/// whatever the shadow measured.
 #[kani::proof]
 fn submission_receipts_take_precedence_and_inserts_pass_every_gate() {
     let thread_id = thread();
     let comment_id = comment();
     let digest = PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap();
+    let selection = if kani::any() {
+        PolicySelection::PREMODERATION
+    } else {
+        PolicySelection::shadowing(any_policy())
+    };
     let receipt = if kani::any() {
         Some(Receipt {
             digest: PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap(),
@@ -518,8 +525,23 @@ fn submission_receipts_take_precedence_and_inserts_pass_every_gate() {
         work_public: kani::any(),
         settings: DiscussionSettings::restore(any_mode(), any_generation()),
         target,
+        admission: any_admission_facts(),
     };
-    let decided = decide_submission(thread_id, comment_id, digest, requested, facts);
+    let decided = decide_submission(thread_id, comment_id, digest, requested, selection, facts);
+    match facts.admission.standing {
+        Standing::Active => {}
+        Standing::Suspended => {
+            assert_eq!(decided, SubmissionDecision::Refused(Refusal::Suspended));
+            return;
+        }
+        Standing::Unknown => {
+            assert_eq!(
+                decided,
+                SubmissionDecision::Refused(Refusal::StandingUnknown)
+            );
+            return;
+        }
+    }
     if let Some(receipt) = receipt {
         if receipt.digest == digest {
             assert_eq!(decided, SubmissionDecision::Replay(receipt.comment_id));
@@ -533,7 +555,14 @@ fn submission_receipts_take_precedence_and_inserts_pass_every_gate() {
         return;
     }
     match decided {
-        SubmissionDecision::Insert(placement) => {
+        SubmissionDecision::Insert {
+            placement,
+            admission,
+            shadow,
+        } => {
+            assert_eq!(admission.initial_state(), CommentState::SUBMITTED);
+            assert_eq!(admission.policy(), AdmissionPolicy::PremoderationV1);
+            assert_eq!(shadow.is_some(), selection.shadow().is_some());
             assert!(facts.work_public && facts.settings.accepts_new_comments());
             assert_eq!(placement.id(), comment_id);
             assert_eq!(placement.thread_id(), thread_id);
@@ -570,9 +599,10 @@ fn submission_receipts_take_precedence_and_inserts_pass_every_gate() {
         SubmissionDecision::Replay(_) | SubmissionDecision::KeyReused => {
             panic!("no receipt, no replay")
         }
+        SubmissionDecision::Refused(_) => panic!("an active standing is never refused"),
     }
     kani::cover!(
-        matches!(decided, SubmissionDecision::Insert(p) if !p.is_root()),
+        matches!(decided, SubmissionDecision::Insert { placement, .. } if !placement.is_root()),
         "a reply insert is reachable"
     );
 }

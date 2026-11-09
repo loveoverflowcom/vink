@@ -408,6 +408,7 @@ impl From<DiscussionError> for ApiError {
     fn from(error: DiscussionError) -> Self {
         match error {
             DiscussionError::Unauthenticated => Self::Unauthenticated,
+            DiscussionError::Suspended => Self::PrincipalSuspended,
             DiscussionError::NotFound => Self::NotFound,
             DiscussionError::NotCommentWriter => Self::NotCommentWriter,
             DiscussionError::CommentsClosed => Self::CommentsClosed,

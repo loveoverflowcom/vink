@@ -127,6 +127,35 @@ pub struct AdmissionFacts {
     pub now_micros: i64,
 }
 
+impl AdmissionFacts {
+    /// Facts when only standing has a source, as in the pilot: no trust authority, no thread
+    /// hold, nothing assessed. Every policy admits an active principal's comment as pending.
+    pub const fn standing_only(
+        standing: Standing,
+        payload: PayloadDigest,
+        now_micros: i64,
+    ) -> Self {
+        Self {
+            standing,
+            trust: Trust::Unknown,
+            thread: ThreadReview::Standard,
+            rules: Assessment::Unassessed,
+            classifier: Assessment::Unassessed,
+            payload,
+            now_micros,
+        }
+    }
+}
+
+impl From<crate::domain::principal::Standing> for Standing {
+    fn from(standing: crate::domain::principal::Standing) -> Self {
+        match standing {
+            crate::domain::principal::Standing::Active => Self::Active,
+            crate::domain::principal::Standing::Suspended => Self::Suspended,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InitialReview {
     Pending,

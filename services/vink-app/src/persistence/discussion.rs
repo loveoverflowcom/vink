@@ -3,11 +3,20 @@
 //! only what that decision returns. The schema enforces the two tiers on its own
 //! (`migrations/20261103000000_discussion.sql`), so a defect here cannot store a third tier.
 //!
-//! Lock order, shared by every path: publication → thread → receipt → comment row. A submission
-//! holds share locks on the publication and thread rows; a mode change updates the thread row and
-//! a moderation decision locks only the comment row, so no two paths wait on each other in reverse.
+//! Lock order, shared by every path: publication → thread → comment row. A submission holds share
+//! locks on the publication, thread and target rows; a mode change updates the thread row and a
+//! moderation decision locks only the comment row, so no two paths wait on each other in reverse.
 //! Literary endorsement (`endorsement.rs`) takes the same prefix with share locks and then only
 //! its own key lock and row, so it never waits on these paths in reverse either.
+//!
+//! A submission then takes the standing fence (#120): the actor's principal row FOR UPDATE
+//! (`principal::locked_standing`), which a suspension's foreign key waits for. It comes after the
+//! shared locks, so a moderator or writer holding a comment row while touching their own
+//! principal through a foreign key never waits on a submission that waits for that comment row,
+//! and before the receipt and comment inserts, whose foreign keys reference the principal. The
+//! receipt claim and the insert come last. Admission runs inside `decide_submission`; the store
+//! writes exactly its initial state and provenance (migration `20261111000000_comment_admission`
+//! refuses anything else).
 
 use sqlx::postgres::PgPool;
 // Dynamic statements below are concatenations of this module's constants, never input.
@@ -17,11 +26,13 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::postgres::classify;
+use super::principal::locked_standing;
 use crate::application::discussion::{
     AuthorName, CommentItem, Guarded, ModerationAction, ModerationQueue, NewComment, QueueItem,
     ReplyPage, RootEntry, RootItem, RootPage, SubmitOutcome,
 };
 use crate::application::ports::{DiscussionStore, StoreError};
+use crate::domain::discussion::admission::AdmissionFacts;
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
@@ -43,6 +54,11 @@ use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::ids::{CommentId, PrincipalId, ThreadId, WorkId};
 
 const SUBMIT: &str = "submit_comment";
+
+/// The adapter's clock for admission facts, in microseconds since the Unix epoch (saturating).
+fn now_micros(now: OffsetDateTime) -> i64 {
+    i64::try_from(now.unix_timestamp_nanos() / 1_000).unwrap_or(i64::MAX)
+}
 
 const fn action_code(action: ModerationAction) -> &'static str {
     match action {
@@ -398,6 +414,27 @@ impl DiscussionStore for PgStore {
         .await
         .map_err(classify)?;
 
+        let thread_id = thread
+            .as_ref()
+            .map_or(comment.thread_candidate, |row| ThreadId::from_uuid(row.id));
+        let target = match (comment.target, &thread) {
+            (Some(target), Some(_)) => {
+                let row: Option<TargetRow> = sqlx::query_as(
+                    "SELECT id, root_id, reply_to_id, review, removal, moderation_version
+                       FROM comments WHERE id = $1 AND thread_id = $2 FOR SHARE",
+                )
+                .bind(target.as_uuid())
+                .bind(thread_id.as_uuid())
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(classify)?;
+                row.map(|row| target_facts(thread_id, row)).transpose()?
+            }
+            _ => None,
+        };
+        // Standing fence: after the shared locks, before any insert that references the actor.
+        let standing = locked_standing(&mut tx, actor).await?;
+
         // Claim the key. A concurrent holder of the same key makes this wait, then read its receipt.
         let claimed = sqlx::query_scalar::<_, Uuid>(
             "INSERT INTO discussion_command_receipts
@@ -435,24 +472,13 @@ impl DiscussionStore for PgStore {
             })
         };
 
-        let thread_id = thread
-            .as_ref()
-            .map_or(comment.thread_candidate, |row| ThreadId::from_uuid(row.id));
-        let target = match (comment.target, &thread) {
-            (Some(target), Some(_)) => {
-                let row: Option<TargetRow> = sqlx::query_as(
-                    "SELECT id, root_id, reply_to_id, review, removal, moderation_version
-                       FROM comments WHERE id = $1 AND thread_id = $2 FOR SHARE",
-                )
-                .bind(target.as_uuid())
-                .bind(thread_id.as_uuid())
-                .fetch_optional(&mut *tx)
-                .await
-                .map_err(classify)?;
-                row.map(|row| target_facts(thread_id, row)).transpose()?
-            }
-            _ => None,
-        };
+        // The pilot has no trust authority or content signals: standing is the only fact with a
+        // source, and every policy admits an active principal's comment as pending.
+        let admission = AdmissionFacts::standing_only(
+            standing.into(),
+            comment.digest,
+            now_micros(OffsetDateTime::now_utc()),
+        );
         let facts = SubmissionFacts {
             receipt,
             work_public,
@@ -462,16 +488,25 @@ impl DiscussionStore for PgStore {
                 .transpose()?
                 .unwrap_or(DiscussionSettings::INITIAL),
             target,
+            admission,
         };
 
-        let placement = match decide_submission(
+        let (placement, admission) = match decide_submission(
             thread_id,
             comment.comment_id,
             comment.digest,
             comment.target,
+            comment.selection,
             facts,
         ) {
-            SubmissionDecision::Insert(placement) => placement,
+            // No observation store exists yet, so a shadow decision is not recorded; the pilot
+            // selection has none.
+            SubmissionDecision::Insert {
+                placement,
+                admission,
+                shadow: _,
+            } => (placement, admission),
+            SubmissionDecision::Refused(refusal) => return Ok(SubmitOutcome::Refused(refusal)),
             SubmissionDecision::Replay(comment_id) => {
                 let row: StateRow = sqlx::query_as(
                     "SELECT review, removal, moderation_version FROM comments WHERE id = $1",
@@ -498,13 +533,13 @@ impl DiscussionStore for PgStore {
             }
         };
 
-        let submitted = CommentState::SUBMITTED;
+        let submitted = admission.initial_state();
         let root_id = (!placement.is_root()).then(|| placement.root_id().as_comment_id().as_uuid());
         let created_at: OffsetDateTime = sqlx::query_scalar(
             "INSERT INTO comments (id, thread_id, kind, root_id, root_kind, reply_to_id,
                                    replied_to_reply, author_id, body, review, removal,
-                                   moderation_version)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                                   moderation_version, admission_policy, admission_reason)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
              RETURNING created_at",
         )
         .bind(placement.id().as_uuid())
@@ -519,6 +554,8 @@ impl DiscussionStore for PgStore {
         .bind(review_code(submitted.review()))
         .bind(removal_code(submitted.removal()))
         .bind(submitted.version().get())
+        .bind(admission.policy().code())
+        .bind(admission.reason().code())
         .fetch_one(&mut *tx)
         .await
         .map_err(classify)?;
@@ -526,6 +563,7 @@ impl DiscussionStore for PgStore {
         Ok(SubmitOutcome::Created {
             comment_id: placement.id(),
             created_at,
+            state: submitted,
         })
     }
 

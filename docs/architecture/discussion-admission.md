@@ -4,6 +4,7 @@
 lát DISC-01 do người dùng giao thực thi (PR đầu). **Baseline:** `develop@47131a9`.
 Đây là lựa chọn triển khai có phạm vi **pure core**: không phê duyệt delta COM-02/D-08, không
 chuyển D-05 sang Accepted, không bật đăng-trước. Bình luận được lưu vẫn luôn `pending`.
+Lát tiếp theo nối đường gửi vào seam này: [§7 DISC-02/03](#7-lát-disc-0203--đường-gửi).
 Registry bằng chứng và gap: [bình luận hai tầng](../development/discussion-core.md#registry-traceability-của-41);
 brief hành vi UI cho thiết kế sau: [discussion-submission-brief](../design/discussion-submission-brief.md).
 
@@ -111,3 +112,42 @@ spam có owner, overlay public/private, counter/cache. AC-02 và AC-07 có bằn
 trên; AC-01 chỉ cho owner thảo luận; AC-08 được giữ cho lát này (bằng chứng tách lớp, NOT_RUN ghi
 rõ); AC-03..06 và AC-09..13 thuộc các lát sau; AC-14 một phần (bảng này và registry). Không tick
 checklist của epic từ PR này.
+
+## 7. Lát DISC-02/03 — đường gửi
+
+**Nền:** nhánh DISC-01 (`08b44ff`, PR #126). Lát này xử lý audit hardcode ở §1 cho **lệnh gửi**;
+read model public/private (CHOICE-02), số đo truy vấn và giới hạn cursor/HTTP (AC-10) để phần sau.
+
+| Thay đổi | Owner | Vì sao / phương án loại |
+| --- | --- | --- |
+| `decide_submission` chạy admission **trước** mọi gate: standing khác active → `Refused`, kể cả khi đã có receipt; `Insert` mang `Admission` (và shadow, chưa lưu) | `domain/discussion/submission.rs` | Một quyết định thuần cho cả placement lẫn trạng thái đầu. Đặt receipt trước standing sẽ cho người bị đình chỉ replay; vô hại về dữ liệu nhưng trái “thiếu standing → từ chối” |
+| `PgStore` ghi `Admission::initial_state` + `admission_policy`/`admission_reason`; application trả `status` từ trạng thái đã lưu, không còn `OwnStatus::Pending` cố định | `persistence/discussion.rs`, `application/discussion.rs` | AC-09. Không thêm provenance vào HTTP: mã là audit nội bộ (brief UI) |
+| Fence standing: `principals FOR UPDATE` rồi đọc đình chỉ ở câu lệnh mới, dùng chung với lưu thẻ nháp | `persistence/principal.rs::locked_standing` | Xung đột với `FOR KEY SHARE` mà FK của `principal_suspensions` lấy: mọi cách chèn đình chỉ đều tuần tự với lệnh gửi. Advisory lock bị loại vì phải sửa mọi writer đình chỉ |
+| Thứ tự khóa: publication → thread → target (đều share) → principal → receipt → insert | cùng file | Principal sau các khóa share: moderator/người viết đang giữ hàng bình luận rồi chạm principal của mình qua FK không chờ ngược một lệnh gửi đang chờ hàng đó. Principal trước receipt/insert: tránh nâng cấp `FOR KEY SHARE` → `FOR UPDATE` (deadlock giữa hai lệnh gửi của cùng người) |
+| Migration `20261111000000_comment_admission` | `migrations/` | Backfill `premoderation.v1`/`policy_premoderation` đúng sự thật cho mọi bình luận cũ; bỏ default nên writer phải nêu provenance; CHECK cặp mã đã biết; CHECK **chỉ** `premoderation.v1` (gỡ nó thuộc delta D-08, §5 mục 9); trigger buộc hàng mới present, version 1, approved chỉ khi `trusted_and_clear`, và provenance bất biến |
+
+**Đánh đổi đã chấp nhận:** các lệnh gửi của **cùng** một principal tuần tự hóa trên hàng
+principal, và chờ cả lần lưu thẻ nháp của người đó (và ngược lại); người khác không bị ảnh hưởng.
+Xem lại nếu đo thấy chờ đáng kể. Gỡ, bật/tắt và quyết định kiểm duyệt **chưa** có fence đình chỉ
+tại commit; Identity thu hồi phiên nhanh tới đâu vẫn là việc của D-05.
+
+**Migration — lock budget và backout:** `ADD COLUMN` có default hằng chỉ đổi catalog; CHECK và
+trigger giữ `ACCESS EXCLUSIVE` trên `comments` trong lúc kiểm hàng cũ, ngắn với cỡ dữ liệu pilot.
+Backout: xóa trigger, hàm, hai constraint và hai cột; không đối tượng nào khác phụ thuộc. Không
+sửa migration đã áp dụng.
+
+**Bằng chứng của lát** (PostgreSQL 17.11 cục bộ):
+
+| Claim | Kiểm |
+| --- | --- |
+| Schema tự giữ provenance và trạng thái sinh ra | `admission_provenance_is_recorded_and_held_by_the_schema`: SQL trực tiếp — approved/rejected/version 2/đã gỡ khi sinh ra, ứng viên dù nhất quán, cặp mã lạ, thiếu cột (`23502`), sửa provenance đều bị từ chối; dạng hợp lệ đi qua cùng đường; duyệt vẫn tăng version |
+| Đình chỉ tại commit, không ghi gì | `a_suspended_writer_is_refused_at_commit_and_nothing_is_written`: bình luận đầu (binding thread cũng rollback), retry đúng key, reply, và HTTP `403 principal_suspended` `no-store` |
+| Race hai thứ tự qua store thật | `suspension_and_submission_serialize_on_the_principal`: đình chỉ chưa commit → lệnh gửi chờ rồi bị từ chối; lệnh gửi reply-to-reply đang giữ principal (dừng ở FK tới root) → lệnh `suspend` thật chờ, bình luận commit trước, lệnh sau bị từ chối |
+| Nâng cấp dữ liệu cũ | `upgrade_records_premoderation_for_existing_comments`: migrator tới trước lát này, ba hàng cũ (pending, approved v2, đã gỡ) → provenance premoderation, review/removal/version/chữ giữ nguyên |
+| Negative control | Thay fence bằng `Standing::Active`: hai test đình chỉ FAIL (assert từ chối; race hết hạn chờ “no backend became blocked”), khôi phục byte-exact |
+
+Unit/Kani/replay cập nhật theo seam mới: bảng vét cạn `decide_submission` thêm trục standing;
+`submission_receipts_take_precedence_and_inserts_pass_every_gate` kiểm từ chối standing đứng trước
+receipt và insert luôn mang admission premoderation dù shadow nói gì; `lifecycle_replay` dùng
+`Admission::initial_state` (fixture Quint không đổi vì model không có đình chỉ).
+

@@ -14,6 +14,7 @@ use time::OffsetDateTime;
 
 use super::Vink;
 use super::ports::{DiscussionStore, StoreError};
+use crate::domain::discussion::admission::{PolicySelection, Refusal};
 use crate::domain::discussion::body::{BodyError, CommentBody};
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
@@ -50,7 +51,14 @@ pub struct NewComment {
     pub body: CommentBody,
     pub key: CommandKey,
     pub digest: PayloadDigest,
+    /// Which admission policies run (#120). Always [`ADMISSION`] until D-08 changes.
+    pub selection: PolicySelection,
 }
+
+/// The admission selection of this deployment: premoderation only (COM-02, D-08). The candidate
+/// publish-first policy is not even shadowed while no trust authority or observation store exists
+/// (`docs/architecture/discussion-admission.md`).
+pub const ADMISSION: PolicySelection = PolicySelection::PREMODERATION;
 
 /// What the store did with a submission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,7 +66,11 @@ pub enum SubmitOutcome {
     Created {
         comment_id: CommentId,
         created_at: OffsetDateTime,
+        /// The initial state the admission chose and the store wrote.
+        state: CommentState,
     },
+    /// The actor's standing refused the submission at commit; nothing was written.
+    Refused(Refusal),
     /// An earlier commit with the same key and payload; nothing new was written.
     Replayed {
         comment_id: CommentId,
@@ -237,6 +249,9 @@ impl DiscussionInput {
 pub enum DiscussionError {
     #[error("unauthenticated")]
     Unauthenticated,
+    /// Suspended by Vink at the write's commit (#120 standing fence).
+    #[error("principal suspended")]
+    Suspended,
     /// Missing, not public, or hidden from this actor; deliberately indistinguishable.
     #[error("not found")]
     NotFound,
@@ -362,13 +377,21 @@ where
             body,
             key,
             digest,
+            selection: ADMISSION,
         };
         match self.store.submit_comment(actor, &new).await? {
-            SubmitOutcome::Created { comment_id, .. } => Ok(SubmittedComment {
+            SubmitOutcome::Created {
+                comment_id, state, ..
+            } => Ok(SubmittedComment {
                 comment_id,
-                status: OwnStatus::Pending,
+                status: state.into(),
                 replayed: false,
             }),
+            SubmitOutcome::Refused(Refusal::Suspended) => Err(DiscussionError::Suspended),
+            // The principal's record could not be read as active: like an unresolved session.
+            SubmitOutcome::Refused(Refusal::StandingUnknown) => {
+                Err(DiscussionError::Unauthenticated)
+            }
             SubmitOutcome::Replayed { comment_id, state } => Ok(SubmittedComment {
                 comment_id,
                 status: state.into(),
