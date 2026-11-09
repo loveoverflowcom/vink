@@ -236,9 +236,11 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 · `Disabled` (không focus). Error rỗng hoặc chỉ khoảng trắng **không** tạo invalid.
 
 `ImageState`: `Absent` · `Loading` · `Ready { src }` (Web: URL; CMP: `Painter` đã giải mã) ·
-`Failed`. Chỉ `Ready` hiển thị ảnh; Web lỗi tải/giải mã (kể cả AVIF) quay về initials. Web chỉ
-nhận `https:`, `http:`, đường dẫn gốc `/…` và `data:image/{png,jpeg,webp,avif,gif};base64`;
-URL khác (ví dụ `javascript:`, `//host`) bị coi như `Failed`. Tải mạng và xác thực thuộc adapter.
+`Failed`. Chỉ `Ready` hiển thị ảnh. Khi tải hoặc giải mã lỗi, Web hiện initials hoặc
+fallback của khung ảnh. Bộ lọc nguồn nhận `https://`, `http://`, đường dẫn gốc `/…`,
+`blob:` do adapter tạo và `data:image/{png,jpeg,webp,gif};base64`. Nguồn bị từ chối
+được xử lý như `Failed`. Producer và adapter chịu trách nhiệm về định dạng bytes,
+MIME và quyền tải theo [quy ước ảnh nội dung](content-images.md).
 
 ## Identity: initials và màu avatar (`avatar-identity-v1`)
 

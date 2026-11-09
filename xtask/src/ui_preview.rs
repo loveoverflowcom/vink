@@ -101,6 +101,13 @@ fn leptos_build(root: &Path) -> Result<(), String> {
         out.join("patterns.css"),
     )
     .map_err(|e| format!("copy patterns: {e}"))?;
+    let fixtures = out.join("fixtures");
+    std::fs::create_dir_all(&fixtures).map_err(|e| format!("create preview fixtures: {e}"))?;
+    std::fs::write(
+        fixtures.join("sample.webp"),
+        crate::ui_tokens::preview_webp(root)?,
+    )
+    .map_err(|e| format!("write preview WebP: {e}"))?;
     let fonts = out.join("fonts");
     std::fs::create_dir_all(&fonts).map_err(|e| format!("create {}: {e}", fonts.display()))?;
     for entry in std::fs::read_dir(root.join(crate::checks::FONTS_DIR))
@@ -131,6 +138,11 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
             .as_ref()
             .map(|_| ())
             .ok_or_else(|| "Chrome/Chromium not found; set VINK_CHROME".to_string())
+    }) {
+        return false;
+    }
+    if !report.step("Leptos preview: build media hydration fixture", || {
+        build_media_hydration(root)
     }) {
         return false;
     }
@@ -165,6 +177,46 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
             }
             process::run(&mut smoke, "preview smoke (Chrome DevTools Protocol)")
         },
+    )
+}
+
+fn build_media_hydration(root: &Path) -> Result<(), String> {
+    let out = root.join(OUT_DIR);
+    process::run(
+        cargo(root)
+            .args([
+                "run",
+                "--locked",
+                "-p",
+                "vink-ui-preview",
+                "--example",
+                "media_hydration",
+                "--",
+            ])
+            .arg(out.join("media-hydration.html")),
+        "render the preview media hydration fixture as HTML",
+    )?;
+    process::run(
+        cargo(root).args([
+            "build",
+            "--locked",
+            "-p",
+            "vink-ui-preview",
+            "--example",
+            "media_hydration",
+            "--target",
+            "wasm32-unknown-unknown",
+            "--features",
+            "media-hydrate",
+        ]),
+        "build the preview media hydration bundle",
+    )?;
+    process::run(
+        Command::new("wasm-bindgen")
+            .args(["--target", "web", "--no-typescript", "--out-dir"])
+            .arg(out.join("pkg"))
+            .arg(root.join("target/wasm32-unknown-unknown/debug/examples/media_hydration.wasm")),
+        "wasm-bindgen → preview media hydration fixture",
     )
 }
 
@@ -225,6 +277,7 @@ fn content_type(file: &Path) -> &'static str {
         Some("css") => "text/css; charset=utf-8",
         Some("wasm") => "application/wasm",
         Some("woff2") => "font/woff2",
+        Some("webp") => "image/webp",
         Some("txt") => "text/plain; charset=utf-8",
         _ => "application/octet-stream",
     }

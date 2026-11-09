@@ -27,8 +27,9 @@ web-sys = { version = "0.3.106", optional = true, features = [
     "MediaQueryList", "EventTarget", "ResizeObserver",
 ] }
 
-[dev-dependencies]
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 leptos = { workspace = true, features = ["ssr"] }
 
 [features]
 csr = ["leptos/csr", "dep:wasm-bindgen", "dep:console_error_panic_hook", "dep:web-sys"]
+media-hydrate = ["leptos/hydrate", "dep:wasm-bindgen", "dep:console_error_panic_hook"]

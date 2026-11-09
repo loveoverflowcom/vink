@@ -1,9 +1,9 @@
 //! UIS-02 specimens: every component through the public `vink_ui` API, with real states and
-//! events written to the preview's event log. Names and works are [Mẫu]; nothing is fetched.
+//! events written to the preview's event log. Names, works and local images are [Mẫu].
 
 use leptos::prelude::*;
 use vink_ui::catalog::fixture;
-use vink_ui::identity_vectors::{BROKEN_AVIF_BASE64, PEOPLE, SAMPLE_PNG_BASE64};
+use vink_ui::identity_vectors::{BROKEN_WEBP_BASE64, PEOPLE, SAMPLE_WEBP_BASE64};
 use vink_ui::{
     ActionState, Align, AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind, AvatarSize,
     Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction, Divider,
@@ -24,12 +24,12 @@ pub(crate) fn log(message: impl Into<String>) {
     }
 }
 
-fn sample_png() -> String {
-    format!("data:image/png;base64,{SAMPLE_PNG_BASE64}")
+fn sample_webp() -> String {
+    format!("data:image/webp;base64,{SAMPLE_WEBP_BASE64}")
 }
 
-fn broken_avif() -> String {
-    format!("data:image/avif;base64,{BROKEN_AVIF_BASE64}")
+fn broken_webp() -> String {
+    format!("data:image/webp;base64,{BROKEN_WEBP_BASE64}")
 }
 
 fn person(index: usize) -> (Option<&'static str>, Option<&'static str>) {
@@ -827,10 +827,10 @@ fn avatar(index: usize, size: AvatarSize, image: ImageState) -> impl IntoView {
 fn identity_avatar(scenario: &str) -> AnyView {
     match scenario {
         "image-error" => view! {
-            {note("Ảnh hợp lệ hiện trên initials; AVIF giải mã lỗi, URL javascript: và Failed đều quay về initials.")}
+            {note("Ảnh hợp lệ hiện trên initials; WebP giải mã lỗi, URL javascript: và Failed đều quay về initials.")}
             <Stack direction=Direction::Row gap=Space::S6 wrap=true align=Align::Center attr:data-testid="avatar-images">
-                <figure class="vkp-figure" data-case="ready">{avatar(0, AvatarSize::Reader, ImageState::ready(sample_png()))}<figcaption>"Ready PNG"</figcaption></figure>
-                <figure class="vkp-figure" data-case="broken">{avatar(1, AvatarSize::Reader, ImageState::ready(broken_avif()))}<figcaption>"AVIF lỗi"</figcaption></figure>
+                <figure class="vkp-figure" data-case="ready">{avatar(0, AvatarSize::Reader, ImageState::ready(sample_webp()))}<figcaption>"Ready WebP"</figcaption></figure>
+                <figure class="vkp-figure" data-case="broken">{avatar(1, AvatarSize::Reader, ImageState::ready(broken_webp()))}<figcaption>"WebP lỗi"</figcaption></figure>
                 <figure class="vkp-figure" data-case="unsafe">{avatar(4, AvatarSize::Reader, ImageState::ready("javascript:alert(1)"))}<figcaption>"URL bị từ chối"</figcaption></figure>
                 <figure class="vkp-figure" data-case="failed">{avatar(5, AvatarSize::Reader, ImageState::Failed)}<figcaption>"Failed"</figcaption></figure>
                 <figure class="vkp-figure" data-case="loading">{avatar(0, AvatarSize::Reader, ImageState::Loading)}<figcaption>"Loading"</figcaption></figure>
@@ -969,7 +969,7 @@ fn identity_frame(errors: bool) -> AnyView {
     if errors {
         return view! {
             <Grid min=GridMin::Small gap=Space::S4 attr:data-testid="frames">
-                <div data-case="broken"><ImageFrame image=ImageState::ready(broken_avif()) alt="[Mẫu] Bìa tập thơ" /></div>
+                <div data-case="broken"><ImageFrame image=ImageState::ready(broken_webp()) alt="[Mẫu] Bìa tập thơ" /></div>
                 <div data-case="failed"><ImageFrame image=ImageState::Failed alt="[Mẫu] Bìa tập thơ" /></div>
                 <div data-case="absent"><ImageFrame image=ImageState::Absent alt="" ratio=AspectRatio::Square /></div>
                 <div data-case="loading"><ImageFrame image=ImageState::Loading alt="[Mẫu] Ảnh minh họa" ratio=AspectRatio::Wide /></div>
@@ -979,8 +979,8 @@ fn identity_frame(errors: bool) -> AnyView {
     }
     view! {
         <Grid gap=Space::S4>
-            <ImageFrame image=ImageState::ready(sample_png()) alt="[Mẫu] Ảnh nền lavender" />
-            <ImageFrame image=ImageState::ready(sample_png()) alt="" ratio=AspectRatio::Wide />
+            <ImageFrame image=ImageState::ready(sample_webp()) alt="[Mẫu] Phong cảnh lavender" />
+            <ImageFrame image=ImageState::ready("/fixtures/sample.webp") alt="" ratio=AspectRatio::Wide />
         </Grid>
     }
     .into_any()

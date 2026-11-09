@@ -173,8 +173,8 @@ class PreviewTest {
 
     @Test
     fun avatarsFallBackAndGroupsNeverInventCounts() = runComposeUiTest {
-        assertTrue(decodeImage(VinkIdentityVectors.SAMPLE_PNG_BASE64) is ImageState.Ready)
-        assertEquals(ImageState.Failed, decodeImage(VinkIdentityVectors.BROKEN_AVIF_BASE64), "undecodable AVIF falls back")
+        assertTrue(decodeImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) is ImageState.Ready)
+        assertEquals(ImageState.Failed, decodeImage(VinkIdentityVectors.BROKEN_WEBP_BASE64), "undecodable WebP falls back")
         val model = PreviewModel(PreviewConfig(systemDark = false))
         setContent { Workbench(model, fonts) }
         open(model, "identity.avatar")
