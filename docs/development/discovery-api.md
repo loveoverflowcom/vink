@@ -57,12 +57,14 @@ tập không phải “mới nhất” (curation): khi đó trang chủ thành r
 | **A + cột generated** (chọn) | Join trực tiếp qua `publications` (không authority thứ hai), cộng: hàm SQL `vink_search_key` (IMMUTABLE, ICU tường minh) và cột `GENERATED ALWAYS … STORED` trên `revisions.title` và `principals.display_name`, do PostgreSQL tính trong chính câu lệnh ghi chữ — không writer nào quên được, không job sửa, khóa không thể thuộc chữ khác. Index `publications (published_at DESC, work_id)` và `work_metadata_snapshot_tags (tag_id, snapshot_id)`; thẻ lọc bằng semi-join `GROUP BY … HAVING count(*) = cardinality`; `SET LOCAL plan_cache_mode = force_custom_plan` |
 
 Hai cài đặt của một khóa: `vink_search_key` (SQL) gương `SearchKey::of` (Rust). **Cả hai vế** của phép so
-(chữ lưu và truy vấn) đi qua hàm SQL, nên cùng một chữ luôn tìm thấy chính nó; Rust chỉ validate truy
-vấn (độ dài, có chữ/số) và tính khóa cho digest cursor. Với tiếng Việt và Latin hai bên ra khóa giống hệt
+(chữ lưu và truy vấn) đi qua hàm SQL. Rust kiểm tra độ dài, ký tự NUL và yêu cầu có chữ hoặc số.
+Digest cursor dùng chính khóa SQL đã dùng để lọc. Với tiếng Việt và Latin hai bên ra khóa giống hệt
 (`sql_search_key_matches_rust_for_vietnamese_and_latin`: mọi chữ cái tiếng Việt hoa/thường × NFC/NFD và
 các câu có dấu câu/khoảng trắng/emoji). Ngoài phạm vi đó có khác biệt đã ghi nhận (`x²`, `नमस्ते`, `Ⅻ`):
 test khẳng định chúng **vẫn khác** để tài liệu không lỗi thời âm thầm. Nếu truy vấn có khóa SQL rỗng
-(chỉ gồm ký tự hai bên phân loại khác), adapter trả không kết quả thay vì khớp mọi tiêu đề.
+(chỉ gồm ký tự hai bên phân loại khác), adapter trả không kết quả thay vì khớp mọi tiêu đề. Ví dụ ngoài
+phạm vi tiếng Việt, `ΟΣ` và `ος` cùng khóa SQL nên dùng được cùng cursor, còn `οσ` mở một tìm kiếm khác.
+Cursor version 2 dùng khóa SQL. Cursor version 1 trả `422 cursor` để client bắt đầu lại từ trang đầu.
 
 Đánh đổi: hai bảng được ghi lại một lần khi migrate; nâng ICU có thể đổi cách gập ký tự hiếm — cách tính
 lại là `ALTER TABLE … ALTER COLUMN … SET EXPRESSION AS (vink_search_key(…))`. Server không có ICU làm
@@ -90,7 +92,7 @@ UI #100 phải ghi đúng “có tất cả các thẻ”. Xem lại khi pilot c
 | Slug không có thẻ / thẻ ngừng dùng: `200`, không tác phẩm, `filters.tags[].resolution` nói lý do; slug sai cú pháp: `422 tag` | Ngữ pháp khác sự thật: URL hỏng là lỗi input, thẻ không có hay đã ngừng là sự thật về catalog. Thẻ ngừng dùng không hiện/không link công khai (#95), nên không là facet công khai | #100 cần mã HTTP khác cho trang thẻ (SSR có thể trả `404` từ `not_found`) |
 | Không có tổng số; `next_cursor` chỉ có khi đã đọc được thêm một dòng | Đếm buộc đọc hết tập khớp (mất early stop của index); `next_cursor` luôn đúng vì đọc `limit + 1` | Có nguồn đếm đúng và nhu cầu sản phẩm cụ thể |
 | `limit` mặc định 12, tối đa 24 | Giữ trang chủ ED-01; trang hữu hạn, không tải cả thư viện | — |
-| Cursor = hex của (phiên bản, `published_at` µs, `work_id`, 8 byte digest phạm vi) | Phạm vi là query đã gập + ID thẻ canonical (alias resolve trước), nên đổi cách viết/alias vẫn tiếp tục, đổi tìm kiếm thì `422 cursor`. Không HMAC: cursor không là capability, mọi predicate hiển thị vẫn áp | Cần ẩn vị trí hoặc chống liệt kê |
+| Cursor = hex của (phiên bản, `published_at` µs, `work_id`, 8 byte digest phạm vi) | Phạm vi gồm khóa SQL dùng để tìm và ID thẻ canonical. Cách viết cùng khóa hoặc alias cùng thẻ vẫn tiếp tục, phạm vi khác trả `422 cursor`. Mọi predicate hiển thị vẫn áp khi cursor bị sửa | Cần ẩn vị trí hoặc chống liệt kê |
 | Mỗi trang một snapshot; danh sách nhiều trang không là snapshot | Keyset trên `(published_at, work_id)`: tác phẩm không đổi không lặp/không sót; mới công khai không chen vào trang sau; rút bài biến mất; tái bản nhảy lên đầu (có thể bị client đã qua bỏ lỡ) | Có yêu cầu đọc nhất quán toàn danh sách |
 | `force_custom_plan` trong transaction đọc | Generic plan không biết phần tùy chọn nào vắng; chi phí lập plan ~2–4 ms mỗi lần | Đo thấy planning chiếm phần lớn |
 
@@ -115,7 +117,7 @@ GET /api/v1/works?q=Mưa&tag=hồi-ức&limit=12            (không cookie, khô
         ORDER BY published_at DESC, work_id LIMIT 13
       slot của các snapshot (một câu) → digest kiểm lại; hàng catalog của các thẻ (một câu)
       COMMIT
-  → resolution (canonical/redirect/retired/not_found), SearchScope, public_tags, cut_page
+  → resolution (canonical/redirect/retired/not_found), SearchScope (khóa SQL + ID canonical), public_tags, cut_page
   → WorkList → conditional::respond: ETag mạnh trên byte body, private, no-cache, 304 nếu khớp
 ```
 
@@ -225,7 +227,7 @@ PostgreSQL thật qua router production. Kết quả chạy ở mục 10.
 | AC | Bất biến | Oracle | Loại | Gap |
 | --- | --- | --- | --- | --- |
 | AC-01 | Tìm ngoài 12 đầu; trang hữu hạn, thứ tự xác định | `search_finds_works_beyond_the_first_twelve_in_bounded_ordered_pages` (thứ tự sort trong Rust từ định nghĩa fixture; ties; `limit` 1/5/7/24; cùng request cùng byte); `a_page_is_cut_with_a_cursor_bound_to_the_canonical_search` | PG + fake | — |
-| AC-02 | Unicode/alias, nhiều thẻ, cursor có hợp đồng + fixture | `vietnamese_text_aliases_and_tag_filters_follow_an_explicit_truth_table` (danh sách kỳ vọng viết tay); `cursors_are_bound_to_their_search_and_dataset_changes_are_honest`; `sql_search_key_matches_rust_for_vietnamese_and_latin`; `domain::discovery::tests`; `discovery_reads_match_fixtures` + `decodes_public_fixtures` (web) | Unit + PG | — |
+| AC-02 | Unicode/alias, nhiều thẻ, cursor có hợp đồng + fixture | `vietnamese_text_aliases_and_tag_filters_follow_an_explicit_truth_table` (danh sách kỳ vọng viết tay); `cursors_are_bound_to_their_search_and_dataset_changes_are_honest`; `cursor_scope_uses_the_same_query_key_as_postgres_matching` (sigma Hy Lạp, cả cùng khóa và khác khóa, từ chối cursor version 1); `sql_search_key_matches_rust_for_vietnamese_and_latin`; `domain::discovery::tests`; `discovery_reads_match_fixtures` + `decodes_public_fixtures` (web) | Unit + PG | — |
 | AC-03 | Không lộ nháp/chưa công khai/đã rút qua kết quả, cursor, thẻ hay validator | `private_unpublished_and_withdrawn_works_never_reach_results_or_validators` (tập công khai viết tay; JSON + HTML; `304` sau khi sửa thẻ nháp; rút → ETag mới); `unknown_or_retired_filters_match_nothing_and_say_why` | PG + fake | Publish/rút thật chưa có (fixture) |
 | AC-04 | SQL/HTTP/conditional có test thật và đo thật | `search_validators_revalidate_and_stay_coherent_with_their_body` (200→304, đổi nhãn → 200, mỗi body dưới rename đồng thời có một nhãn và ETag của chính nó); `work_search_validates_before_reading_and_reports_outages` (outage `503` không ETag/không lưu); `discovery_measurement` (mục 6) | PG + unit + đo | Tương tranh rename là best-effort (24 đọc song song 8 rename), không ép thứ tự |
 | AC-05 | HOW/WHY/TEACH, feature map, verification | Tài liệu này; [feature map](feature-map.md); [development guide](README.md); [hợp đồng](../../services/vink-app/contracts/http/v1/README.md#public-discovery-tag-pr-04) | Tài liệu | — |

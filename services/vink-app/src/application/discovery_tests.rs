@@ -16,13 +16,13 @@ use super::ports::{
 };
 use super::*;
 use crate::domain::discovery::{
-    CursorError, DiscoveryCursor, FilterError, PagePosition, PageSizeError, SearchScope, WorkQuery,
+    CursorError, DiscoveryCursor, FilterError, PagePosition, PageSizeError, SearchScope,
     WorkQueryError,
 };
 use crate::domain::ids::TagId;
 use crate::domain::taxonomy::{
-    CatalogTag, MetadataSnapshot, SlugHolder, SlugKind, TagFacet, TagLabel, TagSlug, TagStatus,
-    WorkTags,
+    CatalogTag, MetadataSnapshot, SearchKey, SlugHolder, SlugKind, TagFacet, TagLabel, TagSlug,
+    TagStatus, WorkTags,
 };
 
 fn tag_id(n: u128) -> TagId {
@@ -150,6 +150,7 @@ impl Scripted {
 
     fn facts(filters: Vec<SlugFacts>, works: Vec<PublicCardFacts>) -> Vink<Self> {
         Self::new(Ok(DiscoveryFacts {
+            query_key: None,
             filters,
             works,
             catalog: catalog(),
@@ -162,8 +163,12 @@ impl PublicationStore for Scripted {
         &self,
         request: &DiscoveryRequest<'_>,
     ) -> Result<DiscoveryFacts, StoreError> {
+        // The queries in these wiring tests have the same key in Rust and PostgreSQL.
+        let key = request
+            .query
+            .map(|q| SearchKey::of(q.text()).as_str().to_owned());
         self.seen.lock().unwrap().push(Seen {
-            query: request.query.map(|q| q.key().as_str().to_owned()),
+            query: key.clone(),
             slugs: request
                 .filter
                 .slugs()
@@ -173,7 +178,10 @@ impl PublicationStore for Scripted {
             after: request.after,
             fetch: request.size.fetch(),
         });
-        self.answer.clone()
+        self.answer.clone().map(|mut facts| {
+            facts.query_key = key;
+            facts
+        })
     }
 
     async fn publication(&self, _: WorkId) -> Result<Option<PublicationFacts>, StoreError> {
@@ -307,10 +315,9 @@ async fn a_page_is_cut_with_a_cursor_bound_to_the_canonical_search() {
             work_id: work(3)
         }
     );
-    let key = WorkQuery::parse("mua").unwrap().unwrap();
     assert_eq!(
         next.scope(),
-        SearchScope::of(Some(key.key()), &[tag_id(KY_UC)]),
+        SearchScope::of(Some("mua"), &[tag_id(KY_UC)]),
         "alias resolved before the scope; accents folded"
     );
     assert_eq!(
@@ -423,18 +430,21 @@ async fn cards_show_active_tags_in_snapshot_order_and_corruption_is_not_empty() 
     for broken in [
         // A snapshot tag without its catalog row.
         DiscoveryFacts {
+            query_key: None,
             filters: vec![],
             works: vec![card(1, Some(snapshot(None, &[99])))],
             catalog: catalog(),
         },
         // One slug fact for two requested slugs.
         DiscoveryFacts {
+            query_key: None,
             filters: vec![canonical(KY_UC)],
             works: vec![],
             catalog: catalog(),
         },
         // A holder that names another tag than the row read for it.
         DiscoveryFacts {
+            query_key: None,
             filters: vec![
                 SlugFacts {
                     tag: Some(tag(MUA)),

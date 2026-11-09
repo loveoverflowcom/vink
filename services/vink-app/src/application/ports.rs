@@ -110,6 +110,9 @@ pub struct DiscoveryRequest<'a> {
 /// snapshots. When `filter_tags` says the filter can match nothing, no work was searched.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiscoveryFacts {
+    /// The folded query used for matching. Absent when there is no query or the filters exclude
+    /// every work without searching.
+    pub query_key: Option<String>,
     pub filters: Vec<SlugFacts>,
     pub works: Vec<PublicCardFacts>,
     pub catalog: Vec<CatalogTag>,
