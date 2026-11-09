@@ -13,13 +13,11 @@
 //! only shared locks on catalog rows, so the two orders cannot form a cycle. No network call
 //! happens inside these transactions.
 //!
-//! Standing fence: the principal row is locked FOR UPDATE, which conflicts with the FOR KEY SHARE
-//! lock that inserting a suspension takes through `principal_suspensions_principal_id_fkey`. A
-//! suspension therefore commits wholly before the save reads its standing, or waits until the
-//! save commits. Standing is read in a SEPARATE statement after the lock: in READ COMMITTED a
-//! subquery of the locking statement would still use the snapshot taken before the wait. Lifting
-//! a suspension is not fenced; a stale "suspended" fails closed. This fences Vink's own
-//! suspension only; it says nothing about how fast Identity revokes a session.
+//! Standing fence: [`locked_standing`] (shared with discussion submissions, see
+//! `persistence/principal.rs`) locks the principal row FOR UPDATE, so a suspension commits wholly
+//! before the save reads its standing, or waits until the save commits. Lifting a suspension is
+//! not fenced; a stale "suspended" fails closed. This fences Vink's own suspension only; it says
+//! nothing about how fast Identity revokes a session.
 //!
 //! Draft metadata is created lazily: an absent row is version 1 with no tags. The first save (or a
 //! capture) inserts it with `ON CONFLICT DO NOTHING` and then locks it, so two first saves meet on
@@ -40,6 +38,7 @@ use uuid::Uuid;
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot};
 use super::postgres::classify;
+use super::principal::locked_standing;
 use crate::application::catalog::{CatalogOperation, CuratorAuthority};
 use crate::application::ports::{
     ActiveCatalog, CatalogAuditRecord, CatalogEntry, CatalogListing, CatalogName, CatalogReadStore,
@@ -248,37 +247,6 @@ async fn ensure_draft_metadata(conn: &mut PgConnection, work_id: WorkId) -> Resu
     .await
     .map_err(classify)?;
     Ok(())
-}
-
-/// Locks the actor's principal row (the standing fence, see the module docs) and then reads its
-/// standing in a new statement.
-async fn locked_standing(
-    tx: &mut Transaction<'_, Postgres>,
-    actor: PrincipalId,
-) -> Result<Standing, StoreError> {
-    let known: Option<i32> =
-        sqlx::query_scalar("SELECT 1 FROM principals WHERE id = $1 FOR UPDATE")
-            .bind(actor.as_uuid())
-            .fetch_optional(&mut **tx)
-            .await
-            .map_err(classify)?;
-    if known.is_none() {
-        tracing::info!("principal has no Vink record");
-        return Err(StoreError::UnknownPrincipal);
-    }
-    let suspended: bool = sqlx::query_scalar(
-        "SELECT EXISTS (SELECT 1 FROM principal_suspensions
-                         WHERE principal_id = $1 AND lifted_at IS NULL)",
-    )
-    .bind(actor.as_uuid())
-    .fetch_one(&mut **tx)
-    .await
-    .map_err(classify)?;
-    Ok(if suspended {
-        Standing::Suspended
-    } else {
-        Standing::Active
-    })
 }
 
 /// The owner's facts, read after the owner check so another owner's metadata is never read.

@@ -140,7 +140,10 @@ Rationale, evidence and rollback: [public conditional reads](../../../../../docs
 
 Two tiers: roots, and ONE flat list of replies per root. `reply_to` is context, never a third
 level. New comments are **pending** until a moderator approves them through
-[Comment moderation](#comment-moderation-d2t-02c). Writes act for
+[Comment moderation](#comment-moderation-d2t-02c). The initial status is decided at commit by
+the versioned admission of #120; its only effective policy, `premoderation.v1`, always answers
+`pending`, and `status` echoes the stored state rather than a constant. The policy and reason
+codes are stored for audit and are not part of any response. Writes act for
 the server-resolved principal (`401` without one), require the same `Origin` as other unsafe
 methods, and never accept an actor, root, role or display name from the client. Every
 discussion response carries `Cache-Control: no-store`: it contains viewer-specific state.
@@ -149,7 +152,7 @@ discussion response carries `Cache-Control: no-store`: it contains viewer-specif
 | --- | --- | --- | --- |
 | `GET /api/v1/works/{work_id}/discussion?cursor=&limit=` | `200` root page of a public work | `404`, `422` (`cursor`, `limit`, `query`), `503` | [discussion.get.json](fixtures/discussion.get.json) |
 | `GET /api/v1/works/{work_id}/discussion/roots/{root_id}/replies?cursor=&limit=` | `200` replies of one root | `404`, `422`, `503` | [discussion.replies.json](fixtures/discussion.replies.json) |
-| `POST /api/v1/works/{work_id}/discussion/comments` | `201` new pending comment; `200` with `replayed: true` for a retry | `401`, `403`, `404`, `409` (`comments_closed`, `target_unavailable`), `422` (`body`, `command_key`, `target_id`, `idempotency_key_reused`), `503` | [request](fixtures/discussion.comment.submit.request.json), [response](fixtures/discussion.comment.submit.response.json) |
+| `POST /api/v1/works/{work_id}/discussion/comments` | `201` new pending comment; `200` with `replayed: true` for a retry | `401`, `403` (`forbidden`, `principal_suspended`), `404`, `409` (`comments_closed`, `target_unavailable`), `422` (`body`, `command_key`, `target_id`, `idempotency_key_reused`), `503` | [request](fixtures/discussion.comment.submit.request.json), [response](fixtures/discussion.comment.submit.response.json) |
 | `DELETE /api/v1/works/{work_id}/discussion/comments/{comment_id}` | `200` the writer removed their own comment (repeatable) | `401`, `403` (`forbidden`, `not_comment_writer`), `404`, `503` | [discussion.comment.remove.response.json](fixtures/discussion.comment.remove.response.json) |
 | `PUT /api/v1/works/{work_id}/discussion/settings` | `200` the work's author opened/closed comments | `401`, `403`, `404`, `409` (`version_conflict`), `422`, `503` | [request](fixtures/discussion.settings.request.json), [response](fixtures/discussion.settings.response.json) |
 
@@ -405,7 +408,7 @@ code-specific members named below. Branch on `code`; `message` is developer text
 | 422 | `code_rejected` | Wrong sign-in code; `field` is `code`; retry allowed | [error.code_rejected.json](fixtures/error.code_rejected.json) |
 | 409 | `challenge_closed` | Sign-in code expired, used, exhausted or no challenge cookie | [error.challenge_closed.json](fixtures/error.challenge_closed.json) |
 | 403 | `account_disabled` | The mailbox was proven but the Identity account is disabled | [error.account_disabled.json](fixtures/error.account_disabled.json) |
-| 403 | `principal_suspended` | The Vink principal is suspended (sign-in, provisioning, and a draft-tag save that commits after the suspension) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
+| 403 | `principal_suspended` | The Vink principal is suspended (sign-in, provisioning, and a draft-tag save or comment submission that commits after the suspension; a suspended writer's exact retry is refused too) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
 | 503 | `dependency_unavailable` | PostgreSQL or Identity unreachable; retry later | [error.dependency_unavailable.json](fixtures/error.dependency_unavailable.json) |
 | 500 | `internal` | Stored data failed validation, an unexpected database error, or an exhausted endorsement token | — |
 

@@ -1,9 +1,14 @@
-//! Submitting a root or reply: the single production decision for D2T-INV-01/02/03/06.
+//! Submitting a root or reply: the single production decision for D2T-INV-01/02/03/06/12.
 //!
 //! The adapter loads [`SubmissionFacts`] inside the write transaction, under locks that serialize
-//! it with mode changes, moderation and withdrawal, then calls [`decide_submission`] and performs
-//! exactly the write it returns. The client supplies only intent: an optional target ID, text and
-//! a command key. Actor, thread, root, context and comment ID come from the server.
+//! it with mode changes, moderation, withdrawal and suspension, then calls [`decide_submission`]
+//! and performs exactly the write it returns. The client supplies only intent: an optional target
+//! ID, text and a command key. Actor, standing, thread, root, context, comment ID and the initial
+//! review come from the server.
+//!
+//! Admission (#120) decides first: a principal whose standing is not active is refused before
+//! anything else, retries included, and nothing is written. An inserted comment carries the
+//! [`Admission`] that chose its initial state and provenance; the store writes exactly that.
 //!
 //! Idempotency (D2T-INV-06): a receipt binds (actor, operation, key) to the digest of the
 //! normalized payload. The same key and payload replays the first result even if the thread was
@@ -12,6 +17,9 @@
 
 use sha2::{Digest, Sha256};
 
+use super::admission::{
+    Admission, AdmissionDecision, AdmissionFacts, PolicySelection, Refusal, decide_admission,
+};
 use super::body::CommentBody;
 use super::lifecycle::CommentState;
 use super::settings::DiscussionSettings;
@@ -105,12 +113,23 @@ pub struct SubmissionFacts {
     pub work_public: bool,
     pub settings: DiscussionSettings,
     pub target: Option<TargetFacts>,
+    /// Standing, trust and signals read at this commit. Its `payload` is replaced by the
+    /// submission's own digest, so an assessment of another payload can never count.
+    pub admission: AdmissionFacts,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SubmissionDecision {
-    /// Write this placement as a new pending comment together with the receipt.
-    Insert(CommentPlacement),
+    /// Write this placement with the admission's initial state and provenance, together with the
+    /// receipt. `shadow` is the candidate's decision for measurement only; never store it as state.
+    Insert {
+        placement: CommentPlacement,
+        admission: Admission,
+        shadow: Option<AdmissionDecision>,
+    },
+    /// The principal may not submit now (suspended or unknown standing): write nothing, not even
+    /// a replay of an earlier receipt.
+    Refused(Refusal),
     /// Same key and payload already committed: return that comment, write nothing.
     Replay(CommentId),
     /// Same key was used for a different payload: write nothing.
@@ -130,8 +149,25 @@ pub fn decide_submission(
     comment_id: CommentId,
     digest: PayloadDigest,
     requested_target: Option<CommentId>,
+    selection: PolicySelection,
     facts: SubmissionFacts,
 ) -> SubmissionDecision {
+    let outcome = decide_admission(
+        selection,
+        AdmissionFacts {
+            payload: digest,
+            ..facts.admission
+        },
+    );
+    let admission = match outcome.effective {
+        AdmissionDecision::Refuse(refusal) => return SubmissionDecision::Refused(refusal),
+        AdmissionDecision::Admit(admission) => admission,
+    };
+    let insert = |placement| SubmissionDecision::Insert {
+        placement,
+        admission,
+        shadow: outcome.shadow,
+    };
     if let Some(receipt) = facts.receipt {
         return if receipt.digest == digest {
             SubmissionDecision::Replay(receipt.comment_id)
@@ -146,7 +182,7 @@ pub fn decide_submission(
         return SubmissionDecision::CommentsClosed;
     }
     let Some(requested) = requested_target else {
-        return SubmissionDecision::Insert(root_placement(thread_id, comment_id));
+        return insert(root_placement(thread_id, comment_id));
     };
     let Some(target) = facts
         .target
@@ -155,7 +191,7 @@ pub fn decide_submission(
         return SubmissionDecision::TargetUnavailable;
     };
     match reply_placement(thread_id, comment_id, target.placement) {
-        Ok(placement) => SubmissionDecision::Insert(placement),
+        Ok(placement) => insert(placement),
         Err(StructureError::TargetNotFound) => SubmissionDecision::TargetUnavailable,
         Err(StructureError::CommentExists) => SubmissionDecision::IdentityCollision,
     }
@@ -166,8 +202,33 @@ mod tests {
     use uuid::Uuid;
 
     use super::*;
+    use crate::domain::discussion::admission::{
+        AdmissionPolicy, AdmissionReason, InitialReview, Standing,
+    };
     use crate::domain::discussion::lifecycle::{Decision, ModerationVersion, Review, Transition};
     use crate::domain::discussion::settings::{CommentsMode, SettingsGeneration};
+
+    /// The pilot's selection; the shadow tests pass their own.
+    fn decide(
+        thread_id: ThreadId,
+        comment_id: CommentId,
+        digest: PayloadDigest,
+        requested_target: Option<CommentId>,
+        facts: SubmissionFacts,
+    ) -> SubmissionDecision {
+        decide_submission(
+            thread_id,
+            comment_id,
+            digest,
+            requested_target,
+            PolicySelection::PREMODERATION,
+            facts,
+        )
+    }
+
+    fn standing(standing: Standing) -> AdmissionFacts {
+        AdmissionFacts::standing_only(standing, digest(), 0)
+    }
 
     fn comment(id: u128) -> CommentId {
         CommentId::from_uuid(Uuid::from_u128(id))
@@ -198,6 +259,7 @@ mod tests {
             work_public: true,
             settings: DiscussionSettings::INITIAL,
             target: None,
+            admission: standing(Standing::Active),
         }
     }
 
@@ -251,14 +313,15 @@ mod tests {
             work_public: false,
             settings: closed,
             target: None,
+            admission: standing(Standing::Active),
         };
         assert_eq!(
-            decide_submission(thread(1), comment(9), digest(), None, facts),
+            decide(thread(1), comment(9), digest(), None, facts),
             SubmissionDecision::Replay(comment(5))
         );
         let other = PayloadDigest::of_submission(work(), None, &body("Khác"));
         assert_eq!(
-            decide_submission(thread(1), comment(9), other, None, facts),
+            decide(thread(1), comment(9), other, None, facts),
             SubmissionDecision::KeyReused
         );
     }
@@ -270,7 +333,7 @@ mod tests {
             ..open()
         };
         assert_eq!(
-            decide_submission(thread(1), comment(9), digest(), None, not_public),
+            decide(thread(1), comment(9), digest(), None, not_public),
             SubmissionDecision::WorkNotPublic
         );
         let closed = SubmissionFacts {
@@ -281,7 +344,7 @@ mod tests {
             ..open()
         };
         assert_eq!(
-            decide_submission(thread(1), comment(9), digest(), None, closed),
+            decide(thread(1), comment(9), digest(), None, closed),
             SubmissionDecision::CommentsClosed
         );
     }
@@ -295,16 +358,23 @@ mod tests {
             ..open()
         };
 
-        let decision = decide_submission(
+        let decision = decide(
             thread(1),
             comment(9),
             digest(),
             Some(reply.id()),
             with_target(reply, approved()),
         );
-        let SubmissionDecision::Insert(placement) = decision else {
+        let SubmissionDecision::Insert {
+            placement,
+            admission,
+            shadow,
+        } = decision
+        else {
             panic!("{decision:?}")
         };
+        assert_eq!(admission.initial_state(), CommentState::SUBMITTED);
+        assert_eq!(shadow, None);
         assert_eq!(placement.root_id(), root.root_id());
         assert_eq!(placement.reply_to(), Some(reply.id()));
 
@@ -317,7 +387,7 @@ mod tests {
             },
         ] {
             assert_eq!(
-                decide_submission(
+                decide(
                     thread(1),
                     comment(9),
                     digest(),
@@ -329,11 +399,11 @@ mod tests {
         }
         // Missing target, a target fact for another ID, and a target from another thread.
         assert_eq!(
-            decide_submission(thread(1), comment(9), digest(), Some(comment(4)), open()),
+            decide(thread(1), comment(9), digest(), Some(comment(4)), open()),
             SubmissionDecision::TargetUnavailable
         );
         assert_eq!(
-            decide_submission(
+            decide(
                 thread(1),
                 comment(9),
                 digest(),
@@ -344,7 +414,7 @@ mod tests {
         );
         let foreign = root_placement(thread(2), comment(4));
         assert_eq!(
-            decide_submission(
+            decide(
                 thread(1),
                 comment(9),
                 digest(),
@@ -354,7 +424,7 @@ mod tests {
             SubmissionDecision::TargetUnavailable
         );
         assert_eq!(
-            decide_submission(
+            decide(
                 thread(1),
                 root.id(),
                 digest(),
@@ -376,49 +446,110 @@ mod tests {
             DiscussionSettings::restore(CommentsMode::Closed, SettingsGeneration::new(2).unwrap()),
         ];
         let mut inserts = 0;
-        for receipt in [
-            None,
-            Some(Receipt {
-                digest: digest(),
-                comment_id: comment(5),
-            }),
+        for admission in [
+            standing(Standing::Active),
+            standing(Standing::Suspended),
+            standing(Standing::Unknown),
         ] {
-            for work_public in [false, true] {
-                for settings in modes {
-                    for target in [None, Some(states[0]), Some(states[1])] {
-                        for requested in [None, Some(root.id())] {
-                            let facts = SubmissionFacts {
-                                receipt,
-                                work_public,
-                                settings,
-                                target: target.map(|state| TargetFacts {
-                                    placement: root,
-                                    state,
-                                }),
-                            };
-                            let decision = decide_submission(
-                                thread(1),
-                                comment(9),
-                                digest(),
-                                requested,
-                                facts,
-                            );
-                            let gates_pass = receipt.is_none()
-                                && work_public
-                                && settings.accepts_new_comments()
-                                && (requested.is_none()
-                                    || target.is_some_and(|state| state.is_public()));
-                            assert_eq!(
-                                matches!(decision, SubmissionDecision::Insert(_)),
-                                gates_pass,
-                                "{facts:?} {requested:?} -> {decision:?}"
-                            );
-                            inserts += usize::from(gates_pass);
+            for receipt in [
+                None,
+                Some(Receipt {
+                    digest: digest(),
+                    comment_id: comment(5),
+                }),
+            ] {
+                for work_public in [false, true] {
+                    for settings in modes {
+                        for target in [None, Some(states[0]), Some(states[1])] {
+                            for requested in [None, Some(root.id())] {
+                                let facts = SubmissionFacts {
+                                    receipt,
+                                    work_public,
+                                    settings,
+                                    target: target.map(|state| TargetFacts {
+                                        placement: root,
+                                        state,
+                                    }),
+                                    admission,
+                                };
+                                let decision =
+                                    decide(thread(1), comment(9), digest(), requested, facts);
+                                let active = admission.standing == Standing::Active;
+                                assert_eq!(
+                                    matches!(decision, SubmissionDecision::Refused(_)),
+                                    !active,
+                                    "standing decides refusal before anything else"
+                                );
+                                let gates_pass = active
+                                    && receipt.is_none()
+                                    && work_public
+                                    && settings.accepts_new_comments()
+                                    && (requested.is_none()
+                                        || target.is_some_and(|state| state.is_public()));
+                                assert_eq!(
+                                    matches!(decision, SubmissionDecision::Insert { .. }),
+                                    gates_pass,
+                                    "{facts:?} {requested:?} -> {decision:?}"
+                                );
+                                inserts += usize::from(gates_pass);
+                            }
                         }
                     }
                 }
             }
         }
         assert!(inserts > 0);
+    }
+
+    #[test]
+    fn inactive_standing_is_refused_before_receipts_and_writes_nothing() {
+        let receipt = Some(Receipt {
+            digest: digest(),
+            comment_id: comment(5),
+        });
+        for (standing_now, refusal) in [
+            (Standing::Suspended, Refusal::Suspended),
+            (Standing::Unknown, Refusal::StandingUnknown),
+        ] {
+            for receipt in [None, receipt] {
+                let facts = SubmissionFacts {
+                    receipt,
+                    admission: standing(standing_now),
+                    ..open()
+                };
+                assert_eq!(
+                    decide(thread(1), comment(9), digest(), None, facts),
+                    SubmissionDecision::Refused(refusal),
+                    "a suspended writer cannot even replay"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn inserts_carry_the_effective_admission_and_measure_the_shadow_apart() {
+        let SubmissionDecision::Insert {
+            admission, shadow, ..
+        } = decide_submission(
+            thread(1),
+            comment(9),
+            digest(),
+            None,
+            PolicySelection::shadowing(AdmissionPolicy::TrustedCohortV1),
+            open(),
+        )
+        else {
+            panic!("an open thread admits a root");
+        };
+        assert_eq!(admission.policy(), AdmissionPolicy::PremoderationV1);
+        assert_eq!(admission.reason(), AdmissionReason::PolicyPremoderation);
+        assert_eq!(admission.initial_state(), CommentState::SUBMITTED);
+        let Some(AdmissionDecision::Admit(candidate)) = shadow else {
+            panic!("the shadow is measured");
+        };
+        assert_eq!(
+            (candidate.review(), candidate.reason()),
+            (InitialReview::Pending, AdmissionReason::TrustUnknown)
+        );
     }
 }

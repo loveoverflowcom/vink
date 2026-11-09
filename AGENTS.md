@@ -120,7 +120,8 @@ through the contract's `409` with stored tags, never a blind resend. Production 
 [editor](docs/development/taxonomy-editor.md) and [LayoutSpec](docs/design/tag-selector.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
 [ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
-limit, sign-in UI, browser/native qualification or commit-time suspension fence exists, so
+limit, sign-in UI, browser/native qualification or general commit-time suspension fence exists
+(only draft-tag saves and comment submissions have one), so
 production authentication is NOT_IMPLEMENTED. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
@@ -133,9 +134,12 @@ lifecycle/mode/moderation authority with submission receipts, and reactions). #1
 a pure versioned admission seam (`domain/discussion/admission.rs`): `premoderation.v1` is the only
 effective policy, the publish-first candidate `trusted-cohort.v1` runs only in shadow
 (`PolicySelection` cannot make it effective), post-review is a version-fenced hold that never
-approves; `admission.qnt` replay and three Kani harnesses back it. Store/HTTP still hardcode `pending`; no trust authority, provenance
-column, outbox or post-review worker exists, and the D-08 delta is PROPOSED
-([decision](docs/architecture/discussion-admission.md)). Reactions exist only
+approves; `admission.qnt` replay and three Kani harnesses back it. DISC-02/03 routes submission
+through it: `PgStore` writes the admission's initial state and provenance (migration
+`20261111000000_comment_admission`: born as admitted, `premoderation.v1` only, provenance
+immutable) and refuses a principal suspended before commit (standing fence shared with tag
+saves; `403 principal_suspended`). No trust authority, shadow store, outbox or post-review worker
+exists, and the D-08 delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)). Reactions exist only
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
 proposed, not product-accepted) with no table, store, route or UI. Production
 writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual

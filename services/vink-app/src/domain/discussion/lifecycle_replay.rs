@@ -15,6 +15,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use super::CommentPlacement;
+use super::admission::{AdmissionFacts, PolicySelection, Standing};
 use super::body::CommentBody;
 use super::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
@@ -270,15 +271,28 @@ impl Shell {
             state: row.state,
         });
         let key = (command.actor, command.key);
+        let digest = PayloadDigest::of_submission(self.work, requested, &body(command.body));
+        // The lifecycle model has no suspensions: every actor is active, as in the pilot store.
         let facts = SubmissionFacts {
             receipt: self.receipts.get(&key).map(|stored| stored.receipt),
             work_public: true,
             settings: self.settings,
             target,
+            admission: AdmissionFacts::standing_only(Standing::Active, digest, 0),
         };
-        let digest = PayloadDigest::of_submission(self.work, requested, &body(command.body));
-        match decide_submission(self.thread, comment(command.id), digest, requested, facts) {
-            SubmissionDecision::Insert(placement) => {
+        match decide_submission(
+            self.thread,
+            comment(command.id),
+            digest,
+            requested,
+            PolicySelection::PREMODERATION,
+            facts,
+        ) {
+            SubmissionDecision::Insert {
+                placement,
+                admission,
+                shadow: None,
+            } => {
                 assert_eq!(placement.id(), comment(command.id));
                 // The store commits the receipt together with the comment, never alone.
                 self.receipts.insert(
@@ -299,7 +313,7 @@ impl Shell {
                         writer: principal(command.actor),
                         target: requested.map(|_| command.target),
                         placement,
-                        state: CommentState::SUBMITTED,
+                        state: admission.initial_state(),
                     },
                 );
                 "created"

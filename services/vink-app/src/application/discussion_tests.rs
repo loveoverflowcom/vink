@@ -10,6 +10,7 @@ use uuid::Uuid;
 use super::Vink;
 use super::discussion::*;
 use super::ports::{DiscussionStore, StoreError};
+use crate::domain::discussion::admission::{PolicySelection, Refusal};
 use crate::domain::discussion::body::{BodyError, CommentBody};
 use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
@@ -173,6 +174,7 @@ async fn a_submission_reaches_the_store_validated_with_server_chosen_identities(
         submit: Some(SubmitOutcome::Created {
             comment_id: comment(),
             created_at: datetime!(2026-11-03 10:00 UTC),
+            state: CommentState::SUBMITTED,
         }),
         ..Script::default()
     });
@@ -200,6 +202,7 @@ async fn a_submission_reaches_the_store_validated_with_server_chosen_identities(
     );
     assert_eq!(new.comment_id.as_uuid().get_version_num(), 7);
     assert_ne!(new.comment_id, comment(), "the client never chooses an ID");
+    assert_eq!(new.selection, PolicySelection::PREMODERATION);
 }
 
 #[tokio::test]
@@ -257,6 +260,28 @@ async fn authentication_precedes_validation_and_no_raw_input_reaches_storage() {
 async fn submission_outcomes_stay_distinct() {
     let approved = CommentState::restore(Review::Approved, None, version(2));
     for (outcome, expected) in [
+        // The status is the stored state, never a constant: a store that wrote another initial
+        // state (a future policy) reports it unchanged.
+        (
+            SubmitOutcome::Created {
+                comment_id: comment(),
+                created_at: datetime!(2026-11-03 10:00 UTC),
+                state: CommentState::restore(Review::Approved, None, version(1)),
+            },
+            Ok(SubmittedComment {
+                comment_id: comment(),
+                status: OwnStatus::Approved,
+                replayed: false,
+            }),
+        ),
+        (
+            SubmitOutcome::Refused(Refusal::Suspended),
+            Err(DiscussionError::Suspended),
+        ),
+        (
+            SubmitOutcome::Refused(Refusal::StandingUnknown),
+            Err(DiscussionError::Unauthenticated),
+        ),
         (
             SubmitOutcome::Replayed {
                 comment_id: comment(),

@@ -4,6 +4,7 @@
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use axum::Router;
 use axum::body::Body;
@@ -11,8 +12,8 @@ use axum::http::request::Parts;
 use axum::http::{Request, StatusCode, header};
 use http_body_util::BodyExt;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgConnection, PgPool};
 use tower::ServiceExt;
 use uuid::Uuid;
 use vink_app::application::{DraftError, SaveDraft, Vink};
@@ -72,6 +73,63 @@ fn save(work_id: WorkId, expected_version: i64, title: &str, document: DocumentD
         expected_version,
         title: title.into(),
         document,
+    }
+}
+
+// Lock-wait helpers for race tests (shared by the taxonomy and discussion suites).
+async fn backend_pid(conn: &mut PgConnection) -> i32 {
+    sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(conn)
+        .await
+        .unwrap()
+}
+
+const WAIT_DEADLINE: Duration = Duration::from_secs(20);
+const POLL: Duration = Duration::from_millis(10);
+
+/// Returns once some backend of this database is blocked on a lock held by `blocker`.
+async fn wait_blocked_by(pool: &PgPool, blocker: i32) {
+    let deadline = Instant::now() + WAIT_DEADLINE;
+    loop {
+        let blocked: bool = sqlx::query_scalar(
+            "SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+                             WHERE datname = current_database()
+                               AND $1 = ANY (pg_blocking_pids(pid)))",
+        )
+        .bind(blocker)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if blocked {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "no backend became blocked by {blocker}"
+        );
+        tokio::time::sleep(POLL).await;
+    }
+}
+
+/// Returns once at least `n` backends of this database are blocked on locks.
+async fn wait_blocked(pool: &PgPool, n: i64) {
+    let deadline = Instant::now() + WAIT_DEADLINE;
+    loop {
+        let blocked: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_stat_activity
+              WHERE datname = current_database() AND cardinality(pg_blocking_pids(pid)) > 0",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if blocked >= n {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "expected {n} blocked backend(s), saw {blocked}"
+        );
+        tokio::time::sleep(POLL).await;
     }
 }
 

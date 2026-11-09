@@ -4,7 +4,8 @@
 
 use std::time::Duration;
 
-use sqlx::Row;
+use sqlx::migrate::Migrator;
+use sqlx::{AssertSqlSafe, Row};
 use vink_app::application::discussion::{
     DiscussionError, ModerateComment, ModerationAction, OwnStatus, RootEntry, RootPage,
     SetCommentsMode, SubmitComment,
@@ -17,7 +18,11 @@ use vink_app::domain::discussion::visibility::{
     CommentView, ReplyContext, RootListing, root_listing, view,
 };
 use vink_app::domain::ids::CommentId;
-use vink_app::persistence::{GrantOutcome, active_moderators, grant_moderator, revoke_moderator};
+use vink_app::domain::principal::SuspensionReason;
+use vink_app::persistence::{
+    GrantOutcome, MIGRATOR, active_moderators, grant_moderator, migrate, reinstate_principal,
+    revoke_moderator, suspend_principal,
+};
 
 use super::*;
 
@@ -128,7 +133,32 @@ async fn thread_of_sample(pool: &PgPool) -> Uuid {
         .unwrap()
 }
 
-/// Inserts a comment row with direct SQL, bypassing every Rust check.
+/// Columns and values that every direct INSERT must state: a premoderated comment is born pending
+/// at version 1 (migration `20261111000000_comment_admission`).
+const PREMODERATED: &str = "'pending', 1, 'premoderation.v1', 'policy_premoderation'";
+
+/// Moves directly inserted rows to a reviewed state the way a decision would: one version later.
+async fn review_raw(
+    executor: impl sqlx::PgExecutor<'_>,
+    id: Uuid,
+    review: &str,
+    removal: Option<&str>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "UPDATE comments SET review = $2, removal = $3,
+                body = CASE WHEN $3 = 'author' THEN NULL ELSE body END,
+                moderation_version = moderation_version + 1
+          WHERE id = $1",
+    )
+    .bind(id)
+    .bind(review)
+    .bind(removal)
+    .execute(executor)
+    .await
+    .map(drop)
+}
+
+/// Inserts a comment row with direct SQL, bypassing every Rust check, then approves it.
 async fn raw_comment(
     pool: &PgPool,
     thread: Uuid,
@@ -137,11 +167,12 @@ async fn raw_comment(
     reply_to: Option<Uuid>,
 ) -> Result<Uuid, sqlx::Error> {
     let id = Uuid::now_v7();
-    sqlx::query(
+    sqlx::query(AssertSqlSafe(format!(
         "INSERT INTO comments (id, thread_id, kind, root_id, root_kind, reply_to_id,
-                               replied_to_reply, author_id, body, review, moderation_version)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Thử trực tiếp', 'approved', 1)",
-    )
+                               replied_to_reply, author_id, body, review, moderation_version,
+                               admission_policy, admission_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'Thử trực tiếp', {PREMODERATED})"
+    )))
     .bind(id)
     .bind(thread)
     .bind(kind)
@@ -152,6 +183,7 @@ async fn raw_comment(
     .bind(dev_seed::OTHER_PRINCIPAL)
     .execute(pool)
     .await?;
+    review_raw(pool, id, "approved", None).await?;
     Ok(id)
 }
 
@@ -831,17 +863,18 @@ async fn pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page(p
     let mut tied = Vec::new();
     for _ in 0..5 {
         let id = Uuid::now_v7();
-        sqlx::query(
+        sqlx::query(AssertSqlSafe(format!(
             "INSERT INTO comments (id, thread_id, kind, replied_to_reply, author_id, body,
-                                   review, moderation_version)
-             VALUES ($1, $2, 'root', false, $3, 'Gốc cùng thời điểm', 'approved', 1)",
-        )
+                                   review, moderation_version, admission_policy, admission_reason)
+             VALUES ($1, $2, 'root', false, $3, 'Gốc cùng thời điểm', {PREMODERATED})"
+        )))
         .bind(id)
         .bind(thread)
         .bind(dev_seed::OTHER_PRINCIPAL)
         .execute(&mut *tx)
         .await
         .unwrap();
+        review_raw(&mut *tx, id, "approved", None).await.unwrap();
         tied.push(CommentId::from_uuid(id));
     }
     tx.commit().await.unwrap();
@@ -901,20 +934,21 @@ async fn sql_visibility_filters_match_the_domain_projection(pool: PgPool) {
         for review in ["pending", "approved", "rejected"] {
             for removal in [None, Some("author"), Some("moderation")] {
                 let id = Uuid::now_v7();
-                sqlx::query(
+                sqlx::query(AssertSqlSafe(format!(
                     "INSERT INTO comments (id, thread_id, kind, replied_to_reply, author_id,
-                                           body, review, removal, moderation_version)
-                     VALUES ($1, $2, 'root', false, $3, $4, $5, $6, 1)",
-                )
+                                           body, review, moderation_version,
+                                           admission_policy, admission_reason)
+                     VALUES ($1, $2, 'root', false, $3, 'Trạng thái', {PREMODERATED})"
+                )))
                 .bind(id)
                 .bind(thread)
                 .bind(writer)
-                .bind((removal != Some("author")).then_some("Trạng thái"))
-                .bind(review)
-                .bind(removal)
                 .execute(&pool)
                 .await
                 .unwrap();
+                if (review, removal) != ("pending", None) {
+                    review_raw(&pool, id, review, removal).await.unwrap();
+                }
                 rows.push(id);
             }
         }
@@ -1708,4 +1742,375 @@ async fn the_http_moderation_api_keeps_every_outcome_distinct(pool: PgPool) {
         .await;
         assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
     }
+}
+
+async fn admission_of(pool: &PgPool, id: CommentId) -> (String, String, String, i64) {
+    sqlx::query_as(
+        "SELECT admission_policy, admission_reason, review, moderation_version
+           FROM comments WHERE id = $1",
+    )
+    .bind(id.as_uuid())
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// (comments, submission receipts, threads): what a refused submission must leave unchanged.
+async fn written(pool: &PgPool) -> (i64, i64, i64) {
+    sqlx::query_as(
+        "SELECT (SELECT count(*) FROM comments), (SELECT count(*) FROM discussion_command_receipts),
+                (SELECT count(*) FROM discussion_threads)",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// A direct root INSERT with the given `review, removal, version, policy, reason` values.
+async fn raw_admitted(pool: &PgPool, thread: Uuid, values: &str) -> Result<Uuid, sqlx::Error> {
+    let id = Uuid::now_v7();
+    sqlx::query(AssertSqlSafe(format!(
+        "INSERT INTO comments (id, thread_id, kind, replied_to_reply, author_id, body, review,
+                               removal, moderation_version, admission_policy, admission_reason)
+         VALUES ($1, $2, 'root', false, $3, 'Nhập thẳng', {values})"
+    )))
+    .bind(id)
+    .bind(thread)
+    .bind(dev_seed::OTHER_PRINCIPAL)
+    .execute(pool)
+    .await?;
+    Ok(id)
+}
+
+fn suspension_reason() -> SuspensionReason {
+    SuspensionReason::parse("Tạm khóa trong bộ test thảo luận").unwrap()
+}
+
+/// #120: each comment records the admission that chose its initial state. The schema alone keeps
+/// a row from being born public (or reviewed, removed, later) under premoderation, from naming an
+/// unknown or not-yet-accepted policy, and from rewriting its provenance; review still moves on.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn admission_provenance_is_recorded_and_held_by_the_schema(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let root = post(&vink, other(), None, "Gốc chờ duyệt").await;
+    let premoderated = (
+        "premoderation.v1".to_string(),
+        "policy_premoderation".to_string(),
+    );
+    assert_eq!(
+        admission_of(&pool, root).await,
+        (
+            premoderated.0.clone(),
+            premoderated.1.clone(),
+            "pending".into(),
+            1
+        )
+    );
+    let thread = thread_of_sample(&pool).await;
+
+    // The lawful shape passes the same path, so the refusals below are not vacuous.
+    raw_admitted(
+        &pool,
+        thread,
+        "'pending', NULL, 1, 'premoderation.v1', 'policy_premoderation'",
+    )
+    .await
+    .unwrap();
+    for values in [
+        "'approved', NULL, 1, 'premoderation.v1', 'policy_premoderation'",
+        "'rejected', NULL, 1, 'premoderation.v1', 'policy_premoderation'",
+        "'pending', NULL, 2, 'premoderation.v1', 'policy_premoderation'",
+        "'pending', 'moderation', 1, 'premoderation.v1', 'policy_premoderation'",
+    ] {
+        let error = raw_admitted(&pool, thread, values).await.unwrap_err();
+        assert!(
+            constraint(error).contains("disagrees with its admission"),
+            "{values}"
+        );
+    }
+    // The candidate cannot be effective in the pilot, even with a consistent approval.
+    let error = raw_admitted(
+        &pool,
+        thread,
+        "'approved', NULL, 1, 'trusted-cohort.v1', 'trusted_and_clear'",
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(constraint(error), "comments_admission_premoderation_only");
+    let error = raw_admitted(
+        &pool,
+        thread,
+        "'pending', NULL, 1, 'premoderation.v1', 'trust_unknown'",
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(constraint(error), "comments_admission_known");
+    let error = raw_admitted(
+        &pool,
+        thread,
+        "'pending', NULL, 1, 'auto.v0', 'policy_premoderation'",
+    )
+    .await
+    .unwrap_err();
+    assert!(constraint(error).starts_with("comments_admission_"));
+    // No default: a writer that does not name its admission is refused.
+    let error = sqlx::query(
+        "INSERT INTO comments (id, thread_id, kind, replied_to_reply, author_id, body, review,
+                               moderation_version)
+         VALUES ($1, $2, 'root', false, $3, 'Không nguồn gốc', 'pending', 1)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(thread)
+    .bind(dev_seed::OTHER_PRINCIPAL)
+    .execute(&pool)
+    .await
+    .unwrap_err();
+    assert_eq!(
+        error
+            .as_database_error()
+            .and_then(|db| db.code())
+            .as_deref(),
+        Some("23502"),
+        "not_null_violation"
+    );
+
+    // Provenance never changes; a moderation decision still advances the review.
+    let error = sqlx::query(
+        "UPDATE comments SET admission_policy = 'trusted-cohort.v1',
+                             admission_reason = 'trusted_and_clear' WHERE id = $1",
+    )
+    .bind(root.as_uuid())
+    .execute(&pool)
+    .await
+    .unwrap_err();
+    assert!(constraint(error).contains("provenance is immutable"));
+    moderate(&vink, root, 1, ModerationAction::Approve)
+        .await
+        .unwrap();
+    assert_eq!(
+        admission_of(&pool, root).await,
+        (premoderated.0, premoderated.1, "approved".into(), 2)
+    );
+}
+
+/// #120 standing fence: a suspension committed before the submission's commit refuses it, exact
+/// retries and replies included, and leaves no comment, receipt or thread binding behind. Over
+/// HTTP the test resolver ignores suspensions, so the store's refusal itself answers `403`.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_suspended_writer_is_refused_at_commit_and_nothing_is_written(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let writer = PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL);
+    suspend_principal(&pool, writer, &suspension_reason())
+        .await
+        .unwrap();
+    // The work's first comment: the thread binding it would create rolls back with it.
+    assert_eq!(
+        vink.submit_comment(other(), command(None, "Bị chặn", &key()))
+            .await,
+        Err(DiscussionError::Suspended)
+    );
+    assert_eq!(written(&pool).await, (0, 0, 0));
+
+    reinstate_principal(&pool, writer).await.unwrap();
+    let retry_key = key();
+    let first = vink
+        .submit_comment(other(), command(None, "Gửi trước khi khóa", &retry_key))
+        .await
+        .unwrap();
+    assert_eq!(first.status, OwnStatus::Pending);
+    let before = written(&pool).await;
+    suspend_principal(&pool, writer, &suspension_reason())
+        .await
+        .unwrap();
+    for (target, body, command_key) in [
+        (None, "Gửi trước khi khóa", retry_key.clone()),
+        (Some(first.comment_id), "Trả lời khi đã bị khóa", key()),
+    ] {
+        assert_eq!(
+            vink.submit_comment(other(), command(target, body, &command_key))
+                .await,
+            Err(DiscussionError::Suspended),
+            "{body}"
+        );
+    }
+    assert_eq!(written(&pool).await, before);
+
+    let app = app(&pool).await;
+    let comments = format!(
+        "/api/v1/works/{}/discussion/comments",
+        dev_seed::SAMPLE_WORK
+    );
+    let (status, cache, body) = call(
+        &app,
+        "POST",
+        &comments,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        Some(json!({"body": "Qua HTTP", "command_key": key()})),
+    )
+    .await;
+    assert_eq!(
+        (status, cache.as_deref()),
+        (StatusCode::FORBIDDEN, Some("no-store"))
+    );
+    assert_eq!(json(&body)["error"]["code"], "principal_suspended");
+    assert_eq!(written(&pool).await, before);
+}
+
+/// #120 standing fence under concurrency, both orders, through the real store: the principal
+/// row's FOR UPDATE conflicts with the FOR KEY SHARE that a suspension's foreign key takes.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn suspension_and_submission_serialize_on_the_principal(pool: PgPool) {
+    let vink = Arc::new(discussion(&pool).await);
+    let writer = PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL);
+    let root = published(&vink, other(), None, "Gốc").await;
+    let reply = published(&vink, author(), Some(root), "Trả lời gốc").await;
+    let submit = |target: Option<CommentId>, body: &'static str| {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move {
+            vink.submit_comment(other(), command(target, body, &key()))
+                .await
+        })
+    };
+
+    // Order A: an uncommitted suspension holds the principal; the submission waits at its
+    // standing fence, then reads the committed suspension and writes nothing.
+    let before = written(&pool).await;
+    let mut suspending = pool.begin().await.unwrap();
+    let pid = backend_pid(&mut suspending).await;
+    sqlx::query(
+        "INSERT INTO principal_suspensions (id, principal_id, reason)
+         VALUES ($1, $2, 'Tạm khóa trong bộ test thảo luận')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(dev_seed::OTHER_PRINCIPAL)
+    .execute(&mut *suspending)
+    .await
+    .unwrap();
+    let submitting = submit(None, "Đua với lệnh khóa");
+    wait_blocked_by(&pool, pid).await;
+    assert!(
+        !submitting.is_finished(),
+        "the submission waits for the suspension"
+    );
+    suspending.commit().await.unwrap();
+    assert_eq!(submitting.await.unwrap(), Err(DiscussionError::Suspended));
+    assert_eq!(written(&pool).await, before);
+    reinstate_principal(&pool, writer).await.unwrap();
+
+    // Order B: a submission that already holds the principal makes the real suspension command
+    // wait. It is paused on the root row, which its reply-to-reply insert key-shares through the
+    // root foreign key only after the standing fence; the comment commits first.
+    let mut pauser = pool.begin().await.unwrap();
+    let pid = backend_pid(&mut pauser).await;
+    sqlx::query("SELECT 1 FROM comments WHERE id = $1 FOR UPDATE")
+        .bind(root.as_uuid())
+        .execute(&mut *pauser)
+        .await
+        .unwrap();
+    let replying = submit(Some(reply), "Trả lời đang gửi dở");
+    wait_blocked_by(&pool, pid).await;
+    let suspended = {
+        let pool = pool.clone();
+        tokio::spawn(async move { suspend_principal(&pool, writer, &suspension_reason()).await })
+    };
+    wait_blocked(&pool, 2).await;
+    assert!(
+        !suspended.is_finished(),
+        "the suspension waits for the submission"
+    );
+    pauser.rollback().await.unwrap();
+    let created = replying.await.unwrap().unwrap();
+    assert_eq!(created.status, OwnStatus::Pending);
+    suspended.await.unwrap().unwrap();
+    assert_eq!(
+        vink.submit_comment(other(), command(None, "Sau khi khóa", &key()))
+            .await,
+        Err(DiscussionError::Suspended)
+    );
+}
+
+const ADMISSION_MIGRATION: i64 = 20_261_111_000_000;
+
+/// Upgrade: comments written before #120 were all admitted under premoderation, and the migration
+/// records exactly that without touching their review, removal, text or version.
+#[sqlx::test(migrations = false)]
+async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
+    let previous = Migrator::with_migrations(
+        MIGRATOR
+            .migrations
+            .iter()
+            .filter(|m| m.version < ADMISSION_MIGRATION)
+            .cloned()
+            .collect(),
+    );
+    previous.run(&pool).await.unwrap();
+    let vink = seeded(&pool).await;
+    let thread = Uuid::now_v7();
+    sqlx::query("INSERT INTO discussion_threads (id, work_id) VALUES ($1, $2)")
+        .bind(thread)
+        .bind(dev_seed::SAMPLE_WORK)
+        .execute(&pool)
+        .await
+        .unwrap();
+    // Rows as the old code could leave them: pending, approved, removed by their writer.
+    let mut old = Vec::new();
+    for (review, removal, version, body) in [
+        ("pending", None, 1_i64, Some("Chờ duyệt")),
+        ("approved", None, 2, Some("Đã duyệt")),
+        ("approved", Some("author"), 3, None),
+    ] {
+        let id = Uuid::now_v7();
+        sqlx::query(
+            "INSERT INTO comments (id, thread_id, kind, replied_to_reply, author_id, body, review,
+                                   removal, moderation_version)
+             VALUES ($1, $2, 'root', false, $3, $4, $5, $6, $7)",
+        )
+        .bind(id)
+        .bind(thread)
+        .bind(dev_seed::OTHER_PRINCIPAL)
+        .bind(body)
+        .bind(review)
+        .bind(removal)
+        .bind(version)
+        .execute(&pool)
+        .await
+        .unwrap();
+        old.push((id, review, removal, version, body));
+    }
+
+    let report = migrate(&pool).await.unwrap();
+    assert_eq!(report.applied.first(), Some(&ADMISSION_MIGRATION));
+    for (id, review, removal, version, body) in old {
+        let row: (String, String, String, Option<String>, i64, Option<String>) = sqlx::query_as(
+            "SELECT admission_policy, admission_reason, review, removal, moderation_version, body
+               FROM comments WHERE id = $1",
+        )
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            row,
+            (
+                "premoderation.v1".into(),
+                "policy_premoderation".into(),
+                review.into(),
+                removal.map(str::to_owned),
+                version,
+                body.map(str::to_owned),
+            )
+        );
+    }
+    // The upgraded database admits new comments through the store as before.
+    let id = post(&vink, other(), None, "Sau nâng cấp").await;
+    assert_eq!(
+        admission_of(&pool, id).await,
+        (
+            "premoderation.v1".into(),
+            "policy_premoderation".into(),
+            "pending".into(),
+            1
+        )
+    );
 }
