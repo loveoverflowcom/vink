@@ -3,7 +3,8 @@
 **Ngày:** 08/11/2026. **Nguồn:** [#97](https://github.com/loveoverflowcom/vink/issues/97) (TAG-PR-03, một
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline `develop@f5a266b` (sau
 #95 và #96). **Trạng thái:** use case, hợp đồng HTTP v1, lệnh operator và audit của App, kiểm bằng store
-giả và PostgreSQL thật. Chưa có UI (#99/#100), workflow publish hay authority
+giả và PostgreSQL thật. UI thẻ nháp có từ #99 ([editor](taxonomy-editor.md)); chưa có UI khám phá (#100),
+workflow publish hay authority
 production (D-05 Provisional): production vẫn trả `401` cho mọi route riêng tư, nên epic #94 chưa có lát
 nào chạy end-to-end cho người dùng thật.
 
@@ -211,7 +212,7 @@ PostgreSQL thật qua router production; “binary” là chạy `vink-app tag` 
 
 | AC | Bất biến | Oracle | Loại | Gap |
 | --- | --- | --- | --- | --- |
-| AC-01 | Hợp đồng/fixture cho thành công và lỗi thật; không bịa route | 12 fixture mới so từng field (`catalog_reads_match_fixtures`, `draft_tag_messages_match_fixtures`, `tag_error_envelopes_match_fixtures`); [README v1](../../services/vink-app/contracts/http/v1/README.md#work-tags-tag-pr-03); không route ghi catalog: `tag_routes_validate_report_outages_and_fail_closed` (`405`) | Unit | Consumer web chưa decode fixture thẻ (chưa có consumer, #99) |
+| AC-01 | Hợp đồng/fixture cho thành công và lỗi thật; không bịa route | 12 fixture mới so từng field (`catalog_reads_match_fixtures`, `draft_tag_messages_match_fixtures`, `tag_error_envelopes_match_fixtures`); [README v1](../../services/vink-app/contracts/http/v1/README.md#work-tags-tag-pr-03); không route ghi catalog: `tag_routes_validate_report_outages_and_fail_closed` (`405`) | Unit | Consumer web decode fixture thẻ từ #99 (`decodes_tag_fixtures`, `classifies_tag_error_fixtures`); `tag.resolve.*` chờ #100 |
 | AC-02 | Actor từ server; authority/version kiểm tại commit; đóng khi chưa có authority | `tag_request_requires_every_field_and_refuses_authority_fields`, `tag_routes_validate_report_outages_and_fail_closed` (401 không authority, Origin), `http_never_holds_curator_authority`; PG: `standing_is_rechecked_when_the_tag_save_commits`, `comment_moderators_get_no_catalog_authority`, `draft_tags_round_trip_…` (chủ khác `404`, không ghi) | Unit + PG | Authority production không có (D-05); test dùng resolver header có nhãn |
 | AC-03 | Catalog/alias và thẻ nháp qua core/store thật; mất ACK có semantics rõ | `catalog_tests.rs` (rank/resolve/validate với core thật); PG: `catalog_reads_are_public_ranked_and_survive_an_identity_outage`, `draft_tags_round_trip_…`, `lost_acknowledgements_and_parallel_tabs_…`, `catalog_governance_runs_through_the_use_case_and_audits_every_step` | Fake + PG | Không chứng từ lệnh chính xác (CHOICE-03 A, có chủ đích) |
 | AC-04 | Mock chứng minh wiring; HTTP+PG chứng minh lưu/riêng tư/rollback | Fake: `NoStore` panic khi input sai, outage → `Unavailable` (không rỗng), refusal không áp dụng gì; PG: trạng thái bền kiểm bằng SQL độc lập, fault injection audit → rollback cả thay đổi, trigger từ chối bước version không audit/audit sửa xóa; binary: `the_operator_command_changes_and_reports_the_catalog` | Fake + PG + binary | — |
@@ -221,7 +222,8 @@ PostgreSQL thật qua router production; “binary” là chạy `vink-app tag` 
 
 - **Authority production** (D-05): mọi route riêng tư vẫn `401` ở production; route thẻ nháp chỉ chạy thật
   với LocalFixture loopback hoặc resolver test.
-- **UI** (#99/#100): chưa consumer nào; consumer phải đọc [hợp đồng](../../services/vink-app/contracts/http/v1/README.md#work-tags-tag-pr-03),
+- **UI**: Bàn viết là consumer Web của thẻ nháp, catalog và gợi ý từ #99 ([editor](taxonomy-editor.md));
+  Explore/reader/trang thẻ (#100) chưa có. Consumer mới phải đọc [hợp đồng](../../services/vink-app/contracts/http/v1/README.md#work-tags-tag-pr-03),
   không suy route hay quyền từ prototype.
 - **Discovery** (#98): đã có ([discovery](discovery-api.md)): tìm theo thẻ/chữ, ETag, thẻ công khai trên
   card/publication; không đọc `work_draft_tags`; không có tổng số.

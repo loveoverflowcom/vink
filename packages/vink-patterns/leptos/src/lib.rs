@@ -3,6 +3,12 @@
 
 use leptos::prelude::*;
 use vink_ui::*;
+
+mod tags;
+pub use tags::{
+    CatalogFacts, THEME_LIMIT, TagChip, TagFacts, TagLink, TagOption, TagOptions, TagSelector,
+    options_status,
+};
 pub fn display_date(timestamp: &str) -> String {
     let date = timestamp.get(..10).unwrap_or(timestamp);
     let mut parts = date.split('-');

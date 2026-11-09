@@ -112,3 +112,35 @@
 
 /* EndorsementAction (LVE #73): sits with the target's other interactions, never as the CTA. */
 .vk-endorsement { display: inline-flex; max-inline-size: 100%; }
+
+/* TagSelector / TagChip (TAG-PR-05): two groups in flow, wrapping chips, candidates as a list.
+   Selected chips reuse the chip shape; retired and refused states are written, not colour-only. */
+.vk-tag-selector { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
+.vk-tag-group { display: grid; gap: var(--vk-space-3); min-inline-size: 0; margin: 0; padding: 0; border: 0; }
+.vk-tag-group__legend { padding: 0; margin-block-end: var(--vk-space-1); color: var(--vk-on-surface); font-family: var(--vk-type-label-font); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); line-height: var(--vk-type-label-line-height); }
+.vk-tag-group__count { color: var(--vk-on-surface-variant); font-weight: var(--vk-type-body-weight); }
+.vk-tag-group__help { margin: 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); overflow-wrap: anywhere; }
+.vk-tag-chips { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--vk-space-2); min-inline-size: 0; margin: 0; padding: 0; list-style: none; }
+.vk-tag-chips > li { display: flex; min-inline-size: 0; max-inline-size: 100%; }
+.vk-tag-chip { display: inline-grid; gap: var(--vk-space-1); min-inline-size: 0; max-inline-size: 100%; }
+.vk-tag-chip__body { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--vk-space-2); min-inline-size: 0; min-block-size: var(--vk-density-control-height); padding-inline-start: var(--vk-space-3); border-radius: var(--vk-radius-sm); background: var(--vk-secondary-container); color: var(--vk-on-secondary-container); }
+.vk-tag-chip__label { min-inline-size: 0; overflow-wrap: anywhere; font-family: var(--vk-type-label-font); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); line-height: var(--vk-type-label-line-height); }
+.vk-tag-chip__badge { font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+.vk-tag-chip[data-status="retired"] .vk-tag-chip__body { background: var(--vk-warning-container); color: var(--vk-on-warning-container); }
+.vk-tag-chip[data-status="problem"] .vk-tag-chip__body { background: var(--vk-error-container); color: var(--vk-on-error-container); }
+.vk-tag-chip__body .vk-ui-icon-button { color: inherit; background: transparent; }
+.vk-tag-chip__note { display: flex; align-items: flex-start; gap: var(--vk-space-1); max-inline-size: var(--vk-measure); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); overflow-wrap: anywhere; }
+.vk-tag-chip[data-status="problem"] .vk-tag-chip__note { color: var(--vk-error); }
+.vk-tag-chip__note .vk-ui-icon { flex: none; margin-block-start: 0.1em; }
+.vk-tag-chip__replace { display: flex; }
+.vk-tag-query { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
+.vk-tag-query__status { margin: 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); overflow-wrap: anywhere; }
+.vk-tag-query__status:empty { display: none; }
+.vk-tag-options { display: grid; gap: var(--vk-space-1); min-inline-size: 0; margin: 0; padding: 0; list-style: none; }
+.vk-tag-option { display: grid; min-inline-size: 0; border-radius: var(--vk-radius-md); background: var(--vk-surface-container-low); }
+.vk-tag-option .vk-ui-action { display: flex; min-inline-size: 0; }
+.vk-tag-option .vk-ui-button { justify-content: flex-start; inline-size: 100%; text-align: start; }
+.vk-tag-option .vk-ui-button__label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--vk-space-2); min-inline-size: 0; overflow-wrap: anywhere; }
+.vk-tag-option__alias { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-body-weight); }
+.vk-tag-option__description { margin: 0; padding: 0 var(--vk-space-4) var(--vk-space-3) calc(var(--vk-space-3) + var(--vk-size-icon-sm) + var(--vk-space-2)); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); overflow-wrap: anywhere; }
+.vk-tag-browse .vk-tag-options { margin-block-start: var(--vk-space-2); }

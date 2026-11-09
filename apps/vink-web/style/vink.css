@@ -467,6 +467,16 @@ a {
 .vk-editor-recovery .vk-ui-supporting-details__content > p { margin: 0; overflow-wrap: break-word; }
 .vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
 
+/* Thông tin tác phẩm (TAG-PR-05): a secondary sheet after the manuscript, same measure and
+   tonal family as the paper; the selector composition owns its own geometry. */
+.vk-work-info { display: grid; gap: var(--vk-space-3); min-inline-size: 0; padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-work-info__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-1) var(--vk-space-4); min-inline-size: 0; }
+.vk-work-info__heading > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
+.vk-work-info__status { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
+.vk-work-info__status:is([data-status="failed"], [data-status="refused"]) { color: var(--vk-error); }
+.vk-work-info > .vk-ui-text { margin: 0; }
+.vk-work-info .vk-tag-selector { margin-block-start: var(--vk-space-2); }
+
 .vk-field {
   display: flex;
   flex-direction: column;

@@ -317,9 +317,12 @@ pub fn error_message(error: &ApiError) -> &'static str {
         ApiError::Invalid { .. } => {
             "Nội dung chưa hợp lệ (tối đa 4.000 ký tự, 200 dòng). Sửa rồi gửi lại; chữ vẫn được giữ."
         }
+        // Draft-tag answers never reach the composer; a conflict-shaped answer reads as one.
         ApiError::VersionConflict { .. }
         | ApiError::EndorsementConflict { .. }
-        | ApiError::RevisionChanged { .. } => {
+        | ApiError::RevisionChanged { .. }
+        | ApiError::TagConflict { .. }
+        | ApiError::TagRefused(_) => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }
         ApiError::CommentRemoved => "Nhận xét không còn hiển thị.",

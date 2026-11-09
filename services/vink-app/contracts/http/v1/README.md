@@ -12,8 +12,9 @@ D-05/S-03 spike adds [Sign-in](#sign-in-d-05s-03-spike) only. Discussion
 [Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c). Literary
 endorsement has the endpoints in [Literary endorsement](#literary-endorsement-lve-73); no web or
 native consumer uses them yet. Work tags have the endpoints in [Work tags](#work-tags-tag-pr-03):
-public catalog reads and the author's private draft tags; no route changes the catalog and no web
-or native consumer uses them yet.
+public catalog reads and the author's private draft tags; no route changes the catalog. The web
+desk (TAG-PR-05) consumes the catalog list, suggestions and draft tags; slug resolution has no
+consumer yet and no native consumer exists.
 
 ## Conventions
 

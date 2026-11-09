@@ -2,6 +2,7 @@ mod desk;
 mod discussion;
 mod endorsement;
 pub(crate) mod me;
+pub(crate) mod work_info;
 
 pub use desk::{DeskIndex, DraftEditor};
 

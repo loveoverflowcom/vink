@@ -6,7 +6,7 @@
 package vink.ui
 
 object VinkCatalog {
-    const val VERSION: String = "0.6.0"
+    const val VERSION: String = "0.7.0"
     val statuses: List<String> = listOf("implemented-unverified", "unsupported", "verified")
     val families: List<Pair<String, String>> = listOf("foundation" to "Nền tảng", "text" to "Chữ", "layout" to "Bố cục", "action" to "Hành động", "field" to "Nhập và chọn", "identity" to "Danh tính và hình ảnh", "state" to "Trạng thái và phản hồi", "navigation" to "Điều hướng và khung", "composition" to "Kết hợp", "screen" to "Màn Vink — Mẫu")
 
@@ -467,6 +467,15 @@ object VinkCatalog {
             label = "Ghi nhận văn học — Mẫu",
             summary = "Ghi nhận văn học cho tác phẩm (Đánh giá cao), nhận xét gốc và phản hồi (Hữu ích) qua ToggleAction; dữ liệu Mẫu, không gọi dịch vụ, không xác nhận ghi; glyph CHOICE-07 còn OPEN.",
             scenarios = listOf(Scenario("default", "Tác phẩm, gốc và phản hồi phẳng"), Scenario("selected", "Đã xác nhận"), Scenario("pending", "Đang gửi"), Scenario("uncertain", "Chưa xác nhận được"), Scenario("own-content", "Nội dung của chính mình"), Scenario("signed-out", "Chưa có danh tính"), Scenario("unavailable", "Không thể đánh giá lúc này")),
+            leptos = "implemented-unverified",
+            cmp = "implemented-unverified",
+        ),
+        CatalogEntry(
+            id = "composition.tag-selector",
+            family = "composition",
+            label = "Bộ chọn thẻ — Mẫu",
+            summary = "Chọn một dạng bài và tối đa 3 chủ đề từ danh mục do caller cấp; mỗi chip có nút bỏ có tên riêng, thẻ ngừng dùng hoặc bị từ chối ghi bằng chữ kèm gợi ý thay; Enter khi đang gõ dấu không chọn, ngoài composition chỉ chọn thẻ trùng khớp. Dữ liệu Mẫu, không gọi dịch vụ, không lưu.",
+            scenarios = listOf(Scenario("default", "Đã chọn, đang tìm “hồi”"), Scenario("empty", "Chưa chọn thẻ nào"), Scenario("full", "Đủ 3 chủ đề"), Scenario("retired", "Thẻ đã ngừng dùng, có gợi ý thay"), Scenario("refused", "Máy chủ từ chối một thẻ"), Scenario("no-results", "Không có gợi ý khớp"), Scenario("unavailable", "Danh mục và gợi ý tạm không tải được"), Scenario("long-label", "Nhãn và mô tả dài"), Scenario("interactive", "Chọn, bỏ, thay bằng owner trong bộ nhớ")),
             leptos = "implemented-unverified",
             cmp = "implemented-unverified",
         ),

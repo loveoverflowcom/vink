@@ -126,6 +126,65 @@ pub struct SavedDraft {
     pub updated_at: String,
 }
 
+/// `GET /api/v1/tags`: active tags, forms first; `truncated` when more than 200 exist.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagList {
+    pub tags: Vec<TagDto>,
+    pub truncated: bool,
+}
+
+/// `GET /api/v1/tags/suggestions`: `query` echoes `q`, so an answer to older input is dropped.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagSuggestions {
+    pub query: String,
+    pub suggestions: Vec<TagSuggestion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagSuggestion {
+    pub tag: TagDto,
+    /// `exact`, `folded` or `prefix`; kept as text so a new value is not a crash.
+    #[serde(rename = "match")]
+    pub match_kind: String,
+    pub via_alias: Option<String>,
+}
+
+/// `GET /api/v1/drafts/{id}/tags`: the actor's draft tags with their own `version`. A retired
+/// tag already on the draft stays here with `status: "retired"`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DraftTags {
+    pub work_id: String,
+    pub version: i64,
+    pub form: Option<TagDto>,
+    pub themes: Vec<TagDto>,
+}
+
+/// `PUT /api/v1/drafts/{id}/tags`: the whole desired state; every field is required, so `form:
+/// null` and `themes: []` are sent explicitly and clear, never an omission.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SaveDraftTagsRequest {
+    pub expected_version: i64,
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
+/// Answer of an accepted tag save: identities only, as committed.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedDraftTags {
+    pub work_id: String,
+    pub version: i64,
+    pub changed: bool,
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
+/// The stored draft tags (IDs) carried by a tag `version_conflict`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StoredTags {
+    pub form: Option<String>,
+    pub themes: Vec<String>,
+}
+
 /// Root page of a work's discussion (two tiers: roots + one flat reply list per root).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiscussionPage {
@@ -382,6 +441,15 @@ pub struct ErrorBody {
     /// Endorsement `version_conflict` only: the actor's current state, to reconcile from.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub endorsement: Option<EndorsementToken>,
+    /// Draft-tag `version_conflict` only: the stored tags.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tags: Option<StoredTags>,
+    /// Draft-tag refusals: the refused tag.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<String>,
+    /// `tag_retired` only, when the curator named a successor.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub successor_id: Option<String>,
 }
 
 /// Outcome classes of the API, as this client needs to distinguish them.
@@ -414,6 +482,15 @@ pub enum ApiError {
     RevisionChanged {
         current_revision_id: String,
     },
+    /// `409 version_conflict` of draft tags: `stored` is what the server holds. If it equals the
+    /// desired state, that state holds (a lost acknowledgement); otherwise show it, never resend.
+    TagConflict {
+        current_version: i64,
+        stored: StoredTags,
+    },
+    /// A draft-tag refusal (`unknown_tag`, `tag_retired`, `wrong_facet`, `too_many_themes`).
+    /// Nothing was written.
+    TagRefused(TagRefusal),
     Invalid {
         field: Option<String>,
     },
@@ -423,6 +500,40 @@ pub enum ApiError {
     Unexpected {
         status: u16,
     },
+}
+
+/// Why the server refused a draft-tag save; `field` is `form` or `themes`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TagRefusal {
+    pub code: TagRefusalCode,
+    pub field: Option<String>,
+    pub tag_id: Option<String>,
+    pub successor_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TagRefusalCode {
+    /// `422 unknown_tag`: not in the curated catalog (no proposal route exists).
+    UnknownTag,
+    /// `409 tag_retired`: retired after it was chosen and not already on the draft.
+    Retired,
+    /// `422 wrong_facet`: a theme as `form` or a form among `themes`.
+    WrongFacet,
+    /// `422 too_many_themes`: more than three distinct themes.
+    TooManyThemes,
+}
+
+impl TagRefusal {
+    fn from_body(code: TagRefusalCode, body: Option<ErrorBody>) -> Self {
+        let (field, tag_id, successor_id) =
+            body.map_or((None, None, None), |b| (b.field, b.tag_id, b.successor_id));
+        Self {
+            code,
+            field,
+            tag_id,
+            successor_id,
+        }
+    }
 }
 
 impl ApiError {
@@ -442,10 +553,21 @@ impl ApiError {
                 }) => Self::EndorsementConflict { observed },
                 Some(ErrorBody {
                     current_version: Some(current_version),
+                    tags: Some(stored),
+                    ..
+                }) => Self::TagConflict {
+                    current_version,
+                    stored,
+                },
+                Some(ErrorBody {
+                    current_version: Some(current_version),
                     ..
                 }) => Self::VersionConflict { current_version },
                 _ => Self::Unexpected { status },
             },
+            (409, Some("tag_retired")) => {
+                Self::TagRefused(TagRefusal::from_body(TagRefusalCode::Retired, body))
+            }
             (409, Some("revision_changed")) => match body.and_then(|b| b.current_revision_id) {
                 Some(current_revision_id) => Self::RevisionChanged {
                     current_revision_id,
@@ -456,6 +578,15 @@ impl ApiError {
             (409, Some("target_unavailable")) => Self::TargetUnavailable,
             (409, Some("comment_removed")) => Self::CommentRemoved,
             (422, Some("idempotency_key_reused")) => Self::KeyReused,
+            (422, Some("unknown_tag")) => {
+                Self::TagRefused(TagRefusal::from_body(TagRefusalCode::UnknownTag, body))
+            }
+            (422, Some("wrong_facet")) => {
+                Self::TagRefused(TagRefusal::from_body(TagRefusalCode::WrongFacet, body))
+            }
+            (422, Some("too_many_themes")) => {
+                Self::TagRefused(TagRefusal::from_body(TagRefusalCode::TooManyThemes, body))
+            }
             (422, _) => Self::Invalid {
                 field: body.and_then(|b| b.field),
             },
@@ -672,6 +803,113 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn decodes_tag_fixtures() {
+        let list: TagList = round_trip("tags.list.json");
+        assert!(!list.truncated && list.tags.iter().any(|t| t.facet == "form"));
+        let suggestions: TagSuggestions = round_trip("tags.suggestions.json");
+        assert_eq!(suggestions.query, "hồi");
+        assert!(
+            suggestions
+                .suggestions
+                .iter()
+                .any(|s| s.via_alias.as_deref() == Some("Hồi ức") && s.match_kind == "prefix")
+        );
+        let draft: DraftTags = round_trip("draft.tags.get.json");
+        assert_eq!(draft.version, 4);
+        let retired = draft
+            .themes
+            .iter()
+            .find(|t| t.status == "retired")
+            .expect("the fixture keeps a retired theme on the draft");
+        assert_eq!(
+            retired.successor.as_ref().map(|s| s.label.as_str()),
+            Some("Mùa")
+        );
+        let request: SaveDraftTagsRequest = round_trip("draft.tags.put.request.json");
+        assert_eq!(request.expected_version, draft.version);
+        let saved: SavedDraftTags = round_trip("draft.tags.put.response.json");
+        assert_eq!(saved.version, 5);
+        assert_eq!(saved.themes, request.themes);
+        // `form: null` and `themes: []` are sent, never omitted: omission is a `422`.
+        let clear = SaveDraftTagsRequest {
+            expected_version: 5,
+            form: None,
+            themes: Vec::new(),
+        };
+        assert_eq!(
+            serde_json::to_value(&clear).unwrap(),
+            serde_json::json!({"expected_version": 5, "form": null, "themes": []})
+        );
+    }
+
+    #[test]
+    fn classifies_tag_error_fixtures() {
+        let conflict = ApiError::from_response(
+            409,
+            Some(round_trip::<ErrorEnvelope>(
+                "error.tag_version_conflict.json",
+            )),
+        );
+        assert_eq!(
+            conflict,
+            ApiError::TagConflict {
+                current_version: 5,
+                stored: StoredTags {
+                    form: Some("a0000000-0000-4000-8000-000000000001".into()),
+                    themes: vec![
+                        "a0000000-0000-4000-8000-000000000011".into(),
+                        "a0000000-0000-4000-8000-000000000012".into(),
+                    ],
+                },
+            }
+        );
+        let refusal = |name: &str, status: u16| match ApiError::from_response(
+            status,
+            Some(round_trip::<ErrorEnvelope>(name)),
+        ) {
+            ApiError::TagRefused(refusal) => refusal,
+            other => panic!("{name}: {other:?}"),
+        };
+        let retired = refusal("error.tag_retired.json", 409);
+        assert_eq!(retired.code, TagRefusalCode::Retired);
+        assert_eq!(retired.field.as_deref(), Some("themes"));
+        assert_eq!(
+            retired.successor_id.as_deref(),
+            Some("a0000000-0000-4000-8000-000000000014")
+        );
+        let unknown = refusal("error.unknown_tag.json", 422);
+        assert_eq!(unknown.code, TagRefusalCode::UnknownTag);
+        assert!(unknown.tag_id.is_some() && unknown.successor_id.is_none());
+        let facet = refusal("error.wrong_facet.json", 422);
+        assert_eq!(
+            (facet.code, facet.field.as_deref()),
+            (TagRefusalCode::WrongFacet, Some("form"))
+        );
+        let many = refusal("error.too_many_themes.json", 422);
+        assert_eq!(
+            (many.code, many.tag_id.as_deref()),
+            (TagRefusalCode::TooManyThemes, None)
+        );
+        assert_eq!(
+            ApiError::from_response(
+                403,
+                Some(round_trip::<ErrorEnvelope>(
+                    "error.principal_suspended.json"
+                ))
+            ),
+            ApiError::Forbidden
+        );
+        // A text-draft conflict carries no `tags` and stays a plain version conflict.
+        assert_eq!(
+            ApiError::from_response(
+                409,
+                Some(round_trip::<ErrorEnvelope>("error.version_conflict.json"))
+            ),
+            ApiError::VersionConflict { current_version: 5 }
+        );
     }
 
     #[test]
