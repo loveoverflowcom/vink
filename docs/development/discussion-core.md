@@ -16,6 +16,12 @@ hàng đợi + route kiểm duyệt. D2T-03 bổ sung UI đọc/giao tiếp ghi 
 Kani cho cấu trúc, receipt, reaction, tally và cursor; không đổi SQL, migration, API hay UI.
 Issue: [#41](https://github.com/loveoverflowcom/vink/issues/41),
 [#43](https://github.com/loveoverflowcom/vink/issues/43).
+**Lát DISC-01 của [#120](https://github.com/loveoverflowcom/vink/issues/120)** (nền `develop@47131a9`)
+thêm admission thuần có version (`domain/discussion/admission.rs`): `premoderation.v1` là policy
+hiệu lực duy nhất, ứng viên đăng-trước `trusted-cohort.v1` chỉ chạy shadow, hậu kiểm gắn version
+(`hold_for_review`), model `admission.qnt` + replay và ba harness Kani. Không đổi SQL, migration,
+API hay UI; bình luận lưu vẫn `pending`. Quyết định và delta D-08 đề xuất:
+[admission](../architecture/discussion-admission.md).
 
 ## HOW: từ lệnh tới hàng trong database
 
@@ -48,7 +54,9 @@ thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contr
 ## Lựa chọn trong lát này
 
 - **Tiền kiểm:** bình luận mới luôn `pending` (COM-02, D-08). Không có sửa bình luận (D-08 chặn sửa
-  công khai cho tới khi có gate). Quyết định duyệt/từ chối/gỡ gắn `ModerationVersion`.
+  công khai cho tới khi có gate). Quyết định duyệt/từ chối/gỡ gắn `ModerationVersion`. Từ #120,
+  “luôn `pending`” là kết quả của `decide_initial_review(premoderation.v1)`; store/HTTP vẫn viết cứng
+  `pending` (audit ở [admission](../architecture/discussion-admission.md#1-baseline-đối-chiếu-tại-head-thực-thi-ac-01)).
 - **Hai trục:** `removal` (null/author/moderation) tách `review` (pending/approved/rejected). Chỉ
   present + approved là công khai; người viết thấy trạng thái bình luận của mình.
 - **Gỡ:** người viết gỡ của mình → xóa chữ khỏi database. Kiểm duyệt gỡ → giữ chữ cho audit, không
@@ -110,6 +118,7 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 | D2T-INV-09 — #41 | Chưa có | `PageCursor` (`at_micros` là seam chung của `decode`), `PageLimit`, `PREVIEW_REPLIES`; biên `time` ±9999 năm | `pages_follow_the_keyset_order_and_previews_continue_on_the_reply_page` (ties theo ID) | [`refined_scalars_accept_exactly_their_predicate`](../../services/vink-app/src/domain/discussion/proofs.rs): `PageLimit` với mọi `Option<u32>`; [`page_cursors_round_trip_every_representable_position`](../../services/vink-app/src/domain/discussion/proofs.rs): mọi `i64` micros × mọi UUID | Thứ tự keyset nằm ở SQL (`postgres`); parser chuỗi cursor chỉ có unit test; ranking “Nổi bật”, epoch/snapshot, benchmark |
 | D2T-INV-10 — #45 | Chưa có consumer model | `apps/vink-web/src/discussion_state.rs`: scope, edit generation, logical key và physical attempt; unit regressions | Không thêm test DB; receipt/idempotency theo INV-06 | Chưa có | Consumer browser evidence riêng; CMP projection mẫu, chưa native integration/Quint interleavings/production auth/OS IME |
 | D2T-INV-11 — #25 | [EMO lifecycle owner](expressions.md#registry-emo--một-model-lifecycle), không model comment | `CommentBody` giữ Unicode; `vink-expressions` sở hữu manifest/policy riêng, Web pilot dùng thật | — | Owner-local EMO harnesses, xem evidence PR | Chưa typed sticker/reaction persistence và composer #43/#45; không nhận proof EMO là proof discussion |
+| D2T-INV-12 — COM-02, D-08, MOD-02/03/05, #120 | [`admission.qnt`](../../services/vink-app/behavior/discussion/admission.qnt): `admissionRecordsProvenance`, `refusalWritesNothing`, `premoderationAdmitsPending`, `approvalNeedsEveryGuard`, `shadowOnlyMeasures`, `ticketsOnlyForPublishFirst`, `postReviewFenced`, `removalTerminal`, `scopedVersionedWrites`; trace `rollout`; counterexample `admission-shadow`, `admission-stale-trust`, `admission-unfenced` | `admission::{decide_initial_review, decide_admission, PolicySelection, Admission, decide_post_review}`, `CommentState::hold_for_review`; unit tests, vét cạn facts × policy, `admission_replay` (gồm ba counterexample bị production từ chối) | — (chưa có cột provenance, store hay worker) | [`admission_approves_only_when_every_guard_passes`](../../services/vink-app/src/domain/discussion/proofs.rs), `shadow_selection_keeps_premoderation_effective`, `post_review_only_withdraws_the_observed_approval` | Ứng viên chỉ shadow; chưa authority trust, rules engine, classifier, fence standing tại commit, provenance bền, outbox/worker hậu kiểm, rate limit; delta D-08 PROPOSED |
 
 Các symbol model, fixture và lệnh thực thi của lát cắt 1 được chỉ mục ở
 [owner-local behavior](../../services/vink-app/behavior/discussion/README.md).
@@ -125,8 +134,8 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
 2. **Application (`quick`):** store ghi nhận để kiểm xác thực trước validate, input thô không tới
    store, ID do server sinh và mỗi kết quả giữ mã lỗi riêng. Không chứng minh luật của store.
 3. **Quint (`discussion`):** model cấu trúc (lát cắt 1), model vòng đời `lifecycle.qnt`
-   (D2T-02: tiền kiểm, gỡ, version, bật/tắt, grant tại commit, tự né; receipt/retry D2T-INV-06)
-   và `reaction.qnt` (D2T-INV-08). Simulation ngẫu nhiên có giới hạn, negative control có
+   (D2T-02: tiền kiểm, gỡ, version, bật/tắt, grant tại commit, tự né; receipt/retry D2T-INV-06),
+   `reaction.qnt` (D2T-INV-08) và `admission.qnt` (D2T-INV-12: policy, shadow, hậu kiểm). Simulation ngẫu nhiên có giới hạn, negative control có
    counterexample thật và replay input qua các quyết định Rust production, không phải model
    checking; khóa và transaction vẫn chỉ có bằng chứng ở lane `postgres`.
 4. **PostgreSQL thật (`postgres`):** ràng buộc bằng SQL trực tiếp bỏ qua Rust, race có khóa tường
@@ -136,7 +145,8 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
 5. **Kani (`kani`):** harness owner-local trên `src/domain` kiểm từng quyết định thuần với toàn
    miền input (version/generation/cursor `i64`, digest 32 byte, count `u32`, mọi trạng thái ×
    người xem × loại reaction; ID trong vài giá trị ký hiệu đủ để bằng/khác nhau), cột Kani ở
-   bảng trên. Không
+   bảng trên; 16 harness thảo luận, gồm ba harness admission (#120) với mọi instant `i64` và oracle
+   tuổi `i128`. Không
    thay Quint cho chuỗi lệnh hay `postgres` cho khóa. **Apalache/model checking NOT_RUN.** D2T-03 có browser scenarios trong lane Web; trạng thái từng run ghi riêng, không suy PASS từ source.
 6. **HTTP (`quick` + `postgres`):** fixture tests hai phía (provider serialize so field-for-field,
    consumer `vink-web` decode giữ đủ field và phân loại mã lỗi), và

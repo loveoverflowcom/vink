@@ -74,4 +74,7 @@ không gọi test Rust consumer là model-check/Kani. Browser, persistence, OS I
 screen reader, responsive/theme screenshots và native runtime cần evidence riêng.
 PR #56 đã merge tại `27927c4` để sửa editor selection/resize; base đã tích hợp. Kết quả quick/Web/hai preview và giới hạn ở [evidence](../development/discussion-ui-evidence.md).
 
+Trạng thái gửi/duyệt mở rộng cho thiết kế sau (Refused, Held, quy tắc thử lại, ma trận cho designer)
+nằm ở [brief #120](discussion-submission-brief.md); brief không đổi phần đã triển khai ở đây.
+
 Discussion HTTP có deadline 30 giây cho mỗi transport attempt. Timeout/abort giữ outcome chưa rõ và snapshot/key; timer bị hủy cùng feature owner. Thu ô trả lời chỉ đổi trình bày, không hủy transport. Scope đã được kiểm ở controller; production chưa có luồng đổi account/session để nghiệm thu runtime.

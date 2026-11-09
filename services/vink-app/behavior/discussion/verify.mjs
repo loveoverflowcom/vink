@@ -231,13 +231,114 @@ function verifyEndorsement() {
   console.log('PASS negative control: missing no-op fence lets old ON resurrect after OFF at transition 2');
 }
 
+// Admission states (#120): stored comments with provenance, owed post-reviews and the shadow.
+function projectAdmission(file, length, status) {
+  const trace = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(trace['#meta'].status, status);
+  assert.equal(trace['#meta'].format, 'ITF');
+  assert.equal(trace.states.length, length + 1, 'No empty/truncated scenario passes');
+  const [init] = trace.states;
+  assert.equal(init.outcome, 'init');
+  assert.deepEqual(init.comments['#map'], []);
+  assert.equal(init.effective, 'premoderation.v1', 'The pilot starts premoderated');
+  assert.equal(init.shadowing, false);
+  const flag = value => { assert.equal(typeof value, 'boolean'); return value; };
+  return trace.states.slice(1).map((state, index) => {
+    assert.equal(integer(state.cursor), index + 1);
+    const c = state.command;
+    const command = {
+      op: string(c.op), actor: integer(c.actor), id: integer(c.id), value: string(c.value),
+      age: integer(c.age), matches: flag(c.matches), flag: string(c.flag),
+    };
+    const comments = state.comments['#map'].map(([id, comment]) => ({
+      id: integer(id), writer: integer(comment.writer), review: string(comment.review),
+      removed: flag(comment.removed), version: integer(comment.version),
+      policy: string(comment.policy), reason: string(comment.reason),
+    })).sort((left, right) => left.id - right.id);
+    const tickets = state.tickets['#map'].map(([id, observed]) => ({
+      id: integer(id), version: integer(observed),
+    })).sort((left, right) => left.id - right.id);
+    return {
+      command, outcome: string(state.outcome), reason: string(state.reason),
+      shadow: string(state.shadow), effective: string(state.effective),
+      shadowing: flag(state.shadowing), now: integer(state.now), comments, tickets,
+    };
+  });
+}
+
+function verifyAdmission() {
+  simulation('admission.qnt', 'step', 40, 1000, 'admissionSafe');
+  console.log(`PASS admission simulation: seed=${seed}, samples=1000, max_steps=40, writers=1..3, IDs=1..3, ticks<=6`);
+  const length = 45;
+  const out = join(temporary, 'admission.itf.json');
+  simulation('admission.qnt', 'rolloutStep', length, 1, 'admissionSafe', out);
+  const steps = projectAdmission(out, length, 'ok');
+  // Non-vacuity: every outcome and every reason, a measured shadow approval on a comment that
+  // was stored pending, and a publish-first approval that survives the kill switch.
+  const outcomes = new Set(steps.map(step => step.outcome));
+  for (const expected of ['created', 'refused', 'facts_set', 'changed', 'unchanged', 'removed',
+    'held', 'kept', 'stale']) {
+    assert(outcomes.has(expected), `admission scenario never reaches outcome ${expected}`);
+  }
+  const reasons = new Set(steps.map(step => step.reason));
+  for (const expected of ['policy_premoderation', 'thread_reviewed', 'content_flagged',
+    'trust_unknown', 'not_trusted', 'trust_revoked', 'trust_stale', 'content_unassessed',
+    'content_mismatch', 'content_stale', 'trusted_and_clear', 'suspended', 'standing_unknown']) {
+    assert(reasons.has(expected), `admission scenario never reaches reason ${expected}`);
+  }
+  assert(steps.some(step => step.shadow === 'trusted_and_clear' &&
+    step.comments.find(comment => comment.id === step.command.id)?.review === 'pending'),
+    'admission scenario never measures a shadow approval of a stored pending comment');
+  assert(steps.some(step => step.effective === 'premoderation.v1' && step.comments.some(comment =>
+    comment.review === 'approved' && comment.policy === 'trusted-cohort.v1')),
+    'admission scenario never keeps a publish-first approval after the kill switch');
+  fixture('admission-fixtures.json', {
+    format: 'vink-discussion-admission-conformance-v1', quint_version: version,
+    trust_max_age_ticks: 2, scenarios: [{ name: 'rollout', steps }],
+  });
+  const comment = (step, id) => step.comments.find(c => c.id === id);
+  for (const [name, step, length, invariant, check] of [
+    ['admission-shadow-counterexample.json', 'mutatedShadowStep', 3, 'premoderationAdmitsPending', steps => {
+      // Applying the shadow stored an approval while premoderation was the effective policy.
+      const last = steps.at(-1);
+      assert.deepEqual([last.outcome, last.effective, last.shadow], ['created', 'premoderation.v1', 'trusted_and_clear']);
+      assert.equal(comment(last, 1).review, 'approved');
+    }],
+    ['admission-stale-trust-counterexample.json', 'mutatedStaleTrustStep', 6, 'approvalNeedsEveryGuard', steps => {
+      // An attestation from tick 0 approved a comment at tick 3, past the two-tick maximum age.
+      const last = steps.at(-1);
+      assert.deepEqual([last.outcome, last.effective, last.now], ['created', 'trusted-cohort.v1', 3]);
+      assert.equal(comment(last, 1).review, 'approved');
+    }],
+    ['admission-unfenced-counterexample.json', 'mutatedUnfencedStep', 6, 'postReviewFenced', steps => {
+      // A human rejected then re-approved (version 3); the job observed version 1 and still held it.
+      const [before, last] = steps.slice(-2);
+      assert.deepEqual([comment(before, 1).review, comment(before, 1).version], ['approved', 3]);
+      assert.deepEqual(before.tickets, [{ id: 1, version: 1 }]);
+      assert.deepEqual([last.outcome, comment(last, 1).review, comment(last, 1).version], ['held', 'pending', 4]);
+    }],
+  ]) {
+    const trace = join(temporary, name.replace('.json', '.itf.json'));
+    const args = simulation('admission.qnt', step, length, 1, invariant, trace, 1);
+    const violation = projectAdmission(trace, length, 'violation');
+    check(violation);
+    fixture(name, {
+      format: 'vink-discussion-counterexample-v1', quint_version: version,
+      command: ['quint', ...args.filter(arg => !arg.startsWith('--out-itf='))],
+      status: 'violation', steps: violation,
+    });
+    console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
+  }
+}
+
 try {
   assert.equal(run(['--version']).trim(), version, 'Use the pinned Quint version');
   run(['typecheck', 'structure.qnt']);
   run(['typecheck', 'lifecycle.qnt']);
   run(['typecheck', 'reaction.qnt']);
   run(['typecheck', 'endorsement.qnt']);
-  console.log(`PASS Quint ${version}: typecheck all four models (including the mutation actions)`);
+  run(['typecheck', 'admission.qnt']);
+  console.log(`PASS Quint ${version}: typecheck all five models (including the mutation actions)`);
 
   simulation('structure.qnt', 'step', 40, 1000, 'structureSafe');
   console.log(`PASS simulation: seed=${seed}, samples=1000, max_steps=40, IDs=1..4, backend=typescript`);
@@ -428,6 +529,7 @@ try {
     console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
   }
   verifyEndorsement();
+  verifyAdmission();
   console.log('NOT_RUN Apalache/model checking; Rust conformance is a separate cargo test');
   rmSync(temporary, { recursive: true });
 } catch (error) {

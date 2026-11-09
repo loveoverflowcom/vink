@@ -1,0 +1,91 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "admission.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedShadowStep",
+    "--max-steps=3",
+    "--max-samples=1",
+    "--invariant=premoderationAdmitsPending",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "policy",
+        "actor": 0,
+        "id": 0,
+        "value": "shadow",
+        "age": 0,
+        "matches": false,
+        "flag": "none"
+      },
+      "outcome": "facts_set",
+      "reason": "none",
+      "shadow": "none",
+      "effective": "premoderation.v1",
+      "shadowing": true,
+      "now": 0,
+      "comments": [],
+      "tickets": []
+    },
+    {
+      "command": {
+        "op": "attest",
+        "actor": 2,
+        "id": 0,
+        "value": "none",
+        "age": 0,
+        "matches": false,
+        "flag": "none"
+      },
+      "outcome": "facts_set",
+      "reason": "none",
+      "shadow": "none",
+      "effective": "premoderation.v1",
+      "shadowing": true,
+      "now": 0,
+      "comments": [],
+      "tickets": []
+    },
+    {
+      "command": {
+        "op": "submit",
+        "actor": 2,
+        "id": 1,
+        "value": "clear",
+        "age": 0,
+        "matches": true,
+        "flag": "unassessed"
+      },
+      "outcome": "created",
+      "reason": "trusted_and_clear",
+      "shadow": "trusted_and_clear",
+      "effective": "premoderation.v1",
+      "shadowing": true,
+      "now": 0,
+      "comments": [
+        {
+          "id": 1,
+          "writer": 2,
+          "review": "approved",
+          "removed": false,
+          "version": 1,
+          "policy": "premoderation.v1",
+          "reason": "trusted_and_clear"
+        }
+      ],
+      "tickets": [
+        {
+          "id": 1,
+          "version": 1
+        }
+      ]
+    }
+  ]
+}

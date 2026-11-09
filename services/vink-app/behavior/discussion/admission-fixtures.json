@@ -1,0 +1,5785 @@
+{
+  "format": "vink-discussion-admission-conformance-v1",
+  "quint_version": "0.33.1",
+  "trust_max_age_ticks": 2,
+  "scenarios": [
+    {
+      "name": "rollout",
+      "steps": [
+        {
+          "command": {
+            "op": "submit",
+            "actor": 1,
+            "id": 1,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "policy_premoderation",
+          "shadow": "none",
+          "effective": "premoderation.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "policy",
+            "actor": 0,
+            "id": 0,
+            "value": "shadow",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "premoderation.v1",
+          "shadowing": true,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 2,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "policy_premoderation",
+          "shadow": "trust_unknown",
+          "effective": "premoderation.v1",
+          "shadowing": true,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "attest",
+            "actor": 2,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "premoderation.v1",
+          "shadowing": true,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 3,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "policy_premoderation",
+          "shadow": "trusted_and_clear",
+          "effective": "premoderation.v1",
+          "shadowing": true,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "policy",
+            "actor": 0,
+            "id": 0,
+            "value": "trusted_cohort",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 4,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trusted_and_clear",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 5,
+            "value": "clear",
+            "age": 0,
+            "matches": false,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "content_mismatch",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 6,
+            "value": "clear",
+            "age": 1,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "content_stale",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 7,
+            "value": "clear",
+            "age": -1,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "content_stale",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 8,
+            "value": "unassessed",
+            "age": 0,
+            "matches": true,
+            "flag": "clear"
+          },
+          "outcome": "created",
+          "reason": "content_unassessed",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 9,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "flagged"
+          },
+          "outcome": "created",
+          "reason": "content_flagged",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 3,
+            "id": 10,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trust_unknown",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "trust",
+            "actor": 3,
+            "id": 0,
+            "value": "not_trusted",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 3,
+            "id": 11,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "not_trusted",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "thread",
+            "actor": 0,
+            "id": 0,
+            "value": "reviewed",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 12,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "thread_reviewed",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "thread",
+            "actor": 0,
+            "id": 0,
+            "value": "standard",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 4,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "post_review",
+            "actor": 0,
+            "id": 4,
+            "value": "flagged",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "held",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 13,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trusted_and_clear",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 13,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "post_review",
+            "actor": 0,
+            "id": 13,
+            "value": "clear",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "kept",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 14,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trusted_and_clear",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 14,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "moderate",
+            "actor": 0,
+            "id": 14,
+            "value": "reject",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "changed",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 14,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "post_review",
+            "actor": 0,
+            "id": 14,
+            "value": "flagged",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "stale",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 15,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trusted_and_clear",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 15,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "remove",
+            "actor": 2,
+            "id": 15,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "changed",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": [
+            {
+              "id": 15,
+              "version": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "post_review",
+            "actor": 0,
+            "id": 15,
+            "value": "unresolved",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "removed",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "moderate",
+            "actor": 0,
+            "id": 4,
+            "value": "approve",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "changed",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "moderate",
+            "actor": 0,
+            "id": 4,
+            "value": "approve",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "unchanged",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "moderate",
+            "actor": 0,
+            "id": 15,
+            "value": "reject",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "removed",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "remove",
+            "actor": 2,
+            "id": 15,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "unchanged",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 0,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "actor": 0,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 1,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "actor": 0,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 2,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "actor": 0,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 16,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trust_stale",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "attest",
+            "actor": 2,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "trust",
+            "actor": 2,
+            "id": 0,
+            "value": "revoked",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 17,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "trust_revoked",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "standing",
+            "actor": 1,
+            "id": 0,
+            "value": "suspended",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 1,
+            "id": 18,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "refused",
+          "reason": "suspended",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "standing",
+            "actor": 1,
+            "id": 0,
+            "value": "unknown",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 1,
+            "id": 18,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "refused",
+          "reason": "standing_unknown",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "attest",
+            "actor": 2,
+            "id": 0,
+            "value": "none",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "trusted-cohort.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "policy",
+            "actor": 0,
+            "id": 0,
+            "value": "premoderation",
+            "age": 0,
+            "matches": false,
+            "flag": "none"
+          },
+          "outcome": "facts_set",
+          "reason": "none",
+          "shadow": "none",
+          "effective": "premoderation.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            }
+          ],
+          "tickets": []
+        },
+        {
+          "command": {
+            "op": "submit",
+            "actor": 2,
+            "id": 19,
+            "value": "clear",
+            "age": 0,
+            "matches": true,
+            "flag": "unassessed"
+          },
+          "outcome": "created",
+          "reason": "policy_premoderation",
+          "shadow": "none",
+          "effective": "premoderation.v1",
+          "shadowing": false,
+          "now": 3,
+          "comments": [
+            {
+              "id": 1,
+              "writer": 1,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 2,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 3,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            },
+            {
+              "id": 4,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 3,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 5,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_mismatch"
+            },
+            {
+              "id": 6,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 7,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_stale"
+            },
+            {
+              "id": 8,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_unassessed"
+            },
+            {
+              "id": 9,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "content_flagged"
+            },
+            {
+              "id": 10,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_unknown"
+            },
+            {
+              "id": 11,
+              "writer": 3,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "not_trusted"
+            },
+            {
+              "id": 12,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "thread_reviewed"
+            },
+            {
+              "id": 13,
+              "writer": 2,
+              "review": "approved",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 14,
+              "writer": 2,
+              "review": "rejected",
+              "removed": false,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 15,
+              "writer": 2,
+              "review": "approved",
+              "removed": true,
+              "version": 2,
+              "policy": "trusted-cohort.v1",
+              "reason": "trusted_and_clear"
+            },
+            {
+              "id": 16,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_stale"
+            },
+            {
+              "id": 17,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "trusted-cohort.v1",
+              "reason": "trust_revoked"
+            },
+            {
+              "id": 19,
+              "writer": 2,
+              "review": "pending",
+              "removed": false,
+              "version": 1,
+              "policy": "premoderation.v1",
+              "reason": "policy_premoderation"
+            }
+          ],
+          "tickets": []
+        }
+      ]
+    }
+  ]
+}

@@ -8,9 +8,17 @@
 //! with unwinding assertions on. Two harnesses check a two-request sequence (the accepted-intent
 //! fence of the comments mode and of a reaction); locking, transactions and I/O stay in the
 //! `postgres` lane; longer serialized lifecycles, receipts and reactions stay in the Quint models.
+//! The #120 admission harnesses add any `i64` instant and two symbolic 32-byte digests; their
+//! freshness oracle is an independent `i128` age, not the production helper.
 
 use uuid::Uuid;
 
+use super::admission::{
+    AdmissionDecision, AdmissionFacts, AdmissionPolicy, AdmissionReason, Assessment, InitialReview,
+    PolicySelection, PostReview, PostReviewFinding, PostReviewTicket, RULES_MAX_AGE_MICROS,
+    Refusal, Standing, TRUST_MAX_AGE_MICROS, ThreadReview, Trust, Verdict, decide_admission,
+    decide_initial_review, decide_post_review,
+};
 use super::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
@@ -809,5 +817,247 @@ fn reaction_tallies_follow_deltas_without_underflow_or_wrapping() {
     kani::cover!(
         before.apply(delta) == Err(TallyError::Overflow),
         "a saturated count is reachable"
+    );
+}
+
+fn any_policy() -> AdmissionPolicy {
+    if kani::any() {
+        AdmissionPolicy::PremoderationV1
+    } else {
+        AdmissionPolicy::TrustedCohortV1
+    }
+}
+
+fn any_standing() -> Standing {
+    match kani::any::<u8>() % 3 {
+        0 => Standing::Active,
+        1 => Standing::Suspended,
+        _ => Standing::Unknown,
+    }
+}
+
+fn any_trust() -> Trust {
+    match kani::any::<u8>() % 4 {
+        0 => Trust::Unknown,
+        1 => Trust::NotTrusted,
+        2 => Trust::Revoked,
+        _ => Trust::Trusted {
+            attested_at_micros: kani::any(),
+        },
+    }
+}
+
+/// Unassessed, or any verdict on the submitted payload or another one, at any instant.
+fn any_assessment(payload: PayloadDigest, other: PayloadDigest) -> Assessment {
+    if kani::any() {
+        return Assessment::Unassessed;
+    }
+    Assessment::Assessed {
+        verdict: if kani::any() {
+            Verdict::Clear
+        } else {
+            Verdict::Flagged
+        },
+        payload: if kani::any() { payload } else { other },
+        at_micros: kani::any(),
+    }
+}
+
+fn any_admission_facts() -> AdmissionFacts {
+    let payload = PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap();
+    let other = PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap();
+    AdmissionFacts {
+        standing: any_standing(),
+        trust: any_trust(),
+        thread: if kani::any() {
+            ThreadReview::Standard
+        } else {
+            ThreadReview::AllReviewed
+        },
+        rules: any_assessment(payload, other),
+        classifier: any_assessment(payload, other),
+        payload,
+        now_micros: kani::any(),
+    }
+}
+
+/// Independent freshness oracle in `i128`, where no `i64` age can wrap.
+fn within(at: i64, now: i64, max_age: i64) -> bool {
+    let age = i128::from(now) - i128::from(at);
+    0 <= age && age <= i128::from(max_age)
+}
+
+fn is_flagged(assessment: Assessment) -> bool {
+    matches!(
+        assessment,
+        Assessment::Assessed {
+            verdict: Verdict::Flagged,
+            ..
+        }
+    )
+}
+
+/// #120 admission: standing that is not active refuses under every policy; premoderation pends
+/// everything else; the candidate approves exactly when every guard holds over the raw facts
+/// (attestation and rules assessment within their maximum age at any `i64` instants, rules clear
+/// for this very payload, nothing flagged, standard thread). Every pending reason names a fact
+/// that really fails, and only an approval owes a post-review at the first version.
+#[kani::proof]
+fn admission_approves_only_when_every_guard_passes() {
+    let policy = any_policy();
+    let facts = any_admission_facts();
+    let admission = match (facts.standing, decide_initial_review(policy, facts)) {
+        (Standing::Active, AdmissionDecision::Admit(admission)) => admission,
+        (Standing::Suspended, AdmissionDecision::Refuse(Refusal::Suspended))
+        | (Standing::Unknown, AdmissionDecision::Refuse(Refusal::StandingUnknown)) => return,
+        _ => panic!("standing alone decides refusal"),
+    };
+    let now = facts.now_micros;
+    let trusted_now = matches!(facts.trust, Trust::Trusted { attested_at_micros }
+        if within(attested_at_micros, now, TRUST_MAX_AGE_MICROS));
+    let rules_clear_now = matches!(facts.rules, Assessment::Assessed {
+        verdict: Verdict::Clear, payload, at_micros,
+    } if payload == facts.payload && within(at_micros, now, RULES_MAX_AGE_MICROS));
+    let every_guard = policy == AdmissionPolicy::TrustedCohortV1
+        && facts.thread == ThreadReview::Standard
+        && !is_flagged(facts.rules)
+        && !is_flagged(facts.classifier)
+        && trusted_now
+        && rules_clear_now;
+    let approved = admission.review() == InitialReview::Approved;
+    assert_eq!(approved, every_guard);
+    assert_eq!(admission.policy(), policy);
+    assert_eq!(
+        admission.reason() == AdmissionReason::TrustedAndClear,
+        approved
+    );
+    let state = admission.initial_state();
+    assert!(state.is_present() && state.version() == ModerationVersion::FIRST);
+    assert_eq!(state.is_public(), approved);
+    assert_eq!(state.review() == Review::Pending, !approved);
+    match admission.post_review() {
+        Some(ticket) => {
+            assert!(approved);
+            assert_eq!(ticket.version(), ModerationVersion::FIRST);
+            assert_eq!(ticket.policy(), policy);
+        }
+        None => assert!(!approved),
+    }
+    match admission.reason() {
+        AdmissionReason::PolicyPremoderation => {
+            assert_eq!(policy, AdmissionPolicy::PremoderationV1);
+        }
+        AdmissionReason::ThreadReviewed => assert_eq!(facts.thread, ThreadReview::AllReviewed),
+        AdmissionReason::ContentFlagged => {
+            assert!(is_flagged(facts.rules) || is_flagged(facts.classifier));
+        }
+        AdmissionReason::TrustUnknown => assert_eq!(facts.trust, Trust::Unknown),
+        AdmissionReason::NotTrusted => assert_eq!(facts.trust, Trust::NotTrusted),
+        AdmissionReason::TrustRevoked => assert_eq!(facts.trust, Trust::Revoked),
+        AdmissionReason::TrustStale => {
+            assert!(matches!(facts.trust, Trust::Trusted { .. }) && !trusted_now);
+        }
+        AdmissionReason::ContentUnassessed => assert_eq!(facts.rules, Assessment::Unassessed),
+        AdmissionReason::ContentMismatch => assert!(matches!(facts.rules,
+            Assessment::Assessed { payload, .. } if payload != facts.payload)),
+        AdmissionReason::ContentStale => assert!(matches!(facts.rules,
+            Assessment::Assessed { at_micros, .. }
+                if !within(at_micros, now, RULES_MAX_AGE_MICROS))),
+        AdmissionReason::TrustedAndClear => assert!(every_guard),
+    }
+    kani::cover!(approved, "an approval is reachable");
+    kani::cover!(
+        admission.reason() == AdmissionReason::TrustStale,
+        "a stale attestation is reachable"
+    );
+    kani::cover!(
+        admission.reason() == AdmissionReason::ContentStale,
+        "a stale or future assessment is reachable"
+    );
+}
+
+/// #120 CHOICE-01 A: every constructible selection stores the premoderation decision; the shadow
+/// candidate's decision is returned unchanged beside it and never becomes the stored state.
+#[kani::proof]
+fn shadow_selection_keeps_premoderation_effective() {
+    let selection = if kani::any() {
+        PolicySelection::PREMODERATION
+    } else {
+        PolicySelection::shadowing(any_policy())
+    };
+    let facts = any_admission_facts();
+    let outcome = decide_admission(selection, facts);
+    assert_eq!(selection.effective(), AdmissionPolicy::PremoderationV1);
+    assert_eq!(
+        outcome.effective,
+        decide_initial_review(AdmissionPolicy::PremoderationV1, facts)
+    );
+    assert_eq!(
+        outcome.shadow,
+        selection
+            .shadow()
+            .map(|candidate| decide_initial_review(candidate, facts))
+    );
+    if let AdmissionDecision::Admit(admission) = outcome.effective {
+        assert_eq!(admission.initial_state(), CommentState::SUBMITTED);
+        assert_eq!(admission.post_review(), None);
+    }
+    kani::cover!(
+        matches!(outcome.shadow, Some(AdmissionDecision::Admit(shadow))
+            if shadow.review() == InitialReview::Approved),
+        "a shadow approval is measured while the stored comment pends"
+    );
+}
+
+/// #120 post-review: a clear finding writes nothing; a flag or an unresolved review withdraws an
+/// approval only at the version the job observed, to pending at the next version. It never
+/// approves, never touches a removed comment and loses to any decision since (any `i64` version).
+#[kani::proof]
+fn post_review_only_withdraws_the_observed_approval() {
+    let ticket = PostReviewTicket::restore(any_policy(), any_version());
+    let current = any_state();
+    let finding = match kani::any::<u8>() % 3 {
+        0 => PostReviewFinding::Clear,
+        1 => PostReviewFinding::Flagged,
+        _ => PostReviewFinding::Unresolved,
+    };
+    let result = decide_post_review(ticket, current, finding);
+    if finding == PostReviewFinding::Clear {
+        assert_eq!(result, Ok(PostReview::Keep));
+        return;
+    }
+    match result {
+        Ok(PostReview::Keep) => panic!("only a clear finding keeps"),
+        Ok(PostReview::Hold(Transition::Changed(next))) => {
+            assert!(current.is_present() && current.review() == Review::Approved);
+            assert_eq!(current.version(), ticket.version());
+            assert_eq!(next.review(), Review::Pending);
+            assert_eq!(next.removal(), None);
+            assert_eq!(next.version().get(), current.version().get() + 1);
+        }
+        Ok(PostReview::Hold(Transition::Unchanged(same))) => {
+            assert_eq!(same, current);
+            assert!(current.is_present() && current.review() != Review::Approved);
+            assert_eq!(current.version(), ticket.version());
+        }
+        Err(LifecycleError::Removed) => assert!(!current.is_present()),
+        Err(LifecycleError::Stale { current: seen }) => {
+            assert!(current.is_present());
+            assert_ne!(current.version(), ticket.version());
+            assert_eq!(seen, current.version());
+        }
+        Err(LifecycleError::VersionExhausted) => {
+            assert!(current.is_present() && current.review() == Review::Approved);
+            assert_eq!(current.version(), ticket.version());
+            assert_eq!(current.version().get(), i64::MAX);
+        }
+    }
+    kani::cover!(
+        matches!(result, Ok(PostReview::Hold(Transition::Changed(_)))),
+        "a withdrawal is reachable"
+    );
+    kani::cover!(
+        matches!(result, Err(LifecycleError::Stale { .. })),
+        "a decision since the admission wins"
     );
 }

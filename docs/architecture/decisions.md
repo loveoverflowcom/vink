@@ -40,7 +40,7 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | D-05 | Auth authority | **Đề xuất A cho pilot (Provisional, 07/11/2026)**; chưa Accepted | Spike S-03: authority native trong `vink-identity` (mã email một lần + phiên opaque phía server), App giữ principal/binding/đình chỉ; Keycloak và Supabase/Clerk không chọn cho pilot. Blocker: chủ sản phẩm chấp nhận UX, mail transport thật, rate limit biên, qualification trình duyệt/native, fence đình chỉ tại commit ([ADR](auth-authority.md)). Không còn DiscourseConnect |
 | D-06 | Nháp riêng + public publication | Đề xuất pilot | Nhóm kín/unlisted/shared editing để sau |
 | D-07 | AI hỗ trợ từ MVP | Ưu tiên đầu vào | Pilot có người duyệt; auto-approval theo nhóm được đánh giá |
-| D-08 | Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh | Cần spike | Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot |
+| D-08 | Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh | Cần spike | Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot. #120 DISC-01: tiền kiểm là policy có version `premoderation.v1`, hiệu lực duy nhất; ứng viên đăng-trước `trusted-cohort.v1` chỉ chạy shadow, delta và điều kiện bật là **PROPOSED** ([admission](discussion-admission.md)) |
 | D-09 | Tạp Chí chỉ hiện snapshot còn là publication hiện hành | Đề xuất pilot | Bản mới làm tuyển chọn tạm ngừng, chờ biên tập xác nhận lại |
 | D-10 | Một phần trước, nhiều chương cơ bản ở beta | Cần lựa chọn sản phẩm | Nếu nhiều chương là điểm khác biệt ngày đầu, nâng WR-04 thành Must — Pilot |
 | D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
@@ -54,6 +54,10 @@ Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md)
 ghi phần đã hiện thực và gap. D-05, D-08 và D-12 vẫn mở: D-05 có đề xuất provisional từ spike
 S-03 nhưng chưa có auth production, nên ghi bình luận production vẫn bị chặn; tiền kiểm cần
 authority kiểm duyệt và màn vận hành.
+
+Củng cố thảo luận [#120](https://github.com/loveoverflowcom/vink/issues/120), DISC-01:
+[admission](discussion-admission.md) chọn CHOICE-01 A (admission thuần có version + shadow, tiền kiểm
+vẫn hiệu lực) và CHOICE-06 A (chỉ văn bản). D-05/D-08 giữ trạng thái; delta D-08 chưa được chấp nhận.
 
 Phân loại tác phẩm [#95](https://github.com/loveoverflowcom/vink/issues/95), TAG-PR-01:
 [decision owner](work-taxonomy.md) ghi CHOICE-01/02/03 của pure core; [registry](../development/taxonomy-core.md)
