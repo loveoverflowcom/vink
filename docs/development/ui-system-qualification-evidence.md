@@ -111,3 +111,82 @@ CMP: 67 tests JVM/Desktop (31 ui + 1 patterns + 2 replay + 33 preview), 31 iOS c
 Mười ba ảnh giữ trong manifest đã mở. `web-explore.png` và `cmp-feedback.png` trùng byte với ảnh cùng fixture giữ ở UIS-05; các ảnh matrix khác không có baseline đồng cảnh để tuyên bố pixel parity. Native status bars đã mở lại sau sửa theme; ảnh chụp quá sớm ở splash/transition được bỏ và chụp lại khi UI idle.
 
 Tích hợp `develop@fe18d9f` (#37, skills/capture/Drive docs) trước PR; 145 implementation inputs trong manifest không đổi. Chạy lại `verify quick` cho metadata/links mới; không suy bằng chứng runtime mới từ việc merge tài liệu. Cluster PostgreSQL scratch và native diagnostic installs/emulator riêng task đã được dọn; simulator có sẵn vẫn giữ booted.
+
+## Lossy WebP trong CMP (#116)
+
+Base `develop@3638d65` đã có policy, generator và fixtures của
+[#115](https://github.com/loveoverflowcom/vink/issues/115) từ
+[PR #122](https://github.com/loveoverflowcom/vink/pull/122). CMP dùng lại hai vector dương/âm.
+Ảnh chi tiết chẩn đoán dùng cùng nền tổng hợp 768 × 512, thêm chữ “ĐƯỜNG VỀ” và “Một buổi
+chiều” bằng Be Vietnam Pro Semibold. Bản q78 dài 7.460 byte, SHA-256
+`a6a741df4341ff692c60f6478841907fddb7188a6a86abc5bb9f2edee49ecc4b`.
+[Profile chung](../../packages/ui-system/shared/content-images.md) ·
+[Fixture chi tiết](../../packages/ui-system/cmp/diagnostics/src/commonMain/kotlin/vink/ui/preview/ContentImageFixture.kt)
+
+Host kiểm RIFF và chunk `VP8 `, kích thước, phân vùng đầu trước khi cấp buffer ảnh.
+Giới hạn diagnostic là 512 KiB mã hóa, 2.048 px mỗi cạnh nguồn và 2.097.152 pixel nguồn.
+Kích thước decode lấy từ khung đo bằng pixel đã tính density và đủ để crop theo tỷ lệ
+nguồn trong giới hạn cạnh ra 1.024 px. Worker dùng chung chạy một lượt một lúc. Khi
+đổi bytes/khung hoặc rời composition, lượt cũ bị hủy ở phía nhận. Khi host trở lại
+active, lượt còn Loading mới được chạy lại. Bitmap hợp lệ vào `BitmapPainter` và
+`ImageState.Ready`; lỗi đi qua `ImageState.Failed` để khung/initials hiển thị fallback.
+Ví dụ mẫu chung 256 × 171 cho ảnh thật với alt hiện hành. Mẫu âm 20 byte dừng
+trước payload và hiện “Không tải được ảnh”.
+
+- **CHOICE-01** chọn `ImageDecoder` từ API 28 để lấy đúng kích thước và từ chối ảnh
+  giải mã một phần. API 24–27 dùng `BitmapFactory` có sampling và thu về đúng kích thước.
+  Nhánh cũ chỉ nhận đúng bytes của hai fixture đóng gói vì `BitmapFactory` có thể trả
+  bitmap khi decoder báo input chưa đầy đủ.
+  [ImageDecoder](https://developer.android.com/reference/android/graphics/ImageDecoder) ·
+  [BitmapFactory trong AOSP](https://android.googlesource.com/platform/frameworks/base/+/70f5c48e8e0403abe7e0f489b30890e46aac0d8b/core/jni/android/graphics/BitmapFactory.cpp)
+- **CHOICE-02** chọn bitmap software ARGB_8888 để giữ nét chữ/màu và cho phép đọc lại
+  pixel trong test. iOS/Desktop dùng Skia `Codec.readPixels` trước khi chuyển bitmap
+  immutable sang Compose. [Skiko 0.9.22.2](https://github.com/JetBrains/skiko/blob/v0.9.22.2/skiko/src/commonMain/kotlin/org/jetbrains/skia/Codec.kt)
+
+### Kiểm chứng cục bộ ngày 09/11/2026
+
+Chạy từ root Vink trên macOS arm64 (Mac16,10), JDK 17 và Xcode 26.6.
+Android dùng SDK 36 để build. Cả hai emulator có mật độ 420 dpi (2,625×).
+iPhone 17 Pro Simulator chạy iOS 26.5 (23F77), 402 × 874 pt ở 3×.
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `cargo xtask ui-tokens --check` | PASS. Vectors sinh ra khớp source chung. |
+| `VINK_UI_NATIVE_TARGETS=1 cargo xtask ui-preview cmp build` | PASS. Desktop và các target thư viện bật native. |
+| `VINK_UI_NATIVE_TARGETS=1 cargo xtask ui-preview cmp verify` | PASS. Common/Desktop và các test codec/đo workload bằng Kotlin trên iOS Simulator. |
+| `ANDROID_SERIAL=emulator-5554 cargo xtask ui-preview android verify` | PASS 5/5 trên Pixel 7 AVD, Android 17/API 37, `ImageDecoder`. Test render đọc lại pixel và kiểm alt/fallback. |
+| `ANDROID_SERIAL=emulator-5556 cargo xtask ui-preview android verify` | PASS 5/5 trên Pixel AVD arm64, Android 7.0/API 24, `BitmapFactory`. Kiểm alt/fallback qua semantics và đối chiếu ảnh chụp màn. |
+| `VINK_UI_IOS_DEVICE=AB3B8430-88BD-4C77-AE22-19AFBFDA0BE1 cargo xtask ui-preview ios verify` | Ca WebP mới PASS, toàn suite FAIL 1/4. Test Sharing hiện hữu chờ nhãn cũ và yêu cầu ẩn nút gửi, trong khi `FeedbackComposer` tại base luôn render nút. |
+
+Ảnh tham chiếu được giải mã từ fixture q78. Đã mở và đối chiếu ảnh chụp ở hai
+emulator Android và iPhone Simulator. Dấu tiếng Việt trong chữ raster vẫn đọc rõ,
+nền lavender và mặt trăng giữ màu gần ảnh tham chiếu. Mẫu 256 px hiện mềm hơn ở
+khung lớn trên cả hai nền tảng. Khung 16:9 cắt chiều cao như trước. Fallback vẫn
+đọc được ở theme tối với mức chữ mẫu 200%. Ảnh avatar hỏng trên API 24 hiện initials.
+PNG chụp cục bộ trong `target/ui-preview/cmp-webp/`. XCTest giữ một attachment Ready.
+Matrix chụp Desktop có thể ghi frame đầu Loading. Test giao diện Desktop đợi
+trạng thái cuối trước khi kiểm alt và fallback.
+
+### Workload trong bộ nhớ
+
+Mỗi lượt dùng cùng fixture chi tiết 768 × 512, khung yêu cầu 192 × 108 px, trả
+192 × 128 ARGB_8888 để cover crop. Bảy lượt tuần tự đo từ trước khi chuyển sang
+worker đến khi nhận bitmap, bao gồm parse/base64 và lập lịch. Kích thước pixel thực
+đo được là 98.304 byte mỗi output. Các số bộ nhớ sau đây đo toàn tiến trình,
+gồm cả harness/renderer đang chạy và các ca trước đó.
+
+| Target | Thời gian 7 lượt (µs), theo thứ tự | Bộ nhớ toàn tiến trình |
+| --- | --- | --- |
+| Android API 37 | 5774, 3029, 1541, 2405, 1563, 1564, 1370 | PSS 106.812 → 107.532 KiB. Đỉnh RSS 223.008 → 223.008 KiB. |
+| Android API 24 | 23147, 1567, 1329, 1249, 1156, 1262, 1768 | PSS 46.949 → 47.881 KiB. Đỉnh RSS 127.000 → 128.456 KiB. |
+| iOS 26.5 | 1093, 1066, 1042, 975, 951, 1076, 1041 | Đỉnh RSS 87.457.792 → 88.309.760 byte trong tiến trình test Kotlin. |
+
+| Acceptance #116 | Bằng chứng và giới hạn |
+| --- | --- |
+| AC-01, AC-03 | Dùng lại fixture dương/âm sinh từ #115 và URL allow-list đã tích hợp, giữ ca từ chối AVIF trong test âm. `:ui` vẫn nhận Painter/ImageState. |
+| AC-02 | Codec Android/iOS giải mã được WebP VP8 và từ chối input lỗi trong test. Các ca âm gồm cắt file, sai chunk, vượt giới hạn và cắt mất phân vùng pixel sau khi sửa độ dài container. |
+| AC-04 | Giới hạn parse/sizing, một worker và test hủy trước khi giao kết quả. Ca UI đổi scenario kiểm state cuối và alt tương ứng. |
+| AC-05 | Cả hai nhánh Android đã chạy. Software ARGB_8888 có số đo allocation trên từng API. |
+| AC-06, AC-07 | Test render/fallback theo từng host và kiểm ảnh mở. Thiết bị vật lý và screen reader `NOT_RUN`. Suite iOS đầy đủ còn lỗi Sharing nêu trên. |
+| AC-08 | Decode/count/kích thước/config và bộ nhớ theo workload trên. Ảnh bìa native qua mạng `NOT_IMPLEMENTED`. |
+| AC-09 | Kiểm generated fixtures, lệnh và hồ sơ theo owner. |

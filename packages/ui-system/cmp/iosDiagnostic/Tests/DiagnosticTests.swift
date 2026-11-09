@@ -31,4 +31,24 @@ final class DiagnosticTests: XCTestCase {
         XCTAssertTrue(button.waitForExistence(timeout: 15))
         XCTAssertFalse(button.isEnabled)
     }
+
+    func testWebpSpecimenShowsDecodedImageAndFailedFallback() {
+        let alt = "[Mẫu] Ảnh nền lavender"
+        let ready = launch("identity.image-frame")
+        let image = ready.descendants(matching: .any).matching(NSPredicate(format: "label == %@", alt)).firstMatch
+        XCTAssertTrue(image.waitForExistence(timeout: 15))
+        let capture = XCTAttachment(screenshot: ready.screenshot())
+        capture.name = "WebP ready – shared landscape and diagnostic detail"
+        capture.lifetime = .keepAlways
+        add(capture)
+
+        let errors = launch("identity.image-frame", "image-error", "dark")
+        let failure = errors.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "[Mẫu] Bìa tập thơ — Không tải được ảnh")
+        )
+        let bothFailed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "count == 2"), object: failure)
+        XCTAssertEqual(XCTWaiter.wait(for: [bothFailed], timeout: 15), .completed)
+        XCTAssertFalse(errors.descendants(matching: .any).matching(NSPredicate(format: "label == %@", alt)).firstMatch.exists)
+    }
+
 }

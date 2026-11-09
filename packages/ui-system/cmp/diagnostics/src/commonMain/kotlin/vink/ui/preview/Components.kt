@@ -81,12 +81,6 @@ import vink.ui.VinkTextField
 /** The preview's event log, provided by the workbench; specimens write intents into it. */
 val LocalPreviewLog = staticCompositionLocalOf<(String) -> Unit> { {} }
 
-/** Host-owned decode adapter; invalid bytes must produce Failed. */
-expect fun decodeImage(base64: String): ImageState
-
-private val sample by lazy { decodeImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) }
-private val broken by lazy { decodeImage(VinkIdentityVectors.BROKEN_WEBP_BASE64) }
-
 private fun person(i: Int) = VinkIdentityVectors.people[i]
 
 private fun people(n: Int) = VinkIdentityVectors.people.take(n).map { (key, name) -> Person(key, name) }
@@ -532,19 +526,27 @@ private fun Figure(caption: String, tag: String, content: @Composable () -> Unit
 }
 
 @Composable
-private fun Avatar(i: Int, size: AvatarSize, image: ImageState = ImageState.Absent, kind: AvatarKind = AvatarKind.Author) {
+private fun Avatar(i: Int, size: AvatarSize, image: ImageState = ImageState.Absent, kind: AvatarKind = AvatarKind.Author, modifier: Modifier = Modifier) {
     val (key, name) = person(i)
-    VinkAvatar(name, key, Modifier.testTag("avatar:${key ?: "none"}:${size.id}"), image = image, size = size, kind = kind)
+    VinkAvatar(name, key, modifier.testTag("avatar:${key ?: "none"}:${size.id}"), image = image, size = size, kind = kind)
 }
 
 @Composable
 private fun IdentityAvatar(scenario: String) {
     when (scenario) {
         "image-error" -> {
-            Note("Ảnh hợp lệ hiện trên initials; WebP giải mã lỗi, URL bị từ chối và Failed đều quay về initials.")
+            Note("Ảnh WebP hợp lệ hiện trên initials. Khi ảnh đang tải hoặc giải mã lỗi, initials vẫn hiển thị.")
             VinkStack(direction = Direction.Row, gap = Space.S6, wrap = true) {
-                Figure("Ready WebP", "case:ready") { Avatar(0, AvatarSize.Reader, sample) }
-                Figure("WebP lỗi", "case:broken") { Avatar(1, AvatarSize.Reader, broken) }
+                Figure("WebP hợp lệ", "case:ready") {
+                    FixtureImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) { image, modifier ->
+                        Avatar(0, AvatarSize.Reader, image, modifier = modifier)
+                    }
+                }
+                Figure("WebP lỗi", "case:broken") {
+                    FixtureImage(VinkIdentityVectors.BROKEN_WEBP_BASE64) { image, modifier ->
+                        Avatar(1, AvatarSize.Reader, image, modifier = modifier)
+                    }
+                }
                 Figure("Failed", "case:failed") { Avatar(5, AvatarSize.Reader, ImageState.Failed) }
                 Figure("Loading", "case:loading") { Avatar(0, AvatarSize.Reader, ImageState.Loading) }
             }
@@ -618,7 +620,9 @@ private fun IdentityByline(long: Boolean) {
 private fun IdentityFrame(errors: Boolean) {
     if (errors) {
         VinkGrid(min = GridMin.Small, gap = Space.S4) {
-            VinkImageFrame(broken, "[Mẫu] Bìa tập thơ", Modifier.testTag("frame:broken"))
+            FixtureImage(VinkIdentityVectors.BROKEN_WEBP_BASE64) { image, modifier ->
+                VinkImageFrame(image, "[Mẫu] Bìa tập thơ", modifier.testTag("frame:broken"))
+            }
             VinkImageFrame(ImageState.Failed, "[Mẫu] Bìa tập thơ", Modifier.testTag("frame:failed"))
             VinkImageFrame(ImageState.Absent, "", Modifier.testTag("frame:absent"), AspectRatio.Square)
             VinkImageFrame(ImageState.Loading, "[Mẫu] Ảnh minh họa", Modifier.testTag("frame:loading"), AspectRatio.Wide)
@@ -626,8 +630,12 @@ private fun IdentityFrame(errors: Boolean) {
         return
     }
     VinkGrid(gap = Space.S4) {
-        VinkImageFrame(sample, "[Mẫu] Ảnh nền lavender", Modifier.testTag("frame:ready"))
-        VinkImageFrame(sample, "", ratio = AspectRatio.Wide)
+        FixtureImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) { image, modifier ->
+            VinkImageFrame(image, "[Mẫu] Ảnh nền lavender", modifier.testTag("frame:ready"))
+        }
+        FixtureImage(DETAIL_WEBP_BASE64) { image, modifier ->
+            VinkImageFrame(image, "", modifier, ratio = AspectRatio.Wide)
+        }
     }
 }
 

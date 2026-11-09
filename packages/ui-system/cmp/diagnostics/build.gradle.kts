@@ -19,13 +19,18 @@ kotlin {
             }
         }
     }
+    applyDefaultHierarchyTemplate()
     sourceSets {
         commonMain.dependencies {
             api(project(":ui"))
             api(project(":patterns"))
+            implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
         }
         commonTest.dependencies { implementation(kotlin("test")) }
+        val skiaMain by creating { dependsOn(commonMain.get()) }
+        if (nativeTargets) named("iosMain") { dependsOn(skiaMain) }
         val desktopMain by getting {
+            dependsOn(skiaMain)
             dependencies { implementation(compose.desktop.currentOs) }
         }
     }
