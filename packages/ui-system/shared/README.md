@@ -11,7 +11,8 @@ bằng `cargo xtask ui-tokens`.
 | [api-coverage.json](api-coverage.json) | Public component → stable entry, style exception có owner/reason; `verify quick` so với declarations thật |
 | [compatibility.md](compatibility.md) | Alias, owner/removal condition và change notes; cách mở rộng ở [EXTENDING](../EXTENDING.md) |
 | [fixtures/foundation.json](fixtures/foundation.json) | Đồng hồ cố định, seed, chữ mẫu tiếng Việt `[Mẫu]` (có chuỗi NFD lưu bằng escape) |
-| [fixtures/identity.json](fixtures/identity.json) | `avatar-identity-v1`: golden vectors initials/tone (NFC/NFD, Đ/đ, Ỗ/Ữ, emoji, một từ, blank), người `[Mẫu]`, ảnh PNG mẫu và byte AVIF hỏng để kiểm fallback |
+| [fixtures/identity.json](fixtures/identity.json) | `avatar-identity-v1`: golden vectors initials/tone (NFC/NFD, Đ/đ, Ỗ/Ữ, emoji, một từ, blank), người `[Mẫu]`, WebP lossy hợp lệ và bản cắt ngắn để kiểm fallback |
+| [content-images.md](content-images.md) | Quy ước Web/CMP cho raster nội dung tĩnh, nguồn và phép kiểm fixture |
 | [icons.json](icons.json) | Registry icon: path nguyên văn từ Material Icons (Apache-2.0, commit pin), SHA-256 file upstream được generator dựng lại và so; [license](icons/LICENSE-material-design-icons.txt) |
 | [components.md](components.md) | Contract component UIS-02: LayoutSpec/anatomy, props, sự kiện, owner, trạng thái không hỗ trợ, quy tắc identity |
 | [states.md](states.md) | Contract UIS-03: trục trạng thái và tổ hợp hợp lệ, `Problem`/intent phục hồi, chính sách vị trí/announce, motion/`LoadingGate`, LayoutSpec, recipe playground |

@@ -678,9 +678,37 @@ async function components(page) {
 
   await page.open('identity.avatar', 'image-error');
   await page.waitFor(`(() => { const r = document.querySelector('[data-case=ready] img'); return r && r.complete && r.naturalWidth > 0 && !document.querySelector('[data-case=broken] img'); })()`, 'avatar images settle');
+  const readyAvatar = await page.eval(`(async () => {
+    const avatar = document.querySelector('[data-case=ready] .vk-ui-avatar');
+    const img = avatar.querySelector('img');
+    await img.decode();
+    return [img.naturalWidth, img.naturalHeight, img.alt, avatar.getAttribute('role'), avatar.getAttribute('aria-label')];
+  })()`);
+  check(JSON.stringify(readyAvatar) === JSON.stringify([identity.sample_image.width, identity.sample_image.height, '', 'img', identity.people[0].name]),
+    'Avatar: WebP decodes at fixture dimensions and keeps the avatar label');
   const fallbacks = await page.eval(`['broken', 'unsafe', 'failed', 'loading'].map((c) => [c, !!document.querySelector('[data-case=' + c + '] img'), document.querySelector('[data-case=' + c + '] .vk-ui-avatar').dataset.initials])`);
-  check(fallbacks.every(([, img, letters]) => !img && letters), `Avatar: broken AVIF, unsafe URL, failed and loading show initials (${fallbacks.map((f) => f[0] + ':' + f[2])})`);
+  check(fallbacks.every(([, img, letters]) => !img && letters), `Avatar: truncated WebP, unsafe URL, failed and loading show initials (${fallbacks.map((f) => f[0] + ':' + f[2])})`);
   check((await page.eval(`document.querySelectorAll('img[src^="javascript"]').length`)) === 0, 'Avatar: a script URL never reaches an <img>');
+
+  await page.open('identity.image-frame');
+  const frames = await page.eval(`Promise.all([...document.querySelectorAll('#specimen-scope .vk-ui-frame img')].map(async (img) => {
+    await img.decode();
+    const response = await fetch(img.currentSrc);
+    return {
+      ok: response.ok, mime: response.headers.get('content-type'), src: img.getAttribute('src'),
+      bytes: [...new Uint8Array(await response.arrayBuffer())],
+      size: [img.naturalWidth, img.naturalHeight], alt: img.alt, fit: getComputedStyle(img).objectFit,
+      ratio: getComputedStyle(img.parentElement).aspectRatio,
+    };
+  }))`);
+  const { mime, width: sampleWidth, height: sampleHeight, webp_base64: sample } = identity.sample_image;
+  check(frames.length === 2 && frames.every((frame) => frame.ok && frame.mime === mime &&
+    Buffer.from(frame.bytes).toString('base64') === sample &&
+    frame.size[0] === sampleWidth && frame.size[1] === sampleHeight && frame.fit === 'cover'),
+  'ImageFrame: data URL and loopback HTTP serve identical lossy WebP bytes with the correct MIME and full decode');
+  check(frames[0].src.startsWith('data:image/webp;base64,') && frames[0].alt === '[Mẫu] Phong cảnh lavender' &&
+    frames[0].ratio === '4 / 3' && frames[1].src === '/fixtures/sample.webp' && frames[1].alt === '' &&
+    frames[1].ratio === '16 / 9', 'ImageFrame: WebP keeps named and decorative alt and the frame ratios');
 
   await page.open('identity.avatar', 'long-label');
   const toneMap = () => page.eval(`Object.fromEntries([...document.querySelectorAll('[data-testid=avatar-order] figure')].map((f) => [f.dataset.key, f.querySelector('.vk-ui-avatar').dataset.tone]))`);
@@ -726,6 +754,46 @@ async function components(page) {
     console.log(`  ok  resolved text contrast ≥4.5 (${theme}); lowest ${Math.min(...results.map((r) => r[1])).toFixed(2)}`);
   }
   await page.choose('theme', 'Hệ thống');
+}
+
+async function mediaHydration(page) {
+  await page.send('Page.navigate', { url: new URL('media-hydration.html', args.base).href });
+  await page.waitFor(`(() => {
+    const img = document.querySelector('#before-hydration img');
+    return document.readyState === 'complete' && img?.complete && img.naturalWidth === 0;
+  })()`, 'SSR image to fail before attaching handlers');
+  const initialSize = await page.eval(`(() => {
+    window.ssrFrame = document.querySelector('#before-hydration .vk-ui-frame');
+    const { width, height } = window.ssrFrame.getBoundingClientRect();
+    return [width, height];
+  })()`);
+  await page.eval(`(async () => {
+    const { default: init, hydrate } = await import('/pkg/media_hydration.js');
+    await init();
+    hydrate();
+  })()`);
+  await page.waitFor(`window.ssrFrame.isConnected && window.ssrFrame.querySelector('[data-state="failed"]')`,
+    'pre-hydration decode failure to show fallback in the original SSR frame');
+  check(await page.eval(`window.ssrFrame.querySelector('[role="img"]').getAttribute('aria-label') === '[Mẫu] Bìa tập thơ — Không tải được ảnh'`),
+    'ImageFrame: hydration sees an already failed SSR image and exposes the named fallback');
+  await page.eval(`document.getElementById('recover-early').focus()`);
+  await page.key('Enter');
+  await page.waitFor(`window.ssrFrame.querySelector('img')?.naturalWidth === ${identity.sample_image.width}`, 'valid WebP after SSR fallback');
+  const recovered = await page.eval(`(() => {
+    const img = window.ssrFrame.querySelector('img');
+    const { width, height } = window.ssrFrame.getBoundingClientRect();
+    return [width, height, img.alt, document.activeElement.id];
+  })()`);
+  check(JSON.stringify(recovered) === JSON.stringify([...initialSize, '[Mẫu] Bìa tập thơ', 'recover-early']),
+    'ImageFrame: a new valid source after hydration preserves frame geometry, alt and keyboard focus');
+
+  await page.waitFor(`document.querySelector('#after-hydration img')?.naturalWidth === ${identity.sample_image.width}`, 'valid WebP before changing to the truncated source');
+  await page.click('#break-late');
+  await page.waitFor(`document.querySelector('#after-hydration [data-state="failed"][aria-hidden="true"]') &&
+    !document.querySelector('#after-hydration img')`, 'post-hydration decode failure to show decorative fallback');
+  await page.click('#recover-late');
+  await page.waitFor(`document.querySelector('#after-hydration img[alt=""]')?.naturalHeight === ${identity.sample_image.height}`, 'decorative frame to recover after a post-hydration failure');
+  console.log('  ok  ImageFrame: truncated source set after hydration falls back, then a valid source recovers');
 }
 
 // UIS-03: states, feedback and motion. Programmatic input over CDP; the playground's manual clock
@@ -1537,6 +1605,7 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
+  await mediaHydration(page);
   await page.send('Page.navigate', { url: args.base });
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted');
   await structure(page);

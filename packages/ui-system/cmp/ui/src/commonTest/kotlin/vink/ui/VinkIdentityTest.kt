@@ -47,10 +47,10 @@ class VinkIdentityTest {
         for (bad in listOf("javascript:alert(1)", "JaVaScRiPt:alert(1)", "java\tscript:alert(1)", "data:text/html,x", "//evil.example", "vbscript:x", "")) {
             assertNull(safeHref(bad), bad)
         }
-        for (ok in listOf("/pkg/a.avif", "https://img.vink.vn/a.webp", "data:image/avif;base64,AAAA", "blob:https://vink.vn/1")) {
+        for (ok in listOf("/pkg/a", "https://img.vink.vn/a", "data:image/webp;base64,AAAA", "blob:https://vink.vn/1")) {
             assertEquals(ok, safeImageSrc(ok), ok)
         }
-        for (bad in listOf("javascript:alert(1)", "//evil/a.png", "data:image/svg+xml;base64,PHN2Zz4=", "a.png\" onerror=\"x", "")) {
+        for (bad in listOf("javascript:alert(1)", "//evil/a.png", "data:image/svg+xml;base64,PHN2Zz4=", "data:image/avif;base64,AAAA", "a.png\" onerror=\"x", "")) {
             assertNull(safeImageSrc(bad), bad)
         }
     }

@@ -166,11 +166,14 @@
     }
   ],
   "sample_image": {
-    "note": "[Mẫu] PNG 48×32 do Vink tạo (gradient lavender), không phải ảnh người.",
-    "png_base64": "iVBORw0KGgoAAAANSUhEUgAAADAAAAAgCAIAAADbtmxLAAAAuElEQVR42u3OWQ7BYBQGUPtfEiVmigcz7V8zCTrQllLzd29twKPkJmcBJ2VP3rb1Yk+HPMC17uzmkdhT8UFd2eVIIvDVmZ0gUGFgQhASH07mkR3OxIPIdCMDnAux2f5KdhAb20RKQhKSkIQkJCEJSUhCEvqzUD63yWfXbFUgSyhmF4kSmZc0mLFpmUygollMQVUzqxkwamQM9a8RG4KeGehp6DdIj3WbpAOtdDshIQlJSEISktCPoQ8w4p0W8w51XQAAAABJRU5ErkJggg=="
+    "note": "[Mẫu] Minh họa phong cảnh lavender do Vink tạo.",
+    "mime": "image/webp",
+    "width": 256,
+    "height": 171,
+    "webp_base64": "UklGRjgEAABXRUJQVlA4ICwEAACwJwCdASoAAasAPnk8mEkko6KhKRXIQJAPCWlu4AYzIBf/3Q9o/5tEuVkSylsM4A3YzL1C2McCj5ZpO/yeZ7eLSetBP8xNqf/eLM+sq8jI7SgJDjouKzGGq3gahkPYX/1KOZKCM1bMUWsdKon/v1XzvZfNgwjfRv1leq9cpsjKMU42MV7Cv9nxXhR2EgbddDITEt3njhdQvatNxE3gwJAQ0qYy1oypHsh2LYlfvDfGwv5UQShgLJI2FoEKwENYEwlPnijO7HWnpzMpvUWrvSQ/vd40rqjNe/eJZA/U+Sf11yeDn1yMbO98FvUu1AG7ti6uHEN+TpdVNIFPZWRfsO5f59KlPYG8S+iTaFDKE96sukmWx85Ry7Y3fLVf5caAa1Q2vX+kWBF+dLQ4qsaGnvnguIQRjn/9CByKwZDJ08iqxXBvAZfR0AD+9ycGUjfnbMmf5nk8AUpHrL+Hiw4rfqL4PjAx2clr5nUwse9euwCVnVZ+dYFAHaGSXF9r4zAT9UtPvTGrlWbFn3xUbsmnlb8Z1NrYwMC9mid54AZq14NFVHsZZiNoGj/romiLLMeWn9eWQj1jifImB6O7/Fyrwcry//XaO14cQ3EmvBrl0hCIfzy79QRzHyXYypygRkeWoNL8h0cKWZ8Hv2wbQxO41Z+ix3H9oNosIxSzaGzxrsAiAi9JeBCQx9lufD05gAzyL1B3Uag8FpyUPVLYH/lYcIA6dP5H2u5gGihS9+h9HQjO3wQ4DiJSgyvV5BRqTL/QCqDOaIacDYwmfD67R7H8Ii8BanOjsrK3yoWFLvLymoFrVV351kBUCIM15AqSVy/LHZLIdFLOpRqUju0BGuUfvQbuXTRJIH7fhVIN5P5JizBYnWBW6MPiYP7WVeoGLuMZh1vtJTUUmbMOiXmpLFiKHDwSdYhdFgjej1gf02qpcEgK4zzKUCcQixaqy7vRMiu+I7nuTIe7wYtx4dtXWSNj1Wpo+Z5MC9cKzv3FHiXKVVOTBL/U2d5gibxhROtZZ66zbOLAlpFkd/MG3zIySoJlbBEcZJh98kAnJSkFqL6vLALbzLHYhj7Kz6z+dBWOFpHBccDHUEztYcI8oMmDXjWa3uZNagO8Q74qrQkQifwcGGQRO57pifj8vdhy0FT2pcWWTHNaprw0ZOD7pbcgrkt7P8cNKaCTsfq4Kd5WuO36qKayIfpCIQW0t0tuxGCu2xhqUrjwrXsW1tF8kjWOla+WOXRBiLvZfZQHkft5v+zSEBqnzaKpH4A6RNBb3Lc3eFshJ0EY+up8OntkXwJd1KxW/9nPGyX+li0Ps3IAlYiNcXHUUjLqkzaXKI29Dz7H7GvyVaaIsffrbeJrf1amLFVB7Lfv02wGbJ/xUiXBSHB+4DenpUV1T2LFuM0YcJuCUDB4Tu3Pnln8tLAAAAAAAAA="
   },
   "broken_image": {
-    "note": "Byte không giải mã được, khai báo AVIF: kiểm fallback khi decode lỗi.",
-    "avif_base64": "AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZgAAAAA="
+    "note": "20 byte đầu của ảnh mẫu, cắt ngay trước payload VP8.",
+    "webp_base64": "UklGRjgEAABXRUJQVlA4ICwEAAA="
   }
 }

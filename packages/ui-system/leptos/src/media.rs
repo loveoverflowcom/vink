@@ -62,16 +62,16 @@ impl ImageState {
     }
 }
 
-const IMAGE_DATA: [&str; 5] = [
+const IMAGE_DATA: [&str; 4] = [
     "data:image/png;base64,",
     "data:image/jpeg;base64,",
     "data:image/webp;base64,",
-    "data:image/avif;base64,",
     "data:image/gif;base64,",
 ];
 
 /// `src` when it is https/http, root-relative (`/…`, not `//host`), a `blob:` the adapter made,
-/// or a base64 raster `data:` URL; `None` (treated as failed) otherwise.
+/// or an allowed base64 raster `data:` URL; `None` (treated as failed) otherwise.
+/// This checks URL syntax. The producer or adapter owns the delivered image format.
 pub fn safe_image_src(src: &str) -> Option<&str> {
     let src = src.trim();
     if src.is_empty() || src.chars().any(|c| c.is_whitespace() || c.is_control()) {
@@ -105,7 +105,7 @@ pub fn shown(state: &ImageState, failed: Option<&str>) -> Shown {
     }
 }
 
-/// An `<img>` that reports a load/decode failure (including an unsupported AVIF) once, also when
+/// An `<img>` that reports a load/decode failure, also when
 /// the failure happened before hydration attached the handler.
 fn image(
     src: String,
@@ -419,9 +419,9 @@ mod tests {
     #[test]
     fn image_sources_are_allow_listed() {
         for ok in [
-            "/pkg/a.avif",
-            "https://img.vink.vn/a.webp",
-            "data:image/avif;base64,AAAA",
+            "/pkg/a",
+            "https://img.vink.vn/a",
+            "data:image/webp;base64,AAAA",
             "blob:https://vink.vn/1",
         ] {
             assert_eq!(safe_image_src(ok), Some(ok), "{ok}");
@@ -430,15 +430,16 @@ mod tests {
             "javascript:alert(1)",
             "//evil/a.png",
             "data:image/svg+xml;base64,PHN2Zz4=",
+            "data:image/avif;base64,AAAA",
             "data:text/html,x",
             "a.png\" onerror=\"x",
             "",
         ] {
             assert_eq!(safe_image_src(bad), None, "{bad:?}");
         }
-        let ready = ImageState::ready("/a.avif");
-        assert_eq!(shown(&ready, None), Shown::Image("/a.avif".into()));
-        assert_eq!(shown(&ready, Some("/a.avif")), Shown::Fallback("failed"));
+        let ready = ImageState::ready("/a.webp");
+        assert_eq!(shown(&ready, None), Shown::Image("/a.webp".into()));
+        assert_eq!(shown(&ready, Some("/a.webp")), Shown::Fallback("failed"));
         assert_eq!(
             shown(&ImageState::ready("javascript:x"), None),
             Shown::Fallback("failed")

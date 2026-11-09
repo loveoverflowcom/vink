@@ -12,6 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::{Map, Value};
 
 pub const TOKENS: &str = "packages/ui-system/shared/tokens.json";
@@ -2338,8 +2340,8 @@ struct Identity {
     initials: Vec<(Option<String>, Option<String>)>,
     tone_vectors: Vec<(Option<String>, Option<u64>)>,
     people: Vec<(Option<String>, Option<String>)>,
-    sample_png: String,
-    broken_avif: String,
+    sample_webp: String,
+    broken_webp: String,
 }
 
 fn parse_identity(text: &str) -> Result<Identity, Vec<String>> {
@@ -2391,22 +2393,24 @@ fn parse_identity(text: &str) -> Result<Identity, Vec<String>> {
             .unwrap_or_default()
             .to_string()
     };
-    let sample_png = base64("sample_image", "png_base64");
-    let broken_avif = base64("broken_image", "avif_base64");
-    for (name, text) in [
-        ("sample_image", &sample_png),
-        ("broken_image", &broken_avif),
-    ] {
-        let valid = !text.is_empty()
-            && text
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b"+/=".contains(&b));
-        if !valid {
-            problems.push(format!("{IDENTITY}: `{name}` holds base64 bytes"));
-        }
+    let sample_webp = base64("sample_image", "webp_base64");
+    let broken_webp = base64("broken_image", "webp_base64");
+    let sample = BASE64.decode(&sample_webp).unwrap_or_default();
+    let broken = BASE64.decode(&broken_webp).unwrap_or_default();
+    let metadata = &doc["sample_image"];
+    let dimensions = webp_dimensions(&sample).map(|(w, h)| (u64::from(w), u64::from(h)));
+    if metadata["mime"].as_str() != Some("image/webp")
+        || dimensions.is_none()
+        || dimensions != metadata["width"].as_u64().zip(metadata["height"].as_u64())
+    {
+        problems.push(format!(
+            "{IDENTITY}: `sample_image` needs an opaque lossy WebP (VP8) matching MIME and dimensions"
+        ));
     }
-    if !sample_png.starts_with("iVBORw0KGgo") {
-        problems.push(format!("{IDENTITY}: `sample_image` is a PNG"));
+    if sample.get(..20) != Some(broken.as_slice()) {
+        problems.push(format!(
+            "{IDENTITY}: `broken_image` must truncate the sample before the VP8 payload"
+        ));
     }
     if initials.is_empty() || tone_vectors.is_empty() || people.is_empty() {
         problems.push(format!(
@@ -2420,12 +2424,42 @@ fn parse_identity(text: &str) -> Result<Identity, Vec<String>> {
             initials,
             tone_vectors,
             people,
-            sample_png,
-            broken_avif,
+            sample_webp,
+            broken_webp,
         })
     } else {
         Err(problems)
     }
+}
+
+/// The sample uses the simple WebP container: one lossy VP8 key frame, with no extended
+/// chunks (alpha, animation or lossless). The browser smoke verifies the full decode.
+fn webp_dimensions(bytes: &[u8]) -> Option<(u16, u16)> {
+    let header = bytes.get(..30)?;
+    let riff_len = u32::from_le_bytes(header[4..8].try_into().ok()?) as usize;
+    let vp8_len = u32::from_le_bytes(header[16..20].try_into().ok()?) as usize;
+    if &header[..4] != b"RIFF"
+        || &header[8..16] != b"WEBPVP8 "
+        || riff_len != bytes.len() - 8
+        || vp8_len < 10
+        || vp8_len.checked_add(vp8_len % 2)? != bytes.len() - 20
+        || header[20] & 1 != 0
+        || header[23..26] != [0x9d, 0x01, 0x2a]
+    {
+        return None;
+    }
+    let width = u16::from_le_bytes([header[26], header[27]]) & 0x3fff;
+    let height = u16::from_le_bytes([header[28], header[29]]) & 0x3fff;
+    (width > 0 && height > 0).then_some((width, height))
+}
+
+pub(crate) fn preview_webp(root: &Path) -> Result<Vec<u8>, String> {
+    let source = std::fs::read_to_string(root.join(IDENTITY))
+        .map_err(|e| format!("read {IDENTITY}: {e}"))?;
+    let identity = parse_identity(&source).map_err(|problems| invalid(&problems))?;
+    BASE64
+        .decode(identity.sample_webp)
+        .map_err(|e| format!("decode {IDENTITY}: {e}"))
 }
 
 fn pascal(id: &str) -> String {
@@ -2564,9 +2598,9 @@ fn rust_identity(version: &str, identity: &Identity) -> String {
     }
     let _ = writeln!(
         out,
-        "];\n\n/// [Mẫu] PNG made by Vink (not a person), base64.\npub const SAMPLE_PNG_BASE64: &str = {};\n\n/// Undecodable bytes labelled AVIF, base64: exercises the decode-failure fallback.\npub const BROKEN_AVIF_BASE64: &str = {};",
-        rust_str(&identity.sample_png),
-        rust_str(&identity.broken_avif)
+        "];\n\n/// [Mẫu] Opaque lossy WebP illustration made by Vink, base64.\npub const SAMPLE_WEBP_BASE64: &str = {};\n\n/// Truncated sample WebP, base64: exercises the decode-failure fallback.\npub const BROKEN_WEBP_BASE64: &str = {};",
+        rust_str(&identity.sample_webp),
+        rust_str(&identity.broken_webp)
     );
     out
 }
@@ -2621,9 +2655,9 @@ fn kotlin_identity(version: &str, identity: &Identity) -> String {
     out.truncate(out.trim_end_matches(['}', '\n']).len());
     let _ = writeln!(
         out,
-        "\n\n    /** [Mẫu] PNG made by Vink (not a person), base64. */\n    const val SAMPLE_PNG_BASE64: String = {}\n\n    /** Undecodable bytes labelled AVIF, base64: exercises the decode-failure fallback. */\n    const val BROKEN_AVIF_BASE64: String = {}\n}}",
-        kotlin_str(&identity.sample_png),
-        kotlin_str(&identity.broken_avif)
+        "\n\n    /** [Mẫu] Opaque lossy WebP illustration made by Vink, base64. */\n    const val SAMPLE_WEBP_BASE64: String = {}\n\n    /** Truncated sample WebP, base64: exercises the decode-failure fallback. */\n    const val BROKEN_WEBP_BASE64: String = {}\n}}",
+        kotlin_str(&identity.sample_webp),
+        kotlin_str(&identity.broken_webp)
     );
     out
 }
@@ -2714,6 +2748,47 @@ mod tests {
             "NFD stays escaped"
         );
         assert!(rust.contains("\\u{200d}"), "joiners stay escaped");
+    }
+
+    #[test]
+    fn identity_images_require_the_opaque_lossy_fixture_and_its_truncated_prefix() {
+        let (icons, identity) = asset_sources();
+        let doc: Value = serde_json::from_str(&identity).unwrap();
+        let sample = BASE64
+            .decode(doc["sample_image"]["webp_base64"].as_str().unwrap())
+            .unwrap();
+        for chunk in [b"VP8L", b"VP8X"] {
+            let mut bytes = sample.clone();
+            bytes[12..16].copy_from_slice(chunk);
+            assert!(webp_dimensions(&bytes).is_none());
+        }
+        assert!(webp_dimensions(&sample[..sample.len() - 1]).is_none());
+        for (section, key, value, error) in [
+            (
+                "sample_image",
+                "mime",
+                Value::from("image/png"),
+                "matching MIME and dimensions",
+            ),
+            (
+                "sample_image",
+                "width",
+                Value::from(1),
+                "matching MIME and dimensions",
+            ),
+            (
+                "broken_image",
+                "webp_base64",
+                Value::from(BASE64.encode(&sample)),
+                "must truncate",
+            ),
+        ] {
+            let mut invalid = doc.clone();
+            invalid[section][key] = value;
+            let problems =
+                generate_assets("0", &icons, &invalid.to_string(), |_| true).unwrap_err();
+            assert!(mentions(&problems, error), "{problems:?}");
+        }
     }
 
     #[test]

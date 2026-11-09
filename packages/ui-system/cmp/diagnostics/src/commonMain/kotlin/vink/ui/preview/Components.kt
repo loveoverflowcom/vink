@@ -84,8 +84,8 @@ val LocalPreviewLog = staticCompositionLocalOf<(String) -> Unit> { {} }
 /** Host-owned decode adapter; invalid bytes must produce Failed. */
 expect fun decodeImage(base64: String): ImageState
 
-private val sample by lazy { decodeImage(VinkIdentityVectors.SAMPLE_PNG_BASE64) }
-private val broken by lazy { decodeImage(VinkIdentityVectors.BROKEN_AVIF_BASE64) }
+private val sample by lazy { decodeImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) }
+private val broken by lazy { decodeImage(VinkIdentityVectors.BROKEN_WEBP_BASE64) }
 
 private fun person(i: Int) = VinkIdentityVectors.people[i]
 
@@ -541,10 +541,10 @@ private fun Avatar(i: Int, size: AvatarSize, image: ImageState = ImageState.Abse
 private fun IdentityAvatar(scenario: String) {
     when (scenario) {
         "image-error" -> {
-            Note("Ảnh hợp lệ hiện trên initials; AVIF giải mã lỗi, URL bị từ chối và Failed đều quay về initials.")
+            Note("Ảnh hợp lệ hiện trên initials; WebP giải mã lỗi, URL bị từ chối và Failed đều quay về initials.")
             VinkStack(direction = Direction.Row, gap = Space.S6, wrap = true) {
-                Figure("Ready PNG", "case:ready") { Avatar(0, AvatarSize.Reader, sample) }
-                Figure("AVIF lỗi", "case:broken") { Avatar(1, AvatarSize.Reader, broken) }
+                Figure("Ready WebP", "case:ready") { Avatar(0, AvatarSize.Reader, sample) }
+                Figure("WebP lỗi", "case:broken") { Avatar(1, AvatarSize.Reader, broken) }
                 Figure("Failed", "case:failed") { Avatar(5, AvatarSize.Reader, ImageState.Failed) }
                 Figure("Loading", "case:loading") { Avatar(0, AvatarSize.Reader, ImageState.Loading) }
             }

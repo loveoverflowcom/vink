@@ -90,7 +90,7 @@ fun groupSummary(label: String, people: List<Person>, maxVisible: Int, total: In
     }
 }
 
-private val IMAGE_DATA = listOf("png", "jpeg", "webp", "avif", "gif").map { "data:image/$it;base64," }
+private val IMAGE_DATA = listOf("png", "jpeg", "webp", "gif").map { "data:image/$it;base64," }
 
 /**
  * The Leptos link allow-list, shared so both renderers refuse the same targets: relative URLs and
