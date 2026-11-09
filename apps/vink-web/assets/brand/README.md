@@ -27,10 +27,10 @@ Mọi URL asset dùng prefix `vpen-r1-`; stylesheet dùng `vink.css?brand=vpen-r
 xóa output `/pkg/brand/` cũ và chỉ copy SVG/PNG/webmanifest. ZIP, PNG tham chiếu,
 manifest nguồn và concept nằm dưới docs, không được phục vụ.
 
-`provenance.json` ghi bytes/hash và source_path trong manifest gốc. `xtask` pin độc lập
-SHA của ZIP và manifest nguồn, so từng bản chép với manifest, kiểm asset bắt buộc và từ chối
-file runtime ngoài record. Test âm sửa artwork rồi sửa hash, cùng file circle ngoài record,
-phải bị phát hiện. Không chỉ đổi hash để hợp thức hóa logo mới.
+`provenance.json` ghi bytes/hash và `source_path` trong manifest gốc. `xtask` pin SHA
+của ZIP, manifest nguồn và ba bản dẫn xuất Web đã review. Mỗi URL artwork chỉ nhận
+đúng mục tương ứng trong manifest nguồn; asset hoặc bản ghi ngoài danh sách R1 đều bị từ chối.
+Test âm thử đổi Light sang file Dark hợp lệ, thêm URL cũ vào record và thay favicon kèm hash mới.
 
 SVG là trace từ PNG, không phải Bézier gốc; interior gradient là refinement của pack.
 Xem [bằng chứng và giới hạn](../../../../docs/design/brand/vpen-r1/README.md).
