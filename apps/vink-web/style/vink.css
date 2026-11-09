@@ -392,7 +392,9 @@ a {
   .vk-draft-tools { max-inline-size: 24rem; }
 }
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
+/* The first-use CTA needs its full text measure at 320px/text200. */
 .vk-desk-empty { max-width: none; }
+.vk-desk-empty #create-draft > .vk-ui-icon { display: none; }
 
 /* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
 
