@@ -1,5 +1,7 @@
 # Logo Vink — selected pack #34
 
+> Lịch sử artwork Web: từ #117, [V-pen R1](../vpen-r1/README.md) là nguồn hiện hành. Giữ nguyên ZIP và evidence #34; chúng không được phục vụ trong build mới.
+
 Ngày 03/11/2026, người dùng giao tích hợp bộ `vink_logo_final_selected` và tạo PR.
 Nguồn đóng gói là [Vink_Logo_Final_Selected_Pack.zip](Vink_Logo_Final_Selected_Pack.zip)
 (SHA-256 `46acba3f22e5b684a1a72f4518d3de6cce0906f0511ef11472a92a056008eac4`).
@@ -20,10 +22,10 @@ với source production. [Preview kỹ thuật](vink-logo-v4-preview.png) thể 
 sát hơn. PR giữ hình học và gradient của SVG/PNG, không nhận board và asset là tương đương.
 Việc tích hợp này không xác nhận người dùng đã nghiệm thu app hay launcher thật.
 
-- [SVG Light](../../../../apps/vink-web/assets/brand/vink-mark-light.svg) /
-  [Dark](../../../../apps/vink-web/assets/brand/vink-mark-dark.svg).
-- [Compact Light](../../../../apps/vink-web/assets/brand/vink-mark-light-compact.svg) /
-  [Dark](../../../../apps/vink-web/assets/brand/vink-mark-dark-compact.svg).
+- [SVG Light](https://github.com/loveoverflowcom/vink/blob/f23df33e6776dd08bd089bf8a0fd767dcd3cbe0e/apps/vink-web/assets/brand/vink-mark-light.svg) /
+  [Dark](https://github.com/loveoverflowcom/vink/blob/f23df33e6776dd08bd089bf8a0fd767dcd3cbe0e/apps/vink-web/assets/brand/vink-mark-dark.svg).
+- [Compact Light](https://github.com/loveoverflowcom/vink/blob/f23df33e6776dd08bd089bf8a0fd767dcd3cbe0e/apps/vink-web/assets/brand/vink-mark-light-compact.svg) /
+  [Dark](https://github.com/loveoverflowcom/vink/blob/f23df33e6776dd08bd089bf8a0fd767dcd3cbe0e/apps/vink-web/assets/brand/vink-mark-dark-compact.svg).
 - PNG Light/Dark đủ 24/32/48/96/192/512px ở cùng thư mục runtime; 24/32 dùng compact.
 - Mono và mono compact giữ nguyên trong runtime và ZIP, chưa đưa vào consumer.
 

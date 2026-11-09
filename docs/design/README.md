@@ -39,7 +39,8 @@ Placement, GET/IME/private scope và phần chưa được thay thế giữ cont
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
 | [Quyết định 31/10/2026 về điều hướng và logo](https://drive.google.com/file/d/1xfV44hh0oe5b5ZopTFnEzcZD7xYXyI48/view) | Khám phá trước Bàn viết; logo chưa chốt |
-| [Selected pack 03/11/2026](brand/final-selected/README.md), [#34](https://github.com/loveoverflowcom/vink/issues/34) | Nguồn logo hiện hành: SVG/PNG nguyên bản; ZIP và manifest SHA được lưu trong repo |
+| [V-pen R1 08/11/2026](brand/vpen-r1/README.md), [#117](https://github.com/loveoverflowcom/vink/issues/117) | Logo Web hiện hành: V/ngòi bút, Light/Dark transparent, lockup có giọt i; ZIP và manifest SHA trong repo |
+| [Selected pack 03/11/2026](brand/final-selected/README.md), [#34](https://github.com/loveoverflowcom/vink/issues/34) | Lịch sử vòng mực trước migration Web #117; giữ nguyên chứng cứ |
 | [Logo Enso 01/11/2026](https://github.com/loveoverflowcom/vink/issues/10), PR #17 | Lịch sử đã được selected pack #34 thay thế; không còn là source artwork hiện hành |
 
 Thứ tự ưu tiên: chỉ dẫn hiện tại của người dùng > quyết định mới hơn đúng phạm vi > spec còn hiệu lực.
@@ -56,10 +57,11 @@ prototype. Lavender là palette riêng của Vink do người dùng chọn, khô
   trong ảnh chụp và ZIP v2.3. Thứ tự tab không tự đổi màn khởi động; `/` vẫn là trang công khai.
 - [#7](https://github.com/loveoverflowcom/vink/issues/7) triển khai rail/bar, nhãn Khám phá,
   Tôi và preference Sáng/Tối/Hệ thống; spec và owner ở dưới.
-- **Logo vòng mực + ngòi bút selected #34** dùng nguyên SVG Light/Dark của bộ được chọn.
-  [Nguồn và cách dùng](../../apps/vink-web/assets/brand/README.md) giữ 6 SVG, 12 PNG và provenance;
-  [ZIP/board](brand/final-selected/README.md) là hồ sơ lựa chọn. Heading Khám phá dùng SVG chuẩn, favicon
-  dùng compact; manifest dùng PNG. Enso #10 và các concept trước là lịch sử.
+- **Logo V/ngòi bút R1 #117** dùng SVG/PNG từ pack 08/11/2026.
+  [Nguồn và cách dùng](../../apps/vink-web/assets/brand/README.md) giữ provenance, lockup
+  Light/Dark và mark cho favicon/PWA. [ZIP, reference và giới hạn](brand/vpen-r1/README.md)
+  phân biệt trace/concept với runtime. Logo chỉ ở góc phải Khám phá theo #102;
+  full lockup thay cả mark + chữ riêng, mono mask cho forced colors. #34/Enso là lịch sử.
 
 ## Màu và theme
 
@@ -380,6 +382,9 @@ PNG/manifest môi trường do lane web tạo là bằng chứng render; kết q
 không suy ra PASS chỉ từ các assertions tồn tại.
 
 ## Logo Final Selected #34
+
+**Lịch sử:** phần artwork dưới đây được Web V-pen R1 #117 thay thế; [baseline mới](brand/vpen-r1/README.md).
+Vị trí Explore theo #102 vẫn giữ hiệu lực. Nội dung/evidence cũ giữ đúng revision gốc.
 
 LayoutSpec vị trí hiện hành theo Explore Header R2 của [PR #105](https://github.com/loveoverflowcom/vink/pull/105).
 Nguồn artwork: [selected pack, board và quy tắc trung thực](brand/final-selected/README.md).

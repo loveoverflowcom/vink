@@ -1,0 +1,1046 @@
+==> ui tokens: 15 generated files match
+==> expression manifest, Unicode, safety and generated drift
+TAP version 13
+# PASS Noto manifest: 16 assets, source hashes, safety, Unicode, Rust/CMP drift
+# Subtest: pinned inventory and generated outputs match
+ok 1 - pinned inventory and generated outputs match
+  ---
+  duration_ms: 147.545292
+  type: 'test'
+  ...
+# Subtest: unknown/corrupt/mislicensed/duplicate resources fail closed
+ok 2 - unknown/corrupt/mislicensed/duplicate resources fail closed
+  ---
+  duration_ms: 5.15225
+  type: 'test'
+  ...
+# Subtest: active SVG and external Lottie resources cannot be blessed by a new checksum
+ok 3 - active SVG and external Lottie resources cannot be blessed by a new checksum
+  ---
+  duration_ms: 1.311917
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 231.2665
+==> fmt
+==> clippy server (workspace, ssr)
+    Checking cfg-if v1.0.5
+    Checking libc v0.2.191
+    Checking serde_core v1.0.229
+    Checking pin-project-lite v0.2.17
+    Checking futures-core v0.3.34
+    Checking memchr v2.8.3
+    Checking once_cell v1.21.4
+    Checking futures-sink v0.3.34
+    Checking bytes v1.12.1
+    Checking serde v1.0.229
+    Checking futures-channel v0.3.34
+    Checking futures-io v0.3.34
+    Checking slab v0.4.12
+    Checking futures-task v0.3.34
+    Checking itoa v1.0.18
+    Checking futures-util v0.3.34
+    Checking typenum v1.20.1
+    Checking errno v0.3.14
+    Checking signal-hook-registry v1.4.8
+    Checking thiserror v2.0.21
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+    Checking tokio v1.54.1
+    Checking zerofrom v0.1.8
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.4
+    Checking smallvec v1.16.4
+    Checking zerovec v0.11.9
+    Checking log v0.4.34
+    Checking generic-array v0.14.7
+    Checking tracing-core v0.1.36
+    Checking tinystr v0.8.5
+    Checking zmij v1.0.23
+    Checking equivalent v1.0.3
+    Checking unicode-ident v1.0.27
+    Checking writeable v0.6.4
+    Checking utf_types v1.0.0
+    Checking litemap v0.8.3
+    Checking icu_locale_core v2.4.0
+    Checking utf8_iter v1.1.0
+    Checking serde_json v1.0.154
+    Checking block-buffer v0.10.4
+    Checking crypto-common v0.1.7
+    Checking potential_utf v0.1.6
+    Checking zerotrie v0.2.5
+    Checking parking v2.2.1
+    Checking scopeguard v1.2.0
+    Checking percent-encoding v2.3.2
+    Checking event-listener v5.4.2
+    Checking icu_provider v2.4.0
+    Checking icu_collections v2.4.0
+    Checking digest v0.10.7
+    Checking tracing v0.1.44
+    Checking cpufeatures v0.2.17
+    Checking hashbrown v0.17.1
+    Checking icu_normalizer_data v2.4.0
+    Checking icu_properties_data v2.4.0
+    Checking indexmap v2.14.2
+    Checking icu_normalizer v2.4.0
+    Checking form_urlencoded v1.2.2
+    Checking icu_properties v2.4.0
+    Checking http v1.5.0
+    Checking either v1.19.0
+    Checking rand_core v0.10.1
+    Checking idna_adapter v1.2.2
+    Checking idna v1.1.0
+    Checking base64 v0.22.1
+    Checking url v2.5.8
+    Checking getrandom v0.4.3
+    Checking wasm-bindgen-shared v0.2.129
+    Checking wasm-bindgen v0.2.129
+    Checking zerocopy v0.8.63
+    Checking js-sys v0.3.106
+    Checking httparse v1.10.1
+    Checking getrandom v0.3.4
+    Checking http-body v1.1.0
+    Checking rand_core v0.9.5
+    Checking ppv-lite86 v0.2.21
+    Checking mime v0.3.17
+    Checking tower-service v0.3.3
+   Compiling ring v0.17.14
+    Checking rand_chacha v0.9.0
+    Checking try-lock v0.2.5
+    Checking tower-layer v0.3.3
+    Checking httpdate v1.0.3
+    Checking want v0.3.2
+    Checking rand v0.9.5
+    Checking http-body-util v0.1.5
+    Checking sha1 v0.10.7
+    Checking aho-corasick v1.1.5
+    Checking sync_wrapper v1.0.2
+    Checking data-encoding v2.11.1
+    Checking simdutf8 v0.1.5
+    Checking atomic-waker v1.1.2
+    Checking regex-syntax v0.8.11
+    Checking encoding_rs v0.8.43
+    Checking hyper v1.12.0
+    Checking regex-automata v0.4.18
+    Checking tungstenite v0.29.0
+    Checking wasm-bindgen-futures v0.4.79
+    Checking futures-executor v0.3.34
+    Checking ryu v1.0.23
+    Checking spin v0.9.9
+    Checking tinyvec v1.13.3
+    Checking unicode-normalization v0.1.26
+    Checking multer v3.1.0
+    Checking serde_urlencoded v0.7.1
+    Checking futures v0.3.34
+    Checking tokio-tungstenite v0.29.0
+    Checking hyper-util v0.1.21
+    Checking tower v0.5.3
+    Checking axum-core v0.5.6
+    Checking serde_path_to_error v0.1.20
+    Checking matchit v0.8.4
+    Checking or_poisoned v0.1.0
+    Checking web-sys v0.3.106
+    Checking axum v0.8.9
+    Checking throw_error v0.3.1
+   Compiling rustls v0.23.46
+    Checking event-listener-strategy v0.5.4
+    Checking hybrid-array v0.4.15
+    Checking send_wrapper v0.6.0
+    Checking async-lock v3.4.2
+    Checking slotmap v1.1.1
+    Checking hydration_context v0.3.2
+    Checking any_spawner v0.3.0
+    Checking proc-macro2 v1.0.107
+    Checking cmov v0.5.4
+    Checking rustc-hash v2.1.3
+    Checking guardian v1.3.0
+    Checking reactive_graph v0.2.16
+    Checking ctutils v0.4.7
+    Checking quote v1.0.47
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+    Checking itertools v0.14.0
+    Checking winnow v1.0.4
+    Checking const-oid v0.10.2
+    Checking konst_macro_rules v0.2.19
+    Checking zeroize v1.9.1
+    Checking rustls-pki-types v1.15.1
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking konst v0.2.20
+    Checking digest v0.11.3
+    Checking gloo-utils v0.2.0
+    Checking pin-project v1.1.13
+    Checking thiserror v1.0.69
+    Checking reactive_stores v0.4.4
+    Checking syn v3.0.9
+   Compiling rustls-webpki v0.103.16
+    Checking either_of v0.1.9
+    Checking oco_ref v0.2.1
+    Checking getrandom v0.2.17
+    Checking bitflags v2.13.2
+    Checking html-escape v0.2.15
+    Checking untrusted v0.9.0
+    Checking serde_spanned v1.1.2
+    Checking next_tuple v0.1.0
+    Checking erased v0.1.2
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking unicode-segmentation v1.13.3
+    Checking const_str_slice_concat v0.1.0
+    Checking drain_filter_polyfill v0.1.3
+    Checking tachys v0.2.19
+    Checking convert_case v0.6.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking proc-macro2-diagnostics v0.11.0
+    Checking gloo-net v0.6.0
+    Checking const_format v0.2.37
+    Checking wasm-streams v0.5.0
+    Checking parking_lot_core v0.9.12
+    Checking serde_qs v0.15.0
+    Checking lock_api v0.4.14
+    Checking foldhash v0.2.0
+    Checking same-file v1.0.6
+    Checking pathdiff v0.2.3
+    Checking const-str v1.1.0
+    Checking inventory v0.3.25
+    Checking allocator-api2 v0.2.21
+    Checking xxhash-rust v0.8.19
+    Checking server_fn v0.8.13
+    Checking hashbrown v0.16.1
+   Compiling sqlx-core v0.9.0
+    Checking config v0.15.27
+    Checking walkdir v2.5.0
+    Checking typed-builder v0.23.2
+    Checking parking_lot v0.12.5
+    Checking rstml v0.13.1
+    Checking camino v1.2.6
+    Checking anyhow v1.0.104
+    Checking crossbeam-utils v0.8.23
+    Checking regex v1.13.1
+    Checking codee v0.3.5
+    Checking deranged v0.5.9
+    Checking num-conv v0.2.2
+    Checking async-once-cell v0.5.4
+    Checking subtle v2.6.1
+    Checking powerfmt v0.2.1
+    Checking time-core v0.1.9
+    Checking crc-catalog v2.5.0
+   Compiling sqlx-postgres v0.9.0
+    Checking crc v3.4.0
+    Checking time v0.3.55
+    Checking wasm_split_helpers v0.2.3
+    Checking leptos_server v0.8.8
+    Checking leptos_config v0.8.10
+    Checking crossbeam-queue v0.3.14
+    Checking leptos_hot_reload v0.8.7
+    Checking futures-intrusive v0.5.0
+    Checking hashlink v0.11.1
+    Checking leptos_dom v0.8.8
+    Checking hmac v0.13.0
+    Checking webpki-roots v1.0.11
+    Checking num-traits v0.2.19
+    Checking uuid v1.29.0
+    Checking chacha20 v0.10.2
+    Checking sha2 v0.10.9
+    Checking tokio-stream v0.1.19
+    Checking cpufeatures v0.3.1
+    Checking unicode-properties v0.1.4
+    Checking unicode-bidi v0.3.18
+   Compiling sqlx-macros-core v0.9.0
+    Checking stringprep v0.1.5
+    Checking sha2 v0.11.1
+    Checking rand v0.10.3
+    Checking atoi v2.0.0
+    Checking hkdf v0.13.0
+    Checking leptos v0.8.22
+    Checking md-5 v0.11.0
+    Checking hex v0.4.3
+    Checking whoami v2.1.3
+    Checking byteorder v1.5.0
+    Checking dotenvy v0.15.7
+   Compiling sqlx-macros v0.9.0
+    Checking lazy_static v1.5.1
+    Checking sharded-slab v0.1.7
+    Checking vink-ui v0.1.0 ($REPO/packages/ui-system/leptos)
+    Checking sqlx v0.9.0
+    Checking matchers v0.2.0
+    Checking tracing-log v0.2.0
+    Checking tracing-serde v0.2.0
+    Checking thread_local v1.1.10
+    Checking nu-ansi-term v0.50.3
+    Checking tracing-subscriber v0.3.23
+    Checking unicase v2.10.0
+    Checking mime_guess v2.0.5
+    Checking leptos_router v0.8.17
+    Checking vink-store-postgres v0.1.0 ($REPO/packages/store-postgres)
+    Checking vink-patterns v0.1.0 ($REPO/packages/vink-patterns/leptos)
+    Checking leptos_meta v0.8.7
+    Checking tokio-util v0.7.20
+    Checking http-range-header v0.4.2
+    Checking leptos_integration_utils v0.8.9
+    Checking tower-http v0.6.11
+    Checking vink-expressions v0.1.0 ($REPO/packages/expressions)
+    Checking vink-identity v0.1.0 ($REPO/services/vink-identity)
+    Checking leptos_axum v0.8.10
+    Checking vink-web v0.1.0 ($REPO/apps/vink-web)
+    Checking vink-app v0.1.0 ($REPO/services/vink-app)
+    Checking vink-ui-preview v0.1.0 ($REPO/packages/ui-system/leptos/preview)
+    Checking xtask v0.1.0 ($REPO/xtask)
+    Finished `dev` profile [unoptimized] target(s) in 42.88s
+==> clippy browser (vink-web, hydrate, wasm32)
+    Checking memchr v2.8.3
+    Checking unicode-ident v1.0.27
+    Checking pin-project-lite v0.2.17
+    Checking futures-core v0.3.34
+    Checking futures-sink v0.3.34
+    Checking serde_core v1.0.229
+    Checking futures-channel v0.3.34
+    Checking futures-task v0.3.34
+    Checking slab v0.4.12
+    Checking futures-io v0.3.34
+    Checking futures-util v0.3.34
+    Checking wasm-bindgen-shared v0.2.129
+    Checking once_cell v1.21.4
+    Checking cfg-if v1.0.5
+    Checking wasm-bindgen v0.2.129
+    Checking serde v1.0.229
+    Checking zerofrom v0.1.8
+    Checking js-sys v0.3.106
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.4
+    Checking thiserror v2.0.21
+    Checking zerovec v0.11.9
+    Checking tinystr v0.8.5
+    Checking futures-executor v0.3.34
+    Checking itoa v1.0.18
+    Checking utf_types v1.0.0
+    Checking writeable v0.6.4
+    Checking litemap v0.8.3
+    Checking icu_locale_core v2.4.0
+    Checking utf8_iter v1.1.0
+    Checking futures v0.3.34
+    Checking zmij v1.0.23
+    Checking zerotrie v0.2.5
+    Checking potential_utf v0.1.6
+    Checking or_poisoned v0.1.0
+    Checking icu_collections v2.4.0
+    Checking icu_provider v2.4.0
+    Checking serde_json v1.0.154
+    Checking event-listener v5.4.2
+    Checking throw_error v0.3.1
+    Checking hashbrown v0.17.1
+    Checking equivalent v1.0.3
+    Checking indexmap v2.14.2
+    Checking event-listener-strategy v0.5.4
+    Checking icu_properties_data v2.4.0
+    Checking icu_normalizer_data v2.4.0
+    Checking send_wrapper v0.6.0
+    Checking smallvec v1.16.4
+    Checking icu_normalizer v2.4.0
+    Checking proc-macro2 v1.0.107
+    Checking icu_properties v2.4.0
+    Checking async-lock v3.4.2
+    Checking slotmap v1.1.1
+    Checking percent-encoding v2.3.2
+    Checking either v1.19.0
+    Checking rustc-hash v2.1.3
+    Checking bytes v1.12.1
+    Checking guardian v1.3.0
+    Checking http v1.5.0
+    Checking itertools v0.14.0
+    Checking web-sys v0.3.106
+    Checking wasm-bindgen-futures v0.4.79
+    Checking any_spawner v0.3.0
+    Checking hydration_context v0.3.2
+    Checking quote v1.0.47
+    Checking idna_adapter v1.2.2
+    Checking winnow v1.0.4
+    Checking konst_macro_rules v0.2.19
+    Checking konst v0.2.20
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking pin-project v1.1.13
+    Checking thiserror v1.0.69
+    Checking idna v1.1.0
+    Checking syn v3.0.9
+    Checking form_urlencoded v1.2.2
+    Checking either_of v0.1.9
+    Checking oco_ref v0.2.1
+    Checking aho-corasick v1.1.5
+    Checking drain_filter_polyfill v0.1.3
+    Checking const_str_slice_concat v0.1.0
+    Checking regex-syntax v0.8.11
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking html-escape v0.2.15
+    Checking serde_spanned v1.1.2
+    Checking next_tuple v0.1.0
+    Checking erased v0.1.2
+    Checking unicode-segmentation v1.13.3
+    Checking convert_case v0.6.0
+    Checking toml v1.1.8+spec-1.1.0
+    Checking regex-automata v0.4.18
+    Checking proc-macro2-diagnostics v0.11.0
+    Checking url v2.5.8
+    Checking const_format v0.2.37
+    Checking serde_qs v0.15.0
+    Checking xxhash-rust v0.8.19
+    Checking base64 v0.22.1
+    Checking pathdiff v0.2.3
+    Checking same-file v1.0.6
+    Checking const-str v1.1.0
+    Checking walkdir v2.5.0
+    Checking config v0.15.27
+    Checking typed-builder v0.23.2
+    Checking anyhow v1.0.104
+    Checking rstml v0.13.1
+    Checking camino v1.2.6
+    Checking regex v1.13.1
+    Checking codee v0.3.5
+    Checking async-once-cell v0.5.4
+    Checking wasm_split_helpers v0.2.3
+    Checking leptos_config v0.8.10
+    Checking leptos_hot_reload v0.8.7
+    Checking tinyvec v1.13.3
+    Checking unicode-normalization v0.1.26
+    Checking console_error_panic_hook v0.1.7
+    Checking vink-expressions v0.1.0 ($REPO/packages/expressions)
+    Checking reactive_graph v0.2.16
+    Checking gloo-utils v0.2.0
+    Checking gloo-net v0.6.0
+    Checking wasm-streams v0.5.0
+    Checking server_fn v0.8.13
+    Checking reactive_stores v0.4.4
+    Checking gloo-utils v0.3.0
+    Checking gloo-net v0.7.0
+    Checking tachys v0.2.19
+    Checking leptos_dom v0.8.8
+    Checking leptos_server v0.8.8
+    Checking leptos v0.8.22
+    Checking vink-ui v0.1.0 ($REPO/packages/ui-system/leptos)
+    Checking leptos_meta v0.8.7
+    Checking leptos_router v0.8.17
+    Checking vink-patterns v0.1.0 ($REPO/packages/vink-patterns/leptos)
+    Checking vink-web v0.1.0 ($REPO/apps/vink-web)
+    Finished `dev` profile [unoptimized] target(s) in 26.97s
+==> clippy UI preview (vink-ui-preview, csr, wasm32)
+    Checking web-sys v0.3.106
+    Checking hydration_context v0.3.2
+   Compiling tachys v0.2.19
+   Compiling leptos_macro v0.8.19
+   Compiling leptos v0.8.22
+    Checking reactive_graph v0.2.16
+    Checking gloo-utils v0.2.0
+    Checking gloo-net v0.6.0
+    Checking wasm-streams v0.5.0
+    Checking server_fn v0.8.13
+    Checking reactive_stores v0.4.4
+    Checking leptos_dom v0.8.8
+    Checking leptos_server v0.8.8
+    Checking vink-ui v0.1.0 ($REPO/packages/ui-system/leptos)
+    Checking vink-patterns v0.1.0 ($REPO/packages/vink-patterns/leptos)
+    Checking vink-ui-preview v0.1.0 ($REPO/packages/ui-system/leptos/preview)
+    Finished `dev` profile [unoptimized] target(s) in 18.17s
+==> literary core type-boundary doctests
+   Compiling ring v0.17.14
+   Compiling rustls-webpki v0.103.16
+   Compiling rustls v0.23.46
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 ($REPO/packages/store-postgres)
+   Compiling vink-app v0.1.0 ($REPO/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 16.06s
+   Doc-tests vink_app
+
+running 16 tests
+test services/vink-app/src/domain/document.rs - domain::document::Document (line 38) ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftVersion (line 12) ... ok
+test services/vink-app/src/domain/discussion/settings.rs - domain::discussion::settings (line 28) ... ok
+test services/vink-app/src/domain/discussion/reaction.rs - domain::discussion::reaction (line 39) ... ok
+test services/vink-app/src/domain/discussion/body.rs - domain::discussion::body (line 14) ... ok
+test services/vink-app/src/domain/discussion/lifecycle.rs - domain::discussion::lifecycle (line 27) ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftChange (line 64) ... ok
+test services/vink-app/src/domain/document.rs - domain::document::Title (line 135) ... ok
+test services/vink-app/src/domain/discussion.rs - domain::discussion (line 29) ... ok
+test services/vink-app/src/domain/discussion/page.rs - domain::discussion::page (line 15) ... ok
+test services/vink-app/src/domain/ids.rs - domain::ids (line 18) ... ok
+test services/vink-app/src/domain/taxonomy/assignment.rs - domain::taxonomy::assignment::TagChange (line 156) ... ok
+test services/vink-app/src/domain/taxonomy.rs - domain::taxonomy (line 21) ... ok
+test services/vink-app/src/domain/taxonomy/text.rs - domain::taxonomy::text::TagLabel (line 109) ... ok
+test services/vink-app/src/domain/taxonomy/assignment.rs - domain::taxonomy::assignment::WorkTags (line 99) ... ok
+test services/vink-app/src/domain/endorsement.rs - domain::endorsement (line 20) ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+running 25 tests
+test services/vink-app/src/domain/discussion/reaction.rs - domain::discussion::reaction (line 33) - compile fail ... ok
+test services/vink-app/src/domain/discussion/lifecycle.rs - domain::discussion::lifecycle (line 21) - compile fail ... ok
+test services/vink-app/src/domain/discussion/settings.rs - domain::discussion::settings (line 22) - compile fail ... ok
+test services/vink-app/src/domain/document.rs - domain::document::Document (line 32) - compile fail ... ok
+test services/vink-app/src/domain/discussion.rs - domain::discussion (line 17) - compile fail ... ok
+test services/vink-app/src/domain/discussion/lifecycle.rs - domain::discussion::lifecycle (line 13) - compile fail ... ok
+test services/vink-app/src/domain/discussion/body.rs - domain::discussion::body (line 9) - compile fail ... ok
+test services/vink-app/src/domain/document.rs - domain::document::Title (line 130) - compile fail ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftChange (line 54) - compile fail ... ok
+test services/vink-app/src/domain/endorsement.rs - domain::endorsement (line 14) - compile fail ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftVersion (line 7) - compile fail ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftChange (line 49) - compile fail ... ok
+test services/vink-app/src/domain/discussion/lifecycle.rs - domain::discussion::lifecycle (line 17) - compile fail ... ok
+test services/vink-app/src/domain/discussion/settings.rs - domain::discussion::settings (line 18) - compile fail ... ok
+test services/vink-app/src/domain/discussion/reaction.rs - domain::discussion::reaction (line 29) - compile fail ... ok
+test services/vink-app/src/domain/discussion/page.rs - domain::discussion::page (line 10) - compile fail ... ok
+test services/vink-app/src/domain/taxonomy/assignment.rs - domain::taxonomy::assignment::WorkTags (line 94) - compile fail ... ok
+test services/vink-app/src/domain/taxonomy/text.rs - domain::taxonomy::text::TagLabel (line 103) - compile fail ... ok
+test services/vink-app/src/domain/draft.rs - domain::draft::DraftChange (line 40) - compile fail ... ok
+test services/vink-app/src/domain/endorsement.rs - domain::endorsement (line 9) - compile fail ... ok
+test services/vink-app/src/domain/taxonomy.rs - domain::taxonomy (line 14) - compile fail ... ok
+test services/vink-app/src/domain/ids.rs - domain::ids (line 10) - compile fail ... ok
+test services/vink-app/src/domain/ids.rs - domain::ids (line 5) - compile fail ... ok
+test services/vink-app/src/domain/discussion.rs - domain::discussion (line 21) - compile fail ... ok
+test services/vink-app/src/domain/taxonomy/assignment.rs - domain::taxonomy::assignment::TagChange (line 151) - compile fail ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.23s
+
+all doctests ran in 4.51s; merged doctests compilation took 2.39s
+==> unit + contract tests (no database)
+   Compiling rustls v0.23.46
+   Compiling vink-web v0.1.0 ($REPO/apps/vink-web)
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling vink-ui-preview v0.1.0 ($REPO/packages/ui-system/leptos/preview)
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 ($REPO/packages/store-postgres)
+   Compiling vink-app v0.1.0 ($REPO/services/vink-app)
+   Compiling vink-identity v0.1.0 ($REPO/services/vink-identity)
+   Compiling xtask v0.1.0 ($REPO/xtask)
+   Compiling vink-patterns v0.1.0 ($REPO/packages/vink-patterns/leptos)
+   Compiling vink-ui v0.1.0 ($REPO/packages/ui-system/leptos)
+   Compiling vink-expressions v0.1.0 ($REPO/packages/expressions)
+    Finished `test` profile [unoptimized] target(s) in 37.53s
+     Running unittests src/lib.rs (target/debug/deps/vink_app-c519989527d72a39)
+
+running 198 tests
+test application::catalog_tests::store_outcomes_that_are_not_curator_facing_fail_closed ... ok
+test application::catalog_tests::operator_input_is_validated_before_any_store_call ... ok
+test application::account::tests::an_invalid_pen_name_never_reaches_storage_and_failures_are_never_no_binding ... ok
+test application::catalog_tests::read_failures_are_reported_not_turned_into_an_empty_catalog ... ok
+test application::catalog_tests::lookup_input_is_validated_before_any_read ... ok
+test application::discussion_tests::authentication_precedes_validation_and_no_raw_input_reaches_storage ... ok
+test application::discussion_tests::mode_and_moderation_conflicts_report_the_current_version ... ok
+test application::discussion_tests::paging_input_is_validated_before_reading ... ok
+test application::catalog_tests::lookup_ranks_active_tags_with_the_core_and_never_merges_marks ... ok
+test application::discussion_tests::submission_outcomes_stay_distinct ... ok
+test application::catalog_tests::catalog_changes_pass_one_command_and_the_authority_and_map_the_decision ... ok
+test application::catalog_tests::resolution_follows_the_slug_and_fails_closed ... ok
+test application::discussion_tests::a_submission_reaches_the_store_validated_with_server_chosen_identities ... ok
+test application::endorsement_tests::authentication_precedes_validation_and_storage ... ok
+test application::discussion_tests::work_ownership_grants_no_power_over_other_peoples_comments ... ok
+test application::endorsement_tests::batches_are_bounded_and_deduplicated_in_first_seen_order ... ok
+test application::endorsement_tests::replays_conflicts_and_refusals_keep_distinct_results ... ok
+test application::endorsement_tests::summaries_hide_unavailable_targets_and_never_turn_them_into_zero ... ok
+test application::endorsement_tests::own_state_is_actor_scoped_with_tokens_only_for_visible_targets ... ok
+test application::endorsement_tests::the_store_receives_the_exact_command_and_the_server_actor ... ok
+test application::taxonomy_tests::accepted_save_passes_one_validated_change_and_reports_the_policy_result ... ok
+test application::taxonomy_tests::public_tags_come_only_from_the_bound_snapshot_and_fail_closed ... ok
+test application::endorsement_tests::invalid_input_is_refused_before_storage_with_its_field ... ok
+test application::taxonomy_tests::author_view_shows_retired_tags_hides_foreign_drafts_and_fails_closed ... ok
+test application::taxonomy_tests::refusals_stay_distinct_and_write_nothing ... ok
+test application::taxonomy_tests::store_failures_are_not_turned_into_success_or_empty_tags ... ok
+test application::tests::authentication_and_validation_precedence_are_unchanged ... ok
+test application::taxonomy_tests::unauthenticated_and_invalid_input_never_reach_the_store ... ok
+test application::catalog_tests::catalog_list_is_active_only_ordered_and_bounded ... ok
+test application::taxonomy_tests::stale_tab_conflicts_with_observed_tags_and_lost_ack_is_reconciled_by_state ... ok
+test application::tests::store_outcomes_remain_distinct ... ok
+test application::tests::save_passes_one_validated_change_to_the_store ... ok
+test config::tests::local_profile_defaults ... ok
+test config::tests::migrate_reads_only_its_own_credential ... ok
+test config::tests::identity_fixture_requires_loopback_bind ... ok
+test config::tests::origin_must_not_have_a_path ... ok
+test config::tests::production_is_the_default_and_rejects_the_identity_fixture ... ok
+test config::tests::missing_settings_are_all_reported_without_secrets ... ok
+test config::tests::identity_socket_needs_the_server_uid ... ok
+test domain::discussion::body::tests::emoji_sequences_keep_their_source_code_points ... ok
+test domain::discussion::body::tests::surrounding_whitespace_is_trimmed_but_stanza_breaks_stay ... ok
+test domain::discussion::body::tests::vietnamese_text_is_nfc_and_line_endings_are_unified ... ok
+test domain::discussion::lifecycle::tests::a_new_comment_is_pending_until_a_versioned_decision ... ok
+test domain::discussion::lifecycle::tests::every_reachable_state_keeps_the_axes_consistent ... ok
+test domain::discussion::lifecycle::tests::moderation_removal_is_version_bound ... ok
+test domain::discussion::lifecycle::tests::removal_is_terminal_for_every_later_decision ... ok
+test domain::discussion::lifecycle::tests::the_writer_may_remove_a_pending_comment_without_a_version ... ok
+test domain::discussion::lifecycle::tests::a_late_decision_cannot_overwrite_a_newer_one ... ok
+test domain::discussion::moderation::tests::actions_dispatch_to_the_version_bound_transitions ... ok
+test domain::discussion::moderation::tests::grant_notes_are_one_bounded_line ... ok
+test domain::discussion::lifecycle_replay::the_no_op_mode_counterexample_is_refused_by_production ... ok
+test domain::discussion::moderation::tests::reject_and_remove_need_a_reason_approval_does_not ... ok
+test domain::discussion::page::tests::cursors_round_trip_at_microsecond_precision ... ok
+test domain::discussion::page::tests::foreign_or_forged_cursors_are_rejected ... ok
+test domain::discussion::page::tests::limits_are_server_owned_and_bounded ... ok
+test domain::discussion::page::tests::the_extreme_representable_positions_round_trip ... ok
+test domain::discussion::policy::tests::moderation_needs_a_grant_and_recuses_writers_and_work_authors ... ok
+test domain::discussion::policy::tests::only_the_work_author_changes_the_comments_mode ... ok
+test domain::discussion::policy::tests::the_work_author_cannot_remove_someone_elses_comment ... ok
+test domain::discussion::reaction::tests::a_delayed_duplicate_cannot_revert_a_newer_choice ... ok
+test domain::discussion::reaction::tests::a_delayed_request_cannot_undo_a_newer_reaffirmation ... ok
+test domain::discussion::reaction::tests::asking_for_the_held_reaction_at_its_generation_is_accepted_without_a_delta ... ok
+test domain::discussion::reaction::tests::generations_are_positive_and_never_wrap ... ok
+test domain::discussion::reaction::tests::interaction_limits_refuse_new_reactions_but_never_block_clearing ... ok
+test domain::discussion::reaction::tests::kinds_parse_exactly_their_codes ... ok
+test domain::discussion::reaction::tests::hidden_comments_and_withdrawn_works_accept_nothing ... ok
+test domain::discussion::reaction::tests::set_replace_and_clear_advance_one_generation_each ... ok
+test domain::discussion::reaction::tests::retrying_the_current_state_at_an_old_generation_writes_nothing ... ok
+test domain::discussion::body::tests::empty_oversized_and_unsafe_text_is_rejected ... ok
+test domain::discussion::settings::tests::closing_and_reopening_advance_the_generation ... ok
+test domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions ... ok
+test domain::discussion::settings::tests::a_delayed_request_cannot_undo_a_newer_reaffirmation ... ok
+test domain::discussion::reaction::tests::tallies_follow_deltas_and_refuse_to_underflow_or_wrap ... ok
+test domain::discussion::submission::tests::a_receipt_replays_the_same_payload_even_after_comments_close ... ok
+test domain::discussion::submission::tests::keys_are_bounded_ascii_tokens ... ok
+test domain::discussion::submission::tests::decisions_are_exhaustive_over_the_fact_space ... ok
+test domain::discussion::settings::tests::a_retry_of_the_current_mode_at_an_old_generation_writes_nothing ... ok
+test domain::discussion::submission::tests::withdrawn_works_and_closed_threads_accept_nothing_new ... ok
+test domain::discussion::submission::tests::replies_normalize_to_the_targets_root_and_need_a_public_target ... ok
+test domain::discussion::tests::identities_cannot_be_reused_reparented_or_made_self_referential ... ok
+test domain::discussion::reaction_replay::the_no_op_reaction_counterexample_is_refused_by_production ... ok
+test domain::discussion::settings::tests::asking_for_the_current_mode_at_its_generation_is_accepted_and_fences ... ok
+test domain::discussion::reaction_replay::quint_reaction_inputs_replay_against_the_production_decisions ... ok
+test domain::discussion::settings::tests::generations_are_positive_and_never_wrap ... ok
+test domain::discussion::settings::tests::a_stale_tab_cannot_undo_a_newer_choice ... ok
+test domain::discussion::submission::tests::digests_distinguish_every_payload_field_but_not_normalization ... ok
+test domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam ... ok
+test domain::discussion::tests::a_foreign_or_missing_target_does_not_change_this_thread ... ok
+test domain::discussion::tests::reply_to_reply_keeps_one_root_and_flat_structure ... ok
+test domain::discussion::tests::stored_positions_round_trip_and_impossible_shapes_are_rejected ... ok
+test domain::discussion::tests::target_selects_the_root_without_a_client_root_argument ... ok
+test domain::discussion::tests::the_shared_reply_seam_rejects_foreign_targets_and_self_targets ... ok
+test domain::discussion::visibility::tests::context_distinguishes_direct_replies_from_hidden_or_purged_contexts ... ok
+test domain::discussion::visibility::tests::hidden_roots_with_public_replies_become_anchors ... ok
+test domain::discussion::visibility::tests::only_approved_present_comments_reach_other_readers ... ok
+test domain::discussion::visibility::tests::writers_see_the_status_of_their_own_present_comments_only ... ok
+test domain::document::tests::keeps_stanzas_lines_indentation_and_vietnamese_marks ... ok
+test domain::document::tests::rejects_structure_smuggled_into_lines ... ok
+test domain::document::tests::normalizes_combining_marks_to_nfc ... ok
+test domain::document::tests::stored_shape_rejects_unknown_fields ... ok
+test domain::document::tests::prose_paragraphs_tabs_and_case_are_preserved ... ok
+test domain::endorsement::tests::accepted_states_keep_selection_parity_and_storage_restores_only_reachable_states ... ok
+test domain::document::tests::title_is_trimmed_single_line_and_bounded ... ok
+test domain::draft::tests::versions_start_at_one ... ok
+test domain::endorsement::tests::current_revision_is_checked_even_when_selected_is_already_true ... ok
+test domain::endorsement::tests::exhausted_tokens_and_counts_refuse_without_partial_writes ... ok
+test domain::endorsement::replay::quint_endorsement_inputs_replay_against_production ... ok
+test domain::endorsement::tests::foreign_facts_and_corrupt_receipt_fail_closed_before_writing ... ok
+test domain::endorsement::tests::hidden_withdrawn_missing_only_allow_scoped_private_own_removal ... ok
+test domain::endorsement::tests::off_noop_fences_the_older_on_even_when_off_arrives_first ... ok
+test domain::endorsement::tests::replay_is_historical_and_never_resurrects_after_remove_or_a_fresh_key ... ok
+test domain::endorsement::tests::same_state_new_key_advances_order_but_not_mutation_version_or_count ... ok
+test domain::endorsement::tests::work_root_reply_have_independent_targets_and_no_self_endorsement ... ok
+test domain::ids::tests::existing_uuid_values_round_trip_without_a_new_version_policy ... ok
+test domain::ids::tests::malformed_external_ids_are_rejected_for_every_kind ... ok
+test domain::principal::tests::pen_names_are_display_text_in_nfc ... ok
+test domain::principal::tests::subject_keys_are_bounded_and_never_rewritten ... ok
+test domain::revision::tests::hash_distinguishes_line_and_stanza_boundaries ... ok
+test domain::revision::tests::canonical_hash_matches_fixed_v1_vector_for_nfc_and_nfd ... ok
+test domain::revision::tests::hash_keeps_title_line_lengths_case_and_indentation_significant ... ok
+test domain::revision::tests::revision_requires_title ... ok
+test domain::taxonomy::tests::aliases_point_only_at_active_canonical_tags ... ok
+test domain::taxonomy::tests::ascii_fast_path_agrees_with_full_normalization ... ok
+test domain::taxonomy::tests::catalog_authority_version_and_fact_ownership_come_first ... ok
+test domain::taxonomy::tests::creating_tags_claims_one_canonical_slug_and_refuses_duplicates ... ok
+test domain::taxonomy::tests::every_member_of_the_ma_family_can_be_its_own_tag ... ok
+test domain::taxonomy::tests::descriptions_and_queries_are_bounded ... ok
+test domain::taxonomy::tests::label_length_is_counted_in_nfc_characters_at_the_boundary ... ok
+test domain::taxonomy::tests::labels_keep_marks_and_case_and_equate_nfc_nfd_spellings ... ok
+test domain::taxonomy::tests::labels_reject_other_scripts_confusables_and_structure ... ok
+test domain::taxonomy::tests::lookup_ranks_exact_marks_before_folded_candidates_and_resolves_aliases ... ok
+test domain::taxonomy::tests::ma_family_shares_a_search_key_but_never_a_slug ... ok
+test domain::taxonomy::tests::metadata_digest_matches_independent_v1_vectors ... ok
+test domain::taxonomy::tests::other_owners_missing_works_suspension_and_bad_facts_write_nothing ... ok
+test domain::taxonomy::tests::public_projection_reads_only_the_bound_snapshot ... ok
+test domain::taxonomy::tests::renaming_keeps_identity_and_turns_the_old_slug_into_a_redirect ... ok
+test domain::taxonomy::tests::retiring_keeps_references_and_validates_the_successor_hint ... ok
+test domain::taxonomy::tests::search_keys_fold_marks_case_d_and_separators ... ok
+test domain::taxonomy::tests::selections_are_bounded_before_parsing_and_deduplicated_in_order ... ok
+test domain::taxonomy::tests::slug_parsing_normalizes_case_and_nfd_and_rejects_malformed_paths ... ok
+test domain::taxonomy::tests::slugs_resolve_to_canonical_redirect_retired_or_not_found ... ok
+test domain::taxonomy::tests::slugs_keep_vietnamese_marks_and_join_words_with_hyphens ... ok
+test domain::taxonomy::tests::stale_tab_gets_a_conflict_with_the_observed_tags_and_writes_nothing ... ok
+test domain::taxonomy::tests::stored_catalog_rows_fail_closed_when_inconsistent ... ok
+test domain::taxonomy::tests::tags_never_change_the_content_hash_v1_of_a_revision ... ok
+test domain::taxonomy::tests::teach_example_tan_van_ky_uc_gia_dinh_is_accepted_in_author_order ... ok
+test domain::taxonomy::tests::theme_bound_is_three_distinct_tags_and_the_form_slot_is_typed ... ok
+test domain::taxonomy::tests::unchanged_save_still_advances_the_version_and_fences_older_commands ... ok
+test domain::taxonomy::tests::unknown_and_newly_chosen_retired_tags_are_refused_but_existing_ones_stay ... ok
+test domain::taxonomy::tests::version_tokens_start_at_one_and_refuse_to_wrap ... ok
+test domain::taxonomy::tests::selection_dedup_is_exhaustively_first_seen_up_to_one_past_the_bound ... ok
+test http::conditional::tests::if_none_match_follows_the_list_grammar ... ok
+test http::auth::tests::cookies_are_host_prefixed_secure_and_http_only ... ok
+test http::conditional::tests::malformed_or_oversized_fields_are_ignored_not_matched ... ok
+test http::conditional::tests::matching_is_exact_on_the_opaque_tag ... ok
+test http::conditional::tests::tag_is_a_digest_of_every_byte ... ok
+test http::conditional::tests::not_modified_has_the_same_validator_and_no_content ... ok
+test http::contract::tests::discussion::the_work_author_never_gets_can_remove_on_others_comments ... ok
+test http::contract::tests::discussion::discussion_page_and_replies_match_fixtures ... ok
+test http::contract::tests::discussion::command_messages_match_fixtures ... ok
+test http::contract::tests::draft_messages_match_fixtures ... ok
+test http::contract::tests::endorsement::batch_reads_match_fixtures ... ok
+test http::contract::tests::discussion::moderation_messages_and_errors_match_fixtures ... ok
+test http::auth::tests::auth_shapes_and_errors_match_their_fixtures ... ok
+test http::contract::tests::discussion::discussion_error_envelopes_match_fixtures ... ok
+test http::contract::tests::endorsement::requests_reject_client_supplied_authority ... ok
+test http::contract::tests::error_envelopes_match_fixtures ... ok
+test http::contract::tests::endorsement::endorsement_error_envelopes_match_fixtures ... ok
+test http::contract::tests::request_rejects_unknown_fields ... ok
+test http::contract::tests::endorsement::write_messages_match_fixtures ... ok
+test http::contract::tests::public_responses_match_fixtures ... ok
+test http::contract::tests::taxonomy::tag_error_envelopes_match_fixtures ... ok
+test http::contract::tests::taxonomy::tag_request_requires_every_field_and_refuses_authority_fields ... ok
+test http::contract::tests::taxonomy::draft_tag_messages_match_fixtures ... ok
+test http::contract::tests::taxonomy::catalog_reads_match_fixtures ... ok
+test http::identity_tests::logout_clears_the_cookie_only_after_identity_revoked ... ok
+test http::identity_tests::sign_in_is_closed_without_an_identity_service ... ok
+test http::identity_tests::bindings_and_suspensions_decide_after_identity_authenticates ... ok
+test domain::document::tests::empty_drafts_and_exact_size_limits_remain_valid ... ok
+test http::tests::http_never_holds_curator_authority ... ok
+test http::identity_tests::sign_in_keeps_secrets_in_host_cookies_and_never_grants_by_itself ... ok
+test http::tests::private_routes_are_closed_without_an_auth_authority ... ok
+test identity::client::tests::email_code_fixtures_decode_into_the_app_representation ... ok
+test identity::client::tests::provider_error_fixtures_map_to_distinct_outcomes ... ok
+test identity::client::tests::provider_fixtures_decode_into_the_app_representation ... ok
+test identity::tests::a_bearer_token_or_one_session_cookie_is_a_presented_credential ... ok
+test identity::tests::default_authority_ignores_client_supplied_identity ... ok
+test identity::tests::fixture_requires_a_loopback_peer ... ok
+test identity::tests::only_an_active_binding_resolves_to_a_principal ... ok
+test domain::discussion::tests::every_four_step_sequence_preserves_two_tiers_and_immutable_placement ... ok
+test domain::document::tests::rejects_unknown_schema_and_oversized_documents ... ok
+test application::tests::invalid_raw_input_never_reaches_the_store ... ok
+test http::identity_tests::identity_answers_never_grant_and_outages_stay_distinct ... ok
+test http::tests::endorsement_routes_fail_closed_and_report_outages ... ok
+test http::identity_tests::readiness_reports_identity_without_authority ... ok
+test http::identity_tests::a_socket_served_by_another_user_or_missing_is_unavailable ... ok
+test http::tests::tag_routes_validate_report_outages_and_fail_closed ... ok
+test http::tests::database_outage_is_reported_not_hidden ... ok
+
+test result: ok. 198 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.07s
+
+     Running unittests src/main.rs (target/debug/deps/vink_app-e52f14f7334c1200)
+
+running 3 tests
+test tests::moderator_arguments_are_validated_before_any_configuration ... ok
+test tests::principal_arguments_are_validated_before_any_configuration ... ok
+test tests::tag_changes_are_validated_by_the_application_before_any_configuration ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/bin/vink-worker.rs (target/debug/deps/vink_worker-66363d9f48125082)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_expressions-029d96620e5f6667)
+
+running 8 tests
+test tests::late_callbacks_cannot_resurrect_cancelled_or_disposed_players ... ok
+test tests::host_facts_cancel_loading_and_playing_without_automatic_resume ... ok
+test policy::overflow_tests::generation_exhaustion_is_terminal_instead_of_wrapping ... ok
+test tests::reservations_and_releases_are_idempotent_and_shared ... ok
+test tests::production_rejects_the_quint_missing_guard_counterexample ... ok
+test tests::exact_unicode_sequences_share_the_canonical_contract ... ok
+test tests::quint_inputs_replay_through_the_real_policy ... ok
+test tests::production_budget_is_bounded_for_adversarial_event_sequences ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.22s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_identity-9c164db239fda9ed)
+
+running 27 tests
+test email_code::tests::attempts_never_accept_a_closed_challenge_and_close_on_the_last_failure ... ok
+test config::tests::operator_commands_use_the_runtime_credential_only ... ok
+test config::tests::serve_does_not_read_app_credentials_and_caller_is_optional ... ok
+test config::tests::migrate_reads_only_its_own_credential ... ok
+test config::tests::socket_path_must_fit_the_unix_limit ... ok
+test config::tests::serve_reports_every_missing_setting_without_secrets ... ok
+test config::tests::the_email_code_authority_needs_its_outbox_and_nothing_else_is_accepted ... ok
+test email_code::tests::addresses_are_normalised_but_not_rewritten ... ok
+test email_code::tests::handles_round_trip_and_bind_the_code_to_the_secret ... ok
+test email_code::tests::session_credentials_are_opaque_and_hashed ... ok
+test http::tests::only_committing_email_code_operations_get_the_longer_deadline ... ok
+test http::tests::fixture_answers_have_the_contract_shapes ... ok
+test http::tests::malformed_oversized_and_forged_subject_requests_are_refused ... ok
+test http::tests::email_code_operations_are_closed_without_that_authority ... ok
+test http::tests::versions_paths_and_methods_are_explicit ... ok
+test http::tests::the_caller_is_the_peer_user_and_nothing_else ... ok
+test http::tests::without_an_authority_verification_is_not_configured_not_a_failure ... ok
+test email_code::tests::codes_are_six_digits_and_uniformly_spread ... ok
+test server::tests::removal_spares_a_successor_socket ... ok
+test server::tests::only_a_stale_socket_is_replaced ... ok
+test mail::tests::the_outbox_is_private_and_never_overwrites ... ok
+test http::tests::errors_match_their_fixtures_and_never_echo_input ... ok
+test server::tests::directory_must_not_be_open_to_others_or_group_writable ... ok
+test http::tests::email_code_shapes_match_their_fixtures ... ok
+test http::tests::a_stalled_upload_hits_the_deadline ... ok
+test http::tests::email_code_requests_are_validated_before_storage_and_never_choose_a_subject ... ok
+test http::tests::readiness_is_honest_about_database_callers_and_authority ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.01s
+
+     Running unittests src/main.rs (target/debug/deps/vink_identity-4e688459cca7167d)
+
+running 1 test
+test tests::account_arguments_are_validated_before_any_configuration ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_patterns-74c798571676514c)
+
+running 5 tests
+test tests::public_composition_escapes_user_text_and_never_invents_a_profile ... ok
+test tests::an_unspecified_composer_adds_no_intent_label_while_named_intents_keep_theirs ... ok
+test tests::sharing_and_comments_mode_are_independent_and_keep_the_controlled_text ... ok
+test tests::endorsement_copy_names_its_target_and_keeps_counts_apart ... ok
+test tests::thread_endorsements_render_one_action_per_target_in_provider_order ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_store_postgres-63cdd782869515ba)
+
+running 5 tests
+test migration::tests::foreign_history_is_diverged_even_when_everything_embedded_is_applied ... ok
+test migration::tests::empty_or_partial_history_is_pending ... ok
+test migration::tests::identical_history_is_current ... ok
+test error::tests::transport_failures_are_unavailable_and_data_errors_are_not ... ok
+test pool::tests::lazy_pool_boots_without_a_database_and_reports_it_unavailable ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_ui-27504ec32a7d8b27)
+
+running 53 tests
+test action::tests::links_keep_safe_targets_and_refuse_script_urls ... ok
+test feedback::tests::panel_action_slot_keeps_real_navigation_and_typed_recovery_in_the_panel ... ok
+test action::tests::icon_buttons_and_chips_expose_their_state ... ok
+test feedback::tests::panels_offer_only_the_callers_lawful_actions_and_a_safe_code ... ok
+test action::tests::button_supporting_description_and_state_note_belong_to_the_native_target ... ok
+test action::tests::buttons_never_submit_by_default_and_link_their_reason ... ok
+test field::tests::blank_errors_are_not_invalid_and_modes_differ ... ok
+test feedback::tests::notices_announce_only_as_asked ... ok
+test feedback::tests::indicators_never_invent_progress_and_dialogs_start_closed ... ok
+test field::tests::summaries_render_only_with_items ... ok
+test field::tests::search_bar_keeps_native_form_name_raw_unicode_and_clear_fallback ... ok
+test layout::tests::layout_uses_named_tokens_only ... ok
+test field::tests::text_fields_link_label_help_and_error_without_touching_the_value ... ok
+test identity::tests::same_initials_can_differ_by_key_and_order_never_matters ... ok
+test field::tests::choices_are_single_targets_and_selects_are_native ... ok
+test field::tests::floating_fields_keep_native_form_identity_and_disabled_explanation ... ok
+test identity::tests::tones_match_the_shared_golden_vectors_and_ignore_composition ... ok
+test identity::tests::initials_match_the_shared_golden_vectors ... ok
+test media::tests::avatars_show_initials_tone_and_role ... ok
+test media::tests::bylines_read_the_name_once_and_link_only_verified_profiles ... ok
+test media::tests::image_sources_are_allow_listed ... ok
+test navigation::tests::focus_returns_to_a_visible_trigger_or_main_and_navigation_leaves_it ... ok
+test navigation::tests::layouts_follow_preference_over_context_and_never_rail_on_compact ... ok
+test navigation::tests::one_modal_is_active_and_back_closes_it_before_leaving ... ok
+test navigation::tests::the_toggle_flips_the_rail_as_shown ... ok
+test navigation::tests::window_classes_match_the_shared_breakpoints ... ok
+test navigation::tests::scaffold_resolves_in_css_unless_fixed_and_keeps_the_skip_link ... ok
+test media::tests::groups_never_invent_counts ... ok
+test navigation::tests::utility_is_a_dialog_trigger_not_a_route ... ok
+test state::tests::codes_are_stable_identifiers_only ... ok
+test navigation::tests::rail_renders_real_links_a_permanent_toggle_and_an_outside_tooltip ... ok
+test root::tests::nested_scope_inherits_unless_told_and_rejects_invalid_overrides ... ok
+test state::tests::intents_match_the_shared_vectors_and_unknown_writes_never_retry ... ok
+test state::tests::panels_only_offer_lawful_actions ... ok
+test root::tests::root_renders_injected_preferences_as_scope_attributes ... ok
+test state::tests::progress_is_clamped_and_never_invented ... ok
+test state::tests::placements_and_notice_specs_match_the_shared_vectors ... ok
+test state::tests::the_loading_gate_matches_the_shared_vectors ... ok
+test text::tests::every_type_role_has_a_token ... ok
+test feedback::tests::regions_render_their_layout_and_keep_content_while_refreshing ... ok
+test text::tests::heading_level_is_independent_of_its_look ... ok
+test state::tests::region_layouts_match_the_shared_vectors ... ok
+test theme::tests::explicit_themes_win_over_the_system ... ok
+test support::tests::tooltip_action_keeps_its_name_and_native_details_needs_no_script ... ok
+test theme::tests::overrides_map_roles_to_roles_and_reject_invalid_sets ... ok
+test theme::tests::stored_values_round_trip_and_unknown_falls_back_to_system ... ok
+test toggle::tests::counts_read_as_facts_and_unavailable_never_becomes_zero ... ok
+test toggle::tests::every_shared_vector_resolves_the_same ... ok
+test values::tests::every_declared_pair_meets_its_threshold_in_both_themes ... ok
+test values::tests::recipes_resolve_to_their_semantic_role ... ok
+test toggle::tests::the_name_follows_the_confirmed_value_and_the_count_describes_it ... ok
+test values::tests::css_forms_match_the_generated_stylesheet ... ok
+test toggle::tests::pending_uncertain_blocked_and_unavailable_are_visible_without_colour ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_ui_preview-6d5b21bdd432ef93)
+
+running 9 tests
+test states::tests::submissions_ignore_double_clicks_and_late_acknowledgments ... ok
+test tests::hashes_select_exact_scenarios_and_fall_back_safely ... ok
+test tests::every_shared_catalog_entry_is_registered_here ... ok
+test tests::nfd_fixture_is_decomposed ... ok
+test tests::search_ignores_case_and_vietnamese_marks ... ok
+test tests::typography_specimen_shows_every_text_role ... ok
+test endorsement::tests::every_toggle_and_endorsement_scenario_names_its_state ... ok
+test tests::each_scenario_renders_its_specimen_inside_a_scope ... ok
+test tests::no_scenario_repeats_an_element_id ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (target/debug/deps/vink_web-9f6f691ebbbaaf81)
+
+running 87 tests
+test appearance::tests::unknown_preferences_fall_back_to_system_and_context ... ok
+test api::discussion_tests::opaque_cursors_and_identifiers_cannot_change_query_or_scope ... ok
+test api::discussion_tests::endorsement_paths_encode_each_identifier_and_keep_the_batch_shape ... ok
+test desk_state::tests::a_conflict_cannot_be_saved_from_the_leave_dialog ... ok
+test desk_state::tests::a_new_destination_replaces_the_pending_continuation ... ok
+test desk_state::tests::a_save_already_in_flight_is_awaited_not_duplicated ... ok
+test desk_state::tests::confirmed_text_leaves_without_asking ... ok
+test appearance::tests::vietnamese_initials_use_first_and_last_words ... ok
+test contract::tests::classifies_endorsement_error_fixtures ... ok
+test desk_state::tests::conflict_keeps_text_until_author_chooses ... ok
+test contract::tests::decodes_public_fixtures ... ok
+test contract::tests::classifies_every_error_fixture ... ok
+test desk_state::tests::discarding_while_a_save_waits_ignores_its_late_acknowledgement ... ok
+test desk_state::tests::failure_and_conflict_stay_and_offer_an_explicit_discard ... ok
+test contract::tests::classifies_discussion_error_fixtures ... ok
+test desk_state::tests::late_acknowledgement_does_not_mark_newer_text_saved ... ok
+test desk_state::tests::newer_edits_keep_the_author_in_the_editor ... ok
+test desk_state::tests::one_save_in_flight_and_stale_tickets_are_ignored ... ok
+test desk_state::tests::save_and_leave_goes_only_after_the_latest_text_is_acknowledged ... ok
+test desk_state::tests::saved_only_after_server_confirms_the_sent_edit ... ok
+test contract::tests::decodes_discussion_fixtures ... ok
+test desk_state::tests::staying_while_saving_cancels_the_navigation_but_not_the_save ... ok
+test contract::tests::decodes_endorsement_fixtures ... ok
+test discussion_state::tests::d2t_03_guest_never_sends_and_rejection_keeps_draft ... ok
+test discussion_state::tests::d2t_03_context_revocation_removes_cached_name_but_preserves_text_and_peers ... ok
+test discussion_state::tests::d2t_03_ime_policy_and_branch_collapse_preserve_text ... ok
+test discussion_state::tests::d2t_03_lost_ack_replays_original_key_body_target_after_close ... ok
+test discussion_state::tests::d2t_03_new_typing_and_target_changes_survive_late_ack ... ok
+test discussion_state::tests::d2t_03_original_late_ack_cannot_finish_a_new_physical_attempt ... ok
+test discussion_state::tests::d2t_03_scope_change_clears_drafts_and_fences_completion_even_after_return ... ok
+test discussion_state::tests::d2t_03_session_invalid_blocks_new_commands_without_losing_draft_or_stranding_peers ... ok
+test document::tests::empty_text_is_an_empty_document ... ok
+test document::tests::export_keeps_the_text_as_written ... ok
+test document::tests::expression_sequences_survive_document_and_export_without_markup ... ok
+test document::tests::stanzas_lines_and_indentation_round_trip ... ok
+test document::tests::export_file_names_keep_vietnamese_and_drop_reserved_characters ... ok
+test document::tests::windows_line_endings_and_extra_blank_lines_normalize ... ok
+test draft_list::tests::explicit_pre_write_rejections_remain_distinct ... ok
+test draft_list::tests::uncertain_create_needs_reconciliation_and_a_new_intent ... ok
+test draft_list::tests::vietnamese_search_preserves_source_and_provider_order ... ok
+test endorsement_state::tests::lve_web_conflict_shows_the_observed_state_and_never_resends_the_old_intent ... ok
+test endorsement_state::tests::lve_web_401_turns_every_target_into_a_signed_out_reason ... ok
+test endorsement_state::tests::lve_web_double_tap_sends_one_command_and_confirms_only_after_the_ack ... ok
+test endorsement_state::tests::lve_web_late_and_stale_answers_never_move_the_page_back ... ok
+test endorsement_state::tests::lve_web_own_state_advisories_and_unavailable_comments_are_explicit ... ok
+test endorsement_state::tests::lve_web_lost_ack_is_uncertain_until_an_exact_replay_reconciles_it ... ok
+test endorsement_state::tests::lve_web_replay_shows_the_current_state_not_the_committed_history ... ok
+test endorsement_state::tests::lve_web_page_targets_cover_public_roots_and_replies_only ... ok
+test endorsement_state::tests::lve_web_requests_carry_the_target_and_the_shown_order ... ok
+test endorsement_state::tests::lve_web_refusals_map_to_reasons_and_unknown_answers_stay_uncertain ... ok
+test endorsement_state::tests::lve_web_revision_change_supersedes_the_shown_revision_without_a_count ... ok
+test endorsement_state::tests::lve_web_session_change_fences_commands_reads_and_states_even_after_return ... ok
+test endorsement_state::tests::lve_web_unread_or_failed_own_state_reconciles_by_reading_never_as_off ... ok
+test freshness::tests::authoritative_removal_deletes_and_late_responses_cannot_resurrect ... ok
+test freshness::tests::concurrent_triggers_share_one_request ... ok
+test freshness::tests::edit_changes_a_preview_without_confirming_it ... ok
+test freshness::tests::freshness_dates_from_request_start_not_completion ... ok
+test freshness::tests::jittered_retry_stays_within_bounds ... ok
+test freshness::tests::manual_refresh_and_invalidation_are_not_swallowed_by_a_fresh_snapshot ... ok
+test freshness::tests::max_display_age_limits_instant_render_on_a_new_visit_only ... ok
+test freshness::tests::scheduled_check_adds_bounded_spread_and_one_wake_covers_all_entries ... ok
+test freshness::tests::scope_reset_and_remove_supersede_running_requests ... ok
+test freshness::tests::seed_never_overrides_newer_data_or_running_requests ... ok
+test freshness::tests::stale_threshold_is_a_check_point_not_a_ttl_and_reads_do_not_extend_it ... ok
+test freshness::tests::temporary_failure_keeps_last_success_and_backs_off_without_piling_up ... ok
+test freshness::tests::transport_never_parses_a_raw_304_and_reads_only_delta_seconds ... ok
+test freshness::tests::unobserved_entries_are_never_polled ... ok
+test pages::desk::editor_presentation_tests::compact_saved_status_keeps_only_the_acknowledged_version_in_detail ... ok
+test pages::desk::editor_presentation_tests::unknown_rejected_and_conflict_have_distinct_truthful_recovery_copy ... ok
+test pages::discussion::tests::accepted_off_page_reply_keeps_its_receipt_after_the_submitted_text_is_cleared ... ok
+test pages::discussion::tests::loaded_page_read_copy_never_describes_a_read_as_an_unknown_write ... ok
+test pages::discussion::tests::a_failed_next_page_stays_local_while_a_refresh_failure_or_loss_of_access_keeps_its_scope ... ok
+test freshness::tests::unobserved_snapshots_are_retained_then_collected_and_bounded ... ok
+test pages::discussion::tests::loss_of_public_access_never_claims_the_author_closed_comments ... ok
+test pages::discussion::tests::cursors_are_authoritative_even_when_preview_is_short_or_count_differs ... ok
+test public_list::tests::context_links_encode_query_once_and_cannot_redirect_outside_explore ... ok
+test shell::tests::destinations_keep_the_locked_order_and_real_hrefs ... ok
+test shell::tests::only_the_open_editor_is_focused_work ... ok
+test pages::endorsement::tests::lve_web_guest_ssr_shows_the_public_count_and_a_text_reason_without_a_login ... ok
+test pages::endorsement::tests::lve_web_fixture_ssr_is_unknown_until_the_browser_reads_the_own_state ... ok
+test public_list::tests::public_search_matches_real_title_or_author_and_preserves_order_and_text ... ok
+test shell::tests::readers_belong_to_explore_editors_to_desk_and_unknown_routes_to_none ... ok
+test expressions::tests::ssr_is_static_named_and_preserves_source_unicode ... ok
+test ui::adapters::discussion_tests::d2t_03_projection_keeps_anchor_private_states_and_context_scope_distinct ... ok
+test pages::endorsement::tests::lve_web_ssr_never_shows_another_revisions_count_or_a_zero_for_a_failed_read ... ok
+test public_list::tests::return_context_round_trips_through_the_router_and_malformed_input_stays_local ... ok
+test freshness::tests::random_interleavings_keep_single_flight_and_generation_safety ... ok
+
+test result: ok. 87 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/main.rs (target/debug/deps/xtask-ef5e3f45bbdb60ea)
+
+running 41 tests
+test checks::tests::external_anchor_and_line_links_are_handled ... ok
+test checks::tests::finds_inline_link_targets ... ok
+test checks::tests::members_must_inherit_the_workspace_lints_unchanged ... ok
+test checks::tests::the_workspace_member_list_and_forbid_are_read_from_their_tables ... ok
+test checks::tests::frontmatter_requires_matching_name_and_description ... ok
+test pgurl::tests::defaults_and_ipv6 ... ok
+test pgurl::tests::swaps_credentials_and_database_but_keeps_the_server ... ok
+test ui_preview::tests::static_paths_cannot_escape_the_site ... ok
+test ui_preview::tests::wasm_is_served_with_its_streaming_type ... ok
+test ui_qualification::tests::discovers_unregistered_public_components_independently_of_catalog ... ok
+test ui_qualification::tests::rejects_authored_colour_type_and_duration_but_allows_layout ... ok
+test ui_navigation::tests::the_committed_vectors_are_valid_and_deterministic ... ok
+test checks::tests::desktop_font_derivative_checks_detect_corruption_and_unowned_files ... ok
+test ui_navigation::tests::breakpoint_drift_missing_combinations_and_unknown_steps_are_rejected ... ok
+test checks::tests::editor_packages_are_pinned_and_locked ... ok
+test ui_qualification::tests::admission_fails_on_missing_apis_stale_entries_and_preview_dependencies ... ok
+test ui_states::tests::the_committed_vectors_are_valid_and_deterministic ... ok
+test ui_toggle::tests::the_committed_vectors_are_valid_and_deterministic ... ok
+test checks::tests::ui_system_rejects_services_storage_and_platform_imports ... ok
+test checks::tests::font_assets_must_match_their_provenance ... ok
+test ui_tokens::tests::contrast_uses_the_wcag_formula ... ok
+test ui_toggle::tests::blind_dispatch_missing_rows_and_zeroed_unavailable_counts_are_rejected ... ok
+test kani::tests::every_manifest_and_harness_file_exists ... ok
+test ui_tokens::tests::alias_cycles_are_rejected ... ok
+test ui_states::tests::unknown_vocabulary_missing_pairs_and_policy_drift_are_rejected ... ok
+test ui_tokens::tests::a_role_missing_a_theme_is_rejected ... ok
+test ui_tokens::tests::dangling_aliases_and_type_mismatches_are_rejected ... ok
+test ui_tokens::tests::identity_vectors_reject_out_of_range_tones ... ok
+test ui_tokens::tests::numbers_print_without_float_noise ... ok
+test ui_tokens::tests::catalog_requires_both_renderers_and_a_default_scenario ... ok
+test ui_tokens::tests::icon_registry_matches_upstream_and_generates_stably ... ok
+test web::tests::replaces_only_the_database_name ... ok
+test web::tests::strips_terminal_colors ... ok
+test ui_tokens::tests::invalid_units_and_values_are_rejected ... ok
+test ui_tokens::tests::unknown_fields_and_types_are_rejected ... ok
+test ui_tokens::tests::insufficient_contrast_is_rejected ... ok
+test ui_tokens::tests::generated_css_keeps_the_web_role_names_and_scopes_recipes ... ok
+test ui_tokens::tests::unsupported_catalog_registration_requires_a_reason ... ok
+test ui_tokens::tests::repository_source_generates_twice_without_a_difference ... ok
+test ui_tokens::tests::committed_outputs_match_the_source ... ok
+test checks::tests::brand_rejects_rehashed_artwork_and_unrecorded_legacy_assets ... ok
+
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+==> repository checks: ok
+
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (skills, links, boundaries, fonts, editor packages)

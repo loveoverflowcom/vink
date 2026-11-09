@@ -1,37 +1,36 @@
-# Logo Vink — bộ đã chọn ngày 03/11/2026
+# Logo Vink — V/ngòi bút R1, 08/11/2026
 
-Nguồn hiện hành: [#34](https://github.com/loveoverflowcom/vink/issues/34),
-[ZIP gốc](../../../../docs/design/brand/final-selected/Vink_Logo_Final_Selected_Pack.zip).
-SHA-256: `46acba3f22e5b684a1a72f4518d3de6cce0906f0511ef11472a92a056008eac4`.
-ZIP có 24 tệp; bản trong repo khớp byte với file người dùng cung cấp.
-[Hồ sơ lựa chọn và khác biệt board](../../../../docs/design/brand/final-selected/README.md).
-Logo Enso trích raster của #10/PR #17 là lịch sử, đã được thay trong consumer Web.
+Nguồn hiện hành: [#117](https://github.com/loveoverflowcom/vink/issues/117),
+[hồ sơ nguồn V-pen R1](../../../../docs/design/brand/vpen-r1/README.md).
+ZIP SHA-256: `3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e`.
+Bộ vòng mực [#34](../../../../docs/design/brand/final-selected/README.md) và Enso #10
+là lịch sử; không còn nằm trong thư mục được build phục vụ.
 
-## Asset và cách dùng
+## Consumer và lựa chọn
 
-- Sáu `vink-mark-*.svg` và 12 `vink-{light,dark}-{24,32,48,96,192,512}.png`
-  được chép **nguyên byte** từ selected pack. Không crop, vẽ lại, invert, nén lossy hay đổi gradient.
-- Vùng đầu trang Khám phá (`/`) dùng SVG chuẩn Light/Dark, khung vuông 2,25rem và chữ Vink
-  bằng Literata. CSS chọn theme qua `data-theme`/`prefers-color-scheme`; preload hai SVG
-  nhỏ trước stylesheet.
-- Favicon có JS dùng SVG compact theo preference thật. `favicon.svg` ghép nguyên defs/path
-  của hai bản compact, dùng media query theo OS khi không có JavaScript. Compact lược khe
-  trang trí trên vòng và mở lỗ ngòi cho 16/24/32px; PNG 24/32 trong pack dùng bản compact.
-- Manifest Light/Dark dùng PNG 192/512px và SVG chuẩn dự phòng, `purpose: any`.
-  Chưa có thiết kế safe area maskable, service worker hay app native production.
-- `vink-mark-mono*.svg` được giữ cho bàn giao, chưa có consumer hiện hành.
+- `vpen-r1-lockup-{light,dark}.svg`: chữ Vink đã là paths, gồm giọt mực trên i.
+  CHOICE-01 A: một lockup duy nhất, cao 2,25rem, tỷ lệ 1018/410 được giữ trước decode;
+  link góc phải Khám phá giữ accessible name và focus. Mobile có hàng riêng trên tìm kiếm.
+- `vpen-r1-mark-{light,dark}.svg` và PNG 24/32/48/96/192/512 được chép nguyên byte.
+  CHOICE-02 B: dùng cùng silhouette, không thêm optical variant hoặc quay về circle.
+- Favicon theo preference thật dùng mark; fallback `vpen-r1-favicon.svg` ghép nội dung
+  nguyên SVG Light/Dark, theo OS khi không có JavaScript. Head/bootstrap trước CSS giữ
+  cùng authority Light/Dark/System, kể cả storage bị từ chối.
+- Manifest theo theme dùng PNG 192/512 và SVG mark, `purpose: any`, `id: /`.
+  Không khai báo maskable; chưa có service worker/native production app.
+- `vpen-r1-lockup-mono.svg` làm CSS mask trong forced colors; mark mono giữ trong pack.
+  Không áp gradient lên nền UI hoặc thêm viền/halo/shadow.
 
 ## Build và provenance
 
-`cargo xtask build` chỉ copy `.png`, `.svg`, `.webmanifest` trong thư mục này tới
-`/pkg/brand/`, xóa output brand cũ trước khi copy. ZIP/board/tài liệu/provenance không được
-phục vụ trong site. Tên SVG/PNG mới tách cache khỏi `enso-*`; head/CSS dùng cùng tên mới.
+Mọi URL asset dùng prefix `vpen-r1-`; stylesheet dùng `vink.css?brand=vpen-r1` để tách cache khỏi #34. `cargo xtask build` kiểm brand,
+xóa output `/pkg/brand/` cũ và chỉ copy SVG/PNG/webmanifest. ZIP, PNG tham chiếu,
+manifest nguồn và concept nằm dưới docs, không được phục vụ.
 
-`provenance.json` ghi hash/byte của 24 tệp gốc và mọi asset được phục vụ. Repository checks
-kiểm ZIP gốc, hash runtime, đủ 6 SVG/12 PNG và hash các bản chép so với source manifest.
-Không cần CairoSVG/Pillow hoặc công cụ trích raster khi build app. Thay artwork cần đối chiếu
-lại nguồn đã chọn; không chỉ cập nhật hash để hợp thức hóa một bản khác.
+`provenance.json` ghi bytes/hash và source_path trong manifest gốc. `xtask` pin độc lập
+SHA của ZIP và manifest nguồn, so từng bản chép với manifest, kiểm asset bắt buộc và từ chối
+file runtime ngoài record. Test âm sửa artwork rồi sửa hash, cùng file circle ngoài record,
+phải bị phát hiện. Không chỉ đổi hash để hợp thức hóa logo mới.
 
-Bằng chứng app và giới hạn ở [baseline logo](../../../../docs/design/README.md#logo-final-selected-34)
-và [feature map](../../../../docs/development/feature-map.md). Browser smoke kiểm MIME/decode,
-manifest, theme/first paint trước hydration và giữ các regression editor/navigation hiện có.
+SVG là trace từ PNG, không phải Bézier gốc; interior gradient là refinement của pack.
+Xem [bằng chứng và giới hạn](../../../../docs/design/brand/vpen-r1/README.md).

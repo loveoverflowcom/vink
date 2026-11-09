@@ -1,0 +1,99 @@
+V-pen R1 logo asset delivery and decoding:
+  ok  brand migration uses a fresh stylesheet cache key
+  ok  versioned CSS resolves R1 artwork without historical asset URLs
+  ok  OS-adaptive favicon is served as SVG
+  ok  OS-adaptive favicon decodes
+  ok  light 24px PNG is served as an image
+  ok  light 24px PNG decodes at the declared size
+  ok  light 32px PNG is served as an image
+  ok  light 32px PNG decodes at the declared size
+  ok  light 48px PNG is served as an image
+  ok  light 48px PNG decodes at the declared size
+  ok  light 96px PNG is served as an image
+  ok  light 96px PNG decodes at the declared size
+  ok  light 192px PNG is served as an image
+  ok  light 192px PNG decodes at the declared size
+  ok  light 512px PNG is served as an image
+  ok  light 512px PNG decodes at the declared size
+  ok  lightmark SVG is served as an image
+  ok  lightmark selected SVG decodes
+  ok  lightlockup SVG is served as an image
+  ok  lightlockup selected SVG decodes
+  ok  light manifest has stable identity and only R1 any-purpose 192/512 icons
+  ok  light manifest icon /pkg/brand/vpen-r1-mark-light-192.png exists
+  ok  light manifest icon /pkg/brand/vpen-r1-mark-light-512.png exists
+  ok  light manifest icon /pkg/brand/vpen-r1-mark-light.svg exists
+  ok  dark 24px PNG is served as an image
+  ok  dark 24px PNG decodes at the declared size
+  ok  dark 32px PNG is served as an image
+  ok  dark 32px PNG decodes at the declared size
+  ok  dark 48px PNG is served as an image
+  ok  dark 48px PNG decodes at the declared size
+  ok  dark 96px PNG is served as an image
+  ok  dark 96px PNG decodes at the declared size
+  ok  dark 192px PNG is served as an image
+  ok  dark 192px PNG decodes at the declared size
+  ok  dark 512px PNG is served as an image
+  ok  dark 512px PNG decodes at the declared size
+  ok  darkmark SVG is served as an image
+  ok  darkmark selected SVG decodes
+  ok  darklockup SVG is served as an image
+  ok  darklockup selected SVG decodes
+  ok  dark manifest has stable identity and only R1 any-purpose 192/512 icons
+  ok  dark manifest icon /pkg/brand/vpen-r1-mark-dark-192.png exists
+  ok  dark manifest icon /pkg/brand/vpen-r1-mark-dark-512.png exists
+  ok  dark manifest icon /pkg/brand/vpen-r1-mark-dark.svg exists
+  ok  24px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  32px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  48px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  96px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  192px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  512px Light/Dark PNG has identical silhouette/alpha and transparent corners
+  ok  historical favicon.svg is not served
+  ok  historical vink-mark-light.svg is not served
+  ok  historical vink-mark-dark-compact.svg is not served
+  ok  historical vink-light-192.png is not served
+  ok  no-JS favicon contains exactly the original V-pen paths in both themes
+  ok  light/light bootstrap selects the preference without hydration
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  light Explore lockup uses the approved artwork once and reserves its ratio before decoding
+  ok  light/light before hydration: Explore brand stays top-right with a separate heading and no overlap
+  ok  dark/light bootstrap selects the preference without hydration
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  dark Explore lockup uses the approved artwork once and reserves its ratio before decoding
+  ok  dark/light before hydration: Explore brand stays top-right with a separate heading and no overlap
+  ok  system/dark bootstrap selects the preference without hydration
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  dark Explore lockup uses the approved artwork once and reserves its ratio before decoding
+  ok  system/dark before hydration: Explore brand stays top-right with a separate heading and no overlap
+  ok  system/light bootstrap selects the preference without hydration
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  light Explore lockup uses the approved artwork once and reserves its ratio before decoding
+  ok  system/light before hydration: Explore brand stays top-right with a separate heading and no overlap
+  ok  the blocked bundle caused only its four rejected hydration imports
+  ok  forced colors renders the selected mono wordmark as a system-color mask
+  ok  probe begins with selected last line
+shell utilities preserve the live dirty editor:
+  ok  desktop editor defaults to compact
+  ok  manual preference can expand the editor rail
+  ok  opening Tôi utility does not invoke the leave guard
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  fragment Back closes appearance and keeps the dirty editor URL without opening a second dialog
+  ok  plain fragment Back does not invoke the dirty editor leave guard
+  ok  native content focus immediately restores the CodeMirror selection
+  ok  rail, overlay and theme preserve EditorView, selection, text and dirty state
+  ok  real / navigation consults the existing guard
+  ok  real /ban-viet navigation consults the existing guard
+  ok  real /toi navigation consults the existing guard
+  ok  mobile resize retains editor and hides bottom bar
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  utility changes sent no draft writes and retained the caret selection
+  ok  shell and fragment traversal preserve the confirmed draft version
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  no console errors or exceptions
+browser-smoke: PASS (brand-probe)
+Focused brand/editor probe exit: 0
+PASS captured 16 real app views: a78960fd896fe0f85a192f08f0e74f202592491e
