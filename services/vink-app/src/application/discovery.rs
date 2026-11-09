@@ -210,7 +210,10 @@ where
                 next: None,
             });
         };
-        let scope = SearchScope::of(query.as_ref().map(WorkQuery::key), &tags);
+        if facts.query_key.is_some() != query.is_some() {
+            return Err(DiscoveryError::Internal);
+        }
+        let scope = SearchScope::of(facts.query_key.as_deref(), &tags);
         if cursor.is_some_and(|cursor| cursor.scope() != scope) {
             return Err(DiscoveryInput::CursorScope.into());
         }

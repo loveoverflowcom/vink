@@ -18,6 +18,7 @@ use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use vink_app::application::catalog::CuratorAuthority;
 use vink_app::application::taxonomy::SaveWorkTags;
+use vink_app::domain::discovery::{DiscoveryCursor, SearchScope};
 use vink_app::domain::ids::TagId;
 use vink_app::domain::taxonomy::{
     CatalogChange, CatalogCommand, CatalogOutcome, CatalogVersion, MetadataVersion, SearchKey,
@@ -993,6 +994,42 @@ async fn cursors_are_bound_to_their_search_and_dataset_changes_are_honest(pool: 
     assert_eq!(second.ids(), [work(5), work(6)]);
     let top = get(&app, "/api/v1/works", None).await;
     assert_eq!(top.ids()[..3], [work(4), work(40), work(1)]);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn cursor_scope_uses_the_same_query_key_as_postgres_matching(pool: PgPool) {
+    let app = setup(&pool).await;
+    for (n, title) in [(1, "ΟΣ mới"), (2, "ΟΣ cũ"), (3, "οσ khác")] {
+        publish(
+            &pool,
+            work(n),
+            dev_seed::SAMPLE_AUTHOR,
+            title,
+            BASE - Duration::minutes(n as i64),
+            Meta::Untagged,
+        )
+        .await;
+    }
+    // SQL lowercases word-final Σ to ς. Rust SearchKey::of lowercases it to σ.
+    let first = get(&app, &search(Some("ΟΣ"), &[], Some(1), None), None).await;
+    assert_eq!(first.ids(), [work(1)]);
+    let cursor = first.next().unwrap();
+    let wrong = get(&app, &search(Some("οσ"), &[], Some(1), Some(&cursor)), None).await;
+    assert_eq!(wrong.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(wrong.json()["error"]["field"], "cursor");
+
+    // A v1 cursor for ΟΣ used the Rust key οσ. It must not continue the SQL search for οσ.
+    let position = DiscoveryCursor::decode(&cursor).unwrap().after();
+    let old_scope = DiscoveryCursor::new(position, SearchScope::of(Some("οσ"), &[])).encode();
+    let legacy = format!("01{}", &old_scope[2..]);
+    let legacy = get(&app, &search(Some("οσ"), &[], Some(1), Some(&legacy)), None).await;
+    assert_eq!(legacy.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(legacy.json()["error"]["field"], "cursor");
+
+    let same = get(&app, &search(Some("ος"), &[], Some(1), Some(&cursor)), None).await;
+    assert_eq!(same.status, StatusCode::OK);
+    assert_eq!(same.ids(), [work(2)]);
+    assert_eq!(same.next(), None);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]

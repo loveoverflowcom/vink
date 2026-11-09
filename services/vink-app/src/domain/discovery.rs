@@ -47,21 +47,22 @@ pub enum WorkQueryError {
     TooLong,
     #[error("q has no letter or digit")]
     NoLetterOrDigit,
+    #[error("q contains a NUL character")]
+    NullCharacter,
 }
 
-/// A reader's text query. `text` is kept exactly as received for display and echo; `key`
-/// decides matches.
+/// A validated reader query, kept exactly as received for matching and echo.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WorkQuery {
-    text: String,
-    key: SearchKey,
-}
+pub struct WorkQuery(String);
 
 impl WorkQuery {
     /// `Ok(None)` for blank input: an empty search box submits `q=`, which means "no query".
     pub fn parse(raw: &str) -> Result<Option<Self>, WorkQueryError> {
         if raw.len() > MAX_QUERY_BYTES {
             return Err(WorkQueryError::TooLong);
+        }
+        if raw.contains('\0') {
+            return Err(WorkQueryError::NullCharacter);
         }
         if raw.trim().is_empty() {
             return Ok(None);
@@ -70,22 +71,14 @@ impl WorkQuery {
         if normalized.chars().count() > MAX_QUERY_CHARS {
             return Err(WorkQueryError::TooLong);
         }
-        let key = SearchKey::of(&normalized);
-        if key.is_empty() {
+        if SearchKey::of(&normalized).is_empty() {
             return Err(WorkQueryError::NoLetterOrDigit);
         }
-        Ok(Some(Self {
-            text: raw.to_owned(),
-            key,
-        }))
+        Ok(Some(Self(raw.to_owned())))
     }
 
     pub fn text(&self) -> &str {
-        &self.text
-    }
-
-    pub fn key(&self) -> &SearchKey {
-        &self.key
+        &self.0
     }
 }
 
@@ -194,16 +187,16 @@ pub struct PagePosition {
 pub struct SearchScope([u8; 8]);
 
 impl SearchScope {
-    /// `tags` as returned by [`filter_tags`] (sorted, distinct).
-    pub fn of(query: Option<&SearchKey>, tags: &[TagId]) -> Self {
+    /// Use the key that matched stored text and the sorted, distinct IDs from [`filter_tags`].
+    pub fn of(query_key: Option<&str>, tags: &[TagId]) -> Self {
         let mut hasher = Sha256::new();
         hasher.update(b"vink-discovery-scope-v1");
-        match query {
+        match query_key {
             None => hasher.update([0]),
             Some(key) => {
                 hasher.update([1]);
-                hasher.update((key.as_str().len() as u64).to_be_bytes());
-                hasher.update(key.as_str().as_bytes());
+                hasher.update((key.len() as u64).to_be_bytes());
+                hasher.update(key.as_bytes());
             }
         }
         hasher.update((tags.len() as u64).to_be_bytes());
@@ -223,11 +216,12 @@ pub enum CursorError {
     Malformed,
 }
 
-const CURSOR_VERSION: u8 = 1;
+// Version 1 scoped the cursor with Rust's key, which can differ from the SQL match key.
+const CURSOR_VERSION: u8 = 2;
 const CURSOR_BYTES: usize = 1 + 8 + 16 + 8;
 
 /// Position after which the next page starts, bound to the search it came from. Wire form:
-/// lowercase hex of version (1), `published_at` as Unix microseconds (i64 big-endian),
+/// lowercase hex of version (2), `published_at` as Unix microseconds (i64 big-endian),
 /// `work_id` (16 bytes) and the [`SearchScope`] (8 bytes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DiscoveryCursor {

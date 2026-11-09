@@ -31,7 +31,7 @@ Hai câu OPEN của issue được chọn bằng bằng chứng cục bộ; chi 
 | CHOICE-01 bố cục | **A**: mục “Thông tin tác phẩm” inline sau trang viết, không lớp phủ | Danh mục cần nhóm/mô tả dài/nhiều facet: panel/sheet bằng `OverlayLayer` hiện có |
 | CHOICE-02 ranh giới | **A**: composition `TagSelector`/`TagChip` trong `vink-patterns`, ghép primitive có sẵn; không primitive/token mới | Combobox `aria-activedescendant` hoặc chọn nhiều nơi khác cần cùng ngữ nghĩa bàn phím: admit primitive vào `ui-system` với vectors |
 | Lưu | Một nút **Lưu** (và Ctrl/Cmd+S) gửi phần đã đổi: thẻ nếu thẻ đổi, chữ nếu chữ đổi; không đổi gì thì lưu chữ như trước | Có autosave: autosave chỉ chữ, thẻ vẫn lưu theo ý định rõ |
-| Đối soát mất ACK | Theo TAG-PR-03 CHOICE-03 A: gửi lại đúng lựa chọn với `expected_version` cũ; `409` có thẻ bằng lựa chọn đã gửi (hoặc một lựa chọn trước đó chưa rõ kết quả của tab này) thì nhận version đó | Owner cần chứng từ lệnh chính xác (receipt) |
+| Đối soát mất ACK | Gửi lựa chọn hiện tại với `expected_version` cũ. Nhận version từ `409` nếu thẻ đang lưu bằng lựa chọn vừa gửi, hoặc bằng một lựa chọn chưa rõ kết quả và version chỉ tăng đúng một. Các trường hợp còn lại cần tác giả xử lý xung đột | Owner cần chứng từ lệnh chính xác (receipt) |
 | Gợi ý | Chỉ hỏi khi giá trị đã commit (không trong composition) và không trống; mỗi request có generation, câu trả lời phải cùng generation **và** `query` echo đúng chuỗi đã gửi | Đo thấy cần debounce/cancel fetch |
 | Nhãn của ID trong `409` | Từ dữ liệu tab đã đọc (thẻ nháp, danh mục, gợi ý); ID chưa đọc hiện “Thẻ chưa tải được tên”, không đoán | Thẻ tạo sau khi mở trang thường gặp: đọc lại `GET …/tags` khi xung đột |
 | Giới hạn ở client | Chặn thêm chủ đề thứ 4 và thẻ trùng như projection; server vẫn là authority (`too_many_themes` vẫn được xử lý) | — |
@@ -47,7 +47,8 @@ TagSelector (vink-patterns)          props/callback, không fetch
   → api::save_draft_tags             PUT /api/v1/drafts/{id}/tags {expected_version, form, themes}
   → App (TAG-PR-03)                  actor từ server → PgStore một transaction → decide_tag_change
   → 200 {version, form, themes}      TagSession::save_succeeded(ticket, …) chỉ khi ticket còn đang bay
-     409 version_conflict + tags     stored == đã gửi ? nhận version : Conflict (tác giả chọn)
+     409 version_conflict + tags     lựa chọn đã khớp hoặc có thể vừa ghi → nhận version
+                                     còn lại → Conflict (tác giả chọn)
      409 tag_retired / 422 …         Refused gắn vào chip; lựa chọn giữ nguyên
      mạng/503/khác                   Failed (chưa chắc chắn) + nhớ lựa chọn đã gửi để đối soát
   → LeaveGuard::save_settled         rời trang chỉ khi mọi phần intent chờ đã settle và không còn gì chưa xác nhận
@@ -68,8 +69,10 @@ lần lưu thẻ treo thành “chưa xác nhận”, không treo mãi.
   nút Lưu tránh tình huống tác giả bấm Lưu, thấy “Đã lưu” của chữ rồi rời trang mất thẻ. Trạng thái
   toolbar gộp nhưng gọi tên phần thẻ (“Thẻ chưa lưu được.”, “Chưa xác nhận lưu thẻ.”); mục Thông tin tác
   phẩm có trạng thái riêng của thẻ.
-- **Không gửi lại mù.** Lưu lại sau lỗi dùng cùng `expected_version`; version mới chỉ được dùng khi
-  server chứng minh trạng thái đang lưu là lựa chọn của tab này, hoặc khi tác giả chọn lưu đè.
+- **Đối soát bằng trạng thái đang lưu.** Lưu lại sau lỗi dùng cùng `expected_version`. Khi version
+  chỉ tăng một và thẻ đang lưu bằng lựa chọn chưa rõ kết quả, lần lưu đó có thể đã thành công.
+  Trả về lựa chọn cũ trong lúc đang lưu hoặc mất ACK vẫn giữ guard cho tới khi đối soát hoặc tác giả
+  xác nhận rời trang.
 - **Thẻ không động vào CodeMirror.** Mục thẻ nằm ngoài cây `BodyEditor`; đổi thẻ, lỗi thẻ hay xung đột thẻ
   không remount editor, không đổi caret/undo (browser smoke kiểm cùng `EditorView`).
 
@@ -83,8 +86,8 @@ lần lưu thẻ treo thành “chưa xác nhận”, không treo mãi.
 2. **Đang lưu lại chọn thẻ khác.** Request version 1 đang bay; tác giả thêm “Gia đình”. ACK version 2 về
    cho lựa chọn cũ: `saved` = lựa chọn cũ, lựa chọn trên trang khác → vẫn “Chưa lưu thẻ”, lần lưu sau gửi
    version 2. Nếu ACK mất: “Chưa xác nhận lưu thẻ”, “Thử lại” gửi lựa chọn hiện tại với version 1; server
-   trả `409` kèm thẻ đang lưu — bằng lựa chọn cũ đã gửi → nhận version 2, lựa chọn mới vẫn chưa lưu; khác
-   cả hai → hiện xung đột để tác giả chọn.
+   trả `409` version 2 kèm lựa chọn cũ đã gửi → nhận version 2, lựa chọn mới vẫn chưa lưu. Nếu server
+   đã lên version 3 và chỉ khớp lựa chọn cũ, editor hiện xung đột để tác giả chọn.
 3. **Chọn thẻ nhưng chưa lưu rồi bấm rời editor.** `NavigationGuard` hỏi `LeaveGuard`; `DraftSession` có
    thẻ chưa xác nhận nên giữ điều hướng: “Thẻ đã chọn chưa được máy chủ xác nhận…”. “Lưu và rời trang”
    bắt đầu đúng phần thiếu (chỉ thẻ, hoặc chữ + thẻ, không gửi trùng phần đang bay) và chờ mọi ACK; một phần
@@ -101,7 +104,7 @@ thật với LocalFixture loopback có nhãn. Kết quả lần chạy ở mục
 | AC | Oracle | Loại | Gap |
 | --- | --- | --- | --- |
 | AC-01 LayoutSpec trước code | [LayoutSpec](../design/tag-selector.md) (ba hướng, cùng trạng thái khó, ánh xạ Quiet Lavender) được trình bày trước khi sửa UI | Tài liệu | VinkDesign NOT_INSPECTED |
-| AC-02 lưu thật, dirty, ACK muộn | `tag_state::tests` (14), `desk_state::tests` (LeaveGuard cũ + 8 `DraftSession`); browser `draftTags`: chọn/lưu/reload, chỉ thẻ được gửi, version chữ không đổi, publication `404`, conflict + lưu đè, mất ACK → đối soát không ghi lần hai, chữ + thẻ rời sau hai ACK; `retiredTagAfterRestart` | Unit + browser | Production `401` |
+| AC-02 lưu thật, dirty, ACK muộn | `tag_state::tests` và `desk_state::tests` kiểm cả trường hợp trả về lựa chọn cũ khi đang lưu và xung đột sau mất ACK nếu có version mới hơn. Browser `draftTags` kiểm chọn/lưu/reload, version chữ không đổi, publication `404`, conflict + lưu đè, guard giữ khi trả về lựa chọn cũ và ACK mất, đối soát không ghi lần hai, chữ + thẻ rời sau hai ACK; `retiredTagAfterRestart` | Unit + browser | Production `401` |
 | AC-03 bàn phím/IME/focus/semantics | Preview smoke: tên nút bỏ, legend/đếm, `role=status`, ↓/↑/Escape, Enter khi composition không chọn, focus sau thêm/bỏ; browser: Enter khi composition không chọn và không PUT, Escape từ hộp thoại rời trang về ô tìm | Preview + browser | Composition mô phỏng (CDP), không IME hệ điều hành; không screen reader; không sheet (CHOICE-01 A) |
 | AC-04 theme/viewport/chữ 200 %/lỗi | Preview smoke chung: không cuộn ngang ở 320/390/834/1024/1440 px, chữ 100/200 %, cho mọi kịch bản của catalog (gồm 9 kịch bản `composition.tag-selector`); ảnh `default` sáng/tối ở năm bề rộng (Leptos) và hẹp/rộng (CMP); màu chỉ qua cặp role đã có contrast trong `tokens.json` (`secondary-container`, `warning-container`, `error-container` và chữ “on-” tương ứng); browser: trạng thái conflict/failed/refused có chữ | Preview + browser | Contrast đo tự động của preview không gồm entry này; ảnh chỉ được agent mở (390 px sáng, CMP rộng), chưa review thiết kế |
 | AC-05 HOW/WHY/TEACH, map, contract | Tài liệu này; [feature map](feature-map.md); [patterns](../../packages/vink-patterns/README.md); [compatibility](../../packages/ui-system/shared/compatibility.md) | Tài liệu | — |

@@ -428,6 +428,7 @@ mod tests {
             ("/api/v1/works?actor_id=1", "query"),
             ("/api/v1/works?q=%21%21%21", "q"),
             ("/api/v1/works?q=%25_", "q"),
+            ("/api/v1/works?q=ma%00", "q"),
             ("/api/v1/works?tag=k%C3%BD--%E1%BB%A9c", "tag"),
             ("/api/v1/works?tag=%E2%80%A6", "tag"),
             ("/api/v1/works?tag=a&tag=b&tag=c&tag=d&tag=e", "tag"),

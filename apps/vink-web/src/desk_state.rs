@@ -774,6 +774,51 @@ mod tests {
     }
 
     #[test]
+    fn restoring_the_old_tags_while_saving_still_holds_navigation() {
+        let mut d = draft(false, true);
+        let first = d.begin_save();
+        d.tags.as_mut().unwrap().remove_theme("ky-uc");
+        let mut guard = LeaveGuard::<DraftTicket>::default();
+        assert!(guard.request(&d, "/"));
+        assert_eq!(
+            guard.save_and_leave(&mut d),
+            None,
+            "waits for the existing save"
+        );
+        assert_eq!(guard.save_settled(&d), None);
+        tags_ok(&mut d, first, 2);
+        assert_eq!(
+            guard.save_settled(&d),
+            None,
+            "the restored tags still need saving"
+        );
+
+        let restore = guard.save_and_leave(&mut d).unwrap();
+        assert!(restore.text.is_none());
+        assert_eq!(restore.tags.unwrap().expected_version, 2);
+        tags_ok(&mut d, restore, 3);
+        assert_eq!(guard.save_settled(&d), Some("/".into()));
+    }
+
+    #[test]
+    fn retrying_a_lost_tag_ack_after_restoring_the_old_tags_sends_only_tags() {
+        let mut d = draft(false, true);
+        let first = d.begin_save().tags.unwrap();
+        let tags = d.tags.as_mut().unwrap();
+        tags.remove_theme("ky-uc");
+        tags.save_rejected(first, TagRejection::Failed(Failure::Network));
+        let mut guard = LeaveGuard::<DraftTicket>::default();
+        assert!(guard.request(&d, "/"));
+        let retry = d.begin_save();
+        assert!(retry.text.is_none());
+        assert_eq!(retry.tags.unwrap().expected_version, 1);
+        assert_eq!(
+            d.tags.as_ref().unwrap().submitted(retry.tags.unwrap()),
+            Some(&Selection::default())
+        );
+    }
+
+    #[test]
     fn a_partial_save_stays_truthful_and_does_not_leave() {
         let mut d = draft(true, true);
         let mut guard = LeaveGuard::<DraftTicket>::default();

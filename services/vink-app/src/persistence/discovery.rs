@@ -14,8 +14,8 @@
 //! The text match folds both sides with the SQL `vink_search_key` (migration
 //! `20261110000000_public_discovery`), mirroring `SearchKey::of`: the stored side through the
 //! generated columns `title_search_key`/`display_name_search_key`, the query in its own statement.
-//! It is a word-prefix test (`strpos` of `' ' || key`), so the reader's text is a literal and
-//! `%`/`_` mean nothing. Tag
+//! Cursor scope uses that same query key. The word-prefix test (`strpos` of `' ' || key`) treats
+//! the reader's text as a literal. Tag
 //! filters are canonical identities decided by `filter_tags` from the same snapshot's slug rows;
 //! a filter that can match nothing is answered without searching. Pages are keyset (newest first,
 //! then work id), read with one row more than a page; there is no OFFSET and no count.
@@ -222,7 +222,8 @@ impl PublicationStore for PgStore {
                 .collect::<Result<Vec<_>, _>>()?;
             filter_tags(&resolutions)
         };
-        let nothing = |filters| DiscoveryFacts {
+        let nothing = |filters, query_key| DiscoveryFacts {
+            query_key,
             filters,
             works: Vec::new(),
             catalog: Vec::new(),
@@ -230,7 +231,7 @@ impl PublicationStore for PgStore {
         // An unknown or retired filter tag: no public work can match, so none is searched.
         let Some(tags) = constraint else {
             tx.commit().await.map_err(classify)?;
-            return Ok(nothing(filters));
+            return Ok(nothing(filters, None));
         };
         let key: Option<String> = match request.query {
             None => None,
@@ -247,7 +248,7 @@ impl PublicationStore for PgStore {
         // empty key would match every title, so it matches none.
         if key.as_deref() == Some("") {
             tx.commit().await.map_err(classify)?;
-            return Ok(nothing(filters));
+            return Ok(nothing(filters, key));
         }
         let tags: Vec<Uuid> = tags.iter().map(TagId::as_uuid).collect();
         let (after_at, after_work) = match request.after {
@@ -266,7 +267,7 @@ impl PublicationStore for PgStore {
             .await
             .map_err(classify)?;
         let rows: Vec<CardRow> = sqlx::query_as(DISCOVERY_SEARCH_SQL)
-            .bind(key)
+            .bind(key.as_deref())
             .bind(&tags)
             .bind(after_at)
             .bind(after_work)
@@ -298,6 +299,7 @@ impl PublicationStore for PgStore {
             })
             .collect::<Result<Vec<_>, StoreError>>()?;
         Ok(DiscoveryFacts {
+            query_key: key,
             filters,
             works,
             catalog,
