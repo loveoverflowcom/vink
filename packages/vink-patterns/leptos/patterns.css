@@ -14,13 +14,10 @@
 .vk-public-row__link:hover h3 { text-decoration: underline; }
 .vk-public-row__link > .vk-ui-heading { margin: 0; }
 .vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
-/* Let the real author name use the card measure when text enlargement leaves too little
-   space beside a decorative avatar. Reader bylines outside this container stay unchanged. */
-@container vk-work-card (max-width: 18rem) {
-  .vk-work-byline { grid-template-columns: minmax(0, 1fr); }
-  .vk-work-byline .vk-ui-avatar { display: none; }
-  .vk-work-byline .vk-ui-byline__text, .vk-work-byline__date { grid-column: 1; }
-}
+/* Keep the avatar visible at enlarged text; names wrap in the remaining track. */
+.vk-public-row__link > .vk-ui-heading { margin-bottom: var(--vk-space-2); font-family: var(--vk-font-reading); }
+.vk-public-row__link .vk-work-byline { min-width: 0; }
+.vk-ui-byline__name { overflow-wrap: anywhere; }
 /* DraftRow: mark | title + metadata | open at wide measures. The row width (not
    the viewport) drives reflow, so enlarged text and narrow galleries behave alike. */
 .vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); background: var(--vk-surface-container-low); color: var(--vk-on-surface); text-align: start; text-decoration: none; }

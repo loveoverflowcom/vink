@@ -986,7 +986,7 @@ pub mod dim {
     pub const SIZE_AVATAR_FEED: Dimension = Dimension {
         token: "size.avatar-feed",
         css_var: "--vk-size-avatar-feed",
-        value: 44.0,
+        value: 32.0,
         max: None,
         compact: None,
         web: WebUnit::Px,
@@ -994,7 +994,7 @@ pub mod dim {
     pub const SIZE_AVATAR_FEED_NARROW: Dimension = Dimension {
         token: "size.avatar-feed-narrow",
         css_var: "--vk-size-avatar-feed-narrow",
-        value: 40.0,
+        value: 32.0,
         max: None,
         compact: None,
         web: WebUnit::Px,
@@ -1010,7 +1010,7 @@ pub mod dim {
     pub const SIZE_AVATAR_READER: Dimension = Dimension {
         token: "size.avatar-reader",
         css_var: "--vk-size-avatar-reader",
-        value: 50.0,
+        value: 44.0,
         max: None,
         compact: None,
         web: WebUnit::Px,

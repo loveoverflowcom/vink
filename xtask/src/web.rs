@@ -546,6 +546,33 @@ fn seed_tag_catalog(root: &Path, server: &Server) -> Result<TagSeed, String> {
     })
 }
 
+/// Labelled publication fixtures, solely in this lane's disposable database.
+fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
+    use sqlx::Connection;
+    let url = server
+        .env
+        .iter()
+        .find(|(key, _)| key == "DATABASE_URL")
+        .map(|(_, value)| value)
+        .ok_or("scratch URL missing")?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    runtime.block_on(async {
+        let mut connection = sqlx::PgConnection::connect(url)
+            .await
+            .map_err(|e| e.to_string())?;
+        sqlx::raw_sql(include_str!(
+            "../../apps/vink-web/e2e/fixtures/discovery-publications.sql"
+        ))
+        .execute(&mut connection)
+        .await
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}
+
 fn run_web_checks(
     report: &mut Report,
     root: &Path,
@@ -578,6 +605,21 @@ fn run_web_checks(
     if !report.step(
         "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
         || smoke(root, &["--phase", "main"], chrome, origin, state),
+    ) {
+        return false;
+    }
+    if !report.step(
+        "discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race",
+        || {
+            seed_discovery_fixture(server)?;
+            smoke(
+                root,
+                &["--phase", "discovery-corpus"],
+                chrome,
+                origin,
+                state,
+            )
+        },
     ) {
         return false;
     }

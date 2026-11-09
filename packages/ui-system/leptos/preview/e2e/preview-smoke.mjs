@@ -669,7 +669,7 @@ async function components(page) {
 
   for (const [entry, scenario] of [['field.text-field', 'default'], ['field.text-area', 'invalid'], ['field.select', 'invalid'], ['field.form', 'invalid'], ['composition.nested', 'default']]) {
     await page.open(entry, scenario);
-    const unlabelled = await page.eval(`[...document.querySelectorAll('#specimen-scope input:not([type=radio]):not([type=checkbox]), #specimen-scope textarea, #specimen-scope select')].filter((c) => !document.querySelector('label[for="' + c.id + '"]')).map((c) => c.id || c.outerHTML.slice(0, 40))`);
+    const unlabelled = await page.eval(`[...document.querySelectorAll('#specimen-scope input:not([type=radio]):not([type=checkbox]):not([type=hidden]), #specimen-scope textarea, #specimen-scope select')].filter((c) => !document.querySelector('label[for="' + c.id + '"]')).map((c) => c.id || c.outerHTML.slice(0, 40))`);
     if (unlabelled.length) throw new Error(`unlabelled controls in ${entry}/${scenario}: ${unlabelled}`);
   }
   console.log('  ok  every text, area and select control has a <label for>');

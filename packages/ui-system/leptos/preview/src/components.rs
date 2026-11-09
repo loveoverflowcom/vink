@@ -7,11 +7,11 @@ use vink_ui::identity_vectors::{BROKEN_WEBP_BASE64, PEOPLE, SAMPLE_WEBP_BASE64};
 use vink_ui::{
     ActionState, Align, AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind, AvatarSize,
     Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction, Divider,
-    FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading, HeadingLevel, Icon,
-    IconButton, IconName, ImageFrame, ImageState, Link, LinkTarget, LinkVariant, Measure, Person,
-    RadioGroup, Radius, SearchField, Select, Space, Stack, Surface, SurfaceTone, Switch, Text,
-    TextArea, TextField, TextInput, TextKind, TextTag, TextTone, ThemePreference, ThemeScope,
-    TypeRole,
+    FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading, HeadingLevel,
+    HiddenField, Icon, IconButton, IconName, ImageFrame, ImageState, Link, LinkTarget, LinkVariant,
+    Measure, Person, RadioGroup, Radius, SearchField, Select, Space, Stack, Surface, SurfaceTone,
+    Switch, Text, TextArea, TextField, TextInput, TextKind, TextTag, TextTone, ThemePreference,
+    ThemeScope, TypeRole,
 };
 
 /// The preview's event log; absent when a specimen is rendered in a unit test.
@@ -767,6 +767,7 @@ fn field_form(start_invalid: bool) -> AnyView {
         >
             <Stack gap=Space::S4>
                 <FormSummary title="Cần sửa trước khi gửi" items=summary />
+                <HiddenField name="native-context" value=Signal::stored("form-preview".to_string()) />
                 <TextField id="form-title" label="Tiêu đề" value=title on_input=text_logger("form-title", title) required=true error=error_for("form-title") />
                 <Select
                     id="form-genre"

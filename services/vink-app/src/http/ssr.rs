@@ -84,14 +84,36 @@ impl PublicReads for PublicReadsAdapter {
             to_web(&super::contract::EndorsementSummaryList::from(&summaries))
         })
     }
-    fn works(&self) -> PortFuture<Result<web::WorkList, LoadError>> {
+    fn catalog(&self) -> PortFuture<Result<web::TagList, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let page = vink
+                .catalog_tags(None)
+                .await
+                .map_err(|_| LoadError::Unavailable)?;
+            to_web(&super::contract::TagList::from(&page))
+        })
+    }
+
+    fn works(
+        &self,
+        query: vink_web::discovery::ExploreQuery,
+    ) -> PortFuture<Result<web::WorkList, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {
             // The home page is the first page of the unfiltered public search (ED-01: finite).
             let page = vink
-                .discover_works(DiscoverWorks::default())
+                .discover_works(DiscoverWorks {
+                    query: Some(query.q),
+                    tags: query.tags,
+                    cursor: query.cursor,
+                    limit: None,
+                })
                 .await
-                .map_err(|_| LoadError::Unavailable)?;
+                .map_err(|error| match error {
+                    crate::application::discovery::DiscoveryError::Invalid(_) => LoadError::Invalid,
+                    _ => LoadError::Unavailable,
+                })?;
             to_web(&WorkList::from(&page))
         })
     }

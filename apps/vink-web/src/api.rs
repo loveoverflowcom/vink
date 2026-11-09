@@ -265,20 +265,65 @@ pub async fn set_comments_mode(
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadError {
     NotFound,
+    Invalid,
     Unavailable,
 }
 
-pub fn works_resource() -> Resource<Result<WorkList, LoadError>> {
+pub fn works_resource(
+    query: Memo<crate::discovery::ExploreQuery>,
+) -> Resource<(crate::discovery::ExploreQuery, Result<WorkList, LoadError>)> {
     #[cfg(feature = "ssr")]
     {
         let port = use_context::<crate::server::SharedPublicReads>();
         Resource::new(
-            || (),
-            move |()| {
+            move || query.get(),
+            move |query| {
+                let port = port.clone();
+                async move {
+                    let result = match port {
+                        Some(port) => port.works(query.clone()).await,
+                        None => Err(LoadError::Unavailable),
+                    };
+                    (query, result)
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(
+            move || query.get(),
+            |query| {
+                browser(async move {
+                    let result =
+                        match public(crate::public_reads::PublicKey::Works(query.clone())).await {
+                            Ok(crate::public_reads::Snapshot::Works(list)) => Ok(list),
+                            Ok(crate::public_reads::Snapshot::Publication(_)) => {
+                                Err(LoadError::Unavailable)
+                            }
+                            Err(error) => Err(error),
+                        };
+                    (query, result)
+                })
+            },
+        )
+    }
+}
+
+/// Public catalog is no-store, refreshed for each applied query and when opening the picker.
+pub fn catalog_resource(
+    refresh: Memo<(crate::discovery::ExploreQuery, u64)>,
+) -> Resource<Result<crate::contract::TagList, LoadError>> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            move || refresh.get(),
+            move |_| {
                 let port = port.clone();
                 async move {
                     match port {
-                        Some(port) => port.works().await,
+                        Some(port) => port.catalog().await,
                         None => Err(LoadError::Unavailable),
                     }
                 }
@@ -288,17 +333,8 @@ pub fn works_resource() -> Resource<Result<WorkList, LoadError>> {
     #[cfg(not(feature = "ssr"))]
     {
         Resource::new(
-            || (),
-            |()| {
-                browser(async {
-                    match public(crate::public_reads::PublicKey::Works).await? {
-                        crate::public_reads::Snapshot::Works(list) => Ok(list),
-                        crate::public_reads::Snapshot::Publication(_) => {
-                            Err(LoadError::Unavailable)
-                        }
-                    }
-                })
-            },
+            move || refresh.get(),
+            |_| browser(public_get("/api/v1/tags".into())),
         )
     }
 }
@@ -360,6 +396,7 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
     {
         http::get(&path).await.map_err(|error| match error {
             ApiError::NotFound => LoadError::NotFound,
+            ApiError::Invalid { .. } => LoadError::Invalid,
             _ => LoadError::Unavailable,
         })
     }

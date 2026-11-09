@@ -27,6 +27,8 @@ ghi owner snapshot của tab trình duyệt cho hai public read: render snapshot
 [Biểu cảm Google Noto](expressions.md) bổ sung manifest + policy Rust + Web pilot độc lập EMO-01A;
 chưa tích hợp composer/reaction/sticker persistence.
 
+[Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,

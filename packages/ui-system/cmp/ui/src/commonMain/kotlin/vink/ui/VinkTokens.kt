@@ -231,10 +231,10 @@ object VinkDimens {
     val RadiusMd = 12.dp
     val RadiusSm = 8.dp
     val RadiusXl = 28.dp
-    val SizeAvatarFeed = 44.dp
-    val SizeAvatarFeedNarrow = 40.dp
+    val SizeAvatarFeed = 32.dp
+    val SizeAvatarFeedNarrow = 32.dp
     val SizeAvatarMd = 40.dp
-    val SizeAvatarReader = 50.dp
+    val SizeAvatarReader = 44.dp
     val SizeAvatarReaderNarrow = 44.dp
     val SizeAvatarSm = 32.dp
     val SizeAvatarSpotlight = 40.dp

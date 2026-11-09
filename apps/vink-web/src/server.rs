@@ -14,7 +14,11 @@ pub type PortFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 /// Public reads available to server rendering. There is deliberately no draft method:
 /// private desk data is only fetched by the browser through the authenticated API.
 pub trait PublicReads: Send + Sync + 'static {
-    fn works(&self) -> PortFuture<Result<WorkList, LoadError>>;
+    fn works(
+        &self,
+        query: crate::discovery::ExploreQuery,
+    ) -> PortFuture<Result<WorkList, LoadError>>;
+    fn catalog(&self) -> PortFuture<Result<crate::contract::TagList, LoadError>>;
     fn publication(&self, work_id: String) -> PortFuture<Result<Publication, LoadError>>;
     /// Always anonymous: viewer-private comments never enter public HTML/hydration payloads.
     fn discussion(&self, _work_id: String) -> PortFuture<Result<DiscussionPage, LoadError>> {
