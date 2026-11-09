@@ -53,7 +53,7 @@ Screen #reader — /tac-pham/:id
 
 Danh sách co giãn; bộ lọc 20rem, khe space-6. Dock ở min-width:1200px và khi cột chính
 còn đủ rộng; container tối thiểu 48rem thu gọn khi tăng chữ. Dưới breakpoint dùng Dialog hiện có,
-ở màn nhỏ dùng sheet. SSR/no-JS vẫn có details và form GET truy cập được.
+ở màn nhỏ dùng sheet. Logo chuyển sang hàng riêng dưới 760px hoặc container 40rem để giữ nguyên từ trong heading khi chữ lớn. SSR/no-JS vẫn có details và form GET truy cập được.
 Mỗi form có q và các tag lặp; đổi q/thẻ reset cursor. Chọn checkbox chưa áp dụng không
 thay URL/kết quả. Áp dụng đóng dialog và focus heading kết quả. Escape trả focus về Thẻ.
 Bản chọn thử dùng chung giữa dock/dialog; chuyển bề rộng không xóa lựa chọn.
