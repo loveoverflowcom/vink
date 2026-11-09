@@ -55,28 +55,32 @@ a {
   display: inline-flex;
   align-items: center;
   min-block-size: var(--vk-density-control-height);
-  gap: var(--vk-space-2);
   color: var(--vk-on-surface);
   text-decoration: none;
-  font-family: var(--vk-font-reading);
-  font-size: var(--vk-type-title-size);
-  font-weight: var(--vk-type-label-weight);
-  letter-spacing: -0.01em;
 }
 
-/* Final selected source (#34). Fixed geometry survives asset decoding and theme changes. */
-.vk-brand__mark {
+/* V-pen R1 (#117): the outlined wordmark is part of the selected artwork.
+ * Reserve its intrinsic ratio before decoding; rem sizing follows text enlargement. */
+.vk-brand__lockup {
   display: inline-block;
   flex-shrink: 0;
-  width: 2.25rem;
+  width: calc(2.25rem * 1018 / 410);
   height: 2.25rem;
-  background: url("brand/vink-mark-light.svg") center / contain no-repeat;
+  background: url("brand/vpen-r1-lockup-light.svg") center / contain no-repeat;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
+  :root:not([data-theme="light"]) .vk-brand__lockup { background-image: url("brand/vpen-r1-lockup-dark.svg"); }
 }
-:root[data-theme="dark"] .vk-brand__mark { background-image: url("brand/vink-mark-dark.svg"); }
+:root[data-theme="dark"] .vk-brand__lockup { background-image: url("brand/vpen-r1-lockup-dark.svg"); }
+
+@media (forced-colors: active) {
+  .vk-brand__lockup {
+    forced-color-adjust: none;
+    background: LinkText !important;
+    mask: url("brand/vpen-r1-lockup-mono.svg") center / contain no-repeat;
+  }
+}
 
 .vk-profile-menu {
   position: fixed;

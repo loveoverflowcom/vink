@@ -2,7 +2,10 @@
 //! served font assets against their provenance record, the editor runtime's pinned packages and
 //! the safety lints every crate inherits.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::BTreeMap,
+    path::{Path, PathBuf},
+};
 
 use sha2::{Digest, Sha256};
 
@@ -37,64 +40,150 @@ fn read(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok()
 }
 
-/// Preserve the approved source derivatives and catch missing/corrupt release assets.
-fn brand(root: &Path, problems: &mut Vec<String>) {
-    let dir = root.join(BRAND_DIR);
-    let record = read(&dir.join("provenance.json"))
-        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
-    let Some(files) = record.as_ref().and_then(|value| value["files"].as_object()) else {
-        problems.push(format!(
-            "{BRAND_DIR}/provenance.json: missing or invalid files"
-        ));
-        return;
+enum BrandOrigin {
+    Source(String),
+    Derivative(&'static str),
+}
+
+fn brand_inventory() -> BTreeMap<String, BrandOrigin> {
+    let mut files = BTreeMap::new();
+    let mut add_source = |stem: String, extension: &str| {
+        files.insert(
+            format!("vpen-r1-{stem}.{extension}"),
+            BrandOrigin::Source(format!("{extension}/vink-{stem}.{extension}")),
+        );
     };
-    for (name, entry) in files {
-        match std::fs::read(dir.join(name)) {
-            Ok(bytes) if entry["sha256"].as_str() == Some(sha256_hex(&bytes).as_str()) => {}
-            _ => problems.push(format!("{BRAND_DIR}/{name}: missing or SHA-256 differs")),
-        }
-    }
-    if let Some(record) = record.as_ref() {
-        let reference = record["reference_path"].as_str().unwrap_or_default();
-        match std::fs::read(root.join(reference)) {
-            Ok(bytes)
-                if record["reference_sha256"].as_str() == Some(sha256_hex(&bytes).as_str()) => {}
-            _ => problems.push(format!(
-                "{BRAND_DIR}: selected ZIP is missing or SHA-256 differs"
-            )),
-        }
-        // The selected artwork is copied verbatim; only the composed favicon and manifests
-        // are app-owned derivatives. A new checksum must not silently bless a redrawn logo.
-        for (name, entry) in files {
-            if name.starts_with("vink-")
-                && record["source_files"][name]["sha256"] != entry["sha256"]
-            {
-                problems.push(format!(
-                    "{BRAND_DIR}/{name}: differs from the selected source"
-                ));
-            }
-        }
-    }
-    for name in [
-        "vink-mark-light.svg",
-        "vink-mark-dark.svg",
-        "vink-mark-light-compact.svg",
-        "vink-mark-dark-compact.svg",
-        "vink-mark-mono.svg",
-        "vink-mark-mono-compact.svg",
-    ] {
-        if !files.contains_key(name) {
-            problems.push(format!(
-                "{BRAND_DIR}/{name}: not recorded in provenance.json"
-            ));
+    for variant in ["mark", "lockup"] {
+        for theme in ["light", "dark", "mono"] {
+            add_source(format!("{variant}-{theme}"), "svg");
         }
     }
     for theme in ["light", "dark"] {
         for size in [24, 32, 48, 96, 192, 512] {
-            let name = format!("vink-{theme}-{size}.png");
-            if !files.contains_key(&name) {
+            add_source(format!("mark-{theme}-{size}"), "png");
+        }
+    }
+    // These app-owned files are absent from the original manifest. Pin the reviewed
+    // compositions so updating the runtime record cannot restore a historical icon.
+    for (name, sha256) in [
+        (
+            "vpen-r1-favicon.svg",
+            "bd7c634ebcb23b530d10e76efa4d756fa35691937a4295f35b9b118ae8b4a70c",
+        ),
+        (
+            "vpen-r1-manifest-light.webmanifest",
+            "b1183544ed20cba4d4022309b4cd363b287ca58689db3dcd169d73c0e44b99bb",
+        ),
+        (
+            "vpen-r1-manifest-dark.webmanifest",
+            "7c2ef83ac8a5b59806cb01c121486c7482fd590e02a79f7f4776cf467bb3314a",
+        ),
+    ] {
+        files.insert(name.into(), BrandOrigin::Derivative(sha256));
+    }
+    files
+}
+
+/// Preserve the approved V-pen source and reject stale/unrecorded served artwork.
+pub(crate) fn brand(root: &Path, problems: &mut Vec<String>) {
+    let dir = root.join(BRAND_DIR);
+    let record = read(&dir.join("provenance.json"))
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok());
+    let Some(record) = record else {
+        problems.push(format!("{BRAND_DIR}/provenance.json: invalid record"));
+        return;
+    };
+    let Some(files) = record["files"].as_object() else {
+        problems.push(format!("{BRAND_DIR}/provenance.json: missing files"));
+        return;
+    };
+    // Pin the approved ZIP and its original manifest independently of the runtime record.
+    // Editing a served checksum alone cannot bless altered or historical artwork.
+    for (path_key, hash_key, approved) in [
+        (
+            "reference_path",
+            "reference_sha256",
+            "3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e",
+        ),
+        (
+            "source_manifest_path",
+            "source_manifest_sha256",
+            "96d781333a71d1ce1c501c52c087c0962c2116313d949522f2a7e06ea5350cc2",
+        ),
+    ] {
+        let path = record[path_key].as_str().unwrap_or_default();
+        if record[hash_key].as_str() != Some(approved)
+            || std::fs::read(root.join(path))
+                .map(|b| sha256_hex(&b))
+                .ok()
+                .as_deref()
+                != Some(approved)
+        {
+            problems.push(format!(
+                "{BRAND_DIR}: {path_key} differs from approved V-pen R1"
+            ));
+        }
+    }
+    let source = record["source_manifest_path"]
+        .as_str()
+        .and_then(|path| read(&root.join(path)))
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .unwrap_or_default();
+    let inventory = brand_inventory();
+    for name in files.keys().filter(|name| !inventory.contains_key(*name)) {
+        problems.push(format!("{BRAND_DIR}/{name}: unexpected provenance entry"));
+    }
+    for (name, origin) in &inventory {
+        let Some(entry) = files.get(name) else {
+            problems.push(format!("{BRAND_DIR}/{name}: not recorded"));
+            continue;
+        };
+        match std::fs::read(dir.join(name)) {
+            Ok(bytes)
+                if entry["sha256"].as_str() == Some(sha256_hex(&bytes).as_str())
+                    && entry["bytes"].as_u64() == Some(bytes.len() as u64) => {}
+            _ => problems.push(format!(
+                "{BRAND_DIR}/{name}: missing or bytes/SHA-256 differs"
+            )),
+        }
+        match origin {
+            BrandOrigin::Source(path) => {
+                let original = &source["assets"][path];
+                if entry["source_path"].as_str() != Some(path.as_str())
+                    || original["sha256"] != entry["sha256"]
+                    || original["bytes"] != entry["bytes"]
+                {
+                    problems.push(format!(
+                        "{BRAND_DIR}/{name}: differs from approved source {path}"
+                    ));
+                }
+            }
+            BrandOrigin::Derivative(sha256)
+                if entry["sha256"].as_str() != Some(*sha256)
+                    || entry.get("source_path").is_some() =>
+            {
                 problems.push(format!(
-                    "{BRAND_DIR}/{name}: not recorded in provenance.json"
+                    "{BRAND_DIR}/{name}: differs from reviewed Web derivative"
+                ));
+            }
+            BrandOrigin::Derivative(_) => {}
+        }
+    }
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if matches!(
+                path.extension().and_then(|s| s.to_str()),
+                Some("svg" | "png" | "webmanifest")
+            ) && !inventory.contains_key(
+                path.file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default(),
+            ) {
+                problems.push(format!(
+                    "{}: unexpected served brand asset",
+                    rel(root, &path)
                 ));
             }
         }
@@ -886,6 +975,59 @@ mod tests {
         assert_eq!(broken(&file, "#section"), None);
         assert_eq!(broken(&file, "src/main.rs:12"), None);
         assert_eq!(broken(&file, "missing.md"), Some("missing.md".into()));
+    }
+
+    #[test]
+    fn brand_rejects_theme_swaps_legacy_urls_and_rehashed_favicon() {
+        let root = std::env::temp_dir().join(format!("vink-brand-check-{}", std::process::id()));
+        let dir = root.join(BRAND_DIR);
+        std::fs::create_dir_all(&dir).unwrap();
+        let source_root = crate::root();
+        let mut record: serde_json::Value = serde_json::from_str(
+            &read(&source_root.join(BRAND_DIR).join("provenance.json")).unwrap(),
+        )
+        .unwrap();
+        for key in ["reference_path", "source_manifest_path"] {
+            let path = record[key].as_str().unwrap();
+            std::fs::create_dir_all(root.join(path).parent().unwrap()).unwrap();
+            std::fs::copy(source_root.join(path), root.join(path)).unwrap();
+        }
+        for name in record["files"].as_object().unwrap().keys() {
+            std::fs::copy(source_root.join(BRAND_DIR).join(name), dir.join(name)).unwrap();
+        }
+        let write_record = |record: &serde_json::Value| {
+            std::fs::write(dir.join("provenance.json"), record.to_string()).unwrap();
+        };
+        write_record(&record);
+        let mut problems = Vec::new();
+        brand(&root, &mut problems);
+        assert!(problems.is_empty(), "{problems:?}");
+
+        // A valid approved file cannot stand in for another theme or use a legacy URL.
+        let dark = "vpen-r1-mark-dark.svg";
+        for name in ["vpen-r1-mark-light.svg", "vink-mark-light.svg"] {
+            std::fs::copy(dir.join(dark), dir.join(name)).unwrap();
+            record["files"][name] = record["files"][dark].clone();
+        }
+        // Rehashing the fallback must not bless replacement artwork.
+        let favicon = "vpen-r1-favicon.svg";
+        let replacement = b"<svg xmlns='http://www.w3.org/2000/svg'><circle r='1'/></svg>";
+        std::fs::write(dir.join(favicon), replacement).unwrap();
+        record["files"][favicon]["sha256"] = sha256_hex(replacement).into();
+        record["files"][favicon]["bytes"] = replacement.len().into();
+        write_record(&record);
+        brand(&root, &mut problems);
+        std::fs::remove_dir_all(root).unwrap();
+        for expected in [
+            "vpen-r1-mark-light.svg: differs from approved source svg/vink-mark-light.svg",
+            "vink-mark-light.svg: unexpected served brand asset",
+            "vpen-r1-favicon.svg: differs from reviewed Web derivative",
+        ] {
+            assert!(
+                problems.iter().any(|p| p.ends_with(expected)),
+                "{problems:?}"
+            );
+        }
     }
 
     #[test]

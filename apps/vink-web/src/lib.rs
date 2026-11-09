@@ -48,11 +48,11 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
                 {fixture.map(|scope| view! { <meta name="vink-local-discussion-fixture" content=scope /> })}
-                <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/favicon.svg" />
-                <link id="vink-manifest" rel="manifest" href="/pkg/brand/manifest-light.webmanifest" />
+                <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/vpen-r1-favicon.svg" />
+                <link id="vink-manifest" rel="manifest" href="/pkg/brand/vpen-r1-manifest-light.webmanifest" />
                 <script inner_html=appearance::BOOTSTRAP></script>
-                <link as="image" rel="preload" href="/pkg/brand/vink-mark-light.svg" type="image/svg+xml" />
-                <link as="image" rel="preload" href="/pkg/brand/vink-mark-dark.svg" type="image/svg+xml" />
+                <link as="image" rel="preload" href="/pkg/brand/vpen-r1-lockup-light.svg" type="image/svg+xml" />
+                <link as="image" rel="preload" href="/pkg/brand/vpen-r1-lockup-dark.svg" type="image/svg+xml" />
                 // Faces every current page renders above the fold: UI body text and the
                 // reading/heading serif. The 600 face is left to CSS discovery.
                 // `as` first: after a string value the macro would read it as a cast.
@@ -70,7 +70,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                     type="font/woff2"
                     crossorigin="anonymous"
                 />
-                <link rel="stylesheet" href="/pkg/vink.css" />
+                <link rel="stylesheet" href="/pkg/vink.css?brand=vpen-r1" />
                 <HydrationScripts options />
                 <MetaTags />
             </head>

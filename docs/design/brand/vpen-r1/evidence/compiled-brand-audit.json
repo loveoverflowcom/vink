@@ -1,0 +1,155 @@
+{
+  "revision": "a78960fd896fe0f85a192f08f0e74f202592491e",
+  "served_files": [
+    {
+      "name": "vpen-r1-favicon.svg",
+      "sha256": "bd7c634ebcb23b530d10e76efa4d756fa35691937a4295f35b9b118ae8b4a70c",
+      "bytes": 17572,
+      "source_path": null,
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-lockup-dark.svg",
+      "sha256": "dd2723192614d3b55a9646dd1d38fcb75d3c2096f286a983d327fb00e1de9889",
+      "bytes": 13785,
+      "source_path": "svg/vink-lockup-dark.svg",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-lockup-light.svg",
+      "sha256": "b7ec5d216f7eeb5866a1cbee6b6b9c739e3e1de359757d3c5ebc12c205d7cf36",
+      "bytes": 13804,
+      "source_path": "svg/vink-lockup-light.svg",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-lockup-mono.svg",
+      "sha256": "277d72ed42c0455a5ac44159159023e482e1832758f4c1f08cc711f0ca9b928c",
+      "bytes": 13510,
+      "source_path": "svg/vink-lockup-mono.svg",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-manifest-dark.webmanifest",
+      "sha256": "7c2ef83ac8a5b59806cb01c121486c7482fd590e02a79f7f4776cf467bb3314a",
+      "bytes": 636,
+      "source_path": null,
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-manifest-light.webmanifest",
+      "sha256": "b1183544ed20cba4d4022309b4cd363b287ca58689db3dcd169d73c0e44b99bb",
+      "bytes": 639,
+      "source_path": null,
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-192.png",
+      "sha256": "997719bb905a3896c987400753c7332e53299aa7b2a479f21b5f46a22fee6d48",
+      "bytes": 11766,
+      "source_path": "png/vink-mark-dark-192.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-24.png",
+      "sha256": "9bca8fb4e1b94f34219fa0ae62bac0ff9b0d2225c298a0cfbf53377d450deaaa",
+      "bytes": 1042,
+      "source_path": "png/vink-mark-dark-24.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-32.png",
+      "sha256": "b471fc3756eef963e25aae5ff10c05ebe7c1d2021e81a8c52d2e762f52ee17ac",
+      "bytes": 1477,
+      "source_path": "png/vink-mark-dark-32.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-48.png",
+      "sha256": "1ebb079c5df961ae34d8ae87d8ed7d6e5721faaf78673121745b20bf4bab25ee",
+      "bytes": 2338,
+      "source_path": "png/vink-mark-dark-48.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-512.png",
+      "sha256": "7f1b3118daaac91055d69e2df4ad76177ec2d0e173505df0f861463534c2a749",
+      "bytes": 35343,
+      "source_path": "png/vink-mark-dark-512.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark-96.png",
+      "sha256": "66fce2764f30a48dcab8936cd6ab0f82a6bbca53fd4ff468d5423f59f3b4dc88",
+      "bytes": 5353,
+      "source_path": "png/vink-mark-dark-96.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-dark.svg",
+      "sha256": "e4b51882c234ed9dcd5c959b8f47adc467c6a3e4e47ede029ad92c9868b2d004",
+      "bytes": 8970,
+      "source_path": "svg/vink-mark-dark.svg",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-192.png",
+      "sha256": "9e2779c433190fb5453cdb4707c792cd0cddc4bd105db8727d9225d9300cd650",
+      "bytes": 11549,
+      "source_path": "png/vink-mark-light-192.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-24.png",
+      "sha256": "537eda2b4806daad8fd858bb013be57b60f7f61e10514a89373fbc6983a9e19b",
+      "bytes": 1058,
+      "source_path": "png/vink-mark-light-24.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-32.png",
+      "sha256": "aa0cbec8865df5d54f1b02d488e3f4681dbe88ad98cfafbde31aae2505d16d66",
+      "bytes": 1484,
+      "source_path": "png/vink-mark-light-32.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-48.png",
+      "sha256": "c47605847e00c36487a25fb60628abfb6811bf0115a296faae8ce42a923de26b",
+      "bytes": 2358,
+      "source_path": "png/vink-mark-light-48.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-512.png",
+      "sha256": "1b32cd54e8365fe17f6c76bc52048e188764aaa7f6ca5956ae2955fac4f1ec66",
+      "bytes": 35616,
+      "source_path": "png/vink-mark-light-512.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light-96.png",
+      "sha256": "2c54b2709dd9f3be605b03df3a1212bf3471841c8e704ab1e666287ae17179d8",
+      "bytes": 5244,
+      "source_path": "png/vink-mark-light-96.png",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-light.svg",
+      "sha256": "0fead3f7cf08e09d36fe38aef7b088ec2f8faa7ae783c9578a8cba9b8e102ff1",
+      "bytes": 8984,
+      "source_path": "svg/vink-mark-light.svg",
+      "result": "PASS"
+    },
+    {
+      "name": "vpen-r1-mark-mono.svg",
+      "sha256": "00e9decae325b7efdb62021d27309004cb75fb1ac609bebe05a3c356e1140e3d",
+      "bytes": 8724,
+      "source_path": "svg/vink-mark-mono.svg",
+      "result": "PASS"
+    }
+  ],
+  "css": "PASS R1 only",
+  "historical_brand_docs_not_served": "PASS",
+  "intentional_non_brand": "expressions/LICENSE-ANIMATED.md retained; licensed Noto animation metadata is outside brand scope"
+}

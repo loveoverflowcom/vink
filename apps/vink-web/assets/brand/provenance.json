@@ -1,8 +1,10 @@
 {
-  "selection": "Vink_Logo_Final_Selected_Pack.zip — #34, 03/11/2026",
-  "reference_issue": "https://github.com/loveoverflowcom/vink/issues/34",
-  "reference_path": "docs/design/brand/final-selected/Vink_Logo_Final_Selected_Pack.zip",
-  "reference_sha256": "46acba3f22e5b684a1a72f4518d3de6cce0906f0511ef11472a92a056008eac4",
+  "selection": "V-pen R1 — #117, 08/11/2026",
+  "reference_issue": "https://github.com/loveoverflowcom/vink/issues/117",
+  "reference_path": "docs/design/brand/vpen-r1/Vink_Brand_LightDark_VPen_R1_2026-11-08.zip",
+  "reference_sha256": "3e490cb95171139ab23404fb0d01e7a8a7505ea25c5a0e07ab60df7cdcc01b9e",
+  "source_manifest_path": "docs/design/brand/vpen-r1/asset-manifest.json",
+  "source_manifest_sha256": "96d781333a71d1ce1c501c52c087c0962c2116313d949522f2a7e06ea5350cc2",
   "sizes": [
     24,
     32,
@@ -11,194 +13,117 @@
     192,
     512
   ],
-  "source_files": {
-    "README.md": {
-      "sha256": "0c192d0ed92e90838f2bdc0293dfa6c325a50aab4e3aaa22684135750bb14c72",
-      "bytes": 586
-    },
-    "issue_update.md": {
-      "sha256": "9b594a332fc1ea01336b486f9e9c33bdc112cee500887642c214e9d696b120fc",
-      "bytes": 822
-    },
-    "preview.html": {
-      "sha256": "a2804ced21d14ddefee882d41124af3c08d520d741be77e60476ef34c2b03fc9",
-      "bytes": 2815
-    },
-    "preview.svg": {
-      "sha256": "4ec86906738764483da1a1a9f6924d3abfb807a26068b94574109b2e6291b163",
-      "bytes": 6161
-    },
-    "vink-dark-192.png": {
-      "sha256": "eee45ba209e13b2437654d3c5f66b7a0b5d05217a1e1616effef2766286d754c",
-      "bytes": 10207
-    },
-    "vink-dark-24.png": {
-      "sha256": "ab1eecb51ed5049d394a3b0d4479b4e24df91f39b83dd3cb9092bd4b7a700134",
-      "bytes": 852
-    },
-    "vink-dark-32.png": {
-      "sha256": "696f5158a5da5b924014a05f28f8b47660f3bbfead677fc20b900485e944f98f",
-      "bytes": 1091
-    },
-    "vink-dark-48.png": {
-      "sha256": "7e4de4a8881d4fffe82e7d9db059af6573e5d3cb84149df8fd9e583dd565d789",
-      "bytes": 1957
-    },
-    "vink-dark-512.png": {
-      "sha256": "16387840c3c4a696d325ec50466b9d28572a8f3ce0437f460d0c286550eb5b82",
-      "bytes": 30912
-    },
-    "vink-dark-96.png": {
-      "sha256": "9f257bf8e022883b19d6021cf4d0b03b2cef081154b96414c8e0133f2cc07931",
-      "bytes": 4516
-    },
-    "vink-final-review-board.png": {
-      "sha256": "b331828830ed1783698390904dc58ee9305a54c6ace5cb0833fba1df6220d18a",
-      "bytes": 1477224
-    },
-    "vink-light-192.png": {
-      "sha256": "03311fe689495dec420cd3779566cebe0c2c296be8e134cf08b32e6ef71b4cd9",
-      "bytes": 11102
-    },
-    "vink-light-24.png": {
-      "sha256": "26f70d10e236d7d6fd90fd7a28896658c803a4e1ad8a4731e4fff48f4c4122a2",
-      "bytes": 870
-    },
-    "vink-light-32.png": {
-      "sha256": "ac7a2d3133b6f7250e115d210414a5ae88fc7d07d460d2a8da5d4ff67b27daa7",
-      "bytes": 1138
-    },
-    "vink-light-48.png": {
-      "sha256": "d0bb11befbe85b5af0667a6b144e975621e8178cbde6b34ea8e5b85acf0e9ec3",
-      "bytes": 1922
-    },
-    "vink-light-512.png": {
-      "sha256": "53b7db2e895c7765a1c8014ae38702caf2a509d0831dc8159c03b24ba1601f1d",
-      "bytes": 37197
-    },
-    "vink-light-96.png": {
-      "sha256": "4ab940a06f4a71cc81b268f30dcad850cef5abeeff5654200c8f374b39d971d6",
-      "bytes": 4336
-    },
-    "vink-logo-v4-preview.png": {
-      "sha256": "076aade3326dba66d0a8cc97599bc9a113f471ce17f44da100b8173cb089dff0",
-      "bytes": 120272
-    },
-    "vink-mark-dark-compact.svg": {
-      "sha256": "d9a025b1213ede650d0c0c01d54311da1370a632eefbdb3225522deca46edf74",
-      "bytes": 907
-    },
-    "vink-mark-dark.svg": {
-      "sha256": "0d02990ff6edb89fea3c8b1d07c6945c7b2b4fb906e58c853c1da74d09e6e64a",
-      "bytes": 966
-    },
-    "vink-mark-light-compact.svg": {
-      "sha256": "f9f06839148de2bafd83dc82530c04a9203373ee99a0bf5c4f42753c72af2338",
-      "bytes": 909
-    },
-    "vink-mark-light.svg": {
-      "sha256": "1635afcd2b281fba100d5b5c9ca55eb7a8bf0d4e3e1e2b34582c03debb55fa31",
-      "bytes": 968
-    },
-    "vink-mark-mono-compact.svg": {
-      "sha256": "af69aef4970409036c36cd5736831695906eb29cf5882557e29b07d805e99fd8",
-      "bytes": 662
-    },
-    "vink-mark-mono.svg": {
-      "sha256": "33d73adfa1add44c44beb201445d4681f515447d05016ea1a4991ee26bc7c67f",
-      "bytes": 721
-    }
-  },
   "files": {
-    "favicon.svg": {
-      "sha256": "086c28421aec0f33690e21075b2bb09ca36a924420cd82253c48093d456c7798",
-      "bytes": 1684
+    "vpen-r1-favicon.svg": {
+      "sha256": "bd7c634ebcb23b530d10e76efa4d756fa35691937a4295f35b9b118ae8b4a70c",
+      "bytes": 17572,
+      "derivation": "manifest URLs/palette or OS-adaptive composition of original mark paths"
     },
-    "manifest-dark.webmanifest": {
-      "sha256": "954298bd98bb9c57951596ea47bfa256b4bce1cea950a5ac43c25d8b5ecc0444",
-      "bytes": 604
+    "vpen-r1-lockup-dark.svg": {
+      "sha256": "dd2723192614d3b55a9646dd1d38fcb75d3c2096f286a983d327fb00e1de9889",
+      "bytes": 13785,
+      "source_path": "svg/vink-lockup-dark.svg"
     },
-    "manifest-light.webmanifest": {
-      "sha256": "fd91e98b3a18fddf2b538a8a38c05dc76a6c876472113edfb89fe9d4467fb8bc",
-      "bytes": 607
+    "vpen-r1-lockup-light.svg": {
+      "sha256": "b7ec5d216f7eeb5866a1cbee6b6b9c739e3e1de359757d3c5ebc12c205d7cf36",
+      "bytes": 13804,
+      "source_path": "svg/vink-lockup-light.svg"
     },
-    "vink-dark-192.png": {
-      "sha256": "eee45ba209e13b2437654d3c5f66b7a0b5d05217a1e1616effef2766286d754c",
-      "bytes": 10207
+    "vpen-r1-lockup-mono.svg": {
+      "sha256": "277d72ed42c0455a5ac44159159023e482e1832758f4c1f08cc711f0ca9b928c",
+      "bytes": 13510,
+      "source_path": "svg/vink-lockup-mono.svg"
     },
-    "vink-dark-24.png": {
-      "sha256": "ab1eecb51ed5049d394a3b0d4479b4e24df91f39b83dd3cb9092bd4b7a700134",
-      "bytes": 852
+    "vpen-r1-manifest-dark.webmanifest": {
+      "sha256": "7c2ef83ac8a5b59806cb01c121486c7482fd590e02a79f7f4776cf467bb3314a",
+      "bytes": 636,
+      "derivation": "manifest URLs/palette or OS-adaptive composition of original mark paths"
     },
-    "vink-dark-32.png": {
-      "sha256": "696f5158a5da5b924014a05f28f8b47660f3bbfead677fc20b900485e944f98f",
-      "bytes": 1091
+    "vpen-r1-manifest-light.webmanifest": {
+      "sha256": "b1183544ed20cba4d4022309b4cd363b287ca58689db3dcd169d73c0e44b99bb",
+      "bytes": 639,
+      "derivation": "manifest URLs/palette or OS-adaptive composition of original mark paths"
     },
-    "vink-dark-48.png": {
-      "sha256": "7e4de4a8881d4fffe82e7d9db059af6573e5d3cb84149df8fd9e583dd565d789",
-      "bytes": 1957
+    "vpen-r1-mark-dark-192.png": {
+      "sha256": "997719bb905a3896c987400753c7332e53299aa7b2a479f21b5f46a22fee6d48",
+      "bytes": 11766,
+      "source_path": "png/vink-mark-dark-192.png"
     },
-    "vink-dark-512.png": {
-      "sha256": "16387840c3c4a696d325ec50466b9d28572a8f3ce0437f460d0c286550eb5b82",
-      "bytes": 30912
+    "vpen-r1-mark-dark-24.png": {
+      "sha256": "9bca8fb4e1b94f34219fa0ae62bac0ff9b0d2225c298a0cfbf53377d450deaaa",
+      "bytes": 1042,
+      "source_path": "png/vink-mark-dark-24.png"
     },
-    "vink-dark-96.png": {
-      "sha256": "9f257bf8e022883b19d6021cf4d0b03b2cef081154b96414c8e0133f2cc07931",
-      "bytes": 4516
+    "vpen-r1-mark-dark-32.png": {
+      "sha256": "b471fc3756eef963e25aae5ff10c05ebe7c1d2021e81a8c52d2e762f52ee17ac",
+      "bytes": 1477,
+      "source_path": "png/vink-mark-dark-32.png"
     },
-    "vink-light-192.png": {
-      "sha256": "03311fe689495dec420cd3779566cebe0c2c296be8e134cf08b32e6ef71b4cd9",
-      "bytes": 11102
+    "vpen-r1-mark-dark-48.png": {
+      "sha256": "1ebb079c5df961ae34d8ae87d8ed7d6e5721faaf78673121745b20bf4bab25ee",
+      "bytes": 2338,
+      "source_path": "png/vink-mark-dark-48.png"
     },
-    "vink-light-24.png": {
-      "sha256": "26f70d10e236d7d6fd90fd7a28896658c803a4e1ad8a4731e4fff48f4c4122a2",
-      "bytes": 870
+    "vpen-r1-mark-dark-512.png": {
+      "sha256": "7f1b3118daaac91055d69e2df4ad76177ec2d0e173505df0f861463534c2a749",
+      "bytes": 35343,
+      "source_path": "png/vink-mark-dark-512.png"
     },
-    "vink-light-32.png": {
-      "sha256": "ac7a2d3133b6f7250e115d210414a5ae88fc7d07d460d2a8da5d4ff67b27daa7",
-      "bytes": 1138
+    "vpen-r1-mark-dark-96.png": {
+      "sha256": "66fce2764f30a48dcab8936cd6ab0f82a6bbca53fd4ff468d5423f59f3b4dc88",
+      "bytes": 5353,
+      "source_path": "png/vink-mark-dark-96.png"
     },
-    "vink-light-48.png": {
-      "sha256": "d0bb11befbe85b5af0667a6b144e975621e8178cbde6b34ea8e5b85acf0e9ec3",
-      "bytes": 1922
+    "vpen-r1-mark-dark.svg": {
+      "sha256": "e4b51882c234ed9dcd5c959b8f47adc467c6a3e4e47ede029ad92c9868b2d004",
+      "bytes": 8970,
+      "source_path": "svg/vink-mark-dark.svg"
     },
-    "vink-light-512.png": {
-      "sha256": "53b7db2e895c7765a1c8014ae38702caf2a509d0831dc8159c03b24ba1601f1d",
-      "bytes": 37197
+    "vpen-r1-mark-light-192.png": {
+      "sha256": "9e2779c433190fb5453cdb4707c792cd0cddc4bd105db8727d9225d9300cd650",
+      "bytes": 11549,
+      "source_path": "png/vink-mark-light-192.png"
     },
-    "vink-light-96.png": {
-      "sha256": "4ab940a06f4a71cc81b268f30dcad850cef5abeeff5654200c8f374b39d971d6",
-      "bytes": 4336
+    "vpen-r1-mark-light-24.png": {
+      "sha256": "537eda2b4806daad8fd858bb013be57b60f7f61e10514a89373fbc6983a9e19b",
+      "bytes": 1058,
+      "source_path": "png/vink-mark-light-24.png"
     },
-    "vink-mark-dark-compact.svg": {
-      "sha256": "d9a025b1213ede650d0c0c01d54311da1370a632eefbdb3225522deca46edf74",
-      "bytes": 907
+    "vpen-r1-mark-light-32.png": {
+      "sha256": "aa0cbec8865df5d54f1b02d488e3f4681dbe88ad98cfafbde31aae2505d16d66",
+      "bytes": 1484,
+      "source_path": "png/vink-mark-light-32.png"
     },
-    "vink-mark-dark.svg": {
-      "sha256": "0d02990ff6edb89fea3c8b1d07c6945c7b2b4fb906e58c853c1da74d09e6e64a",
-      "bytes": 966
+    "vpen-r1-mark-light-48.png": {
+      "sha256": "c47605847e00c36487a25fb60628abfb6811bf0115a296faae8ce42a923de26b",
+      "bytes": 2358,
+      "source_path": "png/vink-mark-light-48.png"
     },
-    "vink-mark-light-compact.svg": {
-      "sha256": "f9f06839148de2bafd83dc82530c04a9203373ee99a0bf5c4f42753c72af2338",
-      "bytes": 909
+    "vpen-r1-mark-light-512.png": {
+      "sha256": "1b32cd54e8365fe17f6c76bc52048e188764aaa7f6ca5956ae2955fac4f1ec66",
+      "bytes": 35616,
+      "source_path": "png/vink-mark-light-512.png"
     },
-    "vink-mark-light.svg": {
-      "sha256": "1635afcd2b281fba100d5b5c9ca55eb7a8bf0d4e3e1e2b34582c03debb55fa31",
-      "bytes": 968
+    "vpen-r1-mark-light-96.png": {
+      "sha256": "2c54b2709dd9f3be605b03df3a1212bf3471841c8e704ab1e666287ae17179d8",
+      "bytes": 5244,
+      "source_path": "png/vink-mark-light-96.png"
     },
-    "vink-mark-mono-compact.svg": {
-      "sha256": "af69aef4970409036c36cd5736831695906eb29cf5882557e29b07d805e99fd8",
-      "bytes": 662
+    "vpen-r1-mark-light.svg": {
+      "sha256": "0fead3f7cf08e09d36fe38aef7b088ec2f8faa7ae783c9578a8cba9b8e102ff1",
+      "bytes": 8984,
+      "source_path": "svg/vink-mark-light.svg"
     },
-    "vink-mark-mono.svg": {
-      "sha256": "33d73adfa1add44c44beb201445d4681f515447d05016ea1a4991ee26bc7c67f",
-      "bytes": 721
+    "vpen-r1-mark-mono.svg": {
+      "sha256": "00e9decae325b7efdb62021d27309004cb75fb1ac609bebe05a3c356e1140e3d",
+      "bytes": 8724,
+      "source_path": "svg/vink-mark-mono.svg"
     }
   },
   "usage": {
-    "shell": "vink-mark-{light,dark}.svg (exact selected SVG)",
-    "favicon": "vink-mark-{light,dark}-compact.svg; favicon.svg combines those paths for no-JS OS theme",
-    "manifest": "selected PNG 192/512 + standard SVG, purpose any",
-    "review_board": "reference presentation only; not pixel-identical to selected SVG/PNG"
+    "explore": "full lockup; CHOICE-01 A; 2.25rem high, ratio 1018/410",
+    "small_icons": "same mark silhouette; CHOICE-02 B",
+    "forced_colors": "mono lockup as currentColor mask",
+    "historical": "#34 ZIP retained under docs/design/brand/final-selected; never served"
   }
 }

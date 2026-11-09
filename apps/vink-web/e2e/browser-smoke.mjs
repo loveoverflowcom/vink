@@ -949,9 +949,11 @@ async function openProfile(page) {
 async function chooseTheme(page, value, group = 'overlay-theme') {
   await page.click(`label:has(input[name="${group}"][value="${value}"])`);
   await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
-  // Token colours switch at once; nav background transitions take 160ms. Contrast samples
-  // describe the settled theme. A pending save may also have a lawful infinite loading arc.
-  await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+  // Sample contrast after the current CSS transitions finish. Holding on to a snapshot
+  // of Animation.finished promises stalled DevTools after the dirty editor resized.
+  // Poll the live transitions instead, without waiting for CSS loading animations.
+  await page.waitFor(`!document.getAnimations().some(a =>
+    a instanceof CSSTransition && (a.pending || a.playState === 'running'))`, `${value} appearance transitions`);
   await assertBrand(page, value);
 }
 
@@ -959,15 +961,15 @@ async function assertBrand(page, preference) {
   const theme = preference === 'system'
     ? await page.eval(`matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'`)
     : preference;
-  await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/vink-mark-${theme}-compact.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/manifest-${theme}.webmanifest'`, `${theme} head icons`);
+  await page.waitFor(`document.querySelector('#vink-favicon').getAttribute('href') === '/pkg/brand/vpen-r1-mark-${theme}.svg' && document.querySelector('#vink-manifest').getAttribute('href') === '/pkg/brand/vpen-r1-manifest-${theme}.webmanifest'`, `${theme} head icons`);
   await assertBrandPlacement(page);
   if (await page.eval(`location.pathname === '/'`)) {
     check(await page.eval(`(() => {
-      const mark = document.querySelector('#discovery-tools .vk-brand__mark');
+      const mark = document.querySelector('#discovery-tools .vk-brand__lockup');
       const style = getComputedStyle(mark), rect = mark.getBoundingClientRect();
-      return style.backgroundImage.includes('vink-mark-${theme}.svg') && style.filter === 'none' &&
-        rect.width === rect.height && rect.width === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize);
-    })()`), `${theme} Explore mark uses the approved asset and reserves its square before decoding`);
+      return style.backgroundImage.includes('vpen-r1-lockup-${theme}.svg') && style.filter === 'none' &&
+        Math.abs(rect.width / rect.height - 1018 / 410) < 0.001 && rect.height === 2.25 * parseFloat(getComputedStyle(document.documentElement).fontSize) && mark.parentElement.textContent.trim() === '';
+    })()`), `${theme} Explore lockup uses the approved artwork once and reserves its ratio before decoding`);
   }
 }
 
@@ -1004,27 +1006,66 @@ async function assertExploreHeader(page, scenario) {
 }
 
 async function brandAssets(page) {
-  console.log('final selected logo asset delivery and decoding:');
+  console.log('V-pen R1 logo asset delivery and decoding:');
+  const stylesheet = await page.eval(`document.querySelector('link[rel=stylesheet]').getAttribute('href')`);
+  check(stylesheet === '/pkg/vink.css?brand=vpen-r1', 'brand migration uses a fresh stylesheet cache key');
+  const cssResponse = await fetch(`${args.base}${stylesheet}`);
+  const css = await cssResponse.text();
+  check(cssResponse.ok && cssResponse.headers.get('content-type')?.startsWith('text/css') && css.includes('brand/vpen-r1-lockup-light.svg') && !css.includes('brand/vink-mark-'), 'versioned CSS resolves R1 artwork without historical asset URLs');
+  const fallbackResponse = await fetch(`${args.base}/pkg/brand/vpen-r1-favicon.svg`);
+  check(fallbackResponse.ok && fallbackResponse.headers.get('content-type')?.startsWith('image/svg+xml'), 'OS-adaptive favicon is served as SVG');
+  check(await page.eval(`(async () => { const image = new Image(); image.src = '/pkg/brand/vpen-r1-favicon.svg'; await image.decode(); return image.naturalWidth > 0; })()`), 'OS-adaptive favicon decodes');
   for (const theme of ['light', 'dark']) {
     for (const size of [24, 32, 48, 96, 192, 512]) {
-      const path = `/pkg/brand/vink-${theme}-${size}.png`;
+      const path = `/pkg/brand/vpen-r1-mark-${theme}-${size}.png`;
       const response = await fetch(`${args.base}${path}`);
       check(response.ok && response.headers.get('content-type')?.startsWith('image/png'), `${theme} ${size}px PNG is served as an image`);
       check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth === ${size} && image.naturalHeight === ${size}; })()`), `${theme} ${size}px PNG decodes at the declared size`);
     }
-    for (const variant of ['', '-compact']) {
-      const path = `/pkg/brand/vink-mark-${theme}${variant}.svg`;
+    for (const variant of ['mark', 'lockup']) {
+      const path = `/pkg/brand/vpen-r1-${variant}-${theme}.svg`;
       const response = await fetch(`${args.base}${path}`);
       check(response.ok && response.headers.get('content-type')?.startsWith('image/svg+xml'), `${theme}${variant} SVG is served as an image`);
       check(await page.eval(`(async () => { const image = new Image(); image.src = '${path}'; await image.decode(); return image.naturalWidth > 0 && image.naturalHeight > 0; })()`), `${theme}${variant} selected SVG decodes`);
     }
-    const response = await fetch(`${args.base}/pkg/brand/manifest-${theme}.webmanifest`);
+    const response = await fetch(`${args.base}/pkg/brand/vpen-r1-manifest-${theme}.webmanifest`);
     const manifest = await response.json();
-    check(response.ok && manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512'), `${theme} app manifest exposes 192/512 icons`);
+    check(response.ok && response.headers.get('content-type')?.includes('manifest') && manifest.id === '/' &&
+      manifest.icons.every(icon => icon.src.startsWith(`/pkg/brand/vpen-r1-mark-${theme}`) && icon.purpose === 'any') &&
+      manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512'), `${theme} manifest has stable identity and only R1 any-purpose 192/512 icons`);
     for (const icon of manifest.icons) {
       check((await fetch(`${args.base}${icon.src}`)).ok, `${theme} manifest icon ${icon.src} exists`);
     }
   }
+  for (const size of [24, 32, 48, 96, 192, 512]) {
+    check(await page.eval(`(async () => {
+      const masks = [];
+      for (const theme of ['light', 'dark']) {
+        const image = new Image(); image.src = '/pkg/brand/vpen-r1-mark-' + theme + '-${size}.png';
+        await image.decode();
+        const canvas = document.createElement('canvas'); canvas.width = canvas.height = ${size};
+        const context = canvas.getContext('2d'); context.drawImage(image, 0, 0);
+        const pixels = context.getImageData(0, 0, ${size}, ${size}).data;
+        masks.push(Array.from({length: ${size} * ${size}}, (_, i) => pixels[i * 4 + 3]));
+      }
+      return masks[0].some(alpha => alpha > 0) && masks[0][0] === 0 &&
+        masks[0].every((alpha, i) => alpha === masks[1][i]);
+    })()`), `${size}px Light/Dark PNG has identical silhouette/alpha and transparent corners`);
+  }
+  for (const legacy of ['favicon.svg', 'vink-mark-light.svg', 'vink-mark-dark-compact.svg', 'vink-light-192.png']) {
+    check((await fetch(`${args.base}/pkg/brand/${legacy}`)).status === 404, `historical ${legacy} is not served`);
+  }
+  check(await page.eval(`(async () => {
+    const xml = new DOMParser();
+    const svg = async name => xml.parseFromString(await (await fetch('/pkg/brand/' + name)).text(), 'image/svg+xml');
+    const fallback = await svg('vpen-r1-favicon.svg');
+    for (const theme of ['light', 'dark']) {
+      const source = await svg('vpen-r1-mark-' + theme + '.svg');
+      const paths = node => [...node.querySelectorAll('path')].map(p => p.getAttribute('d'));
+      if (JSON.stringify(paths(source)) !== JSON.stringify(paths(fallback.querySelector('g.' + theme)))) return false;
+    }
+    return true;
+  })()`), 'no-JS favicon contains exactly the original V-pen paths in both themes');
   // Suppress both hydration assets to inspect the real server document with CSS +
   // appearance bootstrap. Leaving the WASM preload active while its JS consumer is
   // blocked strands an unconsumed fetch across these rapid navigations, stalling
@@ -1053,6 +1094,14 @@ async function brandAssets(page) {
   await page.eval(`localStorage.removeItem('vink.ui.theme')`);
   await page.goto(`${args.base}/`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after brand bootstrap check');
+  await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM, {name: 'forced-colors', value: 'active'}]});
+  check(await page.eval(`(() => {
+    const s = getComputedStyle(document.querySelector('.vk-brand__lockup'));
+    return s.maskImage.includes('vpen-r1-lockup-mono.svg') && s.backgroundImage === 'none' &&
+      s.backgroundColor !== 'rgba(0, 0, 0, 0)';
+  })()`), 'forced colors renders the selected mono wordmark as a system-color mask');
+  await page.capture('brand-forced-colors');
+  await page.send('Emulation.setEmulatedMedia', {features: [LIGHT_SYSTEM]});
 }
 
 async function textContrast(page, theme, surface = 'shell') {
@@ -1821,6 +1870,8 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   check((await page.eval(selected)) === LAST_LINE, 'native content focus immediately restores the CodeMirror selection');
   check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, overlay and theme preserve EditorView, selection, text and dirty state');
 
+  const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
+  const selectionAfterEscape = `!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`;
   for (const destination of ['/', '/ban-viet', '/toi']) {
     if (destination === '/toi') {
       await openProfile(page);
@@ -1831,6 +1882,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, `dirty guard to ${destination}`);
     check(await page.eval(`!${PROFILE_OPEN} && location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
     await page.key('Escape');
+    await page.waitFor(selectionAfterEscape, `selection after cancelling navigation to ${destination}`);
   }
   await openProfile(page);
   await page.viewport(390);
@@ -1841,10 +1893,10 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
   await page.key('Escape');
+  await page.waitFor(selectionAfterEscape, 'selection restored after mobile Escape');
   await page.viewport(1280);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
-  await page.tabToBody();
-  await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after mobile resize');
+  await page.waitFor(`innerWidth === 1280 && ${focusedSelection}`, 'selection after mobile resize');
   check((await page.eval(selected)) === LAST_LINE && writes === 0, 'utility changes sent no draft writes and retained the caret selection');
   check((await page.draft(workId)).version === serverVersion, 'shell and fragment traversal preserve the confirmed draft version');
   page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener), 1);

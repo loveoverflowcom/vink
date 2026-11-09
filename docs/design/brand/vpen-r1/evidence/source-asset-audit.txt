@@ -1,0 +1,3 @@
+mark: Light/Dark original path geometry identical
+lockup: Light/Dark original path geometry identical
+21 runtime files match provenance; 18 artwork copies match ZIP entry bytes

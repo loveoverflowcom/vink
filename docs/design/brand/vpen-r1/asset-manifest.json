@@ -1,0 +1,146 @@
+{
+  "source_reference": "approved Vink raster uploaded in conversation",
+  "status": "candidate-not-committed",
+  "assets": {
+    "README.md": {
+      "bytes": 4359,
+      "sha256": "89d044c0e4574a0cb2243f4070b78fd2e21e5f98b26566defde4fe4d6a660b5e"
+    },
+    "cmp/drawable/vink_lockup_dark.png": {
+      "bytes": 71201,
+      "sha256": "129ce730db380f9c97d4728b22fce28f4f2939de6dc9d199328c2ca7827e79b2"
+    },
+    "cmp/drawable/vink_lockup_light.png": {
+      "bytes": 72880,
+      "sha256": "4db9c5e20a53372df5f55cec2fa83dafef74bb1aa9ffcc462df164d78d37261b"
+    },
+    "cmp/drawable/vink_mark_dark_512.png": {
+      "bytes": 35343,
+      "sha256": "7f1b3118daaac91055d69e2df4ad76177ec2d0e173505df0f861463534c2a749"
+    },
+    "cmp/drawable/vink_mark_dark_96.png": {
+      "bytes": 5353,
+      "sha256": "66fce2764f30a48dcab8936cd6ab0f82a6bbca53fd4ff468d5423f59f3b4dc88"
+    },
+    "cmp/drawable/vink_mark_light_512.png": {
+      "bytes": 35616,
+      "sha256": "1b32cd54e8365fe17f6c76bc52048e188764aaa7f6ca5956ae2955fac4f1ec66"
+    },
+    "cmp/drawable/vink_mark_light_96.png": {
+      "bytes": 5244,
+      "sha256": "2c54b2709dd9f3be605b03df3a1212bf3471841c8e704ab1e666287ae17179d8"
+    },
+    "integration/vink-cmp-usage.txt": {
+      "bytes": 602,
+      "sha256": "7d5b589b32e9c54b9232bef237057b7e1a6b930214a5ba3227c2cf0f177721dc"
+    },
+    "integration/vink-logo-example.html": {
+      "bytes": 733,
+      "sha256": "4bfcacffaf91a0f7502cacc52e2b277c00c59327f8d5d17a4e6c5291361b2c3f"
+    },
+    "integration/vink-logo.css": {
+      "bytes": 969,
+      "sha256": "02d02dcfc06879a47f37db72556aa17c31c57e58949a94a9f734d14df2e88d10"
+    },
+    "png/vink-lockup-dark-1280w.png": {
+      "bytes": 71201,
+      "sha256": "129ce730db380f9c97d4728b22fce28f4f2939de6dc9d199328c2ca7827e79b2"
+    },
+    "png/vink-lockup-dark-640w.png": {
+      "bytes": 31998,
+      "sha256": "d33c5065a5b0d44c86ad74ccaa92c5962d7bc1747b0dbabb2d0ba79992df127a"
+    },
+    "png/vink-lockup-light-1280w.png": {
+      "bytes": 72880,
+      "sha256": "4db9c5e20a53372df5f55cec2fa83dafef74bb1aa9ffcc462df164d78d37261b"
+    },
+    "png/vink-lockup-light-640w.png": {
+      "bytes": 31907,
+      "sha256": "d4a38e0d580f3d6c93e70562dc55d2a574292880d85eb59fd155f63e488c89cb"
+    },
+    "png/vink-mark-dark-1024.png": {
+      "bytes": 79836,
+      "sha256": "2873c19c05fbefea910a0f246f70904eeb61bd10bb075037b28d68fffafa21f5"
+    },
+    "png/vink-mark-dark-192.png": {
+      "bytes": 11766,
+      "sha256": "997719bb905a3896c987400753c7332e53299aa7b2a479f21b5f46a22fee6d48"
+    },
+    "png/vink-mark-dark-24.png": {
+      "bytes": 1042,
+      "sha256": "9bca8fb4e1b94f34219fa0ae62bac0ff9b0d2225c298a0cfbf53377d450deaaa"
+    },
+    "png/vink-mark-dark-32.png": {
+      "bytes": 1477,
+      "sha256": "b471fc3756eef963e25aae5ff10c05ebe7c1d2021e81a8c52d2e762f52ee17ac"
+    },
+    "png/vink-mark-dark-48.png": {
+      "bytes": 2338,
+      "sha256": "1ebb079c5df961ae34d8ae87d8ed7d6e5721faaf78673121745b20bf4bab25ee"
+    },
+    "png/vink-mark-dark-512.png": {
+      "bytes": 35343,
+      "sha256": "7f1b3118daaac91055d69e2df4ad76177ec2d0e173505df0f861463534c2a749"
+    },
+    "png/vink-mark-dark-96.png": {
+      "bytes": 5353,
+      "sha256": "66fce2764f30a48dcab8936cd6ab0f82a6bbca53fd4ff468d5423f59f3b4dc88"
+    },
+    "png/vink-mark-light-1024.png": {
+      "bytes": 79598,
+      "sha256": "c6847bab277f497fc49e133408aa413e150d995ff45296f0366f22e0737d03f3"
+    },
+    "png/vink-mark-light-192.png": {
+      "bytes": 11549,
+      "sha256": "9e2779c433190fb5453cdb4707c792cd0cddc4bd105db8727d9225d9300cd650"
+    },
+    "png/vink-mark-light-24.png": {
+      "bytes": 1058,
+      "sha256": "537eda2b4806daad8fd858bb013be57b60f7f61e10514a89373fbc6983a9e19b"
+    },
+    "png/vink-mark-light-32.png": {
+      "bytes": 1484,
+      "sha256": "aa0cbec8865df5d54f1b02d488e3f4681dbe88ad98cfafbde31aae2505d16d66"
+    },
+    "png/vink-mark-light-48.png": {
+      "bytes": 2358,
+      "sha256": "c47605847e00c36487a25fb60628abfb6811bf0115a296faae8ce42a923de26b"
+    },
+    "png/vink-mark-light-512.png": {
+      "bytes": 35616,
+      "sha256": "1b32cd54e8365fe17f6c76bc52048e188764aaa7f6ca5956ae2955fac4f1ec66"
+    },
+    "png/vink-mark-light-96.png": {
+      "bytes": 5244,
+      "sha256": "2c54b2709dd9f3be605b03df3a1212bf3471841c8e704ab1e666287ae17179d8"
+    },
+    "preview/vink-light-dark-review.png": {
+      "bytes": 141613,
+      "sha256": "aaf042d27570fe899c748935f7bfd400ae9cb7959606708674e9529314cd5fc6"
+    },
+    "svg/vink-lockup-dark.svg": {
+      "bytes": 13785,
+      "sha256": "dd2723192614d3b55a9646dd1d38fcb75d3c2096f286a983d327fb00e1de9889"
+    },
+    "svg/vink-lockup-light.svg": {
+      "bytes": 13804,
+      "sha256": "b7ec5d216f7eeb5866a1cbee6b6b9c739e3e1de359757d3c5ebc12c205d7cf36"
+    },
+    "svg/vink-lockup-mono.svg": {
+      "bytes": 13510,
+      "sha256": "277d72ed42c0455a5ac44159159023e482e1832758f4c1f08cc711f0ca9b928c"
+    },
+    "svg/vink-mark-dark.svg": {
+      "bytes": 8970,
+      "sha256": "e4b51882c234ed9dcd5c959b8f47adc467c6a3e4e47ede029ad92c9868b2d004"
+    },
+    "svg/vink-mark-light.svg": {
+      "bytes": 8984,
+      "sha256": "0fead3f7cf08e09d36fe38aef7b088ec2f8faa7ae783c9578a8cba9b8e102ff1"
+    },
+    "svg/vink-mark-mono.svg": {
+      "bytes": 8724,
+      "sha256": "00e9decae325b7efdb62021d27309004cb75fb1ac609bebe05a3c356e1140e3d"
+    }
+  }
+}

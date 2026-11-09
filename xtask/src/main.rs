@@ -273,6 +273,11 @@ fn copy_fonts(from: &Path, to: &Path) -> Result<(), String> {
 
 /// Serve committed brand assets only; the selected ZIP and review boards stay outside the site.
 fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
+    let mut problems = Vec::new();
+    checks::brand(&root(), &mut problems);
+    if !problems.is_empty() {
+        return Err(problems.join("\n"));
+    }
     if to.exists() {
         std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
     }

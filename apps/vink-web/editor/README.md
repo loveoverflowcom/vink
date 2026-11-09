@@ -32,7 +32,8 @@ vào đầu editor đã blur. Cầu giữ selection cuối của editor đang fo
 document changes và khôi phục khi focus trở lại; caret phát sinh khi blur không
 ghi đè lựa chọn này. Regression `shellWithDirtyEditor` giữ nguyên kiểm selection
 sau mobile resize, EditorView/text/undo và không phát draft writes.
-Khôi phục thêm ở animation frame sau focus để qua caret tạm của native dialog;
+Giữ vùng chọn qua frame đầu sau focus rồi khôi phục ở frame kế tiếp, vì Chrome có thể
+gửi sự kiện đổi caret của hộp thoại sau frame đầu;
 keydown, mousedown, document edit, lần focus mới hoặc destroy hủy callback cũ.
 Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện có.
 

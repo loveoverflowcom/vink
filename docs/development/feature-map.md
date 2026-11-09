@@ -9,7 +9,7 @@ cho [#7](https://github.com/loveoverflowcom/vink/issues/7). Dashboard Bàn viế
 [#8](https://github.com/loveoverflowcom/vink/issues/8).
 Khám phá/reader và assertions `publicReading` đối chiếu ngày 01/11/2026 trên nền `c6a8a29`
 cho [#9](https://github.com/loveoverflowcom/vink/issues/9), theo cập nhật v3 của #14.
-Logo/theme và assertions `brandAssets`/`assertBrand` đối chiếu lại ngày 03/11/2026 trên nền
+Logo/theme và assertions `brandAssets`/`assertBrand` migrate sang [V-pen R1 #117](../design/brand/vpen-r1/README.md) ngày 08/11/2026; baseline lịch sử 03/11/2026 trên nền
 `cbcbe0d` cho [#34](https://github.com/loveoverflowcom/vink/issues/34), thay asset #10.
 Search công khai và ngữ cảnh reader đối chiếu ngày 01/11/2026 trên nền `75ccb41c` cho lát cắt A
 của [#14](https://github.com/loveoverflowcom/vink/issues/14); [spec r2](../design/public-reading.md#layoutspec-r2--tìm-trong-danh-sách-và-giữ-ngữ-cảnh-14-lát-cắt-a).
@@ -81,7 +81,7 @@ Bản đồ này chỉ giúp tìm luồng, thao tác và nơi kiểm chứng, kh
 
 ## Điểm vào và trạng thái cần nhận biết
 
-Logo selected #34 nằm góc trên bên phải của Khám phá (`/`). Owner: `pages/mod.rs`,
+Logo V-pen R1 #117 nằm góc trên bên phải của Khám phá (`/`). Owner: `pages/mod.rs`,
 `appearance.rs`, `vink.css`, [assets/brand](../../apps/vink-web/assets/brand/README.md)
 và pipeline `xtask`. `serverHtml` kiểm brand đúng trang trước JS. `brandAssets` kiểm
 SVG/PNG thật (MIME và decode 24–512px), manifest và mark trong bốn cấu hình

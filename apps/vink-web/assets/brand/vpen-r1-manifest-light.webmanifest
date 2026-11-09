@@ -1,0 +1,30 @@
+{
+  "name": "Vink — Việt Ink",
+  "short_name": "Vink",
+  "lang": "vi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fffaff",
+  "theme_color": "#fffaff",
+  "icons": [
+    {
+      "src": "/pkg/brand/vpen-r1-mark-light-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pkg/brand/vpen-r1-mark-light-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pkg/brand/vpen-r1-mark-light.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "id": "/"
+}

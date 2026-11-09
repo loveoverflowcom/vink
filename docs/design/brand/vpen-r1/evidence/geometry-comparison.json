@@ -1,0 +1,466 @@
+[
+  {
+    "variant": "explore-320-light-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-320-light-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 11.9531,
+        "y": 0,
+        "width": -11.9531,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-390-light-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-390-light-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 101.3438,
+        "y": -32,
+        "width": -101.3438,
+        "height": -24,
+        "right": 0,
+        "bottom": -56
+      },
+      "search": {
+        "x": 0,
+        "y": -64,
+        "width": 0,
+        "height": -85.7812,
+        "right": 0,
+        "bottom": -149.7812
+      },
+      "heading": {
+        "x": 0,
+        "y": -173.7812,
+        "width": 0,
+        "height": -142.375,
+        "right": 0,
+        "bottom": -316.1562
+      }
+    }
+  },
+  {
+    "variant": "explore-1024-light-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 6.7031,
+        "height": 0.0,
+        "right": 6.7031,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-1024-light-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 6.7031,
+        "height": 0.0,
+        "right": 6.7031,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-1440-light-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-1440-light-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 11.9531,
+        "y": 0,
+        "width": -11.9531,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 11.9531,
+        "height": 0.0,
+        "right": 11.9531,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-320-dark-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-320-dark-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 101.3438,
+        "y": -32,
+        "width": -101.3438,
+        "height": -24,
+        "right": 0,
+        "bottom": -56
+      },
+      "search": {
+        "x": 0,
+        "y": -64,
+        "width": 0,
+        "height": -85.7812,
+        "right": 0,
+        "bottom": -149.7812
+      },
+      "heading": {
+        "x": 0,
+        "y": -173.7812,
+        "width": 0,
+        "height": -195.5781,
+        "right": 0,
+        "bottom": -369.3594
+      }
+    }
+  },
+  {
+    "variant": "explore-390-dark-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-390-dark-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": -82.6875,
+        "y": 32,
+        "width": 82.6875,
+        "height": 24,
+        "right": 0,
+        "bottom": 56
+      },
+      "search": {
+        "x": 0,
+        "y": 64,
+        "width": 0,
+        "height": 85.7812,
+        "right": 0,
+        "bottom": 149.7812
+      },
+      "heading": {
+        "x": 0,
+        "y": 173.7812,
+        "width": 0,
+        "height": 142.375,
+        "right": 0,
+        "bottom": 316.1562
+      }
+    }
+  },
+  {
+    "variant": "explore-1024-dark-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 6.7031,
+        "height": 0.0,
+        "right": 6.7031,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-1024-dark-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 148.3438,
+        "y": -32,
+        "width": -101.3438,
+        "height": -24,
+        "right": 47,
+        "bottom": -56
+      },
+      "search": {
+        "x": -32,
+        "y": -32,
+        "width": 196.3438,
+        "height": -49.3906,
+        "right": 164.3438,
+        "bottom": -81.3906
+      },
+      "heading": {
+        "x": -32,
+        "y": -105.3906,
+        "width": 79,
+        "height": -56.3906,
+        "right": 47,
+        "bottom": -161.7812
+      }
+    }
+  },
+  {
+    "variant": "explore-1440-dark-100.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  },
+  {
+    "variant": "explore-1440-dark-200.png",
+    "delta_after_minus_before": {
+      "brand": {
+        "x": 6.7031,
+        "y": 0,
+        "width": -6.7031,
+        "height": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "search": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      },
+      "heading": {
+        "x": 0,
+        "y": 0.0,
+        "width": 0,
+        "height": 0.0,
+        "right": 0,
+        "bottom": 0.0
+      }
+    }
+  }
+]
