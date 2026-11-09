@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "components": [
     {
       "renderer": "leptos",
@@ -739,6 +739,12 @@
       "source": "packages/vink-patterns/cmp/src/commonMain/kotlin/vink/patterns/Tags.kt",
       "symbol": "TagSelector",
       "entry": "composition.tag-selector"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/ui-system/leptos/src/field.rs",
+      "symbol": "HiddenField",
+      "entry": "field.form"
     }
   ],
   "style_exceptions": [

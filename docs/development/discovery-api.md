@@ -4,7 +4,7 @@
 phần của epic [#94](https://github.com/loveoverflowcom/vink/issues/94)), baseline `develop@f23df33` (sau
 #95–#97). **Trạng thái:** use case, adapter PostgreSQL, migration, hợp đồng HTTP v1 và consumer DTO của
 web đã có; kiểm bằng unit, store giả, PostgreSQL thật qua router production và một phép đo 20 000 tác
-phẩm. Chưa có UI tìm/lọc/phân trang (#100), workflow publish (PUB-01..03) hay authority production
+phẩm. UI tìm/lọc/phân trang đã có trong [TAG-PR-06](discovery-ui.md); chưa có workflow publish (PUB-01..03) hay authority production
 (D-05): mọi publication trong test là fixture SQL có nhãn, nên epic #94 chưa có lát nào chạy end-to-end cho
 người dùng thật.
 

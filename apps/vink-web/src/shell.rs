@@ -30,7 +30,7 @@ impl Destination {
     /// routes in `lib.rs`; anything the router renders as NotFound marks none.
     pub fn for_path(path: &str) -> Option<Self> {
         match segments(path)[..] {
-            [] | ["tac-pham", _] => Some(Self::Explore),
+            [] | ["tac-pham", _] | ["the", _] => Some(Self::Explore),
             ["ban-viet"] | ["ban-viet", _] => Some(Self::Desk),
             ["toi"] => Some(Self::Me),
             _ => None,
@@ -374,6 +374,8 @@ mod tests {
                 "/tac-pham/33333333-3333-4333-8333-333333333333",
                 Some(Destination::Explore),
             ),
+            ("/the/ký-ức", Some(Destination::Explore)),
+            ("/the/a/b", None),
             ("/ban-viet", Some(Destination::Desk)),
             ("/ban-viet/", Some(Destination::Desk)),
             ("/ban-viet/abc", Some(Destination::Desk)),

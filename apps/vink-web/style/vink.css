@@ -693,3 +693,72 @@ a {
 .vk-expression-grid .vk-ui-button__label { white-space: normal; overflow-wrap: anywhere; }
 .vk-expression-status { min-height: 3em; margin-bottom: 0; font-size: var(--vk-type-label-size); color: var(--vk-on-surface-variant); }
 .vk-expression-attribution { border-top: 1px solid var(--vk-outline-variant); padding-top: var(--vk-space-4); color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
+
+/* TAG-PR-06: URL-backed discovery. Native details/GET remains usable before hydration. */
+.vk-discovery-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--vk-space-6); align-items: start; }
+.vk-discovery-main { min-width: 0; }
+.vk-discovery .vk-public-search { max-inline-size: none; }
+.vk-discovery #community-stream { display: block; }
+.vk-discovery #public-collection, .vk-discovery #public-results { display: block; }
+.vk-discovery #works-title { margin: var(--vk-space-6) 0 var(--vk-space-4); font: var(--vk-type-title-weight) var(--vk-type-title-size)/var(--vk-type-title-line-height) var(--vk-font-ui); }
+.vk-discovery .vk-public-scope { text-align: start; margin-block: var(--vk-space-2); }
+.vk-applied-filters { display: flex; flex-wrap: wrap; align-items: start; gap: var(--vk-space-2); margin-block: var(--vk-space-2); }
+.vk-applied-tag { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; color: var(--vk-on-primary-container); text-decoration: none; }
+.vk-applied-tag .vk-tag-chip { min-width: 0; }
+.vk-applied-tag > .vk-ui-icon { margin-inline-start: calc(-1 * var(--vk-space-1)); }
+.vk-tag-launcher { display: none; }
+.vk-tag-dock { padding: var(--vk-space-6); border-radius: var(--vk-radius-xl); background: var(--vk-surface-container-low); min-width: 0; }
+.vk-tag-dock summary { cursor: pointer; font-weight: var(--vk-type-label-weight); }
+.vk-discovery-filter-form { display: grid; gap: var(--vk-space-4); min-width: 0; margin: 0; }
+.vk-discovery-filter-form h2 { font-size: var(--vk-type-title-size); margin: 0; }
+.vk-discovery-filter-form p { margin: 0; color: var(--vk-on-surface-variant); overflow-wrap: anywhere; }
+.vk-discovery-filter-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.vk-discovery-filter-form legend { margin-bottom: var(--vk-space-2); color: var(--vk-on-surface-variant); }
+.vk-discovery-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--vk-space-2); }
+
+.vk-discovery-option { min-width: 0; }
+.vk-discovery-option .vk-ui-choice__target { display:flex; justify-content:center; width:100%; min-block-size:3rem; gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-full); background:var(--vk-surface-container-high); }
+.vk-discovery-option .vk-ui-choice__input { position:absolute; inline-size:1px; block-size:1px; opacity:0; }
+.vk-discovery-option .vk-ui-choice__label { overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
+.vk-discovery-option .vk-ui-choice__target::before { content:"✓"; inline-size:1em; flex:0 0 1em; visibility:hidden; }
+.vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary); color:var(--vk-on-primary); }
+.vk-discovery-option .vk-ui-choice__target:has(input:checked)::before { visibility:visible; }
+.vk-discovery-option .vk-ui-choice__target:has(input:focus-visible) { outline:var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset:var(--vk-size-focus-offset); }
+.vk-discovery-option .vk-ui-choice__target:has(input:disabled) { opacity:0.6; cursor:default; }
+.vk-discovery-filter-form > button { justify-self: start; }
+.vk-discovery[data-enhanced=true] .vk-tag-dock { display: none; }
+.vk-discovery[data-enhanced=true] .vk-tag-launcher { display: inline-flex; }
+.vk-discovery .vk-public-row { position: relative; border-bottom: 1px solid var(--vk-outline-variant); }
+.vk-discovery .vk-public-row__link { background: transparent; padding: var(--vk-space-4) var(--vk-space-3); }
+.vk-discovery .vk-public-row__open { display: none; }
+.vk-public-row-tags { pointer-events: none; margin: calc(-1 * var(--vk-space-2)) var(--vk-space-3) var(--vk-space-3); font-size: var(--vk-type-caption-size); color: var(--vk-on-surface-variant); }
+.vk-public-pagination { display: flex; flex-wrap: wrap; gap: var(--vk-space-4); margin-block: var(--vk-space-6); }
+.vk-reader-tags { display: flex; flex-wrap: wrap; list-style: none; padding: 0; gap: var(--vk-space-2) var(--vk-space-4); margin-block: var(--vk-space-3) var(--vk-space-6); }
+.vk-reader-page { max-inline-size: 42rem; }
+@media (min-width: 1200px) {
+@container vk-explore (min-width: 48rem) {
+  .vk-discovery:not(.vk-discovery--tag) .vk-discovery-layout { grid-template-columns: minmax(0, 1fr) 20rem; }
+  .vk-discovery[data-enhanced=true] .vk-tag-dock { display: block; }
+  .vk-discovery .vk-tag-dock summary { display: none; }
+  .vk-discovery[data-enhanced=true] .vk-tag-launcher { display: none; }
+}
+}
+.vk-discovery--tag { max-inline-size: 52rem; margin-inline: auto; }
+@container vk-explore (max-width: 18rem) {
+  .vk-discovery-options { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 759px) {
+  #tag-picker { align-self: end; margin-bottom: 0; max-block-size: 90dvh; border-radius: var(--vk-radius-xl) var(--vk-radius-xl) 0 0; }
+}
+
+.vk-discovery .vk-discovery-tools { float: inline-end; display: block; margin: 0 0 var(--vk-space-4) var(--vk-space-4); }
+.vk-discovery .vk-explore__heading { display: flow-root; }
+
+/* At narrow measures the brand gets its own row; it must never squeeze a Vietnamese word
+   in the H1 into a strip at text200. Search and heading retain their common left edge. */
+@media (max-width: 759px) {
+  .vk-discovery .vk-discovery-tools { float: none; display: flex; justify-content: flex-end; margin: 0 0 var(--vk-space-2); }
+}
+@container vk-explore (max-width: 40rem) {
+  .vk-discovery .vk-discovery-tools { float: none; display: flex; justify-content: flex-end; margin: 0 0 var(--vk-space-2); }
+}

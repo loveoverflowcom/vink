@@ -108,8 +108,9 @@ only active tags are facets, AND semantics), `application::discovery`, `persiste
 `REPEATABLE READ` snapshot, keyset on an order index, tag semi-join, never a draft table) and migration
 `20261110000000_public_discovery` (`vink_search_key` mirroring `SearchKey::of`, stored generated keys
 on revision titles and display names). Cards and `GET …/publication` carry active public tags. No
-total count; unknown/retired filter slugs answer `200` with a resolution; the web consumer only
-decodes the new fields (discovery UI: #100). See [discovery](docs/development/discovery-api.md).
+total count; unknown/retired filter slugs answer `200` with a resolution; the Web consumer renders discovery (#100): query/filter/cursor-scoped reads, native GET/SSR,
+canonical tag pages, bounded next-page links and reader return. The filter draft applies only on submit;
+see docs/development/discovery-ui.md. See [discovery](docs/development/discovery-api.md).
 TAG-PR-05 (#99) adds the first consumer: “Thông tin tác phẩm” after the manuscript in the Web editor
 (`pages/work_info.rs`) over the DTO-free `TagSelector`/`TagChip` (`vink-patterns`, Leptos + CMP,
 catalog entry `composition.tag-selector`). A pure `TagSession`/`QueryState` (`tag_state.rs`) keeps the

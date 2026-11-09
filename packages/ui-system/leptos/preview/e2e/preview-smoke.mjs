@@ -669,7 +669,7 @@ async function components(page) {
 
   for (const [entry, scenario] of [['field.text-field', 'default'], ['field.text-area', 'invalid'], ['field.select', 'invalid'], ['field.form', 'invalid'], ['composition.nested', 'default']]) {
     await page.open(entry, scenario);
-    const unlabelled = await page.eval(`[...document.querySelectorAll('#specimen-scope input:not([type=radio]):not([type=checkbox]), #specimen-scope textarea, #specimen-scope select')].filter((c) => !document.querySelector('label[for="' + c.id + '"]')).map((c) => c.id || c.outerHTML.slice(0, 40))`);
+    const unlabelled = await page.eval(`[...document.querySelectorAll('#specimen-scope input:not([type=radio]):not([type=checkbox]):not([type=hidden]), #specimen-scope textarea, #specimen-scope select')].filter((c) => !document.querySelector('label[for="' + c.id + '"]')).map((c) => c.id || c.outerHTML.slice(0, 40))`);
     if (unlabelled.length) throw new Error(`unlabelled controls in ${entry}/${scenario}: ${unlabelled}`);
   }
   console.log('  ok  every text, area and select control has a <label for>');
@@ -730,7 +730,7 @@ async function components(page) {
   const byline = await page.eval(`(() => { const b = document.querySelector('[data-byline=feed]'); const n = getComputedStyle(b.querySelector('.vk-ui-byline__name')); const m = getComputedStyle(b.querySelector('.vk-ui-byline__meta')); return [Number(n.fontWeight), parseFloat(n.fontSize), parseFloat(m.fontSize), b.querySelector('.vk-ui-avatar').getAttribute('aria-hidden'), b.textContent.split('An Nhiên').length - 1]; })()`);
   check(byline[0] >= 600 && byline[1] > byline[2] && byline[3] === 'true' && byline[4] === 1, `AuthorByline: bold name above smaller meta; the avatar is hidden and the name read once (${byline})`);
   const size = await page.eval(`document.querySelector('[data-byline=reader] .vk-ui-avatar').getBoundingClientRect().width`);
-  check(size === 50, `AuthorByline: reader avatar is 50px wide on a wide screen (${size})`);
+  check(size === 44, `AuthorByline: reader avatar is 44px wide on a wide screen (${size})`);
 
   for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
     await page.choose('theme', label);

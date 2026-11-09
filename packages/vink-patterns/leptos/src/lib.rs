@@ -45,13 +45,15 @@ pub fn WorkCard(
     title: String,
     author: Author,
     #[prop(into)] href: Signal<String>,
+    #[prop(optional)] tags: Vec<String>,
     #[prop(optional, into)] on_open: Option<Callback<leptos::ev::MouseEvent>>,
 ) -> impl IntoView {
     view! {
         <Link href variant=LinkVariant::Standalone attr:class="vk-public-row__link"
             on:click=move |event| { if let Some(open) = on_open { open.run(event); } }>
-            <WorkByline author />
             <Heading level=HeadingLevel::H3 role=TypeRole::Title>{title}</Heading>
+            <WorkByline author />
+            {(!tags.is_empty()).then(|| view! { <p class="vk-public-row-tags">{tags.join(" · ")}</p> })}
             <span class="vk-public-row__open">"Đọc tác phẩm →"</span>
         </Link>
     }

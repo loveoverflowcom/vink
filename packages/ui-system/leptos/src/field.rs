@@ -568,6 +568,8 @@ fn toggle(
     help: Option<String>,
     error: Signal<Option<String>>,
     disabled: Signal<bool>,
+    name: Option<String>,
+    value: Option<String>,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let has_help = help.is_some();
@@ -584,6 +586,8 @@ fn toggle(
             <label class="vk-ui-choice__target">
                 <input
                     type="checkbox"
+                    name=name
+                    value=value
                     id=id.clone()
                     class="vk-ui-choice__input"
                     role=(kind == Toggle::Switch).then_some("switch")
@@ -619,6 +623,10 @@ pub fn Checkbox(
     #[prop(optional, into)] help: Option<String>,
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional, into)] disabled: Signal<bool>,
+    /// Native HTML form identity; absent for host-controlled non-form uses.
+    #[prop(optional, into)]
+    name: Option<String>,
+    #[prop(optional, into)] value: Option<String>,
 ) -> impl IntoView {
     toggle(
         Toggle::Checkbox,
@@ -629,6 +637,8 @@ pub fn Checkbox(
         help,
         error,
         disabled,
+        name,
+        value,
     )
 }
 
@@ -651,6 +661,8 @@ pub fn Switch(
         help,
         Signal::default(),
         disabled,
+        None,
+        None,
     )
 }
 
@@ -1073,6 +1085,41 @@ mod tests {
         });
         assert!(
             html.contains("role=\"alert\"") && html.contains("href=\"#title\""),
+            "{html}"
+        );
+    }
+}
+
+/// Native GET/POST plumbing. A hidden field has no visual or interactive counterpart in CMP.
+/// Its value is never a trusted identity or authority; the receiving application validates it.
+#[component]
+pub fn HiddenField(
+    #[prop(into)] name: String,
+    #[prop(into)] value: Signal<String>,
+) -> impl IntoView {
+    view! { <input type="hidden" name=name value=move || value.get() /> }
+}
+
+#[cfg(test)]
+mod native_form_tests {
+    use super::*;
+    use crate::tests::render;
+    #[test]
+    fn native_get_fields_preserve_names_values_and_selected_state() {
+        let html = render(|| {
+            view! {
+            <HiddenField name="q" value=Signal::stored("Đ & 100%".to_string()) />
+            <Checkbox id="tag-test" label="Thơ" name="tag" value="thơ" checked=Signal::stored(true) on_change=|_| () />
+        }.into_any()
+        });
+        assert!(
+            html.contains("type=\"hidden\" name=\"q\" value=\"Đ &amp; 100%\""),
+            "{html}"
+        );
+        assert!(
+            html.contains("name=\"tag\"")
+                && html.contains("value=\"thơ\"")
+                && html.contains(" checked"),
             "{html}"
         );
     }

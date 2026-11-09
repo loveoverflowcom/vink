@@ -18,7 +18,7 @@ use crate::contract::{Publication, WorkList};
 /// identity, cookie or token belongs here (public reads take none).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum PublicKey {
-    Works,
+    Works(crate::discovery::ExploreQuery),
     Publication(String),
 }
 
@@ -31,7 +31,7 @@ pub enum Snapshot {
 impl PublicKey {
     pub fn path(&self) -> String {
         match self {
-            Self::Works => "/api/v1/works".into(),
+            Self::Works(query) => query.api_path(),
             Self::Publication(id) => format!("/api/v1/works/{id}/publication"),
         }
     }
@@ -60,11 +60,16 @@ impl<T: Send + Sync + 'static> Live<T> {
     }
 }
 
-pub fn follow_works(initial: WorkList) -> Live<WorkList> {
-    follow(PublicKey::Works, initial, Snapshot::Works, |s| match s {
-        Snapshot::Works(list) => Some(list.clone()),
-        Snapshot::Publication(_) => None,
-    })
+pub fn follow_works(query: crate::discovery::ExploreQuery, initial: WorkList) -> Live<WorkList> {
+    follow(
+        PublicKey::Works(query),
+        initial,
+        Snapshot::Works,
+        |s| match s {
+            Snapshot::Works(list) => Some(list.clone()),
+            Snapshot::Publication(_) => None,
+        },
+    )
 }
 
 pub fn follow_publication(initial: Publication) -> Live<Publication> {
@@ -256,7 +261,7 @@ mod browser {
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
         leptos::task::spawn_local(async move {
             let outcome = match &key {
-                PublicKey::Works => crate::api::fetch_public::<WorkList>(&key.path())
+                PublicKey::Works(_) => crate::api::fetch_public::<WorkList>(&key.path())
                     .await
                     .map(Snapshot::Works),
                 PublicKey::Publication(_) => crate::api::fetch_public::<Publication>(&key.path())
@@ -274,8 +279,13 @@ mod browser {
             let applied = owner.store.complete(&key, ticket, outcome, at, random);
             if let (Applied::Removed, PublicKey::Publication(id)) = (applied, &key) {
                 // The work's card is a derived preview of what the origin just removed.
-                owner.store.edit(&PublicKey::Works, |snapshot| {
-                    if let Snapshot::Works(list) = snapshot {
+                owner
+                    .store
+                    .invalidate_where(|key| matches!(key, PublicKey::Works(_)));
+                owner.store.edit_all(|key, snapshot| {
+                    if matches!(key, PublicKey::Works(_))
+                        && let Snapshot::Works(list) = snapshot
+                    {
                         list.works.retain(|card| &card.work_id != id);
                     }
                 });

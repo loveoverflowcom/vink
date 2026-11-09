@@ -142,11 +142,11 @@ pub enum AvatarSize {
     /// `size.avatar-md` (40): rail/account.
     #[default]
     Medium,
-    /// Feed author: 44 wide / 40 below 760px.
+    /// Discovery author: 32px at every viewport (TAG-PR-06 R1.2).
     Feed,
     /// Spotlight author: 40 / 38.
     Spotlight,
-    /// Reader header author: 50 / 44.
+    /// Reader header author: 44px at every viewport (TAG-PR-06 R1.2).
     Reader,
 }
 

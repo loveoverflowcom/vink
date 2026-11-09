@@ -1,4 +1,6 @@
 mod desk;
+mod discovery;
+pub use discovery::{Home, TagDetail};
 mod discussion;
 mod endorsement;
 pub(crate) mod me;
@@ -6,27 +8,23 @@ pub(crate) mod work_info;
 
 pub use desk::{DeskIndex, DraftEditor};
 
-use std::sync::Arc;
-
 use leptos::prelude::*;
 use leptos_meta::{Link, Meta, Title};
-use leptos_router::components::Form;
-use leptos_router::hooks::{use_params_map, use_query_map};
+use leptos_router::hooks::use_params_map;
 
 use crate::api::{self, LoadError};
 use crate::canonical_url;
-use crate::contract::{Publication, WorkCard, WorkList};
+use crate::contract::Publication;
+#[cfg(feature = "hydrate")]
+use crate::contract::WorkCard;
 use crate::document::DocumentView;
-use crate::public_list::{explore_href, reader_href, visible_works, work_anchor};
+#[cfg(feature = "hydrate")]
+use crate::public_list::work_anchor;
 use crate::public_reads;
-use crate::ui::{
-    adapters,
-    patterns::{ReaderHeader, WorkCard as WorkCardPattern},
-};
+use crate::ui::{adapters, patterns::ReaderHeader};
 use vink_ui::{
-    EmptyKind, Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind,
-    ProblemKind, Radius, RecoveryAction, RecoveryIntent, SearchField, SearchVariant, Space,
-    StatePanel, Surface, SurfaceTone, Tone, TypeRole,
+    HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
+    RecoveryAction, RecoveryIntent, StatePanel, Tone,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -48,183 +46,14 @@ impl ResponseStatus {
             options.set_status(code);
         }
     }
-}
-
-#[component]
-pub fn Home() -> impl IntoView {
-    let works = api::works_resource();
-    let status = ResponseStatus::capture();
-    let params = use_query_map();
-    let query = Memo::new(move |_| params.read().get("q").unwrap_or_default());
-    // Editing is raw and local until the native GET form commits it. URL navigation
-    // (including Back/Forward and reader return) remains the applied-query owner.
-    let buffer = RwSignal::new(query.get_untracked());
-    Effect::new(move || buffer.set(query.get()));
-    let navigate = leptos_router::hooks::use_navigate();
-    let composing = StoredValue::new(false);
-    view! {
-        <Title text="Khám phá — Vink" />
-        <Meta
-            name="description"
-            content="Vink là không gian viết, đọc và góp ý văn chương tiếng Việt."
-        />
-        <Link rel="canonical" href=canonical_url("/") />
-        <div id="explore" class="vk-explore">
-            <div id="discovery-tools" class="vk-discovery-tools">
-                <a class="vk-brand" href="/" aria-label="Vink — trang chủ">
-                    <span class="vk-brand__lockup" aria-hidden="true"></span>
-                </a>
-                <Form method="get" action="/" noscroll=true on_form_data=Arc::new(drop_unnamed_submitter) attr:role="search" attr:class="vk-public-search" attr:id="public-search"
-                    on:compositionstart=move |_| composing.set_value(true)
-                    on:compositionend=move |_| composing.set_value(false)
-                    on:keydown=move |event: leptos::ev::KeyboardEvent| {
-                        if event.key() == "Enter" && (composing.get_value() || event.is_composing() || event.key_code() == 229) {
-                            event.prevent_default();
-                        }
-                    }>
-                    <SearchField id="public-query" label="Tìm tác phẩm" name="q" variant=SearchVariant::Bar
-                        help="Trong danh sách đã tải"
-                        value=buffer on_input=move |input: vink_ui::TextInput| buffer.set(input.value)
-                        clear_href="/" clear_id="clear-public-search" on_clear=move |_| {
-                            navigate("/", leptos_router::NavigateOptions { scroll: false, ..Default::default() });
-                            focus_recovery("public-query");
-                        } />
-                </Form>
-            </div>
-            <header id="explore-heading" class="vk-explore__heading">
-                <Heading level=HeadingLevel::H1 role=TypeRole::Display>"Khám phá"</Heading>
-                <p>"Đọc một câu chuyện, góp một ý hay, rồi viết tiếp."</p>
-            </header>
-            <div class="vk-discover-grid">
-            <section id="community-stream" aria-labelledby="works-title">
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="works-title">"Tác phẩm công khai"</Heading>
-            <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang tải tác phẩm…"</p> }>
-                {move || {
-                    let status = status.clone();
-                    Suspend::new(async move {
-                        match works.await {
-                            Ok(list) => view! { <PublicCollection list query /> }.into_any(),
-                            Err(_) => {
-                                status.set(503);
-                                // Explore is already the return route: only the reload recovers here.
-                                view! { <Unavailable /> }.into_any()
-                            }
-                        }
-                    })
-                }}
-            </Suspense>
-            </section>
-            <aside id="context" class="vk-explore-context" aria-label="Gợi ý viết">
-                <section id="writing-prompt" class="vk-writing-prompt" aria-labelledby="prompt-title">
-                    <Surface tone=SurfaceTone::Primary radius=Radius::Lg padding=Space::S4>
-                    <p class="vk-eyebrow">"Một gợi ý để bắt đầu"</p>
-                    <h2 id="prompt-title">"Một nơi bạn nhớ"</h2>
-                    <p>"Một góc phố, căn phòng hay một người khiến bạn muốn trở về. Bạn sẽ bắt đầu từ chi tiết nào?"</p>
-                    <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Bắt đầu viết"</vink_ui::Link>
-                    </Surface>
-                </section>
-                <p class="vk-reading-note">"Một câu chữ được đọc kỹ cũng là một sự đồng hành."</p>
-            </aside>
-            </div>
-        </div>
-    }
-}
-
-/// READ-02: the collection follows the tab's public snapshot. A refresh swaps cards in place
-/// (stable keys keep rows, focus and scroll); a failed refresh keeps the last success visible.
-#[component]
-fn PublicCollection(list: WorkList, query: Memo<String>) -> impl IntoView {
-    let live = public_reads::follow_works(list);
-    let works = live.data;
-    let refreshing = live.refreshing;
-    let failed = live.failed;
-    let empty = Memo::new(move |_| works.read().works.is_empty());
-    view! {
-        <div id="public-collection" aria-busy=move || refreshing.get().to_string()
-            data-refreshing=move || refreshing.get().to_string()>
-            <Show when=move || failed.get()>
-                <div data-testid="public-refresh-failed">
-                    <InlineNotice tone=Tone::Warning
-                        message="Chưa làm mới được danh sách. Bạn vẫn đang xem bản đã tải trước đó."
-                        action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
-                        on_recover={
-                            let live = live.clone();
-                            move |_| live.refresh()
-                        } />
-                </div>
-            </Show>
-            {move || if empty.get() {
-                view! {
-                    <div data-testid="public-empty">
-                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Chưa có tác phẩm nào được công khai.".into(), message: "Vink đang ở giai đoạn dựng nền. Hãy bắt đầu một bản nháp ở Bàn viết; việc gửi duyệt và xuất bản sẽ được mở sau.".into(), actions: vec![], code: None }>
-                            <vink_ui::Link href="/ban-viet" variant=vink_ui::LinkVariant::Standalone>"Về Bàn viết"</vink_ui::Link>
-                        </StatePanel>
-                    </div>
-                }.into_any()
-            } else {
-                view! { <PublicListView works query /> }.into_any()
-            }}
-        </div>
-    }
-}
-
-#[component]
-fn PublicListView(works: Signal<WorkList>, query: Memo<String>) -> impl IntoView {
-    let total = Memo::new(move |_| works.read().works.len());
-    let visible = Memo::new(move |_| visible_works(&works.read().works, &query.get()));
-    #[cfg(feature = "hydrate")]
-    restore_public_position(visible);
-    view! {
-        <div id="public-results">
-            <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">
-                {move || if query.get().trim().is_empty() {
-                    format!("Đã tải {} tác phẩm · tối đa 12.", total.get())
-                } else {
-                    format!("{} trong {} tác phẩm đã tải · tối đa 12.", visible.read().len(), total.get())
-                }}
-            </p>
-            {move || {
-                let works = visible.get();
-                if works.is_empty() {
-                    view! {
-                        <div data-testid="public-no-results">
-                            <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy trong danh sách đã tải.".into(), message: "Thử tiêu đề, tên tác giả khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
-                                <vink_ui::Link href="/" attr:id="clear-public-results" variant=vink_ui::LinkVariant::Standalone
-                                    on:click=move |event: leptos::ev::MouseEvent| {
-                                        if event.button() == 0 && !event.meta_key() && !event.ctrl_key() && !event.shift_key() && !event.alt_key() {
-                                            focus_recovery("public-query");
-                                        }
-                                    }>"Xóa tìm kiếm"</vink_ui::Link>
-                            </StatePanel>
-                        </div>
-                    }.into_any()
-                } else {
-                    view! {
-                        <ul class="vk-public-list" role="list" aria-describedby="public-query-help">
-                            <For each=move || works.clone() key=|work| work.work_id.clone() children=move |work| view! { <WorkCardView work query /> } />
-                        </ul>
-                    }.into_any()
-                }
-            }}
-        </div>
-    }
-}
-
-#[component]
-fn WorkCardView(work: WorkCard, query: Memo<String>) -> impl IntoView {
-    let work_id = work.work_id.clone();
-    let anchor = work_anchor(&work.work_id);
-    let href = Memo::new(move |_| reader_href(&work_id, &query.get()));
-    #[cfg(feature = "hydrate")]
-    let return_id = work.work_id.clone();
-    let author = adapters::card_author(&work);
-    view! {
-        <li id=anchor class="vk-public-row" data-work-id=work.work_id>
-            <WorkCardPattern title=work.title author href on_open=move |_event| {
-                #[cfg(feature = "hydrate")]
-                remember_public_position(&_event, &query.get_untracked(), &return_id);
-            } />
-        </li>
+    fn redirect(&self, _href: &str) {
+        #[cfg(feature = "ssr")]
+        if let Some(options) = &self.0
+            && let Ok(location) = http::HeaderValue::from_str(_href)
+        {
+            options.set_status(http::StatusCode::PERMANENT_REDIRECT);
+            options.insert_header(http::header::LOCATION, location);
+        }
     }
 }
 
@@ -232,13 +61,8 @@ fn WorkCardView(work: WorkCard, query: Memo<String>) -> impl IntoView {
 pub fn Reader() -> impl IntoView {
     let params = use_params_map();
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
-    let query = use_query_map();
-    let return_href = Memo::new(move |_| {
-        explore_href(
-            &query.read().get("q").unwrap_or_default(),
-            Some(&work_id.get()),
-        )
-    });
+    let context = discovery::reader_context();
+    let return_href = Memo::new(move |_| context.get().href(Some(&work_id.get())));
     let publication = api::publication_resource(work_id);
     let status = ResponseStatus::capture();
     view! {
@@ -252,7 +76,7 @@ pub fn Reader() -> impl IntoView {
                             status.set(404);
                             view! { <NotFoundContent return_href=return_href.get_untracked() /> }.into_any()
                         }
-                        Err(LoadError::Unavailable) => {
+                        Err(_) => {
                             status.set(503);
                             view! {
                                 <Title text="Chưa tải được tác phẩm — Vink" />
@@ -275,12 +99,11 @@ fn PublicationView(publication: Publication) -> impl IntoView {
     let removed = live.removed;
     let shown = RwSignal::new(publication);
     let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
-    let params = use_query_map();
+    let context = discovery::reader_context();
     let not_found_href = move || {
-        explore_href(
-            &params.read_untracked().get("q").unwrap_or_default(),
-            Some(&shown.with_untracked(|p| p.work_id.clone())),
-        )
+        context
+            .get_untracked()
+            .href(Some(&shown.with_untracked(|p| p.work_id.clone())))
     };
     move || {
         if removed.get() {
@@ -303,10 +126,9 @@ fn PublicationContent(
     let failed = live.failed;
     let refreshing = live.refreshing;
     let author = adapters::publication_author(&publication);
-    let params = use_query_map();
+    let context = discovery::reader_context();
     let id = publication.work_id.clone();
-    let return_href =
-        Memo::new(move |_| explore_href(&params.read().get("q").unwrap_or_default(), Some(&id)));
+    let return_href = Memo::new(move |_| context.get().href(Some(&id)));
     let description = publication
         .document
         .blocks
@@ -362,6 +184,7 @@ fn PublicationContent(
         </div>
         <article id="reader-paper" class="vk-reader" data-revision=publication.revision_id>
             <ReaderHeader title=publication.title author />
+            <discovery::PublicTags tags=publication.tags />
             <DocumentView document=publication.document />
         </article>
         <Suspense fallback=|| ()>
@@ -455,7 +278,11 @@ fn focus_recovery(id: &'static str) {
 
 /// Mark only the current public history entry. A new tab/modifier click must not move it.
 #[cfg(feature = "hydrate")]
-fn remember_public_position(event: &web_sys::MouseEvent, query: &str, work_id: &str) {
+fn remember_public_position(
+    event: &web_sys::MouseEvent,
+    context: &crate::discovery::ExploreContext,
+    work_id: &str,
+) {
     if event.default_prevented()
         || event.button() != 0
         || event.meta_key()
@@ -467,8 +294,7 @@ fn remember_public_position(event: &web_sys::MouseEvent, query: &str, work_id: &
     }
     if let Ok(history) = window().history() {
         let state = history.state().unwrap_or(wasm_bindgen::JsValue::NULL);
-        let _ =
-            history.replace_state_with_url(&state, "", Some(&explore_href(query, Some(work_id))));
+        let _ = history.replace_state_with_url(&state, "", Some(&context.href(Some(work_id))));
     }
 }
 
@@ -482,23 +308,31 @@ fn restore_public_position(visible: Memo<Vec<WorkCard>>) {
     Effect::new(move |_| {
         let hash = location.hash.get();
         let id = hash.trim_start_matches('#');
-        if !visible
-            .read()
-            .iter()
-            .any(|work| work_anchor(&work.work_id) == id)
-        {
+        if id.is_empty() {
             return;
         }
+        let found = visible
+            .read()
+            .iter()
+            .any(|work| work_anchor(&work.work_id) == id);
         request_animation_frame(move || {
             // A stale animation frame must never scroll/focus a different page.
-            if window().location().pathname().ok().as_deref() != Some("/")
+            if !window()
+                .location()
+                .pathname()
+                .ok()
+                .is_some_and(|p| p == "/" || p.starts_with("/the/"))
                 || window().location().hash().ok().as_deref() != Some(hash.as_str())
             {
                 return;
             }
-            if let Some(row) = document().get_element_by_id(hash.trim_start_matches('#')) {
+            if let Some(row) = document().get_element_by_id(if found {
+                hash.trim_start_matches('#')
+            } else {
+                "works-title"
+            }) {
                 row.scroll_into_view();
-                if let Ok(Some(link)) = row.query_selector("a")
+                if let Some(link) = row.query_selector("a").ok().flatten().or(Some(row))
                     && let Ok(link) = link.dyn_into::<web_sys::HtmlElement>()
                 {
                     let options = web_sys::FocusOptions::new();

@@ -359,6 +359,30 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         }
     }
 
+    /// Supersede requests in every matching scope, including entries still awaiting first data.
+    pub fn invalidate_where(&mut self, mut predicate: impl FnMut(&K) -> bool) {
+        for (key, entry) in &mut self.entries {
+            if predicate(key) {
+                entry.invalidated = true;
+                entry.in_flight = None;
+            }
+        }
+    }
+
+    /// Update every retained derived snapshot, including unobserved searches.
+    pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
+        for (key, entry) in &mut self.entries {
+            if let Some(data) = &mut entry.data {
+                let before = data.clone();
+                edit(key, data);
+                if *data != before {
+                    entry.invalidated = true;
+                    entry.in_flight = None;
+                }
+            }
+        }
+    }
+
     pub fn observe(&mut self, key: &K, now: Millis) {
         let entry = self.entry(key, now);
         entry.observers += 1;

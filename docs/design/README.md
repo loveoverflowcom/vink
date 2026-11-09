@@ -121,7 +121,7 @@ Nhóm nội dung bằng fill và khoảng cách: thẻ, empty và notice bỏ vi
   lại cả hai theme và từ chối nguồn dưới ngưỡng; đó là số học token, không phải quét màn hình.
 - UIS-02 (token 0.2.0) thêm 6 tông avatar `avatar-N`/`on-avatar-N` (lavender, mauve, rose, amber,
   green, blue; tách khỏi role trạng thái) và tông trung tính, mỗi cặp ≥4.5:1 hai theme; kích thước
-  avatar theo amendment 02/11/2026 (feed 44/40, spotlight 40/38, reader 50/44, hẹp <760px);
+  avatar theo R1.2 #100 ngày 09/11/2026 (feed 32/32, spotlight 40/38, reader 44/44, hẹp <760px);
   `density.control-height` 48px (gọn 44px = sàn `size.hit-target`); `measure-wide` 70rem và
   `size.grid-min-sm/md` 10/15rem. Component và contract: [UI System](../../packages/ui-system/shared/components.md).
 - UIS-03 (token 0.3.0) thêm `duration.pulse` 1400ms (chu kỳ skeleton), `duration.loading-delay`

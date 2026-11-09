@@ -10,6 +10,7 @@ pub mod api;
 pub mod appearance;
 pub mod contract;
 pub mod desk_state;
+pub mod discovery;
 pub mod discussion_state;
 pub mod document;
 pub mod draft_list;
@@ -34,7 +35,7 @@ use leptos_router::components::{Route, Router, Routes};
 use leptos_router::{SsrMode, path};
 
 use pages::me::Me;
-use pages::{DeskIndex, DraftEditor, Home, NotFound, Reader};
+use pages::{DeskIndex, DraftEditor, Home, NotFound, Reader, TagDetail};
 use shell::AdaptiveShell;
 
 /// HTML document around the app, rendered on the server only.
@@ -103,6 +104,7 @@ fn Chrome() -> impl IntoView {
             <main id="noi-dung" class="vk-main" tabindex="-1">
                 <Routes fallback=NotFound>
                     <Route path=path!("/") view=Home ssr=SsrMode::Async />
+                    <Route path=path!("/the/:slug") view=TagDetail ssr=SsrMode::Async />
                     <Route path=path!("/tac-pham/:id") view=Reader ssr=SsrMode::Async />
                     <Route path=path!("/ban-viet") view=DeskIndex />
                     <Route path=path!("/ban-viet/:id") view=DraftEditor />

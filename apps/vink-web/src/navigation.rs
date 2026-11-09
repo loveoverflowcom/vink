@@ -32,7 +32,7 @@ type Overlay = Arc<dyn Fn(CloseReason) -> bool + Send + Sync>;
 #[derive(Clone, Copy)]
 pub struct NavigationGuard {
     check: StoredValue<Option<(u64, Check)>>,
-    overlay: StoredValue<Option<(u64, Overlay)>>,
+    overlay: StoredValue<Vec<(u64, Overlay)>>,
     registrations: StoredValue<u64>,
     router: StoredValue<Option<RouterHooks>>,
 }
@@ -52,7 +52,7 @@ impl NavigationGuard {
     pub fn provide() -> Self {
         let guard = Self {
             check: StoredValue::new(None),
-            overlay: StoredValue::new(None),
+            overlay: StoredValue::new(Vec::new()),
             registrations: StoredValue::new(0),
             router: StoredValue::new(None),
         };
@@ -88,29 +88,34 @@ impl NavigationGuard {
         });
     }
 
-    /// Registers the shell's overlay closer, consulted before the page's check.
+    /// Registers an overlay closer. Newer active overlays are consulted first; closed ones
+    /// never replace the shell's persistent utility handler.
     pub fn set_overlay(&self, close: impl Fn(CloseReason) -> bool + Send + Sync + 'static) -> u64 {
         let id = self.registrations.get_value() + 1;
         self.registrations.set_value(id);
-        self.overlay.set_value(Some((id, Arc::new(close))));
+        self.overlay
+            .update_value(|overlays| overlays.push((id, Arc::new(close))));
         id
     }
 
     pub fn clear_overlay(&self, id: u64) {
-        self.overlay.try_update_value(|overlay| {
-            if overlay.as_ref().is_some_and(|(current, _)| *current == id) {
-                *overlay = None;
-            }
-        });
+        self.overlay
+            .try_update_value(|overlays| overlays.retain(|(current, _)| *current != id));
     }
 
-    /// Closes an open overlay; `true` when there was one.
+    /// Closes the newest open overlay; closed registrations leave earlier owners reachable.
     fn close_overlay(&self, reason: CloseReason) -> bool {
-        let close = self
+        let closers = self
             .overlay
-            .try_with_value(|overlay| overlay.as_ref().map(|(_, close)| close.clone()))
-            .flatten();
-        close.is_some_and(|close| close(reason))
+            .try_with_value(|overlays| {
+                overlays
+                    .iter()
+                    .rev()
+                    .map(|(_, close)| close.clone())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        closers.into_iter().any(|close| close(reason))
     }
 
     /// True when the open page holds a navigation to `destination` and is asking the author.
@@ -295,5 +300,33 @@ mod dom {
 
     fn path_and_query(href: &str) -> &str {
         href.split('#').next().unwrap_or(href)
+    }
+}
+
+#[cfg(test)]
+mod overlay_tests {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    #[test]
+    fn a_closed_page_overlay_does_not_disable_utility_back_or_its_cleanup() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let guard = NavigationGuard::provide();
+            let utility = Arc::new(AtomicBool::new(true));
+            let picker = Arc::new(AtomicBool::new(false));
+            let u = utility.clone();
+            guard.set_overlay(move |_| u.swap(false, Ordering::SeqCst));
+            let p = picker.clone();
+            let page = guard.set_overlay(move |_| p.swap(false, Ordering::SeqCst));
+            assert!(guard.close_overlay(CloseReason::Back));
+            assert!(!utility.load(Ordering::SeqCst));
+            utility.store(true, Ordering::SeqCst);
+            picker.store(true, Ordering::SeqCst);
+            assert!(guard.close_overlay(CloseReason::Back));
+            assert!(utility.load(Ordering::SeqCst));
+            guard.clear_overlay(page);
+            assert!(guard.close_overlay(CloseReason::Back));
+            assert!(!utility.load(Ordering::SeqCst));
+        });
     }
 }

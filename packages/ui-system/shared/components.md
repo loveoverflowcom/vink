@@ -262,7 +262,7 @@ Sáng/Tối/đổi thứ tự; mỗi tone có cặp `color.avatar-N`/`color.on-a
 Golden vectors ở [fixtures/identity.json](fixtures/identity.json), sinh vào hai renderer và được test
 ở cả hai. Giới hạn đã biết: chữ thuộc ngoài BMP, Nl và Other_Alphabetic không được hứa giống nhau.
 
-Kích thước (`tokens.json`, theo amendment 02/11/2026): feed 44/40, spotlight 40/38, reader 50/44
+Kích thước (`tokens.json`, R1.2 #100 ngày 09/11/2026; spotlight giữ amendment 02/11): feed 32/32, spotlight 40/38, reader 44/44
 (rộng/hẹp <760px); `Small` 32 và `Medium` 40 giữ token UIS-01.
 
 ## Ví dụ
@@ -290,3 +290,5 @@ VinkButton("Lưu", onPress = ::save, variant = ButtonVariant.Filled)
   khi neutral; không có thay đổi DOM/route/persistence.
 - Chưa thay `vk-*` của app. Khi adoption (#23): thay từng control bằng component, xóa CSS cũ cùng
   PR, chạy `verify web`; không trộn hai bản của cùng control trên một màn.
+
+Native HTML forms: Checkbox nhận name/value tùy chọn; HiddenField chỉ serialize context do app validate, không hiển thị/focus và không có counterpart CMP. Preview field.form + native_get_fields_preserve_names_values_and_selected_state kiểm phần này.
