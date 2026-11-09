@@ -51,6 +51,13 @@ tonal full-row links có gap thay divider/ListEnd. `quietListSurfaces` kiểm re
 surfaces trong matrix, `draftDashboard` kiểm một settled result status và named refresh
 tooltip; preview `components` kiểm shared tooltip hover/focus/Escape và native details
 keyboard/no-JS. Source assertions không tự là bằng chứng chạy; xem [run R5.1](search-r5-evidence.md).
+Bàn viết R6 (#133), trên nền `e2294a2`, giữ thứ tự resume trước search;
+`draftR6Hierarchy` kiểm fixture ba nháp NFD, khối resume ≤250px và search lên ≥48px
+ở 390/100, một scope/kết quả, primary link/disclosure focus thường + forced-colors,
+list chung nền, full title/equal inset/exact IDs tại 320–1440/chữ100–200.
+`draftDashboard` tiếp tục kiểm 100-item cap, query/IME, sort, quyền, last-success và
+uncertain-create. [LayoutSpec R6](../design/desk-r6.md) thay phân cấp/list grouping
+của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-evidence.md).
 Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
 [#95](https://github.com/loveoverflowcom/vink/issues/95); xem mục TAG-PR-01 cuối trang.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,

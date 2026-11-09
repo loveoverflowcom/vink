@@ -367,21 +367,34 @@ a {
 }
 
 /* Private list (#8): resume first, then one compact list. No empty support column. */
-.vk-desk--index { max-width: 64rem; }
+.vk-desk--index { max-width: 64rem; container: vk-desk-index / inline-size; }
 .vk-desk-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-3); margin-block: var(--vk-space-4) var(--vk-space-6); }
+.vk-desk--index #desk-title { font-family: var(--vk-font-ui); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); }
 .vk-resume { margin-bottom: var(--vk-space-6); }
 .vk-draft-list { display: grid; gap: var(--vk-space-3); min-width: 0; }
-.vk-draft-tools { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: end; }
-.vk-draft-search { flex: 1 1 100%; min-inline-size: 0; margin: 0; }
-.vk-draft-search > .vk-ui-search { max-inline-size: 48rem; }
-.vk-draft-tools > .vk-ui-field { margin: 0; min-width: 0; flex: 1 1 12rem; }
-.vk-draft-tools > .vk-ui-field:first-child { flex: 2 1 18rem; }
-.vk-draft-list > .vk-muted { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
-/* DraftRow owns the horizontal content inset, shared with the resume surface. */
-.vk-draft-rows { display: grid; gap: var(--vk-space-2); margin: 0; padding: 0; list-style: none; }
+.vk-draft-list > .vk-ui-heading { font-family: var(--vk-font-ui); font-size: var(--vk-type-body-size); font-weight: var(--vk-type-title-weight); }
+.vk-draft-controls { display: grid; gap: var(--vk-space-3); min-inline-size: 0; }
+.vk-draft-search-group { display: grid; gap: var(--vk-space-1); min-inline-size: 0; }
+.vk-draft-tools { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; min-inline-size: 0; }
+.vk-draft-search { min-inline-size: 0; margin: 0; }
+/* Keep the native search description without repeating the visible scope/status line. */
+.vk-draft-search #draft-search-help { position: absolute; inline-size: 1px; block-size: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.vk-draft-tools > .vk-ui-field { margin: 0; min-width: 0; flex: 1 1 14rem; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); }
+.vk-draft-tools .vk-ui-field__label { margin: 0; }
+.vk-draft-tools .vk-ui-field__control { flex: 1 1 10rem; min-inline-size: 0; }
+#draft-scope, .vk-draft-sort-help { margin: 0; font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+.vk-draft-sort-help { flex-basis: 100%; }
+/* DraftRow owns equal insets; the list owns one quiet surface, with space between links. */
+.vk-draft-rows { display: grid; gap: var(--vk-space-1); margin: 0; padding: var(--vk-space-1) 0; list-style: none; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
 .vk-draft-rows:empty { display: none; }
+@container vk-desk-index (min-width: 48rem) {
+  .vk-draft-controls { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .vk-draft-tools { max-inline-size: 24rem; }
+}
 .vk-desk-privacy { margin-top: var(--vk-space-8); font-size: var(--vk-type-label-size); }
+/* The first-use CTA needs its full text measure at 320px/text200. */
 .vk-desk-empty { max-width: none; }
+.vk-desk-empty #create-draft > .vk-ui-icon { display: none; }
 
 /* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
 

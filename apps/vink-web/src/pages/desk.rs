@@ -172,8 +172,8 @@ fn CreateDraftButton(
     #[prop(default = false)] first: bool,
 ) -> impl IntoView {
     view! {
-        <Button variant=if first { ButtonVariant::Filled } else { ButtonVariant::Tonal }
-            id="create-draft" on_press=move |_| create.run(())
+        <Button variant=if first { ButtonVariant::Filled } else { ButtonVariant::Text }
+            leading=IconName::Add id="create-draft" on_press=move |_| create.run(())
             state=Signal::derive(move || if creation.get() == CreateState::Pending { ActionState::pending("Đang tạo…") } else { blocked(!can_create.get()) })
         >
             {move || match creation.get() {
@@ -255,10 +255,15 @@ fn DraftListView(
     let composing = RwSignal::new(false);
     // Filtering stays immediate and local. Announce only a settled query, never every key or
     // an intermediate IME composition. The debounce helper cancels its timer on owner cleanup.
-    let result_status = RwSignal::new(format!(
-        "Đã tải {} bản thảo · tối đa 100.",
-        count.get_untracked()
-    ));
+    let scope = move || {
+        let count = count.get();
+        if count >= 100 {
+            format!("{count} bản thảo gần đây đã tải")
+        } else {
+            format!("{count} bản thảo đã tải")
+        }
+    };
+    let result_status = RwSignal::new(format!("Tìm trong {}.", scope()));
     let announce = StoredValue::new_local(debounce(
         std::time::Duration::from_millis(700),
         move |text: String| {
@@ -269,13 +274,9 @@ fn DraftListView(
     ));
     Effect::new(move || {
         let text = if query.get().trim().is_empty() {
-            format!("Đã tải {} bản thảo · tối đa 100.", count.get())
+            format!("Tìm trong {}.", scope())
         } else {
-            format!(
-                "{} trong {} bản thảo đã tải · tối đa 100.",
-                visible.with(Vec::len),
-                count.get()
-            )
+            format!("{} trong {}.", visible.with(Vec::len), scope())
         };
         // Read composition as well: committing the same text still schedules its result.
         let _ = composing.get();
@@ -286,26 +287,33 @@ fn DraftListView(
             {move || list.read().drafts.first().map(|newest| view! { <DraftResume draft=adapters::draft_summary(newest) /> })}
         </section>
         <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
-            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title>"Bản thảo gần đây"</Heading>
-            <div id="draft-tools" class="vk-draft-tools">
-                <form role="search" class="vk-draft-search" on:submit=move |event| event.prevent_default()>
-                    <SearchField id="draft-search" label="Tìm bản thảo" value=query variant=SearchVariant::Bar
-                        help="Trong danh sách đã tải"
-                        on_input=move |input: vink_ui::TextInput| {
-                            composing.set(input.composing);
-                            query.set(input.value);
-                        } />
-                </form>
-                <Select id="draft-sort" label="Sắp xếp"
-                    options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z (không dấu)")]
-                    value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
-                    on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
-                <TooltipIconButton icon=vink_ui::IconName::Refresh label="Tải lại" id="refresh-drafts"
-                    state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(()) />
+            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title>"Bản thảo"</Heading>
+            <div class="vk-draft-controls">
+                <div class="vk-draft-search-group">
+                    <form role="search" class="vk-draft-search" on:submit=move |event| event.prevent_default()>
+                        <SearchField id="draft-search" label="Tìm bản thảo" value=query variant=SearchVariant::Bar
+                            help="Trong danh sách đã tải"
+                            on_input=move |input: vink_ui::TextInput| {
+                                composing.set(input.composing);
+                                query.set(input.value);
+                            } />
+                    </form>
+                    <p id="draft-scope" class="vk-muted" role="status" aria-atomic="true" data-testid="draft-result-count">
+                        {move || result_status.get()}
+                    </p>
+                </div>
+                <div id="draft-tools" class="vk-draft-tools">
+                    <Select id="draft-sort" label="Sắp xếp"
+                        options=vec![ChoiceOption::new("recent", "Mới cập nhật"), ChoiceOption::new("title", "Tên A–Z")]
+                        value=Signal::derive(move || Some(if sort.get() == DraftSort::Title { "title" } else { "recent" }.to_string()))
+                        on_change={move |value: Option<String>| sort.set(if value.as_deref() == Some("title") { DraftSort::Title } else { DraftSort::Recent })} />
+                    <TooltipIconButton icon=vink_ui::IconName::Refresh label="Tải lại" id="refresh-drafts"
+                        state=Signal::derive(move || blocked(refresh_disabled.get())) on_press=move |_| refresh.run(()) />
+                    <Show when=move || sort.get() == DraftSort::Title>
+                        <p class="vk-draft-sort-help vk-muted">"Bỏ qua dấu khi sắp xếp."</p>
+                    </Show>
+                </div>
             </div>
-            <p id="draft-scope" class="vk-muted" role="status" aria-atomic="true" data-testid="draft-result-count">
-                {move || result_status.get()}
-            </p>
             <Show when=move || visible.with(Vec::is_empty)>
                 <div data-testid="draft-no-results">
                     <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy trong danh sách đã tải.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
