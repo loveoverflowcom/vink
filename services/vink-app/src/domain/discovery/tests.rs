@@ -30,18 +30,15 @@ fn blank_queries_are_absent_and_text_is_kept_as_typed() {
     let typed = "  Mưa trên PHỐ cũ ";
     let query = WorkQuery::parse(typed).unwrap().unwrap();
     assert_eq!(query.text(), typed, "displayed as typed, untrimmed");
-    assert_eq!(query.key().as_str(), "mua tren pho cu");
-    // NFC, NFD, uppercase and đ/Đ fold to one key; the text keeps each spelling.
     let nfd: String = "Đường về".nfd().collect();
     let a = WorkQuery::parse(&nfd).unwrap().unwrap();
     let b = WorkQuery::parse("ĐƯỜNG VỀ").unwrap().unwrap();
-    assert_eq!(a.key(), b.key());
-    assert_eq!(a.key().as_str(), "duong ve");
     assert_eq!(a.text(), nfd);
+    assert_eq!(b.text(), "ĐƯỜNG VỀ");
 }
 
 #[test]
-fn queries_without_letters_or_over_the_bound_are_refused() {
+fn queries_without_letters_with_nul_or_over_the_bound_are_refused() {
     for punctuation in ["!!!", " - ", "…", "%_"] {
         assert_eq!(
             WorkQuery::parse(punctuation),
@@ -49,6 +46,7 @@ fn queries_without_letters_or_over_the_bound_are_refused() {
             "{punctuation:?}"
         );
     }
+    assert_eq!(WorkQuery::parse("ma\0"), Err(WorkQueryError::NullCharacter));
     let longest = "ệ".repeat(MAX_QUERY_CHARS);
     assert!(WorkQuery::parse(&longest).unwrap().is_some());
     // Characters are counted after NFC: 100 decomposed letters are still 100 characters.
@@ -170,25 +168,14 @@ fn page_sizes_are_bounded() {
 
 #[test]
 fn search_scopes_follow_the_normalized_search_only() {
-    let key = |raw: &str| WorkQuery::parse(raw).unwrap().unwrap().key().clone();
-    let base = SearchScope::of(Some(&key("mưa")), &[tag_id(1), tag_id(2)]);
-    assert_eq!(
-        base,
-        SearchScope::of(Some(&key("MƯA")), &[tag_id(1), tag_id(2)])
-    );
-    assert_eq!(
-        base,
-        SearchScope::of(
-            Some(&key(&"mưa".nfd().collect::<String>())),
-            &[tag_id(1), tag_id(2)]
-        )
-    );
+    let scope = |query: &str, tags: &[TagId]| SearchScope::of(Some(query), tags);
+    let base = scope("mua", &[tag_id(1), tag_id(2)]);
     for other in [
         SearchScope::of(None, &[tag_id(1), tag_id(2)]),
-        SearchScope::of(Some(&key("mua he")), &[tag_id(1), tag_id(2)]),
-        SearchScope::of(Some(&key("mưa")), &[tag_id(1)]),
-        SearchScope::of(Some(&key("mưa")), &[]),
-        SearchScope::of(Some(&key("mưa")), &[tag_id(1), tag_id(3)]),
+        scope("mua he", &[tag_id(1), tag_id(2)]),
+        scope("mua", &[tag_id(1)]),
+        scope("mua", &[]),
+        scope("mua", &[tag_id(1), tag_id(3)]),
     ] {
         assert_ne!(base, other);
     }
@@ -213,7 +200,7 @@ fn cursors_round_trip_and_have_one_spelling() {
     // Independent layout: version, microseconds big-endian, work id, scope.
     let micros = 1_794_130_215_123_456_i64;
     assert_eq!(at.unix_timestamp_nanos(), i128::from(micros) * 1000);
-    let expected_prefix = format!("01{micros:016x}33330000000040008000000000000007");
+    let expected_prefix = format!("02{micros:016x}33330000000040008000000000000007");
     assert!(wire.starts_with(&expected_prefix), "{wire}");
     assert_eq!(wire.len(), 66);
     assert_eq!(DiscoveryCursor::decode(&wire), Ok(cursor));
@@ -223,7 +210,7 @@ fn cursors_round_trip_and_have_one_spelling() {
         wire[..64].to_string(),
         format!("{wire}00"),
         wire.to_uppercase(),
-        format!("02{}", &wire[2..]),
+        format!("01{}", &wire[2..]),
         format!("zz{}", &wire[2..]),
         format!(" {}", &wire[1..]),
         "é".repeat(33),

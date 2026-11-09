@@ -3518,7 +3518,7 @@ async function draftTags(page, workId) {
   stored = await draftTagsOf(page, workId);
   check(stored.version === 4 && stored.form?.label === 'Tản văn' && stored.themes.map((t) => t.label).join() === 'Đô thị', 'the author chose their selection: version 4');
 
-  // Lost acknowledgement: the server commits, the answer is dropped, the retry reconciles.
+  // While the acknowledgement is held, undo the selection that the server already committed.
   const responses = new SaveGate(page, 'Response');
   await responses.enable();
   await page.eval(`document.getElementById('work-tags-query').focus()`);
@@ -3527,20 +3527,28 @@ async function draftTags(page, workId) {
   await page.key('Enter');
   await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'second theme');
   await page.click('#save');
-  await responses.fail(await responses.next());
+  const lost = await responses.next();
+  await page.click('#work-tags-theme-1-remove');
+  check((await chipLabels(page)).join() === 'Đô thị', 'the author restored the old selection while saving');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]')?.open`, 'the pending tag save holds navigation even after restoring the old selection');
+  await page.click('#leave-save');
+  await responses.fail(lost);
   await responses.disable();
   await waitTagStatus(page, 'failed', 'unconfirmed tag save');
   check((await page.eval(`document.querySelector('[data-testid=save-status]').textContent`)) === 'Chưa xác nhận lưu thẻ.', 'the toolbar says the tag save is unconfirmed, not saved or failed outright');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 5, 'the dropped answer belonged to a committed save');
+  check((await page.eval(`location.pathname`)) === editorPath, 'a lost tag acknowledgement keeps the author in the editor');
+  await page.click('#leave-stay');
   await page.click('#tags-retry');
-  await waitTagStatus(page, 'saved', 'reconciled by the stored tags');
+  await waitTagStatus(page, 'unsaved', 'reconciled version with a newer local selection');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 5 && stored.themes.map((t) => t.label).join() === 'Đô thị,Gia đình', 'the retry reconciled through 409 without writing again');
+  check((await chipLabels(page)).join() === 'Đô thị' && (await page.draft(workId)).version === textVersion, 'reconciliation keeps the newer selection and leaves the text untouched');
 
   // Text and tags together: leaving waits for both confirmations.
   await page.typeInBody(' Cùng thẻ.');
-  await page.click('#work-tags-theme-1-remove');
   await waitTagStatus(page, 'unsaved');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for text and tags');

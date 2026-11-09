@@ -64,7 +64,8 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
   - `q`: text, at most 100 characters after NFC. It matches a **word prefix** of the public title
     or of the author's current display name after folding (NFC/NFD, `đ`/`Đ`, marks and case:
     `hoi uc` finds “Hồi ức tuổi thơ”, `ma` finds “Má” and “Mẫu”, `oi` finds neither). It is a
-    literal: `%` and `_` are separators, never wildcards. Text without a letter or digit is `422`.
+    literal: `%` and `_` are separators, never wildcards. A NUL character or text without a letter
+    or digit gives `422` (`field: q`).
   - `tag`: a tag slug, repeatable (`tag=ký-ức&tag=thơ`), at most 4 distinct after NFC/lowercase
     (8 raw values). **Every** selected tag must be on the work's public metadata snapshot (AND).
     An alias or former slug filters its tag; a slug that names no tag, or a retired tag, matches
@@ -85,10 +86,11 @@ page. Choices, plans and measurements: [discovery](../../../../../docs/developme
   database snapshot; the list across pages is not: a work published after page 1 is not inserted
   into later pages, a withdrawn one disappears, a republished one moves to the top (it may be
   missed by a client already past it). Nothing is repeated or skipped for works that did not
-  change. A cursor carries its position and a digest of the normalized search (folded query and
-  canonical tag identities): the same search under another spelling or an alias continues it; any
-  other search answers `422` (`field: cursor`) — restart from the first page. A cursor is not a
-  capability: forging one only moves inside the same public result.
+  change. A cursor carries its position and a digest of the folded query used for matching and the
+  canonical tag identities. Another spelling with the same folded key or an alias of the same tag
+  continues the search. A different scope or an older cursor version answers `422`
+  (`field: cursor`). Restart from the first page in that case. A forged cursor still moves only
+  within the public results.
 - **Caching.** As READ-01: strong `ETag` over the exact body (cards, labels, filters, cursor),
   `Cache-Control: private, no-cache`, `304` only after the search succeeded. Each distinct URL is
   its own representation. A label rename, a retirement, a withdrawal or a republish changes the
@@ -125,9 +127,9 @@ Rationale, evidence and rollback: [public conditional reads](../../../../../docs
 - **Cache policy.** `200`/`304`: `Cache-Control: private, no-cache` — a browser may store the bytes
   but must revalidate before each reuse; no shared cache. Errors of these routes: `no-store`.
   Drafts and discussion stay `no-store` and have no validator.
-- **Consistency.** Each response is one SQL statement (one snapshot) serialized once; the tag is
-  computed from those bytes, so it never travels with another body. A `304` still runs that query
-  and the serialization: it saves transfer, not database work.
+- **Consistency.** Each response is read from one database snapshot and serialized once. The tag
+  is computed from those bytes. A `304` still reads the snapshot and serializes the response body
+  before comparing validators.
 - **Withdrawal.** A request whose read starts after a withdrawal commits gets `404`, not `304`.
   Copies a client already received are not recalled by this endpoint.
 - **Consumers.** The web app sends no `If-None-Match` itself and treats a raw `304` as an

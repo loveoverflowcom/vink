@@ -5,8 +5,8 @@
 //! a newer one saved. The server stays the authority for catalog, cardinality and ownership; the
 //! limits here only shape the view (`MAX_THEMES` mirrors the contract and the server refuses
 //! anyway). Recovery follows the TAG-PR-03 contract (desired state + `expected_version`, `409`
-//! carrying the stored tags): a conflict whose stored tags equal what this tab asked for is its
-//! own write (a lost acknowledgement); anything else is shown to the author, never overwritten.
+//! carrying the stored tags). A conflict can confirm the submitted selection or reveal a possible
+//! earlier write at the next version. Other conflicts require an explicit choice from the author.
 
 use crate::contract::{TagRefusal, TagRefusalCode};
 use crate::desk_state::Failure;
@@ -251,9 +251,11 @@ impl TagSession {
                 current_version,
                 stored,
             } => {
-                if stored == submitted || self.unconfirmed.contains(&stored) {
-                    // The server holds a selection this tab asked for: its version is ours to
-                    // continue from. A newer local choice stays unsaved, it is not resent here.
+                let possible_prior_write = ticket.expected_version.checked_add(1)
+                    == Some(current_version)
+                    && self.unconfirmed.contains(&stored);
+                if stored == submitted || possible_prior_write {
+                    // A newer local choice stays unsaved until the author saves again.
                     self.adopt(current_version, stored);
                 } else {
                     self.conflict = Some((current_version, stored));
@@ -316,9 +318,13 @@ impl TagSession {
         }
     }
 
-    /// Tags the server has not confirmed: a different local choice or an open conflict.
+    /// An outstanding save can change the stored tags even after the author restores the last
+    /// confirmed selection locally.
     pub fn has_unsaved(&self) -> bool {
-        self.current != self.saved || self.conflict.is_some()
+        self.current != self.saved
+            || self.conflict.is_some()
+            || self.in_flight.is_some()
+            || !self.unconfirmed.is_empty()
     }
 
     pub fn can_save(&self) -> bool {
@@ -560,6 +566,33 @@ mod tests {
         assert_eq!(s.status(), TagStatus::Unsaved, "not resent automatically");
         assert_eq!(s.saved(), &sel(None, &["ky-uc"]));
         assert_eq!(s.begin_save().unwrap().expected_version, 4);
+    }
+
+    #[test]
+    fn a_lost_write_does_not_explain_later_versions_of_the_same_selection() {
+        let mut s = TagSession::loaded(3, Selection::default());
+        s.add_theme("ky-uc").unwrap();
+        let lost = s.begin_save().unwrap();
+        s.save_rejected(lost, TagRejection::Failed(Failure::Network));
+        s.add_theme("mua").unwrap();
+        let retry = s.begin_save().unwrap();
+        let stored = sel(None, &["ky-uc"]);
+        s.save_rejected(
+            retry,
+            TagRejection::Conflict {
+                current_version: 5,
+                stored: stored.clone(),
+            },
+        );
+        assert_eq!(
+            s.status(),
+            TagStatus::Conflict {
+                server_version: 5,
+                stored,
+            }
+        );
+        assert_eq!(s.current(), &sel(None, &["ky-uc", "mua"]));
+        assert_eq!(s.begin_save(), None);
     }
 
     #[test]

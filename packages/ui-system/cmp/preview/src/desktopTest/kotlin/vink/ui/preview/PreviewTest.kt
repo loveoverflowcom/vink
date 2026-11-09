@@ -24,10 +24,8 @@ import androidx.compose.ui.text.TextRange
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import vink.ui.ImageState
 import vink.ui.ThemePreference
 import vink.ui.VinkCatalog
-import vink.ui.VinkIdentityVectors
 
 @OptIn(ExperimentalTestApi::class)
 class PreviewTest {
@@ -173,8 +171,6 @@ class PreviewTest {
 
     @Test
     fun avatarsFallBackAndGroupsNeverInventCounts() = runComposeUiTest {
-        assertTrue(decodeImage(VinkIdentityVectors.SAMPLE_WEBP_BASE64) is ImageState.Ready)
-        assertEquals(ImageState.Failed, decodeImage(VinkIdentityVectors.BROKEN_WEBP_BASE64), "undecodable WebP falls back")
         val model = PreviewModel(PreviewConfig(systemDark = false))
         setContent { Workbench(model, fonts) }
         open(model, "identity.avatar")
@@ -187,6 +183,20 @@ class PreviewTest {
         open(model, "identity.author-byline")
         onNode(hasText("An Nhiên") and hasAnyAncestor(hasTestTag("byline:feed")), useUnmergedTree = true).assertExists()
         onAllNodesWithContentDescription("An Nhiên").assertCountEquals(0)
+    }
+
+    @Test
+    fun webpFrameSettlesToReadyOrFallbackAfterScenarioChange() = runComposeUiTest {
+        val model = PreviewModel(PreviewConfig(systemDark = false, entry = "identity.image-frame"))
+        setContent { Workbench(model, fonts) }
+        val alt = "[Mẫu] Ảnh nền lavender"
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithContentDescription(alt).fetchSemanticsNodes().isNotEmpty() }
+        onNodeWithTag("frame:ready").assertExists()
+
+        open(model, "identity.image-frame", "image-error")
+        val failed = "[Mẫu] Bìa tập thơ — Không tải được ảnh"
+        waitUntil(timeoutMillis = 10_000) { onAllNodesWithContentDescription(failed).fetchSemanticsNodes().size == 2 }
+        onNodeWithContentDescription(alt).assertDoesNotExist()
     }
 
     @Test

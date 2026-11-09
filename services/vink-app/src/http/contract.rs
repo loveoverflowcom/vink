@@ -1863,7 +1863,7 @@ mod tests {
         #[test]
         fn discovery_reads_match_fixtures() {
             use crate::application::discovery::AppliedFilter;
-            use crate::domain::discovery::{DiscoveryCursor, PagePosition, SearchScope, WorkQuery};
+            use crate::domain::discovery::{DiscoveryCursor, PagePosition, SearchScope};
             use crate::domain::taxonomy::TagSlug;
 
             let author = "Lê Thu".to_string();
@@ -1880,13 +1880,12 @@ mod tests {
                 card(2, "Mùa mưa ở phố cũ", 90, vec![ky_uc()]),
             ];
             let last = &works[1];
-            let query = WorkQuery::parse("mưa").unwrap().unwrap();
             let next = DiscoveryCursor::new(
                 PagePosition {
                     published_at: last.published_at,
                     work_id: last.work_id,
                 },
-                SearchScope::of(Some(query.key()), &[ky_uc().id()]),
+                SearchScope::of(Some("mua"), &[ky_uc().id()]),
             );
             let page = WorkPage {
                 query: Some("mưa".into()),

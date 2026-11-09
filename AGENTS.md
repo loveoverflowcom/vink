@@ -42,6 +42,10 @@ labelled samples with no service, auth or save authority. UIS-06 adds an API adm
 scoped style/dependency guards and opt-in Android debug/iOS simulator diagnostic hosts sharing
 the CMP specimens with Desktop (`:diagnostics`); these are not native product apps. Target
 readiness and runtime limits live in `docs/development/ui-system-qualification-evidence.md`.
+The CMP diagnostics adopt the shared Lossy WebP fixtures (#115/#116) and decode bounded
+opaque VP8 bytes off-main to the measured frame size. Android uses software ImageDecoder
+from API 28 and a bundled-fixture-only BitmapFactory path on API 24–27. iOS and Desktop
+decode eagerly through Skia. UI primitives still receive ImageState/Painter.
 [docs/development](docs/development/README.md) owns its layout, commands, evidence and limits.
 EMO-01A adds a 16-asset Google Noto manifest in `packages/expressions`, generated Rust/CMP
 lookup contracts, a pure Rust admission/generation policy consumed by the isolated Web route
