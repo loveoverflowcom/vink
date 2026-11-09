@@ -1,8 +1,9 @@
 //! Two-tier discussion decisions, owned by Vink (owner decision 03/11/2026,
 //! `docs/architecture/discussion-ownership.md`). This file holds the structural seam (D2T-01):
 //! roots, one flat list of replies and context normalization. The submodules hold the other pure
-//! decisions: body text, lifecycle, per-work comments mode, permissions, viewer visibility,
-//! idempotent submission, reactions and paging. Nothing here performs I/O; a successful decision
+//! decisions: body text, lifecycle, versioned admission and post-review (#120), per-work comments
+//! mode, permissions, viewer visibility, idempotent submission, reactions and paging. Nothing here
+//! performs I/O; a successful decision
 //! is not a durable write.
 //!
 //! The PostgreSQL adapter loads facts in a transaction and calls these same functions; the
@@ -37,6 +38,9 @@
 //! assert_eq!(root.as_comment_id(), comment);
 //! ```
 
+pub mod admission;
+#[cfg(test)]
+mod admission_replay;
 pub mod body;
 pub mod lifecycle;
 #[cfg(test)]

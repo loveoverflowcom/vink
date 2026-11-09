@@ -12,4 +12,5 @@ for this manifest in `xtask/src/kani.rs`, which requires every declared harness 
 Commands, harnesses, bounds và evidence: [registry LVE](../../../docs/development/endorsement-core.md),
 [registry taxonomy](../../../docs/development/taxonomy-core.md#kani)
 và [development guide](../../../docs/development/README.md#kani).
-Manifest hiện hành: 13 discussion harness (giữ #79) + 6 endorsement + 6 taxonomy = 25.
+Manifest hiện hành: 16 discussion harness (giữ #79, thêm 3 admission #120) + 6 endorsement + 6
+taxonomy = 28.

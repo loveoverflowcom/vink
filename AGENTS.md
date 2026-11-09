@@ -129,7 +129,13 @@ v1 discussion routes with contract fixtures (read, submit, remove own, author to
 queue/decisions), DB-held moderator grants managed only by `vink-app moderator grant|revoke|list`
 and rechecked at each decision's commit (moderators recuse from their own comments and works),
 plus scoped Quint models with trace replay (`services/vink-app/behavior`: structure, comment
-lifecycle/mode/moderation authority with submission receipts, and reactions). Reactions exist only
+lifecycle/mode/moderation authority with submission receipts, and reactions). #120 DISC-01 adds
+a pure versioned admission seam (`domain/discussion/admission.rs`): `premoderation.v1` is the only
+effective policy, the publish-first candidate `trusted-cohort.v1` runs only in shadow
+(`PolicySelection` cannot make it effective), post-review is a version-fenced hold that never
+approves; `admission.qnt` replay and three Kani harnesses back it. Store/HTTP still hardcode `pending`; no trust authority, provenance
+column, outbox or post-review worker exists, and the D-08 delta is PROPOSED
+([decision](docs/architecture/discussion-admission.md)). Reactions exist only
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
 proposed, not product-accepted) with no table, store, route or UI. Production
 writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual

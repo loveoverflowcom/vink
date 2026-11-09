@@ -2,7 +2,11 @@
 //! writer or by moderation) and **review** (pending, approved, rejected). Public visibility is
 //! derived from both plus thread access in [`super::visibility`]; neither axis alone decides it.
 //!
-//! Every new comment starts pending (COM-02, D-08 premoderation). Decisions are bound to the
+//! Every new comment starts pending (COM-02, D-08 premoderation). The initial state is the
+//! output of an admission decision ([`super::admission`], #120): the only effective policy is
+//! premoderation, so a stored comment still starts as [`CommentState::SUBMITTED`]; an approved
+//! first version exists only for a publish-first candidate that is evaluated in shadow, never
+//! stored. Decisions are bound to the
 //! [`ModerationVersion`] the moderator saw (MOD-02): a late or duplicate decision cannot overwrite a
 //! newer one and nothing restores a removed comment (D2T-INV-07). Removal is terminal in this
 //! slice; restore and appeal reopening need their own reviewed transitions. Editing does not
@@ -115,6 +119,18 @@ impl CommentState {
         version: ModerationVersion::FIRST,
     };
 
+    /// Initial state chosen by an admission decision (#120): pending, or approved by a
+    /// publish-first policy, always present at the first version. Only
+    /// [`super::admission::Admission::initial_state`] calls this, so no caller can name an approved
+    /// initial state without a decision.
+    pub(super) const fn admitted(review: Review) -> Self {
+        Self {
+            review,
+            removal: None,
+            version: ModerationVersion::FIRST,
+        }
+    }
+
     /// Rebuilds state read from storage; the version was already validated.
     pub const fn restore(
         review: Review,
@@ -187,6 +203,33 @@ impl CommentState {
         }
         Ok(Transition::Changed(Self {
             removal: Some(Removal::ByAuthor),
+            version: self.version.next()?,
+            ..self
+        }))
+    }
+
+    /// Returns an approved comment to the review queue (#120 post-review), bound to the version
+    /// that was observed. Only [`super::admission::decide_post_review`] uses it: it can withdraw a
+    /// publish-first approval but never approve, never revive a removal and never act on a state
+    /// that changed since `expected` (a human decision always advances the version). A comment
+    /// already pending or rejected at that version is left as it is.
+    pub fn hold_for_review(
+        self,
+        expected: ModerationVersion,
+    ) -> Result<Transition, LifecycleError> {
+        if !self.is_present() {
+            return Err(LifecycleError::Removed);
+        }
+        if expected != self.version {
+            return Err(LifecycleError::Stale {
+                current: self.version,
+            });
+        }
+        if self.review != Review::Approved {
+            return Ok(Transition::Unchanged(self));
+        }
+        Ok(Transition::Changed(Self {
+            review: Review::Pending,
             version: self.version.next()?,
             ..self
         }))
@@ -286,6 +329,36 @@ mod tests {
         let removed = changed(CommentState::SUBMITTED.remove_by_author());
         assert_eq!(removed.removal(), Some(Removal::ByAuthor));
         assert_eq!(removed.review(), Review::Pending);
+    }
+
+    #[test]
+    fn a_hold_withdraws_only_the_approval_it_observed() {
+        let admitted = CommentState::admitted(Review::Approved);
+        let held = changed(admitted.hold_for_review(version(1)));
+        assert_eq!(
+            (held.review(), held.is_present(), held.version()),
+            (Review::Pending, true, version(2))
+        );
+        // A human decision after the admission moved the version: the hold is stale.
+        let rejected = changed(admitted.decide(version(1), Decision::Reject));
+        let reapproved = changed(rejected.decide(version(2), Decision::Approve));
+        assert_eq!(
+            reapproved.hold_for_review(version(1)),
+            Err(LifecycleError::Stale {
+                current: version(3)
+            })
+        );
+        assert_eq!(
+            CommentState::SUBMITTED.hold_for_review(version(1)),
+            Ok(Transition::Unchanged(CommentState::SUBMITTED))
+        );
+        let removed = changed(admitted.remove_by_author());
+        for expected in [version(1), version(2)] {
+            assert_eq!(
+                removed.hold_for_review(expected),
+                Err(LifecycleError::Removed)
+            );
+        }
     }
 
     #[test]

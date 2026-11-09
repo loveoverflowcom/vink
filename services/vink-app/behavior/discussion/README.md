@@ -1,12 +1,13 @@
 # Model discussion
 
-Thư mục giữ bốn model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
+Thư mục giữ năm model Quint dùng chung một package pin và một runner: `structure.qnt` (cấu trúc
 hai tầng, D2T-01), `lifecycle.qnt` (vòng đời bình luận, bật/tắt, authority kiểm duyệt và receipt
 gửi bình luận, D2T-02/D2T-INV-06, [phần dưới](#model-vòng-đời-bình-luận-d2t-02)),
 `reaction.qnt` (reaction desired-state, D2T-INV-08, [phần sau](#model-reaction-d2t-inv-08)) và
 `endorsement.qnt` (ghi nhận văn học trên tác phẩm, bình luận gốc và phản hồi, LVE #73,
-[phần cuối](#model-ghi-nhận-văn-học-lve-73)). Model LVE nằm ở đây để dùng chung pin Quint và lane
-`discussion`; nó không làm tác phẩm thành một phần của thảo luận.
+[phần sau](#model-ghi-nhận-văn-học-lve-73)) và `admission.qnt` (admission theo policy có version,
+shadow và hậu kiểm, #120, [phần cuối](#model-admission-và-hậu-kiểm-120)). Model LVE nằm ở đây để
+dùng chung pin Quint và lane `discussion`; nó không làm tác phẩm thành một phần của thảo luận.
 
 ## Model cấu trúc
 
@@ -281,3 +282,53 @@ production và đòi `moderated`, `reaffirmed`, `stale` (không reaction, genera
 là canonical owners. Simulation seed41, 1000 samples ×40 transitions; scenario 33 inputs qua
 Rust production; mutant bỏ no-op fence tạo OFF→old ON resurrection ở transition2.
 Không exhaustive model checking. Giữ toàn bộ mode/reaction reaffirmation và negative controls #79.
+
+## Model admission và hậu kiểm (#120)
+
+`admission.qnt` (lát DISC-01, [quyết định](../../../../docs/architecture/discussion-admission.md))
+mô tả **một thread công khai đang mở**, người viết `1..3`, bình luận `1..3` khi simulation, một
+đồng hồ trừu tượng theo tick (attestation quá 2 tick là cũ). Mỗi action là một commit đã tuần tự
+hóa; đọc standing/trust tại commit, khóa SQL, outbox, lease và retry của worker là **giả định**
+(DISC-03/04). Duyệt/gỡ của moderator và người viết dùng lại vòng đời ở version hiện tại; authority thuộc
+`lifecycle.qnt`. Model cho operator chọn `trusted-cohort.v1` làm policy hiệu lực **chỉ để kiểm ứng
+viên** trước một delta D-08; production `PolicySelection` không biểu diễn được lựa chọn đó.
+
+| Action | Quyết định production được replay |
+| --- | --- |
+| `submit` | `decide_admission` (premoderation hiệu lực, có/không shadow) hoặc `decide_initial_review(trusted-cohort.v1)`; `Admission::initial_state`, `post_review` |
+| `moderate` / `remove` | `ModerationAction::apply` ở version hiện tại / `remove_by_author` |
+| `post_review` | `decide_post_review` với ticket đã lưu; job luôn được ACK |
+| `standing`/`attest`/`trust`/`thread`/`policy`/`tick` | Shell tổng hợp: chưa có authority trust, fence standing hay cấu hình policy |
+
+Invariant, gộp trong `admissionSafe`: `admissionRecordsProvenance` (bình luận mới present, version
+1, ghi policy hiệu lực; approved ⇔ `trusted_and_clear`), `refusalWritesNothing` (từ chối đúng khi
+standing khác active, không ghi gì), `premoderationAdmitsPending`, `approvalNeedsEveryGuard` (duyệt
+⇒ ứng viên hiệu lực, active, thread chuẩn, trust còn tươi, rules sạch/tươi/đúng payload, không cờ),
+`shadowOnlyMeasures`, `ticketsOnlyForPublishFirst`, `postReviewFenced` (chỉ rút duyệt tại version
+quan sát, không bao giờ duyệt, chỉ một bình luận), `removalTerminal`, `scopedVersionedWrites`,
+`finiteDomain`.
+
+Runner chạy: simulation `step` seed `41`, **1.000 samples × 40 transitions**; scenario `rollout` 45
+transition xuất `admission-fixtures.json` (`vink-discussion-admission-conformance-v1`): shadow đo một
+lần duyệt trên bình luận được lưu pending, đăng-trước, mọi lý do giữ lại, hậu kiểm `held`/`kept`/
+`stale`/`removed`, đình chỉ/không rõ standing, kill switch giữ bình luận đã duyệt. Runner đòi đủ 13
+reason/refusal, 9 outcome và hai điều kiện non-vacuity đó. Ba negative control (mỗi mutant giữ
+nguyên semantics khác): `mutatedShadowStep` áp quyết định shadow → vi phạm
+`premoderationAdmitsPending` tại transition 3; `mutatedStaleTrustStep` bỏ kiểm tuổi trust → vi phạm
+`approvalNeedsEveryGuard` tại transition 6; `mutatedUnfencedStep` bỏ fence version của hậu kiểm sau
+khi người từ chối rồi duyệt lại → vi phạm `postReviewFenced` tại transition 6. Runner kiểm nội dung
+từng counterexample, không chỉ exit code.
+
+Rust replay `domain::discussion::admission_replay` đưa chỉ command vào các quyết định trên rồi so
+outcome, reason, shadow, bình luận (review, gỡ, version, policy, reason) và ticket với state của
+model; một tick là `TRUST_MAX_AGE_MICROS / 2`. `the_admission_counterexamples_are_refused_by_production`
+replay tiền tố hợp lệ của ba counterexample và đòi production không tới state của mutant.
+
+```sh
+./node_modules/.bin/quint typecheck admission.qnt
+./node_modules/.bin/quint run admission.qnt --backend=typescript --seed=41 \
+  --step=step --max-steps=40 --max-samples=1000 --invariant=admissionSafe --verbosity=1
+```
+
+**Không được chứng minh:** authority trust/standing thật, ngưỡng tuổi (ứng viên), rules/classifier
+thật, nhiều thread, rate limit, provenance bền, outbox/lease/retry/dead-letter, liveness của hàng đợi.
