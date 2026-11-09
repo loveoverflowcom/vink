@@ -949,9 +949,11 @@ async function openProfile(page) {
 async function chooseTheme(page, value, group = 'overlay-theme') {
   await page.click(`label:has(input[name="${group}"][value="${value}"])`);
   await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
-  // Token colours switch at once; nav background transitions take 160ms. Contrast samples
-  // describe the settled theme. A pending save may also have a lawful infinite loading arc.
-  await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+  // Sample contrast after the current CSS transitions finish. Holding on to a snapshot
+  // of Animation.finished promises stalled DevTools after the dirty editor resized.
+  // Poll the live transitions instead, without waiting for CSS loading animations.
+  await page.waitFor(`!document.getAnimations().some(a =>
+    a instanceof CSSTransition && (a.pending || a.playState === 'running'))`, `${value} appearance transitions`);
   await assertBrand(page, value);
 }
 
