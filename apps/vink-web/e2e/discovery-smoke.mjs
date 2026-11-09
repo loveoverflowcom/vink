@@ -28,6 +28,8 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.viewport(width);
     await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
+    check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'), walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
+
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
     check(dock === (width>=1200 && scale===100), 'dock/dialog breakpoint ' + [theme,width,scale].join('/'));
 
@@ -84,6 +86,10 @@ export async function discoveryReading(page, { args, check, textContrast }) {
 
   const alias = await fetch(args.base + '/the/' + encodeURIComponent('hồi-ức'), { redirect:'manual' });
   check(alias.status === 308 && alias.headers.get('location')?.startsWith('/the/'), 'alias tag route redirects using server canonical identity');
+  for (const spelling of [tag.slug.toUpperCase(), tag.slug.normalize('NFD')]) {
+    const normalized = await fetch(args.base+'/the/'+encodeURIComponent(spelling), {redirect:'manual'});
+    check(normalized.status===308 && normalized.headers.get('location')==='/the/'+encodeURIComponent(tag.slug), 'uppercase/NFD uses the provider canonical tag URL');
+  }
   const unknown = await fetch(args.base + '/the/khong-ton-tai-100');
   check(unknown.status === 404 && (await unknown.text()).includes('Không tìm thấy thẻ này'), 'unknown tag has its own SSR 404');
   const invalid = await fetch(args.base + '/?cursor=broken');

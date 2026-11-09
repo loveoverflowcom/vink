@@ -753,3 +753,12 @@ a {
 
 .vk-discovery .vk-discovery-tools { float: inline-end; display: block; margin: 0 0 var(--vk-space-4) var(--vk-space-4); }
 .vk-discovery .vk-explore__heading { display: flow-root; }
+
+/* At narrow measures the brand gets its own row; it must never squeeze a Vietnamese word
+   in the H1 into a strip at text200. Search and heading retain their common left edge. */
+@media (max-width: 759px) {
+  .vk-discovery .vk-discovery-tools { float: none; display: flex; justify-content: flex-end; margin: 0 0 var(--vk-space-2); }
+}
+@container vk-explore (max-width: 40rem) {
+  .vk-discovery .vk-discovery-tools { float: none; display: flex; justify-content: flex-end; margin: 0 0 var(--vk-space-2); }
+}

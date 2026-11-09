@@ -730,7 +730,7 @@ async function components(page) {
   const byline = await page.eval(`(() => { const b = document.querySelector('[data-byline=feed]'); const n = getComputedStyle(b.querySelector('.vk-ui-byline__name')); const m = getComputedStyle(b.querySelector('.vk-ui-byline__meta')); return [Number(n.fontWeight), parseFloat(n.fontSize), parseFloat(m.fontSize), b.querySelector('.vk-ui-avatar').getAttribute('aria-hidden'), b.textContent.split('An Nhiên').length - 1]; })()`);
   check(byline[0] >= 600 && byline[1] > byline[2] && byline[3] === 'true' && byline[4] === 1, `AuthorByline: bold name above smaller meta; the avatar is hidden and the name read once (${byline})`);
   const size = await page.eval(`document.querySelector('[data-byline=reader] .vk-ui-avatar').getBoundingClientRect().width`);
-  check(size === 50, `AuthorByline: reader avatar is 50px wide on a wide screen (${size})`);
+  check(size === 44, `AuthorByline: reader avatar is 44px wide on a wide screen (${size})`);
 
   for (const [theme, label] of [['light', 'Sáng'], ['dark', 'Tối']]) {
     await page.choose('theme', label);

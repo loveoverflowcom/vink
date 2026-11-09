@@ -3,6 +3,7 @@ use crate::contract::WorkList;
 use crate::public_list::work_anchor;
 use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::{Deserialize, Serialize};
+use unicode_normalization::UnicodeNormalization;
 
 const COMPONENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
     .remove(b'-')
@@ -12,6 +13,16 @@ const COMPONENT: &percent_encoding::AsciiSet = &NON_ALPHANUMERIC
 
 pub fn encode(value: &str) -> String {
     utf8_percent_encode(value, COMPONENT).to_string()
+}
+
+/// Only the URL spelling equivalence from TagSlug::parse (NFC + lowercase). This is
+/// not accent folding, validation, alias lookup or tag identity; the provider owns those.
+pub fn requested_slug(raw: &str) -> String {
+    raw.nfc()
+        .flat_map(char::to_lowercase)
+        .collect::<String>()
+        .nfc()
+        .collect()
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -62,7 +73,7 @@ impl ExploreQuery {
             self.q.clone(),
             self.tags
                 .iter()
-                .filter(|t| t.as_str() != slug)
+                .filter(|t| requested_slug(t) != requested_slug(slug))
                 .cloned()
                 .collect(),
             None,
@@ -99,7 +110,9 @@ impl ExploreContext {
         let mut query = self.query.clone();
         let base = match &self.tag_page {
             Some(slug) => {
-                query.tags.retain(|tag| tag != slug);
+                query
+                    .tags
+                    .retain(|tag| requested_slug(tag) != requested_slug(slug));
                 format!("/the/{}", encode(slug))
             }
             None => "/".into(),
@@ -125,11 +138,11 @@ impl ExploreContext {
             list.filters
                 .tags
                 .iter()
-                .find(|f| &f.requested == slug)
+                .find(|f| f.requested == requested_slug(slug))
                 .and_then(|f| f.tag.as_ref())
                 .filter(|t| t.status == "active")
                 .map(|t| t.slug.clone())
-                .unwrap_or_else(|| slug.clone())
+                .unwrap_or_else(|| requested_slug(slug))
         });
         Self {
             query: self.query.canonical(list),
@@ -224,5 +237,35 @@ mod tests {
         );
         assert_eq!(store.status(&a).unwrap().data.unwrap(), ["a-only"]);
         assert_eq!(store.status(&b).unwrap().data.unwrap(), ["b-only"]);
+    }
+    #[test]
+    fn uppercase_nfd_route_uses_the_providers_canonical_identity_without_folding_accents() {
+        use crate::contract::{TagFilter, TagList, WorkFilters};
+        let catalog: TagList = serde_json::from_str(include_str!(
+            "../../../services/vink-app/contracts/http/v1/fixtures/tags.list.json"
+        ))
+        .unwrap();
+        let tag = catalog.tags.into_iter().find(|t| t.label == "Thơ").unwrap();
+        let raw: String = "THƠ".nfd().collect();
+        let context = ExploreContext {
+            query: ExploreQuery::new(String::new(), vec![raw.clone()], None),
+            tag_page: Some(raw.clone()),
+        };
+        let list = WorkList {
+            works: vec![],
+            next_cursor: None,
+            filters: WorkFilters {
+                q: None,
+                tags: vec![TagFilter {
+                    requested: "thơ".into(),
+                    resolution: "canonical".into(),
+                    tag: Some(tag),
+                }],
+            },
+        };
+        assert_eq!(context.canonical(&list).href(None), "/the/th%C6%A1");
+        assert!(context.query.without_tag("thơ").tags.is_empty());
+        assert_ne!(requested_slug("má"), requested_slug("ma"));
+        assert_eq!(requested_slug(&"KÝ-ỨC".nfd().collect::<String>()), "ký-ức");
     }
 }

@@ -2,7 +2,7 @@
 use super::{ResponseStatus, Unavailable, drop_unnamed_submitter, focus_recovery};
 use crate::api::{self, LoadError};
 use crate::contract::{PublicTagDto, TagDto, TagList, WorkList};
-use crate::discovery::{ExploreContext, ExploreQuery, tag_href};
+use crate::discovery::{ExploreContext, ExploreQuery, requested_slug, tag_href};
 use crate::public_reads;
 use crate::ui::{
     adapters,
@@ -287,7 +287,7 @@ fn DiscoveryHeader(
                 list.filters
                     .tags
                     .iter()
-                    .find(|f| &f.requested == slug)
+                    .find(|f| f.requested == requested_slug(slug))
                     .cloned()
             })
         })
@@ -350,7 +350,7 @@ fn AppliedFilters(context: ExploreContext, list: WorkList) -> AnyView {
     let live = public_reads::follow_works(context.query.clone(), list);
     view! {
         {move || live.data.with(|list| list.filters.tags.iter().filter(|filter| {
-            Some(&filter.requested) != context.tag_page.as_ref()
+            !context.tag_page.as_ref().is_some_and(|slug| filter.requested == requested_slug(slug))
         }).map(|filter| {
             let mut without = context.clone();
             without.query = without.query.without_tag(&filter.requested);
