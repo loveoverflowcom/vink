@@ -61,16 +61,17 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
             restoringFocus = true;
             view.dispatch({ selection: focusSelection });
             view.focus();
-            // Native dialog focus restoration can queue a caret change after
-            // focus. Restore after it settles, unless a new input supersedes us.
-            requestAnimationFrame(() => {
+            // Chrome can deliver the dialog's native caret change after the
+            // first frame. Keep the saved selection through that frame, then
+            // restore it unless a new input superseded this focus.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
               if (handle.destroyed || epoch !== focusEpoch) return;
               if (view.hasFocus) {
                 view.dispatch({ selection: focusSelection });
                 view.focus();
               }
               restoringFocus = false;
-            });
+            }));
             return false;
           },
           mousedown() { pointerDown = true; cancelFocusRestore(); return false; },

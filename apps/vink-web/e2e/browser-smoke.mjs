@@ -1870,6 +1870,8 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   check((await page.eval(selected)) === LAST_LINE, 'native content focus immediately restores the CodeMirror selection');
   check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, overlay and theme preserve EditorView, selection, text and dirty state');
 
+  const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
+  const selectionAfterEscape = `!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`;
   for (const destination of ['/', '/ban-viet', '/toi']) {
     if (destination === '/toi') {
       await openProfile(page);
@@ -1880,6 +1882,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
     await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, `dirty guard to ${destination}`);
     check(await page.eval(`!${PROFILE_OPEN} && location.pathname === '${editorPath}'`), `real ${destination} navigation consults the existing guard`);
     await page.key('Escape');
+    await page.waitFor(selectionAfterEscape, `selection after cancelling navigation to ${destination}`);
   }
   await openProfile(page);
   await page.viewport(390);
@@ -1890,10 +1893,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`location.pathname === '${editorPath}' && document.querySelector('[data-testid=leave-editor]').open`, 'mobile editor’s Bàn viết link uses the same leave guard');
   await page.key('Escape');
-  const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
-  // The dialog returns focus on an animation frame. Observe that user-visible result
-  // at the mobile viewport before changing viewport or sending another keyboard action.
-  await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`, 'selection restored after mobile Escape');
+  await page.waitFor(selectionAfterEscape, 'selection restored after mobile Escape');
   await page.viewport(1280);
   await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   await page.waitFor(`innerWidth === 1280 && ${focusedSelection}`, 'selection after mobile resize');
