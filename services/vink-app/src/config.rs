@@ -8,6 +8,7 @@ use std::fmt;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
+use crate::domain::abuse::TrustedProxies;
 use crate::domain::ids::PrincipalId;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +39,14 @@ pub struct Config {
     pub dev_principal: Option<PrincipalId>,
     /// The separate Identity process, when configured; see [`crate::identity::IdentityService`].
     pub identity: Option<IdentitySettings>,
+    /// `VINK_AUTH_SIGN_IN`: whether the sign-in routes may start new sessions. Default `enabled`
+    /// in the local profile and `disabled` in production, where D-05 is Provisional: production
+    /// activation is an explicit operator decision, not a side effect of configuring Identity.
+    /// Sessions already issued keep being verified either way.
+    pub sign_in_enabled: bool,
+    /// `VINK_TRUSTED_PROXIES`: proxies whose `X-Forwarded-For` attributes a request to a client
+    /// network for rate limits. Empty: only the TCP peer counts.
+    pub trusted_proxies: TrustedProxies,
     pub log_format: LogFormat,
 }
 
@@ -61,6 +70,8 @@ impl fmt::Debug for Config {
             .field("site_root", &self.site_root)
             .field("dev_principal", &self.dev_principal)
             .field("identity", &self.identity)
+            .field("sign_in_enabled", &self.sign_in_enabled)
+            .field("trusted_proxies", &self.trusted_proxies)
             .field("log_format", &self.log_format)
             .finish()
     }
@@ -201,6 +212,33 @@ impl Config {
             }
         };
 
+        let sign_in_enabled = match value("VINK_AUTH_SIGN_IN").as_deref().map(str::trim) {
+            None => profile == Profile::Local,
+            Some("enabled") => true,
+            Some("disabled") => false,
+            Some(other) => {
+                problems.push(format!(
+                    "VINK_AUTH_SIGN_IN: expected `enabled` or `disabled`, got `{other}`"
+                ));
+                false
+            }
+        };
+        if sign_in_enabled && identity.is_none() && value("VINK_AUTH_SIGN_IN").is_some() {
+            problems.push(
+                "VINK_AUTH_SIGN_IN: `enabled` needs VINK_IDENTITY_SOCKET (the Identity process)"
+                    .into(),
+            );
+        }
+        let trusted_proxies = match value("VINK_TRUSTED_PROXIES") {
+            None => TrustedProxies::default(),
+            Some(raw) => TrustedProxies::parse(&raw).unwrap_or_else(|entry| {
+                problems.push(format!(
+                    "VINK_TRUSTED_PROXIES: `{entry}` is not an IP address or CIDR range"
+                ));
+                TrustedProxies::default()
+            }),
+        };
+
         let log_format = log_format(value("VINK_LOG_FORMAT"), &mut problems);
 
         if problems.is_empty() {
@@ -212,6 +250,8 @@ impl Config {
                 site_root,
                 dev_principal,
                 identity,
+                sign_in_enabled,
+                trusted_proxies,
                 log_format,
             })
         } else {
@@ -400,6 +440,62 @@ mod tests {
                 socket: PathBuf::from("/run/vink/identity.sock"),
                 server_uid: 1000,
             })
+        );
+    }
+
+    /// Production activation of sign-in is explicit (D-05 Provisional); local development keeps
+    /// it on. Trusted proxies are validated entry by entry.
+    #[test]
+    fn sign_in_activation_is_explicit_in_production_and_proxies_are_validated() {
+        let identity = [
+            ("VINK_IDENTITY_SOCKET", "/run/vink/identity.sock"),
+            ("VINK_IDENTITY_SERVER_UID", "1000"),
+        ];
+        let with = |extra: &[(&str, &str)]| {
+            let mut pairs = vec![
+                ("DATABASE_URL", URL),
+                ("VINK_PUBLIC_ORIGIN", "https://vink.example"),
+            ];
+            pairs.extend_from_slice(&identity);
+            pairs.extend_from_slice(extra);
+            load(&pairs)
+        };
+        let production = with(&[]).unwrap();
+        assert!(
+            !production.sign_in_enabled,
+            "closed by default in production"
+        );
+        assert!(production.trusted_proxies.is_empty());
+        assert!(
+            with(&[("VINK_AUTH_SIGN_IN", "enabled")])
+                .unwrap()
+                .sign_in_enabled
+        );
+        assert!(with(&[("VINK_PROFILE", "local")]).unwrap().sign_in_enabled);
+        assert!(
+            !with(&[("VINK_PROFILE", "local"), ("VINK_AUTH_SIGN_IN", "disabled")])
+                .unwrap()
+                .sign_in_enabled
+        );
+        let error = with(&[("VINK_AUTH_SIGN_IN", "yes")]).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("expected `enabled` or `disabled`")
+        );
+        let error = load(&[
+            ("DATABASE_URL", URL),
+            ("VINK_PUBLIC_ORIGIN", "https://vink.example"),
+            ("VINK_AUTH_SIGN_IN", "enabled"),
+        ])
+        .unwrap_err();
+        assert!(error.to_string().contains("needs VINK_IDENTITY_SOCKET"));
+        let proxies = with(&[("VINK_TRUSTED_PROXIES", "10.0.0.0/8, 2001:db8::/32")]).unwrap();
+        assert!(proxies.trusted_proxies.trusts("10.9.9.9".parse().unwrap()));
+        let error = with(&[("VINK_TRUSTED_PROXIES", "10.0.0.0/8, *")]).unwrap_err();
+        assert!(
+            error.to_string().contains("`*` is not an IP address"),
+            "{error}"
         );
     }
 

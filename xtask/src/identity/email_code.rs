@@ -1,11 +1,13 @@
-//! D-05/S-03 spike, end to end with the real `vink-identity` and `vink-app` binaries on the
-//! provisioned scratch databases: sign-in through the App's API (codes read from Identity's local
-//! outbox like a mailbox), principal provisioning, account isolation, forged headers, logout,
-//! verified email change, App suspension, Identity disable and an Identity outage.
+//! D-05 email-code authority, end to end with the real `vink-identity` and `vink-app` binaries on
+//! the provisioned scratch databases: the production activation lock, sign-in through the App's
+//! API (codes delivered by Identity's outbox worker, read from its local outbox like a mailbox),
+//! the per-network limit behind a trusted proxy, principal provisioning, account isolation, forged
+//! headers, logout, verified email change, App suspension, Identity disable, an Identity outage,
+//! and finally SMTP delivery to a loopback relay with password rotation and relay recovery.
 //!
-//! This is real process/socket/database evidence for the spike. It is **not** production
-//! authentication: the outbox is a local directory, there is no mail transport, no edge rate limit
-//! and no browser runs here (cookies are sent by this client exactly as the App set them).
+//! This is real process/socket/database/SMTP-protocol evidence. It is **not** production
+//! authentication: no real provider (Resend), TLS, DNS or mailbox is involved, and no browser
+//! runs here (cookies are sent by this client exactly as the App set them).
 
 use std::ffi::OsStr;
 use std::io::{Read, Write};
@@ -16,6 +18,7 @@ use std::time::Duration;
 
 use serde_json::Value;
 
+use super::smtp_sink::Sink;
 use super::{Run, expect, request, sql};
 use crate::web;
 
@@ -23,6 +26,7 @@ use crate::web;
 struct Reply {
     status: u16,
     cookies: Vec<(String, String)>,
+    retry_after: Option<String>,
     body: String,
 }
 
@@ -97,6 +101,11 @@ fn exchange(
             })
         })
         .collect();
+    let retry_after = head.lines().find_map(|line| {
+        let (name, value) = line.split_once(':')?;
+        name.eq_ignore_ascii_case("retry-after")
+            .then(|| value.trim().to_string())
+    });
     // Chunked bodies are small JSON here; strip chunk-size lines if present.
     let body = if head
         .to_ascii_lowercase()
@@ -112,6 +121,7 @@ fn exchange(
     Ok(Reply {
         status,
         cookies,
+        retry_after,
         body,
     })
 }
@@ -132,6 +142,12 @@ struct Flow<'a> {
     port: u16,
     origin: String,
     outbox: &'a Path,
+    /// The client address the trusted proxy (this harness, on loopback) reports in
+    /// X-Forwarded-For; each sign-in comes from a new one so per-network limits stay out of
+    /// the way except where a step tests them.
+    client: String,
+    /// When set, codes are read from this SMTP relay instead of the outbox directory.
+    smtp: Option<Sink>,
     /// Every credential, handle and code seen; none may appear in a log or public page.
     secrets: Vec<String>,
 }
@@ -144,29 +160,65 @@ impl Flow<'_> {
         cookie: Option<&str>,
         body: Option<&str>,
     ) -> Result<Reply, String> {
-        let mut headers = vec![("Origin", self.origin.as_str())];
+        let mut headers = vec![
+            ("Origin", self.origin.as_str()),
+            ("X-Forwarded-For", self.client.as_str()),
+        ];
         if let Some(cookie) = cookie {
             headers.push(("Cookie", cookie));
         }
         exchange(self.port, method, path, &headers, body)
     }
 
-    /// The code mailed for `handle`, read from the outbox file named by the challenge id.
+    /// The code mailed for `handle`: the delivery worker sends after the challenge commits, so
+    /// this waits for the message (outbox file or SMTP relay) named by the challenge id.
     fn code(&mut self, handle: &str) -> Result<String, String> {
+        self.code_within(handle, Duration::from_secs(15))
+    }
+
+    fn code_within(&mut self, handle: &str, limit: Duration) -> Result<String, String> {
         let id = handle
             .strip_prefix("vink_c1.")
             .and_then(|rest| rest.split('.').next())
-            .ok_or("challenge handle has an unexpected shape")?;
-        let path = self.outbox.join(format!("{id}.txt"));
-        let text = std::fs::read_to_string(&path)
-            .map_err(|e| format!("outbox {}: {e}", path.display()))?;
-        let code = text
-            .lines()
-            .find_map(|line| line.strip_prefix("X-Vink-Code: "))
-            .ok_or("outbox message without a code")?
+            .ok_or("challenge handle has an unexpected shape")?
             .to_string();
-        self.secrets.push(code.clone());
-        Ok(code)
+        let deadline = std::time::Instant::now() + limit;
+        loop {
+            let found = match &self.smtp {
+                Some(sink) => sink
+                    .messages()
+                    .into_iter()
+                    .find(|m| m.data.contains(&id))
+                    .and_then(|m| m.code()),
+                None => std::fs::read_to_string(self.outbox.join(format!("{id}.txt")))
+                    .ok()
+                    .and_then(|text| {
+                        text.lines()
+                            .find_map(|line| line.strip_prefix("X-Vink-Code: "))
+                            .map(str::to_string)
+                    }),
+            };
+            if let Some(code) = found {
+                self.secrets.push(code.clone());
+                return Ok(code);
+            }
+            if std::time::Instant::now() > deadline {
+                return Err(format!(
+                    "no code was delivered for challenge {id} within {limit:?}"
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
+
+    fn next_client(&mut self) {
+        let n: u32 = self
+            .client
+            .rsplit('.')
+            .next()
+            .and_then(|last| last.parse().ok())
+            .unwrap_or(0);
+        self.client = format!("198.51.100.{}", (n + 1) % 200);
     }
 
     /// Asks for a code; returns the challenge cookie value.
@@ -191,6 +243,7 @@ impl Flow<'_> {
 
     /// Full sign-in; returns the reply of the completion and, when issued, the session.
     fn sign_in(&mut self, email: &str) -> Result<(Reply, Option<Client>), String> {
+        self.next_client();
         let handle = self.challenge(email)?;
         let code = self.code(&handle)?;
         let reply = self.call(
@@ -301,12 +354,37 @@ impl Run<'_> {
         ];
         let mut identity =
             Some(self.start_with("email-code", &s.identity_runtime, Some(uid), &authority)?);
-        let (mut app, port) = self.start_app("email-code-app", &s.app_runtime, uid)?;
+        // Production profile without VINK_AUTH_SIGN_IN: no session can start (activation lock).
+        let (mut closed, port) = self.start_app("email-code-app-closed", &s.app_runtime, uid)?;
+        let locked = exchange(
+            port,
+            "POST",
+            "/api/v1/auth/sign-in/challenges",
+            &[("Origin", &format!("http://127.0.0.1:{port}"))],
+            Some(r#"{"email":"chua.mo@vi-du.vn"}"#),
+        );
+        let _ = closed.terminate(Duration::from_secs(15));
+        locked?.expect(
+            "production sign-in stays closed until VINK_AUTH_SIGN_IN=enabled",
+            501,
+            "authority_not_configured",
+        )?;
+        let (mut app, port) = self.start_app_with(
+            "email-code-app",
+            &s.app_runtime,
+            uid,
+            &[
+                ("VINK_AUTH_SIGN_IN", "enabled"),
+                ("VINK_TRUSTED_PROXIES", "127.0.0.1"),
+            ],
+        )?;
         let mut flow = Flow {
             run: self,
             port,
             origin: format!("http://127.0.0.1:{port}"),
             outbox: &outbox,
+            client: "198.51.100.0".into(),
+            smtp: None,
             secrets: Vec::new(),
         };
         let checked = (|| {
@@ -479,6 +557,46 @@ impl Run<'_> {
             )?
             .expect("per-address throttle", 429, "rate_limited")?;
 
+            // Per-network ceiling behind the trusted proxy: one client asking for codes for many
+            // addresses gets 10 per window; the 11th is refused before Identity, with Retry-After.
+            flow.client = "203.0.113.77".into();
+            for n in 0..10 {
+                flow.call(
+                    "POST",
+                    "/api/v1/auth/sign-in/challenges",
+                    None,
+                    Some(&format!(r#"{{"email":"rai.thu{n}@vi-du.vn"}}"#)),
+                )?
+                .expect("within the network ceiling", 202, "expires_at")?;
+            }
+            let refused = flow.call(
+                "POST",
+                "/api/v1/auth/sign-in/challenges",
+                None,
+                Some(r#"{"email":"rai.thu.them@vi-du.vn"}"#),
+            )?;
+            refused.expect("network ceiling", 429, "rate_limited")?;
+            if !refused
+                .retry_after
+                .as_deref()
+                .and_then(|s| s.parse::<u32>().ok())
+                .is_some_and(|s| (1..=900).contains(&s))
+            {
+                return Err(format!(
+                    "network ceiling without Retry-After: {:?}",
+                    refused.retry_after
+                ));
+            }
+            // Another client behind the same proxy is unaffected.
+            flow.client = "203.0.113.78".into();
+            flow.call(
+                "POST",
+                "/api/v1/auth/sign-in/challenges",
+                None,
+                Some(r#"{"email":"nguoi.khac@vi-du.vn"}"#),
+            )?
+            .expect("another client network", 202, "expires_at")?;
+
             // 5. Vink suspension: closes the principal whatever Identity says; lifting restores.
             let origin = flow.origin.clone();
             let app_db = [
@@ -596,6 +714,106 @@ impl Run<'_> {
             )?);
             flow.drafts(&reader)?
                 .expect("sessions survive an Identity restart", 200, "drafts")?;
+
+            // 8. SMTP: the same binary delivers through a relay with its configured credential;
+            // the password file is re-read per delivery (rotation without restart); a relay
+            // outage delays the code but never fails the request, and the worker recovers.
+            if let Some(server) = identity.take() {
+                self.stop(server)?;
+            }
+            let sink = Sink::start()?;
+            let password_file = self.dir.join("smtp-password");
+            let write_secret = |value: &str| -> Result<(), String> {
+                std::fs::write(&password_file, format!("{value}\n")).map_err(|e| e.to_string())?;
+                std::fs::set_permissions(&password_file, std::fs::Permissions::from_mode(0o600))
+                    .map_err(|e| e.to_string())
+            };
+            let first_secret = format!("smtp-secret-one-{}", std::process::id());
+            let second_secret = format!("smtp-secret-two-{}", std::process::id());
+            flow.secrets.push(first_secret.clone());
+            flow.secrets.push(second_secret.clone());
+            write_secret(&first_secret)?;
+            let port_text = sink.port.to_string();
+            let smtp_env: [(&str, &OsStr); 8] = [
+                ("VINK_IDENTITY_AUTHORITY", OsStr::new("email-code")),
+                ("VINK_IDENTITY_MAIL_TRANSPORT", OsStr::new("smtp")),
+                ("VINK_IDENTITY_SMTP_HOST", OsStr::new("127.0.0.1")),
+                ("VINK_IDENTITY_SMTP_PORT", OsStr::new(&port_text)),
+                ("VINK_IDENTITY_SMTP_SECURITY", OsStr::new("none")),
+                ("VINK_IDENTITY_SMTP_USERNAME", OsStr::new("vink-e2e")),
+                (
+                    "VINK_IDENTITY_SMTP_PASSWORD_FILE",
+                    password_file.as_os_str(),
+                ),
+                (
+                    "VINK_IDENTITY_MAIL_FROM",
+                    OsStr::new("Vink <no-reply@vink.test>"),
+                ),
+            ];
+            identity = Some(self.start_with(
+                "email-code-smtp",
+                &s.identity_runtime,
+                Some(uid),
+                &smtp_env,
+            )?);
+            expect(
+                "readiness reports SMTP, still not an accepted production authority",
+                request(&self.socket, "GET", "/health/ready", &[], b""),
+                200,
+                r#""mail_transport":"smtp""#,
+            )?;
+            expect(
+                "D-05 stays provisional with SMTP",
+                request(&self.socket, "GET", "/health/ready", &[], b""),
+                200,
+                r#""production_authentication":"not_accepted""#,
+            )?;
+            flow.smtp = Some(sink.clone());
+            let (reply, _) = flow.sign_in("qua.smtp@vi-du.vn")?;
+            reply.expect(
+                "sign-in with a code mailed over SMTP",
+                200,
+                "needs_principal",
+            )?;
+            let used = sink.messages().last().and_then(|m| m.password.clone());
+            if used.as_deref() != Some(first_secret.as_str()) {
+                return Err("the relay did not see the configured SMTP credential".into());
+            }
+            write_secret(&second_secret)?;
+            let (reply, _) = flow.sign_in("xoay.khoa@vi-du.vn")?;
+            reply.expect("sign-in after the password rotated", 200, "needs_principal")?;
+            let used = sink.messages().last().and_then(|m| m.password.clone());
+            if used.as_deref() != Some(second_secret.as_str()) {
+                return Err("the rotated SMTP password was not used without a restart".into());
+            }
+            sink.set_unavailable(true);
+            flow.next_client();
+            let handle = flow.challenge("relay.sap@vi-du.vn")?;
+            if flow.code_within(&handle, Duration::from_secs(2)).is_ok() {
+                return Err("a code was delivered while the relay refused service".into());
+            }
+            sink.set_unavailable(false);
+            let code = flow.code_within(&handle, Duration::from_secs(30))?;
+            flow.call(
+                "POST",
+                "/api/v1/auth/sign-in/complete",
+                Some(&format!("__Host-vink_sign_in={handle}")),
+                Some(&format!(r#"{{"code":"{code}"}}"#)),
+            )?
+            .expect(
+                "the code delivered after the relay recovered works",
+                200,
+                "state",
+            )?;
+            let queue = operator(
+                self,
+                "vink-identity",
+                &[("VINK_IDENTITY_DATABASE_URL", s.identity_runtime.as_str())],
+                &["mail", "status"],
+            )?;
+            if !queue.starts_with("pending 0;") {
+                return Err(format!("mail queue after recovery: {queue}"));
+            }
             for path in ["/", "/tac-pham/33333333-3333-4333-8333-333333333333"] {
                 let page = exchange(port, "GET", path, &[], None)?;
                 if flow
@@ -614,7 +832,13 @@ impl Run<'_> {
         }
         checked?;
         // No code, handle or credential in any log of this step.
-        for name in ["email-code", "email-code-restarted", "email-code-app"] {
+        for name in [
+            "email-code",
+            "email-code-restarted",
+            "email-code-smtp",
+            "email-code-app",
+            "email-code-app-closed",
+        ] {
             let text = std::fs::read_to_string(self.log(name)).unwrap_or_default();
             if let Some(secret) = flow
                 .secrets
@@ -627,7 +851,7 @@ impl Run<'_> {
         }
         let _ = std::fs::remove_dir_all(&outbox);
         println!(
-            "==> S-03 spike: sign-in → needs_principal → provision; isolation; logout per session; email change keeps the subject, freed address unlinked; suspension and disable close authority; Identity down is 503, public reading 200"
+            "==> D-05: activation lock 501; sign-in via outbox worker → needs_principal → provision; network ceiling 429 + Retry-After behind a trusted proxy; isolation; logout per session; email change keeps the subject, freed address unlinked; suspension and disable close authority; Identity down is 503, public reading 200; SMTP delivery with the file credential, rotation without restart, relay outage recovered"
         );
         Ok(())
     }

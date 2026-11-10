@@ -112,15 +112,18 @@ chưa tích hợp composer/reaction/sticker persistence.
 - [vink-identity](../../services/vink-identity/README.md): binary riêng (`serve`/`migrate`/`account`)
   trên database `vink_identity`, chỉ nghe Unix socket; caller là OS user kết nối (peer uid).
   Contract riêng tư [v1 draft](../../services/vink-identity/contracts/rpc/v1/README.md): mặc định
-  `authority_not_configured`; với `VINK_IDENTITY_AUTHORITY=email-code` (spike D-05/S-03,
-  [ADR đề xuất](../architecture/auth-authority.md)) có đăng nhập bằng mã email một lần và phiên
-  opaque, mã ghi vào outbox cục bộ — production authentication NOT_IMPLEMENTED. App hỏi Identity
+  `authority_not_configured`; với `VINK_IDENTITY_AUTHORITY=email-code` (D-05 Provisional,
+  [ADR](../architecture/auth-authority.md)) có đăng nhập bằng mã email một lần và phiên opaque; mã
+  được worker của Identity gửi qua outbox bền + SMTP (Resend) hoặc outbox cục bộ khi dev
+  ([runbook](auth-operations.md), [bằng chứng](auth-production-evidence.md)). App đếm request
+  đăng nhập theo mạng nguồn trong PostgreSQL; ở profile production đăng nhập khóa cho tới khi
+  `VINK_AUTH_SIGN_IN=enabled` — D-05 chưa Accepted. App hỏi Identity
   qua client riêng ([src/identity](../../services/vink-app/src/identity/client.rs)) khi request
   trình cookie `__Host-vink_session` hoặc `Authorization: Bearer`, rồi đọc `principal_bindings`
   và `principal_suspensions` của chính App: chỉ principal đã bind và không bị đình chỉ được hành
   động; không credential, bị từ chối, chưa bind hoặc bị đình chỉ là `401`; Identity/App DB không
   quyết được là `503 dependency_unavailable`. `POST/GET/DELETE /api/v1/auth/*` là đường đăng nhập
-  ([API v1](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05s-03-spike)); `vink-app
+  ([API v1](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05)); `vink-app
   principal suspend|reinstate|list` là cách duy nhất đình chỉ. Đọc công khai/SSR không phụ thuộc
   Identity.
 - Phân loại tác phẩm (TAG, #95–#97): đọc catalog công khai (`/api/v1/tags`, gợi ý, resolve slug; không

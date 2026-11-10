@@ -16,8 +16,12 @@ use vink_identity::persistence::{SchemaState, migrate, schema_state};
 
 const CALLER: u32 = 501;
 
+#[path = "postgres/delivery.rs"]
+mod delivery;
 #[path = "postgres/email_code.rs"]
 mod email_code;
+#[path = "support/smtp_sink.rs"]
+mod smtp_sink;
 
 fn app(pool: PgPool, caller: Option<u32>) -> Router {
     router(IdentityState::new(pool, Authority::NotConfigured, caller))
@@ -44,7 +48,10 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
     assert_eq!(body["checks"]["schema"], "pending_migrations");
 
     let first = migrate(&pool).await.unwrap();
-    assert_eq!(first.applied, vec![20261102000000, 20261107000000]);
+    assert_eq!(
+        first.applied,
+        vec![20261102000000, 20261107000000, 20261112000000]
+    );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
 
     // The schema is now current, but this pool is the test harness superuser: serving with a
@@ -83,6 +90,7 @@ async fn identity_owns_only_credential_and_session_tables(pool: PgPool) {
             "account_emails",
             "accounts",
             "email_challenges",
+            "mail_deliveries",
             "sessions"
         ]
     );

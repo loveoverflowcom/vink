@@ -1,22 +1,27 @@
-//! The email-code authority on real PostgreSQL (D-05/S-03 spike): one-time challenges, account
-//! provisioning under concurrency, session verification, logout, expiry, disable and verified
-//! email change. Codes are read back from the local outbox like a person reads their mail.
+//! The email-code authority on real PostgreSQL: one-time challenges, account provisioning under
+//! concurrency, session verification, logout, expiry, disable and verified email change. Codes
+//! reach the local outbox through the real delivery worker (one batch per read), and are read
+//! back like a person reads their mail.
 
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use sqlx::PgPool;
+use tokio::sync::Notify;
 use uuid::Uuid;
 use vink_identity::accounts::{
     AccountChange, AccountStore, ChallengeOutcome, EmailChangeOutcome, EmailChangeStart,
     NewSession, SignInOutcome, disable_account, enable_account,
 };
 use vink_identity::contract::{ChallengeRejection, CredentialRejection};
+use vink_identity::delivery::{DeliveryPolicy, Worker};
 use vink_identity::email_code::{ChallengeHandle, Code, EmailAddress, Policy};
-use vink_identity::mail::LocalOutbox;
+use vink_identity::mail::{LocalOutbox, Transport};
 
 struct Harness {
     store: AccountStore,
+    worker: Worker,
     outbox: PathBuf,
 }
 
@@ -30,8 +35,15 @@ fn harness(pool: &PgPool, policy: Policy) -> Harness {
     let outbox = std::env::temp_dir().join(format!("vink-outbox-pg-{}", Uuid::now_v7()));
     std::fs::create_dir(&outbox).unwrap();
     std::fs::set_permissions(&outbox, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let wake = Arc::new(Notify::new());
     Harness {
-        store: AccountStore::new(pool.clone(), LocalOutbox::open(&outbox).unwrap(), policy),
+        store: AccountStore::new(pool.clone(), policy, wake.clone()),
+        worker: Worker::new(
+            pool.clone(),
+            Arc::new(LocalOutbox::open(&outbox).unwrap()) as Transport,
+            DeliveryPolicy::default(),
+            wake,
+        ),
         outbox,
     }
 }
@@ -41,8 +53,10 @@ fn address(raw: &str) -> EmailAddress {
 }
 
 impl Harness {
-    /// The code the person received for `handle`, read from the outbox message.
-    fn code(&self, handle: &ChallengeHandle) -> Code {
+    /// The code the person received for `handle`: the worker delivers what is due, then the
+    /// message is read from the outbox.
+    async fn code(&self, handle: &ChallengeHandle) -> Code {
+        self.worker.run_once().await.unwrap();
         let path = self.outbox.join(format!("{}.txt", handle.id.simple()));
         assert_eq!(std::fs::metadata(&path).unwrap().mode() & 0o777, 0o600);
         let text = std::fs::read_to_string(&path).unwrap();
@@ -56,7 +70,7 @@ impl Harness {
     async fn challenge(&self, raw: &str) -> ChallengeHandle {
         match self.store.start_sign_in(&address(raw)).await.unwrap() {
             ChallengeOutcome::Issued { handle, .. } => handle,
-            ChallengeOutcome::RateLimited => panic!("rate limited"),
+            ChallengeOutcome::RateLimited(throttle) => panic!("rate limited: {throttle:?}"),
         }
     }
 
@@ -64,7 +78,7 @@ impl Harness {
         let handle = self.challenge(raw).await;
         match self
             .store
-            .complete_sign_in(&handle, &self.code(&handle))
+            .complete_sign_in(&handle, &self.code(&handle).await)
             .await
             .unwrap()
         {
@@ -127,7 +141,7 @@ async fn codes_are_one_time_bound_to_their_handle_and_attempt_limited(pool: PgPo
     );
     // Four wrong codes are reported as such; the fifth closes the challenge for good.
     let handle = h.challenge("tho@vi-du.vn").await;
-    let right = h.code(&handle);
+    let right = h.code(&handle).await;
     for _ in 0..4 {
         assert!(matches!(
             h.store
@@ -147,7 +161,7 @@ async fn codes_are_one_time_bound_to_their_handle_and_attempt_limited(pool: PgPo
     // The right code with the right id but another secret (a code typed into a client that did
     // not request it) is a wrong code.
     let handle = h.challenge("tho@vi-du.vn").await;
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     let foreign = ChallengeHandle::generate(handle.id).unwrap();
     assert!(matches!(
         h.store.complete_sign_in(&foreign, &code).await.unwrap(),
@@ -165,7 +179,7 @@ async fn codes_are_one_time_bound_to_their_handle_and_attempt_limited(pool: PgPo
 
     // Expired: the right code no longer works.
     let handle = h.challenge("tho@vi-du.vn").await;
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     sqlx::query(
         "UPDATE email_challenges SET created_at = now() - interval '1 hour',
                 expires_at = now() - interval '1 second' WHERE id = $1",
@@ -200,7 +214,7 @@ async fn concurrent_completions_issue_one_session_per_challenge_and_one_account_
     );
     // One challenge answered eight times at once: exactly one session.
     let handle = h.challenge("song.song@vi-du.vn").await;
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     let attempts = (0..8).map(|_| {
         let store = h.store.clone();
         let (handle, code) = (handle.clone(), code.clone());
@@ -221,7 +235,7 @@ async fn concurrent_completions_issue_one_session_per_challenge_and_one_account_
     let mut pending = Vec::new();
     for _ in 0..6 {
         let handle = h.challenge("moi.toanh@vi-du.vn").await;
-        let code = h.code(&handle);
+        let code = h.code(&handle).await;
         pending.push((handle, code));
     }
     let tasks = pending.into_iter().map(|(handle, code)| {
@@ -253,7 +267,7 @@ async fn completions_queued_behind_a_row_lock_consume_the_challenge_once(pool: P
         .unwrap();
     let h = harness(&wide, Policy::default());
     let handle = h.challenge("xep.hang@vi-du.vn").await;
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     let mut probe = wide.acquire().await.unwrap();
     let mut gate = wide.begin().await.unwrap();
     sqlx::query("SELECT 1 FROM email_challenges WHERE id = $1 FOR UPDATE")
@@ -398,7 +412,7 @@ async fn disabling_an_account_revokes_every_session_and_blocks_new_ones(pool: Pg
     let handle = h.challenge("bi.khoa@vi-du.vn").await;
     assert!(matches!(
         h.store
-            .complete_sign_in(&handle, &h.code(&handle))
+            .complete_sign_in(&handle, &h.code(&handle).await)
             .await
             .unwrap(),
         SignInOutcome::Rejected(ChallengeRejection::AccountDisabled)
@@ -440,15 +454,36 @@ async fn a_verified_email_change_keeps_the_subject_and_a_freed_address_never_inh
     let other_device = h.sign_in("cu@vi-du.vn").await;
     let credential = current.credential.encode();
 
-    // An address already verified by someone else cannot even start a change.
-    let neighbour = h.sign_in("hang.xom@vi-du.vn").await;
+    // The account's own address is refused; an address verified by someone else answers like
+    // a free one (no probe of who is registered) but no code is mailed for it.
     assert!(matches!(
         h.store
-            .start_email_change(&credential, &address("hang.xom@vi-du.vn"))
+            .start_email_change(&credential, &address("cu@vi-du.vn"))
             .await
             .unwrap(),
         EmailChangeStart::AddressUnavailable
     ));
+    let neighbour = h.sign_in("hang.xom@vi-du.vn").await;
+    let EmailChangeStart::Issued(ChallengeOutcome::Issued { handle: probe, .. }) = h
+        .store
+        .start_email_change(&credential, &address("hang.xom@vi-du.vn"))
+        .await
+        .unwrap()
+    else {
+        panic!("a taken address must answer like a free one");
+    };
+    h.worker.run_once().await.unwrap();
+    assert!(
+        !h.outbox.join(format!("{}.txt", probe.id.simple())).exists(),
+        "no mail for another account's address"
+    );
+    let undelivered: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM mail_deliveries WHERE challenge_id = $1")
+            .bind(probe.id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(undelivered, 0);
     // A revoked or forged session cannot start one.
     assert!(matches!(
         h.store
@@ -466,7 +501,7 @@ async fn a_verified_email_change_keeps_the_subject_and_a_freed_address_never_inh
     else {
         panic!("change not started");
     };
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     // Only the account's own session can complete its change.
     assert_eq!(
         h.store
@@ -505,7 +540,7 @@ async fn a_verified_email_change_keeps_the_subject_and_a_freed_address_never_inh
     else {
         panic!("change not started");
     };
-    let code = h.code(&handle);
+    let code = h.code(&handle).await;
     let winner = h.sign_in("tranh.chap@vi-du.vn").await;
     assert_ne!(winner.account_id, current.account_id);
     assert_eq!(

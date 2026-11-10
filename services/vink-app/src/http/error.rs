@@ -56,8 +56,11 @@ pub enum ApiError {
     },
     /// Sign-in (D-05/S-03 spike): no authority resolves requests in this deployment.
     AuthorityNotConfigured,
-    /// Too many codes were requested for the address.
-    RateLimited,
+    /// A sign-in ceiling refused the request: this network (App) or the address, account or
+    /// global volume (Identity). `Retry-After` is sent when the App's window end is known.
+    RateLimited {
+        retry_after_seconds: Option<u32>,
+    },
     /// Wrong code; the same sign-in accepts another attempt.
     CodeRejected,
     /// The sign-in challenge is expired, used, exhausted or missing: request a new code.
@@ -114,7 +117,7 @@ impl ApiError {
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
             Self::KeyReused | Self::EndorsementKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
-            Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
+            Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
@@ -249,9 +252,9 @@ impl ApiError {
                 None,
                 None,
             ),
-            Self::RateLimited => (
+            Self::RateLimited { .. } => (
                 "rate_limited",
-                "too many codes were requested for this address; try later".to_string(),
+                "too many sign-in requests; try again later".to_string(),
                 None,
                 None,
             ),
@@ -357,7 +360,17 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status(), Json(self.envelope())).into_response()
+        let mut response = (self.status(), Json(self.envelope())).into_response();
+        if let Self::RateLimited {
+            retry_after_seconds: Some(seconds),
+        } = self
+            && let Ok(value) = axum::http::HeaderValue::from_str(&seconds.to_string())
+        {
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, value);
+        }
+        response
     }
 }
 
@@ -374,6 +387,7 @@ impl From<DraftError> for ApiError {
     fn from(error: DraftError) -> Self {
         match error {
             DraftError::Unauthenticated => Self::Unauthenticated,
+            DraftError::Suspended => Self::PrincipalSuspended,
             DraftError::NotFound => Self::NotFound,
             DraftError::VersionConflict { current } => Self::VersionConflict {
                 current_version: current.get(),
@@ -443,6 +457,7 @@ impl From<EndorsementError> for ApiError {
     fn from(error: EndorsementError) -> Self {
         match error {
             EndorsementError::Unauthenticated => Self::Unauthenticated,
+            EndorsementError::Suspended => Self::PrincipalSuspended,
             EndorsementError::NotFound => Self::NotFound,
             EndorsementError::SelfEndorsement => Self::SelfEndorsement,
             EndorsementError::RevisionChanged { published } => Self::RevisionChanged { published },

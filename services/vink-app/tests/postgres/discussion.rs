@@ -2030,6 +2030,99 @@ async fn suspension_and_submission_serialize_on_the_principal(pool: PgPool) {
     );
 }
 
+/// D-05 generalized standing fence: own removal, the author's mode change and a moderator's
+/// decision are refused at commit once the actor is suspended, and write nothing. The test
+/// resolver ignores suspensions, so only the store's fence can refuse them.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn every_discussion_write_is_refused_at_commit_once_suspended(pool: PgPool) {
+    let vink = discussion(&pool).await;
+    let mine = published(&vink, other(), None, "Của người viết").await;
+    let pending = post(&vink, author(), None, "Chờ duyệt").await;
+    for id in [
+        dev_seed::OTHER_PRINCIPAL,
+        dev_seed::SAMPLE_AUTHOR,
+        MODERATOR,
+    ] {
+        suspend_principal(&pool, PrincipalId::from_uuid(id), &suspension_reason())
+            .await
+            .unwrap();
+    }
+    assert_eq!(
+        vink.remove_own_comment(other(), sample_work(), mine).await,
+        Err(DiscussionError::Suspended)
+    );
+    assert_eq!(
+        vink.set_comments_mode(author(), close_at(1)).await,
+        Err(DiscussionError::Suspended)
+    );
+    assert_eq!(
+        moderate(&vink, pending, 1, ModerationAction::Approve).await,
+        Err(DiscussionError::Suspended)
+    );
+    assert_eq!(review_of(&pool, mine).await.0, "approved");
+    assert_eq!(review_of(&pool, pending).await, ("pending".to_string(), 1));
+    let (open, generation): (bool, i64) = sqlx::query_as(
+        "SELECT comments_open, settings_generation FROM discussion_threads WHERE work_id = $1",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!((open, generation), (true, 1));
+    let decisions: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM comment_moderation_decisions WHERE comment_id = $1",
+    )
+    .bind(pending.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(decisions, 0);
+    // Reinstated: the same commands succeed (the fence holds no state of its own).
+    for id in [
+        dev_seed::OTHER_PRINCIPAL,
+        dev_seed::SAMPLE_AUTHOR,
+        MODERATOR,
+    ] {
+        reinstate_principal(&pool, PrincipalId::from_uuid(id))
+            .await
+            .unwrap();
+    }
+    assert!(
+        moderate(&vink, pending, 1, ModerationAction::Approve)
+            .await
+            .is_ok()
+    );
+    assert!(vink.set_comments_mode(author(), close_at(1)).await.is_ok());
+}
+
+/// The moderator's decision holds the comment row, then its standing fence: a suspension that
+/// is still uncommitted makes it wait and then refuse; nothing is decided or audited.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_moderation_decision_waits_for_a_pending_suspension_and_refuses(pool: PgPool) {
+    let vink = Arc::new(discussion(&pool).await);
+    let pending = post(&vink, other(), None, "Chờ duyệt").await;
+    let mut suspending = pool.begin().await.unwrap();
+    let pid = backend_pid(&mut suspending).await;
+    sqlx::query(
+        "INSERT INTO principal_suspensions (id, principal_id, reason)
+         VALUES ($1, $2, 'Tạm khóa trong bộ test thảo luận')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(MODERATOR)
+    .execute(&mut *suspending)
+    .await
+    .unwrap();
+    let deciding = {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move { moderate(&vink, pending, 1, ModerationAction::Approve).await })
+    };
+    wait_blocked_by(&pool, pid).await;
+    assert!(!deciding.is_finished(), "the decision waits at its fence");
+    suspending.commit().await.unwrap();
+    assert_eq!(deciding.await.unwrap(), Err(DiscussionError::Suspended));
+    assert_eq!(review_of(&pool, pending).await, ("pending".to_string(), 1));
+}
+
 const ADMISSION_MIGRATION: i64 = 20_261_111_000_000;
 
 /// Upgrade: comments written before #120 were all admitted under premoderation, and the migration

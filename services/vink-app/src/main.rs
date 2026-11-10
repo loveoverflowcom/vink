@@ -29,7 +29,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]";
+const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app maintenance prune";
 
 /// Default number of audit rows `tag history` prints.
 const DEFAULT_HISTORY: i64 = 50;
@@ -157,7 +157,7 @@ fn main() -> ExitCode {
     let command = std::env::args().nth(1).unwrap_or_else(|| "serve".into());
     if !matches!(
         command.as_str(),
-        "serve" | "migrate" | "dev-seed" | "moderator" | "principal" | "tag"
+        "serve" | "migrate" | "dev-seed" | "moderator" | "principal" | "tag" | "maintenance"
     ) {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
@@ -198,6 +198,13 @@ fn main() -> ExitCode {
     } else {
         None
     };
+    if command == "maintenance" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        if args != ["prune"] {
+            eprintln!("vink-app maintenance: expected `maintenance prune`\n{USAGE}");
+            return ExitCode::from(2);
+        }
+    }
     let loaded = match command.as_str() {
         "migrate" => MigrateConfig::from_env().map(Loaded::Migrate),
         _ => Config::from_env().map(Loaded::App),
@@ -224,6 +231,7 @@ fn main() -> ExitCode {
         match loaded {
             Loaded::Migrate(config) => migrate(&config).await,
             Loaded::App(config) if command == "dev-seed" => seed(&config).await,
+            Loaded::App(config) if command == "maintenance" => maintenance(&config).await,
             Loaded::App(config) if let Some(operation) = moderator_command => {
                 moderator(&config, operation).await
             }
@@ -511,6 +519,18 @@ async fn tag(config: &Config, command: TagCommand) -> Result<(), Failure> {
     Ok(())
 }
 
+/// `vink-app maintenance prune`: deletes sign-in rate-limit windows that ended over a day ago.
+async fn maintenance(config: &Config) -> Result<(), Failure> {
+    let pool = connect(&config.database_url, "vink-app maintenance").await?;
+    let pruned = Vink::new(PgStore::new(pool.clone()))
+        .prune_rate_limits()
+        .await
+        .map_err(|_| Failure::Runtime("prune failed".into()));
+    pool.close().await;
+    println!("pruned {} expired rate-limit window(s)", pruned?);
+    Ok(())
+}
+
 async fn serve(config: Config) -> Result<(), Failure> {
     let pool = lazy_pool(&config.database_url)
         .map_err(|error| Failure::Usage(format!("DATABASE_URL is not usable: {error}")))?;
@@ -536,6 +556,8 @@ async fn serve(config: Config) -> Result<(), Failure> {
         &config.site_root,
     )
     .with_sign_in(identity::sign_in_client(&config))
+    .with_sign_in_enabled(config.sign_in_enabled)
+    .with_trusted_proxies(config.trusted_proxies.clone())
     .with_identity_probe(probe)
     .with_restricted_role_required(config.profile == Profile::Production);
     if !config.site_root.join("pkg").join("vink.js").exists() {
@@ -547,10 +569,18 @@ async fn serve(config: Config) -> Result<(), Failure> {
     let listener = tokio::net::TcpListener::bind(config.bind)
         .await
         .map_err(|error| Failure::Runtime(format!("cannot bind {}: {error}", config.bind)))?;
+    if config.identity.is_some() && !config.sign_in_enabled {
+        tracing::warn!(
+            "sign-in is disabled (VINK_AUTH_SIGN_IN): no new session can start; existing sessions \
+             are still verified and can log out"
+        );
+    }
     tracing::info!(
         bind = %config.bind,
         origin = %config.public_origin,
         profile = ?config.profile,
+        sign_in = if config.sign_in_enabled { "enabled" } else { "disabled" },
+        trusted_proxies = !config.trusted_proxies.is_empty(),
         "vink-app listening"
     );
     axum::serve(

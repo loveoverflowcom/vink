@@ -26,6 +26,7 @@ use crate::contract::{
     MAX_BODY_BYTES, Operations, RevokeSessionRequest, RevokeSessionResponse,
     SignInChallengeRequest, SignInCompleteRequest, SignInResponse, VerifyCredentialRequest,
 };
+use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
 use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
@@ -64,6 +65,9 @@ struct Inner {
     caller_uid: Option<u32>,
     deadline: Duration,
     write_deadline: Duration,
+    /// Label of the transport the delivery worker uses (`local_outbox`, `smtp`), reported by
+    /// readiness; `None` without the email-code authority.
+    mail_transport: Option<&'static str>,
 }
 
 impl IdentityState {
@@ -89,8 +93,17 @@ impl IdentityState {
                 caller_uid,
                 deadline,
                 write_deadline: deadline,
+                mail_transport: None,
             }),
         }
+    }
+
+    /// Reports the delivery worker's transport in readiness.
+    pub fn with_mail_transport(mut self, label: &'static str) -> Self {
+        if let Some(inner) = Arc::get_mut(&mut self.inner) {
+            inner.mail_transport = Some(label);
+        }
+        self
     }
 }
 
@@ -256,8 +269,9 @@ fn issued(handle: &ChallengeHandle, expires_at: time::OffsetDateTime) -> Respons
     (StatusCode::ACCEPTED, Json(body)).into_response()
 }
 
-/// Sends a code to any valid address. Account existence is not read, so the answer cannot
-/// disclose it; only the per-address throttle can refuse.
+/// Issues a code for any valid address; the delivery worker mails it after commit. Account
+/// existence is not read, so the answer cannot disclose it; only the throttles can refuse, and
+/// they answer the same for every address.
 async fn sign_in_challenge(
     State(state): State<IdentityState>,
     body: Body,
@@ -267,8 +281,11 @@ async fn sign_in_challenge(
     let address = EmailAddress::parse(request.email.expose()).ok_or(ContractError::InvalidEmail)?;
     match store.start_sign_in(&address).await? {
         ChallengeOutcome::Issued { handle, expires_at } => Ok(issued(&handle, expires_at)),
-        ChallengeOutcome::RateLimited => {
-            tracing::warn!("sign-in code refused: per-address throttle");
+        ChallengeOutcome::RateLimited(throttle) => {
+            tracing::warn!(
+                throttle = throttle.label(),
+                "sign-in code refused: throttle"
+            );
             Err(ContractError::RateLimited)
         }
     }
@@ -334,7 +351,13 @@ async fn email_change_challenge(
         EmailChangeStart::Issued(ChallengeOutcome::Issued { handle, expires_at }) => {
             Ok(issued(&handle, expires_at))
         }
-        EmailChangeStart::Issued(ChallengeOutcome::RateLimited) => Err(ContractError::RateLimited),
+        EmailChangeStart::Issued(ChallengeOutcome::RateLimited(throttle)) => {
+            tracing::warn!(
+                throttle = throttle.label(),
+                "email-change code refused: throttle"
+            );
+            Err(ContractError::RateLimited)
+        }
         EmailChangeStart::AddressUnavailable => Err(ContractError::AddressUnavailable),
         EmailChangeStart::CredentialRejected => Err(ContractError::CredentialRejected),
     }
@@ -392,8 +415,9 @@ async fn live() -> Json<Value> {
 }
 
 /// Ready only when the database answers with exactly the embedded schema, the connected role
-/// cannot change schema or roles, and a caller is configured. The authority is reported, not
-/// required: `not_configured` is the honest state.
+/// cannot change schema or roles, and a caller is configured. The authority and the mail queue
+/// are reported, not required: `not_configured` is the honest state, and a mail backlog is an
+/// alert for operators, not a reason to stop verifying sessions.
 async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) {
     let pool = &state.inner.pool;
     let probe = tokio::time::timeout(Duration::from_secs(2), async {
@@ -411,7 +435,7 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
         Some(true) => "privileged",
         None => "unknown",
     };
-    let (database, schema) = match schema {
+    let (database, schema_label) = match schema {
         Some(schema) => ("ok", schema.label()),
         None => ("unavailable", "unknown"),
     };
@@ -420,24 +444,44 @@ async fn ready(State(state): State<IdentityState>) -> (StatusCode, Json<Value>) 
     } else {
         StatusCode::SERVICE_UNAVAILABLE
     };
+    let transport = match state.inner.authority.email_code_availability() {
+        crate::contract::Availability::Available => {
+            state.inner.mail_transport.unwrap_or("not_configured")
+        }
+        crate::contract::Availability::NotConfigured => "not_configured",
+    };
+    let queue = if transport != "not_configured" && schema == Some(SchemaState::Current) {
+        tokio::time::timeout(Duration::from_secs(2), delivery::backlog(pool))
+            .await
+            .ok()
+            .and_then(Result::ok)
+    } else {
+        None
+    };
     (
         status,
         Json(json!({
             "status": if ready { "ready" } else { "not_ready" },
             "checks": {
                 "database": database,
-                "schema": schema,
+                "schema": schema_label,
                 "role": role,
                 "callers": if callers { "configured" } else { "not_configured" },
             },
             "authority": state.inner.authority.availability(),
-            // The email-code authority has only the local outbox: nobody outside this machine
-            // can receive a code, so production authentication is still not implemented.
-            "mail_transport": match state.inner.authority.email_code_availability() {
-                crate::contract::Availability::Available => "local_outbox",
-                crate::contract::Availability::NotConfigured => "not_configured",
+            "mail_transport": transport,
+            "mail_queue": queue.map(|q| json!({
+                "pending": q.pending,
+                "oldest_pending_seconds": q.oldest_pending_seconds,
+                "failed_last_hour": q.failed_last_hour,
+            })),
+            // The local outbox reaches nobody outside this machine. With SMTP the code path is
+            // production-capable, but D-05 is still Provisional and its gates are open
+            // (docs/architecture/auth-authority.md §9), so it is not accepted either.
+            "production_authentication": match transport {
+                "smtp" => "not_accepted",
+                _ => "not_implemented",
             },
-            "production_authentication": "not_implemented",
         })),
     )
 }
@@ -749,8 +793,8 @@ mod tests {
         std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700)).unwrap();
         let store = crate::accounts::AccountStore::new(
             outage_pool(),
-            crate::mail::LocalOutbox::open(&dir).unwrap(),
             crate::email_code::Policy::default(),
+            std::sync::Arc::default(),
         );
         (
             app(Authority::EmailCode(store), Some(CALLER), Some(CALLER)),

@@ -1,6 +1,6 @@
 {
   "error": {
     "code": "rate_limited",
-    "message": "too many codes were requested for this address; try later"
+    "message": "too many codes were requested; try later"
   }
 }

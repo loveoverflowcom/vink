@@ -72,7 +72,9 @@ impl From<StoreError> for DiscoveryError {
     fn from(error: StoreError) -> Self {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
-            StoreError::Integrity(_) | StoreError::UnknownPrincipal => Self::Internal,
+            StoreError::Integrity(_)
+            | StoreError::UnknownPrincipal
+            | StoreError::PrincipalSuspended => Self::Internal,
         }
     }
 }

@@ -5,6 +5,7 @@
 //! D-05/S-03 email-code spike has its own end-to-end step ([`email_code`]) with both binaries.
 
 mod email_code;
+mod smtp_sink;
 
 use std::io::{Read, Write};
 use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -77,7 +78,7 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
         "App readiness refuses a privileged role (production) and an untrusted Identity server",
         || run.app_refusals(),
     ) && report.step(
-        "S-03 email-code spike, two real binaries: sign-in, binding, isolation, logout, email change, suspension, disable, outage",
+        "D-05 email-code authority, two real binaries: activation lock, sign-in through the outbox worker, network limit behind a trusted proxy, binding, isolation, logout, email change, suspension, disable, outage, SMTP delivery with password rotation and relay recovery",
         || run.email_code_end_to_end(),
     ) && report.step("identity: logs contain no credential or password", || {
         run.no_secrets_in_logs()
@@ -397,7 +398,9 @@ impl Run<'_> {
             return Err("a refused migration created a history table".into());
         }
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
-        if code != Some(0) || !stderr.contains("applied=[20261102000000, 20261107000000]") {
+        if code != Some(0)
+            || !stderr.contains("applied=[20261102000000, 20261107000000, 20261112000000]")
+        {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));
         }
         let (code, stderr) = self.migrate("second", &s.identity_migrator)?;
@@ -846,6 +849,16 @@ impl Run<'_> {
         database_url: &str,
         server_uid: u32,
     ) -> Result<(Guard, u16), String> {
+        self.start_app_with(name, database_url, server_uid, &[])
+    }
+
+    fn start_app_with(
+        &self,
+        name: &str,
+        database_url: &str,
+        server_uid: u32,
+        extra: &[(&str, &str)],
+    ) -> Result<(Guard, u16), String> {
         let port = web::free_port()?;
         let log = std::fs::File::create(self.log(name)).map_err(|e| e.to_string())?;
         let child = Command::new(web::binary(self.scratch.root, "vink-app"))
@@ -861,6 +874,7 @@ impl Run<'_> {
             .env("VINK_IDENTITY_SOCKET", &self.socket)
             .env("VINK_IDENTITY_SERVER_UID", server_uid.to_string())
             .env("VINK_LOG_FORMAT", "text")
+            .envs(extra.iter().copied())
             .stdout(Stdio::null())
             .stderr(log)
             .spawn()

@@ -290,6 +290,7 @@ impl From<StoreError> for DiscussionError {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
             StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::PrincipalSuspended => Self::Suspended,
             StoreError::Integrity(_) => Self::Internal,
         }
     }

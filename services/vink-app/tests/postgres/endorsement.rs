@@ -1759,3 +1759,57 @@ async fn the_http_api_keeps_every_endorsement_outcome_distinct(pool: PgPool) {
         revision: RevisionId::from_uuid(R1),
     };
 }
+
+/// D-05 generalized standing fence: a suspended reader's endorsement is refused at commit and
+/// leaves no state, receipt or count; an uncommitted suspension makes it wait, then refuse.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_suspended_reader_cannot_endorse_and_a_pending_suspension_is_waited_for(pool: PgPool) {
+    use vink_app::domain::principal::SuspensionReason;
+    use vink_app::persistence::{reinstate_principal, suspend_principal};
+    let vink = setup(&pool).await;
+    let me = reader(1);
+    let reason = SuspensionReason::parse("Tạm khóa trong bộ test LVE").unwrap();
+    suspend_principal(&pool, me.unwrap(), &reason)
+        .await
+        .unwrap();
+    assert_eq!(
+        vink.set_work_endorsement(me, on_work(&key(), 1, true, R1))
+            .await,
+        Err(EndorsementError::Suspended)
+    );
+    assert_eq!(rows(&pool, "work_endorsements").await, 0);
+    assert_eq!(rows(&pool, "endorsement_receipts").await, 0);
+    reinstate_principal(&pool, me.unwrap()).await.unwrap();
+
+    let mut suspending = pool.begin().await.unwrap();
+    let pid = backend_pid(&mut suspending).await;
+    sqlx::query(
+        "INSERT INTO principal_suspensions (id, principal_id, reason)
+         VALUES ($1, $2, 'Tạm khóa trong bộ test LVE')",
+    )
+    .bind(Uuid::now_v7())
+    .bind(reader_id(1))
+    .execute(&mut *suspending)
+    .await
+    .unwrap();
+    let endorsing = {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move {
+            vink.set_work_endorsement(me, on_work(&key(), 1, true, R1))
+                .await
+        })
+    };
+    wait_blocked_by(&pool, pid).await;
+    assert!(!endorsing.is_finished(), "the command waits at its fence");
+    suspending.commit().await.unwrap();
+    assert_eq!(endorsing.await.unwrap(), Err(EndorsementError::Suspended));
+    assert_eq!(rows(&pool, "work_endorsements").await, 0);
+    // Another reader is unaffected.
+    assert_eq!(
+        accepted(
+            vink.set_work_endorsement(reader(2), on_work(&key(), 1, true, R1))
+                .await
+        ),
+        (state(true, 2, 2), count(1))
+    );
+}

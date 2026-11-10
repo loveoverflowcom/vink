@@ -1,6 +1,7 @@
 //! Use cases. Application code authenticates the actor, validates input through the domain and
 //! delegates I/O to the ports in [`ports`]; it imports no HTTP, SQL or Leptos types.
 
+pub mod abuse;
 pub mod account;
 pub mod catalog;
 pub mod discovery;
@@ -92,6 +93,9 @@ pub enum DraftError {
     /// No authenticated Vink principal for this request.
     #[error("unauthenticated")]
     Unauthenticated,
+    /// Suspended by Vink at the write's commit (standing fence); nothing was written.
+    #[error("principal suspended")]
+    Suspended,
     /// Missing, or owned by someone else; the two are deliberately indistinguishable.
     #[error("not found")]
     NotFound,
@@ -109,7 +113,9 @@ impl From<StoreError> for ReadError {
     fn from(error: StoreError) -> Self {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
-            StoreError::Integrity(_) | StoreError::UnknownPrincipal => Self::Internal,
+            StoreError::Integrity(_)
+            | StoreError::UnknownPrincipal
+            | StoreError::PrincipalSuspended => Self::Internal,
         }
     }
 }
@@ -120,6 +126,7 @@ impl From<StoreError> for DraftError {
             StoreError::Unavailable(_) => Self::Unavailable,
             // The resolved principal has no Vink record: not an authenticated Vink actor.
             StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::PrincipalSuspended => Self::Suspended,
             StoreError::Integrity(_) => Self::Internal,
         }
     }

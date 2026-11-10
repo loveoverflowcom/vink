@@ -1,10 +1,14 @@
 # D-05 / S-03 — Lựa chọn auth authority
 
-**Ngày:** 07/11/2026 · **Base:** `develop@9dc4991620ef93b09c21fdba355a3c3f557da608` ·
+**Ngày:** 07/11/2026 (spike), cập nhật 10/11/2026 (đường production, §11) · **Base spike:**
+`develop@9dc4991620ef93b09c21fdba355a3c3f557da608` ·
 **Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted. Spike chạy được
 cục bộ và đổi D-05 từ “Cần spike + lựa chọn” sang “Đề xuất A, chờ chủ sản phẩm và các blocker ở
-§9”. **Production authentication: NOT_IMPLEMENTED** (không có mail transport thật, rate limit ở
-biên, qualification trình duyệt/mobile hay review bảo mật độc lập).
+§9”. Từ 10/11/2026 backend có **đường production**: thư qua outbox bền + SMTP (Resend), giới hạn
+lạm dụng nhiều process, fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ, retention và
+rollback (§11). **Đăng nhập production vẫn bị khóa** (`VINK_AUTH_SIGN_IN` mặc định `disabled`):
+chưa gửi thật qua Resend, chưa có UI đăng nhập + qualification trình duyệt/mobile, chưa review bảo
+mật độc lập, chưa có người chịu trách nhiệm vận hành auth.
 
 Bằng chứng chạy và ma trận kịch bản: [auth-authority-s03-evidence](../development/auth-authority-s03-evidence.md).
 Ranh giới database/process có từ trước: [identity-postgres-boundaries](identity-postgres-boundaries.md).
@@ -156,7 +160,7 @@ cho ba trạng thái không-principal.
 **Contract.** Identity RPC: thêm thao tác và trường **trong v1** theo quy tắc tương thích (chỉ
 thêm thao tác/trường phản hồi; request mới đều `deny_unknown_fields`); fixture cũ không đổi ý
 nghĩa ([contract v1](../../services/vink-identity/contracts/rpc/v1/README.md)). App HTTP v1 thêm
-nhóm `auth` ([API v1](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05s-03-spike)).
+nhóm `auth` ([API v1](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05)).
 
 **Phiên Web.** Cookie `__Host-vink_session` (`Secure; HttpOnly; Path=/; SameSite=Lax`), giá trị
 256 bit ngẫu nhiên, chỉ lưu SHA-256; hết hạn tuyệt đối 30 ngày (NIST 800-63B-4 AAL1: tổng ≤ 30 ngày),
@@ -175,13 +179,13 @@ nơi lưu (Keychain/Keystore). Không có magic link nên không cần universal
 
 | Rủi ro | Giảm thiểu trong spike | Còn thiếu |
 | --- | --- | --- |
-| Đoán mã | 6 chữ số, 5 lần sai đóng challenge, 10 phút, mã gắn bí mật client | Rate limit theo IP/thiết bị ở biên |
-| Spam mã tới hộp thư người khác | 3 mã/địa chỉ/15 phút, khóa advisory chống vượt đồng thời | CAPTCHA/biên, chặn domain, theo dõi lạm dụng |
-| Enumeration | Xin mã không đọc bảng tài khoản; trả lời và thư giống nhau | Thời gian phản hồi chưa đo |
+| Đoán mã | 6 chữ số, 5 lần sai đóng challenge, 10 phút, mã gắn bí mật client; **từ §11:** 30 lần trả mã/15 phút/mạng nguồn | CAPTCHA/biên khi cần |
+| Spam mã tới hộp thư người khác | 3 mã/địa chỉ/15 phút, khóa advisory chống vượt đồng thời; **từ §11:** 10 lần xin mã/15 phút/mạng, trần toàn cục 200/10 phút | CAPTCHA/biên, chặn domain, theo dõi lạm dụng |
+| Enumeration | Xin mã không đọc bảng tài khoản; trả lời và thư giống nhau; **từ §11:** gửi thư tách khỏi request (thời gian không phụ thuộc relay), đổi email sang địa chỉ người khác trả như địa chỉ trống, không gửi thư | Thời gian phản hồi chưa đo thống kê |
 | Mất hộp thư | — | Quy trình phục hồi thủ công, thông báo về địa chỉ cũ khi đổi email |
 | Chiếm hộp thư = chiếm tài khoản | Như mọi hệ reset bằng email | Passkey; thông báo đăng nhập mới |
-| Lộ DB Identity | Chỉ verifier/hash, không có mã hay credential | Retention/xóa phiên cũ, rotation |
-| Request đang chạy khi bị đình chỉ | Đình chỉ kiểm ở mỗi request | Fence tại commit cho mọi lệnh ghi (như grant kiểm duyệt) |
+| Lộ DB Identity | Chỉ verifier/hash; **từ §11:** mã chờ gửi lưu rõ tới khi gửi xong (thiếu bí mật client thì vô dụng), retention 7/30 ngày | — |
+| Request đang chạy khi bị đình chỉ | Đình chỉ kiểm ở mỗi request; **từ §11:** fence tại commit cho nháp, tag, bình luận (gửi/xóa), chế độ bình luận, kiểm duyệt, ghi nhận | Disable ở Identity không fence được request App đang chạy (hai DB) — runbook: đình chỉ ở App trước |
 
 **Chi phí vận hành A:** thêm một nhà cung cấp mail (deliverability, SPF/DKIM/DMARC, bounce), quy
 trình phục hồi tài khoản, giám sát lạm dụng; không thêm service hay database. Chưa có ước giá.
@@ -194,14 +198,22 @@ email). Dữ liệu tài khoản nằm trong PostgreSQL của Vink, xuất đư�
 
 ## 9. Blocker trước khi Accepted
 
-1. Chủ sản phẩm chấp nhận UX đăng nhập chỉ bằng mã email cho pilot (hoặc yêu cầu thêm mật khẩu).
-2. Mail transport production + nhà cung cấp, deliverability và chi phí thật.
-3. Rate limit ở biên/IP và giám sát lạm dụng; quy trình phục hồi và thông báo đổi email.
-4. Qualification trình duyệt (cookie `__Host-` trên origin thật, HTTPS) và UI đăng nhập; quyết định
-   carrier/CSRF cho native.
-5. Fence đình chỉ tại commit cho các lệnh ghi; retention phiên/challenge; review bảo mật độc lập.
-6. Một người/nhóm được giao chịu trách nhiệm bảo trì bảo mật auth (vá, sự cố, phục hồi tài khoản) —
-   điều kiện tech stack đặt ra cho native auth.
+Trạng thái sau §11 (10/11/2026): **đã xử lý trong code** = có implementation và bằng chứng cục bộ;
+**còn mở** = chặn Accepted.
+
+1. **Còn mở:** chủ sản phẩm chấp nhận UX đăng nhập chỉ bằng mã email cho pilot (hoặc yêu cầu thêm
+   mật khẩu).
+2. **Một phần:** mail transport production đã có (SMTP + outbox bền, chọn Resend); **còn mở:** gửi
+   thật qua Resend, domain SPF/DKIM/DMARC, bounce/complaint, chi phí thật.
+3. **Một phần:** rate limit theo mạng nguồn (trusted proxy) + trần Identity, log giám sát; **còn
+   mở:** biên/WAF chống flood thể tích, quy trình phục hồi tài khoản, thông báo về địa chỉ cũ khi đổi
+   email.
+4. **Còn mở:** qualification trình duyệt (cookie `__Host-` trên origin thật, HTTPS) và UI đăng
+   nhập; carrier/CSRF cho native.
+5. **Đã xử lý trong code:** fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ hiện có; retention
+   phiên/challenge/bộ đếm. **Còn mở:** review bảo mật độc lập.
+6. **Còn mở:** một người/nhóm được giao chịu trách nhiệm bảo trì bảo mật auth (vá, sự cố, phục hồi
+   tài khoản) — điều kiện tech stack đặt ra cho native auth.
 
 ## 10. Lát cắt tiếp theo
 
@@ -212,6 +224,79 @@ email). Dữ liệu tài khoản nằm trong PostgreSQL của Vink, xuất đư�
 2. **Phiên + API được bảo vệ:** UI đăng nhập/đăng xuất Leptos, `GET /auth/session` trong shell, đổi
    bút danh, thử trình duyệt (cookie, Back/reload, hai tab).
 3. **Native/CMP:** carrier Bearer cho app, lưu trữ an toàn, qualification Android/iOS.
+
+## 11. Đường production (10/11/2026)
+
+Mục tiêu: đưa authority A từ spike tới backend vận hành được, không thêm service, Redis hay hàng
+đợi ngoài. Bằng chứng: [auth-production-evidence](../development/auth-production-evidence.md);
+vận hành: [runbook](../development/auth-operations.md).
+
+### C1. SMTP hay API transactional email — **chọn SMTP (Resend)**
+
+| | SMTP submission (`lettre`, rustls) | API HTTP của nhà cung cấp |
+| --- | --- | --- |
+| Phụ thuộc | Một crate, chuẩn RFC 5321; đổi nhà cung cấp = đổi host/credential | SDK hoặc client HTTP riêng cho từng hãng |
+| Kiểm thử | Relay giả nói đúng giao thức qua TCP thật | Mock HTTP theo hợp đồng hãng |
+| Ngữ nghĩa lỗi | Mã 4xx/5xx, không idempotency key | Lỗi có cấu trúc, idempotency key |
+
+**WHY:** trung lập nhà cung cấp, kiểm được bằng giao thức thật, cùng hướng Cantos đã vận hành
+(Resend qua SMTP, `lettre`). **Seam đổi nhà cung cấp:** worker chỉ giữ `Arc<dyn MailSender>`;
+`VINK_IDENTITY_SMTP_PROVIDER=resend` là một preset cấu hình; nhà cung cấp SMTP khác chỉ đổi cấu hình,
+nhà cung cấp chỉ có API HTTP là một `MailSender` mới — outbox, retry, nội dung thư không đổi. Gửi thật
+qua Resend (10/11/2026) thành công cả lệnh `mail test` lẫn luồng challenge → outbox → worker; trên mạng
+văn phòng, cổng 465 bị firewall Fortinet chặn TLS (client từ chối đúng), 587 STARTTLS dùng được. **HOW:** TLS bắt buộc (465 implicit hoặc 587 STARTTLS), plaintext chỉ cho
+relay loopback; mật khẩu (API key) chỉ qua file `0600`, đọc lại mỗi lần gửi (xoay không restart);
+lỗi rút gọn thành loại + mã số, không giữ văn bản relay (có thể chứa địa chỉ). **TRADEOFF:** không
+có idempotency key → trùng thư có thể xảy ra (cùng mã, cùng `Message-ID`, vô hại); bounce/complaint
+cần webhook của nhà cung cấp — chưa làm.
+
+### C2. Outbox PostgreSQL hay worker hiện có — **outbox của Identity, worker trong `serve`**
+
+`vink-worker` là tiến trình App, không được đọc DB Identity (mã là secret của Identity). **HOW:**
+bảng `mail_deliveries` trong `vink_identity`; challenge và ý định gửi commit cùng transaction; worker
+claim `FOR UPDATE SKIP LOCKED` + lease 45 s (nhiều instance an toàn), gửi ngoài transaction, ghi kết
+quả chỉ khi còn giữ `lease_token`; 5 lần, backoff 5→60 s + jitter; `5xx` dừng ngay; mã đã dùng/hết
+hạn bị hủy; trạng thái cuối xóa mã; worker thức ngay sau commit (Notify) và poll 2 s cho việc của
+instance khác/retry. **TRADEOFF:** at-least-once, không exactly-once; thông lượng gắn với số instance
+Identity (đủ cho pilot; tách `deliver` thành lệnh riêng nếu cần).
+
+### C3. Rate limit trong DB hay ở edge tin cậy — **DB làm authority, edge là phòng thủ thêm**
+
+**WHY:** App là tiến trình duy nhất thấy mạng nguồn; nhiều process App cần một bộ đếm chung; không
+có hạ tầng edge nào được xác nhận. **HOW:** App: bảng `auth_rate_limits` (upsert nguyên tử, cửa sổ
+cố định theo đồng hồ DB, khóa = SHA-256 của bucket + IPv4 hoặc IPv6 /64); `X-Forwarded-For` chỉ đọc
+khi peer thuộc `VINK_TRUSTED_PROXIES`, lấy hop không tin cậy ngoài cùng bên phải; không đếm được =
+`503`. Identity: trần theo địa chỉ (chính xác, khóa advisory), theo tài khoản (chính xác, khóa hàng
+tài khoản), toàn cục (mềm: đồng thời có thể vượt tối đa bằng số request đồng thời). **TRADEOFF:** một
+lần ghi DB mỗi request đăng nhập (đo p50 0,12 ms cục bộ); cửa sổ cố định cho phép tối đa 2× ở ranh giới
+cửa sổ; không chống DDoS thể tích (việc của edge).
+
+### C4. Fence chung hay guard theo owner — **một primitive chung, gọi bởi từng owner**
+
+**HOW:** `principal::require_active` khóa hàng principal `FOR UPDATE` (xung đột với khóa `FOR KEY
+SHARE` mà insert đình chỉ lấy qua FK) rồi đọc đình chỉ ở câu lệnh riêng; trả
+`StoreError::PrincipalSuspended` → `403 principal_suspended`. Mỗi adapter gọi nó **tại commit**,
+đúng thứ tự khóa của mình: nháp tạo/lưu (đầu tiên — không khóa gì khác), xóa bình luận (sau hàng
+comment), đổi chế độ (sau hàng thread), kiểm duyệt (sau grant + hàng comment), ghi nhận (sau các
+khóa share, trước khóa khóa-lệnh). Không dùng middleware (chỉ là kiểm lúc request) hay trigger (ẩn
+thứ tự khóa). **TRADEOFF:** mọi lệnh ghi của một principal tuần tự hóa trên hàng principal (bình
+thường không đáng kể); disable ở Identity không thể nguyên tử với ghi ở App — không giả lập giao dịch
+xuyên DB, runbook yêu cầu đình chỉ ở App trước.
+
+### C5. Retention, dọn dẹp, phục hồi
+
+Challenge (kèm thư) xóa 7 ngày sau hết hạn; phiên 30 ngày sau khi đóng; bộ đếm 1 ngày sau cửa sổ.
+Prune chạy mỗi giờ (Identity `serve`, `vink-worker`) và bằng lệnh vận hành; idempotent, an toàn khi
+nhiều tiến trình. Phục hồi: lease hết hạn → thư được gửi lại; relay phục hồi → backoff gửi tiếp.
+Rollback: script `migrations-rollback/*.down.sql` (đã chạy trên PostgreSQL thật) chỉ mất dữ liệu tạm
+(thư chờ, bộ đếm), không mất tài khoản, phiên hay principal.
+
+### Phiên và CSRF (rà lại)
+
+Cookie `__Host-` (`Secure`, `HttpOnly`, `Path=/`; phiên `Lax`, challenge `Strict`), `Origin` khớp
+cho mọi phương thức ghi, phản hồi auth `no-store`, credential do server phát (không fixation). Mới:
+đăng nhập lại thu hồi phiên cũ trình duyệt đang giữ; khóa kích hoạt `VINK_AUTH_SIGN_IN` (production
+mặc định tắt; đăng xuất và xác minh phiên cũ không phụ thuộc).
 
 ## Nguồn (truy cập 07/11/2026)
 

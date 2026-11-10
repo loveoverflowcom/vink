@@ -4,6 +4,7 @@
 //! row mapping and constraint classification stay here. These wrappers bind that lifecycle to
 //! the App's own migrations, so no other registry reaches the App database.
 
+mod abuse;
 mod discovery;
 mod discussion;
 mod endorsement;
