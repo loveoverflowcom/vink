@@ -4,7 +4,9 @@ Use actual manifests, commands and CI from the current checkout. The implemented
 `cargo xtask verify quick|discussion|expressions|kani|postgres|web|all`; what each covers, its prerequisites and its limits
 are defined once in [docs/development](../../../../docs/development/README.md). CI runs the same
 lanes. `discussion` covers the structural D2T-01, lifecycle D2T-02 (with receipts), reaction D2T-INV-08 and literary endorsement (LVE #73) Quint models and real Rust replay;
-there is no generic behavior lane. The same lane runs the target specifications in
+there is no generic behavior lane. #150 adds canonical publication M1 with scoped author/admitted-
+decision Rust replay (`behavior/publication`); evaluator/admin/lifecycle authority remains model-only.
+The same lane runs the remaining target specifications in
 `services/vink-app/behavior/target` (product decisions of 10/11/2026) as a separate step without
 any Rust replay: a PASS there is model evidence, never implemented behavior. `expressions` checks the isolated EMO lifecycle model
 and production policy replay. `kani` (not in `all`; needs the pinned verifier) runs the

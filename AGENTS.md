@@ -125,12 +125,16 @@ short posts with personal collections (no chapters, no Tạp Chí, age policy de
 (“Chỉ mình tôi”/“Công khai”), an AI evaluator as the default moderation flow for works and comments
 with the admin above it and appeals going to the admin, author deletion leaving a tombstone that
 keeps valid comments, comment editing with an “Đã sửa” mark, hashtags, a Recommended feed and a
-Top 100, and username + password as the primary sign-in. **None of it has runtime code**: no
+Top 100, and username + password as the primary sign-in. **None of it has runtime code**
+(publication has a pure core and application planning seam in #150,
+[registry](docs/development/publication-core.md)): no runtime
 audience, publish/delete command, evaluator, admin role, appeal, collection, hashtag, ranking,
 comment edit or password exists. Requirement IDs are in PRD §14 (AUD, PUB-04/05, MOD-07..10,
-COM-09/10, COL, HTG, RANK, TOP, ACC-03); six target Quint models with generated vectors and
-negative controls live in `services/vink-app/behavior/target` and run as one step of
-`verify discussion` with **no Rust replay** (model evidence only; see its README and the
+COM-09/10, COL, HTG, RANK, TOP, ACC-03); five target Quint models with generated vectors and
+negative controls live in `services/vink-app/behavior/target`; canonical M1 moved to
+`behavior/publication` with scoped author/admitted-decision Rust replay (#150). All share
+`verify discussion`; evaluator/admin/lifecycle authority actions and the five target models have
+**no Rust replay** (model evidence only; see its README and the
 [registry](docs/development/product-decisions-registry.md)). Items marked `DESIGN_PROPOSED` or
 `OPEN` there are not owner decisions.
 D-05 is **Provisional** and not Accepted: the code implements the native email-code authority
@@ -249,7 +253,8 @@ pure decisions (the lane fails if a named replay test is not selected); locking,
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
 runs the owner-local manifests and requires every declared harness to verify. The `discussion` lane
 also runs the target specifications of `behavior/target` (typecheck, simulation, scenarios, vector
-drift, negative controls); that step has no Rust replay and proves nothing about production. Every crate inherits
+drift, negative controls) and canonical M1 in `behavior/publication`; #150 replays author commands
+and admitted decision publication effects. The remaining target actions have no Rust replay. Every crate inherits
 `unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable
 rustdoc ignores its error code. `specs/behavior` and a generic behavior lane do not exist. Do not
 add a runner merely to validate documentation or skills.

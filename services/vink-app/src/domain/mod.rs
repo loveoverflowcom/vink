@@ -9,5 +9,6 @@ pub mod draft;
 pub mod endorsement;
 pub mod ids;
 pub mod principal;
+pub mod publication;
 pub mod revision;
 pub mod taxonomy;

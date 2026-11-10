@@ -155,7 +155,7 @@ tại; nguồn và bằng chứng model ở [registry](product-decisions-registr
 
 | Hành vi đích | Yêu cầu | Hiện có trong app | Bằng chứng hiện có |
 | --- | --- | --- | --- |
-| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Không; publication chỉ đến từ seed | Model `publication.qnt` |
+| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Lõi thuần + application planning seam #150; runtime publication vẫn chỉ đến từ seed | [Pure core/replay](publication-core.md); model M1 canonical ở `behavior/publication` |
 | Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Không; `ai_moderation: not_implemented` | Model `publication.qnt`, vectors evaluator |
 | Phản đối quyết định | MOD-10 | Không | Model `appeal.qnt` |
 | Tác giả xóa bài, trang thay thế còn bình luận | PUB-04/05 | Không; không có publication thì thảo luận `404` | Model `tombstone.qnt` |
