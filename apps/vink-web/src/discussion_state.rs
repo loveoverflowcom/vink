@@ -33,6 +33,14 @@ pub struct Draft {
     pub open: bool,
     pub receipt: Option<String>,
     pub delivery: Delivery,
+    /// Typed ACK identity retained for current-state lookup, never inferred from body text.
+    pub acknowledged: Option<AcknowledgedComment>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AcknowledgedComment {
+    pub comment_id: String,
+    pub status: crate::contract::CommentStatus,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -99,6 +107,7 @@ impl DiscussionController {
         self.scope.session = session;
         self.session_invalid = false;
         for draft in self.drafts.values_mut() {
+            draft.acknowledged = None;
             draft.receipt = match std::mem::take(&mut draft.delivery) {
                 Delivery::Editing => None,
                 Delivery::Sending(_) | Delivery::Uncertain(_) => Some(
@@ -220,6 +229,7 @@ impl DiscussionController {
             },
         };
         draft.receipt = None;
+        draft.acknowledged = None;
         draft.delivery = Delivery::Sending(submission.clone());
         Some(submission)
     }
@@ -270,6 +280,15 @@ impl DiscussionController {
                 {
                     draft.body.clear();
                 }
+                draft.acknowledged = Some(AcknowledgedComment {
+                    comment_id: receipt.comment_id.clone(),
+                    status: match receipt.status.as_str() {
+                        "pending" => crate::contract::CommentStatus::Pending,
+                        "approved" => crate::contract::CommentStatus::Approved,
+                        "rejected" => crate::contract::CommentStatus::Rejected,
+                        _ => crate::contract::CommentStatus::Removed,
+                    },
+                });
                 draft.receipt = Some(
                     match receipt.status.as_str() {
                         "pending" => "Chờ duyệt · Chưa công khai",

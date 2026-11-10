@@ -123,3 +123,9 @@ Trạng thái gửi/duyệt mở rộng cho thiết kế sau (Refused, Held, quy
 nằm ở [brief #120](discussion-submission-brief.md); brief không đổi phần đã triển khai ở đây.
 
 Discussion HTTP có deadline 30 giây cho mỗi transport attempt. Timeout/abort giữ outcome chưa rõ và snapshot/key; timer bị hủy cùng feature owner. Thu ô trả lời chỉ đổi trình bày, không hủy transport. Scope đã được kiểm ở controller; production chưa có luồng đổi account/session để nghiệm thu runtime.
+
+## Delta public/own Reader Web (10/11/2026)
+
+SSR và browser dùng public projection; vùng “Nhận xét của bạn” sau root composer giữ own
+pending/rejected hoặc kết quả gửi ngoài trang. [DecisionMap, LayoutSpec delta, scope và bằng chứng](../development/discussion-web-reads.md)
+sở hữu lát này; anatomy R3.1, native composer và Pen Flight giữ nguyên.

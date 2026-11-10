@@ -185,6 +185,145 @@ pub struct StoredTags {
     pub themes: Vec<String>,
 }
 
+/// Actor-free wire DTOs. Only these enter the SSR resource/hydration payload.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PublicDiscussionPage {
+    pub work_id: String,
+    pub settings: CommentsSettings,
+    pub roots: Vec<PublicRootThread>,
+    pub next_cursor: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PublicRootThread {
+    pub root: PublicRootView,
+    pub public_replies: i64,
+    pub preview: Vec<PublicComment>,
+    pub preview_next_cursor: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum PublicRootView {
+    Comment {
+        comment: PublicComment,
+    },
+    Anchor {
+        comment_id: String,
+        created_at: String,
+    },
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PublicComment {
+    pub comment_id: String,
+    pub author_display_name: String,
+    pub body: String,
+    pub created_at: String,
+    pub reply_to: Option<ReplyTo>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PublicReplyList {
+    pub replies: Vec<PublicComment>,
+    pub next_cursor: Option<String>,
+}
+impl From<PublicComment> for CommentDto {
+    fn from(c: PublicComment) -> Self {
+        Self {
+            comment_id: c.comment_id,
+            visibility: "public".into(),
+            author_display_name: c.author_display_name,
+            body: c.body,
+            created_at: c.created_at,
+            reply_to: c.reply_to,
+            can_remove: false,
+            rejection_reason: None,
+        }
+    }
+}
+impl From<PublicReplyList> for ReplyList {
+    fn from(p: PublicReplyList) -> Self {
+        Self {
+            replies: p.replies.into_iter().map(Into::into).collect(),
+            next_cursor: p.next_cursor,
+        }
+    }
+}
+impl From<PublicDiscussionPage> for DiscussionPage {
+    fn from(p: PublicDiscussionPage) -> Self {
+        Self {
+            work_id: p.work_id,
+            settings: p.settings,
+            viewer_is_work_author: false,
+            next_cursor: p.next_cursor,
+            roots: p
+                .roots
+                .into_iter()
+                .map(|r| RootThread {
+                    root: match r.root {
+                        PublicRootView::Comment { comment } => RootView::Comment {
+                            comment: comment.into(),
+                        },
+                        PublicRootView::Anchor {
+                            comment_id,
+                            created_at,
+                        } => RootView::Anchor {
+                            comment_id,
+                            created_at,
+                        },
+                    },
+                    public_replies: r.public_replies,
+                    preview: r.preview.into_iter().map(Into::into).collect(),
+                    preview_next_cursor: r.preview_next_cursor,
+                })
+                .collect(),
+        }
+    }
+}
+
+/// A bounded composed read is used ONLY for this capability. Unknown fields (roots) are
+/// discarded at decoding; no viewer projection is retained or used for public rendering.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct DiscussionCapability {
+    pub work_id: String,
+    pub viewer_is_work_author: bool,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct OwnCommentList {
+    pub work_id: String,
+    pub comments: Vec<OwnComment>,
+    pub next_cursor: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct OwnComment {
+    pub comment_id: String,
+    pub status: CommentStatus,
+    pub body: Option<String>,
+    pub created_at: String,
+    pub placement: OwnPlacement,
+    pub rejection_reason: Option<String>,
+    pub can_remove: bool,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CommentStatus {
+    Pending,
+    Approved,
+    Rejected,
+    Removed,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum OwnPlacement {
+    Root,
+    Reply {
+        root_id: String,
+        root_listed: bool,
+        reply_to: ReplyTo,
+    },
+}
+
 /// Root page of a work's discussion (two tiers: roots + one flat reply list per root).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiscussionPage {
@@ -1030,5 +1169,47 @@ mod tests {
                 ApiError::Unavailable,
             ]
         );
+    }
+}
+
+#[cfg(test)]
+mod separated_discussion_tests {
+    use super::*;
+    #[test]
+    fn provider_public_fixtures_decode_without_viewer_fields_and_refuse_private_fields() {
+        let page: PublicDiscussionPage = serde_json::from_str(include_str!(
+            "../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.get.json"
+        ))
+        .unwrap();
+        let replies: PublicReplyList = serde_json::from_str(include_str!(
+            "../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.replies.json"
+        ))
+        .unwrap();
+        assert!(!replies.replies.is_empty());
+        let mut wire = serde_json::to_value(&page).unwrap();
+        let text = wire.to_string();
+        for private in [
+            "visibility",
+            "can_remove",
+            "rejection_reason",
+            "viewer_is_work_author",
+            "own_pending",
+            "own_rejected",
+        ] {
+            assert!(!text.contains(private));
+        }
+        wire["viewer_is_work_author"] = true.into();
+        assert!(serde_json::from_value::<PublicDiscussionPage>(wire).is_err());
+        let mut wire = serde_json::to_value(page).unwrap();
+        wire["roots"][0]["root"]["comment"]["can_remove"] = true.into();
+        assert!(serde_json::from_value::<PublicDiscussionPage>(wire).is_err());
+    }
+    #[test]
+    fn the_composed_capability_seam_discards_its_comment_projection() {
+        let c: DiscussionCapability = serde_json::from_str(include_str!(
+            "../../../services/vink-app/contracts/http/v1/fixtures/discussion.get.json"
+        ))
+        .unwrap();
+        assert!(!c.work_id.is_empty());
     }
 }

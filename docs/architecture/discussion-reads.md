@@ -175,8 +175,10 @@ bỏ fence của gỡ own; ép `root_listed = true`; nới bộ lọc overlay nh
   harness cursor cũ); phần chuỗi được kiểm bằng unit + HTTP raw-input. Không có fuzz.
 - Không model Quint mới: không đổi lifecycle/admission; replay cũ vẫn là regression.
 - Late response/actor switch phía client: server không cache và mỗi request tự resolve actor; việc
-  bỏ overlay khi đăng xuất và bỏ qua câu trả lời muộn thuộc consumer (#129), **chưa có consumer**.
-- Web/CMP chưa dùng public projection hay overlay; browser/native NOT_RUN cho hai route mới.
+  bỏ overlay khi đăng xuất và bỏ qua câu trả lời muộn thuộc consumer (#129). Reader Web đã có
+  consumer với Session #146, ticket scoped và lookup batching: [Web reads](../development/discussion-web-reads.md).
+- Web SSR/browser dùng public projection; own đọc sau hydration. Bằng chứng Web của lượt thay đổi
+  ghi trong PR; CMP/native vẫn chưa có consumer.
 - Phiên Identity bị thu hồi: cửa sổ một request (§4); cần D-05/S-03 nếu muốn chặt hơn.
 - Số đo trên một máy dev, dữ liệu tổng hợp; không phải SLA production.
 - DISC-04 (outbox/worker) và DISC-05 (validator/cache/counter, preview root nóng) vẫn mở.

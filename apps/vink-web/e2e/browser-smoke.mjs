@@ -3360,17 +3360,17 @@ async function discussionReadingAndWrites(page) {
   }
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Mở bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author closes comments with generation CAS');
-  check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer-send').getAttribute('aria-disabled')==='true' && !!document.querySelector('#comment-${commentId}')`), 'closing preserves draft and readable own projection while blocking new sends');
+  check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)} && document.querySelector('#root-composer-send').getAttribute('aria-disabled')==='true' && !!document.querySelector('[data-own-comment="${commentId}"]')`), 'closing preserves draft and readable own projection while blocking new sends');
   const closed = await (await fetch(endpoint)).json();
   check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
   await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author reopens the same thread');
   await page.click(`#remove-comment-${commentId}`);
-  await page.waitFor(`!document.querySelector('#comment-${commentId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
+  await page.waitFor(`!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
 
   console.log('D2T-03: labelled provider fixture projection for flat contexts and responsive states:');
-  const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.get.json', import.meta.url), 'utf8'));
+  const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.get.json', import.meta.url), 'utf8'));
   fixture.work_id = SAMPLE_WORK;
   const rootId = fixture.roots[0].root.comment.comment_id;
   const replyId = fixture.roots[0].preview[0].comment_id;
@@ -3390,7 +3390,7 @@ async function discussionReadingAndWrites(page) {
     if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
     const path = decodeURIComponent(new URL(message.params.request.url).pathname);
     if (message.params.request.method === 'POST' && path === new URL(`${endpoint}/comments`).pathname) { replyRequest = message.params.requestId; return; }
-    if (message.params.request.method !== 'GET' || path !== new URL(endpoint).pathname) {
+    if (message.params.request.method !== 'GET' || path !== new URL(`${endpoint}/public`).pathname) {
       page.send('Fetch.continueRequest', { requestId: message.params.requestId }).catch(() => {});
       return;
     }

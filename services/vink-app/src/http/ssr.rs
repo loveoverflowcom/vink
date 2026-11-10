@@ -45,13 +45,16 @@ fn load_error(error: ReadError) -> LoadError {
 }
 
 impl PublicReads for PublicReadsAdapter {
-    fn discussion(&self, work_id: String) -> PortFuture<Result<web::DiscussionPage, LoadError>> {
+    fn discussion(
+        &self,
+        work_id: String,
+    ) -> PortFuture<Result<web::PublicDiscussionPage, LoadError>> {
         let vink = self.vink.clone();
         Box::pin(async move {
             let id = WorkId::parse(&work_id).ok_or(LoadError::NotFound)?;
             // Deliberately no request actor here, including with the development fixture.
             let page =
-                vink.discussion(None, id, None, None)
+                vink.public_discussion(id, None, None)
                     .await
                     .map_err(|error| match error {
                         crate::application::discussion::DiscussionError::NotFound => {
@@ -59,7 +62,7 @@ impl PublicReads for PublicReadsAdapter {
                         }
                         _ => LoadError::Unavailable,
                     })?;
-            to_web(&super::contract::DiscussionPage::new(id, &page, None))
+            to_web(&super::contract::PublicDiscussionPage::new(id, &page))
         })
     }
     fn endorsement_summaries(
