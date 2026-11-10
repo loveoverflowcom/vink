@@ -35,7 +35,7 @@ function ssrCount(html, id) {
 }
 
 const button = (id) => `document.querySelector(${JSON.stringify(`#${id}`)})`;
-const note = (id) => `(document.querySelector(${JSON.stringify(`#${id}-note`)})?.textContent ?? '')`;
+const note = (id) => `(${button(id)}?.getAttribute('aria-describedby') ?? '').split(' ').map(id=>document.getElementById(id)?.textContent ?? '').join(' ')`;
 const count = (id) => `(document.querySelector(${JSON.stringify(`#${id}-count`)})?.textContent ?? '')`;
 
 /** Main phase, fixture = the author of the sample work. */

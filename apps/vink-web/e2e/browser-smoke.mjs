@@ -3277,13 +3277,30 @@ async function discussionReadingAndWrites(page) {
     await page.click('#root-composer-send');
     check(held.length === 1, 'double activation starts only one command');
     await page.send('Fetch.failRequest', { requestId: held[0].requestId, errorReason: 'ConnectionClosed' });
-    await page.waitFor(`document.querySelector('#feedback-region').textContent.includes('Đối soát lần gửi trước') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'lost ACK is uncertain, never falsely failed or public');
-    await page.eval(`[...document.querySelectorAll('#feedback-region button')].find(b=>b.textContent==='Đối soát lần gửi trước').click()`);
+    await page.waitFor(`document.querySelector('#feedback-region').textContent.includes('Kiểm tra lần gửi') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'lost ACK is uncertain, never falsely failed or public');
+    await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+    for (const [width, scale] of [[390,100],[320,200]]) {
+      await page.viewport(width);
+      await page.eval(`document.documentElement.dataset.theme='dark'; document.documentElement.style.fontSize='${scale}%'; document.querySelector('.vk-discussion-delivery').scrollIntoView({block:'center'})`);
+      check(await page.eval(`(() => {
+        const region=document.querySelector('#root-composer').closest('.vk-discussion-composer');
+        const delivery=region.querySelector('.vk-discussion-delivery'), send=document.querySelector('#root-composer-send');
+        return getComputedStyle(delivery).borderTopLeftRadius==='20px' &&
+          [...region.querySelectorAll('.vk-ui-button--filled')].filter(b=>b.getAttribute('aria-disabled')!=='true').length===1 &&
+          send.getAttribute('aria-disabled')==='true' && !!document.getElementById(send.getAttribute('aria-describedby')) &&
+          region.textContent.split('Chưa rõ kết quả gửi').length===2 && document.documentElement.scrollWidth<=innerWidth;
+      })()`), `uncertain/${width}/${scale}: one enabled primary recovery, disabled described Send and separate 20px status`);
+      await page.capture(`discussion-local-uncertain-${width}-${scale}-dark`, {boundary:'real-local-postgresql-with-lost-response'});
+    }
+    await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
+    await page.viewport(1280);
+    await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM]});
+    await page.click('.vk-discussion-delivery .vk-ui-button--filled');
     await waitHeld(2);
     const first = JSON.parse(held[0].request.postData), replay = JSON.parse(held[1].request.postData);
     check(JSON.stringify(first) === JSON.stringify(replay) && held[1].responseStatusCode === 200, 'reconciliation replays exactly the same key/body/target; server returns the original receipt');
     await page.send('Fetch.continueRequest', { requestId: held[1].requestId });
-    await page.waitFor(`document.querySelector('[data-testid=discussion-receipt]')?.textContent.includes('Đang chờ duyệt') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'accepted-for-review receipt');
+    await page.waitFor(`document.querySelector('[data-testid=discussion-receipt]')?.textContent.includes('Chờ duyệt') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'accepted-for-review receipt');
     check(await page.eval(`document.querySelector('#root-composer').value===${JSON.stringify(text + newer)}`), 'late success keeps all newly typed text');
     const own = await (await fetch(endpoint)).json();
     const matches = own.roots.filter(root => root.root.kind === 'comment' && root.root.comment.body === text.trim());
@@ -3361,6 +3378,7 @@ async function discussionReadingAndWrites(page) {
     await page.waitFor(`document.querySelector('#reply-to-${replyId}') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'initial retry completes with contract fixture projection');
     check(readCursors.length > failedInitialReads && !await page.eval(`!!document.querySelector('#discussion-load-retry')`), 'initial retry issues a new GET and replaces the error with loaded comments');
     await page.click(`#reply-to-${replyId}`);
+    await page.waitFor(`document.activeElement?.id==='reply-composer-${rootId}'`, 'reply moves focus to its own stable field');
     await page.typeAtEnd(`#reply-composer-${rootId}`, 'Bản trả lời có ngữ cảnh\n\n  Giữ nguyên 👩‍💻');
     check(await page.eval(`document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0 && document.querySelectorAll('#reply-composer-${rootId}').length===1`), 'reply-to-reply mounts one composer in its root and no third indentation level');
     await captureDiscussionMatrix(page, 'contract-fixture-flat', `#comment-${rootId}`, 'intercepted-provider-contract-fixture-no-persistence');
@@ -3372,7 +3390,7 @@ async function discussionReadingAndWrites(page) {
     }
     await page.typeAtEnd(`#reply-composer-${rootId}`, ' Gõ tiếp khi đang gửi.');
     await page.eval(`[...document.querySelectorAll('.vk-discussion-reply-composer button')].find(b=>b.textContent==='Thu ô trả lời · Giữ chữ').click()`);
-    await page.waitFor(`!document.querySelector('#reply-composer-${rootId}')`, 'reply composer collapsed');
+    await page.waitFor(`!document.querySelector('#reply-composer-${rootId}') && document.activeElement?.id==='reply-to-${replyId}'`, 'reply composer collapsed and restored its trigger focus');
     await page.click(`#reply-to-${replyId}`);
     await page.waitFor(`document.querySelector('#reply-composer-${rootId}-send')?.dataset.state==='pending'`, 'feature-owned transport survives composer collapse');
     await page.send('Fetch.fulfillRequest', { requestId: replyRequest, responseCode: 201,
@@ -3419,6 +3437,42 @@ async function discussionReadingAndWrites(page) {
   }
 }
 
+async function discussionR31Geometry(page, width, scale, scenario) {
+  const geometry = await page.eval(`(() => {
+    const thread = document.querySelector('.vk-discussion-root'), pattern = thread.querySelector('.vk-discussion-thread');
+    const root = pattern.querySelector(':scope > .vk-discussion-comment'), group = pattern.querySelector('.vk-discussion-reply-group');
+    const composer = thread.querySelector('.vk-feedback-composer'), body = root.querySelector('.vk-discussion-body');
+    const rect = e => { const r=e.getBoundingClientRect(); return {left:r.left, right:r.right}; };
+    const controls = [...pattern.querySelectorAll('.vk-ui-toggle__control')];
+    const luminance = color => {
+      const rgb=color.match(/[0-9.]+/g).slice(0,3).map(Number).map(v=>v/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
+      return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722;
+    };
+    const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05);};
+    const surface=getComputedStyle(group).backgroundColor, tonal=getComputedStyle(composer).backgroundColor;
+    const ratios=[ratio(getComputedStyle(group.querySelector('.vk-discussion-body')).color,surface), ratio(getComputedStyle(group.querySelector('time')).color,surface), ratio(getComputedStyle(composer.querySelector('label')).color,tonal)];
+    const reasons = [...pattern.querySelectorAll('.vk-discussion-shared-reason')].filter(e=>!e.hidden);
+    return {root:rect(root), group:rect(group), composer:rect(composer),
+      inset:rect(body).left-rect(root).left, insetRight:rect(root).right-rect(body).right,
+      aligned: Math.abs(rect(root.querySelector('.vk-discussion-name')).left-rect(body).left)<1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<1,
+      composerInset:rect(composer.querySelector('textarea')).left+parseFloat(getComputedStyle(composer.querySelector('textarea')).paddingLeft)-rect(composer).left,
+      gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
+      contrast:Math.min(...ratios),
+      reasons:reasons.length, targetReasons:pattern.querySelectorAll('.vk-ui-action__note').length,
+      descriptions:controls.every(b=>(b.getAttribute('aria-describedby')||'').split(' ').filter(Boolean).every(id=>!!document.getElementById(id))),
+      shared:controls.length>=2 && controls.every(b=>(b.getAttribute('aria-describedby')||'').includes(reasons[0]?.id)),
+      field:composer.querySelectorAll('textarea').length===1 && !!composer.querySelector('label[for]'),
+      radius:getComputedStyle(composer).borderTopLeftRadius,
+      buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth+1;})};
+  })()`);
+  const close = (a,b)=>Math.abs(a-b)<=1;
+  check(['group','composer'].every(k=>close(geometry.root.left,geometry[k].left)&&close(geometry.root.right,geometry[k].right)) && geometry.aligned, `${scenario}: root/group/composer share both edges and text/action axis`);
+  check(close(geometry.inset, width < 360 ? 12 : 16) && close(geometry.inset,geometry.insetRight) && close(geometry.composerInset,geometry.inset) && geometry.gap===16, `${scenario}: balanced fixed inset and 16px reply spacing`);
+  check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
+  check(geometry.field && geometry.radius==='28px' && geometry.buttons, `${scenario}: one native field, 28px tonal surface and reachable 48px targets`);
+  check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
+}
+
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
   for (const theme of ['light', 'dark']) {
     await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}`);
@@ -3427,9 +3481,11 @@ async function captureDiscussionMatrix(page, name, anchor, boundary) {
       await page.eval(`document.documentElement.style.fontSize=''; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
       check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1 && document.querySelectorAll('.vk-discussion-replies .vk-discussion-replies').length===0`), `${name}/${theme}/${width}: reflows without a third reply tier`);
       await page.capture(`discussion-${name}-${width}-${theme}`, { scenario: 'D2T-03-responsive', boundary, build: BUILD_SHA, textScale: 100 });
-      if (width <= 390) {
+      if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 100, `${name}/${theme}/${width}`);
+      if (width <= 390 || (width === 1440 && name === 'contract-fixture-flat')) {
         await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector(${JSON.stringify(anchor)}).scrollIntoView({block:'start'})`);
         check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`), `${name}/${theme}/${width}/200%: text reflows`);
+        if (name === 'contract-fixture-flat') await discussionR31Geometry(page, width, 200, `${name}/${theme}/${width}/200%`);
         await page.capture(`discussion-${name}-${width}-200-${theme}`, { scenario: 'D2T-03-large-text', boundary, build: BUILD_SHA, textScale: 200 });
       }
     }
@@ -3481,7 +3537,8 @@ try {
   });
   const page = await openPage(cdp);
   activePage = page;
-  if (args.phase === 'editor-chrome') await editorChrome(page);
+  if (args.phase === 'discussion-only') await discussionReadingAndWrites(page);
+  else if (args.phase === 'editor-chrome') await editorChrome(page);
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });

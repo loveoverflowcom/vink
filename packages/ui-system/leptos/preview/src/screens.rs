@@ -218,6 +218,7 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 })}
                 <FeedbackComposer id="sample-feedback" intent=if scenario.starts_with("sharing") { FeedbackIntent::Sharing } else if scenario == "technique" { FeedbackIntent::Technique } else { FeedbackIntent::Impressions }
                     value=input on_input=move |e: TextInput| input.set(e.value) state=blocked
+                    tonal=scenario.starts_with("discussion-")
                     comments_closed=scenario == "sharing-closed"
                     on_submit=submit />
             }.into_any(),

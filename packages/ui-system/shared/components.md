@@ -77,7 +77,7 @@ control giữ chiều cao tối thiểu nhưng được cao thêm. Sáng/Tối: 
 `TextField` / `VinkTextField` thêm `variant: FieldVariant`:
 `ExternalLabel` (mặc định) và `FloatingTonal`. `FloatingTonal` là short field một dòng;
 PR-02 dùng `variant=FieldVariant::FloatingTonal` cho `draft-title` và giữ nguyên `id`, `name`,
-`max_length`, `input_ref`, `on_focus`, callback và value. `TextArea` luôn dùng nhãn ngoài;
+`max_length`, `input_ref`, `on_focus`, callback và value. `TextArea` Web thêm `variant` opt-in cho recipe multiline Nhận xét R3.1 (#134), tái dùng native field/composition owner; mặc định và CMP giữ nhãn ngoài;
 `SearchField` mặc định giữ anatomy nhãn ngoài. Search R3 (#90) bổ sung trên Web
 `SearchVariant::Bar`, optional `name`, `clear_href`, `clear_id`, `on_clear`, `input_ref`.
 Bar dùng cùng native `text_control`, một kính lúp `type=submit`, nhãn thật intrinsic và
@@ -213,7 +213,7 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `IconButton` | `icon`, `label` (bắt buộc), `state`, `pressed: bool?`; Web: `id?` | `on_press` ×1 | Tooltip hover-only |
 | `Link` | `href`, `variant: LinkVariant` (Inline/Standalone); Web: `target: LinkTarget` (SameTab/NewTab); CMP: `external`, `onNavigate` | Web: trình duyệt điều hướng, giữ modifier-click; CMP: `onNavigate(href)` | Router. URL ngoài allow-list hiện như chữ ở cả hai |
 | `FilterChip` | `label`, `selected`, `state`; Web: `id?` | `on_toggle(bool)` ×1 | Danh sách lọc, query |
-| `ToggleAction` | `id` (bắt buộc), `copy: ToggleCopy` (label, selected_name, count_unit, ghi chú, “Kiểm tra lại”), `value: ToggleValue`, `phase: TogglePhase`, `count: CountFact`, `blocked: Option<String>`, `icon: IconName?` | `on_set(desired: bool)` ×1 khi được phép; `on_recover(Reconcile)` | Request, order/ticket, session, đếm lại. CMP: `blocked` dùng `enabled = false`, tên + số trong `contentDescription` |
+| `ToggleAction` | `id` (bắt buộc), `copy: ToggleCopy` (label, selected_name, count_unit, ghi chú, “Kiểm tra lại”), `value: ToggleValue`, `phase: TogglePhase`, `count: CountFact`, `blocked: Option<String>`, `icon: IconName?`; Web: `blocked_description: Option<String>` opt-in tham chiếu lý do chung đang hiển thị, chỉ khi blocked/Idle (không đổi gate hoặc count) | `on_set(desired: bool)` ×1 khi được phép; `on_recover(Reconcile)` | Request, order/ticket, session, đếm lại. CMP: `blocked` dùng `enabled = false`, tên + số trong `contentDescription` |
 | `TextField` / `TextArea` | `label`, `value`, `help?`, `error?`, `required`, `mode: FieldMode` (Editable/ReadOnly/Disabled), `kind: TextKind` (Text/Email/Url/Tel), `rows` (TextArea); Web: `id`, `autocomplete?` | Web: `on_input(TextInput { value, composing })`, phát thêm khi `compositionend`; CMP: `onValueChange(TextFieldValue)` | Trim/normalize/parse, validate, save |
 | `SearchField` | như TextField + nút xóa khi có chữ | `on_input`; `on_submit(String)` (Web: Enter ngoài composition; CMP: hành động Search của IME) | Tìm kiếm, debounce |
 | `Checkbox` / `Switch` | `label`, `checked`, `help?`, `error?` (Checkbox); Web: `id`, `disabled`; CMP: `enabled` | `on_change(bool)` ×1 | Read-only (không có trên choice native) |

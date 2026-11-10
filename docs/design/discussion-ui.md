@@ -17,7 +17,8 @@ Screen #reader
     Region #root-list
       Region #root-card — root hoặc neo trung tính
         Region #root-body — tác giả thật, UTC, visibility, body escaped, own-remove
-        Region #reply-list — một mức thụt lề; flat chronological replies
+        Region #reply-group — một mặt tonal; heading Phản hồi một lần
+          Region #reply-list — flat chronological replies, không thụt thêm
           Region #reply-item — context → nội dung → action
         Region #reply-pagination — cursor thật, lỗi cục bộ
         Region #reply-composer — một composer/root, target đổi không mất chữ
@@ -32,14 +33,58 @@ work ID. Provider chưa có feedback intent, root total hay ranking: không dự
 tổng, selector “Mới nhất/Nổi bật” hoặc intent của tác giả. Sharing trong mẫu độc lập
 với comments mode ở cả hai renderer. `FeedbackIntent::Unspecified` không có nhãn riêng (tiêu đề `#feedback-heading` và nhãn textarea đã gọi tên form); các intent có tên giữ nhãn của chúng.
 
-Desktop/tablet giữ cột đọc; mobile 320/390 có một khoảng lệch `space-3` cho toàn bộ
-replies, không lồng card theo target. Action wrap và input co theo chiều rộng; không
+Desktop/tablet giữ cột đọc sau rail. Root/neo, nhóm Phản hồi và composer cùng hai biên;
+không thụt replies theo target. Action wrap và input co theo chiều rộng; không
 đặt chiều cao chữ cố định. Light/dark cùng cây, dùng semantic tokens hiện có. Không
 có overlay mới. PR #57 đã đưa canonical Google manifest/pilot vào base; tích hợp
 picker/caret/IME còn là phần chưa triển khai, API typed sticker/reaction chưa có.
 Unicode gõ trực tiếp vẫn giữ nguyên. Context trong danh sách dùng
 anchor có quyền; context ngoài trang chỉ hiện nhãn API cùng giải thích chưa có
 endpoint tra cứu đúng scope, không quét toàn bộ hội thoại hoặc đoán nội dung.
+
+
+## Nhận xét R3.1 / desktop R1.3 — #134, 10/11/2026
+
+Hướng C đã chọn từ [issue #134](https://github.com/loveoverflowcom/vink/issues/134),
+[LayoutSpec R3.1](https://drive.google.com/file/d/1S4xxyEpjtt4r6g9i8G8iJviWR_c_dQ8i/view)
+và [desktop R1.3](https://drive.google.com/file/d/1G18GyQHrmYdxplNd9kdsn05hKRjl5AW8/view).
+Phần này thay geometry lịch sử D2T-03; controller, API, authority và recovery vẫn giữ owner.
+
+```text
+#feedback-region — cùng measure Reader
+  #root-composer — một native TextArea, label thật trong tonal surface
+  #root-list
+    #thread-[root-id]
+      #root — nền trang, tên 600; ngày/context nhỏ; avatar bên phải
+      #reply-group — surface-container, heading Phản hồi
+        #reply-list — một tầng cũ → mới; 16px giữa replies
+        #reply-pagination — slot từ app, đúng cursor và lỗi
+      #branch-endorsement-reason — chỉ gộp khi facts đồng nhất
+      #reply-composer — cùng hai biên, surface-container-high, bo 28px
+        #context / #collapse — giữ chữ, focus về đúng trigger
+        #native-field / #send — nhãn nổi, một chủ focus, Gửi + mũi tên ngang
+      #delivery — ngoài chữ đang gõ, tonal bo 20px
+        Chưa rõ kết quả gửi → Dùng lại nội dung lần trước, giữ nháp.
+        Kiểm tra lần gửi — filled; Gửi bị chặn có mô tả lý do
+```
+
+Inset cân 16px ở 390/100, 12px ngang ở 320; giữ px khi chữ 200%.
+Khoảng vùng 12px, replies 16px, nhánh 32px. Root trên nền trang;
+không viền cây hoặc divider lặp. Native field không bị thay khi đang gõ.
+Nhãn `Chờ duyệt · Chưa công khai` ở đúng item/receipt; cảnh báo rời trang chỉ hiện khi có chữ.
+
+**CHOICE-01 B:** `DiscussionThread` sở hữu anatomy và slot footer DTO-free;
+`RootThreadView` giữ cursor/error/transport. **CHOICE-02 A:** `ToggleAction` có
+`blocked_description` opt-in; từng target giữ count/value/gate riêng và tham chiếu
+lý do chung. Chỉ gộp ≥2 target công khai, mọi facts đã có, `Idle`, cùng enum
+`SignedOut` hoặc `Unavailable`; mixed, thiếu facts, sending/uncertain/failed giữ note
+ở target. Own-pending không có đích endorsement. Không suy từ copy hoặc cộng count.
+
+Pen Flight chưa có trong registry ở base #138; tiếp tục do #73 sở hữu.
+#134 dùng lại slot hiện có, không thêm glyph tạm hay thay policy. #128 tiếp tục
+sở hữu các delta visual khác; #129 giữ input/clipboard/recovery chưa triển khai;
+#130 CMP, #131/#132 nav nằm ngoài lát này.
+Bằng chứng, điều kiện render và phần chưa chạy ở [evidence](../development/discussion-ui-evidence.md).
 
 ## Ma trận tương tác và trạng thái
 

@@ -146,7 +146,7 @@ impl DiscussionController {
             return Some("Đang gửi nhận xét…");
         }
         if draft.is_some_and(|d| matches!(d.delivery, Delivery::Uncertain(_))) {
-            return Some("Chưa rõ kết quả. Đối soát lần gửi trước trước khi gửi tiếp.");
+            return Some("Kiểm tra lần gửi trước khi gửi tiếp.");
         }
         if !self.settings.comments_open {
             return Some("Tác giả đã tắt bình luận cho bài viết này. Bản đang soạn được giữ lại.");
@@ -243,7 +243,7 @@ impl DiscussionController {
                 }
                 draft.receipt = Some(
                     match receipt.status.as_str() {
-                        "pending" => "Đã nhận · Đang chờ duyệt. Nhận xét chưa công khai.",
+                        "pending" => "Chờ duyệt · Chưa công khai",
                         "approved" => {
                             "Lần gửi này đã được duyệt. Tải lại để xem trạng thái hiện tại."
                         }
@@ -383,7 +383,7 @@ mod tests {
         assert!(c.complete(&sent, ack()));
         assert_eq!(c.draft(&key).body, "Chữ mới");
         assert_eq!(c.draft(&key).target.unwrap().id, "reply-b");
-        assert!(c.draft(&key).receipt.unwrap().contains("chưa công khai"));
+        assert!(c.draft(&key).receipt.unwrap().contains("Chưa công khai"));
         assert!(!c.complete(&sent, ack()));
     }
     #[test]

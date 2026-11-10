@@ -294,24 +294,26 @@ fn RootThreadView(
             });
         if let Some(target) = target {
             controller.update(|c| c.reply(root.get_value(), target));
+            #[cfg(feature = "hydrate")]
+            focus_discussion_control(format!("reply-composer-{}", root.get_value()));
         }
     });
     let on_remove = Callback::new(move |id: String| remove_own(state, controller, lve, id));
     view! {
         <section class="vk-discussion-root" aria-label="Nhánh nhận xét">
-            <DiscussionThread facts on_reply on_remove action_state=write_state endorsements=lve.map(Endorsements::comments) />
+            <DiscussionThread facts on_reply on_remove action_state=write_state endorsements=lve.map(Endorsements::comments)
+                has_more_replies=Signal::derive(move || next_reply_cursor(&state.read(), &root.get_value()).is_some())
+                reply_footer=std::sync::Arc::new(move || view! {
+            <div class="vk-discussion-pagination" hidden=move || next_reply_cursor(&state.read(), &root.get_value()).is_none() && !state.read().reply_errors.contains_key(&root.get_value())>
             <p role="status">{move || state.read().reply_errors.get(&root.get_value()).cloned().unwrap_or_default()}</p>
             <Show when=move || next_reply_cursor(&state.read(), &root.get_value()).is_some()>
                 <Button variant=ButtonVariant::Text state=Signal::derive(move || if state.read().reply_loading.get(&root.get_value()) == Some(&true) { ActionState::pending("Đang tải phản hồi…") } else { ActionState::Enabled })
                     on_press=move |_| read_replies(state, controller, lve, root.get_value())>"Xem thêm phản hồi"</Button>
             </Show>
+            </div>
+                }.into_any()) />
             <Show when=move || controller.read().draft(&key.get_value()).open>
                 <div class="vk-discussion-reply-composer">
-                    <p>{move || {
-                        let draft = controller.read().draft(&key.get_value());
-                        draft.target.map(|target| if draft.target_available { format!("Đang trả lời @{}", target.label) } else { target.label }).unwrap_or_default()
-                    }}</p>
-                    <Button variant=ButtonVariant::Text on_press=move |_| controller.update(|c| c.close_reply(&key.get_value()))>"Thu ô trả lời · Giữ chữ"</Button>
                     <DiscussionComposer key=key.get_value() controller state refresh />
                 </div>
             </Show>
@@ -354,21 +356,56 @@ fn DiscussionComposer(
     });
     view! {
         <div class="vk-discussion-composer">
-            <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action
+            <FeedbackComposer id intent=FeedbackIntent::Unspecified value state=action tonal=true
                 comments_closed=Signal::derive(move || !state.read().unavailable && !controller.read().settings.comments_open)
                 on_input=move |input: TextInput| controller.update(|c| c.edit(&key.get_value(), input.value, input.composing))
-                on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } />
-            <p class="vk-muted">"Bản đang soạn chỉ được giữ trong trang này; rời trang có thể mất chữ."</p>
-            <p role="status" data-testid="discussion-receipt">{move || controller.read().draft(&key.get_value()).receipt.unwrap_or_default()}</p>
+                on_submit=move |_| { if !blocked { submit(controller, state, key.get_value(), refresh, false); } } >
+                {matches!(key.get_value(), ComposerKey::Replies(_)).then(|| view! {
+                    <div class="vk-discussion-composer-heading">
+                        <p>{move || {
+                            let draft = controller.read().draft(&key.get_value());
+                            draft.target.map(|target| if draft.target_available { format!("Đang trả lời @{}", target.label) } else { target.label }).unwrap_or_default()
+                        }}</p>
+                        <Button variant=ButtonVariant::Text on_press=move |_| {
+                            #[cfg(feature = "hydrate")]
+                            let target = controller.read().draft(&key.get_value()).target;
+                            controller.update(|c| c.close_reply(&key.get_value()));
+                            #[cfg(feature = "hydrate")]
+                            if let Some(target) = target { focus_discussion_control(format!("reply-to-{}", target.id)); }
+                        }>"Thu ô trả lời · Giữ chữ"</Button>
+                    </div>
+                })}
+            </FeedbackComposer>
+            <div class="vk-discussion-delivery" hidden=move || controller.read().draft(&key.get_value()).receipt.is_none() && !matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))>
+            <p role="status" data-testid="discussion-receipt">{move || {
+                let draft = controller.read().draft(&key.get_value());
+                if matches!(draft.delivery, Delivery::Uncertain(_)) { "Chưa rõ kết quả gửi".into() } else { draft.receipt.unwrap_or_default() }
+            }}</p>
             <Show when=move || matches!(controller.read().draft(&key.get_value()).delivery, Delivery::Uncertain(_))>
-                <Button variant=ButtonVariant::Tonal state=Signal::derive(move || {
+                <p>"Dùng lại nội dung lần trước, giữ nháp."</p>
+                <Button variant=ButtonVariant::Filled state=Signal::derive(move || {
                     if !controller.read().write_ready() { ActionState::disabled("Máy chủ chưa xác nhận phiên đăng nhập; tải lại để đối chiếu. Chữ vẫn được giữ.") }
                     else if state.read().loading || state.read().mutation_busy || state.read().mutation_needs_refresh { ActionState::disabled("Chờ tải lại nhận xét trước khi đối soát.") }
                     else { ActionState::Enabled }
-                }) on_press=move |_| submit(controller, state, key.get_value(), refresh, true)>"Đối soát lần gửi trước"</Button>
+                }) on_press=move |_| submit(controller, state, key.get_value(), refresh, true)>"Kiểm tra lần gửi"</Button>
             </Show>
+            </div>
         </div>
     }
+}
+
+#[cfg(feature = "hydrate")]
+fn focus_discussion_control(id: String) {
+    use wasm_bindgen::JsCast;
+    request_animation_frame(move || {
+        if let Some(control) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id(&id))
+            .and_then(|e| e.dyn_into::<web_sys::HtmlElement>().ok())
+        {
+            let _ = control.focus();
+        }
+    });
 }
 
 fn next_reply_cursor(state: &ViewState, root: &str) -> Option<String> {
@@ -839,13 +876,7 @@ mod tests {
         ));
         let retained = controller.draft(&key);
         assert!(retained.body.is_empty());
-        assert!(
-            retained
-                .receipt
-                .as_deref()
-                .unwrap()
-                .contains("Đang chờ duyệt")
-        );
+        assert!(retained.receipt.as_deref().unwrap().contains("Chờ duyệt"));
         assert!(should_recover_reply(&retained));
         assert!(!reply_needs_editor(&retained));
         controller.edit(&key, "Một lần gửi khác".into(), false);
