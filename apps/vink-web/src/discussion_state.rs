@@ -57,6 +57,8 @@ pub struct DiscussionController {
     pub scope: Scope,
     pub settings: CommentsSettings,
     pub drafts: BTreeMap<ComposerKey, Draft>,
+    /// Whether this deployment offers sign-in; only chooses the guest's reason text.
+    pub sign_in_open: bool,
     session_invalid: bool,
     sequence: u64,
     edits: BTreeMap<ComposerKey, u64>,
@@ -68,6 +70,7 @@ impl DiscussionController {
             scope,
             settings,
             drafts: BTreeMap::new(),
+            sign_in_open: false,
             session_invalid: false,
             sequence: 0,
             edits: BTreeMap::new(),
@@ -81,6 +84,28 @@ impl DiscussionController {
             self.drafts.clear();
             self.edits.clear();
             self.session_invalid = false;
+        }
+    }
+
+    /// The same person on the same work under another session: signed in after composing as a
+    /// guest, lost the session, or signed back in. Typed text and reply context stay on the
+    /// page. What belonged to the earlier session does not: a command in flight or uncertain
+    /// is no longer tracked (its late answer cannot settle, and it is never replayed under
+    /// another session) and receipts are dropped.
+    pub fn change_session(&mut self, session: Option<String>) {
+        if self.scope.session == session {
+            return;
+        }
+        self.scope.session = session;
+        self.session_invalid = false;
+        for draft in self.drafts.values_mut() {
+            draft.receipt = match std::mem::take(&mut draft.delivery) {
+                Delivery::Editing => None,
+                Delivery::Sending(_) | Delivery::Uncertain(_) => Some(
+                    "Phiên đăng nhập đã thay đổi trước khi lần gửi trước được xác nhận. Tải lại nhận xét để kiểm tra trước khi gửi lại; chữ vẫn được giữ."
+                        .into(),
+                ),
+            };
         }
     }
 
@@ -157,7 +182,11 @@ impl DiscussionController {
             );
         }
         if !self.write_ready() {
-            return Some("Vink chưa mở đăng nhập; chưa thể gửi nhận xét. Bạn có thể soạn tại đây.");
+            return Some(if self.sign_in_open {
+                "Đăng nhập ở mục Tôi để gửi nhận xét. Chữ bạn soạn tại đây được giữ lại."
+            } else {
+                "Vink chưa mở đăng nhập; chưa thể gửi nhận xét. Bạn có thể soạn tại đây."
+            });
         }
         if draft.is_some_and(|d| d.target.is_some() && !d.target_available) {
             return Some(
@@ -500,6 +529,68 @@ mod tests {
                 .contains("Tên bị thu hồi")
         );
         assert!(c.begin(&key, "no-replay-stale-target".into()).is_none());
+    }
+
+    #[test]
+    fn auth_web_session_change_keeps_typed_text_and_fences_the_earlier_session() {
+        let mut c = DiscussionController::new(
+            Scope {
+                work_id: "w".into(),
+                session: None,
+            },
+            CommentsSettings {
+                comments_open: true,
+                generation: 1,
+            },
+        );
+        // Composed as a guest, then signed in: the text is still there and can be sent.
+        c.edit(
+            &ComposerKey::Root,
+            "Chữ soạn khi chưa đăng nhập".into(),
+            false,
+        );
+        assert!(
+            c.reason(&ComposerKey::Root)
+                .unwrap()
+                .contains("Vink chưa mở")
+        );
+        c.sign_in_open = true;
+        assert!(
+            c.reason(&ComposerKey::Root)
+                .unwrap()
+                .contains("Đăng nhập ở mục Tôi")
+        );
+        c.change_session(Some("a/0".into()));
+        assert_eq!(
+            c.draft(&ComposerKey::Root).body,
+            "Chữ soạn khi chưa đăng nhập"
+        );
+        let sent = c.begin(&ComposerKey::Root, "key-1".into()).expect("ready");
+        // The session ends while the command is in flight: text stays, the answer is dropped.
+        c.change_session(None);
+        let draft = c.draft(&ComposerKey::Root);
+        assert_eq!(draft.body, "Chữ soạn khi chưa đăng nhập");
+        assert_eq!(draft.delivery, Delivery::Editing);
+        assert!(
+            draft
+                .receipt
+                .unwrap()
+                .contains("Phiên đăng nhập đã thay đổi")
+        );
+        assert!(!c.complete(&sent, Err(ApiError::Unauthenticated)));
+        assert!(c.reconcile(&ComposerKey::Root).is_none());
+        // Signed back in: a new command, never a replay of the earlier session's key.
+        c.change_session(Some("a/2".into()));
+        let again = c
+            .begin(&ComposerKey::Root, "key-2".into())
+            .expect("ready again");
+        assert_ne!(again.scope, sent.scope);
+        // Another actor is a different scope: nothing typed before reaches it.
+        c.change_scope(Scope {
+            work_id: "w".into(),
+            session: Some("b/3".into()),
+        });
+        assert_eq!(c.draft(&ComposerKey::Root).body, "");
     }
 
     #[test]

@@ -37,7 +37,7 @@ web-sys = { version = "0.3.106", optional = true, features = [
     "MouseEvent", "KeyboardEvent", "AddEventListenerOptions", "History", "Url", "Blob",
     "BlobPropertyBag", "FocusOptions", "Storage", "DomRect", "CssStyleDeclaration",
     "ResizeObserver", "NodeList", "Crypto", "AbortController", "AbortSignal",
-    "Performance", "VisibilityState", "RequestCache",
+    "Performance", "VisibilityState", "RequestCache", "BroadcastChannel", "MessageEvent",
 ] }
 js-sys = { version = "0.3.106", optional = true }
 wasm-bindgen-futures = { version = "0.4.79", optional = true }

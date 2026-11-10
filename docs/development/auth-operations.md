@@ -85,7 +85,7 @@ cho phép client tự chọn bucket — khi đó giới hạn theo mạng mất 
 `501 authority_not_configured`; phiên đã có vẫn được xác minh và đăng xuất được. Chỉ đặt
 `enabled` khi đủ các gate ở [ADR §9](../architecture/auth-authority.md#9-blocker-trước-khi-accepted),
 tối thiểu: chủ sản phẩm chấp nhận UX mã email, gửi thật qua Resend thành công (§4), UI đăng nhập
-có qualification trình duyệt, review bảo mật độc lập và người chịu trách nhiệm vận hành auth.
+([Auth Web](auth-web.md)) có qualification trình duyệt trên HTTPS/domain thật, review bảo mật độc lập và người chịu trách nhiệm vận hành auth.
 
 ## 4. Kiểm chứng gửi thật (trước khi bật)
 

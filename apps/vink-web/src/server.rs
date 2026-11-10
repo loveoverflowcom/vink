@@ -45,3 +45,8 @@ pub struct SiteOrigin(pub String);
 /// Not a credential, principal ID, production session or permission.
 #[derive(Debug, Clone)]
 pub struct LocalDiscussionFixture(pub String);
+
+/// Whether this deployment may start new sessions (an Identity client and `VINK_AUTH_SIGN_IN`).
+/// A rendering hint only: the sign-in routes decide again on every request.
+#[derive(Debug, Clone, Copy)]
+pub struct SignInOpen(pub bool);

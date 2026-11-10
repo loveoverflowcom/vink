@@ -129,9 +129,15 @@ network in `auth_rate_limits` (`X-Forwarded-For` only from `VINK_TRUSTED_PROXIES
 which adds per-address, per-account and global ceilings; every protected App write (drafts, tags,
 comments, comments mode, moderation, endorsement) takes the shared standing fence
 (`principal::require_active`) at commit. Production sign-in stays locked (`VINK_AUTH_SIGN_IN`
-defaults to `disabled` in production): no real Resend delivery, sign-in UI, browser/native
-qualification, independent security review or auth owner exists, so production authentication is
-NOT accepted. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
+defaults to `disabled` in production). Auth Web adds the Web sign-in UI in the “Tôi” account region
+(email → code → first pen name → sign out; typed errors, `Retry-After`, `204` logout shown as
+unconfirmed unless the server confirms) and one tab-level session owner (`apps/vink-web/src/session.rs`
+pure reducers, `account.rs` reactive `Session`: server-confirmed standing, principal, generation
+scope; nothing in browser storage or SSR) that the avatar, desk, editor, discussion and endorsement
+read; typed text stays for the same person and never crosses accounts. `verify web` runs it against a
+real `vink-identity` with the local outbox on loopback ([Auth Web](docs/development/auth-web.md)).
+No delivery to a real mailbox from a Vink domain, HTTPS/multi-browser/native qualification,
+independent security review or auth owner exists, so production authentication is NOT accepted. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
 paging), application use cases, a PostgreSQL adapter/migration with real-database tests, HTTP API

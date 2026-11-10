@@ -11,7 +11,7 @@ use serde::de::DeserializeOwned;
 use vink_web::api::LoadError;
 use vink_web::contract as web;
 use vink_web::server::{
-    LocalDiscussionFixture, PortFuture, PublicReads, SharedPublicReads, SiteOrigin,
+    LocalDiscussionFixture, PortFuture, PublicReads, SharedPublicReads, SignInOpen, SiteOrigin,
 };
 use vink_web::{App, shell};
 
@@ -134,9 +134,11 @@ pub fn routes(state: &AppState) -> Router<AppState> {
     });
     let origin = SiteOrigin(state.public_origin.to_string());
     let fixture = state.identity.local_discussion_fixture_scope();
+    let sign_in = SignInOpen(state.sign_in.is_some() && state.sign_in_enabled);
     let context = move || {
         provide_context(reads.clone());
         provide_context(origin.clone());
+        provide_context(sign_in);
         if let Some(scope) = &fixture {
             provide_context(LocalDiscussionFixture(scope.clone()));
         }

@@ -14,6 +14,7 @@ import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-syste
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
+import { authWeb } from './auth-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -3594,6 +3595,7 @@ try {
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
+  else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await publicReading(page); }

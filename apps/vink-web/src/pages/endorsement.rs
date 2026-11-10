@@ -40,6 +40,33 @@ impl Endorsements {
             ),
         };
         provide_context(this);
+        #[cfg(feature = "hydrate")]
+        if crate::api::local_discussion_fixture_scope().is_none() {
+            // The tab's session owner decides who is acting. Another session starts empty
+            // (`change_scope`): counts and own states are read again, nothing is carried over.
+            let session = crate::account::Session::current();
+            Effect::new(move |previous: Option<Option<String>>| {
+                let scope = session.scope.get();
+                if previous.unwrap_or_default() != scope {
+                    let targets = this.controller.try_update(|c| {
+                        let targets = c.tracked();
+                        let work_id = c.scope().work_id.clone();
+                        c.change_scope(Scope {
+                            work_id,
+                            session: scope.clone(),
+                        });
+                        for target in &targets {
+                            c.track(target.clone());
+                        }
+                        targets
+                    });
+                    if let Some(targets) = targets.filter(|targets| !targets.is_empty()) {
+                        this.read(targets, true);
+                    }
+                }
+                scope
+            });
+        }
         this
     }
 

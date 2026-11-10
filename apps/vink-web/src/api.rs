@@ -31,9 +31,87 @@ pub fn local_discussion_fixture_scope() -> Option<String> {
     }
 }
 
+/// Whether the server said this deployment may start new sessions. A hint for which controls to
+/// render; each sign-in request is still decided by the server (`501` when closed).
+pub fn sign_in_open() -> bool {
+    #[cfg(feature = "ssr")]
+    {
+        use_context::<crate::server::SignInOpen>().is_some_and(|open| open.0)
+    }
+    #[cfg(all(feature = "hydrate", not(feature = "ssr")))]
+    {
+        web_sys::window()
+            .and_then(|window| window.document())
+            .and_then(|document| {
+                document
+                    .query_selector("meta[name='vink-sign-in']")
+                    .ok()
+                    .flatten()
+            })
+            .is_some()
+    }
+    #[cfg(not(any(feature = "ssr", feature = "hydrate")))]
+    {
+        false
+    }
+}
+
 #[cfg(feature = "hydrate")]
 pub(crate) async fn current_account() -> Result<crate::contract::CurrentAccount, ApiError> {
     http::get("/api/v1/auth/session/account").await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn session_state() -> Result<crate::contract::SessionState, ApiError> {
+    http::get("/api/v1/auth/session").await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn request_sign_in_code(
+    email: String,
+) -> Result<crate::contract::ChallengeSent, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        "/api/v1/auth/sign-in/challenges",
+        Some(&crate::contract::StartSignInRequest { email }),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn complete_sign_in(
+    code: String,
+) -> Result<crate::contract::SessionState, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        "/api/v1/auth/sign-in/complete",
+        Some(&crate::contract::CompleteSignInRequest { code }),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn provision_principal(
+    pen_name: String,
+) -> Result<crate::contract::ProvisionedPrincipal, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        "/api/v1/auth/principal",
+        Some(&crate::contract::ProvisionPrincipalRequest { pen_name }),
+    )
+    .await
+}
+
+/// `DELETE /auth/session` answers `204` only when the session is revoked (or there was none).
+#[cfg(feature = "hydrate")]
+pub(crate) async fn sign_out() -> Result<(), crate::session::AuthError> {
+    http::auth::<(), ()>("DELETE", "/api/v1/auth/session", None).await
+}
+
+/// Called when a private request is answered `401`: the session owner re-reads the session.
+#[cfg(feature = "hydrate")]
+pub(crate) fn on_unauthenticated(hook: impl Fn() + 'static) {
+    http::UNAUTHENTICATED.with(|slot| *slot.borrow_mut() = Some(Box::new(hook)));
 }
 
 /// The anonymous discussion page and the public endorsement summaries (LVE #73) of its public
@@ -513,6 +591,7 @@ mod http {
     use serde::de::DeserializeOwned;
 
     use crate::contract::{ApiError, ErrorEnvelope};
+    use crate::session::AuthError;
     use wasm_bindgen::{JsCast, closure::Closure};
 
     /// One timer per physical HTTP attempt. Dropping the future clears its timer and aborts
@@ -552,12 +631,71 @@ mod http {
         }
     }
 
+    thread_local! {
+        pub(super) static UNAUTHENTICATED: std::cell::RefCell<Option<Box<dyn Fn()>>> =
+            const { std::cell::RefCell::new(None) };
+    }
+
+    fn is_auth(path: &str) -> bool {
+        path.starts_with("/api/v1/auth/")
+    }
+
     /// These calls end after 30 s. For writes, a lost answer is then uncertain.
     fn bounded(path: &str) -> bool {
         path.contains("/discussion")
             || path.contains("/endorsement")
             || path.contains("/tags")
-            || path == "/api/v1/auth/session/account"
+            || is_auth(path)
+    }
+
+    fn request(
+        method: &str,
+        path: &str,
+        signal: Option<&web_sys::AbortSignal>,
+    ) -> Option<gloo_net::http::RequestBuilder> {
+        Some(
+            match method {
+                "GET" => Request::get(path),
+                "POST" => Request::post(path),
+                "PUT" => Request::put(path),
+                "DELETE" => Request::delete(path),
+                _ => return None,
+            }
+            .abort_signal(signal)
+            .header("accept", "application/json"),
+        )
+    }
+
+    /// One `/auth` request. Errors keep their kind and the server's `Retry-After`; an empty
+    /// success body (`204`) is a unit answer.
+    pub async fn auth<B: Serialize, T: DeserializeOwned>(
+        method: &str,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T, AuthError> {
+        let unexpected = AuthError::Unexpected { status: 0 };
+        let deadline = Deadline::new().map_err(|_| AuthError::Network)?;
+        let signal = deadline.controller.signal();
+        let builder = request(method, path, Some(&signal)).ok_or(unexpected.clone())?;
+        let request = match body {
+            Some(body) => builder.json(body),
+            None => builder.build(),
+        }
+        .map_err(|_| unexpected)?;
+        let response = request.send().await.map_err(|_| AuthError::Network)?;
+        let status = response.status();
+        if (200..300).contains(&status) {
+            let text = response.text().await.map_err(|_| AuthError::Network)?;
+            return crate::contract::decode_success(&text).ok_or(AuthError::Unexpected { status });
+        }
+        let retry_after = response.headers().get("retry-after");
+        let body = response.json::<ErrorEnvelope>().await.ok().map(|e| e.error);
+        Err(AuthError::from_response(
+            status,
+            body.as_ref().map(|b| b.code.as_str()),
+            body.as_ref().and_then(|b| b.field.as_deref()),
+            retry_after.as_deref(),
+        ))
     }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {
@@ -571,7 +709,7 @@ mod http {
             .send()
             .await
             .map_err(|_| ApiError::Network)?;
-        decode(response).await
+        decode(path, response).await
     }
 
     pub async fn send<B: Serialize, T: DeserializeOwned>(
@@ -583,14 +721,9 @@ mod http {
         let signal = deadline
             .as_ref()
             .map(|deadline| deadline.controller.signal());
-        let builder = match method {
-            "POST" => Request::post(path),
-            "PUT" => Request::put(path),
-            "DELETE" => Request::delete(path),
-            _ => return Err(ApiError::Unexpected { status: 0 }),
-        }
-        .abort_signal(signal.as_ref())
-        .header("accept", "application/json");
+        let builder = request(method, path, signal.as_ref())
+            .filter(|_| method != "GET")
+            .ok_or(ApiError::Unexpected { status: 0 })?;
         let request = match body {
             Some(body) => builder
                 .json(body)
@@ -600,7 +733,7 @@ mod http {
                 .map_err(|_| ApiError::Unexpected { status: 0 })?,
         };
         let response = request.send().await.map_err(|_| ApiError::Network)?;
-        decode(response).await
+        decode(path, response).await
     }
 
     /// A public read. `no-cache` makes the browser revalidate any stored representation with
@@ -644,13 +777,21 @@ mod http {
         temporary
     }
 
-    async fn decode<T: DeserializeOwned>(response: Response) -> Result<T, ApiError> {
+    /// An empty success body (`204`) decodes as a unit answer instead of failing the JSON parse.
+    async fn decode<T: DeserializeOwned>(path: &str, response: Response) -> Result<T, ApiError> {
         let status = response.status();
         if (200..300).contains(&status) {
-            return response
-                .json::<T>()
-                .await
-                .map_err(|_| ApiError::Unexpected { status });
+            let text = response.text().await.map_err(|_| ApiError::Network)?;
+            return crate::contract::decode_success(&text).ok_or(ApiError::Unexpected { status });
+        }
+        // A private request the server no longer recognizes: the session owner asks again, so
+        // every view learns it from one place. Session reads themselves never loop back here.
+        if status == 401 && !is_auth(path) {
+            UNAUTHENTICATED.with(|slot| {
+                if let Some(hook) = slot.borrow().as_ref() {
+                    hook();
+                }
+            });
         }
         let envelope = response.json::<ErrorEnvelope>().await.ok();
         Err(ApiError::from_response(status, envelope))

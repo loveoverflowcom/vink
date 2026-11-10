@@ -453,9 +453,65 @@ pub struct ErrorBody {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct CurrentAccount {
+pub struct CurrentAccount {
     pub principal_id: String,
     pub display_name: String,
+}
+
+/// `GET /auth/session` and `POST /auth/sign-in/complete`: the server's decision about the
+/// presented session. Never a credential.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SessionState {
+    pub state: SessionStateKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub principal_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionStateKind {
+    Anonymous,
+    NeedsPrincipal,
+    Suspended,
+    Active,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StartSignInRequest {
+    pub email: String,
+}
+
+/// `202` of `POST /auth/sign-in/challenges`. The challenge handle stays in an HttpOnly cookie.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChallengeSent {
+    /// RFC 3339.
+    pub expires_at: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CompleteSignInRequest {
+    pub code: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProvisionPrincipalRequest {
+    pub pen_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProvisionedPrincipal {
+    pub principal_id: String,
+    pub created: bool,
+}
+
+/// A success body. `204 No Content` (and any empty body) decodes as JSON `null`, so `()` is a
+/// lawful answer and a type that needs fields is still refused.
+pub fn decode_success<T: serde::de::DeserializeOwned>(text: &str) -> Option<T> {
+    if text.trim().is_empty() {
+        serde_json::from_value(serde_json::Value::Null).ok()
+    } else {
+        serde_json::from_str(text).ok()
+    }
 }
 
 /// Outcome classes of the API, as this client needs to distinguish them.
@@ -626,6 +682,27 @@ mod tests {
     fn decodes_the_current_account_without_credentials() {
         let account: CurrentAccount = round_trip("auth.session.account.json");
         assert_eq!(account.display_name, "An Nhiên");
+    }
+
+    #[test]
+    fn decodes_auth_fixtures_and_an_empty_success_body() {
+        let needs: SessionState = round_trip("auth.session.needs_principal.json");
+        assert_eq!(needs.state, SessionStateKind::NeedsPrincipal);
+        assert!(needs.principal_id.is_none());
+        let active: SessionState = round_trip("auth.session.active.json");
+        assert_eq!(active.state, SessionStateKind::Active);
+        assert!(active.principal_id.is_some());
+        let _: StartSignInRequest = round_trip("auth.challenge.request.json");
+        let sent: ChallengeSent = round_trip("auth.challenge.response.json");
+        assert_eq!(sent.expires_at, "2026-11-07T10:10:00Z");
+        let _: CompleteSignInRequest = round_trip("auth.complete.request.json");
+        let _: ProvisionPrincipalRequest = round_trip("auth.principal.request.json");
+        let created: ProvisionedPrincipal = round_trip("auth.principal.response.json");
+        assert!(created.created);
+        // Logout answers `204` without a body: a unit success, never a parse failure.
+        assert_eq!(decode_success::<()>(""), Some(()));
+        assert_eq!(decode_success::<SessionState>(""), None);
+        assert_eq!(decode_success::<()>("{\"state\":\"active\"}"), None);
     }
 
     #[test]

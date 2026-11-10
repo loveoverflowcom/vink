@@ -7,7 +7,8 @@ cục bộ và đổi D-05 từ “Cần spike + lựa chọn” sang “Đề x
 §9”. Từ 10/11/2026 backend có **đường production**: thư qua outbox bền + SMTP (Resend), giới hạn
 lạm dụng nhiều process, fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ, retention và
 rollback (§11). **Đăng nhập production vẫn bị khóa** (`VINK_AUTH_SIGN_IN` mặc định `disabled`):
-chưa gửi thật qua Resend, chưa có UI đăng nhập + qualification trình duyệt/mobile, chưa review bảo
+chưa có thư tới hộp thư thật từ domain Vink, UI đăng nhập Web mới được kiểm chứng trong môi trường
+thử ([Auth Web](../development/auth-web.md); chưa HTTPS/nhiều trình duyệt/mobile), chưa review bảo
 mật độc lập, chưa có người chịu trách nhiệm vận hành auth.
 
 Bằng chứng chạy và ma trận kịch bản: [auth-authority-s03-evidence](../development/auth-authority-s03-evidence.md).
@@ -221,8 +222,9 @@ Trạng thái sau §11 (10/11/2026): **đã xử lý trong code** = có implemen
    cùng transaction, worker gửi và thử lại) vì lời gọi contract có hạn 2 s và client App bỏ cuộc sau
    1,5 s — spike ghi file đồng bộ và đã thấy một lần vượt hạn khi đĩa bận (xem bằng chứng); rate
    limit biên, retention, thông báo đổi email, fence đình chỉ tại commit; giữ contract v1.
-2. **Phiên + API được bảo vệ:** UI đăng nhập/đăng xuất Leptos, `GET /auth/session` trong shell, đổi
-   bút danh, thử trình duyệt (cookie, Back/reload, hai tab).
+2. **Phiên + API được bảo vệ:** UI đăng nhập/đăng xuất Leptos, `GET /auth/session` trong shell, thử
+   trình duyệt (cookie, reload, hai tab) — **đã có cho Web trong môi trường thử**
+   ([Auth Web](../development/auth-web.md)). Còn: đổi bút danh, HTTPS/domain thật, trình duyệt khác.
 3. **Native/CMP:** carrier Bearer cho app, lưu trữ an toàn, qualification Android/iOS.
 
 ## 11. Đường production (10/11/2026)

@@ -242,6 +242,11 @@ impl EndorsementController {
         self.scope.session.is_some() && !self.session_invalid
     }
 
+    /// Every target the page shows, to track and read again after a scope change.
+    pub fn tracked(&self) -> Vec<TargetKey> {
+        self.targets.keys().cloned().collect()
+    }
+
     pub fn track(&mut self, target: TargetKey) {
         self.targets.entry(target).or_default();
     }

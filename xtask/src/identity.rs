@@ -188,7 +188,7 @@ fn verify_body(credential: &str) -> String {
     format!(r#"{{"credential":"{credential}"}}"#)
 }
 
-fn sql(url: &str, statement: &str) -> Result<i64, String> {
+pub(crate) fn sql(url: &str, statement: &str) -> Result<i64, String> {
     let url = url.to_string();
     let statement = statement.to_string();
     tokio::runtime::Builder::new_current_thread()
