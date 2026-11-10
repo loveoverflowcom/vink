@@ -12,8 +12,9 @@ use super::contract::{
     CommentEndorsementRequest, CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft,
     DraftCard, DraftList, DraftTags, EndorsementQuery, EndorsementSummaryList,
     EndorsementWriteResponse, ModerationDecisionRequest, ModerationDecisionResponse,
-    ModerationQueueResponse, OwnEndorsementList, PageQuery, Publication, RemovedCommentResponse,
-    ReplyList, SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
+    ModerationQueueResponse, OwnCommentList, OwnCommentsParams, OwnEndorsementList, PageQuery,
+    PublicDiscussionPage, PublicReplyList, Publication, RemovedCommentResponse, ReplyList,
+    SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
     SubmitCommentRequest, SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView,
     TagSuggestionList, TagSuggestionQuery, WorkEndorsementRequest, WorkList,
 };
@@ -44,9 +45,20 @@ pub fn routes(state: AppState) -> Router<AppState> {
             HeaderValue::from_static("no-store"),
         ));
     // Vink-owned discussion (D2T-02b). Responses carry viewer-specific state (own pending
-    // comments, `can_remove`), so none may enter a shared cache.
+    // comments, `can_remove`), so none may enter a shared cache. The public projection (#120
+    // DISC-02/03) resolves no actor, but has no validator yet: `no-store` like the rest, errors
+    // included, so a 404/503 or an earlier body never outlives recovery or revocation.
     let discussion = Router::new()
         .route("/works/{work_id}/discussion", get(get_discussion))
+        .route(
+            "/works/{work_id}/discussion/public",
+            get(get_public_discussion),
+        )
+        .route(
+            "/works/{work_id}/discussion/public/roots/{root_id}/replies",
+            get(get_public_replies),
+        )
+        .route("/works/{work_id}/discussion/me", get(get_own_comments))
         .route(
             "/works/{work_id}/discussion/roots/{root_id}/replies",
             get(get_replies),
@@ -318,6 +330,57 @@ async fn get_discussion(
         .discussion(viewer, work_id, query.cursor.as_deref(), query.limit)
         .await?;
     Ok(Json(DiscussionPage::new(work_id, &page, viewer)))
+}
+
+/// No `Actor`: an Identity outage or a stale session cookie never hides the public discussion.
+async fn get_public_discussion(
+    State(state): State<AppState>,
+    Path(raw): Path<String>,
+    query: Result<Query<PageQuery>, QueryRejection>,
+) -> Result<Json<PublicDiscussionPage>, ApiError> {
+    let work_id = work_id(&raw)?;
+    let query = page_query(query)?;
+    let page = state
+        .vink
+        .public_discussion(work_id, query.cursor.as_deref(), query.limit)
+        .await?;
+    Ok(Json(PublicDiscussionPage::new(work_id, &page)))
+}
+
+async fn get_public_replies(
+    State(state): State<AppState>,
+    Path((raw_work, raw_root)): Path<(String, String)>,
+    query: Result<Query<PageQuery>, QueryRejection>,
+) -> Result<Json<PublicReplyList>, ApiError> {
+    let work_id = work_id(&raw_work)?;
+    let root_id = comment_id(&raw_root)?;
+    let query = page_query(query)?;
+    let page = state
+        .vink
+        .public_replies(work_id, root_id, query.cursor.as_deref(), query.limit)
+        .await?;
+    Ok(Json(PublicReplyList::from(&page)))
+}
+
+/// The viewer's private overlay: `401` for guests, `503` while Identity cannot answer, never an
+/// empty list in place of either.
+async fn get_own_comments(
+    State(state): State<AppState>,
+    Actor(viewer): Actor,
+    Path(raw): Path<String>,
+    query: Result<Query<OwnCommentsParams>, QueryRejection>,
+) -> Result<Json<OwnCommentList>, ApiError> {
+    // Authentication first: a guest learns nothing about the work or the query's validity.
+    if viewer.is_none() {
+        return Err(ApiError::Unauthenticated);
+    }
+    let work_id = work_id(&raw)?;
+    let params = query_params(query)?;
+    let page = state
+        .vink
+        .own_comments(viewer, work_id, &params.into())
+        .await?;
+    Ok(Json(OwnCommentList::new(work_id, &page)))
 }
 
 async fn get_replies(

@@ -6,7 +6,8 @@ use time::OffsetDateTime;
 
 use super::catalog::{CatalogOperation, CuratorAuthority};
 use super::discussion::{
-    Guarded, ModerationAction, ModerationQueue, NewComment, ReplyPage, RootPage, SubmitOutcome,
+    Guarded, ModerationAction, ModerationQueue, NewComment, OwnPage, OwnRead, ReplyPage, RootPage,
+    SubmitOutcome,
 };
 use super::endorsement::CommentBatch;
 use crate::domain::discovery::{PagePosition, PageSize, TagFilter, WorkQuery};
@@ -221,6 +222,16 @@ pub trait DiscussionStore: Send + Sync {
         after: Option<PageCursor>,
         limit: PageLimit,
     ) -> impl Future<Output = Result<Option<ReplyPage>, StoreError>> + Send;
+
+    /// The private overlay of `viewer` in a public work's discussion (#120 DISC-02/03): only rows
+    /// `viewer` wrote, each re-checked with `visibility::own_overlay`. `None`: the work is missing
+    /// or not public.
+    fn own_comments(
+        &self,
+        work_id: WorkId,
+        viewer: PrincipalId,
+        read: &OwnRead,
+    ) -> impl Future<Output = Result<Option<OwnPage>, StoreError>> + Send;
 }
 
 /// What one endorsement transaction found and decided. `outcome` is exactly what

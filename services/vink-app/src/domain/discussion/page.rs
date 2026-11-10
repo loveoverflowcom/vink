@@ -59,14 +59,39 @@ impl PageLimit {
     }
 }
 
-/// Position after the last item of a page. Opaque to clients: `c1.<unix micros>.<uuid>`.
+/// Position after the last item of a page. Opaque to clients: `<scope>1.<unix micros>.<uuid>`.
+///
+/// A cursor is a position, never a capability: every read re-applies its own visibility and
+/// actor filters after it, so a forged position can only skip rows the reader could already
+/// page through. The scope prefix keeps lists apart anyway, so a cursor handed out by one list
+/// is refused by another instead of silently landing somewhere else.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PageCursor {
     created_at_micros: i64,
     id: CommentId,
 }
 
-const PREFIX: &str = "c1.";
+/// Which list issued a cursor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CursorScope {
+    /// Public thread lists: roots, replies and the moderation queue (unchanged `c1.` format).
+    Thread,
+    /// The viewer's private overlay of their own unpublished comments (#120 DISC-02/03).
+    Own,
+}
+
+impl CursorScope {
+    const fn prefix(self) -> &'static str {
+        match self {
+            Self::Thread => "c1.",
+            Self::Own => "o1.",
+        }
+    }
+}
+
+/// Longest cursor any list issues: prefix, at most 20 sign/digit bytes, `.`, 32 hex digits.
+/// Longer input is refused before any parsing.
+pub const MAX_CURSOR_BYTES: usize = 3 + 20 + 1 + 32;
 
 impl PageCursor {
     /// Timestamps are kept at the database's microsecond precision.
@@ -87,23 +112,44 @@ impl PageCursor {
         self.id
     }
 
+    /// A thread-list cursor (`c1.`).
     pub fn encode(self) -> String {
+        self.encode_in(CursorScope::Thread)
+    }
+
+    pub fn encode_in(self, scope: CursorScope) -> String {
         format!(
-            "{PREFIX}{}.{}",
+            "{}{}.{}",
+            scope.prefix(),
             self.created_at_micros,
             self.id.as_uuid().simple()
         )
     }
 
+    /// Decodes a thread-list cursor (`c1.`).
     pub fn decode(raw: &str) -> Result<Self, PageError> {
-        let rest = raw.strip_prefix(PREFIX).ok_or(PageError::Cursor)?;
+        Self::decode_in(raw, CursorScope::Thread)
+    }
+
+    /// Accepts exactly the strings [`Self::encode_in`] issues for `scope`: anything longer than
+    /// [`MAX_CURSOR_BYTES`], of another scope or version, or a non-canonical spelling of a valid
+    /// position (`+1`, leading zeros, `-0`, upper-case hex) is refused, never normalized.
+    pub fn decode_in(raw: &str, scope: CursorScope) -> Result<Self, PageError> {
+        if raw.len() > MAX_CURSOR_BYTES {
+            return Err(PageError::Cursor);
+        }
+        let rest = raw.strip_prefix(scope.prefix()).ok_or(PageError::Cursor)?;
         let (micros, id) = rest.split_once('.').ok_or(PageError::Cursor)?;
         if micros.len() > 20 || id.len() != 32 {
             return Err(PageError::Cursor);
         }
         let created_at_micros: i64 = micros.parse().map_err(|_| PageError::Cursor)?;
         let id = Uuid::try_parse(id).map_err(|_| PageError::Cursor)?;
-        Self::at_micros(created_at_micros, CommentId::from_uuid(id))
+        let cursor = Self::at_micros(created_at_micros, CommentId::from_uuid(id))?;
+        if cursor.encode_in(scope) != raw {
+            return Err(PageError::Cursor);
+        }
+        Ok(cursor)
     }
 
     /// The decoded position, if it is a representable timestamp. Positions that cannot round-trip
@@ -184,5 +230,67 @@ mod tests {
         ] {
             assert_eq!(PageCursor::decode(raw), Err(PageError::Cursor), "{raw}");
         }
+    }
+
+    /// Each of these names a valid position in a spelling the server never issues; accepting
+    /// them would give one position many cursors and let a client probe the parser.
+    #[test]
+    fn non_canonical_spellings_are_rejected_not_normalized() {
+        let id = "0192aaaabbbb7ccc8dddeeeeffff0000";
+        let canonical = format!("c1.1.{id}");
+        assert!(PageCursor::decode(&canonical).is_ok());
+        for raw in [
+            format!("c1.+1.{id}"),
+            format!("c1.01.{id}"),
+            format!("c1.-0.{id}"),
+            format!("c1.00.{id}"),
+            format!("c1.1.{}", id.to_uppercase()),
+            format!("C1.1.{id}"),
+            format!(" c1.1.{id}"),
+            format!("c1.1.{id} "),
+            format!("c1.1.{id}\n"),
+            format!("c1.1\u{0}.{id}"),
+            format!("c1.１.{id}"),
+        ] {
+            assert_eq!(PageCursor::decode(&raw), Err(PageError::Cursor), "{raw:?}");
+        }
+    }
+
+    #[test]
+    fn oversized_input_is_refused_before_parsing() {
+        let longest =
+            PageCursor::at_micros(-377_705_116_800_000_000, CommentId::from_uuid(Uuid::max()))
+                .unwrap()
+                .encode();
+        assert!(longest.len() <= MAX_CURSOR_BYTES, "{longest}");
+        assert!(PageCursor::decode(&longest).is_ok());
+        for len in [MAX_CURSOR_BYTES + 1, 4096, 1 << 20] {
+            let raw = format!("c1.{}", "9".repeat(len));
+            assert_eq!(PageCursor::decode(&raw), Err(PageError::Cursor));
+        }
+        // Multi-byte input counts bytes, not characters.
+        let wide = format!("c1.1.{}", "ệ".repeat(20));
+        assert_eq!(PageCursor::decode(&wide), Err(PageError::Cursor));
+    }
+
+    #[test]
+    fn scopes_do_not_accept_each_others_cursors() {
+        let cursor = PageCursor::at_micros(1, CommentId::from_uuid(Uuid::from_u128(9))).unwrap();
+        let thread = cursor.encode();
+        let own = cursor.encode_in(CursorScope::Own);
+        assert!(thread.starts_with("c1.") && own.starts_with("o1."));
+        assert_eq!(PageCursor::decode_in(&own, CursorScope::Own), Ok(cursor));
+        assert_eq!(
+            PageCursor::decode_in(&thread, CursorScope::Thread),
+            Ok(cursor)
+        );
+        assert_eq!(
+            PageCursor::decode_in(&thread, CursorScope::Own),
+            Err(PageError::Cursor)
+        );
+        assert_eq!(
+            PageCursor::decode_in(&own, CursorScope::Thread),
+            Err(PageError::Cursor)
+        );
     }
 }

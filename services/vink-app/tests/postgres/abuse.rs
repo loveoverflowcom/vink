@@ -198,21 +198,25 @@ async fn prune_and_rollback_touch_only_rate_limit_windows(pool: PgPool) {
         .unwrap();
     assert_eq!(left, 1, "the current window stays");
 
-    let script = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("migrations-rollback/20261112000000_auth_rate_limits.down.sql"),
-    )
-    .unwrap();
     let principals_before: i64 = sqlx::query_scalar("SELECT count(*) FROM principals")
         .fetch_one(&pool)
         .await
         .unwrap();
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::raw_sql(sqlx::AssertSqlSafe(script))
-        .execute(&mut *tx)
-        .await
-        .unwrap();
-    tx.commit().await.unwrap();
+    // Rollbacks run newest first: the later overlay index (#120 DISC-02/03) goes before this one.
+    for down in [
+        "migrations-rollback/20261113000000_own_comment_overlay.down.sql",
+        "migrations-rollback/20261112000000_auth_rate_limits.down.sql",
+    ] {
+        let script =
+            std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(down))
+                .unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(script))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
     let table: Option<String> = sqlx::query_scalar("SELECT to_regclass('auth_rate_limits')::text")
         .fetch_one(&pool)
         .await

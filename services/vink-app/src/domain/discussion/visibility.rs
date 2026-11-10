@@ -81,6 +81,37 @@ pub fn reply_context(
     }
 }
 
+/// What a writer sees of one of their own comments in the private overlay (#120 DISC-02/03),
+/// read apart from the public lists so a pending comment is recoverable wherever it sits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OwnOverlay {
+    /// The writer's own text, only while the comment is present (removal drops or hides it).
+    pub text: bool,
+    /// The moderator's reason (MOD-04), only while the comment is present and rejected.
+    pub reason: bool,
+    /// Present and not public: pending or rejected. Exactly what the overlay list pages through;
+    /// a public comment is read from the public lists, a removed one is gone for everyone.
+    pub unpublished: bool,
+}
+
+/// The overlay of `viewer` includes a comment only when they wrote it. For anyone else, the work's
+/// author and moderators included, there is nothing: not its state and not that it exists.
+pub fn own_overlay(
+    writer: PrincipalId,
+    state: CommentState,
+    viewer: PrincipalId,
+) -> Option<OwnOverlay> {
+    if writer != viewer {
+        return None;
+    }
+    let present = state.is_present();
+    Some(OwnOverlay {
+        text: present,
+        reason: present && state.review() == Review::Rejected,
+        unpublished: present && !state.is_public(),
+    })
+}
+
 /// A reply target must be public now: nobody replies to a pending, rejected or removed comment,
 /// not even its own writer, so a reply never anchors to text others cannot read.
 pub fn can_reply_to(target: CommentState) -> bool {
@@ -143,6 +174,33 @@ mod tests {
                 (None, Review::Rejected) => CommentView::OwnRejected,
             };
             assert_eq!(view(writer, state, Some(writer)), expected, "{state:?}");
+        }
+    }
+
+    #[test]
+    fn the_overlay_belongs_to_the_writer_alone() {
+        let writer = principal(1);
+        for state in all_states() {
+            for other in [principal(2), principal(3)] {
+                assert_eq!(own_overlay(writer, state, other), None, "{state:?}");
+            }
+            let own = own_overlay(writer, state, writer).expect("the writer's own comment");
+            assert_eq!(own.text, state.is_present(), "{state:?}");
+            assert_eq!(
+                own.reason,
+                state.is_present() && state.review() == Review::Rejected,
+                "{state:?}"
+            );
+            // The list holds exactly what the public lists cannot show the writer.
+            assert_eq!(
+                own.unpublished,
+                matches!(
+                    view(writer, state, Some(writer)),
+                    CommentView::OwnPending | CommentView::OwnRejected
+                ),
+                "{state:?}"
+            );
+            assert!(!(own.unpublished && view(writer, state, None) == CommentView::Public));
         }
     }
 

@@ -30,8 +30,9 @@ use super::PgStore;
 use super::postgres::classify;
 use super::principal::{locked_standing, require_active};
 use crate::application::discussion::{
-    AuthorName, CommentItem, Guarded, ModerationAction, ModerationQueue, NewComment, QueueItem,
-    ReplyPage, RootEntry, RootItem, RootPage, SubmitOutcome,
+    AuthorName, CommentItem, Guarded, ModerationAction, ModerationQueue, NewComment, OwnComment,
+    OwnPage, OwnPlacement, OwnRead, OwnStatus, QueueItem, ReplyPage, RootEntry, RootItem, RootPage,
+    SubmitOutcome,
 };
 use crate::application::ports::{DiscussionStore, StoreError};
 use crate::domain::discussion::admission::AdmissionFacts;
@@ -50,7 +51,8 @@ use crate::domain::discussion::submission::{
     PayloadDigest, Receipt, SubmissionDecision, SubmissionFacts, TargetFacts, decide_submission,
 };
 use crate::domain::discussion::visibility::{
-    CommentView, ReplyContext, RootListing, reply_context, reply_listed, root_listing, view,
+    CommentView, ReplyContext, RootListing, own_overlay, reply_context, reply_listed, root_listing,
+    view,
 };
 use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::ids::{CommentId, PrincipalId, ThreadId, WorkId};
@@ -316,6 +318,126 @@ const PUBLIC_REPLIES: &str = "(SELECT count(*) FROM comments r WHERE r.root_id =
 /// Visible to viewer `$2`: present and (approved or written by the viewer). Mirrors
 /// `visibility::view`; the PostgreSQL suite compares the two over every state.
 const VISIBLE_TO_VIEWER: &str = "c.removal IS NULL AND (c.review = 'approved' OR c.author_id = $2)";
+
+/// One of the viewer's own comments with what the overlay needs about its root and context.
+#[derive(sqlx::FromRow)]
+struct OwnRow {
+    id: Uuid,
+    author_id: Uuid,
+    body: Option<String>,
+    review: String,
+    removal: Option<String>,
+    moderation_version: i64,
+    created_at: OffsetDateTime,
+    root_id: Option<Uuid>,
+    root_author_id: Option<Uuid>,
+    root_review: Option<String>,
+    root_removal: Option<String>,
+    root_version: Option<i64>,
+    root_public_replies: i64,
+    reply_to_id: Option<Uuid>,
+    replied_to_reply: bool,
+    context_review: Option<String>,
+    context_removal: Option<String>,
+    context_version: Option<i64>,
+    context_author_name: Option<String>,
+    last_reason: Option<String>,
+}
+
+impl OwnRow {
+    /// Re-checks the SQL scope against the domain: a row of another writer, or one the list
+    /// should not hold, fails the read instead of reaching the viewer.
+    fn item(self, viewer: PrincipalId, unpublished_only: bool) -> Result<OwnComment, StoreError> {
+        let current = state(
+            &self.review,
+            self.removal.as_deref(),
+            self.moderation_version,
+        )?;
+        let Some(own) = own_overlay(PrincipalId::from_uuid(self.author_id), current, viewer) else {
+            return Err(integrity("overlay row of another writer", self.id));
+        };
+        if unpublished_only && !own.unpublished {
+            return Err(integrity(
+                "overlay filter disagrees with domain projection",
+                self.id,
+            ));
+        }
+        let placement = match self.root_id {
+            None => OwnPlacement::Root,
+            Some(root_id) => {
+                let (Some(author), Some(raw_review), Some(version)) = (
+                    self.root_author_id,
+                    self.root_review.as_deref(),
+                    self.root_version,
+                ) else {
+                    return Err(integrity("reply without its root", self.id));
+                };
+                let root_state = state(raw_review, self.root_removal.as_deref(), version)?;
+                let root_view = view(PrincipalId::from_uuid(author), root_state, Some(viewer));
+                let context = reply_context(
+                    self.replied_to_reply,
+                    match (
+                        self.reply_to_id,
+                        self.context_review.as_deref(),
+                        self.context_version,
+                    ) {
+                        (Some(id), Some(raw), Some(version)) => Some((
+                            CommentId::from_uuid(id),
+                            state(raw, self.context_removal.as_deref(), version)?,
+                        )),
+                        _ => None,
+                    },
+                );
+                OwnPlacement::Reply {
+                    root_id: CommentId::from_uuid(root_id),
+                    root_listed: root_listing(root_view, self.root_public_replies).is_some(),
+                    context,
+                    // Only a public context may name its writer.
+                    context_author: match context {
+                        ReplyContext::Reply(_) => self.context_author_name,
+                        ReplyContext::Root | ReplyContext::Unavailable => None,
+                    },
+                }
+            }
+        };
+        Ok(OwnComment {
+            id: CommentId::from_uuid(self.id),
+            status: OwnStatus::from(current),
+            created_at: self.created_at,
+            placement,
+            body: if own.text {
+                Some(
+                    self.body
+                        .ok_or_else(|| integrity("present comment without text", self.id))?,
+                )
+            } else {
+                None
+            },
+            rejection_reason: own.reason.then_some(self.last_reason).flatten(),
+        })
+    }
+}
+
+/// Columns of [`OwnRow`]. `c` is the viewer's comment, `r` its root, `x` its context.
+const OWN_COLUMNS: &str = "c.id, c.author_id, c.body, c.review, c.removal, c.moderation_version, \
+     c.created_at, c.root_id, r.author_id AS root_author_id, r.review AS root_review, \
+     r.removal AS root_removal, r.moderation_version AS root_version, \
+     CASE WHEN c.root_id IS NULL THEN 0 ELSE (SELECT count(*) FROM comments pr \
+       WHERE pr.root_id = c.root_id AND pr.kind = 'reply' AND pr.review = 'approved' \
+         AND pr.removal IS NULL) END AS root_public_replies, \
+     c.reply_to_id, c.replied_to_reply, x.review AS context_review, \
+     x.removal AS context_removal, x.moderation_version AS context_version, \
+     xa.display_name AS context_author_name, \
+     (SELECT d.reason FROM comment_moderation_decisions d WHERE d.comment_id = c.id \
+       ORDER BY d.version DESC LIMIT 1) AS last_reason";
+
+const OWN_FROM: &str = "comments c
+       LEFT JOIN comments r ON r.id = c.root_id
+       LEFT JOIN comments x ON x.id = c.reply_to_id
+       LEFT JOIN principals xa ON xa.id = x.author_id";
+
+/// Present and unpublished: equals `own_overlay(..).unpublished` for the viewer's own rows.
+const OWN_UNPUBLISHED: &str = "c.removal IS NULL AND c.review <> 'approved'";
 
 /// Reads whether the work is public and its thread, if any. `None`: missing or not public.
 async fn readable_thread(
@@ -994,6 +1116,70 @@ impl DiscussionStore for PgStore {
             .map(|row| row.item(viewer, row.context()?))
             .collect::<Result<_, _>>()?;
         Ok(Some(ReplyPage { replies, next }))
+    }
+
+    async fn own_comments(
+        &self,
+        work_id: WorkId,
+        viewer: PrincipalId,
+        read: &OwnRead,
+    ) -> Result<Option<OwnPage>, StoreError> {
+        let mut tx = read_snapshot(self.pool()).await?;
+        let Some((_, thread)) = readable_thread(&mut tx, work_id).await? else {
+            return Ok(None);
+        };
+        let Some(thread) = thread else {
+            return Ok(Some(OwnPage {
+                items: Vec::new(),
+                next: None,
+            }));
+        };
+        // `c.author_id = $2` scopes every row to the viewer; `OwnRow::item` re-checks it.
+        let (rows, next, unpublished_only) = match read {
+            OwnRead::Unpublished { after, limit } => {
+                let (after_at, after_id) = page_bounds(*after);
+                let rows: Vec<OwnRow> = sqlx::query_as(AssertSqlSafe(format!(
+                    "SELECT {OWN_COLUMNS} FROM {OWN_FROM}
+                      WHERE c.thread_id = $1 AND c.author_id = $2 AND {OWN_UNPUBLISHED}
+                        AND ($3::timestamptz IS NULL OR (c.created_at, c.id) > ($3, $4))
+                      ORDER BY c.created_at, c.id
+                      LIMIT $5"
+                )))
+                .bind(thread.id)
+                .bind(viewer.as_uuid())
+                .bind(after_at)
+                .bind(after_id)
+                .bind(i64::from(limit.get()) + 1)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(classify)?;
+                let (rows, next) = paged(rows, usize::from(limit.get()), |row| {
+                    (row.created_at, row.id)
+                });
+                (rows, next, true)
+            }
+            OwnRead::Exact(ids) => {
+                let ids: Vec<Uuid> = ids.iter().map(CommentId::as_uuid).collect();
+                let rows: Vec<OwnRow> = sqlx::query_as(AssertSqlSafe(format!(
+                    "SELECT {OWN_COLUMNS} FROM {OWN_FROM}
+                      WHERE c.thread_id = $1 AND c.author_id = $2 AND c.id = ANY($3::uuid[])
+                      ORDER BY c.created_at, c.id"
+                )))
+                .bind(thread.id)
+                .bind(viewer.as_uuid())
+                .bind(&ids)
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(classify)?;
+                (rows, None, false)
+            }
+        };
+        tx.commit().await.map_err(classify)?;
+        let items = rows
+            .into_iter()
+            .map(|row| row.item(viewer, unpublished_only))
+            .collect::<Result<_, _>>()?;
+        Ok(Some(OwnPage { items, next }))
     }
 }
 

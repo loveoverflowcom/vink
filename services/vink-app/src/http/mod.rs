@@ -230,6 +230,36 @@ mod tests {
             assert!(response.headers().get(header::ETAG).is_none());
         }
 
+        // #120 DISC-02/03: the public projection resolves no actor, so a database outage is its
+        // only failure, and it is a 503, never an empty discussion. The private overlay refuses a
+        // guest before touching storage.
+        for path in [
+            "/api/v1/works/33333333-3333-4333-8333-333333333333/discussion/public",
+            "/api/v1/works/33333333-3333-4333-8333-333333333333/discussion/public/roots/0192f3a1-0000-7000-8000-000000000001/replies",
+        ] {
+            let response = router
+                .clone()
+                .oneshot(Request::get(path).body(Body::empty()).unwrap())
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE, "{path}");
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
+            let bytes = response.into_body().collect().await.unwrap().to_bytes();
+            let body = String::from_utf8(bytes.to_vec()).unwrap();
+            assert!(body.contains("dependency_unavailable"), "{body}");
+            assert!(
+                !body.contains("roots") && !body.contains("replies\""),
+                "{body}"
+            );
+        }
+        let (status, body) = get(
+            &router,
+            "/api/v1/works/33333333-3333-4333-8333-333333333333/discussion/me",
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
+
         let (status, body) = get(&router, "/?q=%C4%90%20%26%20100%25").await;
         assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE);
         assert!(body.contains("Tạm thời chưa đọc được"), "{body}");

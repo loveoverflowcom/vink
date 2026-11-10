@@ -2207,3 +2207,6 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
         )
     );
 }
+
+#[path = "discussion_reads.rs"]
+mod reads;

@@ -1,0 +1,179 @@
+# EXPLAIN (ANALYZE, BUFFERS) median of 7 runs, candidate: public_replies
+
+== roots.guest.20: exec 0.118 ms, plan 0.239 ms, rows 21, shared hit 232, read 0
+Limit rows=21 loops=1 hit=232 time=0.107
+  Nested Loop rows=21 loops=1 hit=232 time=0.106
+    Index Scan comments_thread_roots_idx comments rows=21 loops=1 hit=20 time=0.014 | (thread_id = '44444444-4444-4444-8444-444444444444'::uuid)
+      Aggregate rows=1 loops=4 hit=13 time=0.002
+        Index Only Scan bench_idx comments rows=1 loops=4 hit=13 time=0.001 | (root_id = c.id)
+    Index Scan principals_pkey principals rows=1 loops=21 hit=63 time=0.001 | (id = c.author_id)
+    Limit rows=1 loops=21 hit=84 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=21 hit=84 time=0.001 | (comment_id = c.id)
+    Aggregate rows=1 loops=21 hit=65 time=0.002
+      Index Only Scan bench_idx comments rows=9 loops=21 hit=65 time=0.001 | (root_id = c.id)
+
+== roots.guest.50: exec 0.18 ms, plan 0.134 ms, rows 51, shared hit 579, read 0
+Limit rows=51 loops=1 hit=579 time=0.166
+  Nested Loop rows=51 loops=1 hit=579 time=0.165
+    Index Scan comments_thread_roots_idx comments rows=51 loops=1 hit=68 time=0.033 | (thread_id = '44444444-4444-4444-8444-444444444444'::uuid)
+      Aggregate rows=1 loops=15 hit=47 time=0.001
+        Index Only Scan bench_idx comments rows=12 loops=15 hit=47 time=0.001 | (root_id = c.id)
+    Index Scan principals_pkey principals rows=1 loops=51 hit=153 time=0.000 | (id = c.author_id)
+    Limit rows=1 loops=51 hit=202 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=51 hit=202 time=0.001 | (comment_id = c.id)
+    Aggregate rows=1 loops=51 hit=156 time=0.001
+      Index Only Scan bench_idx comments rows=7 loops=51 hit=156 time=0.001 | (root_id = c.id)
+
+== roots.guest.20.deep: exec 0.081 ms, plan 0.096 ms, rows 21, shared hit 230, read 0
+Limit rows=21 loops=1 hit=230 time=0.073
+  Nested Loop rows=21 loops=1 hit=230 time=0.072
+    Index Scan comments_thread_roots_idx comments rows=21 loops=1 hit=16 time=0.008 | ((thread_id = '44444444-4444-4444-8444-444444444444'::uuid) AND (ROW(created_at, id) > ROW('2026-01-01 23:19:30+07'::timestamp with time zone, 'd5604849-6a7e-410d-bbed-309bd1136da7'::uuid)))
+      Aggregate rows=1 loops=3 hit=10 time=0.001
+        Index Only Scan bench_idx comments rows=1 loops=3 hit=10 time=0.001 | (root_id = c.id)
+    Index Scan principals_pkey principals rows=1 loops=21 hit=63 time=0.000 | (id = c.author_id)
+    Limit rows=1 loops=21 hit=84 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=21 hit=84 time=0.001 | (comment_id = c.id)
+    Aggregate rows=1 loops=21 hit=67 time=0.002
+      Index Only Scan bench_idx comments rows=17 loops=21 hit=67 time=0.001 | (root_id = c.id)
+
+== roots.writer.20: exec 0.083 ms, plan 0.158 ms, rows 21, shared hit 232, read 0
+Limit rows=21 loops=1 hit=232 time=0.072
+  Nested Loop rows=21 loops=1 hit=232 time=0.071
+    Index Scan comments_thread_roots_idx comments rows=21 loops=1 hit=20 time=0.010 | (thread_id = '44444444-4444-4444-8444-444444444444'::uuid)
+      Aggregate rows=1 loops=4 hit=13 time=0.001
+        Index Only Scan bench_idx comments rows=1 loops=4 hit=13 time=0.001 | (root_id = c.id)
+    Index Scan principals_pkey principals rows=1 loops=21 hit=63 time=0.001 | (id = c.author_id)
+    Limit rows=1 loops=21 hit=84 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=21 hit=84 time=0.001 | (comment_id = c.id)
+    Aggregate rows=1 loops=21 hit=65 time=0.001
+      Index Only Scan bench_idx comments rows=9 loops=21 hit=65 time=0.001 | (root_id = c.id)
+
+== previews.guest.20roots: exec 0.32 ms, plan 0.426 ms, rows 15, shared hit 177, read 0
+Sort rows=15 loops=1 hit=177 time=0.260
+  Nested Loop rows=15 loops=1 hit=177 time=0.251
+    Nested Loop rows=15 loops=1 hit=117 time=0.208
+      Nested Loop rows=15 loops=1 hit=117 time=0.193
+        Nested Loop rows=15 loops=1 hit=72 time=0.162
+          Function Scan rows=20 loops=1 hit=0 time=0.004
+          Limit rows=1 loops=20 hit=72 time=0.008
+            Sort rows=1 loops=20 hit=72 time=0.007
+              Bitmap Heap Scan comments rows=9 loops=20 hit=72 time=0.004
+                Bitmap Index Scan bench_idx rows=9 loops=20 hit=61 time=0.002 | (root_id = parent.id)
+        Memoize rows=1 loops=15 hit=45 time=0.002
+          Index Scan principals_pkey principals rows=1 loops=15 hit=45 time=0.001 | (id = c.author_id)
+      Memoize rows=0 loops=15 hit=0 time=0.001
+        Index Scan comments_id_root_thread_key comments rows=0 loops=1 hit=0 time=0.005 | (id = c.reply_to_id)
+    Index Scan principals_pkey principals rows=0 loops=15 hit=0 time=0.000 | (id = x.author_id)
+    Limit rows=1 loops=15 hit=60 time=0.002
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=15 hit=60 time=0.002 | (comment_id = c.id)
+
+== previews.guest.50roots: exec 0.232 ms, plan 0.173 ms, rows 30, shared hit 380, read 0
+Sort rows=30 loops=1 hit=380 time=0.215
+  Nested Loop rows=30 loops=1 hit=380 time=0.208
+    Nested Loop rows=30 loops=1 hit=260 time=0.180
+      Nested Loop rows=30 loops=1 hit=260 time=0.175
+        Nested Loop rows=30 loops=1 hit=173 time=0.152
+          Function Scan rows=50 loops=1 hit=0 time=0.003
+          Limit rows=1 loops=50 hit=173 time=0.003
+            Sort rows=1 loops=50 hit=173 time=0.003
+              Bitmap Heap Scan comments rows=7 loops=50 hit=173 time=0.001
+                Bitmap Index Scan bench_idx rows=7 loops=50 hit=152 time=0.001 | (root_id = parent.id)
+        Memoize rows=1 loops=30 hit=87 time=0.001
+          Index Scan principals_pkey principals rows=1 loops=29 hit=87 time=0.000 | (id = c.author_id)
+      Memoize rows=0 loops=30 hit=0 time=0.000
+        Index Scan comments_id_root_thread_key comments rows=0 loops=1 hit=0 time=0.000 | (id = c.reply_to_id)
+    Index Scan principals_pkey principals rows=0 loops=30 hit=0 time=0.000 | (id = x.author_id)
+    Limit rows=1 loops=30 hit=120 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=30 hit=120 time=0.001 | (comment_id = c.id)
+
+== previews.writer.50hot: exec 3.222 ms, plan 0.244 ms, rows 200, shared hit 2231, read 0
+Sort rows=200 loops=1 hit=2231 time=3.197
+  Nested Loop rows=200 loops=1 hit=2231 time=3.143
+    Nested Loop rows=200 loops=1 hit=1431 time=2.833
+      Nested Loop rows=200 loops=1 hit=1431 time=2.803
+        Nested Loop rows=200 loops=1 hit=840 time=2.611
+          Function Scan rows=50 loops=1 hit=0 time=0.004
+          Limit rows=4 loops=50 hit=840 time=0.052
+            Sort rows=4 loops=50 hit=840 time=0.051
+              Bitmap Heap Scan comments rows=171 loops=50 hit=840 time=0.030 | ((removal IS NULL) AND ((review = 'approved'::text) OR (author_id = '00000000-0000-4000-8000-000000000002'::uuid)))
+                Bitmap Index Scan comments_root_replies_idx rows=200 loops=50 hit=265 time=0.006 | (root_id = parent.id)
+        Memoize rows=1 loops=200 hit=591 time=0.001
+          Index Scan principals_pkey principals rows=1 loops=197 hit=591 time=0.001 | (id = c.author_id)
+      Memoize rows=0 loops=200 hit=0 time=0.000
+        Index Scan comments_id_root_thread_key comments rows=0 loops=1 hit=0 time=0.000 | (id = c.reply_to_id)
+    Index Scan principals_pkey principals rows=0 loops=200 hit=0 time=0.000 | (id = x.author_id)
+    Limit rows=1 loops=200 hit=800 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=200 hit=800 time=0.001 | (comment_id = c.id)
+
+== replies.hot.20: exec 0.127 ms, plan 0.412 ms, rows 21, shared hit 151, read 0
+Limit rows=21 loops=1 hit=151 time=0.105
+  Nested Loop rows=21 loops=1 hit=151 time=0.104
+    Nested Loop rows=21 loops=1 hit=4 time=0.024
+      Index Scan bench_idx comments rows=21 loops=1 hit=4 time=0.013 | (root_id = '14f19bbb-4d9b-44c9-ba40-3ad323c33106'::uuid)
+      Nested Loop rows=0 loops=21 hit=0 time=0.000
+        Index Scan comments_pkey comments rows=0 loops=21 hit=0 time=0.000 | (id = c.reply_to_id)
+        Index Scan principals_pkey principals rows=0 loops=0 hit=0 time=0.000 | (id = x.author_id)
+    Index Scan principals_pkey principals rows=1 loops=21 hit=63 time=0.001 | (id = c.author_id)
+    Limit rows=1 loops=21 hit=84 time=0.002
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=21 hit=84 time=0.002 | (comment_id = c.id)
+
+== replies.hot.20.deep: exec 0.11 ms, plan 0.36 ms, rows 21, shared hit 153, read 0
+Limit rows=21 loops=1 hit=153 time=0.091
+  Nested Loop rows=21 loops=1 hit=153 time=0.089
+    Nested Loop rows=21 loops=1 hit=6 time=0.021
+      Index Scan bench_idx comments rows=21 loops=1 hit=6 time=0.011 | ((root_id = '14f19bbb-4d9b-44c9-ba40-3ad323c33106'::uuid) AND (ROW(created_at, id) > ROW('2026-01-02 00:22:30+07'::timestamp with time zone, 'b120c618-8c9a-4bfb-9f8e-4171de8d3f6d'::uuid)))
+      Nested Loop rows=0 loops=21 hit=0 time=0.000
+        Index Scan comments_pkey comments rows=0 loops=21 hit=0 time=0.000 | (id = c.reply_to_id)
+        Index Scan principals_pkey principals rows=0 loops=0 hit=0 time=0.000 | (id = x.author_id)
+    Index Scan principals_pkey principals rows=1 loops=21 hit=63 time=0.001 | (id = c.author_id)
+    Limit rows=1 loops=21 hit=84 time=0.002
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=1 loops=21 hit=84 time=0.001 | (comment_id = c.id)
+
+== own.list.P.20: exec 7.126 ms, plan 0.29 ms, rows 21, shared hit 5777, read 0
+Limit rows=21 loops=1 hit=5777 time=7.100
+  Result rows=21 loops=1 hit=5777 time=7.098
+    Sort rows=21 loops=1 hit=5669 time=7.006
+      Gather rows=120 loops=1 hit=5669 time=6.986
+        Nested Loop rows=40 loops=3 hit=5669 time=3.810
+          Nested Loop rows=40 loops=3 hit=5349 time=3.758
+            Seq Scan comments rows=40 loops=3 hit=5349 time=3.750 | ((removal IS NULL) AND (review <> 'approved'::text) AND (thread_id = '44444444-4444-4444-8444-444444444444'::uuid) AND (author_id = '00000000-0000-4000-8000-000000000002'::uuid))
+            Nested Loop rows=0 loops=120 hit=0 time=0.000
+              Index Scan comments_id_root_thread_key comments rows=0 loops=120 hit=0 time=0.000 | (id = c.reply_to_id)
+              Index Scan principals_pkey principals rows=0 loops=0 hit=0 time=0.000 | (id = x.author_id)
+          Index Scan comments_id_root_thread_key comments rows=1 loops=120 hit=320 time=0.001 | (id = c.root_id)
+    Aggregate rows=1 loops=14 hit=43 time=0.002
+      Index Only Scan bench_idx comments rows=0 loops=14 hit=43 time=0.002 | (root_id = c.root_id)
+    Limit rows=0 loops=21 hit=65 time=0.002
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=0 loops=21 hit=65 time=0.002 | (comment_id = c.id)
+
+== own.list.A.20: exec 9.575 ms, plan 0.317 ms, rows 4, shared hit 5397, read 0
+Limit rows=4 loops=1 hit=5397 time=9.542
+  Result rows=4 loops=1 hit=5397 time=9.541
+    Sort rows=4 loops=1 hit=5365 time=9.357
+      Gather rows=4 loops=1 hit=5365 time=9.350
+        Nested Loop rows=1 loops=3 hit=5365 time=5.000
+          Nested Loop rows=1 loops=3 hit=5349 time=4.993
+            Seq Scan comments rows=1 loops=3 hit=5349 time=4.988 | ((removal IS NULL) AND (review <> 'approved'::text) AND (thread_id = '44444444-4444-4444-8444-444444444444'::uuid) AND (author_id = '00000000-0000-4000-8000-000000000001'::uuid))
+            Nested Loop rows=0 loops=4 hit=0 time=0.001
+              Index Scan comments_id_root_thread_key comments rows=0 loops=4 hit=0 time=0.000 | (id = c.reply_to_id)
+              Index Scan principals_pkey principals rows=0 loops=0 hit=0 time=0.000 | (id = x.author_id)
+          Index Scan comments_id_root_thread_key comments rows=1 loops=4 hit=16 time=0.004 | (id = c.root_id)
+    Aggregate rows=1 loops=4 hit=18 time=0.033
+      Index Only Scan bench_idx comments rows=170 loops=4 hit=18 time=0.024 | (root_id = c.root_id)
+    Limit rows=0 loops=4 hit=14 time=0.006
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=0 loops=4 hit=14 time=0.006 | (comment_id = c.id)
+
+== own.exact.P.20: exec 0.22 ms, plan 0.295 ms, rows 20, shared hit 234, read 0
+Sort rows=20 loops=1 hit=234 time=0.195
+  Nested Loop rows=20 loops=1 hit=234 time=0.149
+    Nested Loop rows=20 loops=1 hit=72 time=0.064
+      Index Scan comments_id_root_thread_key comments rows=20 loops=1 hit=72 time=0.059 | ((id = ANY ('{58aa3d03-55ab-4ae7-9c3c-73b27180d4d3,ffa5c2d5-7d2f-4684-adef-a60fdb1f7d5f,fd1d67b1-1df9-46e2-a93e-879c0fdf7864,b31ae8c5-ce61-4ed8-95b8-f663ffec18cc,cb443536-58b2-46fb-9980-4e36156b5783,fb4a80c8-311e-408e-9325-1c66116a80e0,c68f5aa5-0ac8-49ae-9209-197455b3ecef,96491551-6cbe-4010-9de5-426fbd4dba59,3941e1ad-8ac1-45c0-b5be-b47f35bc480a,68a43669-4a6e-4b6a-8552-9eb5e12b345d,3f9fb91e-02ff-4584-9937-2fd77f8c2f9c,70895077-eb4c-4c53-812f-0224a80f40aa,218eb655-2ddf-4396-b1c6-0fd1d5995aed,60c16324-a662-476f-b359-8d776ba8d8de,338282a1-21b2-40f3-b428-d5aaba359df6,0bb937e5-a5ae-408d-bde5-5b6ef5e2ade5,71a7d8be-ab55-4f12-919c-286710b098f2,7b755945-9a42-41d1-905e-034ff6847a04,be7354d2-c300-46fc-b5e7-a5094dc7d959,ae23cb43-1c91-42fb-ad76-9355cf0fb372}'::uuid[])) AND (thread_id = '44444444-4444-4444-8444-444444444444'::uuid))
+      Nested Loop rows=0 loops=20 hit=0 time=0.000
+        Index Scan comments_id_root_thread_key comments rows=0 loops=20 hit=0 time=0.000 | (id = c.reply_to_id)
+        Index Scan principals_pkey principals rows=0 loops=0 hit=0 time=0.000 | (id = x.author_id)
+    Index Scan comments_id_root_thread_key comments rows=1 loops=20 hit=56 time=0.001 | (id = c.root_id)
+    Aggregate rows=1 loops=14 hit=44 time=0.003
+      Index Only Scan bench_idx comments rows=13 loops=14 hit=44 time=0.001 | (root_id = c.root_id)
+    Limit rows=0 loops=20 hit=62 time=0.001
+      Index Scan comment_moderation_decisions_pkey comment_moderation_decisions rows=0 loops=20 hit=62 time=0.001 | (comment_id = c.id)
+

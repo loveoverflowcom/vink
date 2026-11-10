@@ -35,7 +35,9 @@ use super::settings::{
 use super::submission::{
     PayloadDigest, Receipt, SubmissionDecision, SubmissionFacts, TargetFacts, decide_submission,
 };
-use super::visibility::{CommentView, ReplyContext, can_reply_to, reply_context, view};
+use super::visibility::{
+    CommentView, ReplyContext, can_reply_to, own_overlay, reply_context, view,
+};
 use super::{CommentPlacement, StoredPosition, StructureError, reply_placement, root_placement};
 use crate::domain::draft::DraftVersion;
 use crate::domain::ids::{CommentId, PrincipalId, ThreadId};
@@ -418,6 +420,42 @@ fn viewer_projection_never_reveals_a_hidden_comment() {
     kani::cover!(
         viewer == Some(writer) && seen == CommentView::OwnRejected,
         "the writer sees their rejected comment"
+    );
+}
+
+/// #120 DISC-02/03: the private overlay is the writer's alone. Nobody else learns a comment's
+/// state or existence through it; the writer keeps their text only while it is present, the
+/// moderator's reason only while it is rejected, and the recovery list holds exactly the present
+/// comments the public projection does not show.
+#[kani::proof]
+fn the_private_overlay_reveals_only_the_writers_own_comments() {
+    let writer = principal();
+    let viewer = principal();
+    let state = any_state();
+    let own = own_overlay(writer, state, viewer);
+    assert_eq!(own.is_some(), viewer == writer);
+    if let Some(own) = own {
+        assert_eq!(own.text, state.is_present());
+        assert_eq!(
+            own.reason,
+            state.is_present() && state.review() == Review::Rejected
+        );
+        assert_eq!(own.unpublished, state.is_present() && !state.is_public());
+        assert_eq!(
+            own.unpublished,
+            view(writer, state, None) != CommentView::Public && state.is_present()
+        );
+        if own.reason {
+            assert!(own.unpublished && own.text);
+        }
+    }
+    kani::cover!(
+        own.is_some_and(|own| own.reason),
+        "the writer reads a rejection reason"
+    );
+    kani::cover!(
+        own.is_some_and(|own| own.text && !own.unpublished),
+        "an approved own comment is left to the public list"
     );
 }
 

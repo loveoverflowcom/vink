@@ -146,12 +146,17 @@ the versioned admission of #120; its only effective policy, `premoderation.v1`, 
 codes are stored for audit and are not part of any response. Writes act for
 the server-resolved principal (`401` without one), require the same `Origin` as other unsafe
 methods, and never accept an actor, root, role or display name from the client. Every
-discussion response carries `Cache-Control: no-store`: it contains viewer-specific state.
+discussion response carries `Cache-Control: no-store`, errors included: the composed read and the
+overlay contain viewer-specific state, and the public projection has no validator yet, so no
+cache may keep a body (or a `404`/`503`) past a removal, revocation or recovery.
 
 | Method and path | Success | Errors | Fixture |
 | --- | --- | --- | --- |
 | `GET /api/v1/works/{work_id}/discussion?cursor=&limit=` | `200` root page of a public work | `404`, `422` (`cursor`, `limit`, `query`), `503` | [discussion.get.json](fixtures/discussion.get.json) |
 | `GET /api/v1/works/{work_id}/discussion/roots/{root_id}/replies?cursor=&limit=` | `200` replies of one root | `404`, `422`, `503` | [discussion.replies.json](fixtures/discussion.replies.json) |
+| `GET /api/v1/works/{work_id}/discussion/public?cursor=&limit=` | `200` public projection of the root page (#120 DISC-02/03) | `404`, `422` (`cursor`, `limit`, `query`), `503` | [discussion.public.get.json](fixtures/discussion.public.get.json) |
+| `GET /api/v1/works/{work_id}/discussion/public/roots/{root_id}/replies?cursor=&limit=` | `200` public replies of one root | `404`, `422`, `503` | [discussion.public.replies.json](fixtures/discussion.public.replies.json) |
+| `GET /api/v1/works/{work_id}/discussion/me?cursor=&limit=` or `?ids=` | `200` the viewer's private overlay (#120 DISC-02/03) | `401`, `404`, `422` (`cursor`, `limit`, `ids`, `query`), `503` | [list](fixtures/discussion.me.get.json), [exact](fixtures/discussion.me.ids.json) |
 | `POST /api/v1/works/{work_id}/discussion/comments` | `201` new pending comment; `200` with `replayed: true` for a retry | `401`, `403` (`forbidden`, `principal_suspended`), `404`, `409` (`comments_closed`, `target_unavailable`), `422` (`body`, `command_key`, `target_id`, `idempotency_key_reused`), `503` | [request](fixtures/discussion.comment.submit.request.json), [response](fixtures/discussion.comment.submit.response.json) |
 | `DELETE /api/v1/works/{work_id}/discussion/comments/{comment_id}` | `200` the writer removed their own comment (repeatable) | `401`, `403` (`forbidden`, `not_comment_writer`), `404`, `503` | [discussion.comment.remove.response.json](fixtures/discussion.comment.remove.response.json) |
 | `PUT /api/v1/works/{work_id}/discussion/settings` | `200` the work's author opened/closed comments | `401`, `403`, `404`, `409` (`version_conflict`), `422`, `503` | [request](fixtures/discussion.settings.request.json), [response](fixtures/discussion.settings.response.json) |
@@ -167,10 +172,42 @@ discussion response carries `Cache-Control: no-store`: it contains viewer-specif
   `reply_to` is `null` on roots; on replies it is `{"kind": "root"}`, a public
   `{"kind": "reply", "comment_id", "author_display_name"}`, or `{"kind": "unavailable"}` when the
   context was hidden or removed (never shown as “deleted by its writer”).
+- **Public projection** (`…/discussion/public`, #120 DISC-02/03). The same public comments,
+  anchors, `public_replies`, order, previews and `c1.` cursors as the composed read gives a guest,
+  without any viewer field: no `visibility`, `can_remove`, `rejection_reason` or
+  `viewer_is_work_author`. It resolves no actor, so an Identity outage or a stale session cookie
+  never hides it, and a request that names a principal gets the same body as a guest. The server
+  refuses to build it if a viewer fact reaches it (`500`, never a partial body). The composed
+  `…/discussion` read is unchanged and still resolves the actor (`503` while Identity cannot
+  answer).
+- **Private overlay** (`…/discussion/me`, #120 DISC-02/03). Only the authenticated viewer's own
+  comments of a public work; `401` for a guest before any input is checked; `404` like the other
+  reads. Two forms, never mixed (`422 ids`):
+  - `?cursor=&limit=`: the viewer's present, unpublished (`pending` or `rejected`) comments,
+    oldest first, wherever they sit in the public lists — a root on a later page, or a reply
+    under a root that is no longer listed (`placement.root_listed: false`). `limit` 1–50
+    (default 20); `next_cursor` is an `o1.` cursor that no public list accepts, and vice versa.
+  - `?ids=` 1–20 comma-separated comment IDs (duplicates count once): the current `status`
+    (`pending`, `approved`, `rejected`, `removed`) of those the viewer wrote in this work, read
+    from the comment row at this request — not from a submit receipt. Other people's or unknown
+    IDs are omitted, indistinguishable from each other. `next_cursor` is `null`.
+
+  Each item: `status`, `body` (`null` once removed), `created_at`, `placement`
+  (`{"kind": "root"}` or `{"kind": "reply", "root_id", "root_listed", "reply_to"}` with the same
+  `reply_to` rules as above), `rejection_reason` (only while `rejected`) and `can_remove`
+  (while present). A root's text or writer is never part of the overlay. A client composes
+  overlay and public lists by `comment_id`: an approved comment leaves the overlay list and
+  appears once in the public list. Drop the overlay on sign-out or actor change and ignore late
+  answers of an earlier actor; an overlay error is not a lost comment.
 - **Paging.** Roots and replies are ordered `created_at ASC, comment_id ASC`. `limit` is 1–50
   (default 20). Cursors are opaque; pass `next_cursor` back unchanged. Each root previews up to
   three replies; `preview_next_cursor` continues that root's replies endpoint after the preview.
   Paging is not a snapshot: a comment approved later can appear before an issued cursor.
+  A cursor is accepted only exactly as issued: at most 56 bytes, the list's own prefix (`c1.`
+  thread lists, `o1.` overlay) and the canonical spelling (no `+`, leading zeros, `-0` or
+  upper-case hex); anything else is `422 cursor`, never clamped or ignored. A repeated query
+  parameter is `422 query`. A cursor is a position, not a permission: every page re-applies its
+  visibility and viewer filters.
 - **Submitting.** `target_id` is `null` for a root, or a root/reply ID of the same work to reply.
   `command_key` (8–128 of `A-Z a-z 0-9 - _`) is the idempotency key, scoped to the actor: after a
   timeout, retry with the **same** key and body; the same key with a different payload is
