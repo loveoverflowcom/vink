@@ -871,8 +871,15 @@ async fn runtime_role_can_produce_drain_and_inspect_without_ddl_and_backout_pres
     let vink = setup(&pool).await;
     let id = approved(&pool, &vink).await;
     let role = format!("vink_review_rt_{}", Uuid::now_v7().simple());
-    sqlx::raw_sql(sqlx::AssertSqlSafe(format!("CREATE ROLE {role} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA public TO {role}; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO {role}; GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO {role};"))).execute(&pool).await.unwrap();
-    let options = pool.connect_options().as_ref().clone().username(&role);
+    // Explicit fixture credentials work with SCRAM as well as local trust. Changing only the
+    // username would retain the harness password, not this new role's password.
+    sqlx::raw_sql(sqlx::AssertSqlSafe(format!("CREATE ROLE {role} LOGIN PASSWORD 'fixture' NOSUPERUSER NOCREATEDB NOCREATEROLE; GRANT USAGE ON SCHEMA public TO {role}; GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO {role}; GRANT USAGE,SELECT ON ALL SEQUENCES IN SCHEMA public TO {role};"))).execute(&pool).await.unwrap();
+    let options = pool
+        .connect_options()
+        .as_ref()
+        .clone()
+        .username(&role)
+        .password("fixture");
     let restricted = PgPoolOptions::new()
         .max_connections(4)
         .connect_with(options)
