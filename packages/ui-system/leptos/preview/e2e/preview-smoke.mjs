@@ -13,6 +13,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { checkSelectGeometry, selectCharacter } from './select-geometry.mjs';
 import { captureTransaction, captureSpecimen, sourceIdentity } from './focus-capture.mjs';
 
 const args = Object.fromEntries(
@@ -468,6 +469,41 @@ const CONTRAST_JS = `
 
 async function lowestContrast(page, selector) {
   return page.eval(`(() => { ${CONTRAST_JS} return Math.min(...[...document.querySelectorAll(${JSON.stringify(selector)})].map(ratio)); })()`);
+}
+
+async function selectChevron(page) {
+  console.log('Select #135: gallery native states and geometry:');
+  mkdirSync(args.out,{recursive:true});
+  for (const [theme,label] of [['light','Sáng'],['dark','Tối']]) {
+    await page.choose('theme',label);
+    for (const width of [320,390,1440]) for (const scale of [100,200]) {
+      await page.viewport(width);
+      await page.choose('scale',`${scale}%`);
+      await page.open('field.radio');
+      await page.open('field.select');
+      await page.eval(`document.querySelector('#genre-select').focus()`);
+      await selectCharacter(page,'v');
+      await page.waitFor(`document.querySelector('#genre-select').value==='van-xuoi'`,'native type-ahead Văn xuôi');
+      const geometry=await checkSelectGeometry(page,'#genre-select',check,`gallery ${theme}/${width}/${scale} Văn xuôi`);
+      await selectCharacter(page,'k');
+      check(await page.eval(`document.querySelector('#genre-select').value==='van-xuoi'`),'native type-ahead skips the disabled Kịch option');
+      await page.eval(`document.querySelector('#genre-select').scrollIntoView({block:'center'})`);
+      await page.settle();
+      const shot=await page.send('Page.captureScreenshot',{format:'png'});
+      const name=`select-gallery-${theme}-${width}-${scale}-viewport`;
+      writeFileSync(join(args.out,`${name}.png`),Buffer.from(shot.data,'base64'));
+      page.contexts[name]={...await page.eval(`({hash:location.hash,width:innerWidth,height:innerHeight,dpr:devicePixelRatio,rootFontSize:getComputedStyle(document.documentElement).fontSize,theme:document.querySelector('.vk-ui').dataset.theme})`),geometry,media:{...page.media}};
+    }
+  }
+  for (const scenario of ['invalid','disabled']) {
+    await page.open('field.select',scenario);
+    const r=await page.eval(`(() => {const s=document.querySelector('#genre-select');s.focus();return {disabled:s.disabled,focused:document.activeElement===s,invalid:s.getAttribute('aria-invalid'),described:s.getAttribute('aria-describedby'),outline:getComputedStyle(s).outlineWidth,offset:getComputedStyle(s).outlineOffset}})()`);
+    check(scenario==='disabled' ? r.disabled&&!r.focused : r.invalid==='true'&&r.described==='genre-select-error'&&r.focused&&r.outline==='2px'&&r.offset==='-2px',`Select ${scenario}: native state, linked error and focus ${JSON.stringify(r)}`);
+    await page.emulate('forced-colors','active');
+    check(await page.eval(`(() => {const s=document.querySelector('#genre-select'),i=s.parentElement.querySelector('svg'),c=getComputedStyle(i);const probe=document.createElement('span');probe.style.color=s.disabled?'GrayText':'ButtonText';document.body.append(probe);const system=getComputedStyle(probe).color;probe.remove();return c.display!=='none'&&c.visibility==='visible'&&c.color===system&&i.getAttribute('aria-hidden')==='true'})()`),`Select ${scenario}: forced-colors retains decorative chevron`);
+    await page.emulate('forced-colors','none');
+  }
+  await page.choose('scale','100%');await page.viewport(1440);
 }
 
 async function components(page) {
@@ -1626,6 +1662,7 @@ try {
   await forcedColors(page);
   await densityAndMotion(page);
   await components(page);
+  await selectChevron(page);
   await toggles(page);
   await states(page, cdp);
   await navigation(page);
