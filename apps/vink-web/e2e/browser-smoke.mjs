@@ -3,7 +3,7 @@
 // No npm dependencies: Node.js 22+ (global WebSocket/fetch) and a Chrome/Chromium binary.
 // Run through `cargo xtask verify web`, which prepares a scratch database and the server.
 //
-//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout|public-search|editor-chrome
+//   node browser-smoke.mjs --base URL --chrome BIN --state FILE --phase main|after-restart|endorsement|appearance|first-paint|bottom-navigation|desk-layout|public-search|public-cache|editor-chrome
 //
 // Evidence limits: text is entered with Input.insertText / Input.imeSetComposition and keys with
 // Input.dispatchKeyEvent, which is programmatic input, not a real OS IME or keyboard layout. One
@@ -772,8 +772,10 @@ async function cacheFirstPublicReads(page) {
       body: Buffer.from(JSON.stringify(answer.body)).toString('base64'),
     }) : page.send('Fetch.continueRequest', { requestId: params.requestId })).catch(() => {});
   };
-  const clock = `(window.__vinkClock ??= (() => { const now = performance.now.bind(performance), clock = { offset: 0 }; performance.now = () => now() + clock.offset; return clock; })())`;
-  const advance = seconds => page.eval(`${clock}.offset += ${seconds * 1000}`);
+  // Freeze cache time before validation: host scheduling must not turn 119 s into >=120 s.
+  // Keep the real clock separately for the time-to-rows measurements below.
+  const clock = `(window.__vinkClock ??= (() => { const realNow = performance.now.bind(performance), clock = { now: realNow(), realNow }; performance.now = () => clock.now; return clock; })())`;
+  const advance = seconds => page.eval(`${clock}.now += ${seconds * 1000}`);
   const signals = events => page.eval(`${JSON.stringify(events)}.forEach(name => (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name)))`);
   const setHidden = hidden => page.eval(`Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => ${hidden ? "'hidden'" : "'visible'"} }); document.dispatchEvent(new Event('visibilitychange'))`);
   const settled = (selector, what) => page.waitFor(`document.querySelector('${selector}')?.dataset.refreshing === 'false'`, what);
@@ -786,16 +788,18 @@ async function cacheFirstPublicReads(page) {
 
     await page.goto(`${args.base}/toi`);
     await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'utility hydration before the first client list read');
+    await page.eval(`${clock}; true`);
     const nav = await page.eval(`innerWidth < 760`) ? '.vk-ui-bottom-nav a[href="/"]' : '#navigation-primary a[href="/"]';
     const timed = (selector, ready) => page.eval(`(async () => {
       window.__sawLoading = false;
       const watch = new MutationObserver(() => { if (document.querySelector('[data-testid=discovery-loading]')) window.__sawLoading = true; });
       watch.observe(document.body, { subtree: true, childList: true, characterData: true });
-      const start = performance.now();
+      const realNow = window.__vinkClock.realNow;
+      const start = realNow();
       document.querySelector(${JSON.stringify(selector)}).click();
       while (!(${ready})) await new Promise(resolve => requestAnimationFrame(resolve));
       watch.disconnect();
-      return { ms: Math.round(performance.now() - start), loading: window.__sawLoading };
+      return { ms: Math.round(realNow() - start), loading: window.__sawLoading };
     })()`);
     const ROWS = `location.pathname === '/' && document.querySelector('.vk-public-row a[href="/tac-pham/${SAMPLE_WORK}"]')`;
     const first = await timed(nav, ROWS);
@@ -808,6 +812,8 @@ async function cacheFirstPublicReads(page) {
     console.log(`  ..  time to rows: first client visit ${first.ms} ms (network), return ${back.ms} ms (tab snapshot)`);
 
     await page.eval(`document.querySelector('.vk-public-row').__kept = true; document.querySelector('.vk-public-row__link').focus()`);
+    // Deliberately exceed the former one-second timing margin on even a fast host.
+    await sleep(1500);
     await advance(119);
     await signals(['focus']);
     await sleep(300);
@@ -877,6 +883,7 @@ async function cacheFirstPublicReads(page) {
     await page.waitFor(`document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`, 'origin list restores the card');
     check(true, 'the origin’s list, not the derived preview, decides membership once it answers');
   } finally {
+    await page.eval(`if (window.__vinkClock) { performance.now = window.__vinkClock.realNow; delete window.__vinkClock; }`).catch(() => {});
     await page.send('Fetch.disable').catch(() => {});
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== network && item !== gate);
   }
@@ -3598,6 +3605,7 @@ try {
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
+  else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);
