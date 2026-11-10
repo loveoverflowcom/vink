@@ -1786,9 +1786,32 @@ async function appearanceFirstPaint(page) {
   check(blocked.length === navigations && blocked.every(error => error === `TypeError: Failed to fetch dynamically imported module: ${args.base}/pkg/vink.js`), 'blocked hydration produces only the expected import failures');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
-  await page.eval(`localStorage.removeItem('vink.ui.theme')`);
-  await page.reload();
   check(mismatches.length === 0, `first paint and both native selections agree with the preference before hydration: ${JSON.stringify(mismatches)}`);
+
+  // Another tab can write a preference after the bootstrap has applied this document's snapshot.
+  await page.viewport(1440);
+  await page.eval(`localStorage.removeItem('vink.ui.theme');
+    localStorage.setItem('vink.ui.rail', 'compact'); localStorage.setItem('vink.ui.text', '200');`);
+  const { identifier: changeRailStorage } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    const observer = new MutationObserver(() => {
+      if (document.documentElement?.dataset.rail !== 'compact') return;
+      observer.disconnect();
+      localStorage.setItem('vink.ui.rail', 'expanded');
+    });
+    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-rail'] });` });
+  try {
+    await page.reload();
+    await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+      localStorage.getItem('vink.ui.rail') === 'expanded' && ${RAIL_WIDTH} === 96 &&
+      getComputedStyle(document.documentElement).fontSize === '32px' &&
+      ['page', 'overlay'].every(prefix =>
+        document.querySelector('#' + prefix + '-rail input:checked')?.value === 'compact' &&
+        document.querySelector('#' + prefix + '-text input:checked')?.value === '200')`, 'hydration keeps the bootstrapped rail and text preferences even if storage changes');
+  } finally {
+    await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: changeRailStorage });
+    await page.eval(`localStorage.removeItem('vink.ui.rail'); localStorage.removeItem('vink.ui.text');`);
+    await page.reload();
+  }
 }
 
 async function shellWithDirtyEditor(page, editorPath, written, view, selected) {

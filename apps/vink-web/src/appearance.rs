@@ -9,7 +9,7 @@ pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 const TEXT_KEY: &str = "vink.ui.text";
 
 // Runs before CSS; only mutates the document root outside the hydrated app. Hydration adopts
-// theme and text scale synchronously; the rail effect reads its key. Storage denial keeps defaults intact.
+// all three preferences synchronously from that root. Storage denial keeps defaults intact.
 // Head links are outside the hydrated body. Observe the existing theme authority so explicit
 // choices, system changes and storage-denied sessions share one icon/manifest selection.
 pub(crate) const BOOTSTRAP: &str = r#"try{for(const [key,attr,allowed] of [['vink.ui.theme','data-theme',['light','dark']],['vink.ui.rail','data-rail',['expanded','compact']],['vink.ui.text','data-text',['200']]]){const v=localStorage.getItem(key);if(allowed.includes(v))document.documentElement.setAttribute(attr,v)}}catch{}
@@ -37,31 +37,23 @@ pub(crate) struct Appearance {
 impl Appearance {
     pub fn provide() -> Self {
         #[cfg(feature = "hydrate")]
-        let theme = document()
-            .document_element()
-            .and_then(|root| root.get_attribute("data-theme"))
-            .map(|value| Theme::parse(&value))
-            .unwrap_or(Theme::System);
+        let (theme, rail, large_text) = {
+            let root = document().document_element();
+            let preference = |name| root.as_ref().and_then(|root| root.get_attribute(name));
+            (
+                Theme::parse(preference("data-theme").as_deref().unwrap_or_default()),
+                Rail::parse(preference("data-rail").as_deref().unwrap_or_default()),
+                preference("data-text").as_deref() == Some("200"),
+            )
+        };
         #[cfg(not(feature = "hydrate"))]
-        let theme = Theme::System;
-        #[cfg(feature = "hydrate")]
-        let large_text = document()
-            .document_element()
-            .and_then(|root| root.get_attribute("data-text"))
-            .as_deref()
-            == Some("200");
-        #[cfg(not(feature = "hydrate"))]
-        let large_text = false;
+        let (theme, rail, large_text) = (Theme::System, None, false);
         let state = Self {
             theme: RwSignal::new(theme),
-            rail: RwSignal::new(None),
+            rail: RwSignal::new(rail),
             large_text: RwSignal::new(large_text),
         };
         provide_context(state);
-        #[cfg(feature = "hydrate")]
-        Effect::new(move |_| {
-            state.rail.set(Rail::parse(&read(RAIL_KEY)));
-        });
         state
     }
 
@@ -83,16 +75,6 @@ impl Appearance {
         self.large_text.set(large);
         apply(TEXT_KEY, "data-text", large.then_some("200"));
     }
-}
-
-#[cfg(feature = "hydrate")]
-fn read(key: &str) -> String {
-    window()
-        .local_storage()
-        .ok()
-        .flatten()
-        .and_then(|storage| storage.get_item(key).ok().flatten())
-        .unwrap_or_default()
 }
 
 fn apply(key: &str, attribute: &str, value: Option<&str>) {
