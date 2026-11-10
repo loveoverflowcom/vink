@@ -332,8 +332,13 @@ export async function authWeb(page, { args, check, openPage }) {
   await desk.waitFor(`${q('[data-testid=draft-empty]')}`, "B's desk after reload");
   check(await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)})`), "a reload shows B's desk only");
 
+  const discussionReader = await discussionSessionRaces(other, ctx, mailA, mailB, openPage, check);
+
   console.log('Auth Web: the real limiter answers 429 with Retry-After:');
   check((await signOut(other, base)).includes(204), 'B signs out (204)');
+  await discussionReader.waitFor(`!document.querySelector('#own-comments')`, 'real revoked logout clears Reader private region');
+  check(await discussionReader.eval(`document.querySelector('#root-composer').value === 'B đang viết sau đổi phiên' && !document.body.textContent.includes('Bình luận nêu danh tính đời thực') && !document.body.textContent.includes('Một góc nhìn khác về khổ hai.') && !document.querySelector('[data-testid=discussion-receipt]')?.textContent?.trim()`), 'Reader/Auth real 204 logout removes own fixture body/reason/receipt and keeps only B typed text');
+  check(await discussionReader.eval(`fetch('/api/v1/works/33333333-3333-4333-8333-333333333333/discussion/me').then(r=>r.status)`) === 401, 'Reader/Auth expired authority answers 401; the existing Session owner handles refresh');
   let burned = 0;
   for (; burned < 14; burned++) {
     const status = await other.eval(`fetch('/api/v1/auth/sign-in/challenges', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'gioi-han-${stamp}-${burned}@vi-du.vn' }) }).then((r) => r.status)`);
@@ -350,4 +355,209 @@ export async function authWeb(page, { args, check, openPage }) {
   for (const [name, tab] of [['account', other], ['desk', desk]]) {
     check(tab.errors.length === 0, `no console errors in the ${name} tab${tab.errors.length ? `: ${tab.errors.join(' | ')}` : ''}`);
   }
+}
+
+/** Reader privacy/races through real App + Identity. Cookies below are server-issued; CDP
+ * switches between two still-valid test sessions to exercise direct A→B as well as logout.
+ * No identity response is fabricated. A gate holds real responses, never their payloads. */
+async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check) {
+  const base = ctx.args.base;
+  const work = '33333333-3333-4333-8333-333333333333';
+  const endpoint = `/api/v1/works/${work}/discussion`;
+  const cookieB = (await cookies(other, base))['__Host-vink_session'];
+  const avatarB = await other.eval(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials`);
+  const announce = async () => other.eval(`(() => { const c = new BroadcastChannel('vink-session'); c.postMessage('changed'); c.close(); dispatchEvent(new Event('focus')); })()`);
+  const select = async (cookie) => {
+    if (cookie) await other.send('Network.setCookie', { name: cookie.name, value: cookie.value, url: base, path: '/', secure: true, httpOnly: true, sameSite: cookie.sameSite });
+    else await other.send('Network.deleteCookies', { name: '__Host-vink_session', url: base });
+    await announce();
+  };
+  const post = async (tab, body) => tab.eval(`fetch('${endpoint}/comments', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({target_id:null, body:${JSON.stringify(body)}, command_key:crypto.randomUUID()}) }).then(async r=>({status:r.status, body:await r.json()}))`);
+  const textB = 'Riêng B — nhận xét được đọc qua phiên thật';
+  const createdB = await post(other, textB);
+  check(createdB.status === 201, 'Reader/Auth: B creates a real pending comment');
+  // Keep B's session valid at Identity, select guest in this browser and issue A another session.
+  await select(null);
+  await openAccount(other, base, 'anonymous');
+  await signIn(other, ctx, mailA);
+  await other.waitFor(`${STANDING} === 'active'`, 'Reader: A active');
+  const cookieA = (await cookies(other, base))['__Host-vink_session'];
+  const textA = 'Riêng A — nhận xét được đọc qua phiên thật';
+  const createdA = await post(other, textA);
+  check(createdA.status === 201, 'Reader/Auth: A creates a real pending comment');
+  const reader = await openPage();
+  await reader.goto(`${base}/tac-pham/${work}`);
+  const ownText = `(document.querySelector('#own-comments')?.textContent ?? '')`;
+  const settled = `document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true' && document.querySelector('#discussion-refresh')?.getAttribute('aria-busy') !== 'true'`;
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'Reader: own A loaded');
+  const html = await reader.eval(`fetch(location.href).then(r=>r.text())`);
+  check(!html.includes(textA) && !html.includes(textB) && !html.includes('own_pending') && !html.includes('viewer_is_work_author'), 'Reader/Auth: SSR and hydration contain no own body or viewer facts');
+  await reader.typeAtEnd('#root-composer', 'Nháp của A');
+  // Hold one real own-list response, let later requests through even before it is released.
+  const gate = new ListGate(reader);
+  gate.listener = (message) => {
+    if (message.sessionId !== reader.sessionId || message.method !== 'Fetch.requestPaused') return;
+    const { requestId, request, responseStatusCode } = message.params;
+    const u = new URL(request.url);
+    if (u.pathname === `${endpoint}/me` && !u.searchParams.has('ids') && !gate.first) gate.first = { requestId, status: responseStatusCode };
+    else if (u.pathname === `${endpoint}/public` && !gate.publicFirst) gate.publicFirst = { requestId, status: responseStatusCode };
+    else { gate.passed++; reader.send('Fetch.continueRequest', {requestId}).catch(()=>{}); }
+  };
+  gate.enable = async () => {
+    reader.cdp.listeners.push(gate.listener);
+    await reader.send('Fetch.enable', {patterns:[{urlPattern:`*${endpoint}/me*`, requestStage:'Response'},{urlPattern:`*${endpoint}/public*`, requestStage:'Response'}]});
+  };
+  await gate.enable();
+  await reader.click('#discussion-refresh');
+  await gate.held();
+  const publicDeadline = Date.now()+10000;
+  while (!gate.publicFirst) { if (Date.now()>publicDeadline) throw new Error('held public response missing'); await sleep(30); }
+  await select(cookieB); // Direct A → B; no anonymous observation in between.
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && !${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'B loads before the obsolete A answer is released');
+  check(gate.passed > 0 && await reader.eval(`document.querySelector('#root-composer').value === ''`), 'Reader/Auth direct A→B: private projection and draft clear immediately; B read progresses before old A response');
+  await gate.release().catch(()=>{}); // The canceled fetch may already be detached by Chrome.
+  await reader.send('Fetch.continueRequest',{requestId:gate.publicFirst.requestId}).catch(()=>{});
+  await gate.disable();
+  check(await reader.eval(`!${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`), 'Reader/Auth: released A response neither leaks data nor strands loading');
+  // A → guest → A keeps only typed text, reads private facts again, never revives receipts.
+  await select(cookieA);
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'return A');
+  await reader.typeAtEnd('#root-composer', 'Chữ mới của A');
+  await select(null);
+  await reader.waitFor(`!document.querySelector('#own-comments') && document.querySelector('#root-composer').value === 'Chữ mới của A'`, 'A to guest clears private state and keeps own text');
+  await select(cookieA);
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textA)}) && ${settled}`, 'guest to same A reads fresh own data');
+  const returnedFacts = await reader.eval(`({text:document.querySelector('#root-composer').value, receipt:document.querySelector('[data-testid=discussion-receipt]')?.textContent?.trim() ?? ''})`);
+  check(returnedFacts.text === 'Chữ mới của A' && !returnedFacts.receipt, `Reader/Auth A→guest→A: text survives; no old receipt returns ${JSON.stringify(returnedFacts)}`);
+  // A real write commits, but its ACK is held across another account generation.
+  let ack;
+  const listener = m => {
+    if (m.sessionId !== reader.sessionId || m.method !== 'Fetch.requestPaused') return;
+    ack = m.params;
+  };
+  reader.cdp.listeners.push(listener);
+  await reader.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/comments`,requestStage:'Response'}]});
+  await reader.click('#root-composer-send');
+  const deadline = Date.now()+10000;
+  while (!ack) { if (Date.now()>deadline) throw new Error('held real comment ACK missing'); await sleep(30); }
+  check(ack.responseStatusCode === 201, 'Reader/Auth: held ACK belongs to a genuinely committed comment');
+  await select(null);
+  await reader.waitFor(`!document.querySelector('#own-comments')`, 'A write to guest');
+  await select(cookieB);
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && ${settled}`, 'A→guest→B while write answer held');
+  await reader.typeAtEnd('#root-composer','B đang viết sau đổi phiên');
+  await reader.send('Fetch.continueRequest',{requestId:ack.requestId});
+  reader.cdp.listeners.splice(reader.cdp.listeners.indexOf(listener),1);
+  await reader.send('Fetch.disable');
+  await reader.waitFor(`document.querySelector('#root-composer-send')?.getAttribute('aria-busy') !== 'true'`, 'B send is not busy after A ACK');
+  check(await reader.eval(`document.querySelector('#root-composer').value === 'B đang viết sau đổi phiên' && !${ownText}.includes(${JSON.stringify(textA)}) && !document.querySelector('[data-testid=discussion-receipt]')?.textContent?.trim()`), 'Reader/Auth A→guest→B: A ACK cannot clear B text, restore receipt, or own data');
+  // Real remove ACKs in two generations: old completion must not clear the new busy owner.
+  const removes = [];
+  const removeListener = m => {
+    if (m.sessionId !== reader.sessionId || m.method !== 'Fetch.requestPaused') return;
+    removes.push(m.params);
+  };
+  reader.cdp.listeners.push(removeListener);
+  await reader.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/comments/*`,requestStage:'Response'}]});
+  const waitRemoves = async count => { const until = Date.now()+10000; while (removes.length<count) { if (Date.now()>until) throw new Error('held remove ACK missing'); await sleep(30); } };
+  await reader.click(`#remove-comment-${createdB.body.comment_id}`);
+  await waitRemoves(1);
+  await select(cookieA);
+  await reader.waitFor(`document.querySelector('#remove-comment-${createdA.body.comment_id}') && ${settled}`, 'A loads while obsolete B removal ACK is held');
+  await reader.click(`#remove-comment-${createdA.body.comment_id}`);
+  await waitRemoves(2);
+  await reader.send('Fetch.continueRequest',{requestId:removes[0].requestId});
+  check(await reader.eval(`document.querySelector('#discussion-refresh')?.getAttribute('aria-busy') === 'true'`), 'Reader/Auth: B removal ACK cannot clear the new A mutation busy owner');
+  await reader.send('Fetch.continueRequest',{requestId:removes[1].requestId});
+  reader.cdp.listeners.splice(reader.cdp.listeners.indexOf(removeListener),1);
+  await reader.send('Fetch.disable');
+  await reader.waitFor(settled, 'A mutation completes and releases busy');
+  await select(cookieB);
+  await reader.waitFor(`document.querySelector('.vk-nav-account-avatar [data-initials]')?.dataset.initials === ${JSON.stringify(avatarB)} && document.querySelector('#own-comments-refresh') && ${settled}`, 'return B confirmed by the Session-driven avatar after removals');
+  await reader.waitFor(`${ownText}.includes('Chưa có nhận xét riêng') && ${settled}`, 'B own empty state after removals');
+  check(await reader.eval(`!${ownText}.includes(${JSON.stringify(textA)})`), 'Reader/Auth: successful empty own list is distinct from failure and contains no A data');
+  check((await post(other, textB)).status === 201, 'Reader/Auth: B creates a fresh pending comment after removal');
+  await reader.click('#own-comments-refresh');
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && ${settled}`, 'fresh B read after removals');
+  await reader.typeAtEnd('#root-composer','B đang viết sau đổi phiên');
+  // Fabricated failure of own/capability only; public GET remains real and usable.
+  const publicBefore = await reader.eval(`document.querySelector('#root-list')?.textContent`);
+  const failed = m => {
+    if (m.sessionId !== reader.sessionId || m.method !== 'Fetch.requestPaused') return;
+    reader.send('Fetch.fulfillRequest',{requestId:m.params.requestId,responseCode:503,responseHeaders:[{name:'Content-Type',value:'application/json'}],body:Buffer.from(JSON.stringify({error:{code:'dependency_unavailable',message:'fixture Identity outage'}})).toString('base64')}).catch(()=>{});
+  };
+  reader.cdp.listeners.push(failed);
+  await reader.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/me*`,requestStage:'Request'},{urlPattern:`*${endpoint}?limit=1`,requestStage:'Request'}]});
+  await reader.click('#own-comments-refresh');
+  await reader.waitFor(`${ownText}.includes('Chưa làm mới được') && ${settled}`, 'private failure is local');
+  const failureFacts = await reader.eval(`({publicText:document.querySelector('#root-list')?.textContent, draft:document.querySelector('#root-composer').value})`);
+  check(failureFacts.publicText === publicBefore && failureFacts.draft === 'B đang viết sau đổi phiên', `Reader/Auth fabricated Identity read failure: public timeline and newer text remain ${JSON.stringify(failureFacts)}`);
+  await reader.capture('discussion-own-private-error',{boundary:'fabricated-identity-outage-real-auth-session'});
+  reader.cdp.listeners.splice(reader.cdp.listeners.indexOf(failed),1);
+  await reader.send('Fetch.disable');
+  await reader.click('#own-comments-refresh');
+  await reader.waitFor(`${ownText}.includes(${JSON.stringify(textB)}) && !${ownText}.includes('Chưa làm mới được') && ${settled}`, 'private retry recovers with real B data');
+  check(await reader.eval(`(() => { const stored=JSON.stringify([Object.entries(localStorage),Object.entries(sessionStorage)]); return !stored.includes(${JSON.stringify(textA)}) && !stored.includes(${JSON.stringify(textB)}) && !stored.includes('B đang viết sau đổi phiên') && !stored.includes('Chờ duyệt'); })()`), 'Reader/Auth: own bodies, draft and receipt never enter localStorage/sessionStorage');
+  await discussionOwnFixtures(reader, endpoint, check);
+  await openAccount(other, base, 'active'); // B remains selected for the existing limiter test.
+  return reader;
+}
+
+/** Labelled provider fixtures for off-page/unlisted/rejected and reconciliation, separate
+ * from the real-session race evidence above. No fixture is claimed as database mutation. */
+async function discussionOwnFixtures(page, endpoint, check) {
+  const fixture = JSON.parse(readFileSync(new URL('../../../services/vink-app/contracts/http/v1/fixtures/discussion.me.get.json', import.meta.url),'utf8'));
+  let own = structuredClone(fixture);
+  const ownCursors = [], ownBatches = [];
+  const listener = m => {
+    if (m.sessionId !== page.sessionId || m.method !== 'Fetch.requestPaused') return;
+    const u = new URL(m.params.request.url), ids = u.searchParams.get('ids')?.split(',');
+    const cursor = u.searchParams.get('cursor');
+    if (ids) ownBatches.push(ids); else ownCursors.push(cursor);
+    const body = {...own, comments: ids ? own.comments.filter(c=>ids.includes(c.comment_id)) : cursor ? own.comments.slice(2) : own.comments.slice(0,2), next_cursor: ids || cursor ? null : 'fixture-own-next'};
+    page.send('Fetch.fulfillRequest',{requestId:m.params.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(JSON.stringify(body)).toString('base64')}).catch(()=>{});
+  };
+  page.cdp.listeners.push(listener);
+  await page.send('Fetch.enable',{patterns:[{urlPattern:`*${endpoint}/me*`,requestStage:'Request'}]});
+  await page.click('#own-comments-refresh');
+  const rejected=fixture.comments[2];
+  await page.waitFor(`document.querySelector('#own-comments-more') && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'independent own cursor');
+  await page.click('#own-comments-more');
+  await page.waitFor(`document.querySelector('#own-comments')?.textContent.includes(${JSON.stringify(rejected.rejection_reason)}) && document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'own rejected fixture');
+  check(ownCursors.includes('fixture-own-next') && ownBatches.every(b=>b.length<=20 && b.length===new Set(b).size) && ownBatches.some(b=>b.length>1), 'labelled own fixtures: separate own cursor and deduplicated multi-ID lookup batches <=20');
+  check(await page.eval(`document.querySelector('#own-comments').textContent.includes('Nhánh chưa có trong danh sách công khai') && !document.querySelector('#root-list').textContent.includes(${JSON.stringify(rejected.body)})`), 'labelled own fixtures: off-page pending, unlisted-root reply and own rejection remain outside the public timeline');
+  const beforeInput = await page.eval(`document.querySelector('#root-composer').value`);
+  await page.eval(`window.__discussionInput = document.querySelector('#root-composer'); window.__discussionInput.focus(); window.__discussionInput.setSelectionRange(window.__discussionInput.value.length,window.__discussionInput.value.length)`);
+  await page.send('Input.imeSetComposition',{text:'d',selectionStart:1,selectionEnd:1});
+  await page.send('Input.imeSetComposition',{text:'đ',selectionStart:1,selectionEnd:1});
+  // Refresh without moving native focus away from the active composition.
+  await page.eval(`document.querySelector('#own-comments-refresh').click()`);
+  await page.waitFor(`document.querySelector('#own-comments-refresh')?.getAttribute('aria-busy') !== 'true'`, 'own refresh during simulated composition');
+  await page.send('Input.insertText',{text:'đ'});
+  check(await page.eval(`window.__discussionInput === document.querySelector('#root-composer') && window.__discussionInput.value === ${JSON.stringify(beforeInput+'đ')}`), 'own fixture refresh preserves native composition/input identity (CDP simulation)');
+  for (const [command, modifiers, expected] of [['undo',page.mod,beforeInput],['redo',page.mod|8,beforeInput+'đ'],['undo',page.mod,beforeInput]]) {
+    await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'z',code:'KeyZ',modifiers,commands:[command]});
+    await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'z',code:'KeyZ',modifiers});
+    check(await page.eval(`window.__discussionInput.value === ${JSON.stringify(expected)}`), `own refresh keeps native ${command} history (CDP editing command)`);
+  }
+  await page.eval(`window.__discussionInput.focus(); window.__discussionInput.setSelectionRange(2,5)`);
+  for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
+    await page.viewport(width);
+    await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; document.querySelector('#own-comments').scrollIntoView({block:'start'})`);
+    check(await page.eval(`document.documentElement.scrollWidth <= innerWidth+1 && window.__discussionInput === document.querySelector('#root-composer') && document.activeElement === window.__discussionInput && window.__discussionInput.selectionStart === 2 && window.__discussionInput.selectionEnd === 5`), `own fixture ${width}/${theme}/${scale}: reflows and preserves input identity/selection`);
+    await page.capture(`discussion-own-${width}-${theme}-${scale}`,{boundary:'intercepted-provider-own-fixture-real-auth-session',textScale:scale});
+  }
+  own.comments[0].status='approved';
+  await page.click('#own-comments-refresh');
+  await page.waitFor(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]')?.textContent.includes('Đã được duyệt')`, 'off-page approval confirmed by lookup');
+  check(await page.eval(`document.querySelectorAll('[data-own-comment="${own.comments[0].comment_id}"]').length === 1`),'labelled fixture pending→approved off-page has one representation');
+  own.comments[0].status='removed'; own.comments[0].body=null; own.comments[0].can_remove=false;
+  await page.click('#own-comments-refresh');
+  await page.waitFor(`document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]')?.textContent.includes('không còn hiển thị')`, 'removed fixture');
+  check(await page.eval(`!document.querySelector('[data-own-comment="${own.comments[0].comment_id}"]').textContent.includes(${JSON.stringify(fixture.comments[0].body)})`),'labelled fixture removed strips body and capability');
+  await page.capture('discussion-own-removed',{boundary:'intercepted-provider-own-fixture-real-auth-session',textScale:200});
+  page.cdp.listeners.splice(page.cdp.listeners.indexOf(listener),1);
+  await page.send('Fetch.disable');
+  await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; delete window.__discussionInput`);
+  await page.viewport(1280);
 }

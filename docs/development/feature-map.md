@@ -271,12 +271,25 @@ Các hàng dưới là assertion đã viết, không tự xác nhận kết qu�
 
 | Điểm vào | Assertion có trong code/runner | Giới hạn |
 | --- | --- | --- |
-| Reader `#feedback-region` | `api::discussion_resource`, `PublicReadsAdapter::discussion` gọi viewer `None`; `discussionReadingAndWrites` kiểm SSR không chứa own-pending/rejected sau commit thật | Anonymous SSR; private projection chỉ qua no-store API sau hydration. Không auth production |
+| Reader `#feedback-region` | `api::discussion_resource`, `PublicReadsAdapter::discussion` gọi `public_discussion` (không actor); `discussionReadingAndWrites` kiểm SSR không chứa own-pending/rejected sau commit thật | Anonymous SSR; private projection chỉ qua no-store API sau hydration. Không auth production |
 | `DiscussionController` | Unit tests D2T-03: double send, new typing/IME, scope đổi, replay key/payload và physical attempt riêng, late ACK/error, Closed, context revoked | Rust consumer production seam; không phải Quint/Kani, OS IME hoặc chứng minh DB |
 | Root/reply paging và context | Adapter giữ cursor opaque, hai tầng, neutral anchor/unavailable, ID-keyed rows; unit tests projection/dedupe/cursor và mutation/read epoch fencing | Không endpoint context ngoài trang, ranking/count tổng/reaction/report |
 | Gửi/gỡ/author toggle cục bộ | `discussionReadingAndWrites` trong browser smoke: POST commit rồi mất ACK, exact keyed replay, pending receipt, giữ typing, PUT generation, DELETE own | LocalFixture + scratch PostgreSQL; không production auth/moderation E2E. Runtime result phải đọc log |
 | Web/CMP patterns | `sharing-open`, `sharing-closed`, `discussion-flat`, `discussion-anchor` cùng catalog IDs; Web render tests và CMP Desktop tests giữ text/selection qua policy | CMP là composition mẫu; chưa native service consumer, OS IME/screen reader/performance |
 | Responsive/target revocation | Browser smoke captures light/dark 320/390/834/1024/1440 và 200% ở 320/390; context fixture revoke giữ peers/draft | Capture labels tách real local PostgreSQL khỏi intercepted provider fixture; ảnh cần mở riêng |
+
+## DISC-WEB-PUBLIC-OWN-READS (10/11/2026)
+
+Nền `4891c77`; [DecisionMap/LayoutSpec/scope](discussion-web-reads.md). Coverage dưới đây là
+assertion, không tự là kết quả PASS.
+
+| Điểm vào | Owner / assertion | Giới hạn |
+| --- | --- | --- |
+| Public SSR và GET roots/replies | DTO public strict, `separated_discussion_tests`, paths encoded; SSR resource chỉ serialize public | Không cache/validator mới |
+| Nhận xét của bạn | `discussion_reads::OwnState`: own cursor, dedup ID, lookup ≤20/batch, lookup thắng list; unit và `discussionOwnFixtures` | Status/rejected/unlisted trong browser dùng provider fixture có nhãn |
+| Session đổi / read hoặc ACK trễ | `ViewState::change_session`, controller ACK typed, private child Owner; `separated_read_regressions`, `discussionSessionRaces` | App + Identity thật với local outbox, CDP đổi cookie thật/giữ response; không production auth |
+| Loading/busy và public độc lập | Old request không settle owner mới; own/capability 503 không mất public; 404 work bỏ public/own | Browser 503 riêng dựng và ghi nhãn; reducer kiểm chống hồi sinh body/context |
+| Own layout / composer identity | `discussionOwnFixtures`: 320/390/834/1440 × sáng/tối × chữ100/200; node/selection, ảnh | Programmatic input, không OS IME/screen reader/native |
 
 ## Adoption UIS-05 (#23)
 

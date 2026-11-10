@@ -115,7 +115,8 @@ Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-we
   **HTTPS thật, domain thật, edge/WAF và thư tới hộp thư người thật chưa được chạy.**
 - Chỉ Chrome headless. Chưa có Safari/Firefox, thiết bị mobile thật, screen reader, trình quản lý
   mật khẩu/autofill mã.
-- Các lần đọc của một view chạy nối tiếp: sau khi đổi tài khoản, lần đọc của tài khoản mới có thể
+- Riêng thảo luận đã supersede/cancel private reads và release loading/mutation owner khi scope
+  đổi ([Reader reads](discussion-web-reads.md)). Các view nháp hiện vẫn chạy nối tiếp: sau khi đổi tài khoản, lần đọc của tài khoản mới có thể
   phải chờ câu trả lời chậm của tài khoản cũ, tối đa bằng hạn request (30 s). Màn hình đã được dọn
   và ở trạng thái đang tải trong lúc đó; không có dữ liệu cũ nào được hiện.
 - Chưa có đổi bút danh, đổi email, danh sách phiên/thiết bị trên UI.

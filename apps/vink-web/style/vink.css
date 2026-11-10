@@ -866,3 +866,6 @@ a {
 @media (max-width: 359px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
 }
+
+/* Own comment bodies preserve authored lines at every text size. */
+.vk-discussion-own-body { white-space: pre-wrap; overflow-wrap: anywhere; }

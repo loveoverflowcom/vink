@@ -12,6 +12,7 @@ pub mod appearance;
 pub mod contract;
 pub mod desk_state;
 pub mod discovery;
+pub mod discussion_reads;
 pub mod discussion_state;
 pub mod document;
 pub mod draft_list;

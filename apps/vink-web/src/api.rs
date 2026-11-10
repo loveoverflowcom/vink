@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "hydrate")]
 use crate::contract::{ApiError, Draft, DraftList, SaveDraftRequest, SavedDraft};
-use crate::contract::{DiscussionPage, EndorsementSummaries, Publication, WorkList};
+use crate::contract::{EndorsementSummaries, Publication, WorkList};
 
 const DISCUSSION_ID: percent_encoding::AsciiSet =
     percent_encoding::NON_ALPHANUMERIC.remove(b'-').remove(b'_');
@@ -119,14 +119,14 @@ pub(crate) fn on_unauthenticated(hook: impl Fn() + 'static) {
 /// summary read never hides the discussion.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiscussionLoad {
-    pub page: DiscussionPage,
+    pub page: crate::contract::PublicDiscussionPage,
     pub endorsements: Result<EndorsementSummaries, LoadError>,
 }
 
-fn first_batch(page: &DiscussionPage) -> Vec<String> {
+fn first_batch(page: &crate::contract::PublicDiscussionPage) -> Vec<String> {
     // A first page has at most 20 roots with 3 preview replies each (80 < 100); later pages
     // are read in batches by the browser adapter.
-    crate::endorsement_state::page_targets(page)
+    crate::endorsement_state::page_targets(&page.clone().into())
         .into_iter()
         .filter_map(|target| match target {
             crate::endorsement_state::TargetKey::Comment { comment_id } => Some(comment_id),
@@ -161,8 +161,8 @@ pub fn discussion_resource(work_id: String) -> Resource<Result<DiscussionLoad, L
             move || work_id.clone(),
             |id| {
                 browser(async move {
-                    let page: DiscussionPage =
-                        public_get(format!("/api/v1/works/{id}/discussion")).await?;
+                    let page: crate::contract::PublicDiscussionPage =
+                        public_get(public_discussion_path(&id, None, None)).await?;
                     let endorsements =
                         public_get(endorsements_path(&id, false, &first_batch(&page))).await;
                     Ok(DiscussionLoad { page, endorsements })
@@ -286,9 +286,52 @@ pub fn discussion_path(work: &str, root: Option<&str>, cursor: Option<&str>) -> 
     path
 }
 
+/// Separate public/own cursor namespaces; writes keep their existing composed base path.
+pub fn public_discussion_path(work: &str, root: Option<&str>, cursor: Option<&str>) -> String {
+    discussion_path(work, root, cursor).replacen("/discussion", "/discussion/public", 1)
+}
+pub fn own_comments_path(work: &str, cursor: Option<&str>, ids: Option<&[String]>) -> String {
+    use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+    let mut path = format!("{}/me", discussion_path(work, None, None));
+    if let Some(ids) = ids {
+        path.push_str("?ids=");
+        path.push_str(
+            &ids.iter()
+                .map(|id| utf8_percent_encode(id, NON_ALPHANUMERIC).to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+        );
+    } else if let Some(cursor) = cursor {
+        path.push_str(&format!(
+            "?cursor={}",
+            utf8_percent_encode(cursor, NON_ALPHANUMERIC)
+        ));
+    }
+    path
+}
 #[cfg(feature = "hydrate")]
-pub async fn load_discussion(work: &str, cursor: Option<&str>) -> Result<DiscussionPage, ApiError> {
-    http::get(&discussion_path(work, None, cursor)).await
+pub async fn load_own_comments(
+    work: &str,
+    cursor: Option<&str>,
+    ids: Option<&[String]>,
+) -> Result<crate::contract::OwnCommentList, ApiError> {
+    http::get(&own_comments_path(work, cursor, ids)).await
+}
+#[cfg(feature = "hydrate")]
+pub async fn load_discussion_capability(
+    work: &str,
+) -> Result<crate::contract::DiscussionCapability, ApiError> {
+    http::get(&format!("{}?limit=1", discussion_path(work, None, None))).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn load_discussion(
+    work: &str,
+    cursor: Option<&str>,
+) -> Result<crate::contract::DiscussionPage, ApiError> {
+    http::get::<crate::contract::PublicDiscussionPage>(&public_discussion_path(work, None, cursor))
+        .await
+        .map(Into::into)
 }
 
 #[cfg(feature = "hydrate")]
@@ -297,7 +340,9 @@ pub async fn load_replies(
     root: &str,
     cursor: Option<&str>,
 ) -> Result<crate::contract::ReplyList, ApiError> {
-    http::get(&discussion_path(work, Some(root), cursor)).await
+    http::get::<crate::contract::PublicReplyList>(&public_discussion_path(work, Some(root), cursor))
+        .await
+        .map(Into::into)
 }
 
 #[cfg(feature = "hydrate")]
@@ -778,22 +823,33 @@ mod http {
     }
 
     /// An empty success body (`204`) decodes as a unit answer instead of failing the JSON parse.
+    fn authority_needs_refresh(status: u16, envelope: Option<&ErrorEnvelope>) -> bool {
+        status == 401
+            || (status == 403
+                && envelope.is_some_and(|e| {
+                    matches!(
+                        e.error.code.as_str(),
+                        "principal_suspended" | "account_disabled"
+                    )
+                }))
+    }
+
     async fn decode<T: DeserializeOwned>(path: &str, response: Response) -> Result<T, ApiError> {
         let status = response.status();
         if (200..300).contains(&status) {
             let text = response.text().await.map_err(|_| ApiError::Network)?;
             return crate::contract::decode_success(&text).ok_or(ApiError::Unexpected { status });
         }
-        // A private request the server no longer recognizes: the session owner asks again, so
-        // every view learns it from one place. Session reads themselves never loop back here.
-        if status == 401 && !is_auth(path) {
+        let envelope = response.json::<ErrorEnvelope>().await.ok();
+        // Refresh only authority refusals, not an ordinary forbidden operation (e.g. self
+        // endorsement). The existing tab owner remains the sole session reader.
+        if !is_auth(path) && authority_needs_refresh(status, envelope.as_ref()) {
             UNAUTHENTICATED.with(|slot| {
                 if let Some(hook) = slot.borrow().as_ref() {
                     hook();
                 }
             });
         }
-        let envelope = response.json::<ErrorEnvelope>().await.ok();
         Err(ApiError::from_response(status, envelope))
     }
 }
@@ -852,6 +908,25 @@ mod discussion_tests {
         assert_eq!(
             super::endorsement_path("w", Some("c/1")),
             "/api/v1/works/w/discussion/comments/c%2F1/endorsement/me"
+        );
+    }
+}
+
+#[cfg(test)]
+mod separated_discussion_paths {
+    #[test]
+    fn public_and_own_cursor_queries_cannot_inject_each_other_or_exceed_a_batch() {
+        assert_eq!(
+            super::public_discussion_path("../work", Some("r/1"), Some("c1.+&ids=x")),
+            "/api/v1/works/%2E%2E%2Fwork/discussion/public/roots/r%2F1/replies?cursor=c1%2E%2B%26ids%3Dx"
+        );
+        assert_eq!(
+            super::own_comments_path("w", Some("o1.+&limit=50"), None),
+            "/api/v1/works/w/discussion/me?cursor=o1%2E%2B%26limit%3D50"
+        );
+        assert_eq!(
+            super::own_comments_path("w", None, Some(&["a,b".into(), "c&cursor=x".into()])),
+            "/api/v1/works/w/discussion/me?ids=a%2Cb,c%26cursor%3Dx"
         );
     }
 }

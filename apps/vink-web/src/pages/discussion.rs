@@ -1,6 +1,8 @@
 //! Reader feature adapter. Patterns receive view facts/intents only; HTTP and request scope
 //! stay here. SSR always reads anonymously, even when the diagnostic identity fixture runs.
-use std::collections::BTreeMap;
+use crate::contract::{CommentStatus, OwnPlacement};
+use crate::discussion_reads::OwnState;
+use std::collections::{BTreeMap, BTreeSet};
 
 use leptos::prelude::*;
 use vink_ui::{
@@ -32,9 +34,48 @@ fn spawn_transport(task: impl std::future::Future<Output = ()> + 'static) {
     }
 }
 
+// Separate cancellable read owners. Replacing one drops its fetch future and deadline;
+// writes stay under TransportOwner because aborting a write cannot undo a server commit.
+#[cfg(feature = "hydrate")]
+#[derive(Clone, Copy)]
+struct PrivateTransports {
+    own: StoredValue<Option<Owner>>,
+    capability: StoredValue<Option<Owner>>,
+}
+#[cfg(feature = "hydrate")]
+fn spawn_private(capability: bool, task: impl std::future::Future<Output = ()> + 'static) {
+    let transports = expect_context::<PrivateTransports>();
+    let slot = if capability {
+        transports.capability
+    } else {
+        transports.own
+    };
+    if let Some(old) = slot.get_value() {
+        old.cleanup();
+    }
+    if let Some(parent) = use_context::<TransportOwner>().and_then(|o| o.0.upgrade()) {
+        let owner = parent.with(Owner::new);
+        owner.with(|| leptos::task::spawn_local_scoped_with_cancellation(task));
+        slot.set_value(Some(owner));
+    }
+}
+#[cfg(feature = "hydrate")]
+fn cancel_private() {
+    let t = expect_context::<PrivateTransports>();
+    for slot in [t.own, t.capability] {
+        if let Some(old) = slot.get_value() {
+            old.cleanup();
+        }
+        slot.set_value(None);
+    }
+}
+
 #[derive(Clone)]
 struct ViewState {
     page: DiscussionPage,
+    own: OwnState,
+    /// IDs of previously public rows fenced by a current private observation.
+    redacted: BTreeSet<String>,
     replies: BTreeMap<String, ReplyList>,
     reply_loading: BTreeMap<String, bool>,
     reply_errors: BTreeMap<String, String>,
@@ -54,10 +95,86 @@ struct ViewState {
 
 #[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
 impl ViewState {
+    fn change_session(&mut self, scope: Scope) {
+        self.own.change_scope(scope);
+        // The public page is already scrubbed. Old reads are fenced below; discard even
+        // ID-only private reconciliation knowledge before another principal starts.
+        self.redacted.clear();
+        self.epoch += 1;
+        self.loading = false;
+        self.refresh_queued = false;
+        self.reply_loading.clear();
+        self.mutation_busy = false;
+        self.mutation_message = None;
+        self.mutation_needs_refresh = false;
+        self.page.viewer_is_work_author = false;
+    }
+    fn public_ids(&self) -> BTreeSet<String> {
+        self.page
+            .roots
+            .iter()
+            .flat_map(|r| {
+                let root = match &r.root {
+                    crate::contract::RootView::Comment { comment } => {
+                        Some(comment.comment_id.clone())
+                    }
+                    _ => None,
+                };
+                root.into_iter()
+                    .chain(r.preview.iter().map(|c| c.comment_id.clone()))
+                    .chain(
+                        self.replies
+                            .get(adapters::root_id(r))
+                            .into_iter()
+                            .flat_map(|p| p.replies.iter().map(|c| c.comment_id.clone())),
+                    )
+            })
+            .collect()
+    }
+    fn redact(&mut self) {
+        let public_ids = self.public_ids();
+        for c in self.own.comments.values() {
+            if c.status == CommentStatus::Approved {
+                self.redacted.remove(&c.comment_id);
+            } else if public_ids.contains(&c.comment_id) || self.redacted.contains(&c.comment_id) {
+                self.redacted.insert(c.comment_id.clone());
+            }
+        }
+        let hidden = &self.redacted;
+        let clean = |comments: &mut Vec<crate::contract::CommentDto>| {
+            comments.retain(|c| !hidden.contains(&c.comment_id));
+            for c in comments {
+                if let Some(crate::contract::ReplyTo::Reply { comment_id, .. }) = &c.reply_to
+                    && hidden.contains(comment_id)
+                {
+                    c.reply_to = Some(crate::contract::ReplyTo::Unavailable);
+                }
+            }
+        };
+        for r in &mut self.page.roots {
+            if let crate::contract::RootView::Comment { comment } = &r.root
+                && hidden.contains(&comment.comment_id)
+            {
+                r.root = crate::contract::RootView::Anchor {
+                    comment_id: comment.comment_id.clone(),
+                    created_at: comment.created_at.clone(),
+                };
+            }
+            clean(&mut r.preview);
+        }
+        self.page
+            .roots
+            .retain(|r| !hidden.contains(adapters::root_id(r)) || r.public_replies > 0);
+        for p in self.replies.values_mut() {
+            clean(&mut p.replies);
+        }
+    }
+
     fn begin_mutation(&mut self) -> bool {
         if self.loading || self.mutation_busy || self.mutation_needs_refresh || self.unavailable {
             return false;
         }
+        self.own.invalidate_reads();
         self.epoch += 1; // Fence every pre-mutation root/reply read, including delayed responses.
         self.reply_loading.clear();
         self.mutation_busy = true;
@@ -77,6 +194,7 @@ impl ViewState {
             self.unavailable = true;
             self.page.roots.clear();
             self.replies.clear();
+            self.own.change_scope(self.own.scope.clone());
         } else if append {
             self.page_error = Some(crate::discussion_state::read_error_message(error, true).into());
         } else {
@@ -116,7 +234,7 @@ pub fn Discussion(work_id: String) -> impl IntoView {
                     let fixture = fixture.clone();
                     Suspend::new(async move {
                         match resource.await {
-                            Ok(load) => view! { <DiscussionLoaded page=load.page endorsements=load.endorsements fixture /> }.into_any(),
+                            Ok(load) => view! { <DiscussionLoaded page=load.page.into() endorsements=load.endorsements fixture /> }.into_any(),
                             Err(_) => view! {
                                 <p role="status">"Chưa tải được nhận xét. Bạn vẫn có thể đọc tác phẩm."</p>
                                 // A same-URL fragment link only scrolls and never re-runs the resource.
@@ -140,6 +258,10 @@ fn DiscussionLoaded(
     #[cfg(feature = "hydrate")]
     if let Some(owner) = Owner::current() {
         provide_context(TransportOwner(owner.downgrade()));
+        provide_context(PrivateTransports {
+            own: StoredValue::new(None),
+            capability: StoredValue::new(None),
+        });
     }
     // LVE #73: counts of the server-rendered page before any comment action renders them.
     let lve = Endorsements::current();
@@ -163,6 +285,8 @@ fn DiscussionLoaded(
     #[cfg(feature = "hydrate")]
     let work_id = page.work_id.clone();
     let state = RwSignal::new(ViewState {
+        own: OwnState::new(controller.get_untracked().scope),
+        redacted: BTreeSet::new(),
         page,
         replies: BTreeMap::new(),
         reply_loading: BTreeMap::new(),
@@ -177,7 +301,10 @@ fn DiscussionLoaded(
         mutation_message: None,
         mutation_needs_refresh: false,
     });
-    let refresh = Callback::new(move |()| read_roots(state, controller, lve, false));
+    let refresh = Callback::new(move |()| {
+        read_roots(state, controller, lve, false);
+        read_private(state, controller, false);
+    });
     // Viewer-private projections only arrive after hydration through the no-store API.
     #[cfg(feature = "hydrate")]
     if fixture.is_some() {
@@ -204,6 +331,10 @@ fn DiscussionLoaded(
                     });
                 }
             });
+            cancel_private();
+            state.update(|s| s.change_session(controller.get_untracked().scope));
+            // Invalidate presentation context from the earlier viewer immediately.
+            state.with_untracked(|s| revalidate_targets(s, controller));
             refresh.run(());
             (scope, principal.or(typed_as))
         });
@@ -229,7 +360,7 @@ fn DiscussionLoaded(
         <div id="comments-mode" class="vk-discussion-mode">
             <p role="status">{move || comments_mode_message(state.read().unavailable, controller.read().settings.comments_open)}</p>
             {fixture.is_some().then(|| view! { <p class="vk-muted">"Định danh thử trên thiết bị này · Không phải tài khoản thật."</p> })}
-            <Show when=move || !state.read().unavailable && state.read().page.viewer_is_work_author>
+            <Show when=move || !state.read().unavailable && state.read().own.author>
                 <Button id="discussion-mode-toggle" variant=ButtonVariant::Tonal state=write_state on_press=move |_| change_mode(state, controller, lve)>
                     {move || if controller.read().settings.comments_open { "Tắt bình luận" } else { "Mở bình luận" }}
                 </Button>
@@ -239,6 +370,7 @@ fn DiscussionLoaded(
             <p role="status">{move || state.read().mutation_message.clone().unwrap_or_default()}</p>
         </div>
         <DiscussionComposer key=ComposerKey::Root controller state refresh />
+        <OwnComments state controller lve />
         <p class="vk-muted vk-discussion-tools-note">"Bạn có thể dùng emoji từ bàn phím."</p>
         <Show when=move || !state.read().unavailable>
             <Show when=move || state.read().page.roots.is_empty()>
@@ -280,6 +412,186 @@ fn DiscussionLoaded(
 }
 
 #[component]
+fn OwnComments(
+    state: RwSignal<ViewState>,
+    controller: RwSignal<DiscussionController>,
+    lve: Option<Endorsements>,
+) -> impl IntoView {
+    view! {
+        <Show when=move || !state.read().unavailable && controller.read().scope.session.is_some()>
+            <section id="own-comments" class="vk-discussion-recovered" aria-labelledby="own-comments-heading">
+                <Heading level=HeadingLevel::H3 role=TypeRole::Title id="own-comments-heading">"Nhận xét của bạn"</Heading>
+                <p class="vk-muted">"Những nhận xét chưa công khai và kết quả lần gửi của bạn."</p>
+                <Button id="own-comments-refresh" variant=ButtonVariant::Text
+                    state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải nhận xét của bạn…") } else { ActionState::Enabled })
+                    on_press=move |_| read_private(state, controller, false)>"Làm mới nhận xét của bạn"</Button>
+                <p role="status">{move || state.read().own.error.as_ref().map(|e| crate::discussion_state::read_error_message(e, false)).unwrap_or_default()}</p>
+                <p role="status">{move || state.read().own.capability_error.as_ref().map(|_| "Chưa xác nhận được quyền thay đổi bình luận. Hãy làm mới nhận xét của bạn.").unwrap_or_default()}</p>
+                <Show when=move || !state.read().own.loading && state.read().own.error.is_none() && state.read().own.visible_items(&state.read().public_ids()).is_empty()>
+                    <p>"Chưa có nhận xét riêng nào trong phần đã tải."</p>
+                </Show>
+                <For each=move || { state.read().own.visible_items(&state.read().public_ids()).into_iter().map(|c| c.comment_id).collect::<Vec<_>>() } key=|id| id.clone()
+                    children=move |id| {
+                        let id = StoredValue::new(id);
+                        view! {
+                            <article class="vk-discussion-delivery" data-own-comment=move || id.get_value()>
+                                <p role="status">{move || state.read().own.comments.get(&id.get_value()).map(|c| match c.status {
+                                    CommentStatus::Pending => "Chờ duyệt · Chưa công khai",
+                                    CommentStatus::Rejected => "Không được duyệt · Chưa công khai",
+                                    CommentStatus::Approved => "Đã được duyệt · Ngoài phần công khai đang tải",
+                                    CommentStatus::Removed => "Nhận xét không còn hiển thị",
+                                }).unwrap_or_default()}</p>
+                                <p class="vk-muted">{move || state.read().own.comments.get(&id.get_value()).map(|c| match &c.placement {
+                                    OwnPlacement::Root => "Nhận xét gốc của bạn",
+                                    OwnPlacement::Reply { root_listed: false, .. } => "Phản hồi của bạn · Nhánh chưa có trong danh sách công khai",
+                                    OwnPlacement::Reply { .. } => "Phản hồi của bạn",
+                                }).unwrap_or_default()}</p>
+                                <p class="vk-discussion-own-body">{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status != CommentStatus::Removed).then(|| c.body.clone()).flatten()).unwrap_or_default()}</p>
+                                <p>{move || state.read().own.comments.get(&id.get_value()).and_then(|c| (c.status == CommentStatus::Rejected).then(|| c.rejection_reason.clone()).flatten()).unwrap_or_default()}</p>
+                                <Show when=move || state.read().own.can_remove(&id.get_value())>
+                                    <Button id=format!("remove-comment-{}", id.get_value()) variant=ButtonVariant::Text state=Signal::derive(move || if state.read().mutation_busy { ActionState::pending("Đang gỡ…") } else { ActionState::Enabled })
+                                        on_press=move |_| remove_own(state, controller, lve, id.get_value())>"Gỡ nhận xét của tôi"</Button>
+                                </Show>
+                            </article>
+                        }
+                    } />
+                <Show when=move || state.read().own.next_cursor.is_some()>
+                    <Button id="own-comments-more" variant=ButtonVariant::Tonal
+                        state=Signal::derive(move || if state.read().own.loading { ActionState::pending("Đang tải…") } else { ActionState::Enabled })
+                        on_press=move |_| read_own(state, controller, true)>"Xem thêm nhận xét của bạn"</Button>
+                </Show>
+            </section>
+        </Show>
+    }
+}
+
+fn read_private(
+    state: RwSignal<ViewState>,
+    controller: RwSignal<DiscussionController>,
+    append: bool,
+) {
+    read_own(state, controller, append);
+    #[cfg(feature = "hydrate")]
+    {
+        let scope = controller.get_untracked().scope;
+        if scope.session.is_none() {
+            return;
+        }
+        state.update(|s| {
+            s.own.author = false;
+            s.own.capability_error = None;
+        });
+        spawn_private(true, async move {
+            let result = api::load_discussion_capability(&scope.work_id).await;
+            if controller
+                .try_get_untracked()
+                .is_none_or(|c| c.scope != scope)
+            {
+                return;
+            }
+            state.try_update(|s| match result {
+                Ok(c)
+                    if c.work_id == scope.work_id
+                        && !matches!(
+                            s.own.error,
+                            Some(
+                                crate::contract::ApiError::Unauthenticated
+                                    | crate::contract::ApiError::Forbidden
+                                    | crate::contract::ApiError::NotFound
+                            )
+                        ) =>
+                {
+                    s.own.author = c.viewer_is_work_author
+                }
+                _ => {
+                    s.own.author = false;
+                    s.own.capability_error = Some(crate::contract::ApiError::Unavailable);
+                }
+            });
+        });
+    }
+}
+
+fn read_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionController>, append: bool) {
+    #[cfg(feature = "hydrate")]
+    {
+        let cursor = if append {
+            state.read_untracked().own.next_cursor.clone()
+        } else {
+            None
+        };
+        if append && (cursor.is_none() || state.read_untracked().own.loading) {
+            return;
+        }
+        let Some(Some(ticket)) = state.try_update(|s| s.own.begin()) else {
+            return;
+        };
+        spawn_private(false, async move {
+            let result =
+                api::load_own_comments(&ticket.scope.work_id, cursor.as_deref(), None).await;
+            if state.try_with_untracked(|s| s.own.accepts(&ticket)) != Some(true) {
+                return;
+            }
+            let result = match result {
+                Ok(page) if page.work_id == ticket.scope.work_id => Ok(page),
+                Ok(_) => Err(crate::contract::ApiError::Unexpected { status: 200 }),
+                Err(e) => Err(e),
+            };
+            match result {
+                Ok(page) => {
+                    state.update(|s| {
+                        s.own.apply_list(&ticket, page, append);
+                        s.redact();
+                        revalidate_targets(s, controller);
+                    });
+                }
+                Err(e) => {
+                    state.update(|s| s.own.finish(&ticket, Some(e)));
+                    return;
+                }
+            }
+            let mut ids = state.with_untracked(|s| {
+                s.public_ids()
+                    .into_iter()
+                    .chain(s.own.comments.keys().cloned())
+                    .collect::<Vec<_>>()
+            });
+            ids.extend(controller.with_untracked(|c| {
+                c.drafts
+                    .values()
+                    .filter_map(|d| d.acknowledged.as_ref().map(|ack| ack.comment_id.clone()))
+                    .collect::<Vec<_>>()
+            }));
+            for batch in crate::discussion_reads::lookup_batches(ids) {
+                if state.try_with_untracked(|s| s.own.accepts(&ticket)) != Some(true) {
+                    return;
+                }
+                match api::load_own_comments(&ticket.scope.work_id, None, Some(&batch)).await {
+                    Ok(page) if page.work_id == ticket.scope.work_id => {
+                        state.try_update(|s| {
+                            if s.own.apply_lookup(&ticket, &batch, page) {
+                                s.redact();
+                                revalidate_targets(s, controller);
+                            }
+                        });
+                    }
+                    result => {
+                        let error = result
+                            .err()
+                            .unwrap_or(crate::contract::ApiError::Unexpected { status: 200 });
+                        state.try_update(|s| s.own.finish(&ticket, Some(error)));
+                        return;
+                    }
+                }
+            }
+            state.try_update(|s| s.own.finish(&ticket, None));
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = (state, controller, append);
+}
+
+#[component]
 fn RootThreadView(
     root: String,
     controller: RwSignal<DiscussionController>,
@@ -308,7 +620,11 @@ fn RootThreadView(
             .get(&root.get_value())
             .map(|page| page.replies.as_slice())
             .unwrap_or(&thread.preview);
-        adapters::discussion_thread(thread, replies)
+        let mut facts = adapters::discussion_thread(thread, replies);
+        for c in facts.root.iter_mut().chain(facts.replies.iter_mut()) {
+            c.can_remove = state.own.can_remove(&c.id);
+        }
+        facts
     });
     let key = StoredValue::new(ComposerKey::Replies(root.get_value()));
     let on_reply = Callback::new(move |id: String| {
@@ -581,6 +897,7 @@ fn read_roots(
                             s.replies.clear();
                             s.reply_errors.clear();
                         }
+                        s.redact();
                         revalidate_targets(s, controller);
                     }
                     Err(error) => {
@@ -600,8 +917,12 @@ fn read_roots(
                 }
             });
             // Fresh counts and own states for the comments this read returned.
+            let public_loaded = endorsable.is_some();
             if let (Some(lve), Some(targets)) = (lve, endorsable) {
                 lve.read(targets, true);
+            }
+            if public_loaded {
+                read_own(state, controller, false);
             }
             if refresh_again {
                 read_roots(state, controller, lve, false);
@@ -666,6 +987,7 @@ fn read_replies(
                         });
                         merge_comments(&mut current.replies, page.replies);
                         current.next_cursor = page.next_cursor;
+                        s.redact();
                         revalidate_targets(s, controller);
                     }
                     Err(error) => {
@@ -683,8 +1005,12 @@ fn read_replies(
                     }
                 }
             });
+            let public_loaded = endorsable.is_some();
             if let (Some(lve), Some(targets)) = (lve, endorsable) {
                 lve.read(targets, true);
+            }
+            if public_loaded {
+                read_own(state, controller, false);
             }
         });
     }
@@ -760,7 +1086,7 @@ fn change_mode(
         let c = controller.get_untracked();
         let s = state.get_untracked();
         if !c.write_ready()
-            || !s.page.viewer_is_work_author
+            || !s.own.author
             || s.mutation_busy
             || s.mutation_needs_refresh
             || s.loading
@@ -799,6 +1125,7 @@ fn change_mode(
                 }
             });
             read_roots(state, controller, lve, false);
+            read_private(state, controller, false);
         });
     }
     #[cfg(not(feature = "hydrate"))]
@@ -817,21 +1144,7 @@ fn remove_own(
     {
         let c = controller.get_untracked();
         let s = state.get_untracked();
-        let allowed = s.page.roots.iter().any(|thread| {
-            let root = match &thread.root {
-                crate::contract::RootView::Comment { comment } => Some(comment),
-                _ => None,
-            };
-            root.into_iter()
-                .chain(thread.preview.iter())
-                .chain(
-                    s.replies
-                        .get(adapters::root_id(thread))
-                        .into_iter()
-                        .flat_map(|page| page.replies.iter()),
-                )
-                .any(|comment| comment.comment_id == id && comment.can_remove)
-        });
+        let allowed = s.own.can_remove(&id);
         if !allowed || !c.write_ready() || s.mutation_busy || s.mutation_needs_refresh || s.loading
         {
             return;
@@ -852,7 +1165,19 @@ fn remove_own(
             state.try_update(|s| {
                 s.mutation_busy = false;
                 s.mutation_message = Some(match result {
-                    Ok(_) => "Đã gỡ nhận xét của bạn.".into(),
+                    Ok(_) => {
+                        if s.public_ids().contains(&id) {
+                            s.redacted.insert(id.clone());
+                        }
+                        if let Some(c) = s.own.comments.get_mut(&id) {
+                            c.status = CommentStatus::Removed;
+                            c.body = None;
+                            c.can_remove = false;
+                            c.rejection_reason = None;
+                        }
+                        s.redact();
+                        "Đã gỡ nhận xét của bạn.".into()
+                    }
                     Err(error) => {
                         s.mutation_needs_refresh = true;
                         crate::discussion_state::error_message(&error).into()
@@ -860,6 +1185,7 @@ fn remove_own(
                 });
             });
             read_roots(state, controller, lve, false);
+            read_private(state, controller, false);
         });
     }
     #[cfg(not(feature = "hydrate"))]
@@ -944,6 +1270,11 @@ mod tests {
         ))
         .unwrap();
         let mut state = ViewState {
+            own: OwnState::new(Scope {
+                work_id: page.work_id.clone(),
+                session: None,
+            }),
+            redacted: BTreeSet::new(),
             page,
             replies: BTreeMap::new(),
             reply_loading: BTreeMap::new(),
@@ -1013,6 +1344,11 @@ mod tests {
         ))
         .unwrap();
         let mut state = ViewState {
+            own: OwnState::new(Scope {
+                work_id: page.work_id.clone(),
+                session: None,
+            }),
+            redacted: BTreeSet::new(),
             page,
             replies: BTreeMap::new(),
             reply_loading: BTreeMap::new(),
@@ -1069,5 +1405,119 @@ mod tests {
             "old GET cannot resurrect a removed comment or overwrite a committed mode"
         );
         assert!(state.accepts_read(state.epoch));
+    }
+}
+
+#[cfg(test)]
+mod separated_read_regressions {
+    use super::*;
+    fn state() -> ViewState {
+        let public: crate::contract::PublicDiscussionPage = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/discussion.public.get.json"
+        ))
+        .unwrap();
+        ViewState {
+            own: OwnState::new(Scope {
+                work_id: public.work_id.clone(),
+                session: Some("a/0".into()),
+            }),
+            redacted: BTreeSet::new(),
+            page: public.into(),
+            replies: BTreeMap::new(),
+            reply_loading: BTreeMap::new(),
+            reply_errors: BTreeMap::new(),
+            loading: false,
+            refresh_queued: false,
+            error: None,
+            page_error: None,
+            unavailable: false,
+            epoch: 0,
+            mutation_busy: false,
+            mutation_message: None,
+            mutation_needs_refresh: false,
+        }
+    }
+    #[test]
+    fn a_scope_change_releases_both_read_and_mutation_owners_and_fences_old_reads() {
+        let mut s = state();
+        s.loading = true;
+        s.refresh_queued = true;
+        let old = s.epoch;
+        let public = s.page.clone();
+        s.own.author = true;
+        s.change_session(Scope {
+            work_id: s.page.work_id.clone(),
+            session: Some("b/1".into()),
+        });
+        assert!(!s.loading && !s.refresh_queued && !s.mutation_busy && !s.own.author);
+        assert!(!s.accepts_read(old));
+        assert_eq!(s.page, public, "actor-free data survives account switching");
+        assert!(
+            s.begin_mutation(),
+            "new account is not blocked by old loading"
+        );
+        let old = s.epoch;
+        s.change_session(Scope {
+            work_id: s.page.work_id.clone(),
+            session: Some("a/2".into()),
+        });
+        assert!(!s.mutation_busy && s.mutation_message.is_none());
+        assert!(!s.accepts_read(old));
+        assert!(
+            s.begin_mutation(),
+            "old mutation cannot strand the new generation"
+        );
+    }
+    #[test]
+    fn removed_or_held_lookup_facts_fence_public_resurrection_and_context_names() {
+        let mut s = state();
+        let public = s.page.clone();
+        let crate::contract::RootView::Comment { comment } = &s.page.roots[0].root else {
+            panic!()
+        };
+        let id = comment.comment_id.clone();
+        let reply_id = s.page.roots[0].preview[0].comment_id.clone();
+        let own: crate::contract::OwnCommentList = serde_json::from_str(include_str!(
+            "../../../../services/vink-app/contracts/http/v1/fixtures/discussion.me.get.json"
+        ))
+        .unwrap();
+        let mut held = own.comments[0].clone();
+        held.comment_id = id.clone();
+        s.own.comments.insert(id.clone(), held);
+        s.redact();
+        assert!(matches!(
+            s.page.roots[0].root,
+            crate::contract::RootView::Anchor { .. }
+        ));
+        s.redacted.insert(reply_id.clone());
+        s.page = public.clone(); // a delayed public snapshot has all the old bodies and names
+        s.redact();
+        assert!(!s.public_ids().contains(&id) && !s.public_ids().contains(&reply_id));
+        assert_eq!(
+            s.page.roots[0].preview[0].reply_to,
+            Some(crate::contract::ReplyTo::Unavailable)
+        );
+        let count = public.roots[0].public_replies;
+        assert_eq!(
+            s.page.roots[0].public_replies, count,
+            "never replace the public count with own entries"
+        );
+        let old_epoch = s.epoch;
+        s.change_session(Scope {
+            work_id: s.page.work_id.clone(),
+            session: None,
+        });
+        assert!(
+            !s.public_ids().contains(&id),
+            "the scrubbed public page stays scrubbed"
+        );
+        assert!(
+            !s.accepts_read(old_epoch),
+            "old public data cannot enter after a scope change"
+        );
+        assert!(
+            s.redacted.is_empty(),
+            "even reconciliation IDs leave with the private scope"
+        );
     }
 }
