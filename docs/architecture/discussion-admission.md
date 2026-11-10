@@ -191,3 +191,14 @@ log (đã có hướng, D-08), standing đọc tại commit (đã có), provenan
 khi triển khai, phần đó hợp nhất vào `admission.qnt`/`lifecycle.qnt` cùng replay, không giữ hai
 model cho cùng một policy. Fixture và replay của baseline hiện hành **không bị sửa** để “khớp” hướng
 đích.
+
+## 9. Runtime tái kiểm operator (DISC-POST-REVIEW-RUNTIME)
+
+[Runbook/DecisionMap](../development/discussion-post-review.md) ghi capability mới: operator yêu cầu
+tái kiểm một comment approved/present tại version cụ thể và nộp kết quả structured có audit; worker
+chỉ keep/hold đúng binding, không approve. Nguồn này là `operator_rereview`, không giả ticket admission.
+Mọi human approve/reject được chấp nhận (kể cả cùng trạng thái) tăng version và audit; retry version
+cũ trả conflict. Clear cũ/sau removal cũng stale/removed, không chứng nhận trạng thái mới hơn.
+Exhaustion/deadline phải ghi hold/handoff hoặc superseded/removed trước khi kết thúc nghĩa vụ; DB lỗi
+giữ việc mở. Request mới mặc định disabled; admission/evaluator producer và rollout D-08 chưa active.
+Luồng operator độc lập với hướng AI ở §8; trust của ứng viên shadow không là gate của hướng đích.

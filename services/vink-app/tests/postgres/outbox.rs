@@ -30,7 +30,7 @@ use vink_app::persistence::{MIGRATOR, grant_moderator, suspend_principal};
 
 use super::*;
 
-const MODERATOR: Uuid = Uuid::from_u128(0x5555_5555_5555_4555_8555_5555_5555_5555);
+pub(super) const MODERATOR: Uuid = Uuid::from_u128(0x5555_5555_5555_4555_8555_5555_5555_5555);
 const SHADOW: &str = "admission_shadow.v1";
 const OUTBOX_MIGRATION: i64 = 20261114000000;
 
@@ -47,7 +47,7 @@ fn settings() -> OutboxSettings {
     }
 }
 
-async fn setup(pool: &PgPool) -> Vink<PgStore> {
+pub(super) async fn setup(pool: &PgPool) -> Vink<PgStore> {
     let vink = seeded(pool).await;
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, 'Kiểm duyệt viên')")
         .bind(MODERATOR)
@@ -74,7 +74,7 @@ fn key() -> String {
     format!("k-{}", Uuid::now_v7().simple())
 }
 
-async fn post(vink: &Vink<PgStore>, body: &str) -> CommentId {
+pub(super) async fn post(vink: &Vink<PgStore>, body: &str) -> CommentId {
     let submitted = vink
         .submit_comment(other(), submit(body, &key()))
         .await
@@ -146,7 +146,7 @@ async fn edit_events(pool: &PgPool, sql: &'static str, comment: Option<CommentId
 }
 
 /// Time travel: every open delivery is due now (expired lease or elapsed retry backoff).
-async fn make_due(pool: &PgPool) {
+pub(super) async fn make_due(pool: &PgPool) {
     sqlx::query(
         "UPDATE discussion_deliveries SET available_at = now() - interval '1 second'
           WHERE state IN ('ready', 'leased')",
@@ -1441,6 +1441,14 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
         .unwrap();
     let comments = count(&pool, "SELECT count(*) FROM comments").await;
     let receipts = count(&pool, "SELECT count(*) FROM discussion_command_receipts").await;
+    // Newest first, after draining: no operator ticket exists in this shadow-only test.
+    rollback(
+        pool.clone(),
+        include_str!("../../migrations-rollback/20261115000000_comment_post_review.down.sql")
+            .to_owned(),
+    )
+    .await
+    .unwrap();
     rollback(pool.clone(), script).await.unwrap();
     assert_eq!(
         count(&pool, "SELECT count(*) FROM comments").await,
@@ -1467,14 +1475,14 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
 
 // ---------------------------------------------------------------------------------------- T9/T10/T11 process
 
-fn database_url(pool: &PgPool) -> String {
+pub(super) fn database_url(pool: &PgPool) -> String {
     let base = std::env::var("DATABASE_URL").expect("the postgres lane sets DATABASE_URL");
     let database = pool.connect_options().get_database().unwrap().to_owned();
     let (prefix, _) = base.rsplit_once('/').unwrap();
     format!("{prefix}/{database}")
 }
 
-fn spawn_worker(database_url: &str, profile: &str) -> Child {
+pub(super) fn spawn_worker(database_url: &str, profile: &str) -> Child {
     Command::new(env!("CARGO_BIN_EXE_vink-worker"))
         .env_clear()
         .env("DATABASE_URL", database_url)
@@ -1496,7 +1504,7 @@ fn terminate(child: &Child) {
     assert!(status.success());
 }
 
-async fn wait_exit(mut child: Child, within: Duration) -> (Option<i32>, String) {
+pub(super) async fn wait_exit(mut child: Child, within: Duration) -> (Option<i32>, String) {
     let deadline = Instant::now() + within;
     loop {
         if let Some(status) = child.try_wait().unwrap() {

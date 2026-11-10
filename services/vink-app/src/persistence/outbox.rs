@@ -5,11 +5,14 @@
 //! **Producer.** [`enqueue`] runs inside the business transaction that made the transition (today
 //! only `submit_comment`), after the comment insert: the event and one delivery per consumer of
 //! its type commit or roll back with the comment. A failed enqueue fails the submission.
+//! The explicit operator producer instead commits its ticket/event/delivery in `post_review`.
 //!
 //! **Claim.** [`claim`] is one short transaction: due deliveries of the consumers this binary
 //! handles, `FOR UPDATE OF d SKIP LOCKED`, oldest `available_at` first, at most `limit` rows; the
 //! pure [`decide_claim`] then advances each row's generation and attempts and sets its lease (or
-//! dead-letters it). It commits before any handler runs; no transaction is held during work.
+//! dead-letters it). A granted lease commits before its normal handler runs. Content-review
+//! exhaustion instead finalizes the obligation in the same transaction as the dead transition;
+//! a database error rolls both back. No evaluator or network operation runs under these locks.
 //! Ordering is best effort: there is no global FIFO and no `id > last_seen` checkpoint.
 //!
 //! **Effect.** [`complete`] locks the delivery row `FOR UPDATE`, checks [`check_ownership`]
@@ -22,12 +25,13 @@
 //! is safe too: the next fenced write finds the delivery no longer leased and writes nothing.
 //!
 //! **Lock order.** The worker locks `discussion_deliveries` rows first (claim, complete, requeue,
-//! retention through `discussion_events`); no comment path ever locks a delivery. Handlers read
-//! `comments`, receipts and suspensions without locks and write only their own receipt table,
-//! whose foreign key takes `FOR KEY SHARE` on the observed comment row: that one row serializes
-//! briefly with a moderation or removal holding it `FOR UPDATE` (bounded by `lock_timeout` and
-//! the handler timeout), and no cycle exists because those paths never wait on a delivery. The
-//! producer inserts new rows that no worker statement can have locked.
+//! retention through `discussion_events`). Shadow reads comments/standing without explicit row
+//! locks (its receipt FK briefly takes KEY SHARE). Operator post-review locks its ticket then
+//! its one comment FOR UPDATE, calls the pure version/digest decision and writes a hold/service
+//! receipt. Human moderation/removal and submission never wait on an existing delivery/ticket;
+//! operator requests insert NEW rows after their comment lock, while results use delivery then
+//! ticket and never lock a comment. Thus these paths have no reverse edge. See `post_review`
+//! for the complete lock map. Every wait/statement is bounded by the transaction settings.
 //!
 //! **Privacy.** Events and deliveries hold identifiers, versions and codes only. Logs and errors
 //! from here carry codes and counts, never a body, address, session or moderation reason.
@@ -135,7 +139,8 @@ pub struct ClaimBatch {
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// One consumer's effect. `apply` runs inside the fenced transaction (in a savepoint): it may
-/// read through `tx` and write only that consumer's own tables; every statement it issues
+/// read through `tx` and write its authorized App-database effect (shadow observation, or a
+/// version-bound post-review hold plus service receipt); every statement it issues
 /// commits only if the delivery is still owned and the result is [`HandlerResult::Applied`]. It
 /// must not call the network: an effect outside the database needs its own idempotency design.
 pub trait EffectHandler: Send + Sync {
@@ -176,6 +181,14 @@ pub async fn claim(
         return Ok(batch);
     }
     let mut tx = pool.begin().await.map_err(classify)?;
+    sqlx::query(EFFECT_BOUNDS)
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
+    sqlx::query(EFFECT_STATEMENT_BOUND)
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
     let now: OffsetDateTime = sqlx::query_scalar("SELECT now()")
         .fetch_one(&mut *tx)
         .await
@@ -243,6 +256,20 @@ pub async fn claim(
                 });
             }
             ClaimDecision::DeadLetter { reason, reclaimed } => {
+                // Retry exhaustion cannot discharge a content-review obligation. The safe
+                // effect/receipt (or explicit poison debt) commits with this dead transition.
+                finalize_dead(
+                    &mut tx,
+                    &OutboxEvent {
+                        id: event_id,
+                        event_type: row.try_get("event_type").map_err(classify)?,
+                        schema_version: row.try_get("schema_version").map_err(classify)?,
+                        comment_id: row.try_get("comment_id").map_err(classify)?,
+                        source_version: row.try_get("source_version").map_err(classify)?,
+                    },
+                    &consumer,
+                )
+                .await?;
                 sqlx::query(
                     "UPDATE discussion_deliveries
                         SET state = 'dead', outcome = $3, finished_at = $5, updated_at = $5,
@@ -316,7 +343,9 @@ async fn record(
             error,
         } => sqlx::query(
             "UPDATE discussion_deliveries
-                SET state = 'ready', available_at = $4, last_error = $5, updated_at = $6
+                SET state = 'ready', available_at = CASE WHEN consumer = 'operator_post_review.v1'
+                    THEN LEAST($4, (SELECT deadline_at FROM comment_post_reviews WHERE id = $1))
+                    ELSE $4 END, last_error = $5, updated_at = $6
               WHERE event_id = $1 AND consumer = $2 AND generation = $3 AND state = 'leased'",
         )
         .bind(claimed.event.id)
@@ -393,6 +422,9 @@ pub async fn complete(
         micros(now),
         jitter_micros,
     );
+    if matches!(completion, Completion::DeadLetter(_)) {
+        finalize_dead(&mut tx, &claimed.event, &claimed.consumer).await?;
+    }
     record(&mut tx, claimed, completion, now).await?;
     tx.commit().await.map_err(classify)?;
     Ok(completion)
@@ -420,9 +452,33 @@ pub async fn record_failure(
         micros(now),
         jitter_micros,
     );
+    if matches!(completion, Completion::DeadLetter(_)) {
+        finalize_dead(&mut tx, &claimed.event, &claimed.consumer).await?;
+    }
     record(&mut tx, claimed, completion, now).await?;
     tx.commit().await.map_err(classify)?;
     Ok(completion)
+}
+
+async fn finalize_dead(
+    tx: &mut PgConnection,
+    event: &OutboxEvent,
+    consumer: &str,
+) -> Result<(), StoreError> {
+    if consumer == crate::domain::discussion::post_review::CONSUMER {
+        let result = super::post_review::apply(tx, event, true)
+            .await
+            .map_err(classify)?;
+        if !matches!(
+            result,
+            HandlerResult::Applied | HandlerResult::AlreadyApplied | HandlerResult::Fail(_)
+        ) {
+            return Err(StoreError::Integrity(
+                "post-review finalization left unresolved without quarantine".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -432,8 +488,9 @@ pub enum RequeueOutcome {
     NotFound,
 }
 
-/// Operator requeue of a dead letter: back to ready now, fresh attempts and deadline, generation
-/// and event kept, audited in the same transaction. Never touches another consumer's delivery.
+/// Operator requeue of a dead letter: back to ready now with fresh attempts, generation and
+/// event kept, audited in the same transaction. Only shadow resets its delivery deadline;
+/// post-review keeps both deadline origins. Never touches another consumer's delivery.
 pub async fn requeue(
     pool: &PgPool,
     event_id: Uuid,
@@ -460,7 +517,8 @@ pub async fn requeue(
         Requeue::Requeued => {
             sqlx::query(
                 "UPDATE discussion_deliveries
-                    SET state = 'ready', attempts = 0, available_at = now(), deadline_from = now(),
+                    SET state = 'ready', attempts = 0, available_at = now(),
+                        deadline_from = CASE WHEN consumer = 'operator_post_review.v1' THEN deadline_from ELSE now() END,
                         last_error = outcome, outcome = NULL, finished_at = NULL, updated_at = now()
                   WHERE event_id = $1 AND consumer = $2",
             )
@@ -589,6 +647,9 @@ pub async fn prune(pool: &PgPool, retain_days: i32, limit: i64) -> Result<u64, S
         "WITH doomed AS (
              SELECT e.id FROM discussion_events e
               WHERE e.created_at < now() - make_interval(days => $1)
+                AND NOT EXISTS (SELECT 1 FROM comment_post_reviews t WHERE t.id = e.id
+                    AND NOT EXISTS (SELECT 1 FROM comment_post_review_receipts r WHERE r.ticket_id = t.id))
+                AND NOT EXISTS (SELECT 1 FROM comment_post_review_quarantines q WHERE q.event_id = e.id)
                 AND NOT EXISTS (
                     SELECT 1 FROM discussion_deliveries d
                      WHERE d.event_id = e.id

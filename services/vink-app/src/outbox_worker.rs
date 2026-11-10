@@ -167,7 +167,14 @@ impl OutboxWorker {
 
     /// The production consumers.
     pub fn production(pool: PgPool, settings: OutboxSettings) -> Self {
-        Self::with_handlers(pool, settings, vec![Arc::new(AdmissionShadow)])
+        Self::with_handlers(
+            pool,
+            settings,
+            vec![
+                Arc::new(AdmissionShadow),
+                Arc::new(crate::persistence::post_review::OperatorPostReview),
+            ],
+        )
     }
 
     /// Explicit handlers; tests add labelled fixture consumers this way.

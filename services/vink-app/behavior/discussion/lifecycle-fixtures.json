@@ -397,7 +397,7 @@
             "key": 0,
             "body": 0
           },
-          "outcome": "unchanged",
+          "outcome": "changed",
           "answer": null,
           "mode": "open",
           "generation": 1,
@@ -421,7 +421,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -473,7 +473,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -539,7 +539,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -605,7 +605,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -670,7 +670,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -735,7 +735,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -800,7 +800,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -865,7 +865,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -930,7 +930,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -996,7 +996,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -1062,7 +1062,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -1129,7 +1129,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -1196,7 +1196,7 @@
               "target": null,
               "review": "approved",
               "removal": "none",
-              "version": 2,
+              "version": 3,
               "views": [
                 "public",
                 "public",
@@ -1226,7 +1226,7 @@
             "actor": 3,
             "id": 1,
             "target": 0,
-            "expected": 2,
+            "expected": 3,
             "value": "remove",
             "key": 0,
             "body": 0
@@ -1263,7 +1263,7 @@
               "target": null,
               "review": "approved",
               "removal": "moderation",
-              "version": 3,
+              "version": 4,
               "views": [
                 "unavailable",
                 "unavailable",
@@ -1293,7 +1293,7 @@
             "actor": 3,
             "id": 1,
             "target": 0,
-            "expected": 3,
+            "expected": 4,
             "value": "remove",
             "key": 0,
             "body": 0
@@ -1330,7 +1330,7 @@
               "target": null,
               "review": "approved",
               "removal": "moderation",
-              "version": 3,
+              "version": 4,
               "views": [
                 "unavailable",
                 "unavailable",
@@ -1397,7 +1397,7 @@
               "target": null,
               "review": "approved",
               "removal": "moderation",
-              "version": 3,
+              "version": 4,
               "views": [
                 "unavailable",
                 "unavailable",

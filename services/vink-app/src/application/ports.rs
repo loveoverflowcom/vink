@@ -4,6 +4,22 @@ use std::future::Future;
 
 use time::OffsetDateTime;
 
+use super::post_review::{RequestReview, ReviewAuthority, ReviewResult, ReviewWrite};
+
+pub trait PostReviewStore: Send + Sync {
+    fn request_review(
+        &self,
+        authority: ReviewAuthority,
+        enabled: bool,
+        request: &RequestReview,
+    ) -> impl Future<Output = Result<ReviewWrite, StoreError>> + Send;
+    fn record_review_result(
+        &self,
+        authority: ReviewAuthority,
+        result: &ReviewResult,
+    ) -> impl Future<Output = Result<ReviewWrite, StoreError>> + Send;
+}
+
 use super::catalog::{CatalogOperation, CuratorAuthority};
 use super::discussion::{
     Guarded, ModerationAction, ModerationQueue, NewComment, OwnPage, OwnRead, ReplyPage, RootPage,

@@ -2974,7 +2974,7 @@
             "matches": false,
             "flag": "none"
           },
-          "outcome": "unchanged",
+          "outcome": "changed",
           "reason": "none",
           "shadow": "none",
           "effective": "trusted-cohort.v1",
@@ -3013,7 +3013,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3168,7 +3168,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3323,7 +3323,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3478,7 +3478,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3633,7 +3633,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3788,7 +3788,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -3943,7 +3943,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4107,7 +4107,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4271,7 +4271,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4435,7 +4435,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4608,7 +4608,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4781,7 +4781,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -4954,7 +4954,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -5127,7 +5127,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -5300,7 +5300,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -5473,7 +5473,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },
@@ -5646,7 +5646,7 @@
               "writer": 2,
               "review": "approved",
               "removed": false,
-              "version": 3,
+              "version": 4,
               "policy": "trusted-cohort.v1",
               "reason": "trusted_and_clear"
             },

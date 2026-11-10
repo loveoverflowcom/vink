@@ -53,19 +53,21 @@ use super::submission::PayloadDigest;
 pub enum EventKind {
     /// A comment was stored by the submission path (initial state from its admission).
     CommentSubmitted,
+    OperatorReviewRequested,
 }
 
 impl EventKind {
     pub const fn code(self) -> &'static str {
         match self {
             Self::CommentSubmitted => "comment.submitted",
+            Self::OperatorReviewRequested => super::post_review::EVENT,
         }
     }
 
     /// The schema version this binary writes for the type.
     pub const fn current_schema(self) -> i16 {
         match self {
-            Self::CommentSubmitted => 1,
+            Self::CommentSubmitted | Self::OperatorReviewRequested => 1,
         }
     }
 
@@ -73,6 +75,7 @@ impl EventKind {
     pub const fn consumers(self) -> &'static [Consumer] {
         match self {
             Self::CommentSubmitted => &[Consumer::AdmissionShadow],
+            Self::OperatorReviewRequested => &[Consumer::OperatorPostReview],
         }
     }
 
@@ -80,6 +83,7 @@ impl EventKind {
     pub fn supported(code: &str, schema: i16) -> Option<Self> {
         match (code, schema) {
             ("comment.submitted", 1) => Some(Self::CommentSubmitted),
+            (super::post_review::EVENT, 1) => Some(Self::OperatorReviewRequested),
             _ => None,
         }
     }
@@ -91,14 +95,16 @@ impl EventKind {
 pub enum Consumer {
     /// Records what the publish-first candidate would have decided (shadow/audit only).
     AdmissionShadow,
+    OperatorPostReview,
 }
 
 impl Consumer {
-    pub const ALL: [Self; 1] = [Self::AdmissionShadow];
+    pub const ALL: [Self; 2] = [Self::AdmissionShadow, Self::OperatorPostReview];
 
     pub const fn code(self) -> &'static str {
         match self {
             Self::AdmissionShadow => "admission_shadow.v1",
+            Self::OperatorPostReview => super::post_review::CONSUMER,
         }
     }
 

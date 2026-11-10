@@ -105,8 +105,7 @@ module admission {
   action moderate(c: Command): bool = {
     val current = commentAt(comments, c.id)
     val review = if (c.value == "approve") "approved" else "rejected"
-    val result = if (current.removed) "removed"
-      else if (c.value != "remove" and current.review == review) "unchanged" else "changed"
+    val result = if (current.removed) "removed" else "changed"
     val updated = if (c.value == "remove") current.with("removed", true)
       else current.with("review", review)
     all {
@@ -131,9 +130,9 @@ module admission {
   // decide_post_review; the job is acknowledged whatever the outcome. `fenced` is a mutation switch.
   action postReviewWith(c: Command, fenced: bool): bool = {
     val current = commentAt(comments, c.id)
-    val result = if (c.value == "clear") "kept"
-      else if (current.removed) "removed"
+    val result = if (current.removed) "removed"
       else if (fenced and current.version != ticketAt(tickets, c.id)) "stale"
+      else if (c.value == "clear") "kept"
       else if (current.review == "approved") "held"
       else "already_hidden"
     all {
@@ -225,7 +224,7 @@ module admission {
     act("remove", 2, 15, "none"),
     act("post_review", 0, 15, "unresolved"),      // removal is terminal
     act("moderate", 0, 4, "approve"),             // a human approves the held comment
-    act("moderate", 0, 4, "approve"),             // unchanged
+    act("moderate", 0, 4, "approve"),             // accepted reaffirmation advances version
     act("moderate", 0, 15, "reject"),             // removed
     act("remove", 2, 15, "none"),                 // unchanged
     fact("tick", 0, "none"),

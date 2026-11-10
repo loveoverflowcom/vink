@@ -167,7 +167,8 @@ impl CommentState {
 
     /// A moderator's approve/reject, bound to the version they reviewed. Reversing an earlier
     /// decision (approved → rejected to hide, rejected → approved on review) is allowed with the
-    /// current version; a decision equal to the current review is a no-op.
+    /// current version. Every accepted intent advances the version, including reaffirmation;
+    /// retrying an old expected version is stale, never a new confirmation.
     pub fn decide(
         self,
         expected: ModerationVersion,
@@ -185,9 +186,6 @@ impl CommentState {
             Decision::Approve => Review::Approved,
             Decision::Reject => Review::Rejected,
         };
-        if review == self.review {
-            return Ok(Transition::Unchanged(self));
-        }
         Ok(Transition::Changed(Self {
             review,
             removal: None,
@@ -290,10 +288,9 @@ mod tests {
                 current: version(2)
             })
         );
-        assert_eq!(
-            rejected.decide(version(2), Decision::Reject),
-            Ok(Transition::Unchanged(rejected))
-        );
+        let confirmed = changed(rejected.decide(version(2), Decision::Reject));
+        assert_eq!(confirmed.review(), Review::Rejected);
+        assert_eq!(confirmed.version(), version(3));
     }
 
     #[test]

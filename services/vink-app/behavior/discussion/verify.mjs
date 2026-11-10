@@ -397,6 +397,27 @@ function verifyOutbox() {
   console.log('PASS negative control: mutatedUnfencedStep violates effectAtMostOnce at transition 6');
 }
 
+function verifyPostReview() {
+  run(['typecheck', 'post-review.qnt']);
+  simulation('post-review.qnt', 'step', 40, 1000, 'safe');
+  const out = join(temporary, 'post-review.itf.json');
+  simulation('post-review.qnt', 'scenarioStep', 32, 1, 'safe', out);
+  const trace = JSON.parse(readFileSync(out, 'utf8'));
+  assert.equal(trace.states.length, 33);
+  const steps = trace.states.slice(1).map(s => ({
+    command: { op: s.command.op, value: s.command.value, held: integer(s.command.held), matches: s.command.matches },
+    outcome: s.outcome, review: s.review, version: integer(s.version), removed: s.removed,
+    now: integer(s.now), deadline: integer(s.deadline), generation: integer(s.generation),
+    finding: s.finding, exhausted: s.exhausted, receipt: s.receipt,
+  }));
+  const outcomes = new Set(steps.map(s => s.outcome));
+  for (const expected of ['waiting','kept','held','superseded','removed','stale','invalid','already']) {
+    assert(outcomes.has(expected), `post-review scenario never reaches ${expected}`);
+  }
+  fixture('post-review-fixtures.json', { format: 'vink-post-review-v1', quint_version: version, steps });
+  console.log('PASS operator post-review: seed=41, samples=1000, max_steps=40, deadline=2, scenario=32 (authority/locks assumed)');
+}
+
 try {
   assert.equal(run(['--version']).trim(), version, 'Use the pinned Quint version');
   run(['typecheck', 'structure.qnt']);
@@ -405,7 +426,8 @@ try {
   run(['typecheck', 'endorsement.qnt']);
   run(['typecheck', 'admission.qnt']);
   run(['typecheck', 'outbox.qnt']);
-  console.log(`PASS Quint ${version}: typecheck all six models (including the mutation actions)`);
+  verifyPostReview();
+  console.log(`PASS Quint ${version}: typecheck all seven models (including the mutation actions)`);
 
   simulation('structure.qnt', 'step', 40, 1000, 'structureSafe');
   console.log(`PASS simulation: seed=${seed}, samples=1000, max_steps=40, IDs=1..4, backend=typescript`);

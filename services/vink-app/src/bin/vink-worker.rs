@@ -1,10 +1,10 @@
 //! `vink-worker` — background process entrypoint.
 //!
-//! Jobs: the discussion outbox (DISC-04, #120; `vink_app::outbox_worker`), whose only production
-//! consumer records shadow admission observations (`admission_shadow.v1`, measurement only), and
+//! Jobs: the discussion outbox (DISC-04, #120; `vink_app::outbox_worker`), with separate consumers
+//! for shadow admission observations and explicit operator post-review (never approval), and
 //! an hourly housekeeping pass: expired sign-in rate-limit windows (D-05) and discussion events
-//! whose deliveries all finished more than [`EVENT_RETENTION_DAYS`] days ago. Post-review,
-//! moderation jobs and AI providers are not implemented and are never reported as running.
+//! whose deliveries all finished more than [`EVENT_RETENTION_DAYS`] days ago and owe no review
+//! finalization. Admission post-review has no producer; no AI provider is configured.
 //! Identity's mail outbox is delivered by `vink-identity serve`, never here: the App does not read
 //! the Identity database.
 //!
@@ -108,9 +108,12 @@ async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
         database,
         outbox = status,
         outbox_concurrency = settings.concurrency,
-        consumers = "admission_shadow.v1",
+        consumers = vink_app::domain::discussion::outbox::Consumer::ALL
+            .map(|consumer| consumer.code())
+            .join(","),
         jobs = "discussion_outbox,rate_limit_prune,outbox_retention",
-        post_review = "not_implemented",
+        post_review = "operator_rereview.v1",
+        admission_post_review = "no_producer",
         ai_moderation = "not_implemented",
         "vink-worker started"
     );

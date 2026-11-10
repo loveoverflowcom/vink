@@ -474,3 +474,12 @@ reports `integrations.ai_moderation` as `not_implemented`,
 `integrations.jobs` as `none` and `integrations.identity` as `not_configured`, `no_authority`,
 `available` or `unavailable` — informational: public reading does not depend on Identity, so
 Identity never makes the App not ready.
+
+### Human reaffirmation và hậu kiểm operator
+
+Approve/reject tại expected moderation version hiện hành luôn tăng version và ghi audit, kể cả
+trạng thái đã đúng. Retry expected version cũ trả `409` theo contract xung đột; không chấp nhận nó
+như intent mới. Gỡ đã gỡ vẫn idempotent. Operator hậu kiểm không có HTTP route hay DTO mới: hold
+trả comment về `pending`, own overlay/moderator queue và public/endorsement reads áp cùng quyền
+hiện có. Internal reason/digest/policy/audit không ra public DTO. Xem
+[runbook](../../../../../docs/development/discussion-post-review.md).
