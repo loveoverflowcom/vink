@@ -72,7 +72,7 @@ adapter: “Đánh giá cao” after the text and “Hữu ích” on each publi
 that owns `command_key`/`expected_order`. CHOICE-10 A: no optimistic state; lost answers are
 Uncertain until an exact keyed replay. Guests see counts and a text reason, never a login;
 production writes answer `401`, real writes run only with the loopback LocalFixture (labelled).
-No native consumer, ranking or voter list exists; the glyph (CHOICE-07) stays OPEN. See [policy](docs/architecture/literary-endorsement.md),
+No native consumer, ranking or voter list exists; the glyph is Pen Flight R2 A · Mềm (CHOICE-07, selected 09/11/2026), in the shared registry and both patterns. See [policy](docs/architecture/literary-endorsement.md),
 [registry/gaps](docs/development/endorsement-core.md) and
 [runtime](docs/development/literary-endorsement-runtime.md).
 TAG-PR-01 (#95) adds the owner-local pure `domain::taxonomy` core: Vietnamese tag label, slug

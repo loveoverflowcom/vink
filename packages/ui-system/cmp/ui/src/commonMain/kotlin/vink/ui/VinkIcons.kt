@@ -2,14 +2,14 @@
 // Do not edit: change tokens.json, preview-catalog.json, icons.json or fixtures/ and regenerate.
 //
 // Icon registry shared with Leptos: https://github.com/google/material-design-icons@10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7 (Material Icons filled, 24px), Apache-2.0.
-// See packages/ui-system/shared/icons.json for upstream paths and SHA-256.
+// Vink-owned glyphs have separate provenance in packages/ui-system/shared/icons.json; SHA-256 covers each original SVG.
 
 package vink.ui
 
 object VinkIconSource {
     const val VIEW_BOX: String = "0 0 24 24"
     const val VIEWPORT: Float = 24f
-    const val SOURCE: String = "https://github.com/google/material-design-icons@10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7 (Apache-2.0)"
+    const val SOURCE: String = "https://github.com/google/material-design-icons@10ecc14790612ca8fd164e3f4ffe9c16fc50d5b7 (Apache-2.0); Vink-owned glyphs: see per-icon provenance"
 }
 
 enum class IconName(val id: String, val path: String) {
@@ -47,6 +47,8 @@ enum class IconName(val id: String, val path: String) {
     MenuOpen("menu-open", "M3 18h13v-2H3v2zm0-5h10v-2H3v2zm0-7v2h13V6H3zm18 9.59L17.42 12 21 8.41 19.59 7l-5 5 5 5L21 15.59z"),
     /** Link mở tab mới */
     OpenInNew("open-in-new", "M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"),
+    /** Đánh giá cao tác phẩm / Hữu ích nhận xét — Pen Flight R2 A · Mềm */
+    PenFlight("pen-flight", "M11.33 2.88a.75.75 0 0 1 1.34 0l7.52 15.04a.75.75 0 0 1-.67 1.08h-4.1l-1.3 2.43a.75.75 0 0 1-.66.4h-2.92a.75.75 0 0 1-.66-.4L8.58 19h-4.1a.75.75 0 0 1-.67-1.08ZM12 5.5 6.15 17.2h3.53l1.48 2.83h1.68l1.48-2.83h3.53ZM11.2 5.15h1.6v6.98a2 2 0 1 1-1.6 0Z"),
     /** Avatar/khung ảnh trung tính */
     Person("person", "M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"),
     /** Thử lại, làm mới */

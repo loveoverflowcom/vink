@@ -203,7 +203,7 @@ data class EndorsementFacts(
 
 /**
  * The endorsement control for one target. A press emits the desired selection; the adapter owns
- * `command_key`, `expected_order`, session fencing and late answers. No glyph until CHOICE-07.
+ * `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A: Pen Flight R2.
  */
 @Composable
 fun EndorsementAction(
@@ -215,6 +215,7 @@ fun EndorsementAction(
 ) {
     VinkToggleAction(
         copy = kind.copy,
+        icon = IconName.PenFlight,
         value = facts.value,
         onSet = onSet,
         onRecover = onRecover,

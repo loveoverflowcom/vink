@@ -54,3 +54,8 @@ Các snapshot thiết kế/bằng chứng UIS-01–05 vẫn là lịch sử theo
 không đổi rail 96px hay font scale. Chỉ mục current và
 [readiness UIS-06](../../../docs/development/ui-system-qualification-evidence.md) dẫn tới phần hiện hành;
 không sửa lịch sử để gắn PASS mới. Xem [extension recipe](../EXTENDING.md) trước thay contract.
+
+Pen Flight R2 (#73, 10/11/2026) thêm `IconName::PenFlight`/`IconName.PenFlight` từ
+`icons.json`, provenance Vink-owned tách khỏi Material Apache-2.0; generator kiểm hash SVG R2
+nguyên bản. EndorsementAction dùng slot icon hiện có ở hai renderer; không đổi props,
+token values, toggle-contract-v1, state/counter/authority.

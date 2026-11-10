@@ -2213,7 +2213,7 @@ fn kotlin_catalog(source: &Source, catalog: &Catalog, fixtures: &Fixtures) -> St
 // ---------------------------------------------------------------------------------------------
 // Icon registry and identity vectors
 
-/// One registry icon: its path is copied verbatim from the pinned upstream file.
+/// One registry icon: a verbatim upstream path or a Vink-owned path with its own provenance.
 struct Icon {
     id: String,
     upstream: String,
@@ -2299,13 +2299,28 @@ fn parse_icons(text: &str, license_exists: impl Fn(&str) -> bool) -> Result<Icon
         if !FRAMES.contains(&frame) {
             problems.push(format!("{at}: `frame` is a known Material Icons frame"));
         }
-        let digest: String = Sha256::digest(upstream_svg(frame, &path).as_bytes())
+        let svg = if let Some(provenance) = item.get("provenance") {
+            if field(provenance, "owner") != "Vink"
+                || field(provenance, "revision").is_empty()
+                || field(provenance, "rights") != "Vink-owned"
+                || !field(item, "upstream").starts_with("https://drive.google.com/file/d/")
+                || item.get("frame").is_some()
+            {
+                problems.push(format!("{at}: Vink provenance needs owner, revision, rights and a source URL; no Material frame"));
+            }
+            format!(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"currentColor\">\n  <path d=\"{path}\"/>\n</svg>\n"
+            )
+        } else {
+            upstream_svg(frame, &path)
+        };
+        let digest: String = Sha256::digest(svg.as_bytes())
             .iter()
             .map(|b| format!("{b:02x}"))
             .collect();
         if digest != field(item, "sha256") {
             problems.push(format!(
-                "{at}: path does not match the recorded upstream sha256"
+                "{at}: path does not match the recorded upstream sha256 (per-icon provenance)"
             ));
         }
         let usage = field(item, "use");
@@ -2488,7 +2503,7 @@ fn rust_icons(version: &str, icons: &Icons) -> String {
     let mut out = header("//!", version);
     let _ = writeln!(
         out,
-        "//!\n//! Icon registry shared with CMP: {}@{} (Material Icons filled, 24px), {}.\n//! See packages/ui-system/shared/icons.json for upstream paths and SHA-256.\n",
+        "//!\n//! Icon registry shared with CMP: {}@{} (Material Icons filled, 24px), {}.\n//! Vink-owned glyphs have separate provenance in packages/ui-system/shared/icons.json; SHA-256 covers each original SVG.\n",
         icons.repository, icons.commit, icons.license
     );
     out.push_str("/// The viewBox every registry path is drawn in.\npub const VIEW_BOX: &str = \"0 0 24 24\";\n");
@@ -2496,7 +2511,7 @@ fn rust_icons(version: &str, icons: &Icons) -> String {
         out,
         "pub const SOURCE: &str = {};\n",
         rust_str(&format!(
-            "{}@{} ({})",
+            "{}@{} ({}); Vink-owned glyphs: see per-icon provenance",
             icons.repository, icons.commit, icons.license
         ))
     );
@@ -2546,14 +2561,14 @@ fn kotlin_icons(version: &str, icons: &Icons) -> String {
     let mut out = header("//", version);
     let _ = writeln!(
         out,
-        "//\n// Icon registry shared with Leptos: {}@{} (Material Icons filled, 24px), {}.\n// See packages/ui-system/shared/icons.json for upstream paths and SHA-256.\n\npackage vink.ui\n",
+        "//\n// Icon registry shared with Leptos: {}@{} (Material Icons filled, 24px), {}.\n// Vink-owned glyphs have separate provenance in packages/ui-system/shared/icons.json; SHA-256 covers each original SVG.\n\npackage vink.ui\n",
         icons.repository, icons.commit, icons.license
     );
     let _ = writeln!(
         out,
         "object VinkIconSource {{\n    const val VIEW_BOX: String = \"0 0 24 24\"\n    const val VIEWPORT: Float = 24f\n    const val SOURCE: String = {}\n}}\n",
         kotlin_str(&format!(
-            "{}@{} ({})",
+            "{}@{} ({}); Vink-owned glyphs: see per-icon provenance",
             icons.repository, icons.commit, icons.license
         ))
     );
@@ -2732,6 +2747,38 @@ mod tests {
         assert!(mentions(&problems, "upstream sha256"), "{problems:?}");
         let problems = generate_assets("0", &icons, &identity, |_| false).unwrap_err();
         assert!(mentions(&problems, "licenseFile"), "{problems:?}");
+    }
+
+    #[test]
+    fn vink_glyph_requires_its_own_provenance_and_exact_svg_hash() {
+        let (icons, _) = asset_sources();
+        let parsed = parse_icons(&icons, |_| true).unwrap();
+        let glyph = parsed
+            .icons
+            .iter()
+            .find(|icon| icon.id == "pen-flight")
+            .unwrap();
+        assert!(glyph.upstream.contains("1KeBVl1G0HwP8T91z2L38ELpgngLaiGKI"));
+        let mut doc: Value = serde_json::from_str(&icons).unwrap();
+        doc["icons"]["pen-flight"]["path"] = Value::from("M0 0h24v24z");
+        assert!(mentions(
+            &parse_icons(&doc.to_string(), |_| true).err().unwrap(),
+            "sha256"
+        ));
+        let mut doc: Value = serde_json::from_str(&icons).unwrap();
+        doc["icons"]["pen-flight"]["provenance"]["owner"] = Value::from("Google");
+        assert!(mentions(
+            &parse_icons(&doc.to_string(), |_| true).err().unwrap(),
+            "Vink provenance"
+        ));
+        doc["icons"]["pen-flight"]
+            .as_object_mut()
+            .unwrap()
+            .remove("provenance");
+        assert!(mentions(
+            &parse_icons(&doc.to_string(), |_| true).err().unwrap(),
+            "sha256"
+        ));
     }
 
     #[test]

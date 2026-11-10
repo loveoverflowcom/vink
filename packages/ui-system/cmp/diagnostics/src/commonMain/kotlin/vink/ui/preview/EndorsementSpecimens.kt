@@ -159,7 +159,7 @@ private fun EndorsementSample(scenario: String) {
     fun set(target: String): (Boolean) -> Unit = { log("$target → muốn ${if (it) "bật" else "tắt"} (caller giữ phase)") }
     fun recover(target: String): (vink.ui.RecoveryIntent) -> Unit = { log("$target → ${it.id}") }
     Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space4)) {
-        VinkText("Mẫu · Người, tác phẩm và số đếm là dữ liệu trình bày; không gọi dịch vụ, chưa chọn glyph (CHOICE-07).", role = TypeRole.Caption, tone = TextTone.Muted)
+        VinkText("Mẫu · Người, tác phẩm và số đếm là dữ liệu trình bày; không gọi dịch vụ, Pen Flight R2 A · Mềm (CHOICE-07).", role = TypeRole.Caption, tone = TextTone.Muted)
         VinkSurface(Modifier.fillMaxWidth(), SurfaceTone.Container, Radius.Md, Space.S4) {
             Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
                 VinkText("Mùa hạ cuối cùng — Mẫu", role = TypeRole.Title)

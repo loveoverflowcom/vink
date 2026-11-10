@@ -1,5 +1,9 @@
 # Bằng chứng UI System — ToggleAction và EndorsementAction (LVE #73)
 
+Cập nhật 10/11/2026: CHOICE-07 A đã tích hợp; xem [Pen Flight R2](pen-flight-r2-evidence.md).
+Các kết quả/gap dưới đây giữ nguyên theo snapshot của lần kiểm trước.
+
+
 **Ngày:** 06/11/2026 (UTC+07) · **Issue:** [#73](https://github.com/loveoverflowcom/vink/issues/73)
 (WP-04, phần tái sử dụng) · **Nhánh:** `codex/lve-ui-endorsement-system`, nền `develop@23fb5af`.
 Kết quả chạy trên máy dev; không phải nghiệm thu thiết kế, thiết bị thật, screen reader thật hay

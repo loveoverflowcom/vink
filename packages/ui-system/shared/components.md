@@ -146,7 +146,7 @@ Primitive chung cho mọi tín hiệu bật/tắt có owner xác nhận (ghi nh�
 ```text
 ToggleAction #toggle
   Control #control             — một <button>/node clickable; tên truy cập theo giá trị đã xác nhận
-    Slot #glyph                — icon registry tùy chọn, giữ nguyên ở mọi trạng thái (trống tới CHOICE-07)
+    Slot #glyph                — icon registry tùy chọn, giữ nguyên ở mọi trạng thái (EndorsementAction dùng Pen Flight R2 A)
     Label #label               — chữ hiển thị cố định ở mọi trạng thái
     Count #count               — số (nhóm “1.234”) | “–” khi không có số liệu | không render khi Hidden
     Slot #mark                 — ô 20px cuối nút giữ sẵn như status slot của Button: MicroArc khi
@@ -187,8 +187,8 @@ chặn/chưa rõ, phát lại đúng trạng thái đang hiện, hoặc uncertai
   `selected-content` khi Bật; không viền kép/halo/glow, không cạnh tranh CTA. Hit target 48 (Web gọn
   44), glyph 20. Chữ 200% xuống dòng trong nút.
 - **Glyph** là slot đầu `icon: Option<IconName>` từ registry, không đổi theo trạng thái (✓ ở slot
-  cuối). Ghi nhận văn học để trống cho tới khi CHOICE-07 chọn hướng icon (không tim, không giống
-  Gửi/Lưu). Không có glyph thì chữ bắt đầu sau padding 12, thẳng với Text button.
+  cuối). Ghi nhận văn học dùng Pen Flight R2 A · Mềm (CHOICE-07), glyph Vink-owned
+  có provenance/hash riêng trong `icons.json`, 20px trang trí. Gửi giữ mũi tên ngang. Không có glyph thì chữ bắt đầu sau padding 12, thẳng với Text button.
 
 Tương quan CHOICE-10: primitive chỉ trình bày hướng A (pending + xác nhận sau ACK/readback). Hướng
 B (optimistic có nhãn pending) cần một phase mới và `toggle-contract-v2`, không giả bằng cách

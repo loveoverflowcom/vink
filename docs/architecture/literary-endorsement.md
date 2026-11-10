@@ -168,7 +168,7 @@ bằng chứng: [UI evidence](../development/ui-system-endorsement-evidence.md).
 | Tên truy cập | Theo hành động: “Đánh giá cao”/“Bỏ đánh giá cao”, “Hữu ích”/“Bỏ đánh dấu hữu ích”; không `aria-pressed` | Copy khởi đầu #73; tránh đọc “Bỏ…, đã nhấn”; tên chứa nhãn (WCAG 2.5.3) |
 | Số đếm | `CountFact::{Hidden, Unavailable, Known}`; unavailable “–”, không 0; mỗi đích riêng | LVE-FR-02, LVE-UC-03 |
 | Lý do chặn | Chữ hiển thị: tự đánh giá (CHOICE-08 A), không có quyền, chưa đăng nhập, không khả dụng | Không có nút đăng nhập giả khi chưa có auth |
-| Glyph | Slot trống | CHOICE-07 OPEN: không tim, không giống Gửi/Lưu |
+| Glyph | Pen Flight R2 A · Mềm (chốt 09/11/2026; tích hợp 10/11) | CHOICE-07: vector Vink-owned, 20px trang trí trong slot đầu; tiến trình/✓ giữ slot cuối. [Spec/nguồn](../design/pen-flight-r2.md) |
 | Theme | Recipe `action.toggle.*` (token 0.5.0) | Quiet, borderless; selected dùng secondary-container đã đạt contrast |
 
 [Registry, model/proof evidence và gap](../development/endorsement-core.md) là owner duy nhất
@@ -188,6 +188,6 @@ bằng chứng: [web evidence](../development/literary-endorsement-web-evidence.
 | R7 (gỡ riêng tư trên đích ẩn/revision cũ) | Không có UI: đích ẩn không được render, action của revision cũ bị chặn `Unavailable`; gỡ hàng giữ lại chỉ qua API | Hiện đích đã ẩn để gỡ sẽ làm lộ đích; cần thiết kế riêng nếu sản phẩm muốn danh sách “ghi nhận của tôi” |
 | Khách | Tổng số công khai + lý do bằng chữ “Cần đăng nhập để…” trên từng action; không gửi own read hay lệnh; không nút đăng nhập | D-05 chưa có auth authority; LVE-UC-01 |
 
-**Giữ OPEN:** CHOICE-07 glyph (slot trống), CHOICE-06 ranking (không sắp xếp theo ghi nhận; replies
+**Giữ OPEN:** CHOICE-06 ranking (không sắp xếp theo ghi nhận; replies
 giữ thứ tự provider), CHOICE-12 B ghi danh, OPEN-R4. Production vẫn `401` cho ghi (D-05); lệnh thật
 chỉ chạy với LocalFixture loopback, có nhãn trên trang.

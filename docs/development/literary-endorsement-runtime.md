@@ -5,8 +5,8 @@
 #80 (develop `40f8a30`). **Trạng thái:** hiện thực và kiểm cục bộ; production vẫn trả `401` cho ghi
 và trạng thái riêng vì chưa có auth authority (D-05). Consumer đầu tiên là reader Web
 ([adapter WP-04](#web-adapter-wp-04)): `EndorsementAction` cho tác phẩm và từng bình luận, khách chỉ
-thấy tổng số + lý do bằng chữ; lệnh thật chỉ chạy với LocalFixture loopback. Không có icon (CHOICE-07),
-xếp hạng hay consumer native.
+thấy tổng số + lý do bằng chữ; lệnh thật chỉ chạy với LocalFixture loopback. Glyph Pen Flight R2 A (CHOICE-07) đã được gắn qua
+registry/patterns ([spec](../design/pen-flight-r2.md)); chưa xếp hạng hay consumer native.
 
 Ý nghĩa và lựa chọn lõi: [decision record](../architecture/literary-endorsement.md). Lõi, Quint,
 Kani và registry LVE-INV: [endorsement-core](endorsement-core.md). Hợp đồng HTTP chuẩn:
@@ -260,7 +260,7 @@ Bình luận ẩn/đang chờ/bị từ chối và gốc ẩn (anchor) không c�
 
 Auth authority/session (D-05) và cơ chế thu hồi capability, lệnh publish/withdraw thật (bằng chứng
 dùng SQL lên con trỏ), cách ly/cấm/purge tài khoản, retention receipt, giới hạn tần suất (LVE-UC-15),
-ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), icon (CHOICE-07), consumer native, UI gỡ hàng giữ lại
+ghi danh (CHOICE-12 B), xếp hạng (CHOICE-06), consumer native, UI gỡ hàng giữ lại
 trên đích ẩn (R7, chỉ API), tổng số cho danh sách nhiều tác phẩm, E2E production (cần auth thật).
 
 ## Kiểm chứng (05/11/2026, macOS, PostgreSQL 17.11 scratch)
@@ -288,5 +288,5 @@ Lõi, model và Kani của #80 không đổi; lane `discussion`/`kani` chạy l�
 | #73 AC-09 | Inventory, batch không N+1, plan, hot-target, dataset/môi trường | Đo trên hạ tầng thật |
 | #73 AC-10 | Tổng số theo revision hiện hành; visibility hiện hành thắng receipt | Xếp hạng/cursor (CHOICE-06) |
 | #73 AC-13 | Tách cache, own state theo actor, guest `401`, lý do vô hiệu; session/generation fence phía client Web ([adapter](#web-adapter-wp-04)) | Abuse/retention theo tài khoản, consent ghi danh |
-| #73 AC-11/12 | Reader Web: SSR + hydration, bàn phím, 320/200%, sáng/tối ([web evidence](literary-endorsement-web-evidence.md)) | Glyph CHOICE-07; E2E production cần auth thật; native |
+| #73 AC-11/12 | Reader Web: SSR + hydration, bàn phím, 320/200%, sáng/tối ([web evidence](literary-endorsement-web-evidence.md)) | [Pen Flight R2 evidence](pen-flight-r2-evidence.md); E2E production cần auth thật; native |
 | #73 AC-14 | Đối soát, backout, docs, feature map | Rollout thật; epic giữ mở |

@@ -550,8 +550,8 @@ fn uniform_endorsement_block(
 }
 
 /// The endorsement control for one target. A press emits the desired selection; the adapter
-/// owns `command_key`, `expected_order`, session fencing and late answers. The glyph slot stays
-/// empty until CHOICE-07 selects one (no heart, no Send/Save look-alike).
+/// owns `command_key`, `expected_order`, session fencing and late answers. CHOICE-07 A uses
+/// the same decorative Pen Flight R2 in every phase; confirmation keeps its own trailing slot.
 #[component]
 pub fn EndorsementAction(
     #[prop(into)] id: String,
@@ -571,6 +571,7 @@ pub fn EndorsementAction(
             <ToggleAction
                 id
                 copy=kind.copy()
+                icon=IconName::PenFlight
                 value=Signal::derive(move || facts.get().value)
                 phase=Signal::derive(move || facts.get().phase)
                 count=Signal::derive(move || facts.get().count)

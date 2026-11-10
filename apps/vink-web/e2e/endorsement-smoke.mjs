@@ -45,6 +45,7 @@ export async function endorsementAsAuthor(page, { args, check }) {
   const html = await (await fetch(reader)).text();
   const at = html.indexOf('id="endorse-work"');
   check(at > html.indexOf(LAST_LINE) && at < html.indexOf('id="feedback-region"'), 'SSR renders “Đánh giá cao” after the published text and before the discussion');
+  check(html.includes('data-icon="pen-flight"'), 'SSR contains the selected Pen Flight registry glyph');
   const workCount = ssrCount(html, 'endorse-work');
   check(workCount?.known && workCount.text === '0' && !html.includes('aria-pressed'), `SSR carries the public count of the current revision (${workCount?.text}), no aria-pressed`);
   check(html.includes('data-pressed="unknown"') && !html.includes('Cần đăng nhập để đánh giá'), 'SSR never claims an own state before the browser reads it, and a fixture session is not a guest');
@@ -120,6 +121,15 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   const ready = `document.documentElement.dataset.hydrated==='true' && ${button('endorse-work')}?.dataset.state==='enabled' && ${button(`endorse-comment-${reply}`)}?.dataset.state==='enabled'`;
   await page.waitFor(ready, 'own states read after hydration');
   check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${count('endorse-work')}.startsWith('0')`), 'a reader who has not endorsed sees Off and the public count');
+  const glyphs = async (phase) => check(await page.eval(`(() => {
+    const controls = [...document.querySelectorAll('.vk-endorsement .vk-ui-toggle__control')];
+    return controls.length >= 3 && controls.every(b => {
+      const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
+      return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+        && glyph.getBoundingClientRect().width === 20 && b.getBoundingClientRect().height >= 48;
+    });
+  })()`), `Pen Flight: work, root and flat reply keep decorative 20px glyph / 48px targets (${phase})`);
+  await glyphs('ready');
   const order = `[...document.querySelectorAll('.vk-discussion-comment')].map(c => c.id).join()`;
   const before = await page.eval(order);
 
@@ -134,12 +144,15 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await sleep(200);
     check(gate.held.length === 1, 'a double tap sends one command');
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Đang gửi')`), 'CHOICE-10 A: no optimistic selection while the command is pending');
+    await glyphs('pending');
     const firstBody = JSON.parse(first.request.postData);
     check(first.responseStatusCode === 200 && firstBody.expected_order === 1 && firstBody.endorsed === true && firstBody.revision_id === SAMPLE_REVISION && /^[0-9a-f]{8}-[0-9a-f]{4}-4/.test(firstBody.command_key), 'the command names the shown revision, the shown order and a UUID key');
     await gate.release(first);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`, 'confirmed selection');
     check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ đánh giá cao' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ đánh giá cao” and the check mark');
 
+    await glyphs('confirmed');
+    check(await page.eval(`document.querySelector('#endorse-work .vk-ui-toggle__mark svg')?.dataset.icon === 'check'`), 'Pen Flight remains leading; confirmed check uses the trailing slot');
     console.log('  lost ACK after the commit, exact keyed replay:');
     await page.click('#endorse-work');
     const lost = await gate.next(2);

@@ -676,3 +676,13 @@ body {
   list-style: none;
 }
 .vkp-endorsement-replies > li { display: grid; gap: var(--vk-space-2); justify-items: start; }
+
+/* Pen Flight: at narrow/large-text sizes the specimen gives controls the reading width.
+   Nested sample surfaces and an extra reply indent must not compress Vietnamese words. */
+@media (max-width: 36rem) {
+  #specimen-scope[data-catalog-id="composition.endorsement"] .vk-ui-surface { padding: 0; }
+  #specimen-scope[data-catalog-id="composition.endorsement"] .vkp-endorsement-replies {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
