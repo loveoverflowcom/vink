@@ -38,9 +38,42 @@ pub fn DeskIndex() -> impl IntoView {
     let recovery_focus = RwSignal::new(false);
     let last_success = RwSignal::new(None::<DraftList>);
     let load_error = RwSignal::new(None::<ApiError>);
-    let drafts: LocalResource<Result<DraftList, ApiError>> =
-        LocalResource::new(move || async move {
+    // The tab's session owner says whose desk this is. The list is read again whenever the
+    // confirmed session changes, and a list read for an earlier session is never shown.
+    let session = crate::account::Session::current();
+    let listed_for = StoredValue::new(None::<String>);
+    // Another account, or none: its private list and failed-create notice go first.
+    let forget_other = move |scope: &Option<String>| {
+        if listed_for
+            .try_get_value()
+            .is_some_and(|before| before != *scope)
+        {
+            last_success.try_set(None);
+            load_error.try_set(None);
+            creation.try_set(CreateState::Ready);
+            loading.try_set(true);
+            listed_for.try_set_value(scope.clone());
+        }
+    };
+    // Reads run one after another, so the read for a new session can wait behind a slow answer
+    // for the old one (at most the request deadline). What is on screen must not wait with it.
+    Effect::new(move |_| forget_other(&session.scope.get()));
+    let drafts: LocalResource<Result<DraftList, ApiError>> = LocalResource::new(move || {
+        let known = session
+            .standing
+            .with(|s| *s != crate::session::Standing::Unknown);
+        let scope = session.scope.get();
+        async move {
+            if !known {
+                // The first session check has not answered; it always does, and wakes this read.
+                return Err(ApiError::Unavailable);
+            }
+            forget_other(&scope);
             let result = load_drafts().await;
+            if session.scope.try_get_untracked() != Some(scope) {
+                // Answered for a session that is no longer the tab's; the newer read decides.
+                return result;
+            }
             match &result {
                 Ok(list) => {
                     creation.try_update(CreateState::reconciled);
@@ -69,7 +102,8 @@ pub fn DeskIndex() -> impl IntoView {
                 super::focus_recovery(target);
             }
             result
-        });
+        }
+    });
     let refresh = Callback::new(move |()| {
         if loading.get_untracked()
             || creation.with_untracked(|state| *state == CreateState::Pending)
@@ -98,11 +132,15 @@ pub fn DeskIndex() -> impl IntoView {
                 return;
             }
             let navigate = navigate.clone();
+            let scope = session.scope.get_untracked();
             leptos::task::spawn_local(async move {
                 let outcome = crate::api::create_draft().await;
                 // The route owner disposes this signal. A late reply must not navigate from a
-                // different page (and an uncertain POST is never automatically repeated).
-                if creation.try_get_untracked().is_none() {
+                // different page (and an uncertain POST is never automatically repeated). A
+                // reply for an earlier session is dropped as well: its draft is not this desk's.
+                if creation.try_get_untracked().is_none()
+                    || session.scope.try_get_untracked() != Some(scope)
+                {
                     return;
                 }
                 match outcome {
@@ -349,10 +387,16 @@ fn DeskError(
         ApiError::NotFound => ProblemKind::NotFound,
         _ => ProblemKind::Unavailable,
     };
+    // Only where this deployment accepts sign-in; elsewhere the old wording stays truthful.
+    let sign_in = error == ApiError::Unauthenticated && crate::api::sign_in_open();
     let (title, detail) = match error {
         ApiError::Unavailable | ApiError::Network if retained => (
             "Chưa tải lại được bản thảo.",
             "Đang giữ danh sách tải thành công gần nhất và chữ tìm kiếm. Hãy thử tải lại.",
+        ),
+        ApiError::Unauthenticated if sign_in => (
+            "Bạn chưa đăng nhập.",
+            "Đăng nhập ở mục Tôi để mở bản thảo riêng. Trang này tự tải lại khi phiên sẵn sàng.",
         ),
         ApiError::Unauthenticated => (
             "Bạn chưa đăng nhập.",
@@ -379,6 +423,9 @@ fn DeskError(
                     <Button variant=ButtonVariant::Filled id="retry-drafts" on_press=move |_| refresh.run(())
                         state=Signal::derive(move || blocked(retry_disabled.get()))>"Thử mở lại"</Button>
                 })}
+                {sign_in.then(|| view! {
+                    <vink_ui::Link href="/toi" variant=vink_ui::LinkVariant::Standalone attr:id="desk-sign-in">"Đăng nhập ở mục Tôi"</vink_ui::Link>
+                })}
                 <vink_ui::Link href="/" variant=vink_ui::LinkVariant::Standalone>"Khám phá tác phẩm"</vink_ui::Link>
             </StatePanel>
         </div>
@@ -389,19 +436,43 @@ fn DeskError(
 pub fn DraftEditor() -> impl IntoView {
     let params = use_params_map();
     let work_id = move || params.read().get("id").unwrap_or_default();
+    let reload = RwSignal::new(0_u32);
+    let load_failed = StoredValue::new(false);
     let draft: LocalResource<Result<Draft, ApiError>> = LocalResource::new(move || {
         let id = work_id();
+        reload.track();
         async move {
             #[cfg(feature = "hydrate")]
             {
-                crate::api::load_draft(id).await
+                let result = crate::api::load_draft(id).await;
+                load_failed.try_set_value(result.is_err());
+                result
             }
             #[cfg(not(feature = "hydrate"))]
             {
-                let _ = id;
+                let _ = (id, load_failed);
                 Err(ApiError::Unavailable)
             }
         }
+    });
+    // Typed text belongs to the person who typed it (`text_survives`). It stays on the page when
+    // the session ends and when the same account signs in again, so a save can be repeated. When
+    // another account takes the tab the editor is rebuilt from that account's own read: the
+    // earlier text and every reply still on its way go with the old editor. A draft that could
+    // not be opened is read again once the session changes.
+    let session = crate::account::Session::current();
+    Effect::new(move |previous: Option<(Option<String>, Option<String>)>| {
+        let (scope, principal) = (session.scope.get(), session.principal.get());
+        let Some((before, typed_as)) = previous else {
+            return (scope, principal);
+        };
+        if before != scope
+            && (load_failed.get_value()
+                || !crate::session::text_survives(typed_as.as_deref(), principal.as_deref()))
+        {
+            reload.update(|n| *n += 1);
+        }
+        (scope, principal.or(typed_as))
     });
     view! {
         <Title text="Bản nháp — Bàn viết — Vink" />
@@ -1087,7 +1158,9 @@ pub(crate) fn failure_reason(failure: Failure) -> &'static str {
     match failure {
         Failure::Network => "Mất phản hồi từ máy chủ; chưa rõ bản nháp đã được lưu hay chưa.",
         Failure::Unavailable => "Máy chủ tạm không phục vụ.",
-        Failure::Unauthenticated => "Phiên đăng nhập không hợp lệ.",
+        Failure::Unauthenticated => {
+            "Phiên đăng nhập đã hết nên chưa lưu được. Hãy đăng nhập lại ở mục Tôi trong một thẻ khác rồi lưu lại."
+        }
         Failure::Forbidden => "Yêu cầu bị từ chối.",
         Failure::NotFound => "Không tìm thấy bản nháp.",
         Failure::Invalid => "Nội dung không hợp lệ.",

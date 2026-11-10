@@ -10,9 +10,7 @@ use vink_ui::{
     NavLayout, NavUtility, NavigationRail, OverlayLayer, WindowClass,
 };
 
-use crate::appearance::{
-    AccountAvatar, Appearance, AppearanceChoices, AppearanceTitle, provide_account,
-};
+use crate::appearance::{AccountAvatar, Appearance, AppearanceChoices, AppearanceTitle};
 use crate::navigation::use_navigation_guard;
 
 /// The Tôi overlay's id in the overlay layer and the DOM.
@@ -73,7 +71,7 @@ fn editor_context(path: &str) -> NavContext {
 #[component]
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
-    provide_account();
+    crate::account::Session::provide();
     let location = use_location();
     let current = Memo::new(move |_| location.pathname.with(|path| Destination::for_path(path)));
     let context = Memo::new(move |_| location.pathname.with(|path| editor_context(path)));

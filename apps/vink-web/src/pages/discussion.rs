@@ -159,6 +159,9 @@ fn DiscussionLoaded(
         },
         page.settings.clone(),
     ));
+    controller.update_untracked(|c| c.sign_in_open = api::sign_in_open());
+    #[cfg(feature = "hydrate")]
+    let work_id = page.work_id.clone();
     let state = RwSignal::new(ViewState {
         page,
         replies: BTreeMap::new(),
@@ -181,6 +184,29 @@ fn DiscussionLoaded(
         spawn_transport(async move {
             refresh.run(());
         });
+    } else {
+        // The tab's session owner decides who is acting. Each change re-reads the page for
+        // that viewer; typed text stays only for the same person (`text_survives`).
+        let session = crate::account::Session::current();
+        Effect::new(move |previous: Option<(Option<String>, Option<String>)>| {
+            let (scope, principal) = (session.scope.get(), session.principal.get());
+            let (before, typed_as) = previous.unwrap_or_default();
+            if before == scope {
+                return (scope, typed_as);
+            }
+            controller.update(|c| {
+                if crate::session::text_survives(typed_as.as_deref(), principal.as_deref()) {
+                    c.change_session(scope.clone());
+                } else {
+                    c.change_scope(Scope {
+                        work_id: work_id.clone(),
+                        session: scope.clone(),
+                    });
+                }
+            });
+            refresh.run(());
+            (scope, principal.or(typed_as))
+        });
     }
     let write_state = Signal::derive(move || {
         if state.read().mutation_busy {
@@ -190,7 +216,11 @@ fn DiscussionLoaded(
         } else if state.read().mutation_needs_refresh {
             ActionState::disabled("Tải lại để đối chiếu trước khi thao tác tiếp.")
         } else if !controller.read().write_ready() {
-            ActionState::disabled("Vink chưa mở đăng nhập.")
+            ActionState::disabled(if controller.read().sign_in_open {
+                "Đăng nhập ở mục Tôi để thao tác."
+            } else {
+                "Vink chưa mở đăng nhập."
+            })
         } else {
             ActionState::Enabled
         }

@@ -22,6 +22,9 @@ const SAMPLE_AUTHOR: &str = "11111111-1111-4111-8111-111111111111";
 /// a moderator grant so it can approve the author's comments it then endorses (neither the
 /// comments' writer nor the work's owner, so not recused).
 const OTHER_PRINCIPAL: &str = "22222222-2222-4222-8222-222222222222";
+/// Auth Web phase: Identity's own scratch database and a runtime role that owns nothing in it.
+const IDENTITY_DATABASE: &str = "vink_verify_web_identity";
+const IDENTITY_ROLE: &str = "vink_verify_web_identity_runtime";
 
 /// Child process that is terminated when dropped, so a failed check never leaks a server.
 pub struct Guard(pub Option<Child>);
@@ -317,6 +320,37 @@ impl Server {
         }
     }
 
+    /// The same database served with sign-in open against a real Identity process and without
+    /// any fixture principal: every private answer depends on a session Identity verifies.
+    fn with_identity(&self, port: u16, socket: &Path, uid: u32) -> Self {
+        let mut env: Vec<(String, String)> = self
+            .env
+            .iter()
+            .filter(|(key, _)| key != "VINK_DEV_PRINCIPAL")
+            .cloned()
+            .collect();
+        for (key, value) in &mut env {
+            match key.as_str() {
+                "VINK_BIND" => *value = format!("127.0.0.1:{port}"),
+                "VINK_PUBLIC_ORIGIN" => *value = format!("http://127.0.0.1:{port}"),
+                _ => {}
+            }
+        }
+        env.extend([
+            (
+                "VINK_IDENTITY_SOCKET".to_string(),
+                socket.display().to_string(),
+            ),
+            ("VINK_IDENTITY_SERVER_UID".to_string(), uid.to_string()),
+            ("VINK_AUTH_SIGN_IN".to_string(), "enabled".to_string()),
+        ]);
+        Self {
+            port,
+            env,
+            log: self.log.with_file_name("server-auth.log"),
+        }
+    }
+
     fn command(&self, root: &Path, args: &[&str]) -> Command {
         let mut command = Command::new(binary(root, "vink-app"));
         command
@@ -379,6 +413,124 @@ fn smoke(
         &mut command,
         &format!("browser smoke {}", node_args.join(" ")),
     )
+}
+
+/// Starts the real `vink-identity` (email-code authority) on its own scratch database and runs
+/// the Auth Web browser phase against an App that has no fixture principal. The local outbox is
+/// the only mail transport, so the browser check reads codes from that directory; no production
+/// transport is exercised. The runtime role is created here with a throwaway password and owns
+/// nothing (`verify postgres` is the evidence for `services/postgres` provisioning itself).
+fn auth_web(
+    root: &Path,
+    server: &Server,
+    admin_url: &str,
+    chrome: &str,
+    state: &Path,
+) -> Result<(), String> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    let dir = state.parent().ok_or("state file has no directory")?;
+    let (sock_dir, outbox) = (dir.join("sock"), dir.join("outbox"));
+    for private in [&sock_dir, &outbox] {
+        std::fs::create_dir_all(private).map_err(|e| format!("{}: {e}", private.display()))?;
+        std::fs::set_permissions(private, std::fs::Permissions::from_mode(0o700))
+            .map_err(|e| e.to_string())?;
+    }
+    let socket = sock_dir.join("identity.sock");
+    let uid = std::fs::metadata(&sock_dir)
+        .map(|m| m.uid())
+        .map_err(|e| e.to_string())?;
+    let admin = crate::pgurl::PgUrl::parse(admin_url)?;
+    let nonce = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or_default();
+    let password = format!("verify-{:x}-{nonce:x}", std::process::id());
+    drop_identity_scratch(admin_url);
+    for statement in [
+        format!("CREATE DATABASE {IDENTITY_DATABASE}"),
+        format!("CREATE ROLE {IDENTITY_ROLE} LOGIN PASSWORD '{password}'"),
+    ] {
+        crate::identity::sql(admin_url, &statement)
+            .map_err(|e| format!("Identity scratch database/role: {e}"))?;
+    }
+    let admin_identity = admin.with_database(IDENTITY_DATABASE);
+    let mut migrate = Command::new(binary(root, "vink-identity"));
+    migrate
+        .current_dir(root)
+        .arg("migrate")
+        .env("VINK_IDENTITY_MIGRATE_DATABASE_URL", &admin_identity)
+        .env("VINK_LOG_FORMAT", "text");
+    crate::process::run(&mut migrate, "vink-identity migrate (scratch)")?;
+    for statement in [
+        "REVOKE CREATE ON SCHEMA public FROM PUBLIC".to_string(),
+        format!("GRANT USAGE ON SCHEMA public TO {IDENTITY_ROLE}"),
+        format!(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {IDENTITY_ROLE}"
+        ),
+        format!("GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {IDENTITY_ROLE}"),
+    ] {
+        crate::identity::sql(&admin_identity, &statement)
+            .map_err(|e| format!("Identity runtime grants: {e}"))?;
+    }
+    let log = std::fs::File::create(dir.join("identity.log")).map_err(|e| e.to_string())?;
+    let child = Command::new(binary(root, "vink-identity"))
+        .current_dir(root)
+        .arg("serve")
+        .env(
+            "VINK_IDENTITY_DATABASE_URL",
+            admin.with(IDENTITY_ROLE, &password, IDENTITY_DATABASE),
+        )
+        .env("VINK_IDENTITY_SOCKET", &socket)
+        .env("VINK_IDENTITY_CALLER_UID", uid.to_string())
+        .env("VINK_IDENTITY_AUTHORITY", "email-code")
+        .env("VINK_IDENTITY_LOCAL_OUTBOX", &outbox)
+        .env("VINK_LOG_FORMAT", "text")
+        .stdout(Stdio::null())
+        .stderr(log)
+        .spawn()
+        .map_err(|e| format!("spawn vink-identity: {e}"))?;
+    let mut identity = Guard(Some(child));
+    let deadline = Instant::now() + Duration::from_secs(20);
+    loop {
+        if let Some(Ok(Some(status))) = identity.0.as_mut().map(Child::try_wait) {
+            return Err(format!(
+                "vink-identity exited early with {status}; see {}",
+                dir.join("identity.log").display()
+            ));
+        }
+        if crate::identity::request(&socket, "GET", "/health/ready", &[], b"")
+            .is_ok_and(|(status, _)| status == 200)
+        {
+            break;
+        }
+        if Instant::now() > deadline {
+            return Err("vink-identity not ready on its socket within 20s".into());
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    let app = server.with_identity(free_port()?, &socket, uid);
+    let mut guard = app.start(root)?;
+    let origin = format!("http://127.0.0.1:{}", app.port);
+    let outbox = outbox.display().to_string();
+    let result = smoke(
+        root,
+        &["--phase", "auth", "--outbox", &outbox],
+        chrome,
+        &origin,
+        state,
+    );
+    let _ = guard.terminate(Duration::from_secs(15));
+    let _ = identity.terminate(Duration::from_secs(10));
+    result
+}
+
+fn drop_identity_scratch(admin_url: &str) {
+    for statement in [
+        format!("DROP DATABASE IF EXISTS {IDENTITY_DATABASE} WITH (FORCE)"),
+        format!("DROP ROLE IF EXISTS {IDENTITY_ROLE}"),
+    ] {
+        let _ = crate::identity::sql(admin_url, &statement);
+    }
 }
 
 pub fn verify(report: &mut Report, env: &Env) -> bool {
@@ -460,7 +612,19 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
         &chrome,
         &origin,
         &out_dir.join("smoke-state.json"),
+    ) && report.step(
+        "Auth Web: email code, pen name, draft, sign-out, account switch (real Identity, local outbox)",
+        || {
+            auth_web(
+                &root,
+                &server,
+                &url,
+                &chrome,
+                &out_dir.join("smoke-state.json"),
+            )
+        },
     );
+    drop_identity_scratch(&url);
     drop_scratch_database(&url);
     ok
 }

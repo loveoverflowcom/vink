@@ -6,6 +6,7 @@
 // Composition slots increase the hydration type depth without changing runtime state.
 #![recursion_limit = "256"]
 
+mod account;
 pub mod api;
 pub mod appearance;
 pub mod contract;
@@ -25,6 +26,7 @@ pub mod public_reads;
 pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;
+pub mod session;
 mod shell;
 pub mod tag_state;
 pub mod ui;
@@ -49,6 +51,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
                 <meta name="color-scheme" content="light dark" />
                 {fixture.map(|scope| view! { <meta name="vink-local-discussion-fixture" content=scope /> })}
+                {api::sign_in_open().then(|| view! { <meta name="vink-sign-in" content="open" /> })}
                 <link id="vink-favicon" rel="icon" type="image/svg+xml" href="/pkg/brand/vpen-r1-favicon.svg" />
                 <link id="vink-manifest" rel="manifest" href="/pkg/brand/vpen-r1-manifest-light.webmanifest" />
                 <script inner_html=appearance::BOOTSTRAP></script>

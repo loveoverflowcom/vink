@@ -67,7 +67,8 @@ cuối cùng trước khi bổ sung kịch bản lease. Lần 4 PASS 28/28 trên
 | 29b | Gửi thật qua Resend: luồng đầy đủ `serve` → challenge → outbox → worker | PASS | Contract `202` sau 3,5 ms (không chờ mạng); thư `sent` ở lần 1 sau ~4,5 s (gồm vòng poll), mã đã xóa, `mail status` `pending 0`; readiness `smtp`/`not_accepted`; log không chứa key, mã hay địa chỉ; SIGTERM dừng worker gọn |
 | 29c | Chứng chỉ giả bị từ chối | PASS (phát hiện môi trường) | Mạng văn phòng: Fortinet chặn TLS cổng 465 và ký lại chứng chỉ → client từ chối, báo `tls` (sau khi sửa phân loại; trước đó báo nhầm `connect`). Key sai → `configuration` (535, có retry) |
 | 29d | Thư tới hộp thư người thật, domain Vink đã xác minh SPF/DKIM/DMARC, không vào spam | **NOT_RUN** | Domain gửi của Vink chưa xác minh ở Resend; cần hộp thư thử do đội sở hữu (runbook §4) |
-| 30 | Trình duyệt thật đăng nhập (cookie `__Host-`, HTTPS) | **NOT_RUN** | Chưa có UI đăng nhập |
+| 30 | Trình duyệt thật đăng nhập (cookie `__Host-`), môi trường thử | PASS (loopback) | `verify web` bước Auth Web: Chrome headless trên `http://127.0.0.1`, App + Identity thật, mã từ outbox cục bộ ([Auth Web §5](auth-web.md#5-kiểm-chứng)); `501`/`503` là câu trả lời dựng có nhãn |
+| 30b | Trình duyệt thật đăng nhập qua HTTPS/domain thật, nhiều trình duyệt, mobile | **NOT_RUN** | Chưa có môi trường HTTPS của Vink; chỉ Chrome headless |
 
 ## Negative control
 

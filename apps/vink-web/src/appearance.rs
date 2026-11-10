@@ -2,8 +2,6 @@
 
 use leptos::prelude::*;
 
-use crate::contract::{ApiError, CurrentAccount};
-
 pub(crate) const THEME_KEY: &str = "vink.ui.theme";
 pub(crate) const RAIL_KEY: &str = "vink.ui.rail";
 const TEXT_KEY: &str = "vink.ui.text";
@@ -105,41 +103,17 @@ pub fn initials(display_name: Option<&str>) -> String {
     vink_ui::identity::initials(display_name).unwrap_or_else(|| "•".into())
 }
 
-type AccountState = RwSignal<Option<Result<CurrentAccount, ApiError>>>;
-
-pub(crate) fn provide_account() {
-    let account = AccountState::new(None);
-    provide_context(account);
-    #[cfg(feature = "hydrate")]
-    {
-        // Account data stays out of SSR and browser storage. Revalidate on focus in case the
-        // session changed in another tab, clearing the old badge while that is being decided.
-        let revision = RwSignal::new(0_u64);
-        let listener = window_event_listener(leptos::ev::focus, move |_| {
-            revision.update(|revision| *revision += 1);
-        });
-        on_cleanup(move || listener.remove());
-        Effect::new(move |_| {
-            let started = revision.get();
-            account.set(None);
-            leptos::task::spawn_local(async move {
-                let result = crate::api::current_account().await;
-                if revision.try_get_untracked() == Some(started) {
-                    account.set(Some(result));
-                }
-            });
-        });
-    }
-}
-
 #[component]
 pub(crate) fn AccountAvatar(#[prop(optional)] navigation: bool) -> impl IntoView {
-    let account = expect_context::<AccountState>();
+    // Account data stays out of SSR and browser storage; the tab's session owner supplies it.
+    let standing = crate::account::Session::current().standing;
     view! {
         <span class=if navigation { "vk-ui-icon vk-nav-account-avatar" } else { "vk-account-avatar" } aria-hidden="true">
             {move || {
-                let profile = account.get().and_then(Result::ok);
-                let (name, key) = profile.map(|profile| (profile.display_name, profile.principal_id)).unwrap_or_default();
+                let (name, key) = match standing.get() {
+                    crate::session::Standing::Active(profile) => (profile.display_name, profile.principal_id),
+                    _ => Default::default(),
+                };
                 view! { <vink_ui::Avatar name identity_key=key kind=vink_ui::AvatarKind::Account decorative=true fallback_text="—" /> }
             }}
         </span>
@@ -205,37 +179,6 @@ fn AppearanceRow(
                 })}
             </div>
         </div>
-    }
-}
-
-#[component]
-pub(crate) fn AccountStatus(id: &'static str) -> impl IntoView {
-    let account = expect_context::<AccountState>();
-    view! {
-        <section id=id class="vk-account" aria-label="Tài khoản">
-            <div class="vk-account-status">
-                <AccountAvatar />
-                <div>
-                    <vink_ui::Heading level=vink_ui::HeadingLevel::H2 role=vink_ui::TypeRole::Title>"Tài khoản"</vink_ui::Heading>
-                    <vink_ui::Text tone=vink_ui::TextTone::Muted>
-                        {move || match account.get() {
-                            Some(Ok(profile)) => profile.display_name,
-                            Some(Err(ApiError::Unauthenticated)) => "Chưa có tài khoản khả dụng.".into(),
-                            Some(Err(_)) => "Chưa thể tải thông tin tài khoản.".into(),
-                            None => "Chưa có thông tin tài khoản.".into(),
-                        }}
-                    </vink_ui::Text>
-                </div>
-                <svg class="vk-account-illustration" viewBox="0 0 224 82" aria-hidden="true" focusable="false">
-                    <path fill="var(--vk-primary-container)" opacity=".72" d="M9 42c1-8 8-14 16-15 7-11 24-12 31 0 9 0 15 5 15 12 0 5-4 9-11 9H19c-6 0-11-2-10-6ZM155 34c1-6 6-9 12-9 5-10 19-10 24-2 8 0 14 5 14 10 0 6-5 9-11 9h-30c-6 0-10-3-9-8ZM175 69c2-7 9-12 16-11 5-8 17-9 23-2 6 1 10 5 10 10s-5 10-10 10h-33c-5 0-7-3-6-7Z" />
-                    <path fill="var(--vk-primary)" opacity=".22" d="M26 75l32-43c23-3 39 2 51 15 16-11 33-12 51-3l-23 31H26Z" />
-                    <path fill="none" stroke="var(--vk-primary-container)" stroke-width="3" stroke-linecap="round" d="M86 75l23-28m-79 27c19-6 37-5 56 1 17-5 32-5 49 0" />
-                    <path fill="var(--vk-primary)" d="M119 53c4-18 15-34 34-45 4-2 12-5 14-3 2 2-2 9-4 12-11 17-24 29-44 36Z" />
-                    <path fill="none" stroke="var(--vk-primary-container)" stroke-width="1.6" stroke-linecap="round" d="M119 52c13-17 25-30 41-42" />
-                    <path fill="none" stroke="var(--vk-primary)" stroke-width="2.2" stroke-linecap="round" d="m121 50-8 11" />
-                </svg>
-            </div>
-        </section>
     }
 }
 
