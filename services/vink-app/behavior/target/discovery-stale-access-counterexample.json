@@ -1,0 +1,15 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "discovery.qnt",
+  "invariant": "servedIsReadableNow",
+  "command": ["quint","run","discovery.qnt","--backend=typescript","--seed=41","--step=mutatedStaleAccessStep","--max-steps=3","--max-samples=1","--invariant=servedIsReadableNow","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedStaleAccessStep", "steps": [
+      {"command":{"op":"open","post":0,"tagOnly":false,"value":0},"outcome":"opened","state":{"store":{"1":{"eligible":true,"publishedAt":0,"tagged":true,"votes":0},"2":{"eligible":true,"publishedAt":1,"tagged":false,"votes":0},"3":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0},"4":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0}},"now":4,"recommended":[4,3,2,1],"snapshot":[4,3,2],"snapshotFilter":false,"snapshotLive":true,"offset":2,"served":[4,3]}},
+      {"command":{"op":"eligibility","post":2,"tagOnly":false,"value":0},"outcome":"eligibility_changed","state":{"store":{"1":{"eligible":true,"publishedAt":0,"tagged":true,"votes":0},"2":{"eligible":false,"publishedAt":1,"tagged":false,"votes":0},"3":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0},"4":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0}},"now":4,"recommended":[4,3,1],"snapshot":[4,3,2],"snapshotFilter":false,"snapshotLive":true,"offset":2,"served":[]}},
+      {"command":{"op":"next","post":0,"tagOnly":false,"value":0},"outcome":"page","state":{"store":{"1":{"eligible":true,"publishedAt":0,"tagged":true,"votes":0},"2":{"eligible":false,"publishedAt":1,"tagged":false,"votes":0},"3":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0},"4":{"eligible":true,"publishedAt":2,"tagged":true,"votes":0}},"now":4,"recommended":[4,3,1],"snapshot":[4,3,2],"snapshotFilter":false,"snapshotLive":true,"offset":4,"served":[2]}}
+    ]}
+  ]
+}

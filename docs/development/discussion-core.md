@@ -31,6 +31,13 @@ Fence đình chỉ cho gỡ/bật-tắt/kiểm duyệt đã có từ PR #143; l�
 test ghi đồng thời không deadlock. Quyết định, số đo và ma trận riêng tư:
 [discussion-reads](../architecture/discussion-reads.md).
 
+> **10/11/2026:** tài liệu này mô tả **code hiện có** (tiền kiểm bởi người có grant, không sửa bình
+> luận). Hướng đích do chủ sản phẩm chốt — trợ lý AI quyết định, sửa bình luận có dấu “Đã sửa”,
+> thảo luận còn đọc được trên trang thay thế khi tác giả xóa bài — chưa có code; xem
+> [admission §8](../architecture/discussion-admission.md#8-hướng-đích-sau-quyết-định-10112026),
+> [sửa bình luận](../architecture/comment-editing.md) và [registry đích](product-decisions-registry.md).
+> Registry, fixture và replay ở đây không bị sửa để khớp hướng đích.
+
 ## HOW: từ lệnh tới hàng trong database
 
 ```text

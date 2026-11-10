@@ -1,7 +1,8 @@
 # Hậu kiểm do operator yêu cầu — DISC-POST-REVIEW-RUNTIME
 
 Nguồn: prompt người dùng `DISC-POST-REVIEW-RUNTIME`, tiếp nối #145/#126/#127; base thực thi
-`develop@f3af600` (Web #147 đã merge). Phạm vi MOD-02/03/05/06, COM-02/03/08 và D-08.
+`develop@f3af600` (Web #147 đã merge), hợp nhất quyết định/model đích #149
+từ `develop@5e218d7` trước khi merge. Phạm vi MOD-02/03/05/06, COM-02/03/08 và D-08.
 Đây là capability operator mới, không phải admission đăng-trước. D-08 vẫn **PROPOSED**;
 `premoderation.v1` và constraint `comments_admission_premoderation_only` giữ nguyên.
 
@@ -128,5 +129,6 @@ Kết quả lane cuối và negative controls ghi trong PR, không kế thừa P
 
 Lớp đã triển khai: domain, application, persistence, operator adapter và process. Nguồn đánh giá
 là operator có authority, **không có AI evaluator**. Admission post-review producer chưa active;
-trust/rules/classifier/MOD-06 và rollout D-08 vẫn thiếu. Việc human queue có case chưa chứng minh
+evaluator/MOD-06 và rollout D-08 vẫn thiếu. Hướng đích #149 không còn đòi trust cohort;
+trust/rules/classifier trong shadow cũ chưa có nguồn và không làm evaluator. Việc human queue có case chưa chứng minh
 có người trực hoặc khung xử lý production; production activation/acceptance không thuộc PR này.

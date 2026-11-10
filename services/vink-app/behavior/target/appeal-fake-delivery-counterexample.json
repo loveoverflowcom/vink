@@ -1,0 +1,14 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "appeal.qnt",
+  "invariant": "nothingIsDelivered",
+  "command": ["quint","run","appeal.qnt","--backend=typescript","--seed=41","--step=mutatedDeliveryStep","--max-steps=2","--max-samples=1","--invariant=nothingIsDelivered","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedDeliveryStep", "steps": [
+      {"command":{"actor":2,"decision":0,"key":0,"op":"dialog","reason":"none","target":0,"value":"none"},"outcome":"dialog_shown","state":{"decision":{"by":"ai","reason":"policy","verdict":"rejected","version":1},"cases":{},"receipts":{},"answer":0}},
+      {"command":{"actor":2,"decision":1,"key":1,"op":"appeal","reason":"none","target":0,"value":"none"},"outcome":"recorded_not_delivered","state":{"decision":{"by":"ai","reason":"policy","verdict":"rejected","version":1},"cases":{"1":{"appellant":2,"decision":1,"notice":"sent","seen":false,"state":"open"}},"receipts":{"1":{"answer":1,"decision":1}},"answer":1}}
+    ]}
+  ]
+}

@@ -4,6 +4,9 @@
 lát DISC-01 do người dùng giao thực thi (PR đầu). **Baseline:** `develop@47131a9`.
 Đây là lựa chọn triển khai có phạm vi **pure core**: không phê duyệt delta COM-02/D-08, không
 chuyển D-05 sang Accepted, không bật đăng-trước. Bình luận được lưu vẫn luôn `pending`.
+**10/11/2026:** chủ sản phẩm đổi hướng đích của kiểm duyệt bình luận (trợ lý AI quyết định, cho
+sửa bình luận); §1–§7 vẫn mô tả đúng **code hiện có**, khác biệt ở
+[§8](#8-hướng-đích-sau-quyết-định-10112026).
 Lát tiếp theo nối đường gửi vào seam này: [§7 DISC-02/03](#7-lát-disc-0203--đường-gửi).
 Registry bằng chứng và gap: [bình luận hai tầng](../development/discussion-core.md#registry-traceability-của-41);
 brief hành vi UI cho thiết kế sau: [discussion-submission-brief](../design/discussion-submission-brief.md).
@@ -151,8 +154,45 @@ Unit/Kani/replay cập nhật theo seam mới: bảng vét cạn `decide_submiss
 receipt và insert luôn mang admission premoderation dù shadow nói gì; `lifecycle_replay` dùng
 `Admission::initial_state` (fixture Quint không đổi vì model không có đình chỉ).
 
+## 8. Hướng đích sau quyết định 10/11/2026
 
-## 8. Runtime tái kiểm operator (DISC-POST-REVIEW-RUNTIME)
+Nguồn: `PRODUCT-DECISIONS-20261110` ([DecisionDelta](product-decisions-20261110.md)), USER-04/05/14/15
+→ COM-09, COM-10, MOD-07..09. **Không dòng code nào đổi trong lượt đó**: `premoderation.v1` vẫn là
+policy hiệu lực duy nhất, CHECK `comments_admission_premoderation_only` còn nguyên, không policy ứng
+viên nào được bật ở production.
+
+**Luật đã chốt (`PRODUCT_CONFIRMED`):** bình luận gốc và phản hồi do trợ lý AI kiểm duyệt theo luồng
+*gửi → chờ đánh giá → kết quả hợp lệ → áp quyết định*. Tự động duyệt **không** là: đăng công khai
+trước rồi kiểm sau; “email đã xác minh là đáng tin”; “timeout/lỗi provider là được duyệt”. Yêu cầu
+“chỉ người đáng tin mới có thể được AI duyệt” **không còn** là quyết định sản phẩm. Quản trị viên
+có quyền cao hơn evaluator trên phiên bản đang xét. Người viết được sửa bình luận của mình, có
+revision, kiểm duyệt và dấu “Đã sửa”.
+
+| | `CURRENT_IMPLEMENTATION` | `TARGET_BEHAVIOR` (chưa có code) |
+| --- | --- | --- |
+| Trạng thái khi gửi | `pending` (`premoderation.v1`) | `pending` — **không đổi**: vẫn chưa công khai cho tới khi có quyết định |
+| Ai quyết định mặc định | Người có grant kiểm duyệt (`vink-app moderator …`) | Evaluator AI, qua kết quả gắn bình luận + bản nội dung + policy + evaluation ID |
+| Lỗi/timeout/không chắc | — (không có evaluator) | Không duyệt; giữ chờ hoặc “cần quản trị viên” |
+| Vai trò của người | Quyết định mọi bình luận | Quản trị viên: override và xử lý phản đối; không mặc định trực |
+| `trusted-cohort.v1` | Ứng viên **đăng-trước** theo trust, chỉ shadow | **Không** phải hướng đích: đích không đăng-trước và không cần cohort tin cậy. Giữ làm code đo shadow cho tới khi PR runtime quyết định gỡ hay tái dùng |
+| Classifier (`AdmissionFacts.classifier`) | Ô kiểu dữ liệu; chỉ được giữ lại, không bao giờ làm sạch | Không dùng cho vai evaluator: evaluator **quyết định** theo contract riêng ([đặc tả](publication-moderation.md#4-contract-evaluator-và-mock)) |
+| Sửa bình luận | Không có | Có, theo [đặc tả sửa bình luận](comment-editing.md) |
+
+**Delta §5 đọc lại:** điều kiện 2 (authority trust) không còn là điều kiện của hướng đích. Các điều
+kiện còn nguyên giá trị trước khi **bật** tự động duyệt ở production: quyết định ghi trong decision
+log (đã có hướng, D-08), standing đọc tại commit (đã có), provenance bền (đã có cột), outbox/worker
+(đã có hạ tầng), bộ đánh giá tiếng Việt và chế độ tắt (MOD-06, **chưa có**), kill switch về
+`premoderation.v1`, và một thay đổi code có review gỡ CHECK chỉ-premoderation.
+
+**Đường chuyển tiếp (đề xuất):** thêm một policy có code mới (ví dụ `evaluator.v1`) mà trạng thái
+đầu vẫn là `pending`; quyết định đến từ kết quả evaluator được validate, không từ shadow. Hành vi
+đích của quyết định theo bản nội dung hiện được đặc tả trong
+[`comment_edit.qnt`](../../services/vink-app/behavior/target/comment_edit.qnt) (chưa replay vào Rust);
+khi triển khai, phần đó hợp nhất vào `admission.qnt`/`lifecycle.qnt` cùng replay, không giữ hai
+model cho cùng một policy. Fixture và replay của baseline hiện hành **không bị sửa** để “khớp” hướng
+đích.
+
+## 9. Runtime tái kiểm operator (DISC-POST-REVIEW-RUNTIME)
 
 [Runbook/DecisionMap](../development/discussion-post-review.md) ghi capability mới: operator yêu cầu
 tái kiểm một comment approved/present tại version cụ thể và nộp kết quả structured có audit; worker
@@ -160,4 +200,5 @@ chỉ keep/hold đúng binding, không approve. Nguồn này là `operator_rerev
 Mọi human approve/reject được chấp nhận (kể cả cùng trạng thái) tăng version và audit; retry version
 cũ trả conflict. Clear cũ/sau removal cũng stale/removed, không chứng nhận trạng thái mới hơn.
 Exhaustion/deadline phải ghi hold/handoff hoặc superseded/removed trước khi kết thúc nghĩa vụ; DB lỗi
-giữ việc mở. Request mới mặc định disabled; admission producer, trust/rules và D-08 vẫn chưa active.
+giữ việc mở. Request mới mặc định disabled; admission/evaluator producer và rollout D-08 chưa active.
+Luồng operator độc lập với hướng AI ở §8; trust của ứng viên shadow không là gate của hướng đích.
