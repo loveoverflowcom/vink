@@ -231,8 +231,16 @@ async fn operator_producer_checks_state_switch_exact_replay_and_atomic_enqueue(p
             .await
             .is_err()
     );
-    assert!(sqlx::query("INSERT INTO comment_post_review_results (ticket_id,command_key,comment_id,expected_version,payload_digest,origin,policy,finding,note) SELECT id,$2,comment_id,expected_version+1,payload_digest,origin,policy,'clear','fixture wrong binding' FROM comment_post_reviews WHERE id=$1").bind(ticket).bind(Uuid::now_v7()).execute(&pool).await.is_err());
-    assert!(sqlx::query("INSERT INTO comment_post_reviews (id,request_key,comment_id,expected_version,payload_digest,origin,policy,note,deadline_at) SELECT $2,$3,comment_id,expected_version,payload_digest,'admission_approved',policy,'fixture wrong origin',now()+interval '15 minutes' FROM comment_post_reviews WHERE id=$1").bind(ticket).bind(Uuid::now_v7()).bind(Uuid::now_v7()).execute(&pool).await.is_err());
+    let binding_error = sqlx::query("INSERT INTO comment_post_review_results (ticket_id,command_key,comment_id,expected_version,payload_digest,origin,policy,finding,note) SELECT id,$2,comment_id,expected_version+1,payload_digest,origin,policy,'clear','fixture wrong binding' FROM comment_post_reviews WHERE id=$1").bind(ticket).bind(Uuid::now_v7()).execute(&pool).await.unwrap_err();
+    assert_eq!(
+        binding_error.as_database_error().unwrap().code().as_deref(),
+        Some("23503")
+    );
+    let origin_error = sqlx::query("INSERT INTO comment_post_reviews (id,request_key,comment_id,expected_version,payload_digest,origin,policy,note,deadline_at) SELECT $2,$3,comment_id,expected_version,payload_digest,'admission_approved',policy,'fixture wrong origin',now()+interval '15 minutes' FROM comment_post_reviews WHERE id=$1").bind(ticket).bind(Uuid::now_v7()).bind(Uuid::now_v7()).execute(&pool).await.unwrap_err();
+    assert_eq!(
+        origin_error.as_database_error().unwrap().constraint(),
+        Some("comment_post_reviews_origin_check")
+    );
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
@@ -706,6 +714,24 @@ async fn real_operator_cli_and_worker_restart_cover_a_crash_inside_the_effect(po
     }
     restarted.kill().unwrap();
     restarted.wait().unwrap();
+    let mut logs = String::new();
+    std::io::Read::read_to_string(restarted.stderr.as_mut().unwrap(), &mut logs).unwrap();
+    let started: Value = logs
+        .lines()
+        .find_map(|line| {
+            let row: Value = serde_json::from_str(line).ok()?;
+            (row["fields"]["message"] == "vink-worker started").then_some(row)
+        })
+        .expect("structured worker startup");
+    assert!(
+        started["fields"]["consumers"]
+            .as_str()
+            .unwrap()
+            .contains(CONSUMER)
+    );
+    assert_eq!(started["fields"]["post_review"], "operator_rereview.v1");
+    assert_eq!(started["fields"]["admission_post_review"], "no_producer");
+    assert!(!logs.contains("Nội dung cần kiểm lại"));
     assert_eq!(receipt(&pool, ticket).await, Some(("held".into(), 2, 3)));
     let public = vink
         .public_discussion(sample_work(), None, None)
@@ -1004,4 +1030,102 @@ async fn upgrade_and_unused_backout_preserve_comments_and_human_audit(pool: PgPo
             .await
             .unwrap();
     assert_eq!(human_count, 1);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn foreign_comment_schema_and_changed_text_are_quarantined_without_guessing_a_hold(
+    pool: PgPool,
+) {
+    let vink = setup(&pool).await;
+    for fault in ["comment", "schema", "digest"] {
+        let id = approved(&pool, &vink).await;
+        let unrelated = approved(&pool, &vink).await;
+        let ticket = enqueue(&vink, id).await;
+        vink.record_review_result(
+            ReviewAuthority::operator(),
+            &result(ticket, PostReviewFinding::Flagged),
+        )
+        .await
+        .unwrap();
+        // Labelled corruption fixtures. Runtime cannot edit immutable event provenance; no
+        // product route edits comment text. The consumer must still refuse a mismatched body.
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query("ALTER TABLE discussion_events DISABLE TRIGGER discussion_events_immutable")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        match fault {
+            "comment" => {
+                sqlx::query("UPDATE discussion_events SET comment_id=$2 WHERE id=$1")
+                    .bind(ticket)
+                    .bind(unrelated.as_uuid())
+                    .execute(&mut *tx)
+                    .await
+                    .unwrap();
+            }
+            "schema" => {
+                sqlx::query("UPDATE discussion_events SET schema_version=2 WHERE id=$1")
+                    .bind(ticket)
+                    .execute(&mut *tx)
+                    .await
+                    .unwrap();
+            }
+            _ => {
+                sqlx::query(
+                    "UPDATE comments SET body='Fixture: chữ bị sửa ngoài contract' WHERE id=$1",
+                )
+                .bind(id.as_uuid())
+                .execute(&mut *tx)
+                .await
+                .unwrap();
+            }
+        }
+        sqlx::query("ALTER TABLE discussion_events ENABLE TRIGGER discussion_events_immutable")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+        let held = claim(&pool, OutboxPolicy::DEFAULT).await;
+        assert!(matches!(
+            finish(&pool, &held, OutboxPolicy::DEFAULT).await,
+            Completion::DeadLetter(_)
+        ));
+        assert!(receipt(&pool, ticket).await.is_none());
+        assert_eq!(state(&pool, id).await, ("approved".into(), 2));
+        assert_eq!(state(&pool, unrelated).await, ("approved".into(), 2));
+    }
+    assert_eq!(reviews::quarantines(&pool, 10).await.unwrap().len(), 3);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn an_event_without_a_ticket_is_visible_unresolved_operational_debt(pool: PgPool) {
+    let vink = setup(&pool).await;
+    let id = approved(&pool, &vink).await;
+    let event = Uuid::now_v7();
+    // Labelled poison fixture, deliberately NOT a valid producer or review ticket.
+    sqlx::query("INSERT INTO discussion_events (id,event_type,schema_version,comment_id,source_version) VALUES ($1,'comment.rereview_requested',1,$2,2)").bind(event).bind(id.as_uuid()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO discussion_deliveries (event_id,consumer) VALUES ($1,$2)")
+        .bind(event)
+        .bind(CONSUMER)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let held = claim(&pool, OutboxPolicy::DEFAULT).await;
+    assert!(matches!(
+        finish(&pool, &held, OutboxPolicy::DEFAULT).await,
+        Completion::DeadLetter(_)
+    ));
+    assert!(receipt(&pool, event).await.is_none());
+    assert_eq!(state(&pool, id).await, ("approved".into(), 2));
+    assert!(
+        reviews::status(&pool)
+            .await
+            .unwrap()
+            .iter()
+            .any(|(s, n, _)| s == "quarantined" && *n == 1)
+    );
+    assert_eq!(
+        reviews::quarantines(&pool, 10).await.unwrap(),
+        [(event, "missing_ticket".into())]
+    );
 }

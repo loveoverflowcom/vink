@@ -88,7 +88,9 @@ vink-app outbox dead
 vink-app outbox requeue <ticket> operator_post_review.v1 '<người vận hành>: <đã sửa nguyên nhân>'
 ```
 
-Các lệnh dùng config/credential runtime App như những lệnh operator có sẵn. Lấy version/body
+Startup worker nêu cả hai consumer, `post_review=operator_rereview.v1`,
+`admission_post_review=no_producer`; AI vẫn chưa triển khai. Các lệnh dùng config/credential
+runtime App như những lệnh operator có sẵn. Lấy version/body
 đang công khai qua read owner hiện có trước khi kết luận, giữ ticket ID để nộp kết quả. Note là
 audit nội bộ, không ghi body, email, session hay raw output. CLI status chỉ count và tuổi lớn nhất
 theo finite states: awaiting_result, result_ready, finalization_due, quarantined, kept, held,
@@ -105,7 +107,8 @@ Retention không prune ticket/result/service receipt/quarantine. Event chỉ pru
 Migration mới `20261115000000_comment_post_review`, không sửa migration cũ. Upgrade:
 migrate → App/worker mới; binary mới/schema cũ fail closed. Backout bằng
 [`down.sql`](../../services/vink-app/migrations-rollback/20261115000000_comment_post_review.down.sql)
-chỉ khi chưa từng có ticket/quarantine/delivery mới (khóa bảng trước khi kiểm). Khi đã có audit,
+chỉ khi chưa từng có ticket/quarantine/delivery mới (khóa bảng trước khi kiểm). Trước down:
+tắt creation, dừng App/operator, drain rồi dừng worker. Khi đã có audit,
 **roll forward**, kể cả đã drain: không xóa lịch sử kiểm duyệt để chạy binary cũ.
 
 ## Bằng chứng và giới hạn

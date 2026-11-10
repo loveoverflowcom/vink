@@ -5,11 +5,14 @@
 //! **Producer.** [`enqueue`] runs inside the business transaction that made the transition (today
 //! only `submit_comment`), after the comment insert: the event and one delivery per consumer of
 //! its type commit or roll back with the comment. A failed enqueue fails the submission.
+//! The explicit operator producer instead commits its ticket/event/delivery in `post_review`.
 //!
 //! **Claim.** [`claim`] is one short transaction: due deliveries of the consumers this binary
 //! handles, `FOR UPDATE OF d SKIP LOCKED`, oldest `available_at` first, at most `limit` rows; the
 //! pure [`decide_claim`] then advances each row's generation and attempts and sets its lease (or
-//! dead-letters it). It commits before any handler runs; no transaction is held during work.
+//! dead-letters it). A granted lease commits before its normal handler runs. Content-review
+//! exhaustion instead finalizes the obligation in the same transaction as the dead transition;
+//! a database error rolls both back. No evaluator or network operation runs under these locks.
 //! Ordering is best effort: there is no global FIFO and no `id > last_seen` checkpoint.
 //!
 //! **Effect.** [`complete`] locks the delivery row `FOR UPDATE`, checks [`check_ownership`]
@@ -22,12 +25,13 @@
 //! is safe too: the next fenced write finds the delivery no longer leased and writes nothing.
 //!
 //! **Lock order.** The worker locks `discussion_deliveries` rows first (claim, complete, requeue,
-//! retention through `discussion_events`); no comment path ever locks a delivery. Handlers read
-//! `comments`, receipts and suspensions without locks and write only their own receipt table,
-//! whose foreign key takes `FOR KEY SHARE` on the observed comment row: that one row serializes
-//! briefly with a moderation or removal holding it `FOR UPDATE` (bounded by `lock_timeout` and
-//! the handler timeout), and no cycle exists because those paths never wait on a delivery. The
-//! producer inserts new rows that no worker statement can have locked.
+//! retention through `discussion_events`). Shadow reads comments/standing without explicit row
+//! locks (its receipt FK briefly takes KEY SHARE). Operator post-review locks its ticket then
+//! its one comment FOR UPDATE, calls the pure version/digest decision and writes a hold/service
+//! receipt. Human moderation/removal and submission never wait on an existing delivery/ticket;
+//! operator requests insert NEW rows after their comment lock, while results use delivery then
+//! ticket and never lock a comment. Thus these paths have no reverse edge. See `post_review`
+//! for the complete lock map. Every wait/statement is bounded by the transaction settings.
 //!
 //! **Privacy.** Events and deliveries hold identifiers, versions and codes only. Logs and errors
 //! from here carry codes and counts, never a body, address, session or moderation reason.
@@ -135,7 +139,8 @@ pub struct ClaimBatch {
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
 /// One consumer's effect. `apply` runs inside the fenced transaction (in a savepoint): it may
-/// read through `tx` and write only that consumer's own tables; every statement it issues
+/// read through `tx` and write its authorized App-database effect (shadow observation, or a
+/// version-bound post-review hold plus service receipt); every statement it issues
 /// commits only if the delivery is still owned and the result is [`HandlerResult::Applied`]. It
 /// must not call the network: an effect outside the database needs its own idempotency design.
 pub trait EffectHandler: Send + Sync {
@@ -483,8 +488,9 @@ pub enum RequeueOutcome {
     NotFound,
 }
 
-/// Operator requeue of a dead letter: back to ready now, fresh attempts and deadline, generation
-/// and event kept, audited in the same transaction. Never touches another consumer's delivery.
+/// Operator requeue of a dead letter: back to ready now with fresh attempts, generation and
+/// event kept, audited in the same transaction. Only shadow resets its delivery deadline;
+/// post-review keeps both deadline origins. Never touches another consumer's delivery.
 pub async fn requeue(
     pool: &PgPool,
     event_id: Uuid,
