@@ -1,0 +1,75 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "settings": {
+    "comments_open": true,
+    "generation": 1
+  },
+  "roots": [
+    {
+      "root": {
+        "kind": "comment",
+        "comment": {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000001",
+          "author_display_name": "Lan Anh",
+          "body": "Khổ cuối đọc mà nghe mưa thật 🌧️",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": null
+        }
+      },
+      "public_replies": 4,
+      "preview": [
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+          "author_display_name": "Minh",
+          "body": "Mình thích nhịp lục bát ở đây.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "root"
+          }
+        },
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000003",
+          "author_display_name": "Hà",
+          "body": "Đồng ý,\nnhất là câu “mái ngói rêu xanh”.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "reply",
+            "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+            "author_display_name": "Minh"
+          }
+        },
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000005",
+          "author_display_name": "Lan Anh",
+          "body": "Đọc lại vẫn thấy hay.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "unavailable"
+          }
+        }
+      ],
+      "preview_next_cursor": "c1.1793692800000000.0192f3a1000070008000000000000005"
+    },
+    {
+      "root": {
+        "kind": "anchor",
+        "comment_id": "0192f3a1-0000-7000-8000-000000000006",
+        "created_at": "2026-11-03T08:00:00Z"
+      },
+      "public_replies": 1,
+      "preview": [
+        {
+          "comment_id": "0192f3a1-0000-7000-8000-000000000007",
+          "author_display_name": "Minh",
+          "body": "Vẫn muốn giữ đoạn này.",
+          "created_at": "2026-11-03T08:00:00Z",
+          "reply_to": {
+            "kind": "root"
+          }
+        }
+      ],
+      "preview_next_cursor": null
+    }
+  ],
+  "next_cursor": "c1.1793692800000000.0192f3a1000070008000000000000006"
+}

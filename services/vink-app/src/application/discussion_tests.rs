@@ -16,12 +16,13 @@ use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Review, Transition,
 };
 use crate::domain::discussion::moderation::{ModerationReason, ReasonError};
-use crate::domain::discussion::page::{PageCursor, PageError, PageLimit};
+use crate::domain::discussion::page::{CursorScope, PageCursor, PageError, PageLimit};
 use crate::domain::discussion::policy::Denied;
 use crate::domain::discussion::settings::{
     CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
 };
 use crate::domain::discussion::submission::PayloadDigest;
+use crate::domain::discussion::visibility::{CommentView, ReplyContext};
 use crate::domain::ids::{CommentId, PrincipalId, WorkId};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +39,7 @@ enum Call {
     ),
     Queue(PrincipalId),
     Roots(WorkId, Option<PrincipalId>, Option<PageCursor>, PageLimit),
+    Own(WorkId, PrincipalId, OwnRead),
 }
 
 #[derive(Default)]
@@ -47,6 +49,8 @@ struct Script {
     removal: Option<Guarded<Transition, LifecycleError>>,
     mode: Option<Guarded<ModeChange, SettingsError>>,
     moderation: Option<Guarded<Transition, LifecycleError>>,
+    /// What `root_page` returns; `None` reads as a work that is not readable.
+    roots: Option<RootPage>,
     unavailable: bool,
 }
 
@@ -120,7 +124,10 @@ impl DiscussionStore for Script {
         after: Option<PageCursor>,
         limit: PageLimit,
     ) -> Result<Option<RootPage>, StoreError> {
-        self.record(Call::Roots(work_id, viewer, after, limit), Some(None))
+        self.record(
+            Call::Roots(work_id, viewer, after, limit),
+            Some(self.roots.clone()),
+        )
     }
 
     async fn reply_page(
@@ -132,6 +139,21 @@ impl DiscussionStore for Script {
         _: PageLimit,
     ) -> Result<Option<ReplyPage>, StoreError> {
         panic!("not used")
+    }
+
+    async fn own_comments(
+        &self,
+        work_id: WorkId,
+        viewer: PrincipalId,
+        read: &OwnRead,
+    ) -> Result<Option<OwnPage>, StoreError> {
+        self.record(
+            Call::Own(work_id, viewer, read.clone()),
+            Some(Some(OwnPage {
+                items: Vec::new(),
+                next: None,
+            })),
+        )
     }
 }
 
@@ -489,4 +511,172 @@ async fn paging_input_is_validated_before_reading() {
         calls(&vink),
         vec![Call::Roots(work(), Some(actor()), None, PageLimit::DEFAULT)]
     );
+}
+
+fn page_with(view: CommentView, viewer_is_work_author: bool) -> RootPage {
+    RootPage {
+        settings: DiscussionSettings::INITIAL,
+        viewer_is_work_author,
+        roots: vec![RootItem {
+            entry: RootEntry::Comment(CommentItem {
+                id: comment(),
+                view,
+                author: AuthorName {
+                    id: actor(),
+                    display_name: "Bạn đọc".into(),
+                },
+                body: "Câu thơ".into(),
+                created_at: datetime!(2026-11-03 10:00 UTC),
+                context: ReplyContext::Root,
+                context_author: None,
+                rejection_reason: None,
+            }),
+            public_replies: 0,
+            preview: Vec::new(),
+            preview_next: None,
+        }],
+        next: None,
+    }
+}
+
+#[tokio::test]
+async fn the_public_projection_reads_without_an_actor_and_fails_closed_on_viewer_state() {
+    let vink = app(Script {
+        roots: Some(page_with(CommentView::Public, false)),
+        ..Script::default()
+    });
+    let public = vink.public_discussion(work(), None, None).await.unwrap();
+    assert_eq!(public.page().roots.len(), 1);
+    assert_eq!(
+        calls(&vink),
+        vec![Call::Roots(work(), None, None, PageLimit::DEFAULT)]
+    );
+    // Negative controls: if a store ever answered an anonymous read with private facts, the
+    // public type refuses to exist rather than serialize them.
+    for page in [
+        page_with(CommentView::OwnPending, false),
+        page_with(CommentView::OwnRejected, false),
+        page_with(CommentView::Public, true),
+    ] {
+        let vink = app(Script {
+            roots: Some(page),
+            ..Script::default()
+        });
+        assert_eq!(
+            vink.public_discussion(work(), None, None).await,
+            Err(DiscussionError::Internal)
+        );
+    }
+    let missing = app(Script::default());
+    assert_eq!(
+        missing.public_discussion(work(), None, None).await,
+        Err(DiscussionError::NotFound)
+    );
+}
+
+#[tokio::test]
+async fn the_overlay_needs_an_actor_first_and_is_scoped_to_it() {
+    let vink = app(Script::default());
+    let invalid = OwnCommentsQuery {
+        ids: Some("not-an-id".into()),
+        ..OwnCommentsQuery::default()
+    };
+    assert_eq!(
+        vink.own_comments(None, work(), &invalid).await,
+        Err(DiscussionError::Unauthenticated)
+    );
+    assert!(calls(&vink).is_empty());
+    let page = vink
+        .own_comments(Some(actor()), work(), &OwnCommentsQuery::default())
+        .await
+        .unwrap();
+    assert!(page.items.is_empty());
+    assert_eq!(
+        calls(&vink),
+        vec![Call::Own(
+            work(),
+            actor(),
+            OwnRead::Unpublished {
+                after: None,
+                limit: PageLimit::DEFAULT
+            }
+        )]
+    );
+}
+
+#[test]
+fn overlay_queries_are_bounded_and_scoped() {
+    let id = |n: u128| CommentId::from_uuid(Uuid::from_u128(n));
+    let ids = |raw: &str| OwnCommentsQuery {
+        ids: Some(raw.into()),
+        ..OwnCommentsQuery::default()
+    };
+    let position = PageCursor::after(datetime!(2026-11-03 10:00 UTC), id(5));
+    let own = OwnCommentsQuery {
+        cursor: Some(position.encode_in(CursorScope::Own)),
+        limit: Some(50),
+        ids: None,
+    };
+    assert_eq!(
+        OwnRead::parse(&own),
+        Ok(OwnRead::Unpublished {
+            after: Some(position),
+            limit: PageLimit::new(Some(50)).unwrap()
+        })
+    );
+    // A public list's cursor is not an overlay position.
+    let foreign = OwnCommentsQuery {
+        cursor: Some(position.encode()),
+        ..OwnCommentsQuery::default()
+    };
+    assert_eq!(
+        OwnRead::parse(&foreign),
+        Err(DiscussionInput::Page(PageError::Cursor))
+    );
+    let over = OwnCommentsQuery {
+        limit: Some(51),
+        ..OwnCommentsQuery::default()
+    };
+    assert_eq!(
+        OwnRead::parse(&over),
+        Err(DiscussionInput::Page(PageError::Limit))
+    );
+    let a = id(1).to_string();
+    let b = id(2).to_string();
+    assert_eq!(
+        OwnRead::parse(&ids(&format!("{a},{b},{a}"))),
+        Ok(OwnRead::Exact(vec![id(1), id(2)]))
+    );
+    let twenty: Vec<String> = (1..=20).map(|n| id(n).to_string()).collect();
+    assert!(matches!(
+        OwnRead::parse(&ids(&twenty.join(","))),
+        Ok(OwnRead::Exact(found)) if found.len() == MAX_OWN_LOOKUP
+    ));
+    let twenty_one: Vec<String> = (1..=21).map(|n| id(n).to_string()).collect();
+    let mixed = OwnCommentsQuery {
+        cursor: Some(position.encode_in(CursorScope::Own)),
+        ..ids(&a)
+    };
+    let limited = OwnCommentsQuery {
+        limit: Some(5),
+        ..ids(&a)
+    };
+    for bad in [
+        ids(""),
+        ids(","),
+        ids(&format!("{a},")),
+        ids(&format!("{a} ")),
+        ids("not-an-id"),
+        ids(&twenty_one.join(",")),
+        ids(&"a".repeat(1 << 16)),
+        mixed,
+        limited,
+    ] {
+        assert_eq!(
+            OwnRead::parse(&bad),
+            Err(DiscussionInput::OwnIds),
+            "{bad:?}"
+        );
+        assert_eq!(DiscussionInput::OwnIds.field(), "ids");
+    }
 }

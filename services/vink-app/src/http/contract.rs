@@ -7,7 +7,8 @@ use time::OffsetDateTime;
 use crate::application::catalog::{CatalogPage, TagResolution, TagSuggestion, facet_code};
 use crate::application::discovery::{AppliedFilter, WorkPage};
 use crate::application::discussion::{
-    CommentItem, ModerationAction, ModerationQueue, OwnStatus, ReplyPage, RootEntry, RootItem,
+    CommentItem, ModerationAction, ModerationQueue, OwnComment, OwnCommentsQuery, OwnPage,
+    OwnPlacement, OwnStatus, PublicReplyPage, PublicRootPage, ReplyPage, RootEntry, RootItem,
     RootPage, SubmittedComment,
 };
 use crate::application::endorsement::{
@@ -17,6 +18,7 @@ use crate::application::endorsement::{
 use crate::application::taxonomy::{DraftWorkTags, SavedWorkTags};
 use crate::application::{PublicWork, PublicWorkSummary, SavedDraft};
 use crate::domain::discussion::lifecycle::{CommentState, Review};
+use crate::domain::discussion::page::CursorScope;
 use crate::domain::discussion::settings::DiscussionSettings;
 use crate::domain::discussion::visibility::{CommentView, ReplyContext};
 use crate::domain::document::DocumentData;
@@ -206,6 +208,114 @@ pub struct ReplyList {
 pub struct PageQuery {
     pub cursor: Option<String>,
     pub limit: Option<u32>,
+}
+
+/// Public projection of a work's root list (#120 DISC-02/03): read without resolving any actor
+/// and holding only public facts, so it has no `visibility`, `can_remove`, rejection reason or
+/// viewer capability at all. Same order, preview and cursors as [`DiscussionPage`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicDiscussionPage {
+    pub work_id: String,
+    pub settings: CommentsSettings,
+    pub roots: Vec<PublicRootThread>,
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicRootThread {
+    pub root: PublicRootView,
+    pub public_replies: i64,
+    pub preview: Vec<PublicComment>,
+    pub preview_next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum PublicRootView {
+    Comment {
+        comment: PublicComment,
+    },
+    Anchor {
+        comment_id: String,
+        #[serde(with = "time::serde::rfc3339")]
+        created_at: OffsetDateTime,
+    },
+}
+
+/// A public comment: approved and present.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicComment {
+    pub comment_id: String,
+    pub author_display_name: String,
+    pub body: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// `None` on roots.
+    pub reply_to: Option<ReplyTo>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicReplyList {
+    pub replies: Vec<PublicComment>,
+    pub next_cursor: Option<String>,
+}
+
+/// `?cursor=&limit=` or `?ids=` of the private overlay. Unknown parameters are ignored, like the
+/// other discussion lists; a repeated parameter is refused by the query parser.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
+pub struct OwnCommentsParams {
+    pub cursor: Option<String>,
+    pub limit: Option<u32>,
+    pub ids: Option<String>,
+}
+
+impl From<OwnCommentsParams> for OwnCommentsQuery {
+    fn from(params: OwnCommentsParams) -> Self {
+        Self {
+            cursor: params.cursor,
+            limit: params.limit,
+            ids: params.ids,
+        }
+    }
+}
+
+/// The viewer's private overlay (#120 DISC-02/03): authenticated, `no-store`, only the viewer's
+/// own comments. Never part of a public representation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OwnCommentList {
+    pub work_id: String,
+    pub comments: Vec<OwnCommentView>,
+    /// `o1.` cursor of the unpublished list; `null` at its end and on exact lookups.
+    pub next_cursor: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OwnCommentView {
+    pub comment_id: String,
+    /// `pending`, `approved`, `rejected` or `removed`, read from the current row at this request.
+    pub status: &'static str,
+    /// The writer's text; `null` once removed.
+    pub body: Option<String>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    pub placement: OwnPlacementView,
+    /// Present only while `rejected`.
+    pub rejection_reason: Option<String>,
+    /// The writer may remove a comment while it is present.
+    pub can_remove: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum OwnPlacementView {
+    Root,
+    Reply {
+        root_id: String,
+        /// Whether the root is listed for this viewer now; when `false` the reply cannot appear
+        /// in the public lists and this overlay is its only place.
+        root_listed: bool,
+        reply_to: ReplyTo,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -669,15 +779,7 @@ impl From<DiscussionSettings> for CommentsSettings {
 
 impl CommentView1 {
     fn new(item: &CommentItem, viewer: Option<PrincipalId>, is_root: bool) -> Self {
-        let reply_to = (!is_root).then(|| match (item.context, &item.context_author) {
-            (ReplyContext::Root, _) => ReplyTo::Root,
-            (ReplyContext::Reply(id), Some(name)) => ReplyTo::Reply {
-                comment_id: id.to_string(),
-                author_display_name: name.clone(),
-            },
-            // A context without a public writer name is reported as unavailable, never guessed.
-            (ReplyContext::Reply(_), None) | (ReplyContext::Unavailable, _) => ReplyTo::Unavailable,
-        });
+        let reply_to = (!is_root).then(|| reply_to(item.context, item.context_author.as_ref()));
         Self {
             comment_id: item.id.to_string(),
             visibility: match item.view {
@@ -735,6 +837,114 @@ impl DiscussionPage {
                 .map(|root| RootThread::new(root, viewer))
                 .collect(),
             next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+fn reply_to(context: ReplyContext, context_author: Option<&String>) -> ReplyTo {
+    match (context, context_author) {
+        (ReplyContext::Root, _) => ReplyTo::Root,
+        (ReplyContext::Reply(id), Some(name)) => ReplyTo::Reply {
+            comment_id: id.to_string(),
+            author_display_name: name.clone(),
+        },
+        // A context without a public writer name is reported as unavailable, never guessed.
+        (ReplyContext::Reply(_), None) | (ReplyContext::Unavailable, _) => ReplyTo::Unavailable,
+    }
+}
+
+impl PublicComment {
+    /// Built only from a [`PublicRootPage`] or [`PublicReplyPage`], whose items are public.
+    fn new(item: &CommentItem, is_root: bool) -> Self {
+        Self {
+            comment_id: item.id.to_string(),
+            author_display_name: item.author.display_name.clone(),
+            body: item.body.clone(),
+            created_at: item.created_at,
+            reply_to: (!is_root).then(|| reply_to(item.context, item.context_author.as_ref())),
+        }
+    }
+}
+
+impl PublicDiscussionPage {
+    pub fn new(work_id: WorkId, public: &PublicRootPage) -> Self {
+        let page = public.page();
+        Self {
+            work_id: work_id.to_string(),
+            settings: page.settings.into(),
+            roots: page
+                .roots
+                .iter()
+                .map(|root| PublicRootThread {
+                    root: match &root.entry {
+                        RootEntry::Comment(item) => PublicRootView::Comment {
+                            comment: PublicComment::new(item, true),
+                        },
+                        RootEntry::Anchor { id, created_at } => PublicRootView::Anchor {
+                            comment_id: id.to_string(),
+                            created_at: *created_at,
+                        },
+                    },
+                    public_replies: root.public_replies,
+                    preview: root
+                        .preview
+                        .iter()
+                        .map(|item| PublicComment::new(item, false))
+                        .collect(),
+                    preview_next_cursor: root.preview_next.map(|cursor| cursor.encode()),
+                })
+                .collect(),
+            next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl From<&PublicReplyPage> for PublicReplyList {
+    fn from(public: &PublicReplyPage) -> Self {
+        let page = public.page();
+        Self {
+            replies: page
+                .replies
+                .iter()
+                .map(|item| PublicComment::new(item, false))
+                .collect(),
+            next_cursor: page.next.map(|cursor| cursor.encode()),
+        }
+    }
+}
+
+impl From<&OwnComment> for OwnCommentView {
+    fn from(own: &OwnComment) -> Self {
+        Self {
+            comment_id: own.id.to_string(),
+            status: own_status(own.status),
+            body: own.body.clone(),
+            created_at: own.created_at,
+            placement: match &own.placement {
+                OwnPlacement::Root => OwnPlacementView::Root,
+                OwnPlacement::Reply {
+                    root_id,
+                    root_listed,
+                    context,
+                    context_author,
+                } => OwnPlacementView::Reply {
+                    root_id: root_id.to_string(),
+                    root_listed: *root_listed,
+                    reply_to: reply_to(*context, context_author.as_ref()),
+                },
+            },
+            rejection_reason: own.rejection_reason.clone(),
+            can_remove: own.status != OwnStatus::Removed,
+        }
+    }
+}
+
+impl OwnCommentList {
+    pub fn new(work_id: WorkId, page: &OwnPage) -> Self {
+        Self {
+            work_id: work_id.to_string(),
+            comments: page.items.iter().map(OwnCommentView::from).collect(),
+            next_cursor: page.next.map(|cursor| cursor.encode_in(CursorScope::Own)),
         }
     }
 }
@@ -1355,6 +1565,196 @@ mod tests {
             assert_matches(
                 "discussion.replies.json",
                 &ReplyList::new(&replies, Some(viewer().id)),
+            );
+        }
+
+        /// The public projection (#120 DISC-02/03) is the composed page without any viewer
+        /// field: the same public comments, anchors, counts and cursors, nothing else.
+        #[test]
+        fn public_projection_matches_fixtures_and_refuses_viewer_state() {
+            use crate::application::discussion::{NotPublic, PublicReplyPage, PublicRootPage};
+            let lan = person(1, "Lan Anh");
+            let minh = person(2, "Minh");
+            let page = RootPage {
+                settings: DiscussionSettings::INITIAL,
+                viewer_is_work_author: false,
+                roots: vec![
+                    RootItem {
+                        entry: RootEntry::Comment(item(
+                            1,
+                            CommentView::Public,
+                            lan.clone(),
+                            "Khổ cuối đọc mà nghe mưa thật 🌧️",
+                            ReplyContext::Root,
+                            None,
+                        )),
+                        public_replies: 4,
+                        preview: vec![
+                            item(
+                                2,
+                                CommentView::Public,
+                                minh.clone(),
+                                "Mình thích nhịp lục bát ở đây.",
+                                ReplyContext::Root,
+                                None,
+                            ),
+                            item(
+                                3,
+                                CommentView::Public,
+                                person(3, "Hà"),
+                                "Đồng ý,\nnhất là câu “mái ngói rêu xanh”.",
+                                ReplyContext::Reply(cid(2)),
+                                Some("Minh"),
+                            ),
+                            item(
+                                5,
+                                CommentView::Public,
+                                lan.clone(),
+                                "Đọc lại vẫn thấy hay.",
+                                ReplyContext::Unavailable,
+                                None,
+                            ),
+                        ],
+                        preview_next: Some(PageCursor::after(AT, cid(5))),
+                    },
+                    RootItem {
+                        entry: RootEntry::Anchor {
+                            id: cid(6),
+                            created_at: AT,
+                        },
+                        public_replies: 1,
+                        preview: vec![item(
+                            7,
+                            CommentView::Public,
+                            minh.clone(),
+                            "Vẫn muốn giữ đoạn này.",
+                            ReplyContext::Root,
+                            None,
+                        )],
+                        preview_next: None,
+                    },
+                ],
+                next: Some(PageCursor::after(AT, cid(6))),
+            };
+            let public = PublicRootPage::try_from(page.clone()).unwrap();
+            assert_matches(
+                "discussion.public.get.json",
+                &PublicDiscussionPage::new(work(), &public),
+            );
+            let replies = ReplyPage {
+                replies: vec![item(
+                    8,
+                    CommentView::Public,
+                    minh,
+                    "Câu này gợi nhớ phố cũ.",
+                    ReplyContext::Reply(cid(5)),
+                    Some("Lan Anh"),
+                )],
+                next: Some(PageCursor::after(AT, cid(8))),
+            };
+            assert_matches(
+                "discussion.public.replies.json",
+                &PublicReplyList::from(&PublicReplyPage::try_from(replies.clone()).unwrap()),
+            );
+            let json = serde_json::to_string(&PublicDiscussionPage::new(work(), &public)).unwrap();
+            for private in [
+                "visibility",
+                "can_remove",
+                "rejection_reason",
+                "viewer_is_work_author",
+            ] {
+                assert!(!json.contains(private), "{private}");
+            }
+            // Negative controls: one viewer fact anywhere refuses the whole projection.
+            let mut own_root = page.clone();
+            if let RootEntry::Comment(root) = &mut own_root.roots[0].entry {
+                root.view = CommentView::OwnPending;
+            }
+            let mut own_preview = page.clone();
+            own_preview.roots[1].preview[0].view = CommentView::OwnRejected;
+            let mut reasoned = page.clone();
+            reasoned.roots[0].preview[0].rejection_reason = Some(REASON.into());
+            let author_view = RootPage {
+                viewer_is_work_author: true,
+                ..page
+            };
+            for bad in [own_root, own_preview, reasoned, author_view] {
+                assert_eq!(PublicRootPage::try_from(bad), Err(NotPublic));
+            }
+            let mut own_reply = replies;
+            own_reply.replies[0].view = CommentView::OwnPending;
+            assert_eq!(PublicReplyPage::try_from(own_reply), Err(NotPublic));
+        }
+
+        #[test]
+        fn own_overlay_matches_its_fixture() {
+            use crate::application::discussion::{OwnComment, OwnPage, OwnPlacement};
+            let own =
+                |n: u64, status, placement, body: Option<&str>, reason: Option<&str>| OwnComment {
+                    id: cid(n),
+                    status,
+                    created_at: AT,
+                    placement,
+                    body: body.map(Into::into),
+                    rejection_reason: reason.map(Into::into),
+                };
+            let page = OwnPage {
+                items: vec![
+                    own(
+                        10,
+                        OwnStatus::Pending,
+                        OwnPlacement::Root,
+                        Some("Một góc nhìn khác về khổ hai."),
+                        None,
+                    ),
+                    // Under a root that is no longer listed: the overlay is its only place.
+                    own(
+                        11,
+                        OwnStatus::Pending,
+                        OwnPlacement::Reply {
+                            root_id: cid(6),
+                            root_listed: false,
+                            context: ReplyContext::Root,
+                            context_author: None,
+                        },
+                        Some("Mình vẫn nhớ đoạn này."),
+                        None,
+                    ),
+                    own(
+                        12,
+                        OwnStatus::Rejected,
+                        OwnPlacement::Reply {
+                            root_id: cid(1),
+                            root_listed: true,
+                            context: ReplyContext::Reply(cid(2)),
+                            context_author: Some("Minh".into()),
+                        },
+                        Some("Tác giả thật là anh X ở phố Y."),
+                        Some(REASON),
+                    ),
+                ],
+                next: Some(PageCursor::after(AT, cid(12))),
+            };
+            assert_matches(
+                "discussion.me.get.json",
+                &OwnCommentList::new(work(), &page),
+            );
+            let exact = OwnPage {
+                items: vec![
+                    own(
+                        4,
+                        OwnStatus::Approved,
+                        OwnPlacement::Root,
+                        Some("Cảm ơn hai bạn"),
+                        None,
+                    ),
+                    own(9, OwnStatus::Removed, OwnPlacement::Root, None, None),
+                ],
+                next: None,
+            };
+            assert_matches(
+                "discussion.me.ids.json",
+                &OwnCommentList::new(work(), &exact),
             );
         }
 

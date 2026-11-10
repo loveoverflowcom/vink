@@ -1,0 +1,51 @@
+{
+  "work_id": "33333333-3333-4333-8333-333333333333",
+  "comments": [
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000010",
+      "status": "pending",
+      "body": "Một góc nhìn khác về khổ hai.",
+      "created_at": "2026-11-03T08:00:00Z",
+      "placement": {
+        "kind": "root"
+      },
+      "rejection_reason": null,
+      "can_remove": true
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000011",
+      "status": "pending",
+      "body": "Mình vẫn nhớ đoạn này.",
+      "created_at": "2026-11-03T08:00:00Z",
+      "placement": {
+        "kind": "reply",
+        "root_id": "0192f3a1-0000-7000-8000-000000000006",
+        "root_listed": false,
+        "reply_to": {
+          "kind": "root"
+        }
+      },
+      "rejection_reason": null,
+      "can_remove": true
+    },
+    {
+      "comment_id": "0192f3a1-0000-7000-8000-000000000012",
+      "status": "rejected",
+      "body": "Tác giả thật là anh X ở phố Y.",
+      "created_at": "2026-11-03T08:00:00Z",
+      "placement": {
+        "kind": "reply",
+        "root_id": "0192f3a1-0000-7000-8000-000000000001",
+        "root_listed": true,
+        "reply_to": {
+          "kind": "reply",
+          "comment_id": "0192f3a1-0000-7000-8000-000000000002",
+          "author_display_name": "Minh"
+        }
+      },
+      "rejection_reason": "Bình luận nêu danh tính đời thực của người khác. Hãy viết lại mà không kèm tên hoặc địa chỉ.",
+      "can_remove": true
+    }
+  ],
+  "next_cursor": "o1.1793692800000000.0192f3a1000070008000000000000012"
+}

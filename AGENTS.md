@@ -148,7 +148,15 @@ through it: `PgStore` writes the admission's initial state and provenance (migra
 `20261111000000_comment_admission`: born as admitted, `premoderation.v1` only, provenance
 immutable) and refuses a principal suspended before commit (standing fence shared with tag
 saves; `403 principal_suspended`). No trust authority, shadow store, outbox or post-review worker
-exists, and the D-08 delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)). Reactions exist only
+exists, and the D-08 delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)).
+DISC-02/03 part 2 separates reads ([decision](docs/architecture/discussion-reads.md)): the
+composed v1 read is unchanged; `GET …/discussion/public` (+ replies) is a public projection that
+resolves no actor (an Identity outage never hides it) and refuses to exist if a viewer fact reaches
+it; `GET …/discussion/me` is the authenticated, `no-store` overlay of the viewer's own comments
+(unpublished list with its own `o1.` cursor, or an exact ≤20-ID status lookup), so a pending
+comment off the public page or under an unlisted root stays recoverable. Cursors are bounded,
+canonical and scoped; migration `20261113000000_own_comment_overlay` adds a measured partial
+index. No Web/CMP consumer of the two new reads exists yet (#129). Reactions exist only
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
 proposed, not product-accepted) with no table, store, route or UI. Production
 writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual

@@ -22,6 +22,14 @@ hiệu lực duy nhất, ứng viên đăng-trước `trusted-cohort.v1` chỉ c
 (`hold_for_review`), model `admission.qnt` + replay và ba harness Kani. Không đổi SQL, migration,
 API hay UI; bình luận lưu vẫn `pending`. Quyết định và delta D-08 đề xuất:
 [admission](../architecture/discussion-admission.md).
+**Lát DISC-02/03 phần 2 của #120** (nền `develop@8a58089`) tách đường đọc: public projection
+(`GET …/discussion/public`, không resolve actor, kiểu Rust chỉ dựng được khi không có dữ kiện người
+xem) và overlay riêng tư (`GET …/discussion/me`: own pending/rejected theo cursor `o1.` riêng, hoặc
+đối soát ≤ 20 ID theo trạng thái hiện hành); route composed v1 giữ nguyên. Cursor chính tắc, có
+scope và giới hạn 56 byte. Index partial `comments_own_unpublished_idx` được chọn theo số đo.
+Fence đình chỉ cho gỡ/bật-tắt/kiểm duyệt đã có từ PR #143; lát này thêm race test hai thứ tự và
+test ghi đồng thời không deadlock. Quyết định, số đo và ma trận riêng tư:
+[discussion-reads](../architecture/discussion-reads.md).
 
 ## HOW: từ lệnh tới hàng trong database
 

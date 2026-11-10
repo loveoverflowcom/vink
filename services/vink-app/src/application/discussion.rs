@@ -21,7 +21,7 @@ use crate::domain::discussion::lifecycle::{
 };
 pub use crate::domain::discussion::moderation::ModerationAction;
 use crate::domain::discussion::moderation::{ModerationReason, ReasonError, decision_reason};
-use crate::domain::discussion::page::{PageCursor, PageError, PageLimit};
+use crate::domain::discussion::page::{CursorScope, PageCursor, PageError, PageLimit};
 use crate::domain::discussion::policy::Denied;
 use crate::domain::discussion::settings::{
     CommentsMode, DiscussionSettings, SettingsError, SettingsGeneration,
@@ -218,6 +218,170 @@ pub struct ReplyPage {
     pub next: Option<PageCursor>,
 }
 
+/// A root page checked to hold nothing but public facts (#120 DISC-02/03). The only constructor
+/// is the checked [`TryFrom`], so a value of this type cannot carry own pending/rejected
+/// comments, rejection reasons or viewer capabilities, whatever the store returned.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicRootPage(RootPage);
+
+/// A reply page read without a viewer, checked like [`PublicRootPage`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicReplyPage(ReplyPage);
+
+impl PublicRootPage {
+    pub const fn page(&self) -> &RootPage {
+        &self.0
+    }
+}
+
+impl PublicReplyPage {
+    pub const fn page(&self) -> &ReplyPage {
+        &self.0
+    }
+}
+
+/// Holds only when every listed comment is public and carries no private field.
+fn public_item(item: &CommentItem) -> bool {
+    item.view == CommentView::Public && item.rejection_reason.is_none()
+}
+
+/// Refused: the page carried a viewer fact. A read that produced it fails closed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NotPublic;
+
+impl TryFrom<RootPage> for PublicRootPage {
+    type Error = NotPublic;
+
+    fn try_from(page: RootPage) -> Result<Self, NotPublic> {
+        let public = !page.viewer_is_work_author
+            && page.roots.iter().all(|root| {
+                root.preview.iter().all(public_item)
+                    && match &root.entry {
+                        RootEntry::Comment(item) => public_item(item),
+                        RootEntry::Anchor { .. } => true,
+                    }
+            });
+        public.then_some(Self(page)).ok_or(NotPublic)
+    }
+}
+
+impl TryFrom<ReplyPage> for PublicReplyPage {
+    type Error = NotPublic;
+
+    fn try_from(page: ReplyPage) -> Result<Self, NotPublic> {
+        page.replies
+            .iter()
+            .all(public_item)
+            .then_some(Self(page))
+            .ok_or(NotPublic)
+    }
+}
+
+fn public_only<T: TryFrom<P, Error = NotPublic>, P>(page: P) -> Result<T, DiscussionError> {
+    T::try_from(page).map_err(|NotPublic| {
+        tracing::error!("an anonymous discussion read carried viewer state");
+        DiscussionError::Internal
+    })
+}
+
+/// Most own comments one exact lookup may name.
+pub const MAX_OWN_LOOKUP: usize = 20;
+
+/// Untrusted query of the private overlay: either a page of the viewer's unpublished comments
+/// (`cursor`, `limit`) or an exact lookup of comment IDs (`ids`, comma-separated), never both.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct OwnCommentsQuery {
+    pub cursor: Option<String>,
+    pub limit: Option<u32>,
+    pub ids: Option<String>,
+}
+
+/// A validated overlay read. The actor is never part of it: the store scopes every row to the
+/// authenticated viewer itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OwnRead {
+    /// The viewer's present, unpublished (pending or rejected) comments in the work's thread,
+    /// oldest first, wherever they sit in the public lists.
+    Unpublished {
+        after: Option<PageCursor>,
+        limit: PageLimit,
+    },
+    /// The current state of these comments, if the viewer wrote them in this work: reconciles a
+    /// submit result (pending → approved, rejected or removed) without trusting the receipt.
+    Exact(Vec<CommentId>),
+}
+
+impl OwnRead {
+    pub fn parse(query: &OwnCommentsQuery) -> Result<Self, DiscussionInput> {
+        let Some(raw) = query.ids.as_deref() else {
+            let after = query
+                .cursor
+                .as_deref()
+                .map(|raw| PageCursor::decode_in(raw, CursorScope::Own))
+                .transpose()?;
+            return Ok(Self::Unpublished {
+                after,
+                limit: PageLimit::new(query.limit)?,
+            });
+        };
+        if query.cursor.is_some() || query.limit.is_some() {
+            return Err(DiscussionInput::OwnIds);
+        }
+        // Bounded before splitting: 20 UUIDs with commas.
+        if raw.len() > MAX_OWN_LOOKUP * 37 {
+            return Err(DiscussionInput::OwnIds);
+        }
+        let mut ids = Vec::new();
+        for part in raw.split(',') {
+            let id = CommentId::parse(part).ok_or(DiscussionInput::OwnIds)?;
+            if !ids.contains(&id) {
+                ids.push(id);
+            }
+        }
+        if ids.len() > MAX_OWN_LOOKUP {
+            return Err(DiscussionInput::OwnIds);
+        }
+        Ok(Self::Exact(ids))
+    }
+}
+
+/// Where an own comment sits, as far as its writer may know.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OwnPlacement {
+    Root,
+    Reply {
+        /// The writer replied under this root, so its identity is theirs to know; its text and
+        /// writer are not part of the overlay.
+        root_id: CommentId,
+        /// Whether the root is listed for this viewer now (shown or as an anchor). When it is not,
+        /// the reply cannot appear in the public lists and the overlay is its only place.
+        root_listed: bool,
+        context: ReplyContext,
+        /// Name of the replied-to writer, only when that context is public.
+        context_author: Option<String>,
+    },
+}
+
+/// One of the viewer's own comments, as only its writer reads it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnComment {
+    pub id: CommentId,
+    pub status: OwnStatus,
+    pub created_at: OffsetDateTime,
+    pub placement: OwnPlacement,
+    /// The writer's text while the comment is present; never after a removal.
+    pub body: Option<String>,
+    /// The moderator's reason, only while the comment is rejected (MOD-04).
+    pub rejection_reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OwnPage {
+    pub items: Vec<OwnComment>,
+    /// Only for [`OwnRead::Unpublished`]; an `o1.` cursor no public list accepts.
+    pub next: Option<PageCursor>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum DiscussionInput {
     #[error("command_key: {0}")]
@@ -230,6 +394,10 @@ pub enum DiscussionInput {
     ExpectedVersion,
     #[error("reason: {0}")]
     Reason(#[from] ReasonError),
+    #[error(
+        "ids must be 1 to {MAX_OWN_LOOKUP} comma-separated comment IDs, without cursor or limit"
+    )]
+    OwnIds,
 }
 
 impl DiscussionInput {
@@ -241,6 +409,7 @@ impl DiscussionInput {
             Self::Page(PageError::Cursor) => "cursor",
             Self::ExpectedVersion => "expected_version",
             Self::Reason(_) => "reason",
+            Self::OwnIds => "ids",
         }
     }
 }
@@ -340,6 +509,45 @@ where
         let (after, limit) = page(after, limit)?;
         self.store
             .root_page(work_id, viewer, after, limit)
+            .await?
+            .ok_or(DiscussionError::NotFound)
+    }
+
+    /// The public projection of the root list (#120 DISC-02/03): read without any actor, so it
+    /// never depends on Identity, and checked to hold only public facts.
+    pub async fn public_discussion(
+        &self,
+        work_id: WorkId,
+        after: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<PublicRootPage, DiscussionError> {
+        public_only(self.discussion(None, work_id, after, limit).await?)
+    }
+
+    pub async fn public_replies(
+        &self,
+        work_id: WorkId,
+        root_id: CommentId,
+        after: Option<&str>,
+        limit: Option<u32>,
+    ) -> Result<PublicReplyPage, DiscussionError> {
+        public_only(self.replies(None, work_id, root_id, after, limit).await?)
+    }
+
+    /// The viewer's private overlay of a public work (#120 DISC-02/03): their own comments read
+    /// apart from the public lists, so a pending comment is recoverable wherever it sits, under
+    /// a root on a later page or under a root that is no longer listed. Only the authenticated
+    /// writer's own rows are ever read; the store re-checks each one against the domain.
+    pub async fn own_comments(
+        &self,
+        viewer: Option<PrincipalId>,
+        work_id: WorkId,
+        query: &OwnCommentsQuery,
+    ) -> Result<OwnPage, DiscussionError> {
+        let viewer = viewer.ok_or(DiscussionError::Unauthenticated)?;
+        let read = OwnRead::parse(query)?;
+        self.store
+            .own_comments(work_id, viewer, &read)
             .await?
             .ok_or(DiscussionError::NotFound)
     }

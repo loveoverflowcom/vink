@@ -58,6 +58,10 @@ authority kiểm duyệt và màn vận hành.
 Củng cố thảo luận [#120](https://github.com/loveoverflowcom/vink/issues/120), DISC-01:
 [admission](discussion-admission.md) chọn CHOICE-01 A (admission thuần có version + shadow, tiền kiểm
 vẫn hiệu lực) và CHOICE-06 A (chỉ văn bản). D-05/D-08 giữ trạng thái; delta D-08 chưa được chấp nhận.
+DISC-02/03 phần 2: [đọc bình luận](discussion-reads.md) chọn CHOICE-02 B+ (giữ composed v1, thêm public
+projection độc lập Identity và overlay riêng tư có cursor riêng) và một index partial đã đo; ghi điểm
+tuyến tính hóa từng loại thu hồi (App đình chỉ/grant nguyên tử tại commit; phiên Identity: cửa sổ một
+request). Không đổi D/INV; không bật đăng-trước.
 
 Phân loại tác phẩm [#95](https://github.com/loveoverflowcom/vink/issues/95), TAG-PR-01:
 [decision owner](work-taxonomy.md) ghi CHOICE-01/02/03 của pure core; [registry](../development/taxonomy-core.md)
