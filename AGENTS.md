@@ -152,7 +152,7 @@ scope; nothing in browser storage or SSR) that the avatar, desk, editor, discuss
 read; typed text stays for the same person and never crosses accounts. `verify web` runs it against a
 real `vink-identity` with the local outbox on loopback ([Auth Web](docs/development/auth-web.md)).
 No delivery to a real mailbox from a Vink domain, HTTPS/multi-browser/native qualification,
-independent security review or auth owner exists, so production authentication is NOT accepted. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
+independent security review or auth owner exists, so production authentication is NOT accepted. No publication workflow or AI provider exists; discussion moderation uses the grant and operator paths below. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
 paging), application use cases, a PostgreSQL adapter/migration with real-database tests, HTTP API
@@ -176,7 +176,7 @@ discussion outbox ([decision](docs/architecture/discussion-outbox.md)): `submit_
 fences every post-claim write by claim generation under the row lock, applies App-database effects
 and their outcome atomically, retries with capped backoff and dead-letters with reason codes;
 `vink-app outbox status|dead|requeue` is the only requeue (audited, dead letters only). Polling
-only (no LISTEN/NOTIFY). The one consumer, `admission_shadow.v1`, records what `trusted-cohort.v1`
+only (no LISTEN/NOTIFY). The shadow consumer, `admission_shadow.v1`, records what `trusted-cohort.v1`
 would decide (shadow/audit, never a review state; trust/rules have no source, so it never approves);
 `outbox.qnt` replay and two Kani harnesses back the pure lifecycle.
 DISC-02/03 part 2 separates reads ([decision](docs/architecture/discussion-reads.md)): the
