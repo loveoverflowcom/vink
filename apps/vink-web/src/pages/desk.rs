@@ -623,7 +623,12 @@ fn Editor(draft: Draft) -> impl IntoView {
         Field::Body => body.focus(),
         Field::Tags => {
             #[cfg(feature = "hydrate")]
-            if let Some(input) = document().get_element_by_id(crate::pages::work_info::QUERY_ID) {
+            if let Some(input) = document()
+                .get_element_by_id("work-tags-edit")
+                .filter(|details| !details.has_attribute("open"))
+                .and_then(|details| details.query_selector("summary").ok().flatten())
+                .or_else(|| document().get_element_by_id(crate::pages::work_info::QUERY_ID))
+            {
                 use wasm_bindgen::JsCast;
                 if let Ok(input) = input.dyn_into::<web_sys::HtmlElement>() {
                     let options = web_sys::FocusOptions::new();

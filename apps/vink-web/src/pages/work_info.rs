@@ -6,8 +6,8 @@
 
 use leptos::prelude::*;
 use vink_ui::{
-    Announce, Button, ButtonVariant, Heading, HeadingLevel, IconName, InlineNotice, Text,
-    TextInput, TextTone, Tone, TypeRole,
+    Announce, Button, ButtonVariant, Heading, HeadingLevel, IconName, InlineNotice,
+    SupportingDetails, Text, TextInput, TextTone, Tone, TypeRole,
 };
 
 use crate::contract::TagSuggestion;
@@ -217,6 +217,12 @@ pub fn WorkInfo(
                 .into_any(),
                 _ => view! { <Text role=TypeRole::Caption tone=TextTone::Muted>"Đang tải thẻ…"</Text> }.into_any(),
             }>
+                <Text role=TypeRole::Caption class:vk-work-info__selection=true attr:data-testid="tag-selection-summary">
+                    {move || selection.get().map(|s| format!("Thẻ: {}.", labels.with(|l| l.names(&s))))}
+                </Text>
+                // Native disclosure keeps the same mounted selector/query and EditorView.
+                // Save failures and conflict actions remain visible even while it is closed.
+                <SupportingDetails id="work-tags-edit" summary="Chỉnh thẻ">
                 <TagSelector id="work-tags" form themes catalog query=raw options exact
                     on_form=Callback::new(move |id: Option<String>| edit(&|t| t.choose_form(id.clone())))
                     on_add_theme=Callback::new(move |id: String| {
@@ -227,6 +233,7 @@ pub fn WorkInfo(
                     on_remove_theme=Callback::new(move |id: String| edit(&|t| t.remove_theme(&id)))
                     on_replace_theme=Callback::new(move |(old, new): (String, String)| edit(&|t| t.replace_theme(&old, &new)))
                     on_query />
+                </SupportingDetails>
                 {notice}
             </Show>
         </section>

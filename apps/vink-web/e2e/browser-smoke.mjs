@@ -2449,8 +2449,9 @@ async function editorChrome(page) {
           await page.viewport(width);
           await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; scrollTo(0, 0)`);
           await page.eval(`document.fonts.ready.then(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
-          // Measure settled theme colours, without waiting for the pending indicator's loop.
-          await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+          // Closed native details can leave chip transitions idle with unresolved finished
+          // promises. Poll current visible transitions instead of holding stale promises.
+          await page.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`, 'visible editor transitions settled');
           const scenario = `editor-${state}-${width}-${scale}-${theme}`;
           if (width === 1440 && scale === 100) await textContrast(page, theme, `editor-${state}`);
           check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && ${live}`), `${scenario}: no overflow and one live EditorView`);
@@ -2479,6 +2480,23 @@ async function editorChrome(page) {
           })()`), `${scenario}: one uninterrupted writing sheet, flat resting chrome, complete descriptions and one live status owner`);
 
           await page.capture(scenario);
+          if (state === 'clean') {
+            await page.waitFor(TAGS_READY, 'metadata loaded');
+            check(await page.eval(`(() => {
+              const paper=document.querySelector('.vk-editor-paper').getBoundingClientRect(), toolbar=document.querySelector('#editor-toolbar').getBoundingClientRect(), info=document.querySelector('[data-testid=work-info]').getBoundingClientRect();
+              const trigger=document.querySelector('#work-tags-edit > summary').getBoundingClientRect();
+              return Math.abs(paper.left-toolbar.left)<1 && Math.abs(paper.width-toolbar.width)<1 && Math.abs(info.left-paper.left)<1 && Math.abs(info.width-paper.width)<1 && info.top>=paper.bottom && trigger.width>=48 && trigger.height>=48 && !document.querySelector('#work-tags-edit').open;
+            })()`), `${scenario}: one aligned column with compact metadata after the manuscript`);
+            await page.eval(`document.querySelector('#work-tags-edit > summary').focus(); window.__metadataQuery=document.querySelector('#work-tags-query')`);
+            await page.key('Enter');
+            check(await page.eval(`document.querySelector('#work-tags-edit').open && window.__metadataQuery===document.querySelector('#work-tags-query') && ${live} && document.documentElement.scrollWidth<=innerWidth`), `${scenario}: metadata opens in place without overflow or remount`);
+            await page.key('Space');
+            check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary')`), `${scenario}: metadata closes with visible trigger focus`);
+            if (width===1440 || width<=390) {
+              await page.eval(`document.querySelector('[data-testid=work-info]').scrollIntoView({block:'center'})`);
+              await page.capture(`${scenario}-metadata`);
+            }
+          }
           if (width <= 390 && scale === 200) {
             await page.eval(`document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
             await page.capture(`${scenario}-title`);
@@ -2533,6 +2551,8 @@ async function editorChrome(page) {
   check((await page.body()) === dirtyText, 'announcement probe restores the same dirty fixture after undo');
   await page.eval(`window.__statusObserver.disconnect()`);
   await geometry('dirty');
+  // shellWithDirtyEditor in the main phase checks native selection and unsaved text
+  // through actual Giao diện choices; its short fixture avoids DOM virtualization.
   await page.eval(`document.querySelector('.cm-content').dispatchEvent(new KeyboardEvent('keydown', {key:'s',ctrlKey:true,isComposing:true,bubbles:true,cancelable:true}))`);
   check((await page.status()) === 'unsaved', 'composing shortcut never saves a partial syllable (synthetic guard check)');
   await page.eval(`document.querySelector('.vk-editor-help summary').focus()`);
@@ -2641,7 +2661,7 @@ async function editorChrome(page) {
     for (const width of [1440, 1024, 834, 390, 320]) for (const scale of [100, 200]) for (const theme of ['light', 'dark']) {
       await page.viewport(width);
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; document.querySelector('${dialog}').scrollTop = 0`);
-      await page.eval(`Promise.all(document.getAnimations().filter(a => Number.isFinite(a.effect.getComputedTiming().endTime)).map(a => a.finished.catch(() => {})))`);
+      await page.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`, 'visible editor transitions settled');
       await page.capture(`editor-${kind}-${width}-${scale}-${theme}`);
       check(await page.eval(`(() => { const d = document.querySelector('${dialog}'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && d.scrollWidth <= d.clientWidth + 1 && ${live}; })()`), `${kind} ${width}/${scale}/${theme}: dialog fits and text view survives`);
       await page.eval(`document.querySelector('${dialog} .vk-ui-dialog__title').focus()`);
@@ -3068,17 +3088,28 @@ async function draftTags(page, workId) {
   await page.eval(`document.querySelector('.cm-editor').__vinkTagsView = 'kept'`);
   const view = `document.querySelector('.cm-editor')?.__vinkTagsView === 'kept' && document.querySelectorAll('.cm-editor').length === 1`;
   const bodyBefore = await page.body();
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('không có thẻ')`), 'metadata starts compact with its current selection visible');
+  await page.eval(`window.__tagQuery = document.querySelector('#work-tags-query'); document.querySelector('#work-tags-edit > summary').focus()`);
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('#work-tags-edit').open && window.__tagQuery===document.querySelector('#work-tags-query') && ${view}`), 'Enter opens the existing TagSelector in place');
+  await page.key('Space');
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary') && ${view}`), 'Space closes metadata without losing focus, selector or EditorView');
+  await page.key('Enter');
 
   // A metadata-only change is unsaved work: the toolbar says so and leaving is held.
   await page.click('#work-tags-form .vk-ui-chip');
   await waitTagStatus(page, 'unsaved');
   check((await page.status()) === 'unsaved', 'the toolbar status covers a tag-only change');
+  await page.click('#work-tags-edit > summary');
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('Tản văn')`), 'closing metadata keeps the unsaved selection visible');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for a tag-only change');
   check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Thẻ đã chọn'), 'the dialog names the unsaved tags');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed');
   check((await page.eval(`location.pathname`)) === editorPath, 'a tag-only change held the navigation');
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.activeElement.matches('#work-tags-edit > summary')`), 'staying returns focus to the visible closed metadata trigger');
+  await page.key('Enter');
 
   // IME: Enter while composing neither chooses a theme nor submits the editor form.
   let puts = 0;
@@ -3123,6 +3154,9 @@ async function draftTags(page, workId) {
   await page.waitFor(`document.querySelectorAll('#work-tags-themes .vk-tag-chip').length === 2`, 'tags restored');
   check((await chipLabels(page)).join() === 'Ký ức,Đô thị' && await page.eval(`(() => { const pressed = [...document.querySelectorAll('#work-tags-form .vk-ui-chip[aria-pressed=true]')]; return pressed.length === 1 && pressed[0].textContent.includes('Tản văn'); })()`), 'reload shows the confirmed tags');
 
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('Tản văn, Ký ức, Đô thị')`), 'reloaded metadata shows acknowledged names while compact');
+  await page.click('#work-tags-edit > summary');
+
   // Another tab saves first: the stale save writes nothing; the author chooses.
   const mua = (await page.eval(`fetch('/api/v1/tags?facet=theme').then((r) => r.json())`)).tags.find((t) => t.label === 'Mùa');
   const other = await page.eval(`fetch('/api/v1/drafts/${workId}/tags', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ expected_version: 2, form: null, themes: [${JSON.stringify(mua.tag_id)}] }) }).then((r) => r.status)`);
@@ -3135,8 +3169,11 @@ async function draftTags(page, workId) {
   stored = await draftTagsOf(page, workId);
   check(stored.version === 3 && stored.themes.map((t) => t.label).join() === 'Mùa', 'the stale tag save wrote nothing');
   check((await chipLabels(page)).join() === 'Đô thị', 'the conflict keeps the author\'s selection on the page');
+  await page.click('#work-tags-edit > summary');
+  check(await page.eval(`!document.querySelector('#work-tags-edit').open && !document.querySelector('#work-tags-edit').contains(document.querySelector('[data-testid=tag-conflict]')) && document.querySelector('#tags-keep-mine').getClientRects().length>0`), 'tag conflict and deliberate recovery stay visible outside the closed disclosure');
   await page.click('#tags-keep-mine');
   await waitTagStatus(page, 'saved', 'explicit tag overwrite');
+  await page.click('#work-tags-edit > summary');
   stored = await draftTagsOf(page, workId);
   check(stored.version === 4 && stored.form?.label === 'Tản văn' && stored.themes.map((t) => t.label).join() === 'Đô thị', 'the author chose their selection: version 4');
 
@@ -3189,6 +3226,7 @@ async function retiredTagAfterRestart(page, workId) {
   await page.waitFor(`${TAGS_READY} && document.querySelector('#work-tags-theme-0')`, 'tags after restart');
   check(await page.eval(`(() => { const chip = document.getElementById('work-tags-theme-0'); return chip.dataset.status === 'retired' && chip.textContent.includes('Đô thị') && chip.textContent.includes('Đã ngừng dùng'); })()`), 'the retired tag is kept and written as retired');
   check((await tagStatus(page)) === 'saved' && (await page.status()) === 'saved', 'a kept retired tag is not an unsaved change');
+  await page.click('#work-tags-edit > summary');
   await page.click('#work-tags-theme-0-replace');
   await waitTagStatus(page, 'unsaved');
   check((await chipLabels(page)).join() === 'Mùa', 'the curator\'s successor replaced it in place');
