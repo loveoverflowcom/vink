@@ -366,3 +366,13 @@ node node_modules/@informalsystems/quint/dist/src/cli.js run outbox.qnt --backen
 
 **Không được chứng minh:** transaction/khóa PostgreSQL, mạng, vòng đời process, nhiều event cạnh
 tranh, deadline, thứ tự FIFO (không hứa), liveness (worker sống cuối cùng xử lý hết).
+
+## Operator post-review runtime
+
+`post-review.qnt`: một ticket approved@2, hai claim generation, deadline 2 tick, clock ≤3.
+Simulation seed 41 ×1000 ×40; scenario 32 bước có wait/keep/hold/superseded/removed/stale/poison,
+exhaustion và requeue không đổi deadline. `reset` là fixture ticket mới, authority/serial commit
+là giả định; không là producer admission. `post_review_replay` gọi production `decide_review`,
+lifecycle và `check_ownership` theo input rồi đối chiếu oracle. PostgreSQL kiểm authority/binding,
+transaction, races và process; model không chứng minh những lớp đó. Lane `verify discussion`
+giữ guard bắt buộc replay phải thực sự được chọn.

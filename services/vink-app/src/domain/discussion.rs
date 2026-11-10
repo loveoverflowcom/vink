@@ -51,6 +51,9 @@ pub mod outbox;
 mod outbox_replay;
 pub mod page;
 pub mod policy;
+pub mod post_review;
+#[cfg(test)]
+mod post_review_replay;
 #[cfg(kani)]
 mod proofs;
 pub mod reaction;

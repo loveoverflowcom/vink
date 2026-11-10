@@ -8,19 +8,20 @@ use std::process::Command;
 use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
-const FILTERS: [&str; 9] = [
+const FILTERS: [&str; 10] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
     "domain::discussion::admission_replay",
     "domain::discussion::outbox::tests",
     "domain::discussion::outbox_replay",
+    "domain::discussion::post_review",
     "domain::discussion::lifecycle_replay",
     "domain::discussion::reaction::tests",
     "domain::discussion::reaction_replay",
     "domain::endorsement::",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 10] = [
+const REPLAYS: [&str; 11] = [
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",
     "domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions",
     "domain::discussion::lifecycle_replay::the_no_op_mode_counterexample_is_refused_by_production",
@@ -31,6 +32,7 @@ const REPLAYS: [&str; 10] = [
     "domain::discussion::admission_replay::the_admission_counterexamples_are_refused_by_production",
     "domain::discussion::outbox_replay::quint_outbox_inputs_replay_against_the_production_decisions",
     "domain::discussion::outbox_replay::the_unfenced_completion_counterexample_is_refused_by_production",
+    "domain::discussion::post_review_replay::quint_operator_review_inputs_replay_through_production_guards",
 ];
 
 pub fn verify(report: &mut Report) -> bool {

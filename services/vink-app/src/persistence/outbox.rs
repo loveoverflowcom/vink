@@ -176,6 +176,14 @@ pub async fn claim(
         return Ok(batch);
     }
     let mut tx = pool.begin().await.map_err(classify)?;
+    sqlx::query(EFFECT_BOUNDS)
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
+    sqlx::query(EFFECT_STATEMENT_BOUND)
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
     let now: OffsetDateTime = sqlx::query_scalar("SELECT now()")
         .fetch_one(&mut *tx)
         .await
@@ -243,6 +251,20 @@ pub async fn claim(
                 });
             }
             ClaimDecision::DeadLetter { reason, reclaimed } => {
+                // Retry exhaustion cannot discharge a content-review obligation. The safe
+                // effect/receipt (or explicit poison debt) commits with this dead transition.
+                finalize_dead(
+                    &mut tx,
+                    &OutboxEvent {
+                        id: event_id,
+                        event_type: row.try_get("event_type").map_err(classify)?,
+                        schema_version: row.try_get("schema_version").map_err(classify)?,
+                        comment_id: row.try_get("comment_id").map_err(classify)?,
+                        source_version: row.try_get("source_version").map_err(classify)?,
+                    },
+                    &consumer,
+                )
+                .await?;
                 sqlx::query(
                     "UPDATE discussion_deliveries
                         SET state = 'dead', outcome = $3, finished_at = $5, updated_at = $5,
@@ -316,7 +338,9 @@ async fn record(
             error,
         } => sqlx::query(
             "UPDATE discussion_deliveries
-                SET state = 'ready', available_at = $4, last_error = $5, updated_at = $6
+                SET state = 'ready', available_at = CASE WHEN consumer = 'operator_post_review.v1'
+                    THEN LEAST($4, (SELECT deadline_at FROM comment_post_reviews WHERE id = $1))
+                    ELSE $4 END, last_error = $5, updated_at = $6
               WHERE event_id = $1 AND consumer = $2 AND generation = $3 AND state = 'leased'",
         )
         .bind(claimed.event.id)
@@ -393,6 +417,9 @@ pub async fn complete(
         micros(now),
         jitter_micros,
     );
+    if matches!(completion, Completion::DeadLetter(_)) {
+        finalize_dead(&mut tx, &claimed.event, &claimed.consumer).await?;
+    }
     record(&mut tx, claimed, completion, now).await?;
     tx.commit().await.map_err(classify)?;
     Ok(completion)
@@ -420,9 +447,33 @@ pub async fn record_failure(
         micros(now),
         jitter_micros,
     );
+    if matches!(completion, Completion::DeadLetter(_)) {
+        finalize_dead(&mut tx, &claimed.event, &claimed.consumer).await?;
+    }
     record(&mut tx, claimed, completion, now).await?;
     tx.commit().await.map_err(classify)?;
     Ok(completion)
+}
+
+async fn finalize_dead(
+    tx: &mut PgConnection,
+    event: &OutboxEvent,
+    consumer: &str,
+) -> Result<(), StoreError> {
+    if consumer == crate::domain::discussion::post_review::CONSUMER {
+        let result = super::post_review::apply(tx, event, true)
+            .await
+            .map_err(classify)?;
+        if !matches!(
+            result,
+            HandlerResult::Applied | HandlerResult::AlreadyApplied | HandlerResult::Fail(_)
+        ) {
+            return Err(StoreError::Integrity(
+                "post-review finalization left unresolved without quarantine".into(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -460,7 +511,8 @@ pub async fn requeue(
         Requeue::Requeued => {
             sqlx::query(
                 "UPDATE discussion_deliveries
-                    SET state = 'ready', attempts = 0, available_at = now(), deadline_from = now(),
+                    SET state = 'ready', attempts = 0, available_at = now(),
+                        deadline_from = CASE WHEN consumer = 'operator_post_review.v1' THEN deadline_from ELSE now() END,
                         last_error = outcome, outcome = NULL, finished_at = NULL, updated_at = now()
                   WHERE event_id = $1 AND consumer = $2",
             )
@@ -589,6 +641,9 @@ pub async fn prune(pool: &PgPool, retain_days: i32, limit: i64) -> Result<u64, S
         "WITH doomed AS (
              SELECT e.id FROM discussion_events e
               WHERE e.created_at < now() - make_interval(days => $1)
+                AND NOT EXISTS (SELECT 1 FROM comment_post_reviews t WHERE t.id = e.id
+                    AND NOT EXISTS (SELECT 1 FROM comment_post_review_receipts r WHERE r.ticket_id = t.id))
+                AND NOT EXISTS (SELECT 1 FROM comment_post_review_quarantines q WHERE q.event_id = e.id)
                 AND NOT EXISTS (
                     SELECT 1 FROM discussion_deliveries d
                      WHERE d.event_id = e.id

@@ -8,6 +8,7 @@ pub mod discovery;
 pub mod discussion;
 pub mod endorsement;
 pub mod ports;
+pub mod post_review;
 pub mod taxonomy;
 
 use time::OffsetDateTime;

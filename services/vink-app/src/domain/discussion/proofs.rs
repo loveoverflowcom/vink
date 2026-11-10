@@ -210,10 +210,6 @@ fn moderation_decisions_are_version_bound_and_removal_is_terminal() {
                 state.version().get().checked_add(1),
                 Some(next.version().get())
             );
-            assert_ne!(
-                (next.review(), next.removal()),
-                (state.review(), state.removal())
-            );
             match action {
                 ModerationAction::Approve => assert!(next.is_public()),
                 ModerationAction::Reject => {
@@ -228,11 +224,8 @@ fn moderation_decisions_are_version_bound_and_removal_is_terminal() {
         }
         Ok(Transition::Unchanged(same)) => {
             assert_eq!(same, state);
-            if state.is_present() {
-                assert_eq!(expected, state.version());
-            } else {
-                assert_eq!(action, ModerationAction::Remove);
-            }
+            assert!(!state.is_present());
+            assert_eq!(action, ModerationAction::Remove);
         }
         Err(LifecycleError::Removed) => {
             assert!(!state.is_present());
@@ -1097,12 +1090,12 @@ fn post_review_only_withdraws_the_observed_approval() {
         _ => PostReviewFinding::Unresolved,
     };
     let result = decide_post_review(ticket, current, finding);
-    if finding == PostReviewFinding::Clear {
-        assert_eq!(result, Ok(PostReview::Keep));
-        return;
-    }
     match result {
-        Ok(PostReview::Keep) => panic!("only a clear finding keeps"),
+        Ok(PostReview::Keep) => {
+            assert_eq!(finding, PostReviewFinding::Clear);
+            assert!(current.is_present());
+            assert_eq!(current.version(), ticket.version());
+        }
         Ok(PostReview::Hold(Transition::Changed(next))) => {
             assert!(current.is_present() && current.review() == Review::Approved);
             assert_eq!(current.version(), ticket.version());
@@ -1145,6 +1138,116 @@ fn any_delivery_state() -> DeliveryState {
         3 => DeliveryState::Skipped,
         _ => DeliveryState::Dead,
     }
+}
+
+/// Explicit operator review: symbolic binding, deadline, finding and state; SHA-256 and the
+/// authority of the stored envelope are adapter assumptions, tested on PostgreSQL separately.
+#[kani::proof]
+fn operator_review_never_certifies_a_foreign_or_newer_state() {
+    use super::post_review::{ReviewBinding, ReviewDecision, decide_review};
+    let current = any_state();
+    let ticket = ReviewBinding {
+        version: any_version(),
+        payload: PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap(),
+        deadline_micros: kani::any(),
+    };
+    let payload = PayloadDigest::from_bytes(&kani::any::<[u8; 32]>()).unwrap();
+    let finding = match kani::any::<u8>() % 4 {
+        0 => None,
+        1 => Some(PostReviewFinding::Clear),
+        2 => Some(PostReviewFinding::Flagged),
+        _ => Some(PostReviewFinding::Unresolved),
+    };
+    let now: i64 = kani::any();
+    let exhausted: bool = kani::any();
+    let decision = decide_review(ticket, current, payload, finding, now, exhausted);
+    match decision {
+        Ok(ReviewDecision::Keep) => {
+            assert_eq!(ticket.payload, payload);
+            assert!(current.is_public());
+            assert_eq!(ticket.version, current.version());
+            assert!(!exhausted && now < ticket.deadline_micros);
+            assert_eq!(finding, Some(PostReviewFinding::Clear));
+        }
+        Ok(ReviewDecision::Hold(held)) => {
+            assert_eq!(ticket.payload, payload);
+            assert!(current.is_public());
+            assert_eq!(ticket.version, current.version());
+            assert_eq!(held.review(), Review::Pending);
+            assert_eq!(
+                Some(held.version().get()),
+                current.version().get().checked_add(1)
+            );
+            assert!(
+                exhausted
+                    || now >= ticket.deadline_micros
+                    || matches!(
+                        finding,
+                        Some(PostReviewFinding::Flagged | PostReviewFinding::Unresolved)
+                    )
+            );
+        }
+        Ok(ReviewDecision::AwaitResult) => {
+            assert!(!exhausted && now < ticket.deadline_micros);
+            assert_eq!(finding, None);
+        }
+        Ok(ReviewDecision::InvalidBinding) => assert_ne!(ticket.payload, payload),
+        Ok(ReviewDecision::Removed) => assert!(!current.is_present()),
+        Ok(ReviewDecision::Superseded) => {
+            assert!(ticket.version != current.version() || !current.is_public())
+        }
+        Err(_) => assert_eq!(current.version().get(), i64::MAX),
+    }
+    kani::cover!(
+        matches!(decision, Ok(ReviewDecision::Keep)),
+        "valid clear keeps"
+    );
+    kani::cover!(
+        matches!(decision, Ok(ReviewDecision::Hold(_))) && exhausted,
+        "exhaustion holds"
+    );
+    kani::cover!(
+        matches!(decision, Ok(ReviewDecision::Superseded)),
+        "human precedence reachable"
+    );
+}
+
+#[kani::proof]
+fn every_accepted_human_reaffirmation_fences_the_previous_review() {
+    use super::post_review::{ReviewBinding, ReviewDecision, decide_review};
+    let version = any_version();
+    kani::assume(version.get() < i64::MAX);
+    let (review, action) = if kani::any() {
+        (Review::Approved, ModerationAction::Approve)
+    } else {
+        (Review::Rejected, ModerationAction::Reject)
+    };
+    let state = CommentState::restore(review, None, version);
+    let Ok(Transition::Changed(confirmed)) = action.apply(state, version) else {
+        panic!("a confirmation must advance the fence");
+    };
+    assert_eq!(confirmed.version().get(), version.get() + 1);
+    let payload = PayloadDigest::from_bytes(&[0; 32]).unwrap();
+    let ticket = ReviewBinding {
+        version,
+        payload,
+        deadline_micros: 1,
+    };
+    assert_eq!(
+        decide_review(
+            ticket,
+            confirmed,
+            payload,
+            Some(PostReviewFinding::Flagged),
+            0,
+            false
+        ),
+        Ok(ReviewDecision::Superseded)
+    );
+    assert!(matches!(
+        action.apply(confirmed, version),
+        Err(LifecycleError::Stale { .. })
+    ));
 }
 
 fn any_delivery() -> DeliveryFacts {

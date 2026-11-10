@@ -20,8 +20,14 @@ use vink_app::application::Vink;
 use vink_app::application::catalog::{
     CatalogError, CatalogRejection, CatalogRequest, ChangeCatalog, CuratorAuthority, facet_code,
 };
+use vink_app::application::post_review::{
+    RequestReview, ReviewAuthority, ReviewResult, ReviewWrite,
+};
 use vink_app::config::{Config, MigrateConfig, Profile};
+use vink_app::domain::discussion::admission::PostReviewFinding;
+use vink_app::domain::discussion::lifecycle::ModerationVersion;
 use vink_app::domain::discussion::moderation::GrantNote;
+use vink_app::domain::ids::CommentId;
 use vink_app::domain::ids::PrincipalId;
 use vink_app::domain::principal::SuspensionReason;
 use vink_app::domain::taxonomy::{
@@ -31,7 +37,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 /// Operator command on the discussion outbox, parsed before any configuration is read.
 #[derive(Debug, PartialEq, Eq)]
@@ -43,6 +49,42 @@ enum OutboxCommand {
         consumer: String,
         note: String,
     },
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum PostReviewCommand {
+    Request(RequestReview),
+    Result(ReviewResult),
+    Status,
+    Pending,
+}
+
+fn parse_post_review(args: &[String]) -> Result<PostReviewCommand, String> {
+    let id = |index: usize| {
+        args.get(index)
+            .and_then(|s| uuid::Uuid::parse_str(s).ok())
+            .ok_or_else(|| "expected UUID".to_string())
+    };
+    let note = || {
+        GrantNote::parse(&args.get(4..).unwrap_or_default().join(" ")).ok_or_else(|| {
+            "note must name operator and reason (one line, 1..200 characters)".to_string()
+        })
+    };
+    match args.first().map(String::as_str) {
+        Some("status") if args.len() == 1 => Ok(PostReviewCommand::Status),
+        Some("pending") if args.len() == 1 => Ok(PostReviewCommand::Pending),
+        Some("request") if args.len() >= 5 => Ok(PostReviewCommand::Request(RequestReview {
+            comment: CommentId::from_uuid(id(1)?),
+            expected: args[2].parse().ok().and_then(ModerationVersion::new).ok_or("expected moderation version >=1")?,
+            key: id(3)?, note: note()?,
+        })),
+        Some("result") if args.len() >= 5 => Ok(PostReviewCommand::Result(ReviewResult {
+            ticket: id(1)?, key: id(2)?,
+            finding: match args[3].as_str() { "clear" => PostReviewFinding::Clear, "flagged" => PostReviewFinding::Flagged, "unresolved" => PostReviewFinding::Unresolved, _ => return Err("expected clear|flagged|unresolved".into()) },
+            note: note()?,
+        })),
+        _ => Err("post-review request <comment> <version> <request-key-uuid> <operator-and-reason> | result <ticket> <result-key-uuid> <clear|flagged|unresolved> <operator-and-reason> | status | pending".into()),
+    }
 }
 
 fn parse_outbox(args: &[String]) -> Result<OutboxCommand, String> {
@@ -211,6 +253,7 @@ fn main() -> ExitCode {
             | "principal"
             | "tag"
             | "outbox"
+            | "post-review"
             | "maintenance"
     ) {
         eprintln!("{USAGE}");
@@ -264,6 +307,18 @@ fn main() -> ExitCode {
     } else {
         None
     };
+    let post_review_command = if command == "post-review" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_post_review(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app: {error}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
     if command == "maintenance" {
         let args: Vec<String> = std::env::args().skip(2).collect();
         if args != ["prune"] {
@@ -309,6 +364,9 @@ fn main() -> ExitCode {
             }
             Loaded::App(config) if let Some(operation) = outbox_command => {
                 outbox(&config, operation).await
+            }
+            Loaded::App(config) if let Some(operation) = post_review_command => {
+                post_review(&config, operation).await
             }
             Loaded::App(config) => serve(config).await,
         }
@@ -668,6 +726,82 @@ async fn outbox(config: &Config, command: OutboxCommand) -> Result<(), Failure> 
     };
     pool.close().await;
     result
+}
+
+async fn post_review(config: &Config, command: PostReviewCommand) -> Result<(), Failure> {
+    let enabled = match std::env::var("VINK_POST_REVIEW_REQUESTS").ok().as_deref() {
+        None | Some("disabled") => false,
+        Some("enabled") => true,
+        _ => {
+            return Err(Failure::Usage(
+                "VINK_POST_REVIEW_REQUESTS: expected enabled|disabled".into(),
+            ));
+        }
+    };
+    let pool = connect(&config.database_url, "vink-app post-review").await?;
+    let vink = Vink::new(PgStore::new(pool.clone()));
+    let failed = |_error| {
+        Failure::Runtime("post-review database operation failed; obligation preserved".into())
+    };
+    let authority = ReviewAuthority::operator();
+    let outcome = match command {
+        PostReviewCommand::Request(request) => Some(
+            vink.request_review(authority, enabled, &request)
+                .await
+                .map_err(failed)?,
+        ),
+        PostReviewCommand::Result(result) => Some(
+            vink.record_review_result(authority, &result)
+                .await
+                .map_err(failed)?,
+        ),
+        PostReviewCommand::Status => {
+            for (state, count, age) in persistence::post_review::status(&pool)
+                .await
+                .map_err(failed)?
+            {
+                println!("{state}\t{count}\t{}", dash(age));
+            }
+            None
+        }
+        PostReviewCommand::Pending => {
+            for pending in persistence::post_review::pending(&pool, 100)
+                .await
+                .map_err(failed)?
+            {
+                println!(
+                    "{}\t{}\t{}\t{}\t{}",
+                    pending.ticket,
+                    pending.comment,
+                    pending.version,
+                    pending.deadline,
+                    pending.overdue
+                );
+            }
+            for (event, reason) in persistence::post_review::quarantines(&pool, 100)
+                .await
+                .map_err(failed)?
+            {
+                println!("quarantined\t{event}\t{reason}");
+            }
+            None
+        }
+    };
+    pool.close().await;
+    match outcome {
+        Some(ReviewWrite::Accepted(id)) => {
+            println!("accepted\t{id}");
+            Ok(())
+        }
+        Some(ReviewWrite::Replayed(id)) => {
+            println!("replayed\t{id}");
+            Ok(())
+        }
+        Some(other) => Err(Failure::Usage(format!(
+            "post-review refused: {other:?}; nothing written"
+        ))),
+        None => Ok(()),
+    }
 }
 
 async fn serve(config: Config) -> Result<(), Failure> {

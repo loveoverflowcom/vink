@@ -438,6 +438,14 @@ pub fn decide_post_review(
     current: CommentState,
     finding: PostReviewFinding,
 ) -> Result<PostReview, LifecycleError> {
+    if !current.is_present() {
+        return Err(LifecycleError::Removed);
+    }
+    if current.version() != ticket.version {
+        return Err(LifecycleError::Stale {
+            current: current.version(),
+        });
+    }
     match finding {
         PostReviewFinding::Clear => Ok(PostReview::Keep),
         PostReviewFinding::Flagged | PostReviewFinding::Unresolved => current

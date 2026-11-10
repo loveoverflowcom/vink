@@ -42,6 +42,8 @@ mod discussion;
 mod endorsement;
 #[path = "postgres/outbox.rs"]
 mod outbox;
+#[path = "postgres/post_review.rs"]
+mod post_review;
 #[path = "postgres/principal.rs"]
 mod principal;
 #[path = "postgres/taxonomy.rs"]

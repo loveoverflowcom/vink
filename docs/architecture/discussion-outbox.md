@@ -282,3 +282,12 @@ Các phát hiện và cách xử lý:
 hold) chỉ sau delta D-08; authority trust có lịch sử theo thời điểm; event cho gỡ/kiểm duyệt khi có
 consumer cần. **DISC-05:** counter/cache/projection, LISTEN/NOTIFY nếu có SLA độ trễ, index backlog
 khi bảng lớn, metrics endpoint.
+
+## 11. Consumer operator hậu kiểm (DISC-POST-REVIEW-RUNTIME)
+
+[Runtime](../development/discussion-post-review.md) thêm consumer `operator_post_review.v1`, nguồn
+operator riêng có audit, không đổi `admission_shadow.v1`. Các đường dead tại claim/complete/failure
+phải finalization trong cùng transaction; lỗi DB không ACK. Quarantine là nợ hiển thị riêng, không
+receipt hoàn tất. Requeue của consumer này giữ business deadline và deadline_from; retention giữ
+ticket/receipt và event còn nợ. Những nhận định “chưa có hậu kiểm” ở các phần trên là baseline của
+lát DISC-04; admission publish-first vẫn chưa có producer hợp lệ và chưa được kích hoạt.

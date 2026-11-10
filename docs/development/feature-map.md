@@ -458,3 +458,12 @@ Consumer Web của thẻ nháp; component dùng chung cho #100. Luồng HOW/WHY/
 
 [LayoutSpec](../design/tag-discovery.md) và [HOW/WHY/TEACH + evidence](discovery-ui.md).
 Browser assertions ở [discovery-smoke.mjs](../../apps/vink-web/e2e/discovery-smoke.mjs): GET/no-JS, Apply, query/tag/page, canonical/unknown tag, reader return và matrix reflow; phase discovery-corpus dùng SQL publication fixture có nhãn để tìm ngoài 12 bài, AND/pagination và race đảo thứ tự response. READ-02 cache dùng query/filter/cursor làm key; 404 reader gỡ khỏi mọi snapshot và fence response đang bay.
+
+## Hậu kiểm do operator yêu cầu
+
+`vink-app post-review request|result|status|pending` → application `post_review` → persistence
+`post_review` → outbox/`vink-worker` → canonical discussion/own/moderator/endorsement reads.
+Owner, DecisionMap, khóa, retry/deadline, kill switch, backout và giới hạn ở
+[discussion-post-review](discussion-post-review.md); assertions: `tests/postgres/post_review.rs`,
+`post_review::tests`, `post_review_replay`; model `behavior/discussion/post-review.qnt`.
+Đây là map coverage, không khẳng định lane đã PASS; admission activation vẫn chưa có.

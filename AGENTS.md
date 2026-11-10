@@ -153,7 +153,7 @@ approves; `admission.qnt` replay and three Kani harnesses back it. DISC-02/03 ro
 through it: `PgStore` writes the admission's initial state and provenance (migration
 `20261111000000_comment_admission`: born as admitted, `premoderation.v1` only, provenance
 immutable) and refuses a principal suspended before commit (standing fence shared with tag
-saves; `403 principal_suspended`). No trust authority or post-review worker exists, and the D-08
+saves; `403 principal_suspended`). No trust authority or admission post-review producer exists; an explicit operator re-review now has durable tickets, structured audited results, a fenced worker and exhaustion-to-hold (see docs/development/discussion-post-review.md). New operator requests default to disabled; this does not activate publish-first. The D-08
 delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)). DISC-04 adds the App's
 discussion outbox ([decision](docs/architecture/discussion-outbox.md)): `submit_comment` writes a
 `comment.submitted` event and one delivery per consumer in its own transaction (migration

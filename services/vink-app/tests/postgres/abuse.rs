@@ -202,9 +202,10 @@ async fn prune_and_rollback_touch_only_rate_limit_windows(pool: PgPool) {
         .fetch_one(&pool)
         .await
         .unwrap();
-    // Rollbacks run newest first: the later outbox (#120 DISC-04, empty here) and overlay index
-    // (#120 DISC-02/03) go before this one.
+    // Rollbacks run newest first. Operator post-review is unused here; its down script must
+    // preserve debt/audit whenever present, covered by post_review's dedicated tests.
     for down in [
+        "migrations-rollback/20261115000000_comment_post_review.down.sql",
         "migrations-rollback/20261114000000_discussion_outbox.down.sql",
         "migrations-rollback/20261113000000_own_comment_overlay.down.sql",
         "migrations-rollback/20261112000000_auth_rate_limits.down.sql",

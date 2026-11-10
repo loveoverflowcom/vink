@@ -189,8 +189,6 @@ module lifecycle {
         (if (not(isPresent(c))) "unchanged" else if (cmd.expected != c.version) "stale" else "changed")
       else if (not(isPresent(c))) "removed"
       else if (cmd.expected != c.version) "stale"
-      else if ((cmd.value == "approve" and c.review == "approved") or
-               (cmd.value == "reject" and c.review == "rejected")) "unchanged"
       else "changed"
     val decided = if (cmd.value == "remove") { ...c, removal: "moderation", version: c.version + 1 }
       else { ...c, review: if (cmd.value == "approve") "approved" else "rejected", version: c.version + 1 }
@@ -261,7 +259,7 @@ module lifecycle {
     cmd("moderate", 3, 1, 0, 1, "approve"),
     cmd("remove_own", 1, 1, 0, 0, ""), // public but someone else's
     cmd("moderate", 3, 1, 0, 1, "reject"), // late decision on version 1
-    cmd("moderate", 3, 1, 0, 2, "approve"), // already approved: safe retry
+    cmd("moderate", 3, 1, 0, 2, "approve"), // accepted reaffirmation fences the old version
     cmd("submit", 3, 2, 1, 0, ""), // moderator replies like a reader
     cmd("moderate", 3, 2, 0, 1, "approve"), // own comment
     cmd("moderate", 1, 2, 0, 1, "remove"), // author-moderator again
@@ -274,8 +272,8 @@ module lifecycle {
     cmd("moderate", 2, 2, 0, 2, "approve"), // removal is terminal
     cmd("grant", 3, 0, 0, 0, ""),
     cmd("moderate", 3, 1, 0, 1, "remove"), // stale removal
-    cmd("moderate", 3, 1, 0, 2, "remove"),
-    cmd("moderate", 3, 1, 0, 3, "remove"), // already removed
+    cmd("moderate", 3, 1, 0, 3, "remove"),
+    cmd("moderate", 3, 1, 0, 4, "remove"), // already removed
     cmd("submit", 3, 3, 1, 0, ""), // target no longer public
   )
   pure val commentsMode = List(

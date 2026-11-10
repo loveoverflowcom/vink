@@ -151,3 +151,13 @@ Unit/Kani/replay cập nhật theo seam mới: bảng vét cạn `decide_submiss
 receipt và insert luôn mang admission premoderation dù shadow nói gì; `lifecycle_replay` dùng
 `Admission::initial_state` (fixture Quint không đổi vì model không có đình chỉ).
 
+
+## 8. Runtime tái kiểm operator (DISC-POST-REVIEW-RUNTIME)
+
+[Runbook/DecisionMap](../development/discussion-post-review.md) ghi capability mới: operator yêu cầu
+tái kiểm một comment approved/present tại version cụ thể và nộp kết quả structured có audit; worker
+chỉ keep/hold đúng binding, không approve. Nguồn này là `operator_rereview`, không giả ticket admission.
+Mọi human approve/reject được chấp nhận (kể cả cùng trạng thái) tăng version và audit; retry version
+cũ trả conflict. Clear cũ/sau removal cũng stale/removed, không chứng nhận trạng thái mới hơn.
+Exhaustion/deadline phải ghi hold/handoff hoặc superseded/removed trước khi kết thúc nghĩa vụ; DB lỗi
+giữ việc mở. Request mới mặc định disabled; admission producer, trust/rules và D-08 vẫn chưa active.

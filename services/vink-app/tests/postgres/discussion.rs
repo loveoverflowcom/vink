@@ -705,22 +705,22 @@ async fn moderation_is_version_bound_audited_and_cannot_revive_removed_comments(
         (approved.review(), approved.version().get()),
         (Review::Approved, 2)
     );
-    // A second moderator acting on version 1 loses; a repeated decision is a no-op.
+    // Old expected versions lose; a new reaffirmation advances the decision fence.
     assert_eq!(
         moderate(&vink, id, 1, ModerationAction::Reject).await,
         Err(DiscussionError::ModerationConflict { current: 2 })
     );
-    assert_eq!(
-        moderate(&vink, id, 2, ModerationAction::Approve).await,
-        Ok(approved)
-    );
-    let removed = moderate(&vink, id, 2, ModerationAction::Remove)
+    let confirmed = moderate(&vink, id, 2, ModerationAction::Approve)
         .await
         .unwrap();
-    assert_eq!(removed.version().get(), 3);
+    assert_eq!(confirmed.version().get(), 3);
+    let removed = moderate(&vink, id, 3, ModerationAction::Remove)
+        .await
+        .unwrap();
+    assert_eq!(removed.version().get(), 4);
     for action in [ModerationAction::Approve, ModerationAction::Reject] {
         assert_eq!(
-            moderate(&vink, id, 3, action).await,
+            moderate(&vink, id, 4, action).await,
             Err(DiscussionError::Removed)
         );
     }
@@ -748,8 +748,9 @@ async fn moderation_is_version_bound_audited_and_cannot_revive_removed_comments(
         audit,
         vec![
             (2, "approve".to_string(), MODERATOR, None, true),
+            (3, "approve".to_string(), MODERATOR, None, true),
             (
-                3,
+                4,
                 "remove".to_string(),
                 MODERATOR,
                 Some(REASON.to_string()),

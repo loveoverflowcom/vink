@@ -1,0 +1,582 @@
+{
+  "format": "vink-post-review-v1",
+  "quint_version": "0.33.1",
+  "steps": [
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "waiting",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "result",
+        "value": "clear",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "result",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "human",
+        "value": "approved",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "human",
+      "review": "approved",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "superseded",
+      "review": "approved",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "superseded"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "result",
+        "value": "flagged",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "result",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "reclaim",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reclaim",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 2,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "stale",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 2,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 2,
+        "matches": true
+      },
+      "outcome": "held",
+      "review": "pending",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 2,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "held"
+    },
+    {
+      "command": {
+        "op": "requeue",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "requeue",
+      "review": "pending",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 2,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "held"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 2,
+        "matches": true
+      },
+      "outcome": "already",
+      "review": "pending",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 2,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "held"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "tick",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "tick",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 1,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "tick",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "tick",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 2,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "held",
+      "review": "pending",
+      "version": 3,
+      "removed": false,
+      "now": 2,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "held"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "exhaust",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "exhaust",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": true,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "held",
+      "review": "pending",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": true,
+      "receipt": "held"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "remove",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "remove",
+      "review": "approved",
+      "version": 3,
+      "removed": true,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "result",
+        "value": "clear",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "result",
+      "review": "approved",
+      "version": 3,
+      "removed": true,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "removed",
+      "review": "approved",
+      "version": 3,
+      "removed": true,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "removed"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": false
+      },
+      "outcome": "invalid",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "result",
+        "value": "clear",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "result",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "kept",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "clear",
+      "exhausted": false,
+      "receipt": "kept"
+    },
+    {
+      "command": {
+        "op": "reset",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "reset",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "none",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "result",
+        "value": "flagged",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "result",
+      "review": "approved",
+      "version": 2,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "human",
+        "value": "rejected",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "human",
+      "review": "rejected",
+      "version": 3,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "human",
+        "value": "approved",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "human",
+      "review": "approved",
+      "version": 4,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "none"
+    },
+    {
+      "command": {
+        "op": "apply",
+        "value": "none",
+        "held": 1,
+        "matches": true
+      },
+      "outcome": "superseded",
+      "review": "approved",
+      "version": 4,
+      "removed": false,
+      "now": 0,
+      "deadline": 2,
+      "generation": 1,
+      "finding": "flagged",
+      "exhausted": false,
+      "receipt": "superseded"
+    }
+  ]
+}

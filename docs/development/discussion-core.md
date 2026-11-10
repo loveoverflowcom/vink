@@ -176,3 +176,11 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
 
 Pin Kani, lệnh và negative control: [development guide](README.md#kani).
 Kết quả lệnh thực tế được ghi trong PR; sự có mặt của test/CI không tự là PASS.
+
+## Operator re-review runtime
+
+[DISC-POST-REVIEW-RUNTIME](discussion-post-review.md) bổ sung producer/result operator có audit,
+ticket gắn comment/version/digest/deadline và worker keep/hold. Mọi accepted human intent tăng
+version, kể cả approve→approve/reject→reject; replay version cũ conflict. Domain/runtime model và
+replay nằm cạnh admission/outbox; SQL/process tests ở `tests/postgres/post_review.rs`. Nguồn operator
+khác admission, request mới disabled mặc định; D-08/MOD-06 không được nghiệm thu bởi PR này.
