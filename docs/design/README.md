@@ -419,3 +419,5 @@ OS theme, denied storage và editor guard. Kết quả chạy và ảnh được
 không suy ra PASS từ sự tồn tại của assertions.
 
 [#102 — LayoutSpec R1 và ảnh trước/sau](evidence/navigation-rail-102/README.md).
+
+[#135 — Select Web R1.5: geometry và native states](select-r15.md).

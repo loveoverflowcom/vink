@@ -58,6 +58,12 @@ list chung nền, full title/equal inset/exact IDs tại 320–1440/chữ100–2
 `draftDashboard` tiếp tục kiểm 100-item cap, query/IME, sort, quyền, last-success và
 uncertain-create. [LayoutSpec R6](../design/desk-r6.md) thay phân cấp/list grouping
 của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-evidence.md).
+
+Select Web R1.5 (#135) giữ native control ở Bàn viết và gallery. `selectChevron`
+trong cả hai browser runner dùng chung `select-geometry.mjs`: đo 18px/12px/8px,
+tâm dọc, vùng chữ bằng canvas, native type-ahead và disabled/invalid/forced-colors
+ở 320/390/1440 × hai theme × chữ100/200. [Bằng chứng local](select-r15-evidence.md).
+
 Lõi phân loại tác phẩm (chưa có điểm vào người dùng) thêm ngày 08/11/2026 trên nền `6c97917` cho
 [#95](https://github.com/loveoverflowcom/vink/issues/95); xem mục TAG-PR-01 cuối trang.
 Bản đồ mô tả skeleton trong checkout này; lần lập bản đồ chỉ đọc source và assertions,

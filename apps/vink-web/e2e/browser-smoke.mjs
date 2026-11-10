@@ -10,6 +10,7 @@
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
 import { execFileSync, spawn } from 'node:child_process';
+import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
@@ -1950,6 +1951,36 @@ async function captureRecovery(page, state, selector) {
   }
 }
 
+async function selectChevron(page) {
+  console.log('Select #135: shared geometry and native keyboard in the desk:');
+  await page.goto(`${args.base}/ban-viet`);
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#draft-sort')`, 'native sort');
+  for (const theme of ['light','dark']) for (const width of [320,390,1440]) for (const scale of [100,200]) {
+    await page.viewport(width);
+    await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#draft-sort').scrollIntoView({block:'center'})`);
+    await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
+    const scenario=`select-desk-${theme}-${width}-${scale}`;
+    await checkSelectGeometry(page,'#draft-sort',check,scenario);
+    // Real native key dispatch, rather than changing .value or emitting a synthetic change.
+    await page.eval(`document.querySelector('#draft-sort').focus()`);
+    await selectCharacter(page,'t');
+    await page.waitFor(`document.querySelector('#draft-sort').value==='title'`, 'keyboard A–Z');
+    await checkSelectGeometry(page,'#draft-sort',check,`${scenario} A–Z`);
+    await selectCharacter(page,'m');
+    await page.waitFor(`document.querySelector('#draft-sort').value==='recent'`, 'keyboard recent');
+    await page.capture(scenario);
+  }
+  await page.send('Emulation.setEmulatedMedia',{features:[LIGHT_SYSTEM,{name:'forced-colors',value:'active'}]});
+  await page.eval(`document.querySelector('#draft-sort').focus()`);
+  const focus=await page.eval(`(() => {const s=document.querySelector('#draft-sort'),c=getComputedStyle(s);return {native:document.activeElement===s,outline:c.outlineWidth,offset:c.outlineOffset,icon:getComputedStyle(s.parentElement.querySelector('svg')).color,system:(()=>{const p=document.createElement('span');p.style.color='ButtonText';document.body.append(p);const c=getComputedStyle(p).color;p.remove();return c})()}})()`);
+  check(focus.native && focus.outline==='2px' && focus.offset==='-2px' && focus.icon===focus.system,'forced-colors: native sort keeps focus and one inset perimeter');
+  await checkSelectGeometry(page,'#draft-sort',check,'desk forced-colors');
+  await page.capture('select-desk-forced-colors-1440-200');
+  await page.send('Emulation.setEmulatedMedia',{features:[LIGHT_SYSTEM]});
+  await page.eval(`document.documentElement.style.fontSize='';delete document.documentElement.dataset.theme`);
+  await page.viewport(1280);
+}
+
 async function draftR6Hierarchy(page) {
   console.log('Desk R6: same-fixture geometry, complete row targets and primary action:');
   const title = 'Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở'.normalize('NFD');
@@ -2784,6 +2815,7 @@ async function mainPhase(page) {
   await adaptiveShell(page);
   await draftDashboard(page);
   await draftR6Hierarchy(page);
+  await selectChevron(page);
   await publicReading(page);
   await editorChrome(page);
 
@@ -3553,6 +3585,7 @@ try {
   const page = await openPage(cdp);
   activePage = page;
   if (args.phase === 'discussion-only') await discussionReadingAndWrites(page);
+  else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
   else if (args.phase === 'main') await mainPhase(page);
   else if (args.phase === 'after-restart') await afterRestartPhase(page);

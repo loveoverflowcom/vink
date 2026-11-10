@@ -637,14 +637,21 @@
   .vk-ui-search__clear:focus-visible { outline-color: Highlight; }
 }
 
+/* R1.5 (#135): reserve one fixed trailing slot as text grows. Native option labels
+ * use the shared label recipe; rem-scaled insets otherwise consume their measure at 200%. */
 .vk-ui-select {
   appearance: none;
-  padding-inline-end: calc(var(--vk-space-3) + var(--vk-size-icon) + var(--vk-space-2));
+  padding-inline: 12px calc(12px + 18px + 8px);
+  font-size: var(--vk-type-label-size);
+  font-weight: var(--vk-type-label-weight);
+  line-height: var(--vk-type-label-line-height);
   cursor: pointer;
 }
 
 .vk-ui-field__control--select > .vk-ui-icon {
-  inset-inline: auto var(--vk-space-3);
+  inline-size: 18px;
+  block-size: 18px;
+  inset-inline: auto 12px;
 }
 
 /* Floating labels share an intrinsic grid with the input: long Vietnamese labels
@@ -699,6 +706,8 @@
 .vk-ui-field--floating[data-mode="disabled"] .vk-ui-field__control { background: var(--vk-disabled-container); }
 
 @media (forced-colors: active) {
+  .vk-ui-field__control--select > .vk-ui-icon { color: ButtonText; }
+  .vk-ui-field__control--select:has(> select:disabled) > .vk-ui-icon { color: GrayText; }
   .vk-ui-input:not(:focus):not([aria-invalid="true"]),
   .vk-ui-button, .vk-ui-icon-button, .vk-ui-chip, .vk-ui-toggle__control { border: 1px solid ButtonText; }
   .vk-ui-field--floating .vk-ui-field__control { border: 1px solid ButtonText; }
