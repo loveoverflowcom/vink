@@ -2,7 +2,11 @@
 
 ## Bộ định hướng sản phẩm và công nghệ
 
-**Phiên bản:** 0.2 · **Ngày:** 30/10/2026 (UTC+07) · **Trạng thái:** Đề xuất để review, chưa phải ADR đã được phê duyệt hay hệ thống đã triển khai.
+**Phiên bản:** 0.3 · **Ngày:** 30/10/2026 (UTC+07), cập nhật 10/11/2026 · **Trạng thái:** Đề xuất để review, chưa phải ADR đã được phê duyệt hay hệ thống đã triển khai.
+
+**Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 quyết định nghiệp vụ; bắt đầu từ
+[DecisionDelta](architecture/product-decisions-20261110.md) để biết luật nào đã chốt, luật cũ nào bị
+thay hoặc hoãn, code hiện làm gì và hành vi đích nào mới chỉ có model.
 
 **Vink giúp người viết Việt duy trì việc viết, tìm được người đọc phù hợp và tiến bộ qua phản hồi tử tế.** Trải nghiệm ưu tiên văn bản, tiếng Việt và cộng đồng có chủ đích; thiết kế trẻ trung theo Material 3 Expressive, đồng thời đủ yên tĩnh để đọc dài.
 
@@ -24,7 +28,9 @@ Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **
 - **Ưu tiên từ yêu cầu mới:** AI hỗ trợ kiểm duyệt ngay từ MVP. Mức tự động hóa tăng sau khi có kết quả đánh giá và khả năng vận hành phù hợp.
 - **Đã chốt 03/11/2026:** Vink sở hữu bình luận (module trong app, PostgreSQL); tác giả bật/tắt bình luận theo tác phẩm, không sửa/xóa bình luận người khác.
 - **Khuyến nghị:** Vink sở hữu nội dung văn học, Rust modular monolith, một nguồn định danh Vink ổn định.
-- **Chưa chốt:** Nhà cung cấp xác thực (D-05 có đề xuất provisional từ spike S-03: authority native mã email), authority và màn tiền kiểm bình luận, nhóm tuổi phục vụ, thời điểm mở nhiều chương và ngân sách hiệu suất/AI.
+- **Hướng sản phẩm đã chốt 10/11/2026 (chưa có runtime):** mạng xã hội bài ngắn với bộ sưu tập cá nhân; hai audience “Chỉ mình tôi”/“Công khai”; trợ lý AI là luồng duyệt mặc định cho bài và bình luận, quản trị viên ở trên và nhận phản đối; tác giả xóa bài để lại trang thay thế cùng bình luận hợp lệ; sửa bình luận có dấu “Đã sửa”; hashtag; Đề xuất và Top 100; username + mật khẩu là đăng nhập chính.
+- **Hoãn 10/11/2026:** nhóm tuổi phục vụ (không phải quyết định mở cho mọi độ tuổi), tác phẩm nhiều chương, Tạp Chí/tuyển chọn.
+- **Chưa chốt:** D-05 chưa Accepted (code hiện chỉ có mã email; hướng mới là username + mật khẩu), công thức và tham số xếp hạng, retention/purge sau khi xóa, các điểm `OPEN` trong DecisionDelta, ngân sách hiệu suất/AI.
 - **Đã đối chiếu nguồn:** Cantos `develop` tại commit `a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330`; tài liệu chính thức Discourse và các công nghệ tham chiếu ngày 30/10/2026. Đây là bằng chứng về nguồn được đọc, không xác nhận trạng thái production.
 
 ## Những thay đổi chính so với vision ban đầu
@@ -38,7 +44,7 @@ Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **
 
 ## Bước triển khai đầu tiên được đề xuất
 
-Chốt nhóm beta và phạm vi tác phẩm; thử một luồng xuyên suốt **soạn tiếng Việt → lưu nháp → gửi duyệt → xuất bản đúng phiên bản → bình luận hai tầng có tiền kiểm → sửa bản mới trong khi bản cũ vẫn đọc được**. Chỉ sau khi luồng này vượt qua các tình huống lỗi quan trọng mới mở rộng tính năng.
+Thử một luồng xuyên suốt **soạn bài ngắn bằng tiếng Việt → lưu nháp riêng → gửi trợ lý AI kiểm duyệt → công khai đúng phiên bản → bình luận hai tầng qua kiểm duyệt → sửa bản mới trong khi bản đã duyệt vẫn đọc được**. Kiểm các tình huống lỗi của luồng trước khi mở rộng tính năng. Chính sách nhóm tuổi được hoãn.
 
 Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026. Việc nhập tài liệu không phê duyệt các đề xuất và không xác nhận đã triển khai hay kiểm chứng runtime Vink.
 
@@ -48,6 +54,7 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | --- | --- | --- |
 | Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
 | Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md), [Auth authority D-05](architecture/auth-authority.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; D-05 đề xuất authority native mã email (Provisional, spike S-03); chưa phải ADR Accepted |
+| Quyết định sản phẩm 10/11/2026 | [DecisionDelta + kế hoạch](architecture/product-decisions-20261110.md), [xuất bản/kiểm duyệt/tombstone](architecture/publication-moderation.md), [sửa bình luận](architecture/comment-editing.md), [bộ sưu tập](architecture/collections.md), [Đề xuất và Top 100](architecture/discovery-ranking.md), [hashtag](architecture/hashtags.md), [registry](development/product-decisions-registry.md), [model đích](../services/vink-app/behavior/target/README.md) | Luật đã chốt, lựa chọn đề xuất, điểm mở, sáu model Quint đích có negative control; **chưa có implementation**, không phải ADR Accepted |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
 | Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
 | Discussion hai tầng | [Core/registry](development/discussion-core.md), [ownership đã chốt](architecture/discussion-ownership.md), [admission #120](architecture/discussion-admission.md), [đọc public/overlay #120](architecture/discussion-reads.md), [outbox/worker #120](architecture/discussion-outbox.md), [LayoutSpec UI](design/discussion-ui.md) | Core/lifecycle + Quint replay, PostgreSQL/API và Web reader hai tầng; ghi cục bộ qua LocalFixture, production auth và Google assets còn thiếu |

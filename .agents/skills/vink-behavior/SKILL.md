@@ -20,6 +20,11 @@ do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are i
 shares that directory and lane; its registry is `docs/development/literary-endorsement-core.md`.
 `verify kani` checks single discussion decisions (version/generation arithmetic, viewer projection)
 over whole input domains; it is no sequence or race proof. There is no generic behavior lane.
+`services/vink-app/behavior/target` holds target specifications for the owner's decisions of
+10/11/2026 (publication/moderation, tombstone, collections, comment editing, discovery ranking,
+appeals): they run as a step of `verify discussion`, have generated vectors and negative controls,
+and have **no Rust replay**, so they are model evidence only. When code implements one, move the
+model to its owner directory with a replay instead of keeping a second model of the same policy.
 Other stateful code keeps its own boundary tests:
 draft CAS in `tests/postgres.rs`, the desk save state machine in
 `apps/vink-web/src/desk_state.rs`.

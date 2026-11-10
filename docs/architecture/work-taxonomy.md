@@ -9,6 +9,12 @@ baseline `develop@6c97917b6a7aa4c51f3b2fe816462c8a0a47fc64`. **Trạng thái:** 
 [PRD §13](../../prd/requirements.md#13-phân-loại-tác-phẩm-tag); requirement → function → test/proof
 ở [registry](../development/taxonomy-core.md).
 
+> **Cập nhật 10/11/2026:** chủ sản phẩm thêm **hashtag** do tác giả tự viết để lọc/tìm
+> ([đặc tả đích](hashtags.md), D-17). Hashtag là hệ **riêng**: catalog curated và giới hạn “một dạng
+> bài, ba chủ đề” của tài liệu này giữ nguyên, không bị chuyển thành hashtag và không áp giới hạn đó
+> cho hashtag. Nguyên tắc “bỏ dấu chỉ để tìm ứng viên, không quyết định danh tính” (TAG-FR-03) được
+> dùng lại. Chưa có code hashtag.
+
 ## 1. Hiện trạng đã đối chiếu (source review)
 
 | Finding | Source | Hệ quả cho core |

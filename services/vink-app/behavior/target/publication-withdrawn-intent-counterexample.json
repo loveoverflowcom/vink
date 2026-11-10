@@ -1,0 +1,16 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "publication.qnt",
+  "invariant": "publicNeedsEverything",
+  "command": ["quint","run","publication.qnt","--backend=typescript","--seed=41","--step=mutatedIntentStep","--max-steps=4","--max-samples=1","--invariant=publicNeedsEverything","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedIntentStep", "steps": [
+      {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none"}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},
+      {"command":{"actor":"author","expected":1,"job":0,"op":"request_public","rev":1,"value":"none"},"outcome":"submitted","state":{"revs":{"1":{"by":"none","decision":"pending"}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":0,"lifecycle":"active","generation":2,"policy":1}},
+      {"command":{"actor":"author","expected":2,"job":0,"op":"set_private","rev":0,"value":"none"},"outcome":"made_private","state":{"revs":{"1":{"by":"none","decision":"pending"}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":3,"policy":1}},
+      {"command":{"actor":"evaluator","expected":0,"job":1,"op":"ai_result","rev":1,"value":"approve"},"outcome":"published","state":{"revs":{"1":{"by":"ai","decision":"approved"}},"jobs":{"1":{"policy":1,"rev":1,"state":"applied"}},"audience":"private","desired":0,"intended":[],"pointer":1,"lifecycle":"active","generation":3,"policy":1}}
+    ]}
+  ]
+}

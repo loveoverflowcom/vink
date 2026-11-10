@@ -1,6 +1,10 @@
 # Vision Vink — Việt Ink
 
-**Phiên bản:** 0.2 · **Ngày:** 30/10/2026 · **Trạng thái:** Đề xuất sản phẩm để review.
+**Phiên bản:** 0.3 · **Ngày:** 30/10/2026, cập nhật 10/11/2026 · **Trạng thái:** Đề xuất sản phẩm để review.
+
+**Cập nhật 10/11/2026 (chủ sản phẩm):** Vink hiện là **mạng xã hội các bài viết ngắn/tản văn**.
+Phạm vi đã chốt và phần hoãn được ghi ở [mục 13](#13-phạm-vi-đã-chốt-ngày-10112026); các mục 1–12
+giữ nguyên làm định hướng và lịch sử, chỗ nào mâu thuẫn với mục 13 thì mục 13 thắng.
 
 ## 1. Lời hứa của sản phẩm
 
@@ -144,3 +148,29 @@ Chưa đặt KPI tăng trưởng hay tỷ lệ duyệt tự động cố định
 5. ~~Trong beta, phần thảo luận nâng cao có được chuyển sang giao diện Discourse để giảm khối lượng phát triển không?~~ Đã trả lời 03/11/2026: không; Vink tự sở hữu bình luận ([ADR ownership](../docs/architecture/discussion-ownership.md)).
 
 Các mặc định đề xuất và điều kiện đổi hướng nằm trong [Architecture Decisions](../docs/architecture/decisions.md). Tài liệu vision này là tổng hợp và đề xuất từ tài liệu người dùng, không phải báo cáo khảo sát thị trường; nguồn đầu vào được ghi ở [Sources](../docs/references/sources.md).
+
+## 13. Phạm vi đã chốt ngày 10/11/2026
+
+Nguồn: `PRODUCT-DECISIONS-20261110`; ánh xạ đầy đủ ở
+[DecisionDelta](../docs/architecture/product-decisions-20261110.md), yêu cầu có ID ở
+[requirements §14](requirements.md#14-quyết-định-sản-phẩm-10112026). Đây là hướng sản phẩm đã chọn,
+**chưa** phải tính năng đã có: phần lớn chưa có implementation.
+
+| Chủ đề | Đã chốt | Thay cho |
+| --- | --- | --- |
+| Định vị | Mạng xã hội bài viết ngắn/tản văn; tác giả tổ chức bài bằng **bộ sưu tập cá nhân** | Mục 2 “tiểu thuyết nhiều chương là hướng phát triển có chủ đích”; mục 10 “nhiều chương cơ bản” ở public beta: **hoãn**, không triển khai |
+| Riêng tư | Bài và bộ sưu tập có đúng hai mức: **Chỉ mình tôi** / **Công khai**. Công khai vẫn qua kiểm duyệt | Mục 8 “nhóm góp ý kín, liên kết không niêm yết… thiết kế quyền riêng trước khi mở”: không mở |
+| Kiểm duyệt | **Trợ lý AI** là luồng duyệt mặc định cho bài và bình luận, có thể tự quyết định; **quản trị viên** (chủ sản phẩm) có quyền cao hơn và là nơi nhận phản đối. Hiện chỉ có đặc tả và mock; chưa có trợ lý thật, dashboard hay kênh gửi | Mục 7 “trong pilot, kết quả có thể chỉ là gợi ý cho người duyệt”; mục 5 “phải có người phụ trách cùng khung xử lý được thông báo”: không mặc định có người trực, không tự đặt thời hạn |
+| Xóa bài | Tác giả xóa bài đang công khai: nội dung biến mất khỏi mọi nơi phân phối; link cũ mở trang “Nội dung đã được tác giả xoá” và vẫn đọc được các bình luận hợp lệ | Mục 8 “rút bản xuất bản” chưa nói về bình luận |
+| Bình luận | Người viết được sửa bình luận của mình; bản sửa được kiểm duyệt và mang dấu “Đã sửa” | — |
+| Khám phá | **Hashtag** do tác giả dùng để lọc; **Đề xuất** ưu tiên đánh giá cao và gần đây; **Top 100** theo đánh giá cao | Mục 5 trang chủ tuyển chọn; mục 6 “số lượt thích không chiếm vị trí chính”: vote nay là đầu vào xếp hạng, vẫn không là điểm nghệ thuật hay quyền đăng |
+| Đăng nhập | **Username + mật khẩu** là chính; mã email có thể bổ sung sau; username khác bút danh | Đề xuất mã email của D-05 |
+| Tạp Chí | **Hoãn**: chưa có Tạp Chí, tuyển chọn, biên tập; không còn là điều kiện của bản đầu | Mục 3 “Tạp Chí”, mục 4 “tuyển tập nhỏ”, vai trò “hỗ trợ tuyển chọn” của AI ở mục 7 |
+| Nhóm tuổi | **Hoãn**: chưa quyết định phục vụ nhóm tuổi nào; chưa làm age gate hay thu thập ngày sinh. Hoãn không có nghĩa mở cho mọi độ tuổi | Mục 2 “nhóm beta đầu có thể là người trưởng thành được mời”; câu hỏi 1 ở mục 12 |
+
+Những điều **không đổi**: Bàn viết riêng tư và lưu nháp tin cậy; lưu nháp không gửi bản thảo cho
+AI; kiểm duyệt theo chính sách cộng đồng, không theo “hay/dở”; tác giả bật/tắt nhận bình luận
+nhưng không sửa/xóa lời người khác; không số liệu giả; tiếng Việt, thơ và đoạn văn được giữ đúng.
+
+Trong mục 12, câu hỏi 1 (nhóm tuổi) được hoãn; câu hỏi 2 (nhiều chương) và 3 (hai mức riêng tư)
+đã có câu trả lời ở bảng trên; câu hỏi 4 (Tạp Chí) được hoãn.

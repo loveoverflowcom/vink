@@ -4,16 +4,18 @@
 
 Vink là không gian để viết, đọc, học hỏi, chia sẻ và góp ý tác phẩm. Sản phẩm hướng tới một cộng đồng hiện đại, trẻ trung và có chiều sâu, ưu tiên chất lượng nội dung hơn số lượng bài đăng hay tương tác ảo.
 
-**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.2 là đề xuất để review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Có API bình luận và UI đọc thảo luận hai tầng; gửi/gỡ/bật-tắt chỉ kiểm được bằng định danh mẫu cục bộ. Chưa có đăng nhập production hoặc UI kiểm duyệt/xuất bản; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
+**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.3 ghi các quyết định sản phẩm đã chốt và các đề xuất kỹ thuật cần review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Có API bình luận và UI đọc thảo luận hai tầng; kiểm thử gửi/gỡ/bật-tắt dùng định danh mẫu cục bộ. Đăng nhập mã email có UI và đã được kiểm cục bộ; production vẫn khóa đăng nhập mặc định. Chưa có UI kiểm duyệt/xuất bản; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
 
 ## Trải nghiệm hướng tới
 
 - **Sáng tác:** Truyện ngắn, tiểu thuyết, thơ, tản văn, nhật ký và bài tập văn.
 - **Cộng đồng:** Bình luận, góp ý, đánh giá tác phẩm và theo dõi tác giả.
 - **Học viết:** Thử thách sáng tác, đề bài định kỳ, trao đổi kỹ thuật viết và phê bình văn học.
-- **Khám phá:** Giao diện tạp chí tuyển chọn tác phẩm, vẫn hấp dẫn khi cộng đồng còn ít nội dung.
+- **Khám phá:** Tìm bài theo hashtag, qua Đề xuất và Top 100.
 
-Ba không gian đề xuất là **Bàn viết** để soạn nháp riêng, **Xưởng Viết** để chủ động chia sẻ và nhận phản hồi, **Tạp Chí** để khám phá tác phẩm được biên tập tuyển chọn. AI hỗ trợ kiểm duyệt từ MVP; mức tự động hóa cần được đánh giá trước khi mở.
+**Bàn viết** là nơi soạn nháp riêng; **Xưởng Viết** là không gian đề xuất để chủ động chia sẻ và nhận phản hồi.
+
+**Cập nhật 10/11/2026:** chủ sản phẩm chốt Vink là mạng xã hội các bài viết ngắn/tản văn; Tạp Chí, tác phẩm nhiều chương và quyết định nhóm tuổi được hoãn; trợ lý AI là luồng kiểm duyệt mặc định (hiện mới có đặc tả và dữ liệu kiểm thử mô phỏng). Xem [quyết định sản phẩm 10/11/2026](docs/architecture/product-decisions-20261110.md).
 
 Thiết kế hướng tới **Material 3 Expressive**, giàu cảm xúc, thân thiện với giới trẻ và phù hợp với việc đọc văn dài.
 
@@ -25,7 +27,7 @@ Ngoài owner thảo luận, các lựa chọn này chưa phải ADR Accepted; ed
 
 ## Tài liệu
 
-- [Bản đồ tài liệu và bộ foundation v0.2](docs/README.md)
+- [Bản đồ tài liệu và bộ định hướng v0.3](docs/README.md)
 - [Phát triển: setup, lệnh, cấu trúc code và giới hạn skeleton](docs/development/README.md)
 - [Vision và định hướng sản phẩm](prd/vision.md)
 - [Requirements và tiêu chí nghiệm thu](prd/requirements.md)

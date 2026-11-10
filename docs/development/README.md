@@ -16,7 +16,7 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 [Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
 PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 [ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
-đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database; #120 DISC-02/03 thêm public projection không phụ thuộc Identity và overlay riêng tư có cursor riêng ([quyết định](../architecture/discussion-reads.md)). [UI thảo luận](../design/discussion-ui.md) dùng public projection cho SSR/browser và own list/lookup sau hydration; [Web reads](discussion-web-reads.md) giữ cursor, capability và request theo Session scope. Chỉ LocalFixture hiện cho kiểm ghi cục bộ, có nhãn rõ; production trả `401`, chưa có UI kiểm duyệt hoặc auth authority.
+đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database; #120 DISC-02/03 thêm public projection không phụ thuộc Identity và overlay riêng tư có cursor riêng ([quyết định](../architecture/discussion-reads.md)). [UI thảo luận](../design/discussion-ui.md) dùng public projection cho SSR/browser và own list/lookup sau hydration; [Web reads](discussion-web-reads.md) giữ cursor, capability và request theo Session scope. Kiểm thử ghi cục bộ dùng LocalFixture có nhãn rõ; đăng nhập production mặc định khóa và chưa có UI kiểm duyệt.
 
 [Đọc công khai có điều kiện](public-conditional-reads.md) (READ-01, [#52](https://github.com/loveoverflowcom/vink/issues/52))
 ghi ETag mạnh trên đúng byte JSON, `private, no-cache`, thứ tự lỗi trước 304, bằng chứng và số đo.
@@ -203,7 +203,7 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `cargo xtask ui-preview cmp build\|run\|verify` | Gradle trong `packages/ui-system/cmp`: compile `:ui`/`:preview` (desktop); `run` mở cửa sổ; `verify` chạy test common + desktop và ghi ảnh vào `packages/ui-system/cmp/preview/build/captures`. `VINK_UI_NATIVE_TARGETS=1` thêm Android/iOS | JDK/Gradle thiếu, compile hoặc test lỗi |
 | `cargo xtask verify quick` | `ui-tokens --check`, `fmt`, clippy server (workspace, `ssr`), clippy browser (`hydrate`, wasm32), clippy preview UI (`vink-ui-preview`, `csr`, wasm32), doctests type-boundary của literary core (`vink-app`), unit/contract tests không cần database (gồm `vink-ui`, `vink-ui-preview`, generator), kiểm skills/link/ranh giới module (UI system không phụ thuộc service/router/storage; Kotlin `commonMain` không import API nền tảng), font/logo asset theo `provenance.json`, phiên bản pin của runtime editor, mọi crate kế thừa lint workspace (`unsafe_code = "forbid"`) và mỗi doctest `compile_fail` có lawful twin | Một bước lỗi |
 | `cargo xtask verify postgres` | Test integration của Store, App và Identity trên PostgreSQL thật ([mặc định 2 luồng mỗi gói](#giới-hạn-song-song-khi-kiểm-thử)); config sai thoát 2; `provision.sh` thật với tên tạm (DB cũ được nhận quyền, DB mới, Identity, chạy lại, ca âm), migrate/seed bằng role tách, thử DDL/kết nối chéo, worker start/SIGTERM bằng role runtime | Thiếu `VINK_TEST_DATABASE_URL`, PostgreSQL hoặc `psql` 15+, hoặc một bước lỗi |
-| `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production; trước khi chạy, đòi filter test chọn đúng tám test replay có tên (`REPLAYS` trong `xtask/src/discussion.rs`) | Thiếu Node/npm, sai tool version, model/test/drift, negative control không phát hiện lỗi hoặc test replay không được chọn |
+| `cargo xtask verify discussion` | Cài Quint pinned, typecheck/scenarios, simulation seed cố định, mutation counterexample, drift fixture và replay vào Rust production; trước khi chạy, đòi filter test chọn đủ mười test replay có tên (`REPLAYS` trong `xtask/src/discussion.rs`). Thêm một bước riêng chạy [đặc tả đích 10/11/2026](../../services/vink-app/behavior/target/README.md) (typecheck, simulation, scenario, drift vectors, negative control) — bước này **không** có replay Rust | Thiếu Node/npm, sai tool version, model/test/drift, negative control không phát hiện lỗi hoặc test replay không được chọn |
 | `cargo xtask verify web` | Build, database tạm `vink_verify_web` (tạo bằng `VINK_TEST_DATABASE_URL`), server thật, Chrome headless, SIGTERM, restart | Thiếu PostgreSQL/Node/Chrome/wasm-bindgen hoặc một bước lỗi |
 | `cargo xtask verify expressions` | Noto manifest/hash/drift, Quint lifecycle simulation/negative control và Rust replay (xem mục EMO-01A); test replay có tên phải được chọn | Thiếu dependency hoặc bất kỳ kiểm nào lỗi |
 | `cargo xtask verify kani` | Kiểm `cargo-kani` đúng pin rồi chạy từng manifest Kani owner-local ([mục Kani](#kani)); đòi tổng kết khớp đúng số `#[kani::proof]` trong các file harness đã đăng ký của manifest | Thiếu/sai version verifier, harness lỗi hoặc số harness được kiểm khác số khai báo |
@@ -418,6 +418,10 @@ Hai feature `ssr` và `hydrate` là hai build riêng; không dùng `--all-featur
 Không lane nào chứng minh AI moderation, xác thực, publish/withdraw, hiệu năng hay triển khai.
 Model Quint của thảo luận phủ cấu trúc D2T-01, vòng đời D2T-02 cùng receipt D2T-INV-06, reaction D2T-INV-08, ghi nhận văn học LVE #73, admission/hậu kiểm #120 và outbox DISC-04 ([owner](../../services/vink-app/behavior/discussion/README.md));
 HTTP và browser có lane riêng. Draft CAS vẫn có boundary tests PostgreSQL riêng.
+Sáu model đích của quyết định sản phẩm 10/11/2026 (xuất bản/kiểm duyệt, tombstone, bộ sưu tập, sửa
+bình luận, xếp hạng, phản đối) nằm ở `services/vink-app/behavior/target`; chúng chạy trong lane
+`discussion` nhưng **chưa có code nào thực thi chúng**, nên PASS của bước đó không nói gì về
+runtime ([registry](product-decisions-registry.md)).
 
 ## Kani
 

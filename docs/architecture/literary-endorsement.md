@@ -7,6 +7,13 @@ production policy. Nội dung lõi liên quan trong snapshot Drive r1/issue đư
 [PRD canonical](../../prd/requirements.md#12-literary-endorsement-lve) và tài liệu này;
 phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/INV/COM hiện hành.
 
+> **Cập nhật 10/11/2026:** chủ sản phẩm chốt hai cách dùng “Đánh giá cao” của **tác phẩm** để xếp
+> hạng: feed Đề xuất (vote + độ mới) và Top 100 (vote) — [đặc tả đích](discovery-ranking.md), D-18.
+> Đầu vào là tổng công khai của revision hiện tại như tài liệu này định nghĩa; “Hữu ích” của bình
+> luận không bao giờ là vote của tác phẩm; thứ tự bình luận không đổi. Hai hệ quả còn `OPEN`: count
+> bắt đầu lại khi đăng revision mới ảnh hưởng thứ hạng (O-07), và “Hữu ích” khi bình luận được sửa
+> (O-06, [đặc tả](comment-editing.md)). Không lựa chọn nào của lát LVE bị đổi; chưa có code xếp hạng.
+
 ## Hợp nhất sau #78/#79
 
 Theo yêu cầu merge PR #80, slice này tiếp nối lõi #78 đã vào develop. Chỉ giữ

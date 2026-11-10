@@ -2,12 +2,15 @@
 //! literary endorsement LVE (#73) and admission/post-review (#120) models and their real Rust
 //! seams share one local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
+//! The target specifications of the 10/11/2026 product decisions share the Quint pin and run
+//! as their own step: they have no Rust implementation, so that step is model evidence only.
 
 use std::process::Command;
 
 use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
+const TARGET_DIR: &str = "services/vink-app/behavior/target";
 const FILTERS: [&str; 9] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
@@ -60,6 +63,19 @@ pub fn verify(report: &mut Report) -> bool {
             process::run(
                 &mut model,
                 "verify the discussion models and generated traces",
+            )
+        },
+    ) {
+        return false;
+    }
+    let mut target = Command::new("node");
+    target.current_dir(root.join(TARGET_DIR)).arg("verify.mjs");
+    if !report.step(
+        "discussion: target specifications (not implemented): Quint models and vector drift",
+        || {
+            process::run(
+                &mut target,
+                "verify the target specifications and generated vectors",
             )
         },
     ) {
