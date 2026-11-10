@@ -1,0 +1,1392 @@
+{
+  "before-r14-clean-1440-100-dark.png": {
+    "route": "/ban-viet/01a1c2bd-c719-7393-9da0-7a5cd977ed9c",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 400.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 1032.828125,
+        "y": 81.59375,
+        "width": 75.671875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 424.5,
+        "y": 213.09375,
+        "width": 672,
+        "height": 48,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 424.5,
+        "y": 318.6875,
+        "width": 672,
+        "height": 450,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-09T23:56:20.175Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9",
+      "toolbar": {
+        "x": 400.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 64,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "sticky"
+      },
+      "paper": {
+        "x": 400.5,
+        "y": 161.59375,
+        "width": 720,
+        "height": 685.484375,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "title": {
+        "x": 424.5,
+        "y": 213.09375,
+        "width": 672,
+        "height": 48,
+        "font": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+        "size": "22px",
+        "position": "static"
+      },
+      "body": {
+        "x": 424.5,
+        "y": 318.6875,
+        "width": 672,
+        "height": 450,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "info": {
+        "x": 400.5,
+        "y": 871.078125,
+        "width": 720,
+        "height": 342.515625,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "main": {
+        "x": 184.5,
+        "y": 0,
+        "width": 1152,
+        "height": 1261.59375,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "overflow": false
+    }
+  },
+  "before-r14-clean-1440-200-light.png": {
+    "route": "/ban-viet/01a1c2bd-c719-7393-9da0-7a5cd977ed9c",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "light",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 160,
+        "y": 147.1875,
+        "width": 1201,
+        "height": 121.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 1187.671875,
+        "y": 163.1875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 203.1875,
+        "y": 414.5625,
+        "width": 1114.625,
+        "height": 89.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 203.1875,
+        "y": 618.9375,
+        "width": 1114.625,
+        "height": 788.28125,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-09T23:56:20.339Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9",
+      "toolbar": {
+        "x": 160,
+        "y": 147.1875,
+        "width": 1201,
+        "height": 121.1875,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "paper": {
+        "x": 160,
+        "y": 316.375,
+        "width": 1201,
+        "height": 1242.828125,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "title": {
+        "x": 203.1875,
+        "y": 414.5625,
+        "width": 1114.625,
+        "height": 89.1875,
+        "font": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+        "size": "44px",
+        "position": "static"
+      },
+      "body": {
+        "x": 203.1875,
+        "y": 618.9375,
+        "width": 1114.625,
+        "height": 788.28125,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "info": {
+        "x": 160,
+        "y": 1607.203125,
+        "width": 1201,
+        "height": 676.484375,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "main": {
+        "x": 96,
+        "y": 0,
+        "width": 1329,
+        "height": 2379.6875,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "overflow": false
+    }
+  },
+  "before-r14-clean-1440-100-dark-metadata.png": {
+    "route": "/ban-viet/01a1c2bd-c719-7393-9da0-7a5cd977ed9c",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 458,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 400.5,
+        "y": 8,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 1032.828125,
+        "y": 16,
+        "width": 75.671875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 424.5,
+        "y": -244.90625,
+        "width": 672,
+        "height": 48,
+        "fontSize": "22px",
+        "lineHeight": "28.6px"
+      },
+      "body": {
+        "x": 424.5,
+        "y": -139.3125,
+        "width": 672,
+        "height": 450,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-09T23:56:20.240Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9"
+    }
+  },
+  "before-r14-clean-320-200-dark-metadata.png": {
+    "route": "/ban-viet/01a1c2bd-c719-7393-9da0-7a5cd977ed9c",
+    "width": 320,
+    "layoutWidth": 305,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 3655,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": null,
+      "railScrollWidth": 0,
+      "railClientWidth": 0,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 32,
+        "y": -3458.21875,
+        "width": 241,
+        "height": 277.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": -3286.21875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 56,
+        "y": -3054.03125,
+        "width": 193,
+        "height": 89.1875,
+        "fontSize": "44px",
+        "lineHeight": "57.2px"
+      },
+      "body": {
+        "x": 56,
+        "y": -2849.65625,
+        "width": 193,
+        "height": 2579.625,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-09T23:56:21.414Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9"
+    }
+  },
+  "after-r14-clean-1440-100-dark.png": {
+    "route": "/ban-viet/01a1c2c5-33f4-712c-98c5-e5fa0df9862f",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 400.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 1032.828125,
+        "y": 81.59375,
+        "width": 75.671875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 424.5,
+        "y": 213.09375,
+        "width": 672,
+        "height": 52.390625,
+        "fontSize": "28px",
+        "lineHeight": "36.4px"
+      },
+      "body": {
+        "x": 424.5,
+        "y": 315.671875,
+        "width": 672,
+        "height": 450,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-10T00:04:26.811Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9",
+      "toolbar": {
+        "x": 400.5,
+        "y": 73.59375,
+        "width": 720,
+        "height": 64,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "sticky"
+      },
+      "paper": {
+        "x": 400.5,
+        "y": 161.59375,
+        "width": 720,
+        "height": 682.46875,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "title": {
+        "x": 424.5,
+        "y": 213.09375,
+        "width": 672,
+        "height": 52.390625,
+        "font": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+        "size": "28px",
+        "position": "static"
+      },
+      "body": {
+        "x": 424.5,
+        "y": 315.671875,
+        "width": 672,
+        "height": 450,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "info": {
+        "x": 400.5,
+        "y": 868.0625,
+        "width": 720,
+        "height": 190.765625,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "main": {
+        "x": 184.5,
+        "y": 0,
+        "width": 1152,
+        "height": 1106.828125,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "16px",
+        "position": "static"
+      },
+      "overflow": false
+    }
+  },
+  "after-r14-clean-1440-200-light.png": {
+    "route": "/ban-viet/01a1c2c5-33f4-712c-98c5-e5fa0df9862f",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "theme": "light",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "light",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 160,
+        "y": 147.1875,
+        "width": 1201,
+        "height": 121.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 1187.671875,
+        "y": 163.1875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 203.1875,
+        "y": 414.5625,
+        "width": 1114.625,
+        "height": 104.796875,
+        "fontSize": "56px",
+        "lineHeight": "72.8px"
+      },
+      "body": {
+        "x": 203.1875,
+        "y": 619.75,
+        "width": 1114.625,
+        "height": 788.28125,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-10T00:04:26.979Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9",
+      "toolbar": {
+        "x": 160,
+        "y": 147.1875,
+        "width": 1201,
+        "height": 121.1875,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "paper": {
+        "x": 160,
+        "y": 316.375,
+        "width": 1201,
+        "height": 1243.640625,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "title": {
+        "x": 203.1875,
+        "y": 414.5625,
+        "width": 1114.625,
+        "height": 104.796875,
+        "font": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+        "size": "56px",
+        "position": "static"
+      },
+      "body": {
+        "x": 203.1875,
+        "y": 619.75,
+        "width": 1114.625,
+        "height": 788.28125,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "info": {
+        "x": 160,
+        "y": 1608.015625,
+        "width": 1201,
+        "height": 359.140625,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "main": {
+        "x": 96,
+        "y": 0,
+        "width": 1329,
+        "height": 2063.15625,
+        "font": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+        "size": "32px",
+        "position": "static"
+      },
+      "overflow": false
+    }
+  },
+  "after-r14-clean-1440-100-dark-metadata.png": {
+    "route": "/ban-viet/01a1c2c5-33f4-712c-98c5-e5fa0df9862f",
+    "width": 1440,
+    "layoutWidth": 1425,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 303,
+    "theme": "dark",
+    "fontSize": "16px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": {
+        "x": 0,
+        "y": 0,
+        "width": 96,
+        "height": 900,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "railScrollWidth": 96,
+      "railClientWidth": 96,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 400.5,
+        "y": 8,
+        "width": 720,
+        "height": 64,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "save": {
+        "x": 1032.828125,
+        "y": 16,
+        "width": 75.671875,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "title": {
+        "x": 424.5,
+        "y": -89.90625,
+        "width": 672,
+        "height": 52.390625,
+        "fontSize": "28px",
+        "lineHeight": "36.4px"
+      },
+      "body": {
+        "x": 424.5,
+        "y": 12.671875,
+        "width": 672,
+        "height": 450,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-10T00:04:26.874Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9"
+    }
+  },
+  "after-r14-clean-320-200-dark-metadata.png": {
+    "route": "/ban-viet/01a1c2c5-33f4-712c-98c5-e5fa0df9862f",
+    "width": 320,
+    "layoutWidth": 305,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 3656,
+    "theme": "dark",
+    "fontSize": "32px",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "dark",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": null,
+      "railScrollWidth": 0,
+      "railClientWidth": 0,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": null,
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": null,
+      "tools": null,
+      "search": null,
+      "sort": null,
+      "refresh": null,
+      "scope": null,
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": null,
+      "searchField": null,
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "status": "saved",
+      "toolbar": {
+        "x": 32,
+        "y": -3459.21875,
+        "width": 241,
+        "height": 277.1875,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "save": {
+        "x": 56,
+        "y": -3287.21875,
+        "width": 149.328125,
+        "height": 89.1875,
+        "fontSize": "28px",
+        "lineHeight": "39.2px"
+      },
+      "title": {
+        "x": 56,
+        "y": -3055.03125,
+        "width": 193,
+        "height": 104.796875,
+        "fontSize": "56px",
+        "lineHeight": "72.8px"
+      },
+      "body": {
+        "x": 56,
+        "y": -2849.84375,
+        "width": 193,
+        "height": 2579.625,
+        "fontSize": "32px",
+        "lineHeight": "51.2px"
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": null,
+      "labels": [
+        {
+          "label": "Khám phá",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Bàn viết",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        },
+        {
+          "label": "Tôi",
+          "target": null,
+          "icon": null,
+          "text": null,
+          "firstLine": null
+        }
+      ]
+    },
+    "captured_at": "2026-11-10T00:04:28.080Z",
+    "evidence": {
+      "build": "a90a54e3dc43131d755c53770190a4082c3ae6a9"
+    }
+  }
+}

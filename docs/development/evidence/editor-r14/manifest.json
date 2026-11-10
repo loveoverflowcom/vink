@@ -1,0 +1,41 @@
+{
+  "base": "a90a54e3dc43131d755c53770190a4082c3ae6a9",
+  "branch": "codex/editor-r14-alignment",
+  "source_sha256": {
+    "apps/vink-web/src/pages/desk.rs": "4ec4dac054b688a1cfae7322ccfef249f23d8d30084d0f27b8f1d46234dd28b2",
+    "apps/vink-web/src/pages/work_info.rs": "ef4f737a498f7fbb80e82caf398ca312ed57819bdeaf1d126bca5e8fd127b3d3",
+    "apps/vink-web/style/vink.css": "aefe46d314f4837e515f024e09dedeff3f8babdd3063e9ae503830c5095e62c8",
+    "apps/vink-web/e2e/browser-smoke.mjs": "46a2588d74ad58c3c04b6411011092e8ae3765b0d1de5999f00c4c6f03a47e98"
+  },
+  "capture_inputs": "Same sample prose, title, saved/unknown states, viewport/theme/root-font scale. Empty catalog in comparison scratch; real catalog seeded by verify web.",
+  "captures_sha256": {
+    "after-r14-clean-1440-100-dark.png": "36ea0f8d0926698a9af159ae01add67fd87706fa0dcc615f513b9a629bdd97c4",
+    "after-r14-clean-1440-200-light.png": "afc05ad426937ecaa118ccee328d62f12240971329c219364c6a2f9c8fd9e19a",
+    "before-r14-clean-320-200-dark-metadata.png": "ab288892bdb99218fb2ce5ab17001abee8245656d5965f7ef4a10a5aa240b340",
+    "before-r14-clean-1440-100-dark-metadata.png": "39b37cd73fb7a210fda821219df9e4355dd6397cdfc17324b8d1b52004a65a00",
+    "after-r14-clean-320-200-dark-metadata.png": "d307e2e754764e907c9fa35a658c8d14214db76d0cf517845fbf74b4a61fdeb8",
+    "before-r14-clean-1440-200-light.png": "d12d65eb1ac5dd6618c8e9fcc5f09973fad1cbe527038c57e0b8d7291ed9275a",
+    "after-r14-clean-1440-100-dark-metadata.png": "aea1290d358267b51547452f890edfebcfef305c59cc927ed754da3aabcf1e07",
+    "before-r14-clean-1440-100-dark.png": "484820fa972a056184af242f2cc0fbdd33c608a8067c69fe6b373cbb400053eb"
+  },
+  "checks": {
+    "cargo xtask verify quick": "PASS",
+    "browser-smoke --phase editor-chrome": "PASS",
+    "cargo xtask verify web": "PASS",
+    "node --check apps/vink-web/e2e/browser-smoke.mjs": "PASS"
+  },
+  "not_run": [
+    "OS IME",
+    "OS browser zoom",
+    "screen reader",
+    "Word/Docs paste",
+    "Safari/Firefox",
+    "real mobile",
+    "CMP/native",
+    "verify postgres",
+    "Quint",
+    "Kani",
+    "UI preview runtime (shared code unchanged)"
+  ],
+  "evidence_root": "/Users/manhblue/Documents/Codex/2026-11-10/task-2/evidence/vink-101"
+}

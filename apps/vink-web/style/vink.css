@@ -421,6 +421,7 @@ a {
 }
 
 .vk-editor-heading__title {
+  font-family: var(--vk-font-ui);
   margin: 0;
   color: var(--vk-on-surface-variant);
   font-size: var(--vk-type-body-size);
@@ -459,7 +460,8 @@ a {
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
-.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-title-size); line-height: var(--vk-type-title-line-height); }
+.vk-editor-paper #draft-title { font-family: var(--vk-font-reading); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); line-height: var(--vk-type-headline-line-height); }
+.vk-editor-paper .vk-field__label { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
 /* The title retains the shared native field/label contract, while the sheet owns its fill.
    Focus perimeters remain local to the focused control, including in forced colours. */
 .vk-editor-paper > .vk-ui-field .vk-ui-field__control { background: transparent; }
@@ -488,11 +490,14 @@ a {
    tonal family as the paper; the selector composition owns its own geometry. */
 .vk-work-info { display: grid; gap: var(--vk-space-3); min-inline-size: 0; padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
 .vk-work-info__heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--vk-space-1) var(--vk-space-4); min-inline-size: 0; }
-.vk-work-info__heading > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
+.vk-work-info__heading > .vk-ui-heading { margin: 0; font-family: var(--vk-font-ui); font-size: var(--vk-type-body-size); font-weight: var(--vk-type-label-weight); overflow-wrap: anywhere; }
 .vk-work-info__status { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
 .vk-work-info__status:is([data-status="failed"], [data-status="refused"]) { color: var(--vk-error); }
 .vk-work-info > .vk-ui-text { margin: 0; }
 .vk-work-info .vk-tag-selector { margin-block-start: var(--vk-space-2); }
+.vk-work-info__selection { overflow-wrap: anywhere; }
+.vk-work-info > .vk-ui-supporting-details > summary { width: fit-content; max-width: 100%; }
+.vk-work-info > .vk-ui-supporting-details > .vk-ui-supporting-details__content { padding: 0; background: transparent; }
 
 .vk-field {
   display: flex;
