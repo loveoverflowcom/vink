@@ -411,7 +411,7 @@ fn endorsement(scenario: &str) -> AnyView {
     view! {
         <Stack direction=Direction::Column gap=Space::S4>
             <Text role=TypeRole::Caption tone=TextTone::Muted>
-                "Mẫu · Người, tác phẩm và số đếm là dữ liệu trình bày; không gọi dịch vụ, chưa chọn glyph (CHOICE-07)."
+                "Mẫu · Người, tác phẩm và số đếm là dữ liệu trình bày; không gọi dịch vụ, Pen Flight R2 A · Mềm (CHOICE-07)."
             </Text>
             <Surface tone=SurfaceTone::Container padding=Space::S4>
                 <Stack direction=Direction::Column gap=Space::S2>

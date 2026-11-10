@@ -850,6 +850,18 @@ async function toggles(page) {
   const ids = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.id, b.getAttribute('aria-label')])`);
   check(ids.length === 4 && new Set(ids.map((i) => i[0])).size === 4, `EndorsementAction: one control per target (${JSON.stringify(ids)})`);
   check(ids[0][1] === 'Đánh giá cao' && ids[1][1] === 'Hữu ích' && ids[2][1] === 'Bỏ đánh dấu hữu ích', 'EndorsementAction: work and comment copy, name follows the confirmed value');
+  for (const scenario of ['default', 'selected', 'pending', 'uncertain', 'own-content', 'unavailable', 'signed-out']) {
+    await page.open('composition.endorsement', scenario);
+    check(await page.eval(`(() => {
+      const buttons = [...document.querySelectorAll('.vk-ui-toggle__control')];
+      return buttons.length === 4 && buttons.every(b => {
+        const glyph = b.querySelector('.vk-ui-toggle__glyph svg');
+        return glyph?.dataset.icon === 'pen-flight' && glyph.getAttribute('aria-hidden') === 'true'
+          && glyph.getBoundingClientRect().width === 20 && glyph.getBoundingClientRect().height === 20
+          && b.getBoundingClientRect().height >= 48 && !b.getAttribute('aria-label').includes('Pen Flight');
+      });
+    })()`), `Pen Flight: decorative 20px glyph and 48px target survive ${scenario}, labels stay independent`);
+  }
   await page.open('composition.endorsement', 'signed-out');
   const guest = await page.eval(`[...document.querySelectorAll('.vk-ui-toggle__control')].map((b) => [b.getAttribute('aria-disabled'), b.dataset.pressed])`);
   const text = await page.eval(`document.getElementById('specimen-scope').textContent`);

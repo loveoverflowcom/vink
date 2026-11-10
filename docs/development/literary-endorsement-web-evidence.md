@@ -1,5 +1,9 @@
 # Bằng chứng LVE Web adapter (#73, WP-04)
 
+Cập nhật 10/11/2026: CHOICE-07 A đã tích hợp; xem [Pen Flight R2](pen-flight-r2-evidence.md).
+Các kết quả/gap dưới đây giữ nguyên theo snapshot của lần kiểm trước.
+
+
 **Ngày:** 06/11/2026 (UTC+07) · **Issue:** [#73](https://github.com/loveoverflowcom/vink/issues/73)
 (WP-04, adapter app) · **Nhánh:** `codex/lve-web-endorsement`, nền PR
 [#85](https://github.com/loveoverflowcom/vink/pull/85) (`8facefe`, trên `develop@23fb5af`).
