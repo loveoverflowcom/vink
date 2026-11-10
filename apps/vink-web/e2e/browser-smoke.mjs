@@ -3281,7 +3281,14 @@ async function discussionReadingAndWrites(page) {
     await page.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
     for (const [width, scale] of [[390,100],[320,200]]) {
       await page.viewport(width);
-      await page.eval(`document.documentElement.dataset.theme='dark'; document.documentElement.style.fontSize='${scale}%'; document.querySelector('.vk-discussion-delivery').scrollIntoView({block:'center'})`);
+      await page.eval(`(async () => {
+        document.documentElement.dataset.theme='dark'; document.documentElement.style.fontSize='${scale}%';
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const recovery=document.querySelector('.vk-discussion-delivery .vk-ui-button--filled');
+        recovery.focus({preventScroll:true}); recovery.scrollIntoView({block:'center',behavior:'instant'});
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        recovery.scrollIntoView({block:'center',behavior:'instant'});
+      })()`);
       check(await page.eval(`(() => {
         const region=document.querySelector('#root-composer').closest('.vk-discussion-composer');
         const delivery=region.querySelector('.vk-discussion-delivery'), send=document.querySelector('#root-composer-send');
