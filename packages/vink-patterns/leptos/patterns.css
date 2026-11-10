@@ -167,7 +167,7 @@
 .vk-discussion-thread > .vk-muted { margin: 0; padding-inline: 16px; }
 
 .vk-discussion-byline .vk-ui-link { display: block; }
-.vk-discussion-actions > .vk-ui-action:first-child .vk-ui-button--text { padding-inline-start: 0; }
+.vk-discussion-actions > .vk-ui-action:first-child .vk-ui-button--text { padding-inline-start: 0; justify-content: flex-start; }
 .vk-feedback-composer--tonal .vk-ui-input--area { padding-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__label { margin-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__control:has(> .vk-ui-input:focus) { outline-offset: 4px; }

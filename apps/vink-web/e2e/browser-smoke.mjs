@@ -3292,11 +3292,12 @@ async function discussionReadingAndWrites(page) {
       })()`), `uncertain/${width}/${scale}: one enabled primary recovery, disabled described Send and separate 20px status`);
       await page.capture(`discussion-local-uncertain-${width}-${scale}-dark`, {boundary:'real-local-postgresql-with-lost-response'});
     }
+    await page.click('.vk-discussion-delivery .vk-ui-button--filled');
+    check(true, '320/text200/reduced motion: the real recovery target is reachable above bottom navigation');
+    await waitHeld(2);
     await page.eval(`document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme`);
     await page.viewport(1280);
     await page.send('Emulation.setEmulatedMedia', {features:[LIGHT_SYSTEM]});
-    await page.click('.vk-discussion-delivery .vk-ui-button--filled');
-    await waitHeld(2);
     const first = JSON.parse(held[0].request.postData), replay = JSON.parse(held[1].request.postData);
     check(JSON.stringify(first) === JSON.stringify(replay) && held[1].responseStatusCode === 200, 'reconciliation replays exactly the same key/body/target; server returns the original receipt');
     await page.send('Fetch.continueRequest', { requestId: held[1].requestId });
@@ -3466,7 +3467,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
       buttons:[...thread.querySelectorAll('button')].every(b=>{const r=b.getBoundingClientRect();return r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth+1;})};
   })()`);
   const close = (a,b)=>Math.abs(a-b)<=1;
-  check(['group','composer'].every(k=>close(geometry.root.left,geometry[k].left)&&close(geometry.root.right,geometry[k].right)) && geometry.aligned, `${scenario}: root/group/composer share both edges and text/action axis`);
+  check(['group','composer'].every(k=>close(geometry.root.left,geometry[k].left)&&close(geometry.root.right,geometry[k].right)) && geometry.aligned, `${scenario}: root/group/composer share both edges and text/action axis (${JSON.stringify(geometry)})`);
   check(close(geometry.inset, width < 360 ? 12 : 16) && close(geometry.inset,geometry.insetRight) && close(geometry.composerInset,geometry.inset) && geometry.gap===16, `${scenario}: balanced fixed inset and 16px reply spacing`);
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
   check(geometry.field && geometry.radius==='28px' && geometry.buttons, `${scenario}: one native field, 28px tonal surface and reachable 48px targets`);
