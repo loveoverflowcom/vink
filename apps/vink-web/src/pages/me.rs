@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title};
 
-use crate::appearance::{AccountStatus, ThemePicker};
+use crate::appearance::{AccountStatus, AppearanceChoices, AppearanceTitle};
 
 #[component]
 pub fn Me() -> impl IntoView {
@@ -11,7 +11,10 @@ pub fn Me() -> impl IntoView {
         <section id="me" class="vk-me" aria-labelledby="me-title">
             <vink_ui::Heading id="me-title" level=vink_ui::HeadingLevel::H1>"Tôi"</vink_ui::Heading>
             <AccountStatus id="page-account" />
-            <ThemePicker group="page-theme" />
+            <section class="vk-appearance-card" aria-labelledby="page-appearance-title">
+                <AppearanceTitle id="page-appearance-title" />
+                <AppearanceChoices prefix="page" />
+            </section>
         </section>
     }
 }

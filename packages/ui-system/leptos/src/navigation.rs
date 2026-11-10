@@ -310,6 +310,7 @@ pub fn NavItem(
     destination: NavDestination,
     #[prop(into)] active: Signal<bool>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
+    #[prop(optional, into)] leading: Option<ViewFn>,
 ) -> impl IntoView {
     let NavDestination {
         key,
@@ -333,7 +334,7 @@ pub fn NavItem(
                 }
             }
         >
-            <Icon name=icon />
+            {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
             <span class="vk-ui-nav-item__label">{label}</span>
         </a>
     }
@@ -345,6 +346,7 @@ pub fn NavUtility(
     #[prop(into)] id: String,
     #[prop(into)] label: String,
     icon: IconName,
+    #[prop(optional, into)] leading: Option<ViewFn>,
     /// The overlay element this button opens.
     #[prop(into)]
     controls: String,
@@ -367,7 +369,7 @@ pub fn NavUtility(
             aria-current=move || current.get().then_some("page")
             on:click=move |_| on_open.run(())
         >
-            <Icon name=icon />
+            {leading.map_or_else(|| view! { <Icon name=icon /> }.into_any(), |leading| leading.run())}
             <span class="vk-ui-nav-item__label">{label}</span>
         </button>
     }
@@ -511,6 +513,7 @@ pub fn BottomNavigation(
     #[prop(into)] label: String,
     destinations: Vec<(NavDestination, Signal<bool>)>,
     #[prop(optional)] on_navigate: Option<Callback<String>>,
+    #[prop(optional, into)] trailing: ViewFn,
 ) -> impl IntoView {
     let bar = NodeRef::<html::Nav>::new();
     #[cfg(target_arch = "wasm32")]
@@ -519,6 +522,7 @@ pub fn BottomNavigation(
     view! {
         <nav id=id class="vk-ui-bottom-nav" aria-label=label node_ref=bar>
             {entries}
+            {trailing.run()}
         </nav>
     }
 }

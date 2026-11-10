@@ -29,6 +29,13 @@ impl<S> Vink<S>
 where
     S: PrincipalStore,
 {
+    pub async fn principal_display_name(
+        &self,
+        principal: PrincipalId,
+    ) -> Result<String, AccountError> {
+        Ok(self.store().principal_display_name(principal).await?)
+    }
+
     /// `None`: the subject is authenticated but has no Vink principal yet.
     pub async fn principal_for_subject(
         &self,
@@ -66,6 +73,10 @@ mod tests {
     }
 
     impl PrincipalStore for Recording {
+        async fn principal_display_name(&self, _: PrincipalId) -> Result<String, StoreError> {
+            Err(StoreError::Integrity("unexpected".into()))
+        }
+
         async fn principal_for_subject(
             &self,
             _subject: &SubjectKey,

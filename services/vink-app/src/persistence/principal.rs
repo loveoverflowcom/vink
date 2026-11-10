@@ -85,6 +85,15 @@ pub(super) async fn require_active(
 }
 
 impl PrincipalStore for PgStore {
+    async fn principal_display_name(&self, principal: PrincipalId) -> Result<String, StoreError> {
+        sqlx::query_scalar("SELECT display_name FROM principals WHERE id = $1")
+            .bind(principal.as_uuid())
+            .fetch_optional(self.pool())
+            .await
+            .map_err(classify)?
+            .ok_or(StoreError::UnknownPrincipal)
+    }
+
     async fn principal_for_subject(
         &self,
         subject: &SubjectKey,

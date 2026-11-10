@@ -60,8 +60,10 @@ chưa tích hợp composer/reaction/sticker persistence.
   Bàn viết, Tôi ở chân rail. Desktop từ 1100px mặc định 220px, tablet 760–1099px và editor
   mặc định 96px; nút thu/mở ghi đè mặc định và nhớ trên thiết bị. Dưới 760px dùng bottom bar
   Khám phá → Bàn viết → Tôi, ẩn khi viết. Web/tablet mở Tôi bằng overlay; mobile tới `/toi`.
-  Sáng/Tối/Hệ thống chỉ có trong Tôi. Preference lỗi/không có storage vẫn dùng được trong phiên.
-  Không có profile API hay danh tính được suy ra từ fixture; xem [spec shell](../design/README.md#shell-thích-ứng-7).
+  Màu, cỡ chữ và chế độ rail dùng chung giữa `/toi` và panel Giao diện, kể cả khi không dùng được
+  `localStorage`. Sau hydration, Web đọc bút danh qua API phiên `no-store` và lấy chữ cái cho
+  avatar; SSR hiển thị dấu gạch. Ca kiểm chứng có tài khoản dùng LocalFixture.
+  Xem [spec shell](../design/README.md#shell-thích-ứng-7).
   Từ UIS-04 shell render bằng primitive điều hướng của UI system; Back/Forward khi Tôi mở chỉ đóng
   Tôi, route lạ (`/ban-vietnam`) là 404 và không sáng đích nào, skip link chuyển focus vào main.
 - [UI System](../../packages/ui-system/README.md) UIS-01 ([#19](https://github.com/loveoverflowcom/vink/issues/19)):
@@ -327,8 +329,8 @@ TTF/OTF, OS IME tiếng Việt, TalkBack/VoiceOver và device thật cần evide
 apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của web, CSS tokens
   src/shell.rs            đích Vink (Destination), lớp phủ Tôi, chính sách responsive; render bằng
                           primitive UIS-04, dùng NavigationGuard cho chuyển trang
-  src/appearance.rs       theme/rail local, bootstrap trước CSS, initials thuần có fixture tiếng Việt
-  src/pages/me.rs         /toi: thông tin tài khoản chưa có, chọn giao diện
+  src/appearance.rs       nhóm màu/cỡ chữ/rail dùng chung, bootstrap cục bộ trước CSS, initials thuần
+  src/pages/me.rs         /toi: thẻ tài khoản theo phiên, chọn giao diện
   src/contract.rs         biểu diễn API v1 của consumer, kiểm bằng fixtures của server
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1
   src/server.rs           (ssr) trait PublicReads do composition root cung cấp

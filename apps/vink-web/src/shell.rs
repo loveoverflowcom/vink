@@ -10,7 +10,9 @@ use vink_ui::{
     NavLayout, NavUtility, NavigationRail, OverlayLayer, WindowClass,
 };
 
-use crate::appearance::{AccountStatus, Appearance, ThemePicker};
+use crate::appearance::{
+    AccountAvatar, Appearance, AppearanceChoices, AppearanceTitle, provide_account,
+};
 use crate::navigation::use_navigation_guard;
 
 /// The Tôi overlay's id in the overlay layer and the DOM.
@@ -71,6 +73,7 @@ fn editor_context(path: &str) -> NavContext {
 #[component]
 pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     let appearance = Appearance::provide();
+    provide_account();
     let location = use_location();
     let current = Memo::new(move |_| location.pathname.with(|path| Destination::for_path(path)));
     let context = Memo::new(move |_| location.pathname.with(|path| editor_context(path)));
@@ -113,18 +116,6 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
     };
     let open_profile = Callback::new(move |()| {
         #[cfg(feature = "hydrate")]
-        if current.get_untracked() == Some(Destination::Me) {
-            // The canonical page already owns these settings. Keep route/disclosure state
-            // intact and move straight to its existing native radio, with visible focus.
-            use wasm_bindgen::JsCast;
-            if let Ok(Some(input)) = document().query_selector("#page-theme input:checked")
-                && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()
-            {
-                let _ = input.focus();
-            }
-            return;
-        }
-        #[cfg(feature = "hydrate")]
         if let Some(dialog) = profile.get_untracked()
             && overlays
                 .try_update(|layer| layer.open(PROFILE))
@@ -159,7 +150,7 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         #[cfg(not(feature = "hydrate"))]
         let shown = layout.get_untracked();
         if let Some(next) = shown.next_preference() {
-            appearance.set_rail(next);
+            appearance.set_rail(Some(next));
         }
     });
 
@@ -180,23 +171,17 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     on_toggle=toggle
                     destinations=primary()
                     account=move || view! {
-                        <Show when=move || current.get() == Some(Destination::Me)
-                            fallback=move || view! {
-                                <NavUtility
-                                    id="profile-trigger"
-                                    label="Tôi"
-                                    icon=IconName::Person
-                                    controls=PROFILE
-                                    expanded=profile_open
-                                    current=active(Destination::Me)
-                                    on_open=open_profile
-                                    node_ref=trigger
-                                />
-                            }>
-                            <vink_ui::NavItem destination=Destination::Me.nav() active=active(Destination::Me)
-                                on_navigate=Callback::new(move |_: String| open_profile.run(()))
-                                attr:id="profile-trigger" attr:aria-controls="page-theme" />
-                        </Show>
+                        <NavUtility
+                            id="profile-trigger"
+                            label="Tôi"
+                            icon=IconName::Person
+                            leading=move || view! { <AccountAvatar navigation=true /> }
+                            controls=PROFILE
+                            expanded=profile_open
+                            current=active(Destination::Me)
+                            on_open=open_profile
+                            node_ref=trigger
+                        />
                     }
                 />
             }
@@ -204,10 +189,11 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                 <BottomNavigation
                     id="bottom-navigation"
                     label="Điều hướng mobile"
-                    destinations=[Destination::Explore, Destination::Desk, Destination::Me]
-                        .into_iter()
-                        .map(|destination| (destination.nav(), active(destination)))
-                        .collect()
+                    destinations=primary()
+                    trailing=move || view! {
+                        <vink_ui::NavItem destination=Destination::Me.nav() active=active(Destination::Me)
+                            leading=move || view! { <AccountAvatar navigation=true /> } />
+                    }
                 />
             }
             overlays=move || view! {
@@ -245,15 +231,17 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
                     }
                 >
                     <header class="vk-profile-heading">
-                        <h2 id="profile-title">"Tùy chọn"</h2>
-                        <vink_ui::IconButton icon=IconName::Close label="Đóng tùy chọn" id="profile-close"
+                        <AppearanceTitle id="profile-title" />
+                        <vink_ui::IconButton icon=IconName::Close label="Đóng Giao diện" id="profile-close"
                             on_press=Callback::new(move |()| { close(CloseReason::Dismiss); }) />
                     </header>
-                    <AccountStatus id="overlay-account" />
-                    <ThemePicker group="overlay-theme" />
-                    <vink_ui::Button variant=vink_ui::ButtonVariant::Tonal id="open-me" on_press=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
-                        "Mở trang Tôi"
-                    </vink_ui::Button>
+                    <AppearanceChoices prefix="overlay" />
+                    <Show when=move || current.get() != Some(Destination::Me)>
+                        <vink_ui::Button variant=vink_ui::ButtonVariant::Text id="open-me" on_press=move |_| { close(CloseReason::Navigate); navigation.navigate("/toi"); }>
+                            "Mở trang Tôi"
+                            <span data-appearance-icon="forward" aria-hidden="true"></span>
+                        </vink_ui::Button>
+                    </Show>
                 </dialog>
             }
         >
