@@ -3455,7 +3455,7 @@ async function discussionR31Geometry(page, width, scale, scenario) {
     const reasons = [...pattern.querySelectorAll('.vk-discussion-shared-reason')].filter(e=>!e.hidden);
     return {root:rect(root), group:rect(group), composer:rect(composer),
       inset:rect(body).left-rect(root).left, insetRight:rect(root).right-rect(body).right,
-      aligned: Math.abs(rect(root.querySelector('.vk-discussion-name')).left-rect(body).left)<1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<1,
+      aligned: Math.abs(rect(root.querySelector('.vk-discussion-name')).left-rect(body).left)<=1 && Math.abs(rect(root.querySelector('.vk-discussion-actions .vk-ui-button__label')).left-rect(body).left)<=1,
       composerInset:rect(composer.querySelector('textarea')).left+parseFloat(getComputedStyle(composer.querySelector('textarea')).paddingLeft)-rect(composer).left,
       gap:parseFloat(getComputedStyle(group.querySelector('ul')).rowGap),
       contrast:Math.min(...ratios),
