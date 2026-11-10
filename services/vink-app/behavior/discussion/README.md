@@ -331,4 +331,38 @@ replay tiền tố hợp lệ của ba counterexample và đòi production khôn
 ```
 
 **Không được chứng minh:** authority trust/standing thật, ngưỡng tuổi (ứng viên), rules/classifier
-thật, nhiều thread, rate limit, provenance bền, outbox/lease/retry/dead-letter, liveness của hàng đợi.
+thật, nhiều thread, rate limit, provenance bền, outbox/lease/retry/dead-letter (xem `outbox.qnt` ở
+phần sau, chỉ cho hạ tầng; hậu kiểm có hiệu lực chưa có), liveness của hàng đợi.
+
+## Model outbox (DISC-04, #120)
+
+`outbox.qnt` ([quyết định](../../../../docs/architecture/discussion-outbox.md)) mô tả **một event
+nợ hai delivery** (hai consumer) và **hai worker** claim, chết, dừng quá lease rồi quay lại. Lease 2
+tick, backoff 1 tick nhân đôi tới trần 2, tối đa 3 attempt, đồng hồ ≤ 8. Mỗi action là một commit
+đã tuần tự hóa: claim, hoàn tất có fence (effect + outcome cùng transaction), crash (worker quên claim,
+không ghi gì), tick, requeue của operator. Khóa hàng, `SKIP LOCKED`, savepoint, timeout, supervisor
+và PostgreSQL là **giả định** ở đây và có bằng chứng ở lane `postgres`; deadline không đạt trong model
+(unit/Kani phủ).
+
+| Action | Quyết định production được replay |
+| --- | --- |
+| `claim` | `decide_claim` (đến hạn, lease hết hạn → reclaim, hết budget → dead letter) |
+| `complete` | `decide_completion` với `HandlerResult::Applied/Retry/Fail` và generation worker nghĩ mình giữ |
+| `requeue` | `decide_requeue` |
+| `crash`, `tick` | Shell: bỏ claim của worker; tăng đồng hồ |
+
+Invariant `outboxSafe`: `effectAtMostOnce`, `effectIffSucceeded`, `attemptsBounded`, `leaseShape`,
+`holdsNeverAhead`, `fenceMonotone`, `successIsFinal`, `staleWritesNothing`, `scoped` (chỉ delivery
+được nêu thay đổi), `finiteDomain`. Scenario `leaseScenario` (26 bước) đạt 12 outcome; fixture
+`outbox-fixtures.json` được `outbox_replay::quint_outbox_inputs_replay_against_the_production_decisions`
+replay. Negative control `mutatedUnfencedStep` bỏ fence generation: worker A quay lại sau khi B
+reclaim và hoàn tất, effect bị áp lần hai (vi phạm `effectAtMostOnce` ở transition 6);
+`the_unfenced_completion_counterexample_is_refused_by_production` chứng minh production trả `stale`.
+
+```sh
+node node_modules/@informalsystems/quint/dist/src/cli.js run outbox.qnt --backend=typescript --seed=41 \
+  --step=step --max-steps=40 --max-samples=1000 --invariant=outboxSafe --verbosity=1
+```
+
+**Không được chứng minh:** transaction/khóa PostgreSQL, mạng, vòng đời process, nhiều event cạnh
+tranh, deadline, thứ tự FIFO (không hứa), liveness (worker sống cuối cùng xử lý hết).

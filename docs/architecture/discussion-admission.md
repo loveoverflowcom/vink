@@ -48,7 +48,7 @@ qua `Admission::initial_state`, lưu provenance và trả trạng thái thật �
 | CHOICE-06 Trình bày gửi/thử lại (chỉ văn bản) | **A** — giữ kết quả gửi có scope cạnh composer tới khi xác nhận/đối soát | Khớp controller D2T-03 hiện có (receipt riêng, `#reply-recovery`). B (hàng local theo submission rồi dedup theo ID server) hợp di động hơn nhưng cần merge/paging/session/restart state; để designer xét lại. Không code UI, không ép UUIDv7 |
 | CHOICE-02 public/private delivery | OPEN → DISC-02 | Lát này không đổi read model hay contract |
 | CHOICE-03 aggregate, CHOICE-04 cache/validator | OPEN → DISC-05 | Chưa có benchmark; giữ count-on-read và đọc DB trực tiếp |
-| CHOICE-05 worker wakeup | OPEN → DISC-04 | Ticket hậu kiểm là contract thuần; chưa outbox, lease hay worker |
+| CHOICE-05 worker wakeup | OPEN → DISC-04 | Ticket hậu kiểm là contract thuần; chưa outbox, lease hay worker. DISC-04 chọn polling có backoff/jitter cho outbox của nó ([quyết định](discussion-outbox.md#3-lựa-chọn-decisionmap)) |
 
 ## 4. Contract của production seam
 

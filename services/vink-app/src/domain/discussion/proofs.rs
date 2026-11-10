@@ -9,7 +9,9 @@
 //! fence of the comments mode and of a reaction); locking, transactions and I/O stay in the
 //! `postgres` lane; longer serialized lifecycles, receipts and reactions stay in the Quint models.
 //! The #120 admission harnesses add any `i64` instant and two symbolic 32-byte digests; their
-//! freshness oracle is an independent `i128` age, not the production helper.
+//! freshness oracle is an independent `i128` age, not the production helper. The DISC-04 outbox
+//! harnesses take any delivery state, `u32` attempts, `i64` generation pair, instants and jitter
+//! under the default policy; claim sequences, workers and crashes stay in `outbox.qnt`.
 
 use uuid::Uuid;
 
@@ -23,6 +25,11 @@ use super::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
 use super::moderation::ModerationAction;
+use super::outbox::{
+    ClaimDecision, ClaimGeneration, Completion, DeadReason, DeliveryFacts, DeliveryState,
+    HandlerResult, OutboxPolicy, Requeue, SkipReason as OutboxSkip, Transient as OutboxTransient,
+    decide_claim, decide_completion, decide_requeue,
+};
 use super::page::{MAX_PAGE, PageCursor, PageLimit};
 use super::policy::{Denied, authorize_writer_removal};
 use super::reaction::{
@@ -1127,5 +1134,173 @@ fn post_review_only_withdraws_the_observed_approval() {
     kani::cover!(
         matches!(result, Err(LifecycleError::Stale { .. })),
         "a decision since the admission wins"
+    );
+}
+
+fn any_delivery_state() -> DeliveryState {
+    match kani::any::<u8>() % 5 {
+        0 => DeliveryState::Ready,
+        1 => DeliveryState::Leased,
+        2 => DeliveryState::Succeeded,
+        3 => DeliveryState::Skipped,
+        _ => DeliveryState::Dead,
+    }
+}
+
+fn any_delivery() -> DeliveryFacts {
+    let generation = kani::any::<i64>();
+    kani::assume(generation >= 0);
+    DeliveryFacts {
+        state: any_delivery_state(),
+        attempts: kani::any(),
+        generation: ClaimGeneration::restore(generation).unwrap(),
+        available_at_micros: kani::any(),
+        deadline_from_micros: kani::any(),
+    }
+}
+
+/// Independent deadline oracle: the age in `i128`, past when it exceeds the deadline or cannot
+/// be an `i64` (an origin absurdly far in the future fails closed too).
+fn past_deadline_oracle(from: i64, now: i64, policy: OutboxPolicy) -> bool {
+    let age = i128::from(now) - i128::from(from);
+    age > i128::from(policy.deadline_micros()) || age < i128::from(i64::MIN)
+}
+
+/// #120 DISC-04 claims: only a due ready row or an expired lease is claimable; a claim advances
+/// the fence and the attempt count by exactly one and leases until `now + lease` (saturating);
+/// a spent budget, a passed deadline (any `i64` instants) or an exhausted fence ends the delivery
+/// as a dead letter instead, never as a claim.
+#[kani::proof]
+fn outbox_claims_advance_the_fence_or_end_the_delivery() {
+    let policy = OutboxPolicy::DEFAULT;
+    let facts = any_delivery();
+    let now = kani::any::<i64>();
+    let eligible = facts.available_at_micros <= now
+        && matches!(facts.state, DeliveryState::Ready | DeliveryState::Leased);
+    match decide_claim(facts, policy, now) {
+        ClaimDecision::NotEligible => assert!(!eligible),
+        ClaimDecision::Claim {
+            generation,
+            attempts,
+            lease_until_micros,
+            reclaimed,
+        } => {
+            assert!(eligible);
+            assert_eq!(generation.get(), facts.generation.get() + 1);
+            assert_eq!(attempts, facts.attempts + 1);
+            assert!(attempts <= policy.max_attempts());
+            assert!(!past_deadline_oracle(
+                facts.deadline_from_micros,
+                now,
+                policy
+            ));
+            assert_eq!(
+                i128::from(lease_until_micros),
+                (i128::from(now) + i128::from(policy.lease_micros())).min(i128::from(i64::MAX))
+            );
+            assert_eq!(reclaimed, facts.state == DeliveryState::Leased);
+        }
+        ClaimDecision::DeadLetter { reason, reclaimed } => {
+            assert!(eligible);
+            assert_eq!(reclaimed, facts.state == DeliveryState::Leased);
+            let spent = facts.attempts >= policy.max_attempts();
+            let late = past_deadline_oracle(facts.deadline_from_micros, now, policy);
+            match reason {
+                DeadReason::RetryExhausted => assert!(spent),
+                DeadReason::DeadlineExceeded => assert!(!spent && late),
+                DeadReason::GenerationExhausted => {
+                    assert!(!spent && !late && facts.generation.get() == i64::MAX)
+                }
+                DeadReason::UnsupportedEvent | DeadReason::InvalidPayload => {
+                    panic!("a claim never invents a handler failure")
+                }
+            }
+        }
+    }
+}
+
+/// #120 DISC-04 completions: a result counts only for the current holder of a leased delivery
+/// (any generation pair); a failure never becomes success; a retry respects the budget and the
+/// deadline and is scheduled within `[now + base, now + max_backoff + base]` for any attempts,
+/// instant and jitter (oracle in `i128`).
+#[kani::proof]
+fn outbox_completion_is_fenced_and_never_turns_failure_into_success() {
+    let policy = OutboxPolicy::DEFAULT;
+    let facts = any_delivery();
+    let held = kani::any::<i64>();
+    kani::assume(held >= 0);
+    let held = ClaimGeneration::restore(held).unwrap();
+    let now = kani::any::<i64>();
+    let jitter = kani::any::<i64>();
+    let result = match kani::any::<u8>() % 5 {
+        0 => HandlerResult::Applied,
+        1 => HandlerResult::AlreadyApplied,
+        2 => HandlerResult::Skipped(OutboxSkip::TargetRemoved),
+        3 => HandlerResult::Retry(OutboxTransient::Database),
+        _ => HandlerResult::Fail(DeadReason::InvalidPayload),
+    };
+    let owner = facts.state == DeliveryState::Leased && facts.generation == held;
+    let completion = decide_completion(facts, held, result, policy, now, jitter);
+    match completion {
+        Completion::Stale(_) => assert!(!owner),
+        Completion::Succeed { already_applied } => {
+            assert!(owner);
+            assert_eq!(
+                result,
+                if already_applied {
+                    HandlerResult::AlreadyApplied
+                } else {
+                    HandlerResult::Applied
+                }
+            );
+        }
+        Completion::Skip(_) => assert!(owner && matches!(result, HandlerResult::Skipped(_))),
+        Completion::DeadLetter(reason) => {
+            assert!(owner);
+            match result {
+                HandlerResult::Fail(failed) => assert_eq!(reason, failed),
+                HandlerResult::Retry(_) => assert!(
+                    facts.attempts >= policy.max_attempts()
+                        || past_deadline_oracle(facts.deadline_from_micros, now, policy)
+                ),
+                _ => panic!("success or skip never dead-letters"),
+            }
+        }
+        Completion::Retry {
+            available_at_micros,
+            ..
+        } => {
+            assert!(owner && matches!(result, HandlerResult::Retry(_)));
+            assert!(facts.attempts < policy.max_attempts());
+            assert!(!past_deadline_oracle(
+                facts.deadline_from_micros,
+                now,
+                policy
+            ));
+            let at = i128::from(available_at_micros);
+            let earliest = (i128::from(now) + i128::from(policy.base_backoff_micros()))
+                .min(i128::from(i64::MAX));
+            let latest = i128::from(now)
+                + i128::from(policy.max_backoff_micros())
+                + i128::from(policy.base_backoff_micros());
+            assert!(at >= earliest && at <= latest);
+        }
+    }
+    assert_eq!(completion.state().is_none(), !owner);
+    assert_eq!(
+        decide_requeue(facts.state),
+        if facts.state == DeliveryState::Dead {
+            Requeue::Requeued
+        } else {
+            Requeue::Refused(facts.state)
+        }
+    );
+    kani::cover!(
+        matches!(completion, Completion::Stale(_)) && facts.state == DeliveryState::Leased,
+        "a reclaimed holder's result is refused"
+    );
+    kani::cover!(
+        matches!(completion, Completion::Retry { .. }),
+        "a retry is scheduled"
     );
 }

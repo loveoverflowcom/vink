@@ -102,8 +102,9 @@ pub fn config_rejection(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Starts the worker, waits for its ready log line, checks it reports `schema`, sends SIGTERM
-/// and expects exit code 0.
+/// Starts the worker, waits for its start log line, checks it reports `schema` and, when the
+/// schema is current, a reachable discussion outbox (`outbox="ready"`, DISC-04) under this role;
+/// sends SIGTERM and expects exit code 0.
 pub fn worker_lifecycle(root: &Path, url: &str, schema: &str) -> Result<(), String> {
     let mut command = Command::new(binary(root, "vink-worker"));
     // Explicit local configuration, independent of any `.env` (CI has none).
@@ -123,10 +124,13 @@ pub fn worker_lifecycle(root: &Path, url: &str, schema: &str) -> Result<(), Stri
     let stderr = child.stderr.take().expect("piped stderr");
     let mut guard = Guard(Some(child));
     let lines = stream_lines(stderr);
-    let ready = wait_for_line(&lines, "vink-worker ready", Duration::from_secs(20))?;
+    let ready = wait_for_line(&lines, "vink-worker started", Duration::from_secs(20))?;
     println!("==> {}", ready.trim());
     if !ready.contains(schema) {
         return Err(format!("worker did not report `{schema}`: {ready}"));
+    }
+    if schema.contains("current") && !ready.contains("outbox=\"ready\"") {
+        return Err(format!("worker did not report a reachable outbox: {ready}"));
     }
     let status = guard.terminate(Duration::from_secs(10))?;
     if !status.success() {

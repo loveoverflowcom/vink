@@ -46,6 +46,9 @@ pub mod lifecycle;
 #[cfg(test)]
 mod lifecycle_replay;
 pub mod moderation;
+pub mod outbox;
+#[cfg(test)]
+mod outbox_replay;
 pub mod page;
 pub mod policy;
 #[cfg(kani)]

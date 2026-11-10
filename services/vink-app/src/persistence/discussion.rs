@@ -18,7 +18,9 @@
 //! and before the receipt and comment inserts, whose foreign keys reference the principal. The
 //! receipt claim and the insert come last. Admission runs inside `decide_submission`; the store
 //! writes exactly its initial state and provenance (migration `20261111000000_comment_admission`
-//! refuses anything else).
+//! refuses anything else). A created comment's `comment.submitted` event and deliveries
+//! (`outbox::enqueue`, DISC-04) are new rows written after the insert, before the commit; they
+//! take no lock that another discussion path holds.
 
 use sqlx::postgres::PgPool;
 // Dynamic statements below are concatenations of this module's constants, never input.
@@ -27,6 +29,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::PgStore;
+use super::outbox;
 use super::postgres::classify;
 use super::principal::{locked_standing, require_active};
 use crate::application::discussion::{
@@ -40,6 +43,7 @@ use crate::domain::discussion::lifecycle::{
     CommentState, LifecycleError, ModerationVersion, Removal, Review, Transition,
 };
 use crate::domain::discussion::moderation::{GrantNote, ModerationReason};
+use crate::domain::discussion::outbox::EventKind;
 use crate::domain::discussion::page::{PREVIEW_REPLIES, PageCursor, PageLimit};
 use crate::domain::discussion::policy::{
     Denied, authorize_mode_change, authorize_moderation, authorize_writer_removal,
@@ -131,7 +135,7 @@ fn review(raw: &str) -> Result<Review, StoreError> {
     }
 }
 
-const fn review_code(review: Review) -> &'static str {
+pub(super) const fn review_code(review: Review) -> &'static str {
     match review {
         Review::Pending => "pending",
         Review::Approved => "approved",
@@ -683,6 +687,14 @@ impl DiscussionStore for PgStore {
         .fetch_one(&mut *tx)
         .await
         .map_err(classify)?;
+        // DISC-04: the event and its deliveries commit with the comment or not at all.
+        outbox::enqueue(
+            &mut tx,
+            EventKind::CommentSubmitted,
+            placement.id(),
+            submitted.version(),
+        )
+        .await?;
         tx.commit().await.map_err(classify)?;
         Ok(SubmitOutcome::Created {
             comment_id: placement.id(),
