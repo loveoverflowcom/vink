@@ -452,6 +452,12 @@ pub struct ErrorBody {
     pub successor_id: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) struct CurrentAccount {
+    pub principal_id: String,
+    pub display_name: String,
+}
+
 /// Outcome classes of the API, as this client needs to distinguish them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ApiError {
@@ -614,6 +620,12 @@ mod tests {
         let value: T = serde_json::from_value(json.clone()).unwrap();
         assert_eq!(serde_json::to_value(&value).unwrap(), json, "{name}");
         value
+    }
+
+    #[test]
+    fn decodes_the_current_account_without_credentials() {
+        let account: CurrentAccount = round_trip("auth.session.account.json");
+        assert_eq!(account.display_name, "An Nhiên");
     }
 
     #[test]

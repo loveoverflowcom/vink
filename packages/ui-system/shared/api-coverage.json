@@ -750,6 +750,12 @@
   "style_exceptions": [
     {
       "path": "apps/vink-web/style/vink.css",
+      "declaration": "font-size: 200%",
+      "owner": "Web appearance preference",
+      "reason": "User-selected root text scale relative to the browser default. Component typography still resolves through the shared tokens."
+    },
+    {
+      "path": "apps/vink-web/style/vink.css",
       "declaration": "font-size: 0.9375rem",
       "owner": "Editor save status",
       "reason": "15px feature status; migrate when save status adopts shared badge anatomy."

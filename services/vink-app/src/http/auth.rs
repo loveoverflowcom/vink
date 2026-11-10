@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tower_http::set_header::SetResponseHeaderLayer;
 
-use super::{ApiError, AppState};
+use super::{Actor, ApiError, AppState};
 use crate::application::account::AccountError;
 use crate::domain::principal::{Standing, SubjectKey};
 use crate::identity::client::{CallError, ChallengeRefusal, SignIn, StartError};
@@ -35,6 +35,7 @@ pub fn routes() -> Router<AppState> {
         .route("/auth/sign-in/challenges", post(start_sign_in))
         .route("/auth/sign-in/complete", post(complete_sign_in))
         .route("/auth/session", get(session_state).delete(sign_out))
+        .route("/auth/session/account", get(current_account))
         .route("/auth/principal", post(provision_principal))
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
@@ -82,6 +83,12 @@ pub enum SessionStateKind {
     NeedsPrincipal,
     Suspended,
     Active,
+}
+
+#[derive(Debug, Serialize)]
+struct CurrentAccount {
+    principal_id: String,
+    display_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -303,6 +310,22 @@ async fn session_state(
     }))
 }
 
+async fn current_account(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+) -> Result<Json<CurrentAccount>, ApiError> {
+    let principal = actor.ok_or(ApiError::Unauthenticated)?;
+    let display_name = state
+        .vink
+        .principal_display_name(principal)
+        .await
+        .map_err(|_| ApiError::DependencyUnavailable)?;
+    Ok(Json(CurrentAccount {
+        principal_id: principal.to_string(),
+        display_name,
+    }))
+}
+
 /// `DELETE /auth/session`: logout. Succeeds only when Identity revoked the session (or there was
 /// nothing to revoke); during an outage the cookie stays so the person can retry, and the session
 /// cannot authorize anything meanwhile because it cannot be verified.
@@ -424,6 +447,14 @@ mod tests {
                 serde_json::to_value(SessionState {
                     state: SessionStateKind::Active,
                     principal_id: Some("018f3c2e-0000-7000-8000-00000000c001".into()),
+                })
+                .unwrap(),
+            ),
+            (
+                "auth.session.account.json",
+                serde_json::to_value(CurrentAccount {
+                    principal_id: "11111111-1111-4111-8111-111111111111".into(),
+                    display_name: "An Nhiên".into(),
                 })
                 .unwrap(),
             ),

@@ -228,9 +228,11 @@ mod tests {
     #[tokio::test]
     async fn private_routes_are_closed_without_an_auth_authority() {
         let router = outage_router();
-        let (status, body) = get(&router, "/api/v1/drafts").await;
-        assert_eq!(status, StatusCode::UNAUTHORIZED);
-        assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
+        for path in ["/api/v1/drafts", "/api/v1/auth/session/account"] {
+            let (status, body) = get(&router, path).await;
+            assert_eq!(status, StatusCode::UNAUTHORIZED, "{path}");
+            assert!(body.contains(r#""code":"unauthenticated""#), "{body}");
+        }
     }
 
     async fn send(

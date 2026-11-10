@@ -181,6 +181,7 @@ pub fn Avatar(
     #[prop(optional)] size: AvatarSize,
     #[prop(optional)] kind: AvatarKind,
     #[prop(optional)] decorative: bool,
+    #[prop(optional, into)] fallback_text: Option<String>,
 ) -> impl IntoView {
     let letters = initials(name.as_deref());
     let tone = tone(identity_key.as_deref());
@@ -210,7 +211,7 @@ pub fn Avatar(
             aria-hidden=decorative.then_some("true")
         >
             <span class="vk-ui-avatar__initials" aria-hidden="true">
-                {match letters {
+                {match letters.or(fallback_text) {
                     Some(letters) => letters.into_any(),
                     None => view! { <Icon name=IconName::Person /> }.into_any(),
                 }}
