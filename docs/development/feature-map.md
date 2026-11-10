@@ -147,6 +147,24 @@ Shell có ID `navigation-toggle`, `navigation-primary`, `navigation-tooltip`, `p
 radio theme có `name=overlay-theme|page-theme` và `value=light|dark|system`. `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
 Đây là điểm tìm phần tử, không thay thế việc kiểm nội dung, version và dữ liệu bền vững.
 
+## Hành vi đích chưa có điểm vào (10/11/2026)
+
+Các quyết định sản phẩm ngày 10/11/2026 **chưa có route, màn hình hay lệnh nào**; không có gì để
+đi qua bằng trình duyệt hay API. Bảng này chỉ để người đọc không tìm nhầm một tính năng chưa tồn
+tại; nguồn và bằng chứng model ở [registry](product-decisions-registry.md).
+
+| Hành vi đích | Yêu cầu | Hiện có trong app | Bằng chứng hiện có |
+| --- | --- | --- | --- |
+| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Không; publication chỉ đến từ seed | Model `publication.qnt` |
+| Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Không; `ai_moderation: not_implemented` | Model `publication.qnt`, vectors evaluator |
+| Phản đối quyết định | MOD-10 | Không | Model `appeal.qnt` |
+| Tác giả xóa bài, trang thay thế còn bình luận | PUB-04/05 | Không; không có publication thì thảo luận `404` | Model `tombstone.qnt` |
+| Sửa bình luận, dấu “Đã sửa” | COM-10 | Không; chỉ gỡ được bình luận của mình | Model `comment_edit.qnt` |
+| Bộ sưu tập cá nhân | COL-01..06 | Không | Model `collections.qnt` |
+| Hashtag | HTG-01..06 | Không; chỉ có thẻ catalog | Đặc tả văn bản |
+| Đề xuất, Top 100 | RANK, TOP | Không; `/` sắp theo thời gian công khai | Model `discovery.qnt` |
+| Đăng nhập username + mật khẩu | ACC-03 | Không; chỉ có mã email | Không |
+
 ## Assertion hiện có và phần còn thiếu
 
 Nguồn kiểm trình duyệt là [browser-smoke.mjs](../../apps/vink-web/e2e/browser-smoke.mjs);
@@ -256,7 +274,7 @@ UI đọc thảo luận hai tầng D2T-03 bổ sung tại reader; production tr�
 | Điểm vào | Assertion có trong code/runner | Giới hạn |
 | --- | --- | --- |
 | `DiscussionThread::create_root/create_reply` | [Unit tests](../../services/vink-app/src/domain/discussion.rs): root A, reply B/C/D cùng root; context canonical; nhiều root; foreign/missing target; duplicate/self-reference, reject atomic và 20^4 chuỗi lệnh | State thuần, append-only, chưa restore/removal/auth/body/store/request/API; ID và thread/work binding bền vững phải kiểm tại owner thật |
-| Model → trace → core | [Behavior owner](../../services/vink-app/behavior/discussion/README.md): Quint typecheck/scenarios/simulation/mutation/drift; `quint_generated_inputs_replay_against_the_production_creation_seam`, `quint_lifecycle_inputs_replay_against_the_production_decisions` (gồm receipt/retry), `quint_reaction_inputs_replay_against_the_production_decisions` (cùng hai counterexample no-op của bật/tắt và reaction phải bị production từ chối) và `quint_endorsement_inputs_replay_against_production` ([LVE](literary-endorsement-core.md); route ở mục LVE API bên dưới) và `quint_admission_inputs_replay_against_the_production_decisions` (#120, cùng ba counterexample admission phải bị production từ chối) chỉ feed command input rồi so outcome/state; lane đòi tám test replay có tên được chọn | Một thread, ID nhỏ, bounds/seed hữu hạn. Chưa model checking; không proof PostgreSQL hay UI |
+| Model → trace → core | [Behavior owner](../../services/vink-app/behavior/discussion/README.md): Quint typecheck/scenarios/simulation/mutation/drift; `quint_generated_inputs_replay_against_the_production_creation_seam`, `quint_lifecycle_inputs_replay_against_the_production_decisions` (gồm receipt/retry), `quint_reaction_inputs_replay_against_the_production_decisions` (cùng hai counterexample no-op của bật/tắt và reaction phải bị production từ chối) và `quint_endorsement_inputs_replay_against_production` ([LVE](literary-endorsement-core.md); route ở mục LVE API bên dưới) và `quint_admission_inputs_replay_against_the_production_decisions` (#120, cùng ba counterexample admission phải bị production từ chối) và `quint_outbox_inputs_replay_against_the_production_decisions` (DISC-04, cùng counterexample hoàn tất lease cũ) chỉ feed command input rồi so outcome/state; lane đòi đủ mười test replay có tên được chọn | Một thread, ID nhỏ, bounds/seed hữu hạn. Chưa model checking; không proof PostgreSQL hay UI |
 | Domain vòng đời (`domain/discussion/*`) | Unit tests từng module (`quick`): body NFC/emoji/bidi, mode generation, lifecycle 4 bước, visibility mọi trạng thái × người xem, quyền tác giả, bảng `decide_submission`, cursor, reaction desired-state/giới hạn/tally; doctest ranh giới type có lawful twin; [Kani](../../services/vink-app/src/domain/discussion/proofs.rs) (`kani`): kiểm duyệt/gỡ/chế độ với mọi version `i64`, projection không lộ bình luận ẩn, `PageLimit`, `reply_placement`, receipt trước mọi gate, reaction và tally, miền cursor, fence hai yêu cầu của chế độ và reaction (yêu cầu đã xác nhận chặn yêu cầu cũ hơn), admission có version/shadow/hậu kiểm (#120, [quyết định](../architecture/discussion-admission.md)) | Thuần; Kani kiểm một quyết định hoặc một cặp yêu cầu, không chuỗi lệnh dài; không chứng minh transaction hay transport; reaction chưa có store/API/UI |
 | Use case `Vink::{submit_comment, remove_own_comment, set_comments_mode, moderate_comment, discussion, replies}` | [discussion_tests.rs](../../services/vink-app/src/application/discussion_tests.rs) với store ghi nhận (`quick`) | Store ghi nhận không chứng minh SQL/khóa; HTTP và grant kiểm duyệt ở các hàng dưới |
 | Kiểm duyệt `GET /api/v1/moderation/comments`, `POST …/{id}/decisions`; lệnh `vink-app moderator grant\|revoke\|list` | Domain `moderation`/`policy` (`quick`); `moderation_authority_is_a_revocable_grant_rechecked_at_commit`, `moderators_recuse…`, `rejection_reasons_reach_only_their_writer…`, `the_queue_lists_pending_present_comments_oldest_first`, `the_http_moderation_api_keeps_every_outcome_distinct` (`postgres`); parse đối số lệnh (`quick`, bin tests) | Chưa có UI kiểm duyệt, cảnh báo backlog, report/appeal; production trả 401 |

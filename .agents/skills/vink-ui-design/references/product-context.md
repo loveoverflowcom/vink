@@ -10,10 +10,13 @@ Tra [bản đồ nguồn](source-map.md) khi cần đối chiếu mới.
 Vink — Việt Ink giúp người Việt viết đều hơn, được đọc với sự tôn trọng và trưởng
 thành qua phản hồi có ích. Vòng lặp cần hỗ trợ: **viết → được đọc → nhận phản hồi → viết tiếp**.
 Ưu tiên người viết cá nhân và người đọc chủ động, bắt đầu từ thơ, tản văn, truyện
-ngắn, nhật ký công khai và bài tập sáng tác. Mô hình chuẩn bị cho nhiều chương;
-phạm vi UI nhiều chương vẫn cần quyết định theo giai đoạn.
+ngắn, nhật ký công khai và bài tập sáng tác. Từ 10/11/2026 Vink là mạng xã hội các bài viết
+ngắn/tản văn: không làm UI nhiều chương; tác giả tổ chức bài bằng bộ sưu tập cá nhân
+([quyết định](../../../../docs/architecture/product-decisions-20261110.md); chưa có UI nào).
 
-Vai trò: khách đọc, tác giả, người duyệt chính sách, biên tập Tạp Chí và quản trị.
+Vai trò: khách đọc, tác giả và quản trị viên; kiểm duyệt mặc định do trợ lý AI thực hiện (hướng
+đã chốt 10/11/2026, hiện chỉ có đặc tả). “Người duyệt chính sách” và “biên tập Tạp Chí” là vai trò
+của đề xuất cũ; Tạp Chí được hoãn.
 Một người có thể giữ nhiều vai trò, nhưng đăng nhập hoặc quyền biên tập không tự
 cấp quyền đăng thay tác giả. Thiết kế trẻ trung không đồng nghĩa chính sách nhận
 người chưa thành niên đã được chốt.
@@ -72,8 +75,10 @@ luận, AI jobs/provider, rich text/WYSIWYG hay autosave. Không gọi editor ch
 hiện tại là S-01 đã hoàn tất. Trạng thái được mô hình hóa không chứng minh luồng người dùng đã chạy.
 
 **Đã chốt 03/11/2026:** Vink sở hữu cả nội dung lẫn bình luận hai tầng; tác giả bật/tắt bình
-luận theo tác phẩm. **Đề xuất cần tiếp tục kiểm chứng:** JS editor bridge, identity provider, age policy, nhiều chương public beta,
-chi tiết moderation/curation và tự động duyệt. Skeleton không chốt các quyết định đó.
+luận theo tác phẩm. **Đã chốt hướng 10/11/2026, chưa có UI:** hai audience “Chỉ mình tôi”/“Công
+khai”, trang thay thế khi tác giả xóa bài, sửa bình luận có dấu “Đã sửa”, bộ sưu tập, hashtag, Đề
+xuất và Top 100, đăng nhập username + mật khẩu. **Hoãn:** age policy, nhiều chương, Tạp Chí.
+**Đề xuất cần tiếp tục kiểm chứng:** JS editor bridge, identity provider, chi tiết moderation và tự động duyệt. Skeleton không chốt các quyết định đó.
 
 **Ngoài phạm vi mặc định:** cộng tác thời gian thực, offline-first, DM, paywall, chi trả
 tác giả, chợ bản quyền, native mobile, SSO chung Cantos và chuyển thể tự động. Có thể

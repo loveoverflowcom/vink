@@ -1,0 +1,31 @@
+{
+  "format": "vink-moderation-evaluator-script-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "note": "Scripted evaluator results from the model traces; no provider, network or clock.",
+  "scripts": [
+    {"name": "publication_and_comment_edit", "steps": [
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":6,"script":"Timeout","result":{"job":1,"revision":1,"outcome":"timeout"},"applied":"retryable","public_revision":0},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":7,"script":"DuplicateResult","result":{"job":1,"revision":1,"outcome":"approve"},"applied":"duplicate","public_revision":0},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":10,"script":"WrongRevision","result":{"job":2,"revision":2,"outcome":"approve"},"applied":"wrong_revision","public_revision":0},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":12,"script":"Approve","result":{"job":2,"revision":1,"outcome":"approve"},"applied":"published","public_revision":1},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":15,"script":"Reject","result":{"job":3,"revision":2,"outcome":"reject"},"applied":"rejected","public_revision":1},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":21,"script":"DelayedResult","result":{"job":4,"revision":3,"outcome":"approve"},"applied":"stale_policy","public_revision":1},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":23,"script":"NeedsAdmin","result":{"job":5,"revision":3,"outcome":"uncertain"},"applied":"needs_admin","public_revision":1},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":26,"script":"DelayedResult","result":{"job":4,"revision":3,"outcome":"reject"},"applied":"overridden","public_revision":3},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":35,"script":"Approve","result":{"job":6,"revision":4,"outcome":"approve"},"applied":"approved_unpublished","public_revision":0},
+      {"model":"publication.qnt","scenario":"audience_moderation_override","step":40,"script":"DelayedResult","result":{"job":4,"revision":3,"outcome":"approve"},"applied":"target_gone","public_revision":0},
+      {"model":"publication.qnt","scenario":"moderation_removal","step":3,"script":"ProviderError","result":{"job":1,"revision":1,"outcome":"provider_error"},"applied":"retryable","public_revision":0},
+      {"model":"publication.qnt","scenario":"moderation_removal","step":5,"script":"InvalidOutput","result":{"job":2,"revision":1,"outcome":"invalid_output"},"applied":"needs_admin","public_revision":0},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":2,"script":"Approve","result":{"job":1,"revision":1,"outcome":"approve"},"applied":"published","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":12,"script":"Timeout","result":{"job":2,"revision":2,"outcome":"timeout"},"applied":"retryable","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":13,"script":"DuplicateResult","result":{"job":2,"revision":2,"outcome":"approve"},"applied":"duplicate","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":16,"script":"WrongRevision","result":{"job":3,"revision":1,"outcome":"approve"},"applied":"wrong_revision","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":17,"script":"Reject","result":{"job":3,"revision":2,"outcome":"reject"},"applied":"rejected","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":20,"script":"DelayedResult","result":{"job":4,"revision":3,"outcome":"approve"},"applied":"superseded","public_revision":1},
+      {"model":"comment_edit.qnt","scenario":"edit_review_override","step":24,"script":"DelayedResult","result":{"job":5,"revision":4,"outcome":"reject"},"applied":"overridden","public_revision":4},
+      {"model":"comment_edit.qnt","scenario":"removal_during_review","step":1,"script":"NeedsAdmin","result":{"job":1,"revision":1,"outcome":"uncertain"},"applied":"needs_admin","public_revision":0},
+      {"model":"comment_edit.qnt","scenario":"removal_during_review","step":7,"script":"DelayedResult","result":{"job":2,"revision":2,"outcome":"approve"},"applied":"target_gone","public_revision":0}
+    ]}
+  ]
+}

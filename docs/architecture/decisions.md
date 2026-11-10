@@ -1,6 +1,12 @@
 # Các quyết định và lộ trình kiến trúc Vink
 
-**Phiên bản:** 0.3 · **Ngày:** 30/10/2026, cập nhật 03/11/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này; mục được chủ sản phẩm chốt ghi rõ ngày và phạm vi.
+**Phiên bản:** 0.4 · **Ngày:** 30/10/2026, cập nhật 03/11/2026 và 10/11/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này; mục được chủ sản phẩm chốt ghi rõ ngày và phạm vi.
+
+**Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 quyết định nghiệp vụ (`PRODUCT-DECISIONS-20261110`).
+[DecisionDelta](product-decisions-20261110.md) ghi luật cũ → luật mới, lựa chọn `DESIGN_PROPOSED`
+và các điểm `OPEN`. Trong bảng dưới, “**Hướng sản phẩm đã chốt**” nghĩa là chủ sản phẩm đã chọn
+ngữ nghĩa; nó **không** chuyển ADR thành Accepted và không nói runtime đã có. Các đoạn văn cũ được
+giữ làm lịch sử; chỗ bị thay có ghi chú ngày.
 
 ## 1. Ba quyết định ảnh hưởng lớn nhất
 
@@ -37,17 +43,21 @@ Không dùng chung bảng session/password với Cantos. Liên thông audio chư
 | D-02 | Vink sở hữu content; thảo luận do Vink sở hữu (Rust core + PostgreSQL App) | Content: đề xuất ưu tiên. Thảo luận: **đã chốt 03/11/2026** | Discourse chỉ là tham khảo; Vink tự xây tiền kiểm, report/appeal, chống lạm dụng, thông báo trước khi mở công khai |
 | D-03 | Một Rust app + worker, chia module trước | Đề xuất | Không tách microservices theo tên nghiệp vụ |
 | D-04 | Leptos SSR + JavaScript editor | Cần spike | Giữ nếu editor/SSR đạt; có thể đổi frontend mà giữ API/domain |
-| D-05 | Auth authority | **Đề xuất A cho pilot (Provisional, 07/11/2026)**; chưa Accepted | Spike S-03: authority native trong `vink-identity` (mã email một lần + phiên opaque phía server), App giữ principal/binding/đình chỉ; Keycloak và Supabase/Clerk không chọn cho pilot. 10/11/2026: backend có đường production (outbox bền + SMTP/Resend, rate limit theo mạng nguồn + trần Identity, fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ, retention, rollback; đăng nhập production khóa bằng `VINK_AUTH_SIGN_IN`). Blocker còn: chủ sản phẩm chấp nhận UX, gửi thật qua Resend + deliverability, edge/WAF, qualification trình duyệt trên HTTPS thật + native (UI Web đã có và chạy trong môi trường thử, [Auth Web](../development/auth-web.md)), review bảo mật độc lập, người chịu trách nhiệm auth ([ADR](auth-authority.md) §9, §11). Không còn DiscourseConnect |
-| D-06 | Nháp riêng + public publication | Đề xuất pilot | Nhóm kín/unlisted/shared editing để sau |
-| D-07 | AI hỗ trợ từ MVP | Ưu tiên đầu vào | Pilot có người duyệt; auto-approval theo nhóm được đánh giá |
-| D-08 | Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh | Cần spike | Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot. #120 DISC-01: tiền kiểm là policy có version `premoderation.v1`, hiệu lực duy nhất; ứng viên đăng-trước `trusted-cohort.v1` chỉ chạy shadow, delta và điều kiện bật là **PROPOSED** ([admission](discussion-admission.md)) |
-| D-09 | Tạp Chí chỉ hiện snapshot còn là publication hiện hành | Đề xuất pilot | Bản mới làm tuyển chọn tạm ngừng, chờ biên tập xác nhận lại |
-| D-10 | Một phần trước, nhiều chương cơ bản ở beta | Cần lựa chọn sản phẩm | Nếu nhiều chương là điểm khác biệt ngày đầu, nâng WR-04 thành Must — Pilot |
-| D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu; chưa mở DM |
-| D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike | Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner; cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh |
+| D-05 | Auth authority | **Đề xuất A cho pilot (Provisional, 07/11/2026)**; chưa Accepted. **10/11/2026: hướng sản phẩm đã chốt là username + mật khẩu làm đăng nhập chính** (ACC-03); phương thức mã email không còn là hướng chính, có thể bổ sung sau. Authority native trong `vink-identity`, phiên opaque, binding/đình chỉ ở App không đổi. **Hiện trạng code vẫn chỉ có mã email**; username/mật khẩu chưa có ([ADR §12](auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)) | Spike S-03: authority native trong `vink-identity` (mã email một lần + phiên opaque phía server), App giữ principal/binding/đình chỉ; Keycloak và Supabase/Clerk không chọn cho pilot. 10/11/2026: backend có đường production (outbox bền + SMTP/Resend, rate limit theo mạng nguồn + trần Identity, fence đình chỉ tại commit cho mọi lệnh ghi được bảo vệ, retention, rollback; đăng nhập production khóa bằng `VINK_AUTH_SIGN_IN`). Blocker còn: chủ sản phẩm chấp nhận UX, gửi thật qua Resend + deliverability, edge/WAF, qualification trình duyệt trên HTTPS thật + native (UI Web đã có và chạy trong môi trường thử, [Auth Web](../development/auth-web.md)), review bảo mật độc lập, người chịu trách nhiệm auth ([ADR](auth-authority.md) §9, §11). Không còn DiscourseConnect |
+| D-06 | Nháp riêng + public publication | Đề xuất pilot. **10/11/2026: hướng sản phẩm đã chốt** — đúng hai audience “Chỉ mình tôi”/“Công khai”, tách khỏi trạng thái kiểm duyệt (AUD-01/02) | Nhóm kín/unlisted/shared editing để sau. 10/11/2026: không thêm unlisted, bạn bè, nhóm kín hay ACL; runtime chưa có ([đặc tả đích](publication-moderation.md)) |
+| D-07 | AI hỗ trợ từ MVP | Ưu tiên đầu vào. **10/11/2026: hướng sản phẩm đã chốt** — trợ lý AI là luồng duyệt mặc định cho bài, có thể tự quyết định theo policy; hiện chỉ đặc tả contract + mock (MOD-07/08) | Pilot có người duyệt; auto-approval theo nhóm được đánh giá. 10/11/2026: không mặc định có người trực, không tự đặt SLA; lỗi/timeout không bao giờ là duyệt; **bật auto-approval production vẫn cần MOD-06**; không provider thật trong lượt này |
+| D-08 | Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh | Cần spike. **10/11/2026: hướng sản phẩm đã chốt** — bình luận gốc/phản hồi do trợ lý AI kiểm duyệt (COM-09), không còn điều kiện “chỉ người đáng tin”; cho sửa bình luận của mình, có revision, kiểm duyệt và dấu “Đã sửa” (COM-10). **Code hiện tại vẫn `premoderation.v1` và chặn sửa** ([admission §8](discussion-admission.md#8-hướng-đích-sau-quyết-định-10112026), [sửa bình luận](comment-editing.md)) | Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot. #120 DISC-01: tiền kiểm là policy có version `premoderation.v1`, hiệu lực duy nhất; ứng viên đăng-trước `trusted-cohort.v1` chỉ chạy shadow, delta và điều kiện bật là **PROPOSED** ([admission](discussion-admission.md)) |
+| D-09 | Tạp Chí chỉ hiện snapshot còn là publication hiện hành | Đề xuất pilot. **`DEFERRED` 10/11/2026:** Tạp Chí, tuyển chọn, biên tập và curation không thuộc phạm vi hiện tại; không còn là gate của mạng xã hội bài ngắn | Bản mới làm tuyển chọn tạm ngừng, chờ biên tập xác nhận lại (giữ làm lịch sử) |
+| D-10 | Một phần trước, nhiều chương cơ bản ở beta | Cần lựa chọn sản phẩm. **10/11/2026: đã chọn** — Vink là mạng xã hội bài ngắn/tản văn; **không** triển khai nhiều chương (WR-04 `DEFERRED`) | Nếu nhiều chương là điểm khác biệt ngày đầu, nâng WR-04 thành Must — Pilot (lịch sử). Tổ chức bài bằng bộ sưu tập cá nhân: D-16 |
+| D-11 | Nhóm tuổi beta và kênh giao tiếp | Cần lựa chọn sản phẩm. **`DEFERRED` 10/11/2026:** chưa quyết định nhóm tuổi; không code/thiết kế age gate, ngày sinh, parental consent. Hoãn **không** phải quyết định mở cho mọi độ tuổi và không chặn lượt tài liệu/model | Nhóm người trưởng thành được mời là phương án giảm phạm vi ban đầu (giả định “pilot 18+ theo lời mời” **đã gỡ** khỏi phạm vi đã chốt); chưa mở DM |
+| D-12 | Rút bài và thu hồi discussion/excerpt | Cần chốt policy + spike. **10/11/2026: hướng sản phẩm đã chốt cho xóa bài** — tách bốn trường hợp (PUB-05): tác giả xóa bài từng công khai để lại trang thay thế + bình luận hợp lệ (PUB-04); chuyển riêng tư, kiểm duyệt gỡ và chưa từng công khai thì không | Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner (nay chỉ đúng cho riêng tư/gỡ do kiểm duyệt); cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh. Còn `OPEN`: retention/purge, quyền ghi trên tombstone ([đặc tả đích](publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone)) |
 | D-13 | Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác | **Đã chốt 03/11/2026** | Quyền bật/tắt tách khỏi quyền kiểm duyệt hệ thống; “tắt” chỉ ngừng nhận bình luận mới, không ẩn bình luận đã duyệt; tác phẩm mới mặc định bật; tác giả có grant kiểm duyệt vẫn tự né tác phẩm của mình (xác nhận 03/11/2026); bật/tắt dùng generation của ý định được chấp nhận, yêu cầu ở đúng generation hiện tại luôn tăng generation kể cả khi trùng chế độ (xác nhận 05/11/2026), xem [ADR](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm) |
-| D-14 | Ghi nhận văn học (LVE, #73): work revision, root, flat reply | Lựa chọn pure slice LVE-PR-01, hợp nhất PR #80 sau #78 ngày 05/11/2026 | CHOICE-01 A, 02 B, core 03 B (accepted order + exact receipt), 08 A, 09 A, 11 A; không đổi COM-07/08 hoặc luật #79. Lát API + PostgreSQL (#81): PUT có command key, hai bảng state + receipt, đếm từ hàng chuẩn, tổng số tách trạng thái riêng, voter list không có. Ranking/icon/UI còn OPEN. [Decision owner](literary-endorsement.md) |
-| D-15 | Phân loại tác phẩm (TAG, #94/#95): catalog, thẻ nháp, metadata công khai | Lựa chọn pure slice TAG-PR-01 ngày 08/11/2026, chưa Accepted | CHOICE-01 B có giới hạn (một catalog, facet đóng dạng bài ≤ 1/chủ đề ≤ 3), CHOICE-02 B (snapshot metadata bất biến riêng, hash v1/`RevisionId`/anchor LVE không đổi), CHOICE-03 A (curated, không đề xuất). Store PostgreSQL ở #96 ([storage](../development/taxonomy-postgres.md): catalog/slot chuẩn hóa, version metadata riêng, binding cạnh revision); API catalog/thẻ nháp và lệnh operator ở #97 ([API](../development/taxonomy-api.md): resource thẻ nháp có version riêng, quản trị bằng `vink-app tag …` có audit, đối soát bằng desired state + `409` kèm thẻ đang lưu; lựa chọn slice, chưa Accepted); discovery ở #98 ([discovery](../development/discovery-api.md): mở rộng `GET /api/v1/works`, khóa gập dấu lưu bằng cột generated + index, nhiều thẻ là AND; lựa chọn slice, chưa Accepted); UI ở #99–#100; bắt buộc dạng bài khi gửi duyệt và duyệt lại snapshot metadata còn OPEN; curator theo người (grant/HTTP) chờ authority production. [Decision owner](work-taxonomy.md) |
+| D-14 | Ghi nhận văn học (LVE, #73): work revision, root, flat reply | Lựa chọn pure slice LVE-PR-01, hợp nhất PR #80 sau #78 ngày 05/11/2026 | CHOICE-01 A, 02 B, core 03 B (accepted order + exact receipt), 08 A, 09 A, 11 A; không đổi COM-07/08 hoặc luật #79. Lát API + PostgreSQL (#81): PUT có command key, hai bảng state + receipt, đếm từ hàng chuẩn, tổng số tách trạng thái riêng, voter list không có. Ranking/icon/UI còn OPEN. 10/11/2026: “Đánh giá cao” hợp lệ của revision công khai hiện tại là đầu vào của Đề xuất và Top 100 (D-18); “Hữu ích” của bình luận không bao giờ là vote của bài; quan hệ với sửa bình luận là O-06. [Decision owner](literary-endorsement.md) |
+| D-15 | Phân loại tác phẩm (TAG, #94/#95): catalog, thẻ nháp, metadata công khai | Lựa chọn pure slice TAG-PR-01 ngày 08/11/2026, chưa Accepted | CHOICE-01 B có giới hạn (một catalog, facet đóng dạng bài ≤ 1/chủ đề ≤ 3), CHOICE-02 B (snapshot metadata bất biến riêng, hash v1/`RevisionId`/anchor LVE không đổi), CHOICE-03 A (curated, không đề xuất). Store PostgreSQL ở #96 ([storage](../development/taxonomy-postgres.md): catalog/slot chuẩn hóa, version metadata riêng, binding cạnh revision); API catalog/thẻ nháp và lệnh operator ở #97 ([API](../development/taxonomy-api.md): resource thẻ nháp có version riêng, quản trị bằng `vink-app tag …` có audit, đối soát bằng desired state + `409` kèm thẻ đang lưu; lựa chọn slice, chưa Accepted); discovery ở #98 ([discovery](../development/discovery-api.md): mở rộng `GET /api/v1/works`, khóa gập dấu lưu bằng cột generated + index, nhiều thẻ là AND; lựa chọn slice, chưa Accepted); UI ở #99–#100; bắt buộc dạng bài khi gửi duyệt và duyệt lại snapshot metadata còn OPEN; curator theo người (grant/HTTP) chờ authority production. 10/11/2026: catalog curated **không** bị thay bằng hashtag; hashtag là hệ riêng (D-17). [Decision owner](work-taxonomy.md) |
+| D-16 | Bộ sưu tập cá nhân | **Hướng sản phẩm đã chốt 10/11/2026**; runtime chưa có | Thư mục bài của chính tác giả, hai audience; hiển thị = membership ∧ quyền bộ sưu tập ∧ quyền bài; không lộ membership riêng tư; không cộng tác. Nhiều bộ sưu tập/bài và thứ tự do tác giả sắp là `DESIGN_PROPOSED` (O-01/02). [Đặc tả đích](collections.md) |
+| D-17 | Hashtag để lọc | **Hướng sản phẩm đã chốt 10/11/2026**; runtime chưa có | Tách khỏi catalog curated; danh tính giữ dấu, bỏ dấu chỉ để tìm; chỉ index bài đủ điều kiện công khai. CHOICE-04 A (trích từ nội dung theo grammar) là `DESIGN_PROPOSED`. [Đặc tả đích](hashtags.md) |
+| D-18 | Đề xuất (vote + độ mới) và Top 100 (vote) | **Hướng sản phẩm đã chốt 10/11/2026**; công thức **chưa chốt**; runtime chưa có | Hai policy riêng trên cùng tập đủ điều kiện; eligibility trước ranking; quyền hiện hành thắng snapshot. CHOICE-02 A `recommend.v1` và CHOICE-03 A (snapshot ≤ 100 trong cursor) là `DESIGN_PROPOSED`. [Đặc tả đích](discovery-ranking.md) |
+| D-19 | Quản trị viên trên trợ lý AI; phản đối quyết định AI | **Hướng sản phẩm đã chốt 10/11/2026**; runtime chưa có | AI là actor dịch vụ có capability giới hạn; admin override thắng callback AI cùng phiên bản, có provenance và lý do, không vượt privacy/audit; phản đối tạo case gắn decision version, không nhân case; **chưa có** kênh gửi, dashboard hay email (MOD-09/10). [Đặc tả đích](publication-moderation.md#5-quản-trị-viên-và-phản-đối) |
 
 Thảo luận hai tầng D2T-01/D2T-02: [ADR ownership](discussion-ownership.md) ghi quyết định
 03/11/2026 chọn Vink làm owner duy nhất ghi/kiểm duyệt bình luận; [core/registry](../development/discussion-core.md)
@@ -102,7 +112,7 @@ stateDiagram-v2
     HumanReview --> Rejected: Người duyệt từ chối
 ```
 
-Sơ đồ mô tả luồng, không phải file Quint đã thực thi. Trong pilot AI chỉ tư vấn, cả kết quả rõ và mơ hồ đều đi HumanReview kèm gợi ý; AI không tự áp quyết định cuối. Chỉnh nội dung sau submit tạo snapshot mới; không biến một revision bất biến về Draft rồi sửa tại chỗ. Mọi phương án hủy, gửi lại và mở lại quyết định cần audit và version guard khi triển khai.
+Sơ đồ mô tả luồng, không phải file Quint đã thực thi. Trong pilot AI chỉ tư vấn, cả kết quả rõ và mơ hồ đều đi HumanReview kèm gợi ý; AI không tự áp quyết định cuối. **10/11/2026:** câu “AI chỉ tư vấn” bị thay bởi D-07/D-19: kết quả hợp lệ của trợ lý AI có thể là quyết định; `HumanReview` nay là “cần quản trị viên xem xét”, không hàm ý có người đang trực. Đặc tả thực thi của luồng đích là [`publication.qnt`](../../services/vink-app/behavior/target/publication.qnt) (chưa có implementation). Chỉnh nội dung sau submit tạo snapshot mới; không biến một revision bất biến về Draft rồi sửa tại chỗ. Mọi phương án hủy, gửi lại và mở lại quyết định cần audit và version guard khi triển khai.
 
 ### Guard khi xuất bản
 
@@ -111,6 +121,9 @@ Một publish command chỉ có hiệu lực khi đúng snapshot/hash đã đư�
 Để giữ UX gọn, nút “Gửi để đăng khi được duyệt” có thể lưu trước ý định xuất bản cho đúng snapshot. Khi được duyệt, application vẫn phải kiểm lại các guard; tác giả đã rút yêu cầu hoặc publication đã tiến sang phiên bản khác thì không tự đăng tiếp.
 
 ### Ví dụ cần giữ đúng
+
+Cột “Tạp Chí thấy” được giữ làm lịch sử (D-09 `DEFERRED` 10/11/2026). Dòng “Tác giả rút tác phẩm”
+nay tách thành xóa/riêng tư/gỡ theo PUB-04/05.
 
 | Sự kiện | Người đọc Xưởng thấy | Tạp Chí thấy |
 | --- | --- | --- |
@@ -136,11 +149,20 @@ Pilot chưa mở kho phiên bản công khai. Lịch sử revision và quyết �
 | INV-07 | Publish event cũ không khôi phục nội dung đã rút | Subject generation kiểm tại commit; projection/cache có fencing hoặc kiểm quyền khi đọc |
 | INV-08 | Nháp riêng không lọt vào public DTO/cache/provider ngoài scope | Review data flow + integration/browser tests |
 
+INV-01..08 không đổi sau quyết định 10/11/2026. Các model đích ở
+[`behavior/target`](../../services/vink-app/behavior/target/README.md) đặt tên invariant riêng và
+dẫn về các INV này trong [registry](../development/product-decisions-registry.md); chúng là bằng
+chứng **model**, chưa phải bằng chứng code hay PostgreSQL.
+
 **Tiến triển cần điều kiện vận hành:** PendingAI phải được worker/watchdog đẩy tiếp khi retry/deadline hết; HumanReview phải có người phụ trách và khung xử lý được thông báo. Một queue có dữ liệu không chứng minh rằng người dùng sẽ được giải quyết. Thời gian chờ là chỉ số cần đo trong pilot.
 
 Quint phân biệt safety và liveness; liveness thường cần temporal properties và giả định fairness. Model chỉ có giá trị trong phạm vi đã mô tả và phương pháp chạy được ghi lại. Không dùng câu “đã chứng minh không bao giờ lỗi” cho code hay PostgreSQL chỉ vì simulation PASS. [T8], [C8]
 
 ## 5. Quyết định về thu hồi và đồng bộ cần viết rõ
+
+**10/11/2026:** mặc định dưới đây nay áp cho **chuyển riêng tư** và **gỡ do kiểm duyệt**. Khi
+tác giả **xóa** bài đang công khai, nội dung và mọi preview do hệ thống sinh bị đóng nhưng URL cũ
+giữ trang thay thế và các bình luận hợp lệ (PUB-04/05, [đặc tả đích](publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone)).
 
 **Mặc định đề xuất cho pilot:** rút bài đóng ngay public read ở Vink, kể cả thảo luận của tác
 phẩm: vì thảo luận nay cùng owner và cùng database (quyết định 03/11/2026), đường đọc/ghi bình
@@ -180,7 +202,7 @@ Mỗi spike cần ghi phiên bản, môi trường, kịch bản, kết quả qu
 | --- | --- | --- |
 | M0 — Nền tảng quyết định | Bộ vision/stack/requirements này và chủ sở hữu review | Xác định nhóm beta, content ownership, UI boundary và auth direction |
 | M1 — Luồng xuyên suốt | Một tác phẩm thật đi từ editor tới publication và discussion | S-01–S-04 có bằng chứng đủ; không lộ nháp, không đăng nhầm bản, có admin tối thiểu |
-| M2 — Pilot có mời | Nhóm nhỏ viết/đọc/góp ý; AI hỗ trợ; người trực hàng đợi | Quan sát chất lượng phản hồi, thời gian chờ, lỗi editor, chi phí; có export/restore thử |
+| M2 — Pilot có mời (10/11/2026: không còn giả định 18+ theo lời mời hay người trực hàng đợi; D-11 `DEFERRED`, MOD-08) | Nhóm nhỏ viết/đọc/góp ý; AI hỗ trợ; người trực hàng đợi | Quan sát chất lượng phản hồi, thời gian chờ, lỗi editor, chi phí; có export/restore thử |
 | M3 — Public beta | Phạm vi đã chốt, quy tắc công khai, vận hành có người chịu trách nhiệm | MOD-06 nếu mở auto-approval; budgets, privacy/age, withdrawal policy và compatibility matrix được chấp nhận |
 | M4 — Mở rộng | Nhiều chương nâng cao, margin notes, coach, Cantos handoff theo nhu cầu | Mỗi phần có usage case, owner, quyền dữ liệu và thử nghiệm riêng |
 

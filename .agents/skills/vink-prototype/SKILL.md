@@ -45,7 +45,7 @@ Use synthetic text and fixture identities. Private drafts are not provider test 
 | S-01 editor/SSR | [DocumentView](../../../apps/vink-web/src/document.rs), [Editor](../../../apps/vink-web/src/pages/desk.rs), [EditorSession](../../../apps/vink-web/src/desk_state.rs) | Real OS IME/device input, paste/undo, unsaved-text recovery, two tabs and schema round-trip |
 | S-03 identity | `services/vink-app/src/identity.rs` | A selected real authority; linking, logout/ban, forged requests and session/CSRF behavior |
 | S-04 durable changes | `services/vink-app/src/application/`, `persistence/`, PostgreSQL tests | Real transaction/crash/replay observations; local CAS does not prove remote fencing |
-| S-02 comment premoderation | Vink-owned discussion module (`domain/discussion*`, `application/discussion.rs`); Discourse was replaced 03/11/2026 | Every enabled write path stays pending until a versioned human decision; no list/count/preview/notification leak |
+| S-02 comment premoderation | Vink-owned discussion module (`domain/discussion*`, `application/discussion.rs`); Discourse was replaced 03/11/2026 | Every enabled write path stays pending until a versioned decision (human grant today; the target since 10/11/2026 is an AI evaluator with the admin above it); no list/count/preview/notification leak |
 | S-05 AI/operations | Worker is lifecycle-only in the bootstrap | Scoped provider/data authorization, untrusted-output handling and evaluation/queue evidence |
 
 Use [vink-leptos-web](../vink-leptos-web/SKILL.md),

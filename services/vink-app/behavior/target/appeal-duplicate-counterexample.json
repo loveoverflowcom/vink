@@ -1,0 +1,14 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "appeal.qnt",
+  "invariant": "oneOpenCasePerDecision",
+  "command": ["quint","run","appeal.qnt","--backend=typescript","--seed=41","--step=mutatedDuplicateStep","--max-steps=2","--max-samples=1","--invariant=oneOpenCasePerDecision","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedDuplicateStep", "steps": [
+      {"command":{"actor":2,"decision":1,"key":1,"op":"appeal","reason":"none","target":0,"value":"none"},"outcome":"recorded_not_delivered","state":{"decision":{"by":"ai","reason":"policy","verdict":"rejected","version":1},"cases":{"1":{"appellant":2,"decision":1,"notice":"not_sent","seen":false,"state":"open"}},"receipts":{"1":{"answer":1,"decision":1}},"answer":1}},
+      {"command":{"actor":2,"decision":1,"key":1,"op":"appeal","reason":"none","target":0,"value":"none"},"outcome":"recorded_not_delivered","state":{"decision":{"by":"ai","reason":"policy","verdict":"rejected","version":1},"cases":{"1":{"appellant":2,"decision":1,"notice":"not_sent","seen":false,"state":"open"},"2":{"appellant":2,"decision":1,"notice":"not_sent","seen":false,"state":"open"}},"receipts":{"1":{"answer":2,"decision":1}},"answer":2}}
+    ]}
+  ]
+}

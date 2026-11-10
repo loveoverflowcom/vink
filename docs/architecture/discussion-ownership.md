@@ -6,6 +6,14 @@
 **Baseline khảo sát trước quyết định:** `develop@8045d45e554e0a01f11fd252ac681f8eb9d33a56`;
 quyết định áp lên `develop@31a62b1` (sau [#49](https://github.com/loveoverflowcom/vink/pull/49)).
 
+> **Cập nhật 10/11/2026:** owner, hai tầng, quyền bật/tắt và “tác giả không sửa/xóa lời người
+> khác” **không đổi**. Hai điểm D-08 có hướng mới từ chủ sản phẩm: kiểm duyệt bình luận do trợ lý AI
+> quyết định ([admission §8](discussion-admission.md#8-hướng-đích-sau-quyết-định-10112026)) và người
+> viết được sửa bình luận của mình ([đặc tả](comment-editing.md)). D-12 tách xóa bài khỏi chuyển
+> riêng tư: bài bị tác giả xóa để lại trang thay thế cùng bình luận hợp lệ
+> ([đặc tả](publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone)). Tất cả là hành vi đích,
+> **chưa có code**; tài liệu này tiếp tục mô tả hiện trạng.
+
 ## 1. Quyết định
 
 1. **Vink tự xây hệ thống bình luận** bằng Rust core thuần và PostgreSQL của App. Module
@@ -71,7 +79,7 @@ không tạo bản thứ hai; cùng khóa nhưng nội dung khác bị từ ch�
 | Bật/tắt bình luận của tác phẩm | Có | Không | Không qua quyền này | Không |
 | Gửi bình luận/phản hồi khi đang bật | Có (như người đọc) | — | — | Có, nếu đã xác thực |
 | Gỡ bình luận | Chỉ bình luận của chính mình | Có, bình luận của mình | Có, gắn version | Không |
-| Sửa bình luận | Không (kể cả của người khác) | Chưa mở: D-08 chặn sửa công khai trong pilot | — | Không |
+| Sửa bình luận | Không (kể cả của người khác) | Chưa mở: D-08 chặn sửa công khai trong pilot (10/11/2026: hướng đích cho người viết sửa bình luận **của mình**, COM-10; chưa có code) | — | Không |
 | Duyệt/từ chối | Không | Không | Có, gắn version; tự né bình luận của mình và tác phẩm của mình | Không |
 
 **Người kiểm duyệt** là principal có grant đang hiệu lực, do operator cấp bằng

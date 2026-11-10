@@ -8,6 +8,14 @@
 > không là dependency runtime, nơi lưu bình luận, nguồn xác thực hay plugin cần triển khai.
 > Phần so sánh A/B/C bên dưới được giữ làm lịch sử lựa chọn.
 
+> **Cập nhật 10/11/2026 — quyết định sản phẩm:** stack không đổi. Thay đổi là phạm vi và luật
+> nghiệp vụ ([DecisionDelta](product-decisions-20261110.md)): mạng xã hội bài ngắn (không nhiều
+> chương, chưa có Tạp Chí), hai audience, trợ lý AI là luồng duyệt mặc định với quản trị viên ở
+> trên, username + mật khẩu là đăng nhập chính, bộ sưu tập, hashtag, Đề xuất và Top 100. Các câu
+> bên dưới nói “người duyệt”, “human queue”, “Tạp Chí”, “nhiều chương” hay “mã email” được giữ làm
+> lịch sử; hướng đích ở các đặc tả được DecisionDelta dẫn tới. Không thêm Redis, search service hay
+> provider AI nào vì các quyết định này.
+
 ## 1. Khuyến nghị chính
 
 Vink sở hữu **cả nội dung văn học lẫn thảo luận** (hướng C ở mục 2, áp dụng cho bình luận theo quyết định 03/11/2026). Khởi đầu bằng **một ứng dụng Rust có các module rõ ràng**, chạy Leptos SSR và Axum, cùng một worker nền. Không cần tách BFF, Literary API, Curation và Moderation thành bốn dịch vụ mạng.
@@ -24,7 +32,7 @@ Stack đề xuất:
 | Job Vink | PostgreSQL jobs + transactional outbox/inbox | Khởi điểm ít thành phần, có thể gắn việc gửi job vào giao dịch nghiệp vụ |
 | Thảo luận | Module `discussion` trong `vink-app`: Rust core thuần + PostgreSQL của App | Một owner ghi/kiểm duyệt; bình luận gốc + một danh sách phản hồi phẳng; tác giả bật/tắt bình luận theo tác phẩm |
 | AI | Adapter provider + worker giới hạn quyền | Đổi model mà không đổi luật xuất bản |
-| Xác thực | Vink principal/session độc lập; D-05 đề xuất authority native mã email + phiên opaque (Provisional, [ADR](auth-authority.md)) | Tránh ghép session/password với Cantos |
+| Xác thực | Vink principal/session độc lập; D-05 đề xuất authority native mã email + phiên opaque (Provisional, [ADR](auth-authority.md)); 10/11/2026: hướng chính là username + mật khẩu trên cùng authority native, code hiện vẫn chỉ có mã email | Tránh ghép session/password với Cantos |
 | Xác minh | Rust/integration tests + contract fixtures + cargo xtask nhỏ + Quint có chọn lọc | Kiểm cả quy tắc và hành vi tại ranh giới thực tế |
 
 Đây là đề xuất kiến trúc. Khả năng cụ thể của Leptos SSR/Axum, SQLx và editor có nguồn chính thức [T1], [T4], [T5]; việc chúng đáp ứng trải nghiệm Vink phải được thử nghiệm.

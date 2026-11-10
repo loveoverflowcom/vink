@@ -1,0 +1,16 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "tombstone.qnt",
+  "invariant": "noExceptionForHiddenWork",
+  "command": ["quint","run","tombstone.qnt","--backend=typescript","--seed=41","--step=mutatedPrivateStep","--max-steps=4","--max-samples=1","--invariant=noExceptionForHiddenWork","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedPrivateStep", "steps": [
+      {"command":{"actor":1,"id":0,"op":"publish","value":"none"},"outcome":"published","state":{"status":"public","everPublic":true,"comments":{},"views":{"0":{"comments":[],"listed":true,"page":"body","snippet":true},"2":{"comments":[],"listed":true,"page":"body","snippet":true},"3":{"comments":[],"listed":true,"page":"body","snippet":true}}}},
+      {"command":{"actor":2,"id":1,"op":"submit","value":"none"},"outcome":"created","state":{"status":"public","everPublic":true,"comments":{"1":{"removed":false,"review":"pending","writer":2}},"views":{"0":{"comments":[],"listed":true,"page":"body","snippet":true},"2":{"comments":[1],"listed":true,"page":"body","snippet":true},"3":{"comments":[],"listed":true,"page":"body","snippet":true}}}},
+      {"command":{"actor":9,"id":1,"op":"review","value":"approved"},"outcome":"reviewed","state":{"status":"public","everPublic":true,"comments":{"1":{"removed":false,"review":"approved","writer":2}},"views":{"0":{"comments":[1],"listed":true,"page":"body","snippet":true},"2":{"comments":[1],"listed":true,"page":"body","snippet":true},"3":{"comments":[1],"listed":true,"page":"body","snippet":true}}}},
+      {"command":{"actor":1,"id":0,"op":"make_private","value":"none"},"outcome":"made_private","state":{"status":"private","everPublic":true,"comments":{"1":{"removed":false,"review":"approved","writer":2}},"views":{"0":{"comments":[1],"listed":false,"page":"tombstone","snippet":false},"2":{"comments":[1],"listed":false,"page":"tombstone","snippet":false},"3":{"comments":[1],"listed":false,"page":"tombstone","snippet":false}}}}
+    ]}
+  ]
+}

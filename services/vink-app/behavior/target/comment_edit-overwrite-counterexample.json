@@ -1,0 +1,14 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "quint_version": "0.33.1",
+  "model": "comment_edit.qnt",
+  "invariant": "pendingNeverPublic",
+  "command": ["quint","run","comment_edit.qnt","--backend=typescript","--seed=41","--step=mutatedOverwriteStep","--max-steps=2","--max-samples=1","--invariant=pendingNeverPublic","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedOverwriteStep", "steps": [
+      {"command":{"actor":7,"body":0,"expected":0,"job":1,"key":0,"op":"ai_result","rev":1,"value":"approve"},"outcome":"published","state":{"revs":{"1":{"body":1,"by":"ai","decision":"approved"}},"jobs":{"1":{"rev":1,"state":"applied"}},"shown":1,"candidate":0,"firstShown":1,"mark":false,"version":1,"removal":"none","receipts":{},"votes":[],"seen":{"body":1,"edited":false,"helpful":0}}},
+      {"command":{"actor":2,"body":2,"expected":1,"job":0,"key":1,"op":"edit","rev":0,"value":"none"},"outcome":"accepted","state":{"revs":{"1":{"body":1,"by":"ai","decision":"approved"},"2":{"body":2,"by":"none","decision":"pending"}},"jobs":{"1":{"rev":1,"state":"applied"},"2":{"rev":2,"state":"open"}},"shown":2,"candidate":2,"firstShown":1,"mark":false,"version":2,"removal":"none","receipts":{"1":{"body":2,"expected":1}},"votes":[],"seen":{"body":2,"edited":false,"helpful":0}}}
+    ]}
+  ]
+}

@@ -1,5 +1,11 @@
 # D-05 / S-03 — Lựa chọn auth authority
 
+> **Đổi hướng 10/11/2026 (chủ sản phẩm):** **username + mật khẩu** là phương thức đăng nhập chính;
+> mã email có thể bổ sung sau, chưa ưu tiên (ACC-03). Lựa chọn “mã email trước” của tài liệu này
+> **không còn là hướng chính**. Nội dung dưới đây vẫn mô tả đúng **code hiện có** (chỉ mã email) và
+> được giữ nguyên làm lịch sử + hiện trạng; khác biệt và gap cho PR auth sau ở
+> [§12](#12-đổi-hướng-10112026-username--mật-khẩu-là-chính). D-05 vẫn chưa Accepted.
+
 **Ngày:** 07/11/2026 (spike), cập nhật 10/11/2026 (đường production, §11) · **Base spike:**
 `develop@9dc4991620ef93b09c21fdba355a3c3f557da608` ·
 **Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted. Spike chạy được
@@ -202,8 +208,8 @@ email). Dữ liệu tài khoản nằm trong PostgreSQL của Vink, xuất đư�
 Trạng thái sau §11 (10/11/2026): **đã xử lý trong code** = có implementation và bằng chứng cục bộ;
 **còn mở** = chặn Accepted.
 
-1. **Còn mở:** chủ sản phẩm chấp nhận UX đăng nhập chỉ bằng mã email cho pilot (hoặc yêu cầu thêm
-   mật khẩu).
+1. **Đã trả lời 10/11/2026:** chủ sản phẩm **không** chọn UX chỉ-mã-email; yêu cầu username + mật
+   khẩu làm phương thức chính (§12). Phần này chuyển thành việc triển khai, chưa có code.
 2. **Một phần:** mail transport production đã có (SMTP + outbox bền, chọn Resend); **còn mở:** gửi
    thật qua Resend, domain SPF/DKIM/DMARC, bounce/complaint, chi phí thật.
 3. **Một phần:** rate limit theo mạng nguồn (trusted proxy) + trần Identity, log giám sát; **còn
@@ -299,6 +305,46 @@ Cookie `__Host-` (`Secure`, `HttpOnly`, `Path=/`; phiên `Lax`, challenge `Stric
 cho mọi phương thức ghi, phản hồi auth `no-store`, credential do server phát (không fixation). Mới:
 đăng nhập lại thu hồi phiên cũ trình duyệt đang giữ; khóa kích hoạt `VINK_AUTH_SIGN_IN` (production
 mặc định tắt; đăng xuất và xác minh phiên cũ không phụ thuộc).
+
+## 12. Đổi hướng 10/11/2026: username + mật khẩu là chính
+
+**Quyết định (`PRODUCT_CONFIRMED`, USER-08 → ACC-03):** username + mật khẩu là đăng nhập chính; mã
+email có thể bổ sung sau, chưa ưu tiên; username đăng nhập khác bút danh công khai và không buộc
+trùng nhau. Lượt 10/11/2026 **không** viết runtime auth, không xóa code mã email, không bỏ
+session/rate-limit/security guard nào.
+
+**Không đổi:** authority native trong `vink-identity`; subject `(authority, id)` và
+`principal_bindings` bất biến ở App; phiên opaque lưu dạng hash, cookie `__Host-`, kiểm `Origin`;
+đình chỉ ở App + disable ở Identity và fence tại commit; primitive rate limit trong DB; quy tắc chỉ
+thêm của contract v1; khóa `VINK_AUTH_SIGN_IN`. §6 đã dự trù mật khẩu là **một credential khác của
+cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó là đường triển khai tự nhiên.
+
+| | `CURRENT_IMPLEMENTATION` (`develop@4891c77`) | `TARGET_BEHAVIOR` (chưa có code) |
+| --- | --- | --- |
+| Phương thức | Chỉ mã email một lần (`email_challenges`, `account_emails`) | Username + mật khẩu; mã email là phụ/khôi phục, nếu giữ |
+| Lưu credential | Không có username, password hash hay Argon2 ở cả hai service | Bảng credential của Identity: username duy nhất, hash Argon2id có tham số theo version |
+| Route App | `POST /auth/sign-in/challenges`, `/auth/sign-in/complete`, `/auth/session`, `/auth/principal` | Thêm đăng ký và đăng nhập bằng mật khẩu; phiên và `/auth/session` giữ nguyên |
+| Web | Luồng email → mã → bút danh; chữ “Vink không dùng mật khẩu” (`apps/vink-web/src/account.rs`) | Form username + mật khẩu; chữ trên phải đổi |
+| Bút danh | `principals.display_name`, không duy nhất, đặt một lần | Không đổi; **không** suy ra từ username |
+| Phụ thuộc mail | Bắt buộc để đăng nhập (blocker deliverability) | Không cần để đăng nhập; chỉ cần nếu có khôi phục qua email |
+
+**Gap và tương thích cho PR auth sau (`DESIGN_PROPOSED`):**
+
+1. Quy tắc username và mật khẩu (O-12): đề xuất ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất
+   không phân biệt hoa thường, không hiển thị công khai; mật khẩu ≥ 10 ký tự, không luật ký tự bắt
+   buộc, Argon2id.
+2. Lỗi đăng nhập đồng nhất (không lộ username tồn tại); rate limit theo mạng nguồn **và** theo
+   username; đổi mật khẩu thu hồi phiên khác.
+3. Khôi phục tài khoản (O-11): nếu không có email, quên mật khẩu là mất tài khoản. Đề xuất email đã
+   xác minh là kênh khôi phục **tùy chọn**, tái dùng challenge/outbox hiện có.
+4. Tài khoản chỉ-email đã tồn tại: đăng nhập production đang khóa nên chưa có người dùng thật; dữ
+   liệu thử cần đường “đặt username + mật khẩu sau khi xác minh email” hoặc được tạo lại.
+5. Danh sách blocker §9 đổi trọng tâm: deliverability không còn chặn đăng nhập; thêm review lưu trữ
+   mật khẩu, chống credential stuffing, và (sau) kiểm mật khẩu đã lộ.
+6. Số phận code mã email (giữ làm phụ/khôi phục hay gỡ bằng migration có chủ đích) do PR auth quyết
+   định, không phải lượt tài liệu này.
+
+Không có bằng chứng runtime nào cho §12: phần này là hướng và gap, không phải hiện trạng.
 
 ## Nguồn (truy cập 07/11/2026)
 

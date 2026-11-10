@@ -119,8 +119,23 @@ make one “Lưu” send only the changed parts and leave only after every await
 through the contract's `409` with stored tags, never a blind resend. Production still answers `401`;
 `verify web` seeds the catalog through `vink-app tag` and writes only via the LocalFixture. See
 [editor](docs/development/taxonomy-editor.md) and [LayoutSpec](docs/design/tag-selector.md).
-D-05 is **Provisional** (native email-code authority recommended for the pilot,
-[ADR](docs/architecture/auth-authority.md)), not Accepted. Since 10/11/2026 the backend has the
+Product decisions of 10/11/2026 (`PRODUCT-DECISIONS-20261110`,
+[DecisionDelta](docs/architecture/product-decisions-20261110.md)) are **documents and models only**:
+short posts with personal collections (no chapters, no Tạp Chí, age policy deferred), two audiences
+(“Chỉ mình tôi”/“Công khai”), an AI evaluator as the default moderation flow for works and comments
+with the admin above it and appeals going to the admin, author deletion leaving a tombstone that
+keeps valid comments, comment editing with an “Đã sửa” mark, hashtags, a Recommended feed and a
+Top 100, and username + password as the primary sign-in. **None of it has runtime code**: no
+audience, publish/delete command, evaluator, admin role, appeal, collection, hashtag, ranking,
+comment edit or password exists. Requirement IDs are in PRD §14 (AUD, PUB-04/05, MOD-07..10,
+COM-09/10, COL, HTG, RANK, TOP, ACC-03); six target Quint models with generated vectors and
+negative controls live in `services/vink-app/behavior/target` and run as one step of
+`verify discussion` with **no Rust replay** (model evidence only; see its README and the
+[registry](docs/development/product-decisions-registry.md)). Items marked `DESIGN_PROPOSED` or
+`OPEN` there are not owner decisions.
+D-05 is **Provisional** and not Accepted: the code implements the native email-code authority
+([ADR](docs/architecture/auth-authority.md)), while the product direction since 10/11/2026 is
+username + password as the primary method (ADR §12; not implemented). Since 10/11/2026 the backend has the
 production path (ADR §11, [runbook](docs/development/auth-operations.md)): Identity commits each
 challenge with a delivery intent in its own `mail_deliveries` outbox and the `vink-identity serve`
 worker sends it at least once over SMTP (`lettre`, TLS, password file; Resend selected) or the local
@@ -174,16 +189,20 @@ canonical and scoped; migration `20261113000000_own_comment_overlay` adds a meas
 index. Reader Web now consumes the public projection for SSR/browser and the own overlay after hydration,
 with a bounded composed capability-only read and Session-scoped reconciliation ([Web reads](docs/development/discussion-web-reads.md)); CMP has no consumer. Reactions exist only
 as pure decisions (desired state, generation fence, interaction limits, count projection; semantics
-proposed, not product-accepted) with no table, store, route or UI. Production
-writes answer `401` (no auth authority). The reader now has anonymous discussion SSR, browser paging and scoped draft/write-intent UI; real local writes are exercised only with the existing loopback LocalFixture, clearly labelled. Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page context lookup and native service integration remain unavailable. Inspect actual
+proposed, not product-accepted) with no table, store, route or UI. Production sign-in is disabled by
+default; protected writes require a session. The reader has anonymous discussion SSR, browser paging
+and scoped draft/write-intent UI; local discussion write checks use the labelled loopback LocalFixture.
+Production write readiness, Google picker/sticker, reaction persistence/API/UI, ranking, off-page
+context lookup and native service integration remain unavailable. Inspect actual
 files before claiming a capability; update this paragraph when implementation changes those facts.
 
 - [Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
 - [Tech stack](docs/architecture/tech-stack.md): Vink owns literary content and, since 03/11/2026,
   discussion in PostgreSQL. Discourse is a design reference only: never a runtime dependency,
   comment store, auth source or plugin target. Leptos SSR/Axum and a background worker are proposed.
-- [Decision log](docs/architecture/decisions.md) owns open D-01–D-12 decisions, INV-01–INV-08
-  and S-01–S-05 spikes. Importing documents or passing a check does not accept a proposal.
+- [Decision log](docs/architecture/decisions.md) owns the D-01–D-19 decisions, INV-01–INV-08
+  and S-01–S-05 spikes. Importing documents or passing a check does not accept a proposal; a
+  product direction confirmed by the owner is neither an Accepted ADR nor implemented behavior.
 - Distinguish proposed, implemented and verified. A scoped prototype may explore a decision
   without settling it; record its assumptions and the evidence still needed.
 - [Archived input](docs/archive/initial/README.md) is historical context. Preserve it; current
@@ -202,13 +221,18 @@ The following boundaries guide work within the selected scope:
 - Keep private working drafts, immutable submitted revisions, moderation decisions, publication
   and curation distinct. Recheck current authority and version at durable commit boundaries.
 - Discussion is the App's `discussion` module: one writer/moderation owner, two tiers (root + flat
-  replies), premoderation, work author toggles comments but never edits/removes others' comments.
+  replies), premoderation (the implemented policy; the confirmed target is a decision by the AI
+  evaluator before anything is public, and edits of one's own comment through the same gate, both
+  unimplemented), work author toggles comments but never edits/removes others' comments.
   Do not add a Discourse adapter, sync outbox or parallel comment store. Secrets stay out of
   browser bundles and HTML.
 - Preserve Vietnamese Unicode, IME composition, paragraph/poem structure and unsaved text.
   Material 3 Expressive should support a calm reader and editor; Vink has its own visual identity.
 - AI results are untrusted input. Do not turn manuscript text into tool instructions or send
-  private drafts to providers merely because autosave ran. Follow MOD-01–MOD-06 for moderation.
+  private drafts to providers merely because autosave ran. Follow MOD-01–MOD-10 for moderation:
+  an evaluator result carries no authority, a failure or timeout never approves, an admin
+  decision on a revision beats a late evaluator result, and no real provider, admin channel or
+  auto-approval is enabled.
 
 ## Work and verification
 
@@ -223,7 +247,9 @@ quick|discussion|expressions|kani|postgres|web` are implemented lanes, used by C
 the structural D2T-01, lifecycle D2T-02 (with receipts) and reaction D2T-INV-08 Quint models and replays their inputs through the real
 pure decisions (the lane fails if a named replay test is not selected); locking, transactions and
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
-runs the owner-local manifests and requires every declared harness to verify. Every crate inherits
+runs the owner-local manifests and requires every declared harness to verify. The `discussion` lane
+also runs the target specifications of `behavior/target` (typecheck, simulation, scenarios, vector
+drift, negative controls); that step has no Rust replay and proves nothing about production. Every crate inherits
 `unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable
 rustdoc ignores its error code. `specs/behavior` and a generic behavior lane do not exist. Do not
 add a runner merely to validate documentation or skills.
