@@ -1,11 +1,13 @@
 # Vink Identity
 
 Tiến trình riêng sở hữu **authentication facts** và trạng thái credential/bảo mật. Mặc định chưa
-có authority (`authority_not_configured`). Spike D-05/S-03
-([ADR đề xuất](../../docs/architecture/auth-authority.md)) thêm authority native **mã email một
-lần** với tài khoản, địa chỉ đã xác minh, challenge và phiên opaque trong `vink_identity`; mail chỉ
-ghi vào outbox cục bộ nên **production authentication: NOT_IMPLEMENTED**. Spike chạy được không có
-nghĩa D-05 Accepted hay ACC-01/ACC-02 hoàn tất. Ranh giới database/process:
+có authority (`authority_not_configured`). Authority native **mã email một lần**
+([ADR D-05, Provisional](../../docs/architecture/auth-authority.md)) giữ tài khoản, địa chỉ đã xác
+minh, challenge, phiên opaque và **outbox thư** trong `vink_identity`. Mã được gửi bởi worker của
+`serve` qua SMTP (nhà cung cấp mặc định đề xuất: Resend) hoặc outbox cục bộ khi phát triển. Đường
+mail production đã có code và bằng chứng giao thức, nhưng D-05 vẫn **Provisional** (readiness báo
+`production_authentication: not_accepted` với SMTP, `not_implemented` với outbox cục bộ); vận hành
+xem [runbook](../../docs/development/auth-operations.md). Ranh giới database/process:
 [ranh giới PostgreSQL và Identity](../../docs/architecture/identity-postgres-boundaries.md).
 
 | Thuộc Identity | Thuộc App (`vink-app`) |
@@ -19,16 +21,18 @@ session hay cookie với Cantos/VOT.
 
 | File | Vai trò |
 | --- | --- |
-| [src/main.rs](src/main.rs) | `vink-identity [serve\|migrate]`; socket, shutdown, mã thoát 0/1/2 |
+| [src/main.rs](src/main.rs) | `vink-identity [serve\|migrate\|account …\|maintenance prune\|mail status]`; socket, worker, prune hằng giờ, shutdown, mã thoát 0/1/2 |
 | [src/config.rs](src/config.rs) | Cấu hình, kiểm hợp lệ, che URL |
 | [src/http.rs](src/http.rs) | Health, contract v1, xác thực caller theo peer uid, deadline |
 | [src/contract.rs](src/contract.rs) | Kiểu wire canonical; lỗi có message cố định |
 | [src/authority.rs](src/authority.rs) | `Authority::NotConfigured` hoặc `EmailCode`; fixture dương chỉ có trong unit test |
 | [src/email_code.rs](src/email_code.rs) | Chính sách thuần: chuẩn hóa địa chỉ, mã 6 số, handle, credential phiên, hash, quyết định một lần thử |
-| [src/accounts.rs](src/accounts.rs) | SQL: challenge, tạo tài khoản đồng thời, phiên, logout, đổi email, disable/enable |
-| [src/mail.rs](src/mail.rs) | Outbox cục bộ (file `0600` trong thư mục `0700`); chưa có SMTP/API mail |
+| [src/accounts.rs](src/accounts.rs) | SQL: challenge + ý định gửi trong cùng transaction, trần theo địa chỉ/tài khoản/toàn cục, tạo tài khoản đồng thời, phiên, logout, đổi email, disable/enable, retention |
+| [src/delivery.rs](src/delivery.rs) | Outbox `mail_deliveries`: chính sách retry thuần, claim `SKIP LOCKED` + lease, worker at-least-once |
+| [src/mail.rs](src/mail.rs) | Transport: SMTP (`lettre`, TLS bắt buộc ngoài loopback, mật khẩu đọc từ file mỗi lần gửi) và outbox cục bộ (file `0600`, chỉ dev) |
 | [src/persistence.rs](src/persistence.rs) | `MIGRATOR` riêng, pool/lifecycle từ `vink-store-postgres` |
-| [migrations/](migrations/) | Baseline + `accounts`, `account_emails`, `email_challenges`, `sessions` |
+| [migrations/](migrations/) | Baseline + `accounts`, `account_emails`, `email_challenges`, `sessions`; `mail_deliveries` và index retention |
+| [migrations-rollback/](migrations-rollback/) | Script rollback có kiểm thử cho migration mới (chỉ mất dữ liệu outbox tạm thời) |
 | [contracts/rpc/v1](contracts/rpc/v1/README.md) | Contract riêng tư (draft) và fixtures do provider sở hữu |
 
 ## Topology và caller
@@ -59,13 +63,26 @@ chạy bằng uid đã cấu hình. Chế độ mạng (ví dụ mTLS) chưa đ�
 | `VINK_IDENTITY_MIGRATE_DATABASE_URL` | `migrate` | Role migrator `vink_identity_migrator`; không fallback sang URL runtime |
 | `VINK_IDENTITY_SOCKET` | `serve` | Đường dẫn socket, tối đa 100 byte |
 | `VINK_IDENTITY_CALLER_UID` | `serve` | UID duy nhất được gọi contract; không đặt = đóng |
-| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt = không authority; `email-code` = authority spike (cần outbox) |
-| `VINK_IDENTITY_LOCAL_OUTBOX` | `serve` | Thư mục `0700` nhận thư chứa mã (chỉ cục bộ); chỉ hợp lệ với `email-code` |
+| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt = không authority; `email-code` = authority mã email (cần transport) |
+| `VINK_IDENTITY_MAIL_TRANSPORT` | `serve` | `smtp` hoặc `local-outbox` (dev). Bỏ trống mà có `VINK_IDENTITY_LOCAL_OUTBOX` = outbox cục bộ |
+| `VINK_IDENTITY_LOCAL_OUTBOX` | `serve` | Thư mục `0700` nhận thư chứa mã (chỉ cục bộ) |
+| `VINK_IDENTITY_SMTP_PROVIDER` | `serve`, `smtp` | Preset nhà cung cấp (`resend` = `smtp.resend.com`, `tls`/465, user `resend`); biến tường minh vẫn thắng |
+| `VINK_IDENTITY_SMTP_HOST` | `serve`, `smtp` | Relay, ví dụ `smtp.resend.com` (không cần khi có preset) |
+| `VINK_IDENTITY_SMTP_SECURITY` | `serve`, `smtp` | `starttls` (mặc định, cổng 587), `tls` (465) hoặc `none` (chỉ host loopback) |
+| `VINK_IDENTITY_SMTP_PORT` | `serve`, `smtp` | Mặc định theo `SECURITY` |
+| `VINK_IDENTITY_SMTP_USERNAME` / `VINK_IDENTITY_SMTP_PASSWORD_FILE` | `serve`, `smtp` | Đặt cả hai hoặc không; file `0600`, đọc lại ở mỗi lần gửi. `VINK_IDENTITY_SMTP_PASSWORD` (giá trị) bị từ chối |
+| `VINK_IDENTITY_MAIL_FROM` | `serve`, `smtp` | Mailbox gửi, domain đã xác minh ở nhà cung cấp |
+| `VINK_IDENTITY_SMTP_TIMEOUT_SECONDS` | `serve`, `smtp` | 1–30, mặc định 10 |
+| `VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT` | `serve` | Trần mã/10 phút trên mọi địa chỉ (mặc định 200) |
 | `VINK_LOG_FORMAT` | mọi lệnh | `text` (mặc định) hoặc `json`; `RUST_LOG` chỉnh filter |
 
 `vink-identity account disable|enable <subject-uuid>` dùng `VINK_IDENTITY_DATABASE_URL` (role
 runtime): disable thu hồi mọi phiên của tài khoản trong cùng transaction; enable không khôi phục
-phiên đã thu hồi. Không thao tác contract nào làm việc này.
+phiên đã thu hồi. Không thao tác contract nào làm việc này. `vink-identity maintenance prune` xóa
+challenge (kèm thư) quá hạn 7 ngày và phiên đã đóng quá 30 ngày (cũng chạy mỗi giờ trong `serve`);
+`vink-identity mail status` in số thư chờ, tuổi thư chờ lâu nhất và số thư lỗi trong giờ qua.
+`vink-identity mail test <địa-chỉ>` gửi một thư kiểm tra (không mã) qua đúng sender đã cấu hình,
+không cần database — kiểm egress/DNS/TLS/credential trước khi bật.
 
 Biến của App (`DATABASE_URL`, `VINK_MIGRATE_DATABASE_URL`) không được đọc. Lỗi cấu hình thoát `2`
 và không in URL.
@@ -86,7 +103,7 @@ mkdir -p -m 700 target/identity && VINK_IDENTITY_DATABASE_URL=postgres://vink_id
 curl --unix-socket target/identity/identity.sock http://identity/health/ready
 ```
 
-Chạy thử authority spike (mã nằm trong file của outbox, không gửi đi đâu):
+Chạy thử authority với outbox cục bộ (mã nằm trong file, không gửi đi đâu; worker ghi file sau commit):
 
 ```bash
 mkdir -p -m 700 target/identity/outbox && VINK_IDENTITY_AUTHORITY=email-code VINK_IDENTITY_LOCAL_OUTBOX=target/identity/outbox VINK_IDENTITY_DATABASE_URL=postgres://vink_identity_runtime:vink-identity-runtime-local-only@127.0.0.1:55432/vink_identity VINK_IDENTITY_SOCKET=target/identity/identity.sock VINK_IDENTITY_CALLER_UID=$(id -u) cargo run -q -p vink-identity -- serve
@@ -103,10 +120,16 @@ của server.
 
 `verify quick` chạy unit test contract (caller, header giả, payload, version, deadline, fixtures,
 redaction), chính sách mã email (chuẩn hóa NFC, mã, handle, credential, bảng quyết định thử mã
-vét cạn), outbox và socket (quyền thư mục, socket cũ/đang phục vụ/file thường, không gỡ socket của
-instance sau). `verify postgres` chạy thêm [tests/postgres/email_code.rs](tests/postgres/email_code.rs)
-(mã một lần, đồng thời, throttle, logout, hết hạn, disable, đổi email) và bước đầu-cuối hai binary
-thật trong [xtask](../../xtask/src/identity/email_code.rs). `verify postgres` chạy `tests/postgres.rs` và kiểm binary thật trên socket thật với
+vét cạn), chính sách retry thư (vét cạn số lần × loại lỗi), adapter SMTP với relay giả qua TCP
+loopback (chấp nhận, 4xx, 5xx, im lặng, không có relay), cấu hình SMTP và socket. `verify postgres`
+chạy thêm [tests/postgres/email_code.rs](tests/postgres/email_code.rs) (mã một lần, đồng thời,
+throttle, logout, hết hạn, disable, đổi email, không dò địa chỉ),
+[tests/postgres/delivery.rs](tests/postgres/delivery.rs) (outbox cùng transaction, retry/backoff,
+lỗi vĩnh viễn, giới hạn lần thử, hủy mã hết hạn, crash/lease/trùng thư, nhiều worker, trần toàn
+cục/tài khoản, prune, rollback) và bước đầu-cuối hai binary thật trong
+[xtask](../../xtask/src/identity/email_code.rs), gồm gửi qua SMTP loopback, xoay mật khẩu và relay
+sập rồi phục hồi. Relay giả không chứng minh deliverability: gửi thật qua Resend cần kiểm riêng
+(xem runbook). `verify postgres` chạy `tests/postgres.rs` và kiểm binary thật trên socket thật với
 role đã provision: cấu hình sai, migrate hai lần, sai database/schema, role migrator bị từ chối,
 mất kết nối, header gửi dở, SIGTERM/restart, socket cũ, log không lộ credential; và App thật gọi
 Identity thật (dừng/khởi động lại độc lập, đọc công khai không phụ thuộc). Bằng chứng:

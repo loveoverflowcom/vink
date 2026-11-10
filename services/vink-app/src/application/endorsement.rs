@@ -229,6 +229,9 @@ pub enum EndorsementError {
     KeyReused,
     #[error("invalid input: {0}")]
     Invalid(#[from] EndorsementInput),
+    /// Suspended by Vink at the write's commit (standing fence); nothing was written.
+    #[error("principal suspended")]
+    Suspended,
     #[error("storage unavailable")]
     Unavailable,
     #[error("internal error")]
@@ -241,6 +244,7 @@ impl From<StoreError> for EndorsementError {
             StoreError::Unavailable(_) => Self::Unavailable,
             // The resolved principal has no Vink record: not an authenticated Vink actor.
             StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::PrincipalSuspended => Self::Suspended,
             StoreError::Integrity(_) => Self::Internal,
         }
     }

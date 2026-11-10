@@ -4,17 +4,24 @@
 //! disable an account and revoke all its sessions) runs in one transaction with the rows locked.
 //!
 //! Time comparisons use the database clock (`now()`), so the server and the stored rows agree.
+//!
+//! Issuing a challenge writes its delivery intent in the same transaction
+//! ([`crate::delivery::enqueue`]); no mail is sent while a transaction is open.
+
+use std::sync::Arc;
 
 use sqlx::{PgPool, Postgres, Row, Transaction};
 use time::OffsetDateTime;
+use tokio::sync::Notify;
 use uuid::Uuid;
 
 use crate::contract::{ChallengeRejection, CredentialRejection};
+use crate::delivery;
 use crate::email_code::{
     Attempt, ChallengeHandle, ChallengeState, Code, EmailAddress, Policy, RandomUnavailable,
     SessionCredential, decide_attempt,
 };
-use crate::mail::{LocalOutbox, Purpose};
+use crate::mail::Purpose;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreError {
@@ -41,13 +48,35 @@ pub enum ChallengeOutcome {
         handle: ChallengeHandle,
         expires_at: OffsetDateTime,
     },
-    RateLimited,
+    RateLimited(Throttle),
+}
+
+/// Which ceiling refused a challenge. Logged by label; the contract answer is the same for all.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Throttle {
+    /// Codes per address, any purpose.
+    Address,
+    /// Verified email changes started per account.
+    Account,
+    /// Codes across all addresses: caps mail volume when requests rotate addresses and networks.
+    Global,
+}
+
+impl Throttle {
+    pub fn label(self) -> &'static str {
+        match self {
+            Throttle::Address => "address",
+            Throttle::Account => "account",
+            Throttle::Global => "global",
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum EmailChangeStart {
     Issued(ChallengeOutcome),
-    /// The address is already this account's or another account's.
+    /// The address is already this account's own. An address of ANOTHER account is not reported:
+    /// the answer is `Issued` and no mail is sent, so the operation cannot probe who is registered.
     AddressUnavailable,
     CredentialRejected,
 }
@@ -86,21 +115,24 @@ pub enum EmailChangeOutcome {
 #[derive(Debug, Clone)]
 pub struct AccountStore {
     pool: PgPool,
-    outbox: LocalOutbox,
     policy: Policy,
+    /// Woken after a challenge commits, so the delivery worker of this process sends at once.
+    wake: Arc<Notify>,
 }
 
 impl AccountStore {
-    pub fn new(pool: PgPool, outbox: LocalOutbox, policy: Policy) -> Self {
-        Self {
-            pool,
-            outbox,
-            policy,
-        }
+    pub fn new(pool: PgPool, policy: Policy, wake: Arc<Notify>) -> Self {
+        Self { pool, policy, wake }
     }
 
     pub fn policy(&self) -> &Policy {
         &self.policy
+    }
+
+    fn issued(&self, outcome: &ChallengeOutcome) {
+        if matches!(outcome, ChallengeOutcome::Issued { .. }) {
+            self.wake.notify_one();
+        }
     }
 
     /// Issues a sign-in challenge for `address`. The account table is not read: the answer and
@@ -111,9 +143,10 @@ impl AccountStore {
     ) -> Result<ChallengeOutcome, StoreError> {
         let mut tx = self.pool.begin().await?;
         let outcome = self
-            .issue_challenge(&mut tx, address, Purpose::SignIn, None)
+            .issue_challenge(&mut tx, address, Purpose::SignIn, None, true)
             .await?;
         tx.commit().await?;
+        self.issued(&outcome);
         Ok(outcome)
     }
 
@@ -225,23 +258,29 @@ impl AccountStore {
             return Ok(EmailChangeStart::CredentialRejected);
         };
         let mut tx = self.pool.begin().await?;
-        let taken: bool =
-            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM account_emails WHERE address = $1)")
+        let holder: Option<Uuid> =
+            sqlx::query_scalar("SELECT account_id FROM account_emails WHERE address = $1")
                 .bind(address.as_str())
-                .fetch_one(&mut *tx)
+                .fetch_optional(&mut *tx)
                 .await?;
-        if taken {
+        if holder == Some(session.account_id) {
             return Ok(EmailChangeStart::AddressUnavailable);
         }
+        // Another account's address: same answer and same throttles as a free address, but no
+        // mail, so nobody can learn whether an address is registered. Completing it would fail
+        // on the unique address anyway.
+        let deliver = holder.is_none();
         let outcome = self
             .issue_challenge(
                 &mut tx,
                 address,
                 Purpose::ChangeEmail,
                 Some(session.account_id),
+                deliver,
             )
             .await?;
         tx.commit().await?;
+        self.issued(&outcome);
         Ok(EmailChangeStart::Issued(outcome))
     }
 
@@ -372,14 +411,20 @@ impl AccountStore {
         }
     }
 
-    /// Throttles per address (any purpose), stores the verifier and delivers the code before
-    /// the caller commits: a failed delivery rolls the challenge back.
+    /// Applies the ceilings, stores the verifier and, when `deliver`, the delivery intent, all in
+    /// the caller's transaction. Nothing is sent here: the worker sends after commit.
+    ///
+    /// The per-address and per-account ceilings are exact (an advisory lock per address and the
+    /// account's session row serialise them). The global ceiling is read without a lock, so
+    /// concurrent requests can pass it by at most their number; it bounds mail volume, not a
+    /// security property.
     async fn issue_challenge(
         &self,
         tx: &mut Transaction<'_, Postgres>,
         address: &EmailAddress,
         purpose: Purpose,
         account: Option<Uuid>,
+        deliver: bool,
     ) -> Result<ChallengeOutcome, StoreError> {
         // Serialise issuance per address so concurrent requests cannot both pass the throttle.
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
@@ -395,7 +440,37 @@ impl AccountStore {
         .fetch_one(&mut **tx)
         .await?;
         if recent >= self.policy.max_challenges_per_window {
-            return Ok(ChallengeOutcome::RateLimited);
+            return Ok(ChallengeOutcome::RateLimited(Throttle::Address));
+        }
+        if let Some(account) = account {
+            // Serialise per account too: two changes to different addresses must not both pass.
+            // NO KEY UPDATE: a concurrent sign-in of this account (a session insert's key-share
+            // lock) is not blocked by it.
+            sqlx::query("SELECT 1 FROM accounts WHERE id = $1 FOR NO KEY UPDATE")
+                .bind(account)
+                .execute(&mut **tx)
+                .await?;
+            let changes: i64 = sqlx::query_scalar(
+                "SELECT count(*) FROM email_challenges
+                  WHERE account_id = $1 AND created_at > now() - make_interval(secs => $2)",
+            )
+            .bind(account)
+            .bind(self.policy.account_window.as_seconds_f64())
+            .fetch_one(&mut **tx)
+            .await?;
+            if changes >= self.policy.max_email_changes_per_window {
+                return Ok(ChallengeOutcome::RateLimited(Throttle::Account));
+            }
+        }
+        let everywhere: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM email_challenges
+              WHERE created_at > now() - make_interval(secs => $1)",
+        )
+        .bind(self.policy.global_window.as_seconds_f64())
+        .fetch_one(&mut **tx)
+        .await?;
+        if everywhere >= self.policy.max_challenges_globally {
+            return Ok(ChallengeOutcome::RateLimited(Throttle::Global));
         }
         let handle = ChallengeHandle::generate(Uuid::now_v7())?;
         let code = Code::generate()?;
@@ -412,9 +487,9 @@ impl AccountStore {
         .bind(self.policy.challenge_ttl.as_seconds_f64())
         .fetch_one(&mut **tx)
         .await?;
-        self.outbox
-            .deliver(handle.id, address, &code, purpose, expires_at)
-            .map_err(|_| StoreError::Unavailable)?;
+        if deliver {
+            delivery::enqueue(tx, handle.id, purpose, address, &code).await?;
+        }
         Ok(ChallengeOutcome::Issued { handle, expires_at })
     }
 
@@ -554,5 +629,55 @@ pub async fn enable_account(pool: &PgPool, account: Uuid) -> Result<AccountChang
         AccountChange::Unchanged
     } else {
         AccountChange::UnknownAccount
+    })
+}
+
+/// How long closed records are kept before [`prune`] deletes them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Retention {
+    /// After a challenge expires (its delivery row goes with it).
+    pub challenges: time::Duration,
+    /// After a session closed: expiry or revocation, whichever is later.
+    pub sessions: time::Duration,
+}
+
+impl Default for Retention {
+    fn default() -> Self {
+        Self {
+            challenges: time::Duration::days(7),
+            sessions: time::Duration::days(30),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Pruned {
+    pub challenges: u64,
+    pub sessions: u64,
+}
+
+/// Deletes expired challenges (and their deliveries) and long-closed sessions. Never touches an
+/// account, a verified address, an open session or a challenge that could still be answered.
+/// Idempotent; safe to run from several processes at once.
+pub async fn prune(pool: &PgPool, retention: Retention) -> Result<Pruned, StoreError> {
+    let challenges = sqlx::query(
+        "DELETE FROM email_challenges WHERE expires_at < now() - make_interval(secs => $1)",
+    )
+    .bind(retention.challenges.as_seconds_f64())
+    .execute(pool)
+    .await?
+    .rows_affected();
+    let sessions = sqlx::query(
+        "DELETE FROM sessions
+          WHERE GREATEST(expires_at, COALESCE(revoked_at, expires_at))
+                < now() - make_interval(secs => $1)",
+    )
+    .bind(retention.sessions.as_seconds_f64())
+    .execute(pool)
+    .await?
+    .rows_affected();
+    Ok(Pruned {
+        challenges,
+        sessions,
     })
 }

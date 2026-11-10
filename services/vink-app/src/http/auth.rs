@@ -8,9 +8,18 @@
 //! Authentication (Identity) is kept apart from authorization (the App): completing a challenge
 //! yields a session for a *subject*; the App then reads its own binding and suspension list.
 //! A new subject gets no principal until `POST /auth/principal` provisions one with a pen name.
+//!
+//! Abuse protection: asking for and answering codes are counted per client network
+//! ([`crate::domain::abuse`]) in the App database before Identity is called; a refused or
+//! uncountable request never reaches Identity. Identity adds its own per-address, per-account and
+//! global ceilings. Production activation is explicit (`VINK_AUTH_SIGN_IN`).
+
+use std::future::Future;
+use std::net::SocketAddr;
+use std::pin::Pin;
 
 use axum::extract::rejection::JsonRejection;
-use axum::extract::{ConnectInfo, State};
+use axum::extract::{ConnectInfo, FromRequest, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -21,7 +30,12 @@ use time::OffsetDateTime;
 use tower_http::set_header::SetResponseHeaderLayer;
 
 use super::{Actor, ApiError, AppState};
+use crate::application::Vink;
 use crate::application::account::AccountError;
+use crate::application::ports::{RateLimitStore, StoreError};
+use crate::domain::abuse::{
+    Admission, Network, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE, client_address,
+};
 use crate::domain::principal::{Standing, SubjectKey};
 use crate::identity::client::{CallError, ChallengeRefusal, SignIn, StartError};
 use crate::identity::{IdentityClient, Resolution, SESSION_COOKIE, bind, presented_credential};
@@ -98,11 +112,85 @@ pub struct ProvisionedPrincipal {
     pub created: bool,
 }
 
+pub type AdmitFuture<'a> = Pin<Box<dyn Future<Output = Result<Admission, StoreError>> + Send + 'a>>;
+
+/// Counts one sign-in request of a network and decides. Shared by every App process when backed
+/// by the App database ([`Vink`]); replaceable in tests.
+pub trait SignInLimiter: Send + Sync + 'static {
+    fn admit<'a>(&'a self, limit: &'a RateLimit, network: Network) -> AdmitFuture<'a>;
+}
+
+impl<S> SignInLimiter for Vink<S>
+where
+    S: RateLimitStore + 'static,
+{
+    fn admit<'a>(&'a self, limit: &'a RateLimit, network: Network) -> AdmitFuture<'a> {
+        Box::pin(async move { Vink::admit(self, limit, &network).await })
+    }
+}
+
+/// The sign-in client, only while new sessions may be started.
 fn sign_in_client(state: &AppState) -> Result<&IdentityClient, ApiError> {
     state
         .sign_in
         .as_ref()
+        .filter(|_| state.sign_in_enabled)
         .ok_or(ApiError::AuthorityNotConfigured)
+}
+
+/// The client network of a request: the TCP peer, or behind a trusted proxy the right-most
+/// untrusted `X-Forwarded-For` hop.
+fn network(state: &AppState, parts: &Parts) -> Option<Network> {
+    let peer = parts.extensions.get::<ConnectInfo<SocketAddr>>()?.0.ip();
+    let forwarded: Vec<&str> = parts
+        .headers
+        .get_all("x-forwarded-for")
+        .iter()
+        .filter_map(|value| value.to_str().ok())
+        .collect();
+    Some(Network::of(client_address(
+        peer,
+        &forwarded,
+        &state.trusted_proxies,
+    )))
+}
+
+/// Counts this request against `limit`. Fails closed: an unknown peer or an unreachable counter
+/// is `503`, never an unlimited request.
+async fn admit(state: &AppState, parts: &Parts, limit: &RateLimit) -> Result<(), ApiError> {
+    let Some(network) = network(state, parts) else {
+        tracing::error!("sign-in request without a peer address; refused");
+        return Err(ApiError::DependencyUnavailable);
+    };
+    match state.limiter.admit(limit, network).await {
+        Ok(Admission::Admitted) => Ok(()),
+        Ok(Admission::Refused {
+            retry_after_seconds,
+        }) => {
+            tracing::warn!(
+                bucket = limit.bucket,
+                "sign-in request refused: network ceiling"
+            );
+            Err(ApiError::RateLimited {
+                retry_after_seconds: Some(retry_after_seconds),
+            })
+        }
+        Err(_) => {
+            tracing::warn!(
+                bucket = limit.bucket,
+                "sign-in rate limit cannot be counted"
+            );
+            Err(ApiError::DependencyUnavailable)
+        }
+    }
+}
+
+async fn json<T: serde::de::DeserializeOwned>(
+    parts: Parts,
+    body: axum::body::Body,
+) -> Result<T, ApiError> {
+    let request = axum::extract::Request::from_parts(parts, body);
+    json_body(<Json<T> as FromRequest<()>>::from_request(request, &()).await)
 }
 
 fn cookie(name: &str, value: &str, same_site: &str, max_age: i64) -> Option<HeaderValue> {
@@ -160,13 +248,16 @@ fn unavailable(error: CallError) -> ApiError {
     }
 }
 
-/// `POST /auth/sign-in/challenges`: Identity mails a code; the handle goes into a cookie.
+/// `POST /auth/sign-in/challenges`: Identity issues a code (mailed by its worker); the handle
+/// goes into a cookie.
 async fn start_sign_in(
     State(state): State<AppState>,
-    body: Result<Json<StartSignInRequest>, JsonRejection>,
+    request: axum::extract::Request,
 ) -> Result<Response, ApiError> {
     let client = sign_in_client(&state)?;
-    let request = json_body(body)?;
+    let (parts, body) = request.into_parts();
+    admit(&state, &parts, &SIGN_IN_CHALLENGE).await?;
+    let request: StartSignInRequest = json(parts, body).await?;
     let challenge = match client.start_sign_in(request.email.trim()).await {
         Ok(challenge) => challenge,
         Err(StartError::InvalidEmail) => {
@@ -175,7 +266,11 @@ async fn start_sign_in(
                 message: "email must be a mailbox address".into(),
             });
         }
-        Err(StartError::RateLimited) => return Err(ApiError::RateLimited),
+        Err(StartError::RateLimited) => {
+            return Err(ApiError::RateLimited {
+                retry_after_seconds: None,
+            });
+        }
         Err(StartError::Call(error)) => return Err(unavailable(error)),
     };
     let set = cookie(
@@ -197,14 +292,19 @@ async fn start_sign_in(
 
 /// `POST /auth/sign-in/complete`: answers the challenge in the cookie. On success the session
 /// credential is set as a cookie and the App reports whether a principal is bound. A suspended
-/// principal or an undecidable directory revokes the fresh session and sets no cookie.
+/// principal or an undecidable directory revokes the fresh session and sets no cookie. A session
+/// the browser presented before is revoked once the new one is delivered, so signing in again
+/// never leaves an orphaned session behind.
 async fn complete_sign_in(
     State(state): State<AppState>,
-    headers: HeaderMap,
-    body: Result<Json<CompleteSignInRequest>, JsonRejection>,
+    request: axum::extract::Request,
 ) -> Result<Response, ApiError> {
     let client = sign_in_client(&state)?;
-    let request = json_body(body)?;
+    let (parts, body) = request.into_parts();
+    admit(&state, &parts, &SIGN_IN_COMPLETE).await?;
+    let previous = single_cookie(&parts.headers, SESSION_COOKIE).map(str::to_string);
+    let headers = parts.headers.clone();
+    let request: CompleteSignInRequest = json(parts, body).await?;
     let code: String = request
         .code
         .chars()
@@ -269,6 +369,12 @@ async fn complete_sign_in(
     let headers = response.headers_mut();
     headers.append(header::SET_COOKIE, set);
     headers.append(header::SET_COOKIE, clear(CHALLENGE_COOKIE));
+    if let Some(previous) = previous.filter(|previous| *previous != session.credential)
+        && client.revoke(&previous).await.is_err()
+    {
+        // The browser no longer holds it; it expires on its own.
+        tracing::warn!("could not revoke the session replaced by a new sign-in");
+    }
     Ok(response)
 }
 
@@ -498,7 +604,13 @@ mod tests {
                 ApiError::AuthorityNotConfigured,
                 501,
             ),
-            ("error.rate_limited.json", ApiError::RateLimited, 429),
+            (
+                "error.rate_limited.json",
+                ApiError::RateLimited {
+                    retry_after_seconds: Some(60),
+                },
+                429,
+            ),
             ("error.code_rejected.json", ApiError::CodeRejected, 422),
             (
                 "error.challenge_closed.json",

@@ -9,9 +9,11 @@
 //! Literary endorsement (`endorsement.rs`) takes the same prefix with share locks and then only
 //! its own key lock and row, so it never waits on these paths in reverse either.
 //!
-//! A submission then takes the standing fence (#120): the actor's principal row FOR UPDATE
-//! (`principal::locked_standing`), which a suspension's foreign key waits for. It comes after the
-//! shared locks, so a moderator or writer holding a comment row while touching their own
+//! Every write then takes the standing fence (#120): the actor's principal row FOR UPDATE
+//! (`principal::locked_standing`, or `require_active` for writes whose decision does not model
+//! standing: own removal, mode change, moderation), which a suspension's foreign key waits for.
+//! It comes after the row locks of that path and before its first write. For a submission it
+//! comes after the shared locks, so a moderator or writer holding a comment row while touching their own
 //! principal through a foreign key never waits on a submission that waits for that comment row,
 //! and before the receipt and comment inserts, whose foreign keys reference the principal. The
 //! receipt claim and the insert come last. Admission runs inside `decide_submission`; the store
@@ -26,7 +28,7 @@ use uuid::Uuid;
 
 use super::PgStore;
 use super::postgres::classify;
-use super::principal::locked_standing;
+use super::principal::{locked_standing, require_active};
 use crate::application::discussion::{
     AuthorName, CommentItem, Guarded, ModerationAction, ModerationQueue, NewComment, QueueItem,
     ReplyPage, RootEntry, RootItem, RootPage, SubmitOutcome,
@@ -602,6 +604,7 @@ impl DiscussionStore for PgStore {
         }
         let decided = current.remove_by_author();
         if let Ok(Transition::Changed(next)) = decided {
+            require_active(&mut tx, actor).await?;
             // The writer's words are dropped, not just hidden.
             sqlx::query(
                 "UPDATE comments SET removal = $2, body = NULL, moderation_version = $3,
@@ -659,6 +662,7 @@ impl DiscussionStore for PgStore {
         let decided = thread.settings()?.change_mode(expected, mode);
         // A reaffirmation is written too: its generation advance fences older requests.
         if let Some(next) = decided.ok().and_then(ModeChange::write) {
+            require_active(&mut tx, actor).await?;
             sqlx::query(
                 "UPDATE discussion_threads
                     SET comments_open = $2, settings_generation = $3, updated_at = now()
@@ -725,6 +729,8 @@ impl DiscussionStore for PgStore {
             expected,
         );
         if let Ok(Transition::Changed(next)) = decided {
+            // A suspended moderator decides nothing, grant or not.
+            require_active(&mut tx, actor).await?;
             sqlx::query(
                 "UPDATE comments SET review = $2, removal = $3, moderation_version = $4,
                         updated_at = now()

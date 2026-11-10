@@ -1,15 +1,20 @@
 //! `vink-worker` — background process entrypoint.
 //!
-//! Scope today: configuration, logging, a database/schema probe and graceful shutdown. No job
-//! kind is registered: moderation and outbox delivery are not implemented, and the worker never
-//! reports them as running. Discussion is Vink-owned; there is no external forum to reconcile.
+//! Scope today: configuration, logging, a database/schema probe, graceful shutdown and one
+//! housekeeping job: an hourly prune of expired sign-in rate-limit windows (D-05). Moderation
+//! jobs are not implemented and the worker never reports them as running. Identity's mail
+//! outbox is delivered by `vink-identity serve`, never here: the App does not read the Identity
+//! database. Discussion is Vink-owned; there is no external forum to reconcile.
 
 use std::process::ExitCode;
 use std::time::Duration;
 
+use vink_app::application::Vink;
 use vink_app::config::Config;
-use vink_app::persistence::{lazy_pool, schema_state};
+use vink_app::persistence::{PgStore, lazy_pool, schema_state};
 use vink_app::runtime;
+
+const PRUNE_INTERVAL: Duration = Duration::from_secs(3600);
 
 fn main() -> ExitCode {
     let config = match Config::from_env() {
@@ -47,11 +52,24 @@ async fn run(config: Config) -> ExitCode {
     };
     tracing::info!(
         database,
-        jobs = "none",
+        jobs = "rate_limit_prune",
         ai_moderation = "not_implemented",
         "vink-worker ready"
     );
-    runtime::shutdown_signal().await;
+    let vink = Vink::new(PgStore::new(pool.clone()));
+    let shutdown = runtime::shutdown_signal();
+    tokio::pin!(shutdown);
+    loop {
+        tokio::select! {
+            () = &mut shutdown => break,
+            () = tokio::time::sleep(PRUNE_INTERVAL) => {
+                match vink.prune_rate_limits().await {
+                    Ok(rows) => tracing::info!(rows, "rate-limit windows pruned"),
+                    Err(_) => tracing::warn!("rate-limit prune could not reach the database"),
+                }
+            }
+        }
+    }
     pool.close().await;
     tracing::info!("vink-worker stopped");
     ExitCode::SUCCESS

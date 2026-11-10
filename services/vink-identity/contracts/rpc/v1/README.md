@@ -69,9 +69,16 @@ is informational and every value means "no authenticated subject".
 - **Sessions.** Absolute lifetime 30 days, no sliding renewal. `verify-credential` checks the
   credential on every call (revocation is effective on the next call). `sessions/revoke` is
   idempotent logout (`revoked: false` when nothing active matched).
+- **Delivery (D-05 production path).** `202` means the challenge and its delivery intent are
+  committed together; the code is mailed afterwards by the provider's worker (at least once,
+  bounded retries; a used or expired code is never sent). `202` is not proof of delivery, and the
+  answer is the same whether the relay is up or down.
 - **Email change.** Requires a valid session; the code goes to the *new* address; on success the
-  account keeps its subject and every *other* session of the account is revoked. An address another
-  account has verified is `409` (or `rejected.address_unavailable` if it was taken meanwhile).
+  account keeps its subject and every *other* session of the account is revoked. The account's
+  *own* current address is `409`. An address *another* account has verified answers `202` like a
+  free one but no code is mailed (so the operation cannot probe who is registered); completing it
+  would be `rejected.address_unavailable`, as when an address is taken meanwhile. An account may
+  start 3 changes per hour.
 - **Disable.** Only the operator command `vink-identity account disable|enable <subject>` changes it
   (no contract operation). Disabling revokes every session in the same transaction; re-enabling
   never restores them.
@@ -93,9 +100,9 @@ strings and never quote request content. Consumers branch on `code`.
 | 503 | `dependency_unavailable` | The authority or its storage could not answer; nothing was decided. Treat as unavailable, never as rejected |
 | 503 | `deadline_exceeded` | The call (body upload included) did not finish within its deadline (2 s; 5 s for committing email-code operations); nothing was decided |
 | 422 | `invalid_email` | Email-code only: not a mailbox address (`local@domain.tld`, ≤ 254 bytes) |
-| 429 | `rate_limited` | Email-code only: per-address code throttle |
+| 429 | `rate_limited` | Email-code only: a code ceiling (per address 3/15 min, per account 3 changes/h, or the global volume ceiling); the same answer for every address |
 | 403 | `credential_rejected` | Email change only: the session credential is not active; nothing changed |
-| 409 | `address_unavailable` | Email change only: the address is this or another account's |
+| 409 | `address_unavailable` | Email change only: the address is already this account's |
 
 Verification has no durable effect, so a consumer may retry `503` answers with its own deadline;
 it must never turn a `503` or `501` into an authenticated principal.

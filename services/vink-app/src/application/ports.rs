@@ -37,6 +37,10 @@ pub enum StoreError {
     /// The principal has no Vink record.
     #[error("unknown principal")]
     UnknownPrincipal,
+    /// The actor's principal is suspended at the write's commit (the standing fence). Nothing
+    /// was written.
+    #[error("principal suspended")]
+    PrincipalSuspended,
     /// Stored data or a statement violated an invariant.
     #[error("storage integrity error: {0}")]
     Integrity(String),
@@ -477,4 +481,27 @@ pub trait PrincipalStore: Send + Sync {
         candidate: PrincipalId,
         pen_name: &PenName,
     ) -> impl Future<Output = Result<Provisioned, StoreError>> + Send;
+}
+
+/// One counted request of a fixed window.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowCount {
+    /// Requests of this network in this window, including the one just counted.
+    pub hits: i64,
+    /// Seconds until the window ends.
+    pub seconds_left: i64,
+}
+
+/// Sign-in rate-limit counters (D-05). One atomic increment per request, shared by every App
+/// process through PostgreSQL.
+pub trait RateLimitStore: Send + Sync {
+    fn count_request(
+        &self,
+        bucket: &str,
+        network_key: &[u8; 32],
+        window_seconds: i64,
+    ) -> impl Future<Output = Result<WindowCount, StoreError>> + Send;
+
+    /// Deletes windows that ended more than a day ago. Returns the rows deleted.
+    fn prune_rate_limits(&self) -> impl Future<Output = Result<u64, StoreError>> + Send;
 }

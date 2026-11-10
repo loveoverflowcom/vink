@@ -166,7 +166,9 @@ impl From<StoreError> for CatalogReadError {
     fn from(error: StoreError) -> Self {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
-            StoreError::Integrity(_) | StoreError::UnknownPrincipal => Self::Internal,
+            StoreError::Integrity(_)
+            | StoreError::UnknownPrincipal
+            | StoreError::PrincipalSuspended => Self::Internal,
         }
     }
 }
@@ -460,7 +462,9 @@ impl From<StoreError> for CatalogError {
     fn from(error: StoreError) -> Self {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
-            StoreError::Integrity(_) | StoreError::UnknownPrincipal => Self::Internal,
+            StoreError::Integrity(_)
+            | StoreError::UnknownPrincipal
+            | StoreError::PrincipalSuspended => Self::Internal,
         }
     }
 }

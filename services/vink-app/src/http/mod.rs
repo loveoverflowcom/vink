@@ -18,9 +18,11 @@ use axum::http::request::Parts;
 use leptos::config::LeptosOptions;
 use tower_http::trace::TraceLayer;
 
+pub use auth::{AdmitFuture, SignInLimiter};
 pub use error::ApiError;
 
 use crate::application::Vink;
+use crate::domain::abuse::TrustedProxies;
 use crate::domain::ids::PrincipalId;
 use crate::identity::{IdentityClient, IdentityResolver, PrincipalDirectory};
 use crate::persistence::PgStore;
@@ -34,6 +36,13 @@ pub struct AppState {
     pub directory: Arc<dyn PrincipalDirectory>,
     /// Identity client for the sign-in routes; `None` answers `501 authority_not_configured`.
     pub sign_in: Option<IdentityClient>,
+    /// Whether the sign-in routes may start new sessions (`VINK_AUTH_SIGN_IN`). Logout and the
+    /// verification of existing sessions never depend on it.
+    pub sign_in_enabled: bool,
+    /// Rate limits of the sign-in routes; by default the App database.
+    pub limiter: Arc<dyn SignInLimiter>,
+    /// Proxies whose `X-Forwarded-For` names the client network (`VINK_TRUSTED_PROXIES`).
+    pub trusted_proxies: Arc<TrustedProxies>,
     /// The Identity process, probed by readiness (informational: public reading never waits on it).
     pub identity_probe: Option<IdentityClient>,
     /// Readiness refuses a database role that can change schema or roles (production profile).
@@ -63,9 +72,12 @@ impl AppState {
         let vink = Arc::new(vink);
         Self {
             directory: vink.clone(),
+            limiter: vink.clone(),
             vink,
             identity,
             sign_in: None,
+            sign_in_enabled: true,
+            trusted_proxies: Arc::default(),
             identity_probe: None,
             require_restricted_role: false,
             public_origin: Arc::from(public_origin),
@@ -75,6 +87,21 @@ impl AppState {
 
     pub fn with_sign_in(mut self, client: Option<IdentityClient>) -> Self {
         self.sign_in = client;
+        self
+    }
+
+    pub fn with_sign_in_enabled(mut self, enabled: bool) -> Self {
+        self.sign_in_enabled = enabled;
+        self
+    }
+
+    pub fn with_limiter(mut self, limiter: Arc<dyn SignInLimiter>) -> Self {
+        self.limiter = limiter;
+        self
+    }
+
+    pub fn with_trusted_proxies(mut self, proxies: TrustedProxies) -> Self {
+        self.trusted_proxies = Arc::new(proxies);
         self
     }
 
@@ -559,6 +586,8 @@ mod identity_tests {
     }
 
     static REVOKED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+    /// Revocations of tests that must not race the exact assertions on [`REVOKED`].
+    static REPLACED: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
     async fn fake_challenge(axum::Json(body): axum::Json<Value>) -> axum::response::Response {
         use axum::response::IntoResponse;
@@ -623,7 +652,11 @@ mod identity_tests {
             )
                 .into_response();
         }
-        REVOKED.lock().unwrap().push(credential);
+        if credential.starts_with("vink_s1_isolated-") {
+            REPLACED.lock().unwrap().push(credential);
+        } else {
+            REVOKED.lock().unwrap().push(credential);
+        }
         axum::Json(json!({ "revoked": true })).into_response()
     }
 
@@ -704,24 +737,73 @@ mod identity_tests {
         Fake { dir, socket, uid }
     }
 
-    fn app(socket: &Path, server_uid: u32) -> Router {
+    /// Admits everything; the PostgreSQL limiter is `tests/postgres/abuse.rs`.
+    struct Unlimited;
+
+    impl SignInLimiter for Unlimited {
+        fn admit<'a>(
+            &'a self,
+            _: &'a crate::domain::abuse::RateLimit,
+            _: crate::domain::abuse::Network,
+        ) -> AdmitFuture<'a> {
+            Box::pin(std::future::ready(Ok(
+                crate::domain::abuse::Admission::Admitted,
+            )))
+        }
+    }
+
+    /// Refuses (`Some`) or cannot count (`None`), and records the networks it was asked about.
+    struct Scripted {
+        refuse: Option<u32>,
+        seen: std::sync::Mutex<Vec<crate::domain::abuse::Network>>,
+    }
+
+    impl SignInLimiter for Scripted {
+        fn admit<'a>(
+            &'a self,
+            _: &'a crate::domain::abuse::RateLimit,
+            network: crate::domain::abuse::Network,
+        ) -> AdmitFuture<'a> {
+            self.seen.lock().unwrap().push(network);
+            let answer = match self.refuse {
+                Some(seconds) => Ok(crate::domain::abuse::Admission::Refused {
+                    retry_after_seconds: seconds,
+                }),
+                None => Err(crate::application::ports::StoreError::Unavailable(
+                    "counter down".into(),
+                )),
+            };
+            Box::pin(std::future::ready(answer))
+        }
+    }
+
+    const PEER: ([u8; 4], u16) = ([203, 0, 113, 9], 50_000);
+
+    fn state(socket: &Path, server_uid: u32) -> AppState {
         let pool = lazy_pool("postgres://vink:unused@127.0.0.1:1/vink").unwrap();
         let client = IdentityClient::with_timeout(
             socket.to_path_buf(),
             server_uid,
             Duration::from_millis(400),
         );
-        router(
-            AppState::new(
-                Vink::new(PgStore::new(pool)),
-                Arc::new(IdentityService::new(client.clone(), Arc::new(Directory))),
-                "http://127.0.0.1:3000",
-                Path::new("target/site"),
-            )
-            .with_directory(Arc::new(Directory))
-            .with_sign_in(Some(client.clone()))
-            .with_identity_probe(Some(client)),
+        AppState::new(
+            Vink::new(PgStore::new(pool)),
+            Arc::new(IdentityService::new(client.clone(), Arc::new(Directory))),
+            "http://127.0.0.1:3000",
+            Path::new("target/site"),
         )
+        .with_directory(Arc::new(Directory))
+        .with_sign_in(Some(client.clone()))
+        .with_identity_probe(Some(client))
+        .with_limiter(Arc::new(Unlimited))
+    }
+
+    fn with_peer(state: AppState, peer: SocketAddr) -> Router {
+        router(state).layer(axum::Extension(ConnectInfo(peer)))
+    }
+
+    fn app(socket: &Path, server_uid: u32) -> Router {
+        with_peer(state(socket, server_uid), SocketAddr::from(PEER))
     }
 
     async fn call(
@@ -1028,6 +1110,199 @@ mod identity_tests {
         )
         .await;
         assert_eq!(got, StatusCode::FORBIDDEN);
+    }
+
+    /// D-05 abuse protection at the App edge: a refused, uncountable or unattributable request
+    /// never reaches Identity (whose answers below would be 202/503 otherwise).
+    #[tokio::test]
+    async fn sign_in_is_counted_per_network_before_identity_and_fails_closed() {
+        let fake = fake_identity("limits").await;
+        let challenge = |router: Router| async move {
+            call(
+                &router,
+                "POST",
+                "/api/v1/auth/sign-in/challenges",
+                &[ORIGIN],
+                Some(r#"{"email":"down@vi-du.vn"}"#),
+            )
+            .await
+        };
+        let complete = |router: Router| async move {
+            call(
+                &router,
+                "POST",
+                "/api/v1/auth/sign-in/complete",
+                &[ORIGIN, ("cookie", "__Host-vink_sign_in=new-subject")],
+                Some(r#"{"code":"123456"}"#),
+            )
+            .await
+        };
+        let refusing = Arc::new(Scripted {
+            refuse: Some(42),
+            seen: Default::default(),
+        });
+        let router = with_peer(
+            state(&fake.socket, fake.uid).with_limiter(refusing.clone()),
+            SocketAddr::from(PEER),
+        );
+        for (got, headers, body) in [
+            challenge(router.clone()).await,
+            complete(router.clone()).await,
+        ] {
+            assert_eq!(got, StatusCode::TOO_MANY_REQUESTS, "{body}");
+            assert!(body.contains(r#""code":"rate_limited""#), "{body}");
+            assert_eq!(headers[header::RETRY_AFTER], "42");
+            assert_eq!(headers[header::CACHE_CONTROL], "no-store");
+            assert!(set_cookies(&headers).is_empty());
+        }
+        assert_eq!(refusing.seen.lock().unwrap().len(), 2);
+
+        // The counter is down: 503, never an unlimited request.
+        let down = Arc::new(Scripted {
+            refuse: None,
+            seen: Default::default(),
+        });
+        let router = with_peer(
+            state(&fake.socket, fake.uid).with_limiter(down),
+            SocketAddr::from(PEER),
+        );
+        for (got, _, body) in [
+            challenge(router.clone()).await,
+            complete(router.clone()).await,
+        ] {
+            assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+            assert!(body.contains("dependency_unavailable"), "{body}");
+        }
+        // No peer address: cannot be attributed, refused.
+        let (got, _, _) = challenge(super::router(state(&fake.socket, fake.uid))).await;
+        assert_eq!(got, StatusCode::SERVICE_UNAVAILABLE);
+        // Identity's own ceiling (per address) passes through without a Retry-After guess.
+        let (got, headers, body) = call(
+            &app(&fake.socket, fake.uid),
+            "POST",
+            "/api/v1/auth/sign-in/challenges",
+            &[ORIGIN],
+            Some(r#"{"email":"limited@vi-du.vn"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::TOO_MANY_REQUESTS, "{body}");
+        assert!(headers.get(header::RETRY_AFTER).is_none());
+    }
+
+    /// A forged `X-Forwarded-For` cannot choose the bucket of a direct client; behind a trusted
+    /// proxy the right-most untrusted hop is the client, whatever was prepended.
+    #[tokio::test]
+    async fn forwarded_for_selects_the_bucket_only_behind_a_trusted_proxy() {
+        use crate::domain::abuse::{Network, TrustedProxies};
+        let fake = fake_identity("proxies").await;
+        let ask = |peer: SocketAddr, proxies: &str| {
+            let recorder = Arc::new(Scripted {
+                refuse: Some(1),
+                seen: Default::default(),
+            });
+            let router = with_peer(
+                state(&fake.socket, fake.uid)
+                    .with_limiter(recorder.clone())
+                    .with_trusted_proxies(TrustedProxies::parse(proxies).unwrap()),
+                peer,
+            );
+            async move {
+                call(
+                    &router,
+                    "POST",
+                    "/api/v1/auth/sign-in/challenges",
+                    &[ORIGIN, ("x-forwarded-for", "198.51.100.1, 192.0.2.66")],
+                    Some(r#"{"email":"a@vi-du.vn"}"#),
+                )
+                .await;
+                recorder.seen.lock().unwrap()[0]
+            }
+        };
+        let ip = |raw: &str| raw.parse::<std::net::IpAddr>().unwrap();
+        let direct = SocketAddr::from(PEER);
+        assert_eq!(ask(direct, "").await, Network::of(ip("203.0.113.9")));
+        assert_eq!(
+            ask(direct, "10.0.0.0/8").await,
+            Network::of(ip("203.0.113.9")),
+            "an untrusted peer's header is ignored"
+        );
+        let proxy = SocketAddr::from(([10, 0, 0, 5], 40_000));
+        assert_eq!(
+            ask(proxy, "10.0.0.0/8").await,
+            Network::of(ip("192.0.2.66"))
+        );
+    }
+
+    /// Production activation stays explicit: with sign-in disabled no session can start, but an
+    /// existing one is still verified and can log out. Signing in again revokes the session the
+    /// browser held before.
+    #[tokio::test]
+    async fn disabled_sign_in_keeps_logout_and_a_new_sign_in_replaces_the_old_session() {
+        let fake = fake_identity("activation").await;
+        let closed = with_peer(
+            state(&fake.socket, fake.uid).with_sign_in_enabled(false),
+            SocketAddr::from(PEER),
+        );
+        for (path, body) in [
+            (
+                "/api/v1/auth/sign-in/challenges",
+                r#"{"email":"a@vi-du.vn"}"#,
+            ),
+            ("/api/v1/auth/sign-in/complete", r#"{"code":"123456"}"#),
+        ] {
+            let (got, _, body) = call(&closed, "POST", path, &[ORIGIN], Some(body)).await;
+            assert_eq!(got, StatusCode::NOT_IMPLEMENTED, "{path}: {body}");
+            assert!(body.contains("authority_not_configured"), "{body}");
+        }
+        let (got, _, _) = call(
+            &closed,
+            "DELETE",
+            "/api/v1/auth/session",
+            &[
+                ORIGIN,
+                ("cookie", "__Host-vink_session=vink_s1_isolated-logout"),
+            ],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::NO_CONTENT);
+        let (got, _, body) = call(
+            &closed,
+            "GET",
+            "/api/v1/auth/session",
+            &[("cookie", "__Host-vink_session=bound")],
+            None,
+        )
+        .await;
+        assert_eq!(got, StatusCode::OK);
+        assert!(body.contains(r#""state":"active""#), "{body}");
+
+        let (got, headers, _) = call(
+            &app(&fake.socket, fake.uid),
+            "POST",
+            "/api/v1/auth/sign-in/complete",
+            &[
+                ORIGIN,
+                (
+                    "cookie",
+                    "__Host-vink_sign_in=bound-subject; __Host-vink_session=vink_s1_isolated-old",
+                ),
+            ],
+            Some(r#"{"code":"123456"}"#),
+        )
+        .await;
+        assert_eq!(got, StatusCode::OK);
+        assert!(
+            set_cookies(&headers)
+                .iter()
+                .any(|c| c.starts_with("__Host-vink_session=vink_s1_for-bound-subject"))
+        );
+        let replaced = REPLACED.lock().unwrap().clone();
+        assert!(
+            replaced.contains(&"vink_s1_isolated-logout".to_string())
+                && replaced.contains(&"vink_s1_isolated-old".to_string()),
+            "{replaced:?}"
+        );
     }
 
     #[tokio::test]

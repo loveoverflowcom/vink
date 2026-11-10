@@ -7,7 +7,7 @@ the provider serializes its responses and compares them field-for-field; the con
 every fixture and must keep every field.
 
 Only the endpoints below exist. Publish/withdraw and account/profile endpoints do not; the
-D-05/S-03 spike adds [Sign-in](#sign-in-d-05s-03-spike) only. Discussion
+D-05/S-03 spike adds [Sign-in](#sign-in-d-05) only. Discussion
 (comments) is Vink-owned (owner decision 03/11/2026; no Discourse) and has the endpoints in
 [Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c). Literary
 endorsement has the endpoints in [Literary endorsement](#literary-endorsement-lve-73); no web or
@@ -32,7 +32,7 @@ consumer yet and no native consumer exists.
   `Cache-Control: no-store`.
 - **Session carrier (D-05/S-03 spike):** when the App is configured with the Identity process
   (`VINK_IDENTITY_SOCKET`), a request presents a session credential either as the
-  `__Host-vink_session` cookie (Web; set only by [Sign-in](#sign-in-d-05s-03-spike)) or as
+  `__Host-vink_session` cookie (Web; set only by [Sign-in](#sign-in-d-05)) or as
   `Authorization: Bearer <credential>` (non-browser clients; an `Authorization` header, even a
   malformed one, takes precedence; two session cookies are no credential). The App asks Identity
   (private contract `vink.identity.v1`) to verify it on every request, then reads its own
@@ -347,18 +347,21 @@ three tags). Every response of these routes, success or error, carries `Cache-Co
   entrypoint), tag proposals by authors, validators/`304` for catalog reads, rate limits. Discovery
   by tag and public tags on cards/publications: [Public discovery](#public-discovery-tag-pr-04).
 
-## Sign-in (D-05/S-03 spike)
+## Sign-in (D-05)
 
 The browser-facing side of the native email-code authority ([ADR](../../../../../docs/architecture/auth-authority.md)).
-Production authentication is NOT_IMPLEMENTED: Identity only writes codes to a local outbox. No web
-or native consumer uses these routes yet. Every answer is `Cache-Control: no-store`; unsafe methods
+D-05 is Provisional: in the production profile the two code routes answer `501
+authority_not_configured` until `VINK_AUTH_SIGN_IN=enabled` (local profile: enabled); session
+reads and logout never depend on that switch. Identity mails codes asynchronously (outbox + SMTP or
+a local outbox), so `202` means "code issued", not "delivered". No web or native consumer uses
+these routes yet. Every answer is `Cache-Control: no-store`; unsafe methods
 need the same-origin `Origin` like every other route. Bodies never contain the challenge handle or
 the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; HttpOnly`).
 
 | Method and path | Success | Errors | Fixture |
 | --- | --- | --- | --- |
-| `POST /api/v1/auth/sign-in/challenges` `{email}` | `202 {expires_at}` + `Set-Cookie: __Host-vink_sign_in=…; SameSite=Strict` | `403`, `422` (`field: email`), `429 rate_limited`, `501 authority_not_configured`, `503` | [request](fixtures/auth.challenge.request.json), [response](fixtures/auth.challenge.response.json) |
-| `POST /api/v1/auth/sign-in/complete` `{code}` + challenge cookie | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax`, challenge cookie cleared | `403`, `422 validation_failed` (`field: code`), `422 code_rejected`, `409 challenge_closed`, `403 account_disabled`, `403 principal_suspended`, `501`, `503` | [request](fixtures/auth.complete.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
+| `POST /api/v1/auth/sign-in/challenges` `{email}` | `202 {expires_at}` + `Set-Cookie: __Host-vink_sign_in=…; SameSite=Strict` | `403`, `422` (`field: email`), `429 rate_limited` (+ `Retry-After` when the App's network window refused), `501 authority_not_configured`, `503` | [request](fixtures/auth.challenge.request.json), [response](fixtures/auth.challenge.response.json) |
+| `POST /api/v1/auth/sign-in/complete` `{code}` + challenge cookie | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax`, challenge cookie cleared | `403`, `422 validation_failed` (`field: code`), `422 code_rejected`, `409 challenge_closed`, `403 account_disabled`, `403 principal_suspended`, `429 rate_limited` + `Retry-After`, `501`, `503` | [request](fixtures/auth.complete.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
 | `GET /api/v1/auth/session` | `200 {state, principal_id?}`: `anonymous`, `needs_principal`, `suspended` or `active` | `503` | same shapes |
 | `GET /api/v1/auth/session/account` | `200 {principal_id, display_name}` for the current active Vink principal, `Cache-Control: no-store` | `401` without an active principal, `503` if the account cannot be read | [account](fixtures/auth.session.account.json) |
 | `POST /api/v1/auth/principal` `{pen_name}` | `201 {principal_id, created: true}`; `200 … created: false` when already bound (pen name unchanged) | `401`, `403`, `403 principal_suspended`, `422` (`field: pen_name`), `503` | [request](fixtures/auth.principal.request.json), [response](fixtures/auth.principal.response.json) |
@@ -375,8 +378,17 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
 - Logout succeeds only after Identity revoked the session (or nothing was presented). If Identity
   is down the answer is `503` and the cookie stays, so logout can be retried; meanwhile the session
   cannot be verified and grants nothing.
-- Per-IP rate limits, a real mail transport, email change for end users and profile/pen-name
-  editing are not implemented.
+- **Rate limits.** Before Identity is called, the App counts the request for the client network
+  (IPv4 address or IPv6 /64) in PostgreSQL, shared by every App process: 10 code requests and 30
+  code answers per 15 minutes. The network is the TCP peer, or — only when the peer is in
+  `VINK_TRUSTED_PROXIES` — the right-most untrusted `X-Forwarded-For` hop. A refused request gets
+  `429` with `Retry-After` and never reaches Identity; a counter that cannot be reached is `503`,
+  never an unlimited request. Identity's own ceilings (per address, per account, global) also answer
+  `429`, without `Retry-After`. Every limit answers the same for existing and new addresses.
+- A successful completion revokes the session the browser presented before (if any), so signing in
+  again never leaves an orphaned session behind.
+- Email change for end users and profile/pen-name editing have no route yet (Identity's contract
+  has email change).
 
 ## Errors
 
@@ -405,11 +417,11 @@ code-specific members named below. Branch on `code`; `message` is developer text
 | 403 | `moderator_recused` | The moderator wrote the comment or owns the work | [error.moderator_recused.json](fixtures/error.moderator_recused.json) |
 | 409 | `comment_removed` | A decision on a removed comment | [error.comment_removed.json](fixtures/error.comment_removed.json) |
 | 501 | `authority_not_configured` | Sign-in routes when no Identity authority resolves requests | [error.authority_not_configured.json](fixtures/error.authority_not_configured.json) |
-| 429 | `rate_limited` | Too many sign-in codes for the address | [error.rate_limited.json](fixtures/error.rate_limited.json) |
+| 429 | `rate_limited` | A sign-in ceiling refused the request (this network, or Identity's per-address/account/global ceiling); `Retry-After` when known | [error.rate_limited.json](fixtures/error.rate_limited.json) |
 | 422 | `code_rejected` | Wrong sign-in code; `field` is `code`; retry allowed | [error.code_rejected.json](fixtures/error.code_rejected.json) |
 | 409 | `challenge_closed` | Sign-in code expired, used, exhausted or no challenge cookie | [error.challenge_closed.json](fixtures/error.challenge_closed.json) |
 | 403 | `account_disabled` | The mailbox was proven but the Identity account is disabled | [error.account_disabled.json](fixtures/error.account_disabled.json) |
-| 403 | `principal_suspended` | The Vink principal is suspended (sign-in, provisioning, and a draft-tag save or comment submission that commits after the suspension; a suspended writer's exact retry is refused too) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
+| 403 | `principal_suspended` | The Vink principal is suspended (sign-in, provisioning, and any protected write — draft create/save, draft tags, comment submission/removal, comments mode, moderation decision, endorsement — that commits after the suspension; a suspended writer's exact retry is refused too) | [error.principal_suspended.json](fixtures/error.principal_suspended.json) |
 | 503 | `dependency_unavailable` | PostgreSQL or Identity unreachable; retry later | [error.dependency_unavailable.json](fixtures/error.dependency_unavailable.json) |
 | 500 | `internal` | Stored data failed validation, an unexpected database error, or an exhausted endorsement token | — |
 

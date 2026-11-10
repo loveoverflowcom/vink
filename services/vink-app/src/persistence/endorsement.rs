@@ -8,8 +8,9 @@
 //! and receipts that are never deleted.
 //!
 //! Lock order, the prefix of the discussion adapter's: publication (FOR SHARE) → thread (FOR
-//! SHARE) → comment (FOR SHARE) → the actor's command-key namespace (transaction advisory lock)
-//! → the actor's record (FOR UPDATE). A withdrawal or republish (pointer update) and a
+//! SHARE) → comment (FOR SHARE) → the actor's principal row (FOR UPDATE, the standing fence) →
+//! the actor's command-key namespace (transaction advisory lock) → the actor's record (FOR
+//! UPDATE). A withdrawal or republish (pointer update) and a
 //! moderation decision (comment UPDATE) either commit before the decision reads its facts or wait
 //! until it commits; endorsement never takes their rows in the reverse order. The advisory lock
 //! makes one command key have one winner across ALL targets of the actor, which a lock on the
@@ -20,9 +21,10 @@
 //! committed meanwhile, the INSERT writes nothing and the transaction reads the winner's row under
 //! FOR UPDATE and decides again. The UPDATE path is conditional on the order it decided from.
 //!
-//! The current capability is "the principal has a Vink record": no ban, quarantine or revocation
-//! mechanism exists yet, so there is nothing else to recheck. Counts are read from the canonical
-//! rows in the same transaction (CHOICE-05 A).
+//! The capability rechecked at commit is "the principal has a Vink record and is not suspended"
+//! (`principal::require_active`): a suspension committed before the fence refuses the command;
+//! one committed after waits for it. Counts are read from the canonical rows in the same
+//! transaction (CHOICE-05 A).
 
 use sqlx::{AssertSqlSafe, Postgres, Transaction};
 use uuid::Uuid;
@@ -30,6 +32,7 @@ use uuid::Uuid;
 use super::PgStore;
 use super::discussion::{integrity, read_snapshot, state};
 use super::postgres::classify;
+use super::principal::require_active;
 use crate::application::endorsement::CommentBatch;
 use crate::application::ports::{
     CommentSummaryFacts, EndorsementStore, EndorsementSummaryFacts, EndorsementWriteRecord,
@@ -365,7 +368,6 @@ impl EndorsementStore for PgStore {
         let target = command.target;
         let work_id = target.work();
         let mut tx = self.pool().begin().await.map_err(classify)?;
-        require_principal(&mut tx, actor).await?;
         // A withdraw/republish (pointer DELETE/UPDATE) waits for this decision, or committed
         // before it and is what this read sees.
         let published: Option<RevisionId> =
@@ -427,6 +429,9 @@ impl EndorsementStore for PgStore {
             EndorsementTarget::Comment { .. } => target_facts.is_some(),
         };
 
+        // Standing fence after the shared row locks, before the key lock and any write that
+        // references the actor.
+        require_active(&mut tx, actor).await?;
         // One winner per (actor, command key) across every target of the actor.
         sqlx::query(
             "SELECT pg_advisory_xact_lock(hashtextextended($1::text || '/' || $2::text, $3))",

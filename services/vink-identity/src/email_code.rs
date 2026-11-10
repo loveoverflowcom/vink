@@ -39,7 +39,16 @@ pub struct Policy {
     /// Challenges per address within [`Policy::throttle_window`], any purpose.
     pub max_challenges_per_window: i64,
     pub throttle_window: Duration,
-    /// Absolute session lifetime; there is no sliding renewal in the spike.
+    /// Verified email changes an account may start within [`Policy::account_window`].
+    pub max_email_changes_per_window: i64,
+    pub account_window: Duration,
+    /// Challenges across all addresses within [`Policy::global_window`]: a ceiling on mail volume
+    /// (and cost) when requests rotate addresses and networks. Operators tune it
+    /// (`VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT`); reaching it refuses new codes for everyone, which
+    /// is the intended degradation under a flood.
+    pub max_challenges_globally: i64,
+    pub global_window: Duration,
+    /// Absolute session lifetime; there is no sliding renewal.
     pub session_ttl: Duration,
 }
 
@@ -50,6 +59,10 @@ impl Default for Policy {
             max_attempts: 5,
             max_challenges_per_window: 3,
             throttle_window: Duration::minutes(15),
+            max_email_changes_per_window: 3,
+            account_window: Duration::hours(1),
+            max_challenges_globally: 200,
+            global_window: Duration::minutes(10),
             session_ttl: Duration::days(30),
         }
     }

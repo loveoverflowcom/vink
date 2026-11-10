@@ -3,6 +3,7 @@ use sqlx::types::Json;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::principal::require_active;
 use crate::application::ports::{DraftStore, SaveOutcome, StoreError};
 use crate::domain::document::{Document, DocumentData, Title};
 use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
@@ -31,6 +32,7 @@ pub(super) fn classify(error: sqlx::Error) -> StoreError {
         StoreError::Unavailable(detail) => tracing::warn!(%detail, "postgres unavailable"),
         StoreError::Integrity(detail) => tracing::error!(%detail, "postgres integrity error"),
         StoreError::UnknownPrincipal => tracing::info!("principal has no Vink record"),
+        StoreError::PrincipalSuspended => {}
     }
     classified
 }
@@ -134,6 +136,8 @@ impl DraftStore for PgStore {
     ) -> Result<WorkingDraft, StoreError> {
         let empty = Document::empty();
         let mut tx = self.pool.begin().await.map_err(classify)?;
+        // Standing fence first: nothing else is locked and `works.owner_id` references the actor.
+        require_active(&mut tx, owner).await?;
         sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2)")
             .bind(work_id.as_uuid())
             .bind(owner.as_uuid())
@@ -180,8 +184,11 @@ impl DraftStore for PgStore {
         work_id: WorkId,
         change: &DraftChange,
     ) -> Result<SaveOutcome, StoreError> {
-        // Owner and version are part of the UPDATE predicate, so the check and the write are one
-        // atomic statement; a concurrent save that commits first makes this one match no row.
+        // Standing fence, then owner and version in the UPDATE predicate, so the check and the
+        // write are one atomic statement; a concurrent save that commits first makes this one
+        // match no row.
+        let mut tx = self.pool.begin().await.map_err(classify)?;
+        require_active(&mut tx, owner).await?;
         let saved: Option<(i64, OffsetDateTime)> = sqlx::query_as(
             "UPDATE working_drafts d
                 SET title = $4, document = $5, version = d.version + 1, updated_at = now()
@@ -194,10 +201,11 @@ impl DraftStore for PgStore {
         .bind(change.expected_version().get())
         .bind(change.title().as_str())
         .bind(Json(change.document().to_data()))
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
         if let Some((raw_version, updated_at)) = saved {
+            tx.commit().await.map_err(classify)?;
             return Ok(SaveOutcome::Saved {
                 version: version(raw_version)?,
                 updated_at,
@@ -210,7 +218,7 @@ impl DraftStore for PgStore {
         )
         .bind(work_id.as_uuid())
         .bind(owner.as_uuid())
-        .fetch_optional(&self.pool)
+        .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
         Ok(match current {

@@ -120,10 +120,18 @@ through the contract's `409` with stored tags, never a blind resend. Production 
 `verify web` seeds the catalog through `vink-app tag` and writes only via the LocalFixture. See
 [editor](docs/development/taxonomy-editor.md) and [LayoutSpec](docs/design/tag-selector.md).
 D-05 is **Provisional** (native email-code authority recommended for the pilot,
-[ADR](docs/architecture/auth-authority.md)), not Accepted: no production mail transport, edge rate
-limit, sign-in UI, browser/native qualification or general commit-time suspension fence exists
-(only draft-tag saves and comment submissions have one), so
-production authentication is NOT_IMPLEMENTED. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
+[ADR](docs/architecture/auth-authority.md)), not Accepted. Since 10/11/2026 the backend has the
+production path (ADR §11, [runbook](docs/development/auth-operations.md)): Identity commits each
+challenge with a delivery intent in its own `mail_deliveries` outbox and the `vink-identity serve`
+worker sends it at least once over SMTP (`lettre`, TLS, password file; Resend selected) or the local
+outbox (dev), with bounded retries, leases and retention; the App counts sign-in requests per client
+network in `auth_rate_limits` (`X-Forwarded-For` only from `VINK_TRUSTED_PROXIES`) before Identity,
+which adds per-address, per-account and global ceilings; every protected App write (drafts, tags,
+comments, comments mode, moderation, endorsement) takes the shared standing fence
+(`principal::require_active`) at commit. Production sign-in stays locked (`VINK_AUTH_SIGN_IN`
+defaults to `disabled` in production): no real Resend delivery, sign-in UI, browser/native
+qualification, independent security review or auth owner exists, so production authentication is
+NOT accepted. No publish/moderation workflow, AI provider or job exists. Vink owns discussion (owner decision 03/11/2026,
 [ADR](docs/architecture/discussion-ownership.md)): the App has a pure two-tier discussion core
 (structure, body, lifecycle, per-work comments mode, permissions, viewer visibility, idempotency,
 paging), application use cases, a PostgreSQL adapter/migration with real-database tests, HTTP API

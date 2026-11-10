@@ -35,8 +35,9 @@ fn bound(row: &sqlx::postgres::PgRow) -> Result<BoundPrincipal, sqlx::Error> {
 /// still use the snapshot taken before the wait. Lifting a suspension is not fenced (a stale
 /// "suspended" fails closed). Take this lock before any statement of the same transaction that
 /// references the principal through a foreign key: upgrading an already held FOR KEY SHARE can
-/// deadlock with a concurrent transaction of the same principal. Used by draft tag saves and by
-/// discussion submissions.
+/// deadlock with a concurrent transaction of the same principal. Used through [`require_active`]
+/// by every protected write, and directly by draft tag saves and discussion submissions (whose
+/// pure decisions take the standing as a fact).
 pub(super) async fn locked_standing(
     tx: &mut Transaction<'_, Postgres>,
     actor: PrincipalId,
@@ -64,6 +65,23 @@ pub(super) async fn locked_standing(
     } else {
         Standing::Active
     })
+}
+
+/// The standing fence for writes whose decision does not model standing: a suspension committed
+/// before this point refuses the write with [`StoreError::PrincipalSuspended`]; one committed
+/// later waits for this transaction. Callers place it where their own lock order says (see each
+/// adapter's module comment), always before a statement that references the actor by foreign key.
+pub(super) async fn require_active(
+    tx: &mut Transaction<'_, Postgres>,
+    actor: PrincipalId,
+) -> Result<(), StoreError> {
+    match locked_standing(tx, actor).await? {
+        Standing::Active => Ok(()),
+        Standing::Suspended => {
+            tracing::info!("write refused at commit: principal suspended");
+            Err(StoreError::PrincipalSuspended)
+        }
+    }
 }
 
 impl PrincipalStore for PgStore {

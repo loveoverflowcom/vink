@@ -183,7 +183,7 @@ impl ContractError {
                 "the request did not complete within its deadline; nothing was decided"
             }
             Self::InvalidEmail => "the address is not a deliverable mailbox address",
-            Self::RateLimited => "too many codes were requested for this address; try later",
+            Self::RateLimited => "too many codes were requested; try later",
             Self::CredentialRejected => "the session credential is not valid; nothing was changed",
             Self::AddressUnavailable => "the address cannot be used for this account",
         }
