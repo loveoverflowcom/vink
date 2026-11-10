@@ -3472,6 +3472,10 @@ async function discussionR31Geometry(page, width, scale, scenario) {
   check(geometry.reasons===1 && geometry.targetReasons===0 && geometry.descriptions && geometry.shared, `${scenario}: one uniform branch reason describes every separate target`);
   check(geometry.field && geometry.radius==='28px' && geometry.buttons, `${scenario}: one native field, 28px tonal surface and reachable 48px targets`);
   check(geometry.contrast>=4.5, `${scenario}: resolved body/metadata/label contrast >=4.5 (${geometry.contrast.toFixed(2)})`);
+  if (width === 390 || width === 1440 || (width === 320 && scale === 200)) {
+    await page.eval(`document.querySelector('.vk-discussion-reply-composer').scrollIntoView({block:'start'})`);
+    await page.capture(`discussion-composer-${width}-${scale}-${await page.eval('document.documentElement.dataset.theme')}`, {boundary:'intercepted-provider-contract-fixture-no-persistence'});
+  }
 }
 
 async function captureDiscussionMatrix(page, name, anchor, boundary) {
