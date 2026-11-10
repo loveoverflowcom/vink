@@ -156,3 +156,86 @@ nhãn textarea và các intent có tên vẫn giữ nguyên. Ghi nhận F3 ở �
 là lịch sử trước sửa, không còn là việc đang mở sau khi tích hợp #61. Test render
 Leptos và common test CMP kiểm hai trường hợp có/không có nhãn; gallery vẫn dùng
 intent có tên, CMP vẫn là mẫu không nối dịch vụ.
+
+
+## Nhận xét R3.1 / desktop R1.3 — #134, 10/11/2026
+
+Base `48e0ec50314a915f730d768d5cf6cad6c636620a` (sau PR #138), source cuối
+`cae0782` trên branch `codex/reader-r31-discussion-spacing`.
+Đây là delta Web của [#134](https://github.com/loveoverflowcom/vink/issues/134),
+không nghiệm thu toàn bộ #128/#129/#73 và không đóng issue.
+
+Root/neo ở nền trang → một nhóm Phản hồi tonal → composer cùng hai biên →
+khối lần gửi trước. Pattern giữ anatomy/footer DTO-free; app giữ cursor,
+authority, command key, payload và attempt fence. Gộp lý do theo enum/facts,
+không theo copy; count/value/disabled vẫn riêng từng target. `TextArea` Web thêm
+variant opt-in, native composition owner không đổi. Context/thu ô nằm trong
+composer, mở/thu trả focus đúng chỗ; ảnh sau đã được mở kiểm.
+
+### Điều kiện kiểm
+
+macOS ARM64, Rust 1.99.1, Node 22.15.0, Chrome headless 157.0.8103.40, PostgreSQL
+17.11. Dùng `CARGO_INCREMENTAL=0`, `CARGO_PROFILE_DEV_DEBUG=0`,
+`CARGO_PROFILE_TEST_DEBUG=0`; quick cuối dùng `CARGO_BUILD_JOBS=1`.
+PostgreSQL riêng trong `/tmp`, không dùng database người viết.
+
+| Check | Kết quả / boundary |
+| --- | --- |
+| `cargo xtask verify quick` | PASS — 9/9 nhóm; Web 122 tests, patterns 9, UI 54; log `/tmp/vink134-quick-serial.log` |
+| `cargo xtask verify web` | PASS — SSR/hydration, PostgreSQL thật qua LocalFixture, commit → mất ACK → replay đúng key/body/target, pending, close/reopen, own remove, cursor retry, stale scope; LVE real writes/double tap/409/keyboard/401, discovery và restart. Log `/tmp/vink134-web-complete.log` |
+| `cargo xtask ui-preview leptos verify` | PASS — assertions, 784 contexts / 1.151 PNG gồm tiles; giữ specimen discussion/textarea và contexts tại `/tmp/vink134-preview-evidence`. Log `/tmp/vink134-preview-serial.log` |
+| `node apps/vink-web/e2e/browser-smoke.mjs --base http://127.0.0.1:3014 --chrome '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' --state /tmp/vink134-after-final/state.json --phase discussion-only` | PASS trên `cae0782` — thêm geometry, descriptions, contrast và ảnh đúng vùng sau đổi chữ. Log `/tmp/vink134-after-final.log` |
+| Self review | Không tìm thấy lỗi cần sửa còn lại trong diff cuối. Không đổi quyết định gửi/đối soát, admission, schema hoặc endorsement gate |
+
+Web toàn luồng chạy trên source `eddc712`; các commit sau chỉ chỉnh focus/scroll/màu
+ổn định khi chụp ảnh chữ lớn; lần `discussion-only` cuối chạy lại toàn bộ seam #134 với helper mới.
+Đây là input CDP và LocalFixture, không phải production auth hoặc OS IME.
+
+### Hình học và ảnh đã mở
+
+GET fixture là `discussion.get.json` ở provider, chặn GET trong browser; không
+lấy phản hồi mô phỏng làm bằng chứng persistence. Ca ghi/mất ACK riêng dùng
+PostgreSQL thật: server đã commit `201`, đối soát trả `200`, chỉ một own-pending,
+ACK muộn giữ chữ mới. HTML SSR được kiểm không chứa own-pending/rejected.
+
+- Before: `/tmp/vink134-before/screenshots`, app tại base #138; PASS từ harness
+  discussion cũ. Đã mở `discussion-contract-fixture-flat-390-light.png`,
+  `...-1440-dark.png`, `...-320-200-dark.png`. Root/reply body lệch 13 CSS px.
+- After: `/tmp/vink134-after-final/screenshots`, cùng fixture. Đã mở các ảnh
+  `discussion-contract-fixture-flat-390-light.png`, `...-1440-dark.png`,
+  `...-1440-200-dark.png`, `discussion-composer-390-100-dark.png`,
+  `discussion-composer-320-200-dark.png`,
+  `discussion-local-uncertain-390-100-dark.png`,
+  `discussion-local-uncertain-320-200-dark.png`.
+- 390/100: root/group/composer đều x=16..359, inset hai phía và text field 16px.
+  320/200: đều x=12..293, inset 12px. Scrollbar 15px được trừ khỏi client width.
+  Mép các vùng lệch 0px; tên/body cùng trục, nhãn action trong tolerance 1px
+  của transparent border. Reply gap thực 16px, recipe giữa nhánh 32px.
+- 320/390/834/1024/1440 sáng/tối; chữ 200% tại 320/390/1440: không tràn ngang,
+  không tầng phản hồi thứ ba; từng control có description tồn tại. Uniform block
+  có đúng một câu chung cho nhánh, target vẫn giữ count và unknown khác 0.
+  Mixed/missing facts/Pending/Uncertain/Failed được kiểm riêng ở pure projection.
+- Contrast CSS đã resolve của body/metadata/label: thấp nhất 5,40:1 sáng và
+  7,68:1 tối. Composer 28px, delivery 20px. Uncertain chỉ một primary khả dụng,
+  Gửi bị chặn có lý do; click thật tới Kiểm tra lần gửi ở 320/chữ200/reduced-motion.
+  Focus field và nút đã mở xem; không suy screen-reader từ ảnh.
+
+### Giới hạn / tiếp tục nghiệm thu
+
+AC-01 và phần geometry của AC-02/05/07 có ảnh/metrics Web; AC-03 có pure projection,
+DOM descriptions và LVE 401; AC-04 có controller/Web/PG regression; AC-06 có
+recovery, focus, chữ lớn và reduced-motion. Không tick cả AC rộng hơn từ các bằng
+chứng này. Pen Flight chưa có registry ở base; glyph vẫn thuộc #73 theo giao việc,
+nên phần glyph AC-07 chưa hoàn tất. Giữ nhãn Hữu ích/count và slot hiện hữu.
+
+NOT_RUN: thiết bị thật, OS IME tiếng Việt thật, VoiceOver/TalkBack hoặc screen reader
+khác, native Android/iOS/CMP consumer, production auth/write readiness. Không chạy
+lại model/Kani/lane PostgreSQL rộng vì không đổi domain/SQL; `verify web` vẫn dùng
+PostgreSQL thật cho các ca ghi nêu trên. Không kiểm/chờ GitHub CI và không deploy.
+
+Các lỗi setup ban đầu (database SQL_ASCII và PATH Node), assertion copy cũ, oracle
+LVE chỉ tìm note riêng và lỗi ENOSPC khi ghi preview đã được giữ trong log cũ;
+kết quả cuối ở bảng trên. Dọn đúng generated output/cache do task tạo để tiếp tục,
+không thay ngưỡng contrast, permission, idempotency hoặc assertion dữ liệu để né lỗi.
+
+Specimen Leptos đã mở: `composition.feedback--discussion-flat--dark--390--text100--focus--part1.png`, `--part2.png`, `--part3.png` trong thư mục evidence preview nêu trên. Đây là gallery có nhãn Mẫu, không phải consumer production.

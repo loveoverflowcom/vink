@@ -265,6 +265,9 @@ pub fn ToggleAction(
     /// `Some(reason)` blocks presses and shows the reason (never hover-only).
     #[prop(optional, into)]
     blocked: Signal<Option<String>>,
+    /// A visible shared reason, used only while this target is idle and blocked.
+    #[prop(optional, into)]
+    blocked_description: Signal<Option<String>>,
     /// Leading glyph from the registry (kept in every state); the check mark is separate.
     #[prop(optional)]
     icon: Option<IconName>,
@@ -289,7 +292,12 @@ pub fn ToggleAction(
                 ids.push(count_id.clone());
             }
             if note_text.with(Option::is_some) {
-                ids.push(note_id.clone());
+                if view.get().note == Some(ToggleNote::Blocked) && phase.get() == TogglePhase::Idle
+                {
+                    ids.push(blocked_description.get().unwrap_or_else(|| note_id.clone()));
+                } else {
+                    ids.push(note_id.clone());
+                }
             }
             (!ids.is_empty()).then(|| ids.join(" "))
         }
@@ -369,7 +377,7 @@ pub fn ToggleAction(
                 aria-live="polite"
                 data-active=move || (note_text.with(Option::is_some) || view.get().reconcile).then_some("true")
             >
-                {move || note_text.get().map(|text| view! {
+                {move || note_text.get().filter(|_| !(view.get().note == Some(ToggleNote::Blocked) && phase.get() == TogglePhase::Idle && blocked_description.get().is_some())).map(|text| view! {
                     <span class="vk-ui-action__note" id=note_id.clone()>{text}</span>
                 })}
                 {move || view.get().reconcile.then(|| view! {

@@ -62,7 +62,7 @@ fn discussion_comment(
     // A future visibility value has no known privacy contract. Fail closed, not as public.
     let status = match comment.visibility.as_str() {
         "public" => None,
-        "own_pending" => Some("Đang chờ duyệt · Chỉ bạn thấy nhận xét này".into()),
+        "own_pending" => Some("Chờ duyệt · Chưa công khai".into()),
         "own_rejected" => Some(format!(
             "Không được duyệt · {}",
             comment
@@ -356,7 +356,7 @@ mod discussion_tests {
                 .status
                 .as_deref()
                 .unwrap()
-                .contains("Chỉ bạn thấy")
+                .contains("Chưa công khai")
         );
         assert!(!first.replies[2].can_reply);
         assert!(matches!(

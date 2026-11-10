@@ -380,6 +380,7 @@ pub fn TextArea(
     #[prop(optional, into)] error: Signal<Option<String>>,
     #[prop(optional)] required: bool,
     #[prop(optional)] mode: FieldMode,
+    #[prop(optional)] variant: FieldVariant,
     #[prop(default = 4)] rows: u16,
     #[prop(optional, into)] placeholder: Option<String>,
 ) -> impl IntoView {
@@ -400,7 +401,7 @@ pub fn TextArea(
         None,
         None,
         None,
-        FieldVariant::ExternalLabel,
+        variant,
     )
 }
 

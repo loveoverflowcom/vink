@@ -242,6 +242,10 @@ pub fn FeedbackComposer(
     /// Author intent never decides the per-work comments policy.
     #[prop(optional, into)]
     comments_closed: Signal<bool>,
+    /// Reader-only tonal recipe; other feedback consumers retain their current form.
+    #[prop(optional)]
+    tonal: bool,
+    #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let submit_id = format!("{id}-send");
     let submit_state = Signal::derive(move || {
@@ -254,11 +258,19 @@ pub fn FeedbackComposer(
         }
     });
     view! {
-        <section class="vk-feedback-composer">
+        <section class="vk-feedback-composer" class:vk-feedback-composer--tonal=tonal data-filled=move || (!value.get().is_empty()).then_some("true")>
+            {children.map(|header| header())}
             {intent.label().map(|label| view! { <Text role=TypeRole::Label>{label}</Text> })}
             <TextArea id label=if intent == FeedbackIntent::Technique { "Góp ý kỹ thuật có ngữ cảnh" } else { "Nhận xét của bạn" }
-                value on_input help="Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." />
-            <Button id=submit_id state=submit_state on_press=on_submit>"Gửi nhận xét"</Button>
+                value on_input variant=if tonal { FieldVariant::FloatingTonal } else { FieldVariant::ExternalLabel }
+                rows=if tonal { 1 } else { 4 }
+                help=if tonal { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng." } else { "Tối đa 4.000 ký tự, 200 dòng. Enter xuống dòng; chỉ gửi khi bấm nút." } />
+            <Show when=move || tonal && !value.get().is_empty()><p class="vk-feedback-draft-note">"Rời trang có thể mất nháp."</p></Show>
+            {if tonal {
+                view! { <Button id=submit_id state=submit_state on_press=on_submit leading=IconName::ArrowBack>"Gửi"</Button> }.into_any()
+            } else {
+                view! { <Button id=submit_id state=submit_state on_press=on_submit>"Gửi nhận xét"</Button> }.into_any()
+            }}
         </section>
     }
 }
@@ -310,26 +322,57 @@ pub fn DiscussionThread(
     #[prop(into)] on_remove: Callback<String>,
     #[prop(optional, into)] action_state: Signal<ActionState>,
     #[prop(optional_no_strip)] endorsements: Option<CommentEndorsements>,
+    #[prop(optional, into)] has_more_replies: Signal<bool>,
+    #[prop(optional)] reply_footer: Option<ChildrenFn>,
 ) -> impl IntoView {
     let root = Memo::new(move |_| facts.get().root);
+    let shared_block = Memo::new(move |_| {
+        let endorsements = endorsements?;
+        let thread = facts.get();
+        uniform_endorsement_block(
+            thread
+                .root
+                .iter()
+                .chain(thread.replies.iter())
+                .filter(|comment| comment.status.is_none())
+                .map(|comment| endorsements.facts.run(comment.id.clone())),
+        )
+    });
+    let reason_id = format!(
+        "thread-{}-endorsement-reason",
+        facts.get_untracked().root_id
+    );
+    let shared_description = {
+        let reason_id = reason_id.clone();
+        Signal::derive(move || shared_block.get().map(|_| reason_id.clone()))
+    };
     view! {
         <div class="vk-discussion-thread">
-            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements))
+            {move || root.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))
                 .unwrap_or_else(|| view! { <p class="vk-muted">"Bình luận gốc không còn hiển thị."</p> }.into_any())}
+            <div class="vk-discussion-reply-group" hidden=move || facts.get().replies.is_empty() && !has_more_replies.get()>
+            <p class="vk-discussion-reply-heading">"Phản hồi"</p>
             <ul class="vk-discussion-replies" aria-label="Phản hồi theo thứ tự cũ đến mới">
                 <For each=move || { facts.get().replies.into_iter().map(|comment| comment.id).collect::<Vec<_>>() } key=|id| id.clone()
                     children=move |id| {
                         let comment = Memo::new(move |_| facts.get().replies.into_iter().find(|comment| comment.id == id));
-                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements))}</li> }
+                        view! { <li>{move || comment.get().map(|comment| discussion_comment(comment, on_reply, on_remove, action_state, endorsements, shared_description))}</li> }
                     } />
             </ul>
+            {reply_footer.map(|footer| footer())}
+            </div>
+            <p class="vk-discussion-shared-reason" id=reason_id hidden=move || shared_block.get().is_none()>{move || shared_block.get().map(|block| EndorsementKind::Comment.reason(block))}</p>
         </div>
     }
 }
 
 /// One comment's endorsement. It mounts once per presence change, so state updates keep the
 /// same button (and its focus) instead of replacing it.
-fn comment_endorsement(id: String, endorsements: CommentEndorsements) -> impl IntoView {
+fn comment_endorsement(
+    id: String,
+    endorsements: CommentEndorsements,
+    shared_description: Signal<Option<String>>,
+) -> impl IntoView {
     let facts = {
         let id = id.clone();
         Memo::new(move |_| endorsements.facts.run(id.clone()))
@@ -342,6 +385,7 @@ fn comment_endorsement(id: String, endorsements: CommentEndorsements) -> impl In
                 <EndorsementAction
                     id=format!("endorse-comment-{id}")
                     kind=EndorsementKind::Comment
+                    blocked_description=shared_description
                     facts=Signal::derive(move || facts.get().unwrap_or_default())
                     on_set=move |desired: bool| endorsements.on_set.run((set_id.clone(), desired))
                     on_recover=move |_: RecoveryIntent| endorsements.on_recover.run(recover_id.clone())
@@ -357,6 +401,7 @@ fn discussion_comment(
     on_remove: Callback<String>,
     state: Signal<ActionState>,
     endorsements: Option<CommentEndorsements>,
+    shared_description: Signal<Option<String>>,
 ) -> AnyView {
     let reply_id = comment.id.clone();
     let remove_id = comment.id.clone();
@@ -364,7 +409,9 @@ fn discussion_comment(
     let remove_button_id = format!("remove-comment-{}", comment.id);
     view! {
         <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
-            <WorkByline author=comment.author size=AvatarSize::Medium />
+            <div class="vk-discussion-byline">
+                <div><p class="vk-discussion-name">{comment.author.name.clone()}</p>
+                    <time datetime=comment.author.published_at.clone()>{display_date(&comment.author.published_at)} " (UTC)"</time>
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
@@ -375,13 +422,16 @@ fn discussion_comment(
                     </p>
                 }.into_any(),
             })}
+                </div>
+                <Avatar name=comment.author.name identity_key=comment.author.key.unwrap_or_default() size=AvatarSize::Medium decorative=true />
+            </div>
             {comment.status.map(|status| view! { <p class="vk-discussion-status">{status}</p> })}
             <p class="vk-discussion-body">{comment.body}</p>
             <div class="vk-discussion-actions">
                 {comment.can_reply.then(|| view! { <Button id=reply_button_id variant=ButtonVariant::Text on_press=move |_| on_reply.run(reply_id.clone())>"Trả lời"</Button> })}
                 {comment.can_remove.then(|| view! { <Button id=remove_button_id variant=ButtonVariant::Text state on_press=move |_| on_remove.run(remove_id.clone())>"Gỡ nhận xét của tôi"</Button> })}
                 // Last: its note (pending, reason) wraps under it without pushing the text actions apart.
-                {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements))}
+                {endorsements.map(|endorsements| comment_endorsement(comment.id.clone(), endorsements, shared_description))}
             </div>
         </article>
     }.into_any()
@@ -455,7 +505,7 @@ impl EndorsementKind {
             (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh giá.",
             (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh dấu hữu ích.",
             (Self::Work, EndorsementBlock::Unavailable) => "Không thể đánh giá lúc này.",
-            (Self::Comment, EndorsementBlock::Unavailable) => "Không thể đánh dấu lúc này.",
+            (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể đánh dấu hữu ích.",
         }
     }
 }
@@ -471,6 +521,34 @@ pub struct EndorsementFacts {
     pub block: Option<EndorsementBlock>,
 }
 
+/// Only complete, uniform idle facts can share a branch reason. None is an unread
+/// public target, so it vetoes grouping rather than being mistaken for zero or no target.
+fn uniform_endorsement_block(
+    facts: impl IntoIterator<Item = Option<EndorsementFacts>>,
+) -> Option<EndorsementBlock> {
+    let mut count = 0;
+    let mut shared = None;
+    for facts in facts {
+        let facts = facts?;
+        if facts.phase != TogglePhase::Idle {
+            return None;
+        }
+        let block = facts.block?;
+        if !matches!(
+            block,
+            EndorsementBlock::SignedOut | EndorsementBlock::Unavailable
+        ) {
+            return None;
+        }
+        if shared.is_some_and(|previous| previous != block) {
+            return None;
+        }
+        shared = Some(block);
+        count += 1;
+    }
+    (count >= 2).then_some(shared).flatten()
+}
+
 /// The endorsement control for one target. A press emits the desired selection; the adapter
 /// owns `command_key`, `expected_order`, session fencing and late answers. The glyph slot stays
 /// empty until CHOICE-07 selects one (no heart, no Send/Save look-alike).
@@ -479,6 +557,7 @@ pub fn EndorsementAction(
     #[prop(into)] id: String,
     kind: EndorsementKind,
     #[prop(into)] facts: Signal<EndorsementFacts>,
+    #[prop(optional, into)] blocked_description: Signal<Option<String>>,
     #[prop(into)] on_set: Callback<bool>,
     #[prop(into)] on_recover: Callback<RecoveryIntent>,
 ) -> impl IntoView {
@@ -496,6 +575,7 @@ pub fn EndorsementAction(
                 phase=Signal::derive(move || facts.get().phase)
                 count=Signal::derive(move || facts.get().count)
                 blocked
+                blocked_description
                 on_set
                 on_recover
             />
@@ -557,6 +637,74 @@ mod tests {
         assert!(
             html.contains("data-tone=\"neutral\""),
             "no author ID: {html}"
+        );
+    }
+
+    #[test]
+    fn shared_reason_requires_complete_uniform_idle_targets() {
+        let guest = EndorsementFacts {
+            block: Some(EndorsementBlock::SignedOut),
+            count: CountFact::Known(3),
+            ..Default::default()
+        };
+        assert_eq!(
+            uniform_endorsement_block([Some(guest), Some(guest)]),
+            guest.block
+        );
+        for other in [
+            None,
+            Some(EndorsementFacts {
+                block: Some(EndorsementBlock::Unavailable),
+                ..guest
+            }),
+            Some(EndorsementFacts {
+                phase: TogglePhase::Pending { desired: true },
+                ..guest
+            }),
+            Some(EndorsementFacts {
+                phase: TogglePhase::Uncertain { desired: false },
+                ..guest
+            }),
+            Some(EndorsementFacts {
+                phase: TogglePhase::Failed,
+                ..guest
+            }),
+            Some(EndorsementFacts {
+                block: Some(EndorsementBlock::OwnContent),
+                ..guest
+            }),
+            Some(EndorsementFacts {
+                block: None,
+                ..guest
+            }),
+        ] {
+            assert_eq!(
+                uniform_endorsement_block([Some(guest), other]),
+                None,
+                "{other:?}"
+            );
+        }
+        assert_eq!(uniform_endorsement_block([Some(guest)]), None);
+        assert_eq!(uniform_endorsement_block([]), None);
+        let html = Owner::new().with(|| {
+            view! {
+                <EndorsementAction id="shared" kind=EndorsementKind::Comment facts=guest
+                    blocked_description=Some("branch-reason".to_string())
+                    on_set=|_: bool| {} on_recover=|_: RecoveryIntent| {} />
+            }
+            .to_html()
+        });
+        assert!(
+            html.contains("aria-describedby=\"shared-count branch-reason\""),
+            "{html}"
+        );
+        assert!(
+            html.contains("aria-disabled=\"true\"") && html.contains(">3<"),
+            "{html}"
+        );
+        assert!(
+            !html.contains("Cần đăng nhập"),
+            "the branch owns the visible note: {html}"
         );
     }
 

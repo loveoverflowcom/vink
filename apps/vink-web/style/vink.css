@@ -339,8 +339,11 @@ a {
 .vk-discussion-mode, .vk-discussion-composer { display: grid; gap: var(--vk-space-3); margin-block: var(--vk-space-4); min-width: 0; }
 .vk-discussion-mode > p, .vk-discussion-composer > p, .vk-discussion-root > p, .vk-discussion-reply-composer > p { margin: 0; }
 .vk-discussion-mode > .vk-ui-action { justify-self: start; }
-.vk-discussion-root { margin-block: var(--vk-space-6); min-width: 0; }
-.vk-discussion-reply-composer { margin-inline-start: var(--vk-space-3); min-width: 0; }
+.vk-discussion-root { margin-block: 32px; min-width: 0; }
+.vk-discussion-reply-composer { display: grid; gap: var(--vk-space-3); margin-block-start: var(--vk-space-3); min-width: 0; }
+.vk-discussion-reply-composer > .vk-ui-action { justify-self: start; }
+.vk-discussion-delivery { display: grid; justify-items: start; gap: var(--vk-space-3); padding: 16px; border-radius: var(--vk-radius-lg); background: var(--vk-surface-container); }
+.vk-discussion-delivery > p { margin: 0; }
 .vk-discussion-recovered { border-block-start: 1px solid var(--vk-outline-variant); padding-block: var(--vk-space-4); }
 .vk-discussion-tools-note { font-size: var(--vk-type-caption-size); }
 .vk-discussion-pagination { display: grid; justify-items: start; gap: var(--vk-space-2); margin-block: var(--vk-space-4); min-width: 0; }
@@ -779,4 +782,15 @@ a {
 }
 @container vk-explore (max-width: 40rem) {
   .vk-discovery .vk-discovery-tools { float: none; display: flex; justify-content: flex-end; margin: 0 0 var(--vk-space-2); }
+}
+
+.vk-discussion-reply-composer > .vk-discussion-composer { margin: 0; }
+.vk-discussion-pagination[hidden] { display: none; }
+
+/* Reader R3.1: text enlargement uses the measure, not larger side gutters. */
+@media (max-width: 759px) {
+  .vk-main:has(> .vk-reader-page) { padding-inline: 16px; }
+}
+@media (max-width: 359px) {
+  .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
 }
