@@ -2,8 +2,9 @@
 //! literary endorsement LVE (#73) and admission/post-review (#120) models and their real Rust
 //! seams share one local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
-//! The target specifications of the 10/11/2026 product decisions share the Quint pin and run
-//! as their own step: they have no Rust implementation, so that step is model evidence only.
+//! The canonical publication model and remaining target specifications share the Quint pin.
+//! Publication author actions and admitted decision effects have scoped Rust replay; the
+//! remaining target actions have model evidence only.
 
 use std::process::Command;
 
@@ -11,7 +12,7 @@ use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
 const TARGET_DIR: &str = "services/vink-app/behavior/target";
-const FILTERS: [&str; 10] = [
+const FILTERS: [&str; 11] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
     "domain::discussion::admission_replay",
@@ -22,9 +23,12 @@ const FILTERS: [&str; 10] = [
     "domain::discussion::reaction::tests",
     "domain::discussion::reaction_replay",
     "domain::endorsement::",
+    "domain::publication::",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 11] = [
+const REPLAYS: [&str; 13] = [
+    "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
+    "domain::publication::replay::the_withdrawn_intent_counterexample_is_refused_by_the_production_publication_guard",
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",
     "domain::discussion::lifecycle_replay::quint_lifecycle_inputs_replay_against_the_production_decisions",
     "domain::discussion::lifecycle_replay::the_no_op_mode_counterexample_is_refused_by_production",
@@ -73,7 +77,7 @@ pub fn verify(report: &mut Report) -> bool {
     let mut target = Command::new("node");
     target.current_dir(root.join(TARGET_DIR)).arg("verify.mjs");
     if !report.step(
-        "discussion: target specifications (not implemented): Quint models and vector drift",
+        "discussion: publication canonical model + remaining target specifications and vector drift",
         || {
             process::run(
                 &mut target,

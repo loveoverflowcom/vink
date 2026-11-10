@@ -1,6 +1,6 @@
-// PRODUCT-DECISIONS-20261110, M1 — TARGET SPECIFICATION. No Rust code implements this yet:
-// there is no publish, audience, evaluator or admin command in services/vink-app. Nothing here
-// is production conformance; see README.md for the path into an owner directory with a replay.
+// PRODUCT-DECISIONS-20261110, M1 — canonical publication model. #150 replays the author
+// actions and publication effects of already-admitted decisions through the production pure
+// core. Job/authority/policy validation and lifecycle mutations remain target-only; see README.md.
 //
 // One work of one author. Audience (the author's choice: only me / public) is a separate axis
 // from the moderation decision of each immutable revision and from the publication pointer.

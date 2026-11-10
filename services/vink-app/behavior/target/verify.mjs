@@ -1,12 +1,11 @@
-// Target specifications (PRODUCT-DECISIONS-20261110). Same oracle rule as ../discussion: export
-// real Quint ITF states, never recompute transitions in JS. Unlike ../discussion, NO Rust code
-// implements these models yet, so this runner proves nothing about production: it keeps the
-// models type-correct, their invariants exercised and their generated vectors free of drift.
+// Shared Quint runner for the five remaining target specifications and the canonical M1
+// in ../publication. It exports real ITF states without recomputing transitions. M1 has
+// scoped Rust replay (#150); see ../publication/README.md for its exact action coverage.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const directory = dirname(fileURLToPath(import.meta.url));
@@ -97,7 +96,7 @@ function fixture(name, header, lists) {
   const content = `{\n${Object.entries(header).map(([key, item]) =>
     `  ${JSON.stringify(key)}: ${JSON.stringify(item)}`).concat(body).join(',\n')}\n}\n`;
   JSON.parse(content);
-  const path = join(directory, name);
+  const path = join(directory, name.startsWith('publication-') ? '../publication' : '.', name);
   if (write) {
     writeFileSync(path, content);
     console.log(`WRITE ${name}`);
@@ -121,7 +120,7 @@ const pair = (list, ...key) => list.find(entry => JSON.stringify(entry.key) === 
 
 const models = [
   {
-    file: 'publication.qnt', safe: 'publicationSafe', bounds: 'revisions<=4, jobs<=6, policies<=2',
+    file: '../publication/publication.qnt', safe: 'publicationSafe', bounds: 'revisions<=4, jobs<=6, policies<=2',
     fields: ['revs', 'jobs', 'audience', 'desired', 'intended', 'pointer', 'lifecycle', 'generation', 'policy'],
     scenarios: [
       ['audience_moderation_override', 'lifecycleStep', 40],
@@ -387,26 +386,27 @@ try {
     run(['typecheck', model.file]);
     simulation(model.file, 'step', maxSteps, samples, model.safe);
     console.log(`PASS ${model.file}: typecheck; simulation ${model.safe} seed=${seed}, samples=${samples}, max_steps=${maxSteps}, ${model.bounds}`);
-    const name = model.file.replace('.qnt', '');
+    const name = basename(model.file, '.qnt');
+    const modelStatus = name === 'publication' ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
     const scenarios = model.scenarios.map(([scenario, step, length]) => {
       const out = join(temporary, `${name}-${scenario}.itf.json`);
       simulation(model.file, step, length, 1, model.safe, out);
       return { name: scenario, steps: project(out, length, 'ok', model.fields) };
     });
     model.check(scenarios.map(scenario => scenario.steps));
-    fixture(`${name}-vectors.json`, { format: 'vink-target-spec-vectors-v1', status, quint_version: version,
+    fixture(`${name}-vectors.json`, { format: 'vink-target-spec-vectors-v1', status: modelStatus, quint_version: version,
       model: model.file }, { scenarios });
     for (const [file, step, length, invariant, check] of model.mutants) {
       const out = join(temporary, file.replace('.json', '.itf.json'));
       const args = simulation(model.file, step, length, 1, invariant, out, 1);
       const steps = project(out, length, 'violation', model.fields);
       check(steps);
-      fixture(file, { format: 'vink-target-spec-counterexample-v1', status, quint_version: version,
+      fixture(file, { format: 'vink-target-spec-counterexample-v1', status: modelStatus, quint_version: version,
         model: model.file, invariant, command: ['quint', ...args.filter(arg => !arg.startsWith('--out-itf='))] },
         { violation: [{ name: step, steps }] });
       console.log(`PASS negative control: ${step} violates ${invariant} at transition ${length}`);
     }
-    if (['publication', 'comment_edit'].includes(name)) results.push([model.file, scenarios]);
+    if (['publication', 'comment_edit'].includes(name)) results.push([basename(model.file), scenarios]);
   }
   const vectors = evaluatorVectors(results);
   fixture('evaluator-vectors.json', { format: 'vink-moderation-evaluator-script-v1', status,
@@ -414,7 +414,7 @@ try {
     { scripts: [{ name: 'publication_and_comment_edit', steps: vectors }] });
   console.log(`PASS evaluator script: ${vectors.length} scripted results cover all nine mock outcome classes`);
   console.log('NOT_RUN Apalache/model checking');
-  console.log('NOT_IMPLEMENTED production conformance: no Rust decision replays these target specifications');
+  console.log('PARTIAL publication pure-core replay runs in Rust; evaluator/admin/lifecycle authority and all other target models remain NOT_IMPLEMENTED');
   rmSync(temporary, { recursive: true });
 } catch (error) {
   console.error(`FAIL ${error.message}\nIntermediate ITF traces, if any: ${temporary}`);

@@ -6,11 +6,12 @@
 **Quyết định:** D-06, D-07, D-12, D-19 ([decision log](decisions.md)).
 
 **Trạng thái:** `TARGET_BEHAVIOR`. Luật ghi “đã chốt” là `PRODUCT_CONFIRMED`; chi tiết ghi “đề
-xuất” là `DESIGN_PROPOSED`. **Không phần nào có implementation.** Đặc tả thực thi là ba model Quint
-ở [`behavior/target`](../../services/vink-app/behavior/target/README.md): `publication.qnt`,
-`tombstone.qnt`, `appeal.qnt`. Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
+xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md), application planning seam và
+replay theo action; chưa có publication runtime. M1 canonical ở
+[`behavior/publication`](../../services/vink-app/behavior/publication/README.md); `tombstone.qnt`
+và `appeal.qnt` vẫn ở [`behavior/target`](../../services/vink-app/behavior/target/README.md). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
 
-## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, `develop@4891c77`)
+## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, base `develop@e16b1cc` + lõi thuần #150)
 
 | Thứ | Có gì | Nguồn |
 | --- | --- | --- |
@@ -18,11 +19,11 @@ xuất” là `DESIGN_PROPOSED`. **Không phần nào có implementation.** Đ�
 | Revision | `revisions` bất biến (trigger chặn UPDATE) có `content_hash` | migration `20261030000000_literary_core` |
 | Publication | Một hàng `publications(work_id, revision_id, generation, published_at, metadata_snapshot_id)`; “công khai” = có hàng | cùng migration, `20261108000000_work_taxonomy` |
 | Lệnh publish/rút/xóa | **Không có**. Chỉ `dev_seed`, `xtask provision` và fixture SQL ghi `publications`; test giả lập rút bằng `DELETE FROM publications` | `dev_seed.rs`, comment bảng: “Publish/withdraw commands … are not implemented” |
-| Audience | **Không có** cột hay khái niệm | — |
+| Audience | Lõi thuần #150; **chưa có** cột/lệnh runtime | `domain/publication.rs` |
 | Evaluator, quyết định cho tác phẩm, admin, appeal | **Không có**; `/health` và worker báo `ai_moderation: not_implemented` | `http/health.rs`, `bin/vink-worker.rs` |
 | Thảo luận khi không có publication | `readable_thread` trả `None` → `404` cho đọc; gửi bị `WorkNotPublic`; hàng bình luận không bị xóa | `persistence/discussion.rs`, `domain/discussion/submission.rs` |
 
-Mọi mục dưới đây mô tả hành vi **đích**, không mô tả code hiện tại.
+Mọi mục dưới đây mô tả hành vi **đích**; phạm vi lõi thuần đã có và phần chưa tích hợp được tách trong [publication-core](../development/publication-core.md).
 
 ## 2. Thuật ngữ
 
@@ -128,7 +129,7 @@ Mock là **kịch bản tất định**: harness điều khiển outcome, thứ 
 thời điểm giả lập; không `sleep`, không mạng, không secret, không model key. Mock không được: luôn
 trả `Approve`, tự cấp quyền admin, ghi SQL, hay thay logic domain cần kiểm.
 
-**Lượt này:** chưa có seam nào trong code để cắm mock cho tác phẩm (bảng mục 1), nên không viết
+**Lượt này:** bản đặc tả ban đầu chưa có seam để cắm mock cho tác phẩm; #150 chỉ thêm seam quyết định đã được xác nhận (`record_review`), chưa validation evaluator. Bản đặc tả này không viết
 mock Rust và không dựng pipeline. Bộ kịch bản được sinh từ trace của chính model:
 [`evaluator-vectors.json`](../../services/vink-app/behavior/target/evaluator-vectors.json)
 (format `vink-moderation-evaluator-script-v1`, 21 kết quả phủ đủ chín loại trên, mỗi dòng ghi kết
@@ -223,5 +224,6 @@ Bốn trường hợp phải tách (PUB-05, đã chốt):
 
 Model, invariant, negative control và lệnh chạy: [README target](../../services/vink-app/behavior/target/README.md).
 Bảng yêu cầu → invariant → gap: [registry](../development/product-decisions-registry.md).
-Bằng chứng hiện có là **model** (typecheck, simulation có biên, scenario, counterexample). Chưa có:
-code Rust, migration, khóa/transaction PostgreSQL, API, UI, worker, evaluator thật, kênh thông báo.
+Bằng chứng M1 gồm model và scoped pure Rust replay (#150; [coverage](../development/publication-core.md)).
+Các model khác chỉ có bằng chứng model. Chưa có migration/transaction publication, API, UI, worker,
+evaluator/authority runtime hay kênh thông báo.

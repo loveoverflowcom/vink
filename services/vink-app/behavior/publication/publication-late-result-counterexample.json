@@ -1,10 +1,10 @@
 {
   "format": "vink-target-spec-counterexample-v1",
-  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
   "quint_version": "0.33.1",
-  "model": "publication.qnt",
+  "model": "../publication/publication.qnt",
   "invariant": "adminOverrideWins",
-  "command": ["quint","run","publication.qnt","--backend=typescript","--seed=41","--step=mutatedOverrideStep","--max-steps=4","--max-samples=1","--invariant=adminOverrideWins","--verbosity=1"],
+  "command": ["quint","run","../publication/publication.qnt","--backend=typescript","--seed=41","--step=mutatedOverrideStep","--max-steps=4","--max-samples=1","--invariant=adminOverrideWins","--verbosity=1"],
   "violation": [
     {"name": "mutatedOverrideStep", "steps": [
       {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none"}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},

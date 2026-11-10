@@ -5,7 +5,8 @@
 [`services/vink-app/behavior/target`](../../services/vink-app/behavior/target/README.md).
 
 Registry này nối **yêu cầu → model/invariant/scenario → gap implementation** và ghi bằng chứng đã
-chạy. Nó không nâng trạng thái nào: mọi dòng ở mục 1 có cột implementation là **chưa có**. Bằng
+chạy. #150 hiện thực lõi publication thuần (M1, replay một phần), xem
+[publication-core](publication-core.md); các runtime gap được giữ riêng theo từng action. Bằng
 chứng “model” nghĩa là typecheck + simulation có biên + scenario + negative control của Quint,
 không phải code, PostgreSQL, API hay trình duyệt. Registry của code đang chạy vẫn ở
 [discussion-core](discussion-core.md), [endorsement-core](endorsement-core.md),
@@ -19,13 +20,13 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 
 | Yêu cầu | Invariant (`publication.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
-| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Chưa có.** Không có cột audience, ý định công khai, lệnh publish; `publications` chỉ được seed ghi. Cần domain + migration + transaction có guard |
-| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Chưa có** lệnh tạo revision/đổi pointer; bảng `revisions` bất biến đã có |
-| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Chưa có** evaluator; không có đường gửi nội dung ra ngoài |
+| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Pure core #150:** `Publication::decide_author`, `promotion_eligible`, `record_review`; replay author và admitted decision effects. Chưa có migration/transaction/route; runtime `publications` vẫn do seed ghi |
+| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Pure core #150:** `readable_revision` không đòi current intent = pointer; r1/r2 unit + replay. Chưa có lệnh runtime tạo revision/đổi pointer |
+| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Pure core #150:** SaveSnapshot trả effects không evaluation. Chưa có evaluator hay đường gửi nội dung ra ngoài |
 | MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Chưa có** port, job, bảng kết quả, worker consumer. Contract mới là văn bản |
 | MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Chưa có.** Không có trần retry, watchdog hay trạng thái hiển thị cho tác giả |
 | MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Chưa có** vai trò admin (chỉ grant moderator cho bình luận và operator CLI) |
-| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Chưa có** lệnh xóa/gỡ |
+| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure guard #150:** terminal restored facts chặn author/review/promotion. Chưa có lệnh xóa/gỡ; model lifecycle actions được nạp như fixture, không replay transition |
 
 ### 1.2. Xóa bài và tombstone (M3)
 
@@ -137,8 +138,9 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 
 ## 4. Gap kiểm thử còn lại
 
-- Không có Rust replay cho bất kỳ model nào ở `behavior/target`; không test nào gọi code production
-  của các hành vi này vì code chưa tồn tại.
+- M1 đã về `behavior/publication`, replay author actions và admitted decision effects (#150).
+  Job/policy/authority/admin/lifecycle mutations và năm model trong `behavior/target` chưa có replay;
+  bảng action coverage ở [publication-core](publication-core.md).
 - Không có bằng chứng PostgreSQL cho race: publish × đổi audience × kết quả evaluator; sửa × duyệt ×
   gỡ bình luận; đọc bộ sưu tập × đổi audience; Top snapshot × thu hồi.
 - Không có contract HTTP/fixture, không có UI, không có kiểm trình duyệt.

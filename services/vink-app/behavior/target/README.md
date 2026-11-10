@@ -1,11 +1,10 @@
 # Đặc tả đích — quyết định sản phẩm 10/11/2026
 
-**Trạng thái của cả thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Sáu model Quint ở đây là đặc tả thực
-thi của hành vi **đích** do chủ sản phẩm chốt ngày 10/11/2026
-([DecisionDelta](../../../../docs/architecture/product-decisions-20261110.md)). **Không có hàm Rust
-nào thực thi chúng**: không replay, không conformance, không bằng chứng về code, PostgreSQL, API
-hay UI. Khác với [`../discussion`](../discussion/README.md), nơi mọi model có replay vào quyết định
-production.
+**Trạng thái các model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Năm model ở đây
+chưa có Rust replay. M1 đã chuyển nguyên vẹn sang
+[`../publication`](../publication/README.md): #150 replay author commands và publication effects
+của quyết định đã được admission xác nhận; evaluator/admin/lifecycle authority vẫn là model-only.
+Một canonical model cho mỗi policy; không có bản publication cạnh tranh ở thư mục này.
 
 Phân vai: PRD/decision log giữ ý định và quyết định; model ở đây giữ state/transition/invariant đã
 chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown **không** phải nguồn này.
@@ -14,7 +13,7 @@ chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown
 
 | Model | Phạm vi | Yêu cầu | Đặc tả văn bản |
 | --- | --- | --- | --- |
-| `publication.qnt` (M1) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
+| [`../publication/publication.qnt`](../publication/publication.qnt) (M1, replay một phần) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
 | `collections.qnt` (M2) | Phép AND bài × bộ sưu tập; chủ/khách/người khác; thêm/bỏ; đổi audience khi đang đọc/phân trang; link và số đếm | COL-01..06 | [bộ sưu tập](../../../../docs/architecture/collections.md) |
 | `tombstone.qnt` (M3) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone) |
 | `comment_edit.qnt` (M4) | Bản hiển thị và bản chờ tách nhau; sửa/duyệt/từ chối/override/xóa; hai tab, retry, callback cũ; dấu “Đã sửa”; vote theo bản | COM-02/08/09/10, MOD-09, LVE-FR-04 | [sửa bình luận](../../../../docs/architecture/comment-editing.md) |
@@ -29,8 +28,7 @@ D-05); evaluator và admin là capability chưa tồn tại; không có đồng 
 ## Chạy
 
 Dùng chung pin Quint **0.33.1** và lockfile của `../discussion` (không có package thứ hai). Yêu
-cầu Node.js ≥ 22. Lane local/CI là `cargo xtask verify discussion`: bước “target specifications
-(not implemented)” chạy runner này sau khi đã cài dependency. Chạy riêng từ repo root:
+cầu Node.js ≥ 22. Lane local/CI là `cargo xtask verify discussion`: bước “publication canonical model + remaining target specifications” chạy runner này sau khi đã cài dependency. Chạy riêng từ repo root:
 
 ```sh
 npm ci --ignore-scripts --no-audit --no-fund --prefix services/vink-app/behavior/discussion
@@ -92,7 +90,8 @@ và xóa model khỏi đây. Không giữ hai model cho cùng một policy.
 | Model | Về đâu | Khi |
 | --- | --- | --- |
 | `comment_edit.qnt` | `../discussion`, cạnh `lifecycle.qnt`; phần quyết định của evaluator hợp nhất vào `admission.qnt` | PR sửa bình luận / evaluator cho bình luận |
-| `publication.qnt`, `tombstone.qnt`, `appeal.qnt` | Thư mục behavior của owner xuất bản (tạo cùng module đó) | PR audience/publish, evaluator, tombstone, phản đối |
+| `publication.qnt` | Đã chuyển sang `../publication` trong #150; vectors và hai counterexample đi cùng | Author/publication có replay một phần; #151 tiếp tục evaluator/admin trên cùng model |
+| `tombstone.qnt`, `appeal.qnt` | Thư mục behavior của owner xuất bản | PR tombstone, phản đối |
 | `collections.qnt` | Thư mục behavior của module bộ sưu tập | PR bộ sưu tập |
 | `discovery.qnt` | Cạnh owner discovery | PR Đề xuất/Top 100 |
 

@@ -9,6 +9,7 @@ pub mod discussion;
 pub mod endorsement;
 pub mod ports;
 pub mod post_review;
+pub mod publication;
 pub mod taxonomy;
 
 use time::OffsetDateTime;
