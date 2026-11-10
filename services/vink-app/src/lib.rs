@@ -10,5 +10,6 @@ pub mod dev_seed;
 pub mod domain;
 pub mod http;
 pub mod identity;
+pub mod outbox_worker;
 pub mod persistence;
 pub mod runtime;

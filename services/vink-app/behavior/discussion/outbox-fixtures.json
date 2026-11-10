@@ -1,0 +1,927 @@
+{
+  "format": "vink-discussion-outbox-conformance-v1",
+  "quint_version": "0.33.1",
+  "lease_ticks": 2,
+  "max_attempts": 3,
+  "scenarios": [
+    {
+      "name": "lease_reclaim_and_two_effects",
+      "steps": [
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 1,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 0,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 0,
+              "generation": 0,
+              "available": 0,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 2,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 0,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            },
+            {
+              "worker": 2,
+              "delivery": 2,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 2,
+            "delivery": 2,
+            "generation": 1,
+            "result": "retry"
+          },
+          "outcome": "retry",
+          "now": 0,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "not_eligible",
+          "now": 0,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 1,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 1,
+              "available": 2,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 2,
+            "delivery": 1,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "reclaimed",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 1,
+              "generation": 1
+            },
+            {
+              "worker": 2,
+              "delivery": 1,
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 1,
+            "delivery": 1,
+            "generation": 1,
+            "result": "applied"
+          },
+          "outcome": "stale",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "leased",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 2,
+              "delivery": 1,
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 2,
+            "delivery": 1,
+            "generation": 2,
+            "result": "applied"
+          },
+          "outcome": "succeeded",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 1,
+              "generation": 1,
+              "available": 1,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 2,
+              "generation": 2
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 2,
+            "result": "retry"
+          },
+          "outcome": "retry",
+          "now": 2,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 3,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 4,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 2,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 4,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 2,
+              "delivery": 2,
+              "generation": 3
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "crash",
+            "worker": 2,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "crashed",
+          "now": 4,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 5,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "tick",
+            "worker": 0,
+            "delivery": 0,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "ticked",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "dead_at_claim",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "dead",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "retry_exhausted",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "requeue",
+            "worker": 0,
+            "delivery": 1,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "requeue_refused",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "dead",
+              "attempts": 3,
+              "generation": 3,
+              "available": 6,
+              "outcome": "retry_exhausted",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "requeue",
+            "worker": 0,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "requeued",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 0,
+              "generation": 3,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 4,
+              "available": 8,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 1,
+              "delivery": 2,
+              "generation": 4
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 1,
+            "delivery": 2,
+            "generation": 4,
+            "result": "fail"
+          },
+          "outcome": "dead",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "dead",
+              "attempts": 1,
+              "generation": 4,
+              "available": 8,
+              "outcome": "invalid_payload",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "requeue",
+            "worker": 0,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "requeued",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "ready",
+              "attempts": 0,
+              "generation": 4,
+              "available": 6,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 2,
+            "delivery": 2,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "claimed",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "leased",
+              "attempts": 1,
+              "generation": 5,
+              "available": 8,
+              "outcome": "none",
+              "effects": 0
+            }
+          ],
+          "holds": [
+            {
+              "worker": 2,
+              "delivery": 2,
+              "generation": 5
+            }
+          ]
+        },
+        {
+          "command": {
+            "op": "complete",
+            "worker": 2,
+            "delivery": 2,
+            "generation": 5,
+            "result": "applied"
+          },
+          "outcome": "succeeded",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "succeeded",
+              "attempts": 1,
+              "generation": 5,
+              "available": 8,
+              "outcome": "applied",
+              "effects": 1
+            }
+          ],
+          "holds": []
+        },
+        {
+          "command": {
+            "op": "claim",
+            "worker": 1,
+            "delivery": 1,
+            "generation": 0,
+            "result": "none"
+          },
+          "outcome": "not_eligible",
+          "now": 6,
+          "deliveries": [
+            {
+              "id": 1,
+              "state": "succeeded",
+              "attempts": 2,
+              "generation": 2,
+              "available": 4,
+              "outcome": "applied",
+              "effects": 1
+            },
+            {
+              "id": 2,
+              "state": "succeeded",
+              "attempts": 1,
+              "generation": 5,
+              "available": 8,
+              "outcome": "applied",
+              "effects": 1
+            }
+          ],
+          "holds": []
+        }
+      ]
+    }
+  ]
+}

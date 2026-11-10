@@ -8,6 +8,7 @@ mod abuse;
 mod discovery;
 mod discussion;
 mod endorsement;
+pub mod outbox;
 mod postgres;
 mod principal;
 mod taxonomy;

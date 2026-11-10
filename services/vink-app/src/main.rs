@@ -6,7 +6,9 @@
 //! `principal suspend|reinstate|list` likewise is the only way to suspend a principal (D-05/S-03
 //! spike). `tag list|history|create|rename|describe|alias|retire` is the only way to change the
 //! curated tag catalog (TAG-PR-03, #97 CHOICE-02 A); each change names the catalog version the
-//! operator last read and is audited in the same transaction. Exit codes: 0 success, 1 runtime
+//! operator last read and is audited in the same transaction. `outbox status|dead|requeue` is the
+//! operator's view of the discussion outbox (DISC-04): queue health, dead letters, and the only way
+//! to requeue one (audited, dead letters only; never through HTTP). Exit codes: 0 success, 1 runtime
 //! failure, 2 invalid configuration or usage, or a catalog change that was refused or conflicted
 //! (nothing written).
 
@@ -29,7 +31,52 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app maintenance prune";
+
+/// Operator command on the discussion outbox, parsed before any configuration is read.
+#[derive(Debug, PartialEq, Eq)]
+enum OutboxCommand {
+    Status,
+    Dead(i64),
+    Requeue {
+        event: uuid::Uuid,
+        consumer: String,
+        note: String,
+    },
+}
+
+fn parse_outbox(args: &[String]) -> Result<OutboxCommand, String> {
+    match args.first().map(String::as_str) {
+        Some("status") if args.len() == 1 => Ok(OutboxCommand::Status),
+        Some("dead") if args.len() <= 2 => {
+            let limit = match args.get(1) {
+                None => DEFAULT_HISTORY,
+                Some(raw) => raw
+                    .parse::<i64>()
+                    .ok()
+                    .filter(|n| (1..=1_000).contains(n))
+                    .ok_or_else(|| "expected a limit between 1 and 1000".to_string())?,
+            };
+            Ok(OutboxCommand::Dead(limit))
+        }
+        Some("requeue") if args.len() >= 4 => {
+            let event = uuid::Uuid::parse_str(&args[1])
+                .map_err(|_| "expected an event UUID".to_string())?;
+            let note = args[3..].join(" ");
+            if note.trim().is_empty() || note.chars().count() > 500 {
+                return Err("expected a note of 1 to 500 characters".into());
+            }
+            Ok(OutboxCommand::Requeue {
+                event,
+                consumer: args[2].clone(),
+                note,
+            })
+        }
+        _ => {
+            Err("expected `status`, `dead [<limit>]` or `requeue <event> <consumer> <note>`".into())
+        }
+    }
+}
 
 /// Default number of audit rows `tag history` prints.
 const DEFAULT_HISTORY: i64 = 50;
@@ -157,7 +204,14 @@ fn main() -> ExitCode {
     let command = std::env::args().nth(1).unwrap_or_else(|| "serve".into());
     if !matches!(
         command.as_str(),
-        "serve" | "migrate" | "dev-seed" | "moderator" | "principal" | "tag" | "maintenance"
+        "serve"
+            | "migrate"
+            | "dev-seed"
+            | "moderator"
+            | "principal"
+            | "tag"
+            | "outbox"
+            | "maintenance"
     ) {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
@@ -192,6 +246,18 @@ fn main() -> ExitCode {
             Ok(parsed) => Some(parsed),
             Err(error) => {
                 eprintln!("vink-app tag: {error}\n{USAGE}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
+    let outbox_command = if command == "outbox" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_outbox(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app outbox: {error}\n{USAGE}");
                 return ExitCode::from(2);
             }
         }
@@ -240,6 +306,9 @@ fn main() -> ExitCode {
             }
             Loaded::App(config) if let Some(operation) = tag_command => {
                 tag(&config, operation).await
+            }
+            Loaded::App(config) if let Some(operation) = outbox_command => {
+                outbox(&config, operation).await
             }
             Loaded::App(config) => serve(config).await,
         }
@@ -519,16 +588,86 @@ async fn tag(config: &Config, command: TagCommand) -> Result<(), Failure> {
     Ok(())
 }
 
-/// `vink-app maintenance prune`: deletes sign-in rate-limit windows that ended over a day ago.
+/// `vink-app maintenance prune`: deletes sign-in rate-limit windows that ended over a day ago and
+/// discussion events whose deliveries all finished over 30 days ago (as `vink-worker` does hourly).
 async fn maintenance(config: &Config) -> Result<(), Failure> {
     let pool = connect(&config.database_url, "vink-app maintenance").await?;
     let pruned = Vink::new(PgStore::new(pool.clone()))
         .prune_rate_limits()
         .await
         .map_err(|_| Failure::Runtime("prune failed".into()));
+    let events = persistence::outbox::prune(&pool, 30, 1_000)
+        .await
+        .map_err(|_| Failure::Runtime("outbox prune failed".into()));
     pool.close().await;
     println!("pruned {} expired rate-limit window(s)", pruned?);
+    println!("pruned {} finished outbox event(s)", events?);
     Ok(())
+}
+
+/// `vink-app outbox …`: counts, codes and identifiers only; no comment content is read.
+async fn outbox(config: &Config, command: OutboxCommand) -> Result<(), Failure> {
+    use persistence::outbox::{self as queue, RequeueOutcome};
+    use vink_app::domain::discussion::outbox::Consumer;
+    let pool = connect(&config.database_url, "vink-app outbox").await?;
+    let failed = |error: vink_app::application::ports::StoreError| {
+        Failure::Runtime(format!("outbox command failed: {error}"))
+    };
+    let result = match command {
+        OutboxCommand::Status => {
+            let consumers: Vec<&str> = Consumer::ALL.iter().map(|c| c.code()).collect();
+            let backlog = queue::backlog(&pool, &consumers).await.map_err(failed)?;
+            let age =
+                |seconds: Option<i64>| seconds.map_or_else(|| "-".to_string(), |s| format!("{s}s"));
+            println!("eligible\t{}", backlog.eligible);
+            println!("scheduled_retry\t{}", backlog.scheduled);
+            println!("leased\t{}", backlog.leased);
+            println!("dead\t{}", backlog.dead);
+            println!("unhandled\t{}", backlog.unhandled);
+            println!("oldest_eligible\t{}", age(backlog.oldest_eligible_seconds));
+            println!("oldest_open\t{}", age(backlog.oldest_open_seconds));
+            Ok(())
+        }
+        OutboxCommand::Dead(limit) => {
+            for dead in queue::dead_letters(&pool, limit).await.map_err(failed)? {
+                println!(
+                    "{}\t{}\t{}\tv{}\t{}\tattempts={}\t{}",
+                    dead.event_id,
+                    dead.consumer,
+                    dead.event_type,
+                    dead.schema_version,
+                    dead.outcome,
+                    dead.attempts,
+                    dead.finished_at
+                );
+            }
+            Ok(())
+        }
+        OutboxCommand::Requeue {
+            event,
+            consumer,
+            note,
+        } => match queue::requeue(&pool, event, &consumer, &note)
+            .await
+            .map_err(failed)?
+        {
+            RequeueOutcome::Requeued { previous_attempts } => {
+                println!(
+                    "requeued {event} {consumer} (previous attempts {previous_attempts}); audited"
+                );
+                Ok(())
+            }
+            RequeueOutcome::Refused(state) => Err(Failure::Usage(format!(
+                "refused: the delivery is {}; only a dead letter can be requeued and nothing was written",
+                state.code()
+            ))),
+            RequeueOutcome::NotFound => Err(Failure::Usage(
+                "no such delivery; nothing was written".into(),
+            )),
+        },
+    };
+    pool.close().await;
+    result
 }
 
 async fn serve(config: Config) -> Result<(), Failure> {
@@ -630,6 +769,44 @@ mod tests {
             &["delete", principal][..],
         ] {
             assert!(parse_principal(&args(bad)).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn outbox_arguments_are_validated_before_any_configuration() {
+        let event = "0190f0c8-0000-7000-8000-000000000001";
+        assert_eq!(parse_outbox(&args(&["status"])), Ok(OutboxCommand::Status));
+        assert_eq!(parse_outbox(&args(&["dead"])), Ok(OutboxCommand::Dead(50)));
+        assert_eq!(
+            parse_outbox(&args(&["dead", "7"])),
+            Ok(OutboxCommand::Dead(7))
+        );
+        assert_eq!(
+            parse_outbox(&args(&[
+                "requeue",
+                event,
+                "admission_shadow.v1",
+                "Đã",
+                "sửa"
+            ])),
+            Ok(OutboxCommand::Requeue {
+                event: uuid::Uuid::parse_str(event).unwrap(),
+                consumer: "admission_shadow.v1".into(),
+                note: "Đã sửa".into(),
+            })
+        );
+        let long = "x".repeat(501);
+        for bad in [
+            &["status", "x"][..],
+            &["dead", "0"][..],
+            &["dead", "1001"][..],
+            &["requeue", event, "admission_shadow.v1"][..],
+            &["requeue", "not-a-uuid", "admission_shadow.v1", "note"][..],
+            &["requeue", event, "admission_shadow.v1", " "][..],
+            &["requeue", event, "admission_shadow.v1", &long][..],
+            &["purge"][..],
+        ] {
+            assert!(parse_outbox(&args(bad)).is_err(), "{bad:?}");
         }
     }
 

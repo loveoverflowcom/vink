@@ -331,6 +331,72 @@ function verifyAdmission() {
   }
 }
 
+// Outbox states: deliveries with their committed effects, and the claims workers believe they hold.
+function projectOutbox(file, expectedSteps, status) {
+  const trace = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(trace['#meta'].status, status);
+  assert.equal(trace['#meta'].format, 'ITF');
+  assert.equal(trace.states.length, expectedSteps + 1, 'No empty/truncated scenario passes');
+  assert.equal(trace.states[0].outcome, 'init');
+  return trace.states.slice(1).map((state, index) => {
+    assert.equal(integer(state.cursor), index + 1);
+    const command = {
+      op: string(state.command.op), worker: integer(state.command.worker),
+      delivery: integer(state.command.delivery), generation: integer(state.command.generation),
+      result: string(state.command.result),
+    };
+    const effects = new Map(state.effects['#map'].map(([id, n]) => [integer(id), integer(n)]));
+    const deliveries = state.store['#map'].map(([id, d]) => ({
+      id: integer(id), state: string(d.state), attempts: integer(d.attempts),
+      generation: integer(d.generation), available: integer(d.available),
+      outcome: string(d.outcome), effects: effects.get(integer(id)),
+    })).sort((left, right) => left.id - right.id);
+    const holds = state.holds['#set'].map(h => ({
+      worker: integer(h.worker), delivery: integer(h.delivery), generation: integer(h.generation),
+    })).sort((l, r) => l.worker - r.worker || l.delivery - r.delivery || l.generation - r.generation);
+    return { command, outcome: string(state.outcome), now: integer(state.now), deliveries, holds };
+  });
+}
+
+function verifyOutbox() {
+  simulation('outbox.qnt', 'step', 40, 1000, 'outboxSafe');
+  console.log(`PASS outbox simulation: seed=${seed}, samples=1000, max_steps=40, workers=2, deliveries=2, ticks<=8`);
+  const length = 26;
+  const out = join(temporary, 'outbox.itf.json');
+  simulation('outbox.qnt', 'scenarioStep', length, 1, 'outboxSafe', out);
+  const steps = projectOutbox(out, length, 'ok');
+  // Non-vacuity: every claim/completion/requeue outcome, a stale result after a reclaim, a dead
+  // letter both at claim and at completion, and one effect done while the other retries.
+  const outcomes = new Set(steps.map(step => step.outcome));
+  for (const expected of ['claimed', 'reclaimed', 'not_eligible', 'dead_at_claim', 'succeeded',
+    'retry', 'dead', 'stale', 'crashed', 'ticked', 'requeued', 'requeue_refused']) {
+    assert(outcomes.has(expected), `outbox scenario never reaches outcome ${expected}`);
+  }
+  assert(steps.some(step => step.outcome === 'retry' &&
+    step.deliveries.some(d => d.state === 'succeeded' && d.effects === 1)),
+    'outbox scenario never retries one effect while the other is done');
+  assert(steps.every(step => step.deliveries.every(d => d.effects <= 1)));
+  assert(steps.at(-1).deliveries.every(d => d.state === 'succeeded' && d.effects === 1),
+    'outbox scenario ends with both effects applied exactly once');
+  fixture('outbox-fixtures.json', {
+    format: 'vink-discussion-outbox-conformance-v1', quint_version: version,
+    lease_ticks: 2, max_attempts: 3, scenarios: [{ name: 'lease_reclaim_and_two_effects', steps }],
+  });
+  const trace = join(temporary, 'outbox-unfenced.itf.json');
+  const args = simulation('outbox.qnt', 'mutatedUnfencedStep', 6, 1, 'effectAtMostOnce', trace, 1);
+  const violation = projectOutbox(trace, 6, 'violation');
+  // A's late result after B's reclaim and success applied the effect a second time.
+  const [before, last] = violation.slice(-2);
+  assert.deepEqual([before.outcome, last.command.worker, last.command.generation], ['succeeded', 1, 1]);
+  assert.equal(last.deliveries[0].effects, 2);
+  fixture('outbox-unfenced-counterexample.json', {
+    format: 'vink-discussion-counterexample-v1', quint_version: version,
+    command: ['quint', ...args.filter(arg => !arg.startsWith('--out-itf='))],
+    status: 'violation', steps: violation,
+  });
+  console.log('PASS negative control: mutatedUnfencedStep violates effectAtMostOnce at transition 6');
+}
+
 try {
   assert.equal(run(['--version']).trim(), version, 'Use the pinned Quint version');
   run(['typecheck', 'structure.qnt']);
@@ -338,7 +404,8 @@ try {
   run(['typecheck', 'reaction.qnt']);
   run(['typecheck', 'endorsement.qnt']);
   run(['typecheck', 'admission.qnt']);
-  console.log(`PASS Quint ${version}: typecheck all five models (including the mutation actions)`);
+  run(['typecheck', 'outbox.qnt']);
+  console.log(`PASS Quint ${version}: typecheck all six models (including the mutation actions)`);
 
   simulation('structure.qnt', 'step', 40, 1000, 'structureSafe');
   console.log(`PASS simulation: seed=${seed}, samples=1000, max_steps=40, IDs=1..4, backend=typescript`);
@@ -530,6 +597,7 @@ try {
   }
   verifyEndorsement();
   verifyAdmission();
+  verifyOutbox();
   console.log('NOT_RUN Apalache/model checking; Rust conformance is a separate cargo test');
   rmSync(temporary, { recursive: true });
 } catch (error) {

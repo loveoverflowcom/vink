@@ -136,6 +136,7 @@ fixture sinh từ model là oracle để replay input qua Rust, không là imple
 | D2T-INV-10 — #45 | Chưa có consumer model | `apps/vink-web/src/discussion_state.rs`: scope, edit generation, logical key và physical attempt; unit regressions | Không thêm test DB; receipt/idempotency theo INV-06 | Chưa có | Consumer browser evidence riêng; CMP projection mẫu, chưa native integration/Quint interleavings/production auth/OS IME |
 | D2T-INV-11 — #25 | [EMO lifecycle owner](expressions.md#registry-emo--một-model-lifecycle), không model comment | `CommentBody` giữ Unicode; `vink-expressions` sở hữu manifest/policy riêng, Web pilot dùng thật | — | Owner-local EMO harnesses, xem evidence PR | Chưa typed sticker/reaction persistence và composer #43/#45; không nhận proof EMO là proof discussion |
 | D2T-INV-12 — COM-02, D-08, MOD-02/03/05, #120 | [`admission.qnt`](../../services/vink-app/behavior/discussion/admission.qnt): `admissionRecordsProvenance`, `refusalWritesNothing`, `premoderationAdmitsPending`, `approvalNeedsEveryGuard`, `shadowOnlyMeasures`, `ticketsOnlyForPublishFirst`, `postReviewFenced`, `removalTerminal`, `scopedVersionedWrites`; trace `rollout`; counterexample `admission-shadow`, `admission-stale-trust`, `admission-unfenced` | `admission::{decide_initial_review, decide_admission, PolicySelection, Admission, decide_post_review}`, `CommentState::hold_for_review`; unit tests, vét cạn facts × policy, `admission_replay` (gồm ba counterexample bị production từ chối) | `admission_provenance_is_recorded_and_held_by_the_schema`, `a_suspended_writer_is_refused_at_commit_and_nothing_is_written`, `suspension_and_submission_serialize_on_the_principal` (hai thứ tự), `upgrade_records_premoderation_for_existing_comments` | [`admission_approves_only_when_every_guard_passes`](../../services/vink-app/src/domain/discussion/proofs.rs), `shadow_selection_keeps_premoderation_effective`, `post_review_only_withdraws_the_observed_approval` | Ứng viên chỉ shadow (chưa có cả shadow trong deployment); chưa authority trust, rules engine, classifier, store quan sát shadow, outbox/worker hậu kiểm, rate limit; delta D-08 PROPOSED |
+| D2T-INV-13 — #120 DISC-04, MOD-03 | [`outbox.qnt`](../../services/vink-app/behavior/discussion/outbox.qnt): `effectAtMostOnce`, `staleWritesNothing`, `fenceMonotone`, `scoped`; trace `lease_reclaim_and_two_effects`; counterexample `outbox-unfenced` | `domain/discussion/outbox.rs` (`decide_claim`, `check_ownership`, `decide_completion`, `decide_requeue`, `observe_shadow`); unit + `outbox_replay` | [`tests/postgres/outbox.rs`](../../services/vink-app/tests/postgres/outbox.rs): T1–T12 gồm process `vink-worker` thật, role runtime, rollback có guard | `outbox_claims_advance_the_fence_or_end_the_delivery`, `outbox_completion_is_fenced_and_never_turns_failure_into_success` | Consumer duy nhất là shadow/audit; hậu kiểm có hiệu lực (exhaustion → hold), event cho gỡ/kiểm duyệt, LISTEN/NOTIFY, metrics endpoint ([quyết định](../architecture/discussion-outbox.md)) |
 
 Các symbol model, fixture và lệnh thực thi của lát cắt 1 được chỉ mục ở
 [owner-local behavior](../../services/vink-app/behavior/discussion/README.md).
@@ -152,7 +153,8 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
    store, ID do server sinh và mỗi kết quả giữ mã lỗi riêng. Không chứng minh luật của store.
 3. **Quint (`discussion`):** model cấu trúc (lát cắt 1), model vòng đời `lifecycle.qnt`
    (D2T-02: tiền kiểm, gỡ, version, bật/tắt, grant tại commit, tự né; receipt/retry D2T-INV-06),
-   `reaction.qnt` (D2T-INV-08) và `admission.qnt` (D2T-INV-12: policy, shadow, hậu kiểm). Simulation ngẫu nhiên có giới hạn, negative control có
+   `reaction.qnt` (D2T-INV-08), `admission.qnt` (D2T-INV-12: policy, shadow, hậu kiểm) và
+   `outbox.qnt` (D2T-INV-13: claim, fence generation, retry, dead letter, requeue). Simulation ngẫu nhiên có giới hạn, negative control có
    counterexample thật và replay input qua các quyết định Rust production, không phải model
    checking; khóa và transaction vẫn chỉ có bằng chứng ở lane `postgres`.
 4. **PostgreSQL thật (`postgres`):** ràng buộc bằng SQL trực tiếp bỏ qua Rust, race có khóa tường
@@ -162,8 +164,8 @@ Lệnh được sở hữu tại [development guide](README.md), runner ở `xta
 5. **Kani (`kani`):** harness owner-local trên `src/domain` kiểm từng quyết định thuần với toàn
    miền input (version/generation/cursor `i64`, digest 32 byte, count `u32`, mọi trạng thái ×
    người xem × loại reaction; ID trong vài giá trị ký hiệu đủ để bằng/khác nhau), cột Kani ở
-   bảng trên; 16 harness thảo luận, gồm ba harness admission (#120) với mọi instant `i64` và oracle
-   tuổi `i128`. Không
+   bảng trên; 19 harness thảo luận, gồm ba harness admission (#120) với mọi instant `i64` và oracle
+   tuổi `i128`, và hai harness outbox DISC-04 (claim/fence/retry trên mọi trạng thái và instant). Không
    thay Quint cho chuỗi lệnh hay `postgres` cho khóa. **Apalache/model checking NOT_RUN.** D2T-03 có browser scenarios trong lane Web; trạng thái từng run ghi riêng, không suy PASS từ source.
 6. **HTTP (`quick` + `postgres`):** fixture tests hai phía (provider serialize so field-for-field,
    consumer `vink-web` decode giữ đủ field và phân loại mã lỗi), và

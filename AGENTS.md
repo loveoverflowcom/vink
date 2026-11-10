@@ -25,7 +25,7 @@ loaded-list title/author search and URL-based reader return context, conditional
 (READ-01: strong body-hash ETag, `304`, `private, no-cache`; no server cache) with a browser-tab,
 memory-only cache-first owner for those two reads (READ-02 Web pilot: ~120 s revalidation while
 visible, last success kept on temporary failure, removed on 404; CMP/native not implemented), a quiet reader, a private
-draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a lifecycle-only worker,
+draft dashboard with loaded-list search/resume and uncertain-create reconciliation, a worker running the discussion outbox and hourly retention,
 `cargo xtask` lanes and CI, and the UI System foundation (`packages/ui-system`: one token source in
 `shared/tokens.json` generating CSS/Rust/Kotlin with a drift check, the Leptos crate `vink-ui`, a
 Compose Multiplatform `:ui` library and two previews; native Android/iOS targets compile only
@@ -147,8 +147,17 @@ approves; `admission.qnt` replay and three Kani harnesses back it. DISC-02/03 ro
 through it: `PgStore` writes the admission's initial state and provenance (migration
 `20261111000000_comment_admission`: born as admitted, `premoderation.v1` only, provenance
 immutable) and refuses a principal suspended before commit (standing fence shared with tag
-saves; `403 principal_suspended`). No trust authority, shadow store, outbox or post-review worker
-exists, and the D-08 delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)).
+saves; `403 principal_suspended`). No trust authority or post-review worker exists, and the D-08
+delta is PROPOSED ([decision](docs/architecture/discussion-admission.md)). DISC-04 adds the App's
+discussion outbox ([decision](docs/architecture/discussion-outbox.md)): `submit_comment` writes a
+`comment.submitted` event and one delivery per consumer in its own transaction (migration
+`20261114000000_discussion_outbox`); `vink-worker` claims with `FOR UPDATE SKIP LOCKED` and a lease,
+fences every post-claim write by claim generation under the row lock, applies App-database effects
+and their outcome atomically, retries with capped backoff and dead-letters with reason codes;
+`vink-app outbox status|dead|requeue` is the only requeue (audited, dead letters only). Polling
+only (no LISTEN/NOTIFY). The one consumer, `admission_shadow.v1`, records what `trusted-cohort.v1`
+would decide (shadow/audit, never a review state; trust/rules have no source, so it never approves);
+`outbox.qnt` replay and two Kani harnesses back the pure lifecycle.
 DISC-02/03 part 2 separates reads ([decision](docs/architecture/discussion-reads.md)): the
 composed v1 read is unchanged; `GET …/discussion/public` (+ replies) is a public projection that
 resolves no actor (an Identity outage never hides it) and refuses to exist if a viewer fact reaches

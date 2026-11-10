@@ -1,0 +1,246 @@
+{
+  "format": "vink-discussion-counterexample-v1",
+  "quint_version": "0.33.1",
+  "command": [
+    "quint",
+    "run",
+    "outbox.qnt",
+    "--backend=typescript",
+    "--seed=41",
+    "--step=mutatedUnfencedStep",
+    "--max-steps=6",
+    "--max-samples=1",
+    "--invariant=effectAtMostOnce",
+    "--verbosity=1"
+  ],
+  "status": "violation",
+  "steps": [
+    {
+      "command": {
+        "op": "claim",
+        "worker": 1,
+        "delivery": 1,
+        "generation": 0,
+        "result": "none"
+      },
+      "outcome": "claimed",
+      "now": 0,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "leased",
+          "attempts": 1,
+          "generation": 1,
+          "available": 2,
+          "outcome": "none",
+          "effects": 0
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": [
+        {
+          "worker": 1,
+          "delivery": 1,
+          "generation": 1
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "tick",
+        "worker": 0,
+        "delivery": 0,
+        "generation": 0,
+        "result": "none"
+      },
+      "outcome": "ticked",
+      "now": 1,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "leased",
+          "attempts": 1,
+          "generation": 1,
+          "available": 2,
+          "outcome": "none",
+          "effects": 0
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": [
+        {
+          "worker": 1,
+          "delivery": 1,
+          "generation": 1
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "tick",
+        "worker": 0,
+        "delivery": 0,
+        "generation": 0,
+        "result": "none"
+      },
+      "outcome": "ticked",
+      "now": 2,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "leased",
+          "attempts": 1,
+          "generation": 1,
+          "available": 2,
+          "outcome": "none",
+          "effects": 0
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": [
+        {
+          "worker": 1,
+          "delivery": 1,
+          "generation": 1
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "claim",
+        "worker": 2,
+        "delivery": 1,
+        "generation": 0,
+        "result": "none"
+      },
+      "outcome": "reclaimed",
+      "now": 2,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "leased",
+          "attempts": 2,
+          "generation": 2,
+          "available": 4,
+          "outcome": "none",
+          "effects": 0
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": [
+        {
+          "worker": 1,
+          "delivery": 1,
+          "generation": 1
+        },
+        {
+          "worker": 2,
+          "delivery": 1,
+          "generation": 2
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "complete",
+        "worker": 2,
+        "delivery": 1,
+        "generation": 2,
+        "result": "applied"
+      },
+      "outcome": "succeeded",
+      "now": 2,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "succeeded",
+          "attempts": 2,
+          "generation": 2,
+          "available": 4,
+          "outcome": "applied",
+          "effects": 1
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": [
+        {
+          "worker": 1,
+          "delivery": 1,
+          "generation": 1
+        }
+      ]
+    },
+    {
+      "command": {
+        "op": "complete",
+        "worker": 1,
+        "delivery": 1,
+        "generation": 1,
+        "result": "applied"
+      },
+      "outcome": "succeeded",
+      "now": 2,
+      "deliveries": [
+        {
+          "id": 1,
+          "state": "succeeded",
+          "attempts": 2,
+          "generation": 2,
+          "available": 4,
+          "outcome": "applied",
+          "effects": 2
+        },
+        {
+          "id": 2,
+          "state": "ready",
+          "attempts": 0,
+          "generation": 0,
+          "available": 0,
+          "outcome": "none",
+          "effects": 0
+        }
+      ],
+      "holds": []
+    }
+  ]
+}
