@@ -201,8 +201,8 @@ Shell #shell
     Region #account-bottom — Tôi, neo chân rail
   Region #main — route hiện tại, editor giữ một instance
   Region #bottom-navigation — mobile: Khám phá → Bàn viết → Tôi
-  Overlay #profile-menu — trạng thái tài khoản, appearance, Mở trang Tôi
-  Screen #me — /toi: trạng thái tài khoản và appearance
+  Overlay #profile-menu — Giao diện: màu → cỡ chữ → rail → Mở trang Tôi (ở ngoài /toi)
+  Screen #me — /toi: Tài khoản → Giao diện: màu → cỡ chữ → rail → Bản thử nghiệm
 ```
 
 Owner: [lib.rs](../../apps/vink-web/src/lib.rs) giữ router và route `/` mặc định;
@@ -223,15 +223,24 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 - Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
-- Nội dung/CTA chính thuộc route hiện tại. Trong Tôi, tác vụ chính là chọn giao diện; thông tin
-  tài khoản chưa có được nói rõ. Không có nút đăng nhập/đăng xuất giả hay bộ đếm thành viên.
-- Overlay native `dialog` neo cạnh chân rail, nền trong suốt và ngoài dialog inert; focus vào
+- Web R2.2 dùng cùng ba nhóm radio ở `/toi` và panel **Giao diện**. Nhãn có icon và lựa chọn
+  bo tròn có dấu ✓. Trang có thẻ **Tài khoản** và minh họa sách–bút. Khi đủ rộng, tên nhóm đứng
+  cạnh các lựa chọn. Màn hẹp và chữ lớn cho phép các lựa chọn xuống dòng. Mobile dùng đích Tôi
+  trên thanh dưới để tới `/toi`.
+- Rail, thanh dưới và thẻ **Tài khoản** dùng chữ viết tắt của bút danh từ phiên hiện tại. Sau
+  hydration, Web gọi `GET /api/v1/auth/session/account` (`no-store`) và kiểm lại khi cửa sổ nhận
+  focus. SSR và phiên chưa có bút danh dùng dấu gạch trung tính. Bút danh của LocalFixture thuộc
+  dữ liệu phát triển. Web tải thông tin tài khoản riêng qua API.
+- Overlay native `dialog` neo cạnh chân rail, có nền riêng và ngoài dialog inert. Bấm Tôi ở chân
+  rail mở panel cả trên `/toi`. Focus vào
   radio đang chọn, Tab giữ bên trong, Escape/Đóng/bấm ngoài trả trigger. Resize về mobile đóng
   overlay và focus main đang hiển thị; route, scroll và editor được giữ. Một `OverlayLayer` giữ một
   modal hoạt động; Back/Forward khi Tôi mở chỉ đóng Tôi (guard đẩy URL trang về), lần Back sau mới
   tới guard editor. Sự kiện `close` đến muộn của lần đóng trước không đóng lớp phủ vừa mở lại.
-- Đổi theme/rail, mở/đóng overlay chỉ đổi preference/DOM shell, không lưu hay gọi guard. Nút
-  Mở trang Tôi đóng overlay trước khi gọi `NavigationGuard.navigate`; link và back/forward dùng
+- Chọn màu theo hệ thống, chữ 100% hoặc rail tự động sẽ xóa giá trị ghi đè tương ứng trong
+  `localStorage`. Ba khóa là `vink.ui.theme`, `vink.ui.text` và `vink.ui.rail`. Bootstrap
+  áp dụng preference trước CSS và đồng bộ lựa chọn SSR. Nút **Mở trang Tôi** đóng overlay trước
+  khi gọi `NavigationGuard.navigate`. Link và back/forward dùng
   guard PR 02. Lưu lỗi/xung đột/treo giữ nguyên đường xuất và xác nhận rời không lưu.
 - Loading/empty/lỗi/saved/dirty/conflict tiếp tục do route/editor hiện có trình bày. Shell không
   suy ra trạng thái tài khoản hay bản thảo. Tooltip thu/mở rail có hover/focus/Escape, nằm ngoài

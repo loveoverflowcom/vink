@@ -324,7 +324,7 @@ TTF/OTF, OS IME tiếng Việt, TalkBack/VoiceOver và device thật cần evide
 apps/vink-web/            crate vink-web: view Leptos, route, DTO riêng của web, CSS tokens
   src/shell.rs            đích Vink (Destination), lớp phủ Tôi, chính sách responsive; render bằng
                           primitive UIS-04, dùng NavigationGuard cho chuyển trang
-  src/appearance.rs       theme/rail local, bootstrap trước CSS, initials thuần có fixture tiếng Việt
+  src/appearance.rs       nhóm màu/cỡ chữ/rail dùng chung, bootstrap cục bộ trước CSS, initials thuần
   src/pages/me.rs         /toi: thông tin tài khoản chưa có, chọn giao diện
   src/contract.rs         biểu diễn API v1 của consumer, kiểm bằng fixtures của server
   src/api.rs              ssr: đọc qua PublicReads; hydrate: fetch /api/v1

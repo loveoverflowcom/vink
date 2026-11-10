@@ -459,6 +459,11 @@ pub struct Provisioned {
 /// Subject → principal bindings (D-05/S-03 spike). Implementations create the principal and its
 /// binding atomically and never move a binding to another principal.
 pub trait PrincipalStore: Send + Sync {
+    fn principal_display_name(
+        &self,
+        principal: PrincipalId,
+    ) -> impl Future<Output = Result<String, StoreError>> + Send;
+
     fn principal_for_subject(
         &self,
         subject: &SubjectKey,

@@ -31,6 +31,11 @@ pub fn local_discussion_fixture_scope() -> Option<String> {
     }
 }
 
+#[cfg(feature = "hydrate")]
+pub(crate) async fn current_account() -> Result<crate::contract::CurrentAccount, ApiError> {
+    http::get("/api/v1/auth/session/account").await
+}
+
 /// The anonymous discussion page and the public endorsement summaries (LVE #73) of its public
 /// comments, read one after the other so SSR and hydration render the same counts. A failed
 /// summary read never hides the discussion.
@@ -547,9 +552,12 @@ mod http {
         }
     }
 
-    /// Discussion, endorsement and tag calls end after 30 s; a lost write is then uncertain.
+    /// These calls end after 30 s. For writes, a lost answer is then uncertain.
     fn bounded(path: &str) -> bool {
-        path.contains("/discussion") || path.contains("/endorsement") || path.contains("/tags")
+        path.contains("/discussion")
+            || path.contains("/endorsement")
+            || path.contains("/tags")
+            || path == "/api/v1/auth/session/account"
     }
 
     pub async fn get<T: DeserializeOwned>(path: &str) -> Result<T, ApiError> {

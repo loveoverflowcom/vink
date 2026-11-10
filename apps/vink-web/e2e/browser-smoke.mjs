@@ -137,7 +137,7 @@ async function bottomNavigationGeometry(page, scenario) {
   check(await page.eval(`(() => {
     const bar = document.querySelector('.vk-ui-bottom-nav'), b = bar.getBoundingClientRect();
     const links = [...bar.querySelectorAll('a')];
-    return links.map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi' && links.every(a => {
+    return links.map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tôi' && links.every(a => {
       const r = a.getBoundingClientRect(), label = a.querySelector('.vk-ui-nav-item__label');
       const l = label.getBoundingClientRect(), range = document.createRange();
       range.selectNodeContents(label);
@@ -160,7 +160,7 @@ async function bottomNavigationAlignment(page, scenario) {
     const label = a.querySelector('.vk-ui-nav-item__label'), style = getComputedStyle(label);
     const range = document.createRange(); range.selectNodeContents(label);
     const first = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0);
-    return { name: a.textContent, x: target.x, y: target.y, width: target.width, height: target.height,
+    return { name: label.textContent, x: target.x, y: target.y, width: target.width, height: target.height,
       iconCenterY: icon.y + icon.height / 2, firstLineY: first?.y,
       font: style.font, lineHeight: style.lineHeight };
   }))()`);
@@ -369,8 +369,9 @@ class Page {
             accountText: bounds('#' + prefix + '-account .vk-account-status > div'),
             accountLabel: bounds('#' + prefix + '-account h2'),
             accountHelp: bounds('#' + prefix + '-account .vk-ui-tone-muted'),
-            appearanceHeading: bounds('#' + prefix + '-account + .vk-appearance-region .vk-appearance-heading'),
-            choices: bounds('#' + prefix + '-account + .vk-appearance-region .vk-appearance-region__choices'), group: bounds('#' + prefix + '-theme'), helper: bounds('#' + prefix + '-theme-help'),
+            appearanceHeading: bounds(prefix === 'page' ? '#page-appearance-title' : '#profile-title'),
+            choices: bounds((prefix === 'page' ? '#me' : '#profile-menu') + ' .vk-appearance-region'),
+            group: bounds('#' + prefix + '-theme'),
             action: prefix === 'overlay' ? bounds('#open-me') : null,
             footer: prefix === 'page' ? bounds('.vk-footer') : null };
         })(),
@@ -909,6 +910,7 @@ async function serverHtml() {
   const index = await (await fetch(`${args.base}/ban-viet`)).text();
   const me = await (await fetch(`${args.base}/toi`)).text();
   check([html, desk, index, me].every(text => !text.includes('class="vk-brand"') && !text.includes('vk-ui-top-bar')), 'direct reader, editor, Desk and Tôi HTML has no global brand or empty header');
+  check(!me.includes('Tác giả mẫu (dữ liệu phát triển)') && me.includes('data-initials=""'), 'Tôi SSR uses a neutral avatar and omits current account details');
   const privateList = await (await fetch(`${args.base}/api/v1/drafts`)).json();
   check(!index.includes(DRAFT_ONLY_LINE) && privateList.drafts.every(d => !d.title || !index.includes(d.title)), 'dashboard SSR contains no private title/body or list hydration payload');
   const anonymous = await fetch(`${args.base}/api/v1/drafts`);
@@ -1100,9 +1102,9 @@ async function textContrast(page, theme, surface = 'shell') {
     desk: ['#resume h2', '#resume-title-toggle', '.vk-resume .vk-draft-meta', '[data-testid=resume-draft]', '.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '#works-title', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
-    me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-theme-title', '#page-theme legend', '#page-theme-help summary', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
-    account: ['#profile-title', '#overlay-account h2', '#overlay-account .vk-ui-tone-muted', '#overlay-theme-title', '#overlay-theme-help summary', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
-  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-menu .vk-ui-tone-muted', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
+    me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
+    account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
+  }[surface] ?? ['#navigation-toggle', '#navigation-primary a', '#profile-trigger', '#profile-title', '#profile-menu .vk-ui-choice__target:has(:checked)', '#profile-menu .vk-ui-button'];
   const pairs = await page.eval(`(() => {
     const rgb = value => value.match(/[\\d.]+/g).map(Number);
     const luminance = color => rgb(color).slice(0, 3).map(v => v / 255).map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i], 0);
@@ -1133,36 +1135,56 @@ async function textContrast(page, theme, surface = 'shell') {
   check(pairs.every(p => p.exempt || p.ratio >= 4.5), `${theme} ${surface} text contrast >= 4.5 (min ${Math.min(...pairs.filter(p => !p.exempt).map(p => p.ratio)).toFixed(2)}; disabled controls exempt)`);
 }
 
-// #67: overflow alone misses readable width lost to nested insets. Compare content boxes,
-// leaving the existing recipe's icon/choice padding and the native scrollbar to their owners.
+// Account and appearance remain aligned as a unit. The panel has a single scroller.
 function accountLayoutGeometry(context, scenario) {
   const m = context.mePanel, near = (a, b) => Math.abs(a - b) <= 1;
-  check(Boolean(m), `${scenario}: account geometry is present`);
-  const fullWidth = [m.heading, m.account, m.identity, m.appearanceHeading, m.choices];
+  check(Boolean(m), `${scenario}: appearance geometry is present`);
+  const fullWidth = m.prefix === 'page' ? [m.heading, m.account, m.identity] : [m.heading, m.choices];
   check(fullWidth.every(r => r && near(r.x, m.surface.contentLeft) && near(r.width, m.surface.contentWidth)),
-    `${scenario}: heading, account and choices share the surface content axes`);
-  check(near(m.accountText.contentLeft, m.accountText.x) && near(m.accountText.contentWidth, m.accountText.width) &&
-    [m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1) &&
-    near(m.accountLabel.width, m.accountText.contentWidth) && near(m.accountHelp.width, m.accountText.contentWidth),
-    `${scenario}: truthful account text uses its whole column without clipping`);
-  if (m.prefix === 'page' && context.width < 760) {
-    // Browser scrollbars are outside the layout viewport; do not compensate their width in CSS.
-    check(near(m.surface.x, 16) && near(m.surface.width, context.layoutWidth - 32),
-      `${scenario}: narrow Me keeps one 16px gutter on both sides at the current text size`);
-    if (context.width <= 390 && parseFloat(context.fontSize) >= 32) {
-      check(m.accountText.y >= m.avatar.y + m.avatar.height &&
-        near(m.accountText.x, m.identity.contentLeft) && near(m.accountText.width, m.identity.contentWidth),
-        `${scenario}: large-text account stacks and keeps the full readable measure`);
+    `${scenario}: appearance uses the available surface width`);
+  if (m.prefix === 'page') {
+    check([m.accountLabel, m.accountHelp].every(r => r && r.scrollWidth <= r.clientWidth + 1),
+      `${scenario}: truthful account text fits without clipping`);
+    if (context.width < 760) {
+      check(near(m.surface.x, 16) && near(m.surface.width, context.layoutWidth - 32),
+        `${scenario}: narrow Tôi keeps one 16px gutter on both sides`);
     }
-  }
-  if (m.prefix === 'overlay') {
+  } else {
     check(m.surface.paddingLeft === m.surface.paddingRight && near(m.action.x, m.surface.contentLeft) &&
       m.action.x + m.action.width <= m.surface.contentLeft + m.surface.contentWidth + 1,
-      `${scenario}: panel owns equal client insets and its final action shares the content axis`);
+      `${scenario}: the panel action shares the content axis`);
   }
 }
 
-// R4/R5 consumer checks: native disclosure, solid selected state and no resting frames.
+function appearanceRows(page, prefix) {
+  return page.eval(`(() => {
+    const scope = document.querySelector(${JSON.stringify(prefix === 'page' ? '#me' : '#profile-menu')});
+    const rows = [...scope.querySelectorAll('.vk-appearance-row')];
+    const choices = [['Hệ thống', 'Sáng', 'Tối'], ['100%', '200%'], ['Tự động', 'Mở rộng', 'Thu gọn']];
+    return rows.length === choices.length && rows.every((row, index) => {
+      const heading = row.querySelector('h3'), group = row.querySelector('fieldset');
+      const icon = heading.querySelector('[aria-hidden=true]');
+      const labels = [...group.querySelectorAll('label')];
+      return icon && getComputedStyle(icon).maskImage.startsWith('url(') &&
+        heading.textContent === group.querySelector('legend').textContent &&
+        labels.map(el => el.textContent).join('|') === choices[index].join('|') &&
+        labels.filter(el => el.querySelector(':checked')).length === 1 && labels.every(el => {
+          const style = getComputedStyle(el), label = el.querySelector('.vk-ui-choice__label');
+          return el.getBoundingClientRect().height >= 48 && style.borderRadius === getComputedStyle(document.documentElement).getPropertyValue('--vk-radius-full').trim() &&
+            el.scrollWidth <= el.clientWidth + 1 &&
+            getComputedStyle(el, '::before').maskImage.startsWith('url(') &&
+            getComputedStyle(el, '::after').opacity === (el.querySelector(':checked') ? '1' : '0') &&
+            [...label.textContent.matchAll(/\\S+/g)].every(word => {
+              const range = document.createRange();
+              range.setStart(label.firstChild, word.index);
+              range.setEnd(label.firstChild, word.index + word[0].length);
+              return range.getClientRects().length === 1;
+            });
+        });
+    });
+  })()`);
+}
+
 async function appearanceFocusContrast(page, scenario) {
   await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
   const contrast = await page.eval(`(() => {
@@ -1175,93 +1197,33 @@ async function appearanceFocusContrast(page, scenario) {
 }
 
 async function preferenceSurfaces(page) {
-  console.log('R5 preference surfaces and shared native disclosures:');
-  const idleSurfaces = (prefix) => `(() => {
-    const scope = document.querySelector(${JSON.stringify(prefix === 'page' ? '#me' : '#profile-menu')});
-    const faces = [...scope.querySelectorAll('label')], selected = faces.find(el => el.querySelector(':checked'));
-    const idle = faces.filter(el => el !== selected), style = el => getComputedStyle(el);
-    const flat = el => {
-      const s = style(el);
-      return ['Top','Right','Bottom','Left'].every(side => parseFloat(s['border'+side+'Width']) === 0) &&
-        s.boxShadow === 'none' && s.backgroundImage === 'none' && (s.outlineStyle === 'none' || parseFloat(s.outlineWidth) === 0);
-    };
-    return [scope, ...scope.querySelectorAll('.vk-account-status,.vk-preference-region,.vk-appearance-region__choices,fieldset,label')].every(flat) &&
-      faces.length === 3 && selected && style(selected).backgroundColor !== style(idle[0]).backgroundColor &&
-      style(idle[0]).backgroundColor === style(idle[1]).backgroundColor &&
-      getComputedStyle(selected,'::after').opacity === '1' &&
-      idle.every(el => getComputedStyle(el,'::after').opacity === '0') &&
-      style(scope.querySelector('.vk-account-status')).backgroundColor !== style(scope).backgroundColor;
-  })()`;
+  console.log('R2.2 shared appearance surfaces and native build disclosure:');
   for (const theme of ['light', 'dark']) {
     await page.viewport(390, 844);
     await chooseTheme(page, theme, 'page-theme');
+    await page.waitFor(`document.querySelector('#page-account [data-kind=account]')?.dataset.initials === 'TT'`, 'current account name loaded');
     await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
     await page.key('Space');
     await appearanceFocusContrast(page, theme);
-    await page.capture(`r5-me-${theme}-selected-focus`);
-    await page.eval(`document.activeElement.blur()`);
-    check(await page.eval(idleSurfaces('page')), `${theme}: flat account/appearance groups, solid selected fill + check and no idle frames`);
-    check(await page.eval(`document.querySelectorAll('#build-info').length === 1 && document.querySelectorAll('#build-info summary').length === 1 &&
-      getComputedStyle(document.querySelector('.vk-footer')).borderTopWidth === '0px' &&
-      document.querySelector('#page-account h2').textContent === 'Tài khoản' && document.querySelector('#page-account p').textContent === 'Chưa mở đăng nhập.'`), `${theme}: concise true account copy and one borderless build entrypoint`);
-    await page.eval(`document.querySelector('#page-theme-help summary').focus()`);
-    await page.key('Enter');
-    check(await page.eval(`document.querySelector('#page-theme-help').open && document.activeElement === document.querySelector('#page-theme-help summary')`), `${theme}: Enter opens native help without moving focus`);
-    await page.key('Space');
-    check(await page.eval(`!document.querySelector('#page-theme-help').open`), `${theme}: Space toggles native help closed`);
+    await page.capture(`r22-me-${theme}-selected-focus`);
+    check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native groups with icons and selection checks`);
+    check(await page.eval(`document.querySelectorAll('#build-info').length === 1 &&
+      document.querySelector('#page-account h2').textContent === 'Tài khoản' &&
+      document.querySelector('#page-account p').textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
+      document.querySelector('#page-account .vk-account-illustration').getAttribute('aria-hidden') === 'true'`),
+      `${theme}: truthful account and one build disclosure`);
     await page.click('#build-info summary');
-    check(await page.eval(`document.querySelector('#build-info').open && document.querySelector('#build-info').textContent.includes('Nội dung gắn Mẫu là dữ liệu thử.')`), `${theme}: build detail keeps sample meaning reachable`);
-    await page.capture(`r5-me-${theme}-build-open`);
+    check(await page.eval(`document.querySelector('#build-info').open && document.querySelector('#build-info').textContent.includes('Nội dung gắn Mẫu là dữ liệu thử.')`),
+      `${theme}: build detail keeps sample meaning reachable`);
     await page.click('#build-info summary');
-    await page.viewport(1440);
-    await page.goto(`${args.base}/ban-viet`);
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'R5 panel host');
-    await openProfile(page);
-    await page.eval(`document.activeElement.blur()`);
-    check(await page.eval(idleSurfaces('overlay')), `${theme}: panel uses one flat surface without rim or nested appearance shell`);
-    await page.eval(`document.querySelector('#profile-close').focus()`);
-    await page.key('Tab');
-    check(await page.eval(`document.activeElement === document.querySelector('#overlay-theme-help summary')`), `${theme}: native help participates in modal Tab order`);
-    await page.key('Space');
-    check(await page.eval(`${PROFILE_OPEN} && document.querySelector('#overlay-theme-help').open && document.activeElement === document.querySelector('#overlay-theme-help summary')`), `${theme}: help expands in the panel without a second overlay`);
-    await page.capture(`r5-panel-${theme}-help-open`);
-    await page.viewport(834, 360);
-    await page.eval(`document.documentElement.style.fontSize = '200%'`);
-    await page.click('#profile-close');
-    await openProfile(page);
-    // The same details stays expanded while the panel closes/reopens; toggle only if needed.
-    if (!await page.eval(`document.querySelector('#overlay-theme-help').open`)) await page.click('#overlay-theme-help summary');
-    await page.eval(`document.querySelector('#profile-close').focus()`);
-    await page.key('Tab', SHIFT);
-    check(await page.eval(`(() => { const dialog=document.querySelector('#profile-menu'), d=dialog.getBoundingClientRect(), r=document.activeElement.getBoundingClientRect();
-      return document.activeElement.id==='open-me' && r.top>=d.top && r.bottom<=d.bottom && dialog.scrollWidth<=dialog.clientWidth &&
-        [...dialog.querySelectorAll('*')].every(el=>!['auto','scroll'].includes(getComputedStyle(el).overflowY)); })()`), `${theme}: expanded help at 834x360/text200 keeps one scroller and final action reachable`);
-    await page.capture(`r5-panel-${theme}-834x360-text200-end`);
-    await page.eval(`document.querySelector('#overlay-theme-help').open = false`);
-    await page.key('Escape');
-    check(await page.eval(`!${PROFILE_OPEN} && document.activeElement.id==='profile-trigger'`), `${theme}: parent panel Escape restores its own trigger`);
-    await page.eval(`document.documentElement.style.fontSize = ''`);
-    await page.goto(`${args.base}/toi`);
-    await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'R5 page restored');
   }
-  await page.viewport(320, 900);
-  await page.eval(`document.documentElement.style.fontSize = '200%'`);
-  await page.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
-  const point = await page.eval(`(() => { const el=document.querySelector('#page-theme-help summary'); el.scrollIntoView({block:'center'}); const r=el.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2,width:r.width,height:r.height}; })()`);
-  check(point.width>=48 && point.height>=48, 'appearance info has a >=48px touch target at 320/text200');
-  for (const type of ['touchStart','touchEnd']) await page.send('Input.dispatchTouchEvent', { type, touchPoints: type==='touchStart' ? [{x:point.x,y:point.y,id:1}] : [] });
-  await page.waitFor(`document.querySelector('#page-theme-help').open`, 'touch opens native help');
-  check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && document.querySelector('#page-theme-help').scrollWidth<=document.querySelector('#page-theme-help').clientWidth`), '320/text200 expanded help reflows without clipping');
-  await page.capture('r5-me-320-text200-touch-help');
-  await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
-  await page.eval(`document.documentElement.style.fontSize = ''`);
 
   await page.send('Network.setBlockedURLs', { urls: [`${args.base}/pkg/vink.js*`, `${args.base}/pkg/vink_bg.wasm*`] });
   await page.send('Emulation.setScriptExecutionDisabled', { value: true });
   const errorsBefore = page.errors.length;
   try {
     await page.goto(`${args.base}/toi`);
-    for (const id of ['page-theme-help','build-info']) {
+    for (const id of ['build-info']) {
       await page.eval(`document.querySelector('#${id} summary').focus()`);
       for (const type of ['keyDown','keyUp']) await page.send('Input.dispatchKeyEvent', {type,key:' ',code:'Space',windowsVirtualKeyCode:32,nativeVirtualKeyCode:32,...(type==='keyDown'?{text:' '}:{})});
       await page.waitFor(`document.querySelector('#${id}').open`, 'native no-JS '+id);
@@ -1274,7 +1236,7 @@ async function preferenceSurfaces(page) {
     check(blocked.every(error => /Failed to fetch dynamically imported module|Importing a module script failed|ERR_BLOCKED_BY_CLIENT/.test(error)), 'no-JS disclosure check produces only expected blocked imports');
   }
   await page.goto(`${args.base}/toi`);
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after native preference detail');
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after the native build detail');
 }
 
 async function accountAppearance(page) {
@@ -1282,31 +1244,50 @@ async function accountAppearance(page) {
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Tôi route for the appearance matrix');
-  const pageAccount = await page.eval(`document.querySelector('#page-account').textContent`);
+  await page.waitFor(`['#profile-trigger', '#page-account', '#bottom-navigation a[href="/toi"]'].every(selector => {
+    const badge = document.querySelector(selector + ' [data-kind=account]');
+    return badge?.dataset.initials === 'TT' && !badge.querySelector('[data-icon=person]');
+  })`, 'the same current account initials appear on the rail, bottom bar and Tôi');
+  check(await page.eval(`fetch('/api/v1/auth/session/account').then(async response => {
+    const body = await response.json();
+    return response.status === 200 && response.headers.get('cache-control') === 'no-store' &&
+      body.display_name === document.querySelector('#page-account p').textContent &&
+      Object.keys(body).sort().join(',') === 'display_name,principal_id';
+  })`), 'current account is read from the private session endpoint');
   await page.eval(`document.querySelector('#profile-trigger').focus()`);
   await page.key('Enter');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.name === 'page-theme' && document.activeElement.checked && document.activeElement.matches(':focus-visible') && !document.querySelector('#profile-trigger').hasAttribute('aria-haspopup') && document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'page-theme' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') !== 'true' && location.pathname === '/toi'`), 'Tôi on /toi focuses its existing checked radio with visible focus and no duplicate modal');
+  await page.waitFor(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme' && !document.querySelector('#open-me')`, 'Tôi opens the shared modal on /toi without a self-link');
+  await page.click('#overlay-text label:has([value="200"])');
+  await page.click('#overlay-rail label:has([value="compact"])');
+  await page.waitFor(`document.querySelector('#page-text input:checked')?.value === '200' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact' &&
+    getComputedStyle(document.documentElement).fontSize === '32px' &&
+    ${RAIL_WIDTH} === 96`, 'panel updates page radios, text size and rail immediately');
+  await page.key('Escape');
+  check(await page.eval(`document.activeElement?.id === 'profile-trigger'`), 'Escape returns to the trigger on /toi');
+  await page.reload();
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' &&
+    document.querySelector('#page-text input:checked')?.value === '200' &&
+    document.querySelector('#page-rail input:checked')?.value === 'compact'`, 'text and rail choices survive reload');
+  await page.click('#page-text label:has([value="100"])');
+  await page.click('#page-rail label:has([value="auto"])');
+  await page.waitFor(`!document.documentElement.dataset.text && !document.documentElement.dataset.rail &&
+    localStorage.getItem('vink.ui.text') === null && localStorage.getItem('vink.ui.rail') === null &&
+    ${RAIL_WIDTH} === 220 && document.querySelector('#overlay-rail input:checked')?.value === 'auto'`, '100% and automatic clear overrides and sync the panel');
   await chooseTheme(page, 'system', 'page-theme');
   await page.eval(`document.querySelector('#page-theme input:checked').focus()`);
   await page.key('ArrowRight');
   await page.waitFor(`document.querySelector('#page-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates page preference');
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'account utility host');
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'appearance utility host');
   await openProfile(page);
-  check(await page.eval(`document.querySelector('#overlay-account').textContent === ${JSON.stringify(pageAccount)} && document.querySelector('#profile-title').textContent === 'Tùy chọn' && document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' && document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' && document.querySelector('#profile-trigger').getAttribute('aria-current') !== 'page' && document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page'`), 'panel shares truthful identity, identifies utility and preserves route active state');
-  check(await page.eval(`(() => {
-    const ids = [...document.querySelectorAll('[id]')].map(el => el.id), group = document.querySelector('#overlay-theme');
-    const avatar = document.querySelector('#overlay-account .vk-ui-avatar').getBoundingClientRect();
-    const icon = document.querySelector('#overlay-account .vk-ui-avatar .vk-ui-icon').getBoundingClientRect();
-    return new Set(ids).size === ids.length && group.tagName === 'FIELDSET' && group.querySelector('legend').textContent === 'Chế độ màu' &&
-      !group.hasAttribute('aria-describedby') && document.querySelector('#overlay-theme-help summary') && group.querySelectorAll('input[type=radio]').length === 3 &&
-      [...group.querySelectorAll('label')].map(el => el.textContent).join('|') === 'Sáng|Tối|Hệ thống' &&
-      [...group.querySelectorAll('label')].every(el => getComputedStyle(el, '::before').maskImage.startsWith('url(') && getComputedStyle(el, '::after').maskImage.startsWith('url(')) &&
-      !document.querySelector('#overlay-account img') &&
-      Math.abs((icon.left + icon.right) / 2 - (avatar.left + avatar.right) / 2) <= 1 &&
-      Math.abs((icon.top + icon.bottom) / 2 - (avatar.top + avatar.bottom) / 2) <= 1 &&
-      Math.abs(icon.width - avatar.width * 0.6) <= 1;
-  })()`), 'native fieldset/legend, full labels, decorative icons/checks, centered neutral avatar icon and unique IDs');
+  check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' &&
+    document.querySelector('#profile-title [aria-hidden=true] [data-appearance-icon=palette]') &&
+    document.querySelector('#profile-trigger').getAttribute('aria-haspopup') === 'dialog' &&
+    document.querySelector('#profile-trigger').getAttribute('aria-controls') === 'profile-menu' &&
+    document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' &&
+    !document.querySelector('#profile-menu .vk-account-status') && document.querySelector('#open-me')`), 'compact appearance dialog identifies its purpose and preserves the active route');
+  check(await appearanceRows(page, 'overlay'), 'panel uses the same three native groups, glyphs and selection checks');
   await chooseTheme(page, 'system');
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
@@ -1319,7 +1300,7 @@ async function accountAppearance(page) {
   await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark'`, 'native Space selects the focused choice');
   await page.eval(`(() => { for (const value of ['light', 'system', 'dark']) document.querySelector('#overlay-theme input[value="' + value + '"]').click(); })()`);
   await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'dark' && document.documentElement.dataset.theme === 'dark'`, 'rapid theme intents settle on the final preference');
-  check(await page.eval(`(() => { const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect(), dialog = document.querySelector('#profile-menu'); return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng tùy chọn' && close.querySelector('[data-icon=close]') && getComputedStyle(dialog).backgroundColor.startsWith('rgb(') && getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' && [...dialog.querySelectorAll('*')].every(el => !['auto','scroll'].includes(getComputedStyle(el).overflowY)); })()`), 'opaque panel, visible scrim, one scroller and named close icon target >=48px');
+  check(await page.eval(`(() => { const close = document.querySelector('#profile-close'), r = close.getBoundingClientRect(), dialog = document.querySelector('#profile-menu'); return r.width >= 48 && r.height >= 48 && close.getAttribute('aria-label') === 'Đóng Giao diện' && close.querySelector('[data-icon=close]') && getComputedStyle(dialog).backgroundColor.startsWith('rgb(') && getComputedStyle(dialog, '::backdrop').backgroundColor !== 'rgba(0, 0, 0, 0)' && [...dialog.querySelectorAll('*')].every(el => !['auto','scroll'].includes(getComputedStyle(el).overflowY)); })()`), 'opaque panel, visible scrim, one scroller and named close icon target >=48px');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
@@ -1370,6 +1351,7 @@ async function accountAppearance(page) {
           return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom;
         })()`), `${scenario}: Tab reveals the close action at the start`);
         await page.eval(`document.querySelector('#profile-menu').scrollTop = 0`);
+        check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
         accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
         await page.key('Escape');
         check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
@@ -1596,7 +1578,7 @@ async function adaptiveShell(page) {
 
   await openProfile(page);
   check(await page.eval(`document.activeElement?.name === 'overlay-theme' && document.activeElement.value === 'system'`), 'overlay initially focuses the selected appearance option');
-  check(await page.eval(`document.querySelector('#profile-menu').textContent.includes('Chưa mở đăng nhập.') && !document.querySelector('#profile-menu').textContent.includes('An Nhiên')`), 'account utility reports unavailable identity honestly');
+  check(await page.eval(`document.querySelector('#profile-title').textContent === 'Giao diện' && !document.querySelector('#profile-menu .vk-account-status')`), 'appearance utility contains preferences');
   await page.eval(`document.querySelector('#profile-close').focus()`);
   await page.key('Tab', SHIFT);
   check(await page.eval(`document.activeElement?.id === 'open-me'`), 'Shift+Tab is contained at the beginning of the modal');
@@ -1633,7 +1615,8 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.querySelector('#profile-trigger').getAttribute('aria-current') === 'page'`), 'Tôi route marks the rail utility active');
   await page.eval(`document.querySelector('#profile-trigger').focus()`);
   await page.key('Enter');
-  check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.name === 'page-theme' && document.querySelector('#profile-trigger').getAttribute('aria-expanded') !== 'true'`), '/toi uses existing settings instead of a duplicate panel');
+  check(await page.eval(`${PROFILE_OPEN} && document.activeElement?.name === 'overlay-theme' && !document.querySelector('#open-me')`), '/toi can open the appearance panel without a self-link');
+  await page.key('Escape');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`location.pathname === '/'`, 'overlay history host');
   await openProfile(page);
@@ -1650,7 +1633,7 @@ async function adaptiveShell(page) {
   await page.viewport(390);
   await page.waitFor(`!${PROFILE_OPEN}`, 'resize closes overlay');
   check(await page.eval(`location.pathname === '/ban-viet' && document.activeElement?.id === 'noi-dung'`), 'resize retains host route and focuses visible main');
-  check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
+  check(await page.eval(`[...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => a.querySelector('.vk-ui-nav-item__label').textContent).join('|') === 'Khám phá|Bàn viết|Tôi'`), 'mobile destination order is Khám phá, Bàn viết, Tôi');
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme')`, 'compact Tôi goes to canonical route');
 
@@ -1708,16 +1691,7 @@ async function adaptiveShell(page) {
         await page.eval(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))`);
         accountLayoutGeometry(await page.capture(`${width}-me-${theme}-text${scale}`), `${width}px/${scale}% ${theme}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
-        check(await page.eval(`[...document.querySelectorAll('#page-theme label')].every(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().height >= 44)`), `${width}px/${scale}% ${theme}: appearance choices reflow in touch targets`);
-        check(await page.eval(`(() => {
-          const region = document.querySelector('.vk-appearance-region'), faces = [...document.querySelectorAll('#page-theme label')].map(el => el.getBoundingClientRect());
-          const wide = region.clientWidth >= 38 * parseFloat(getComputedStyle(region).fontSize);
-          return faces.length === 3 && (wide ? faces.every(r => Math.abs(r.top - faces[0].top) < 1 && Math.abs(r.width - faces[0].width) < 1) : faces.every((r,i) => i === 0 || r.top > faces[i-1].bottom));
-        })()`), `${width}px/${scale}% ${theme}: connected choices use actual container width and font size for horizontal/vertical reflow`);
-        check(await page.eval(`[...document.querySelectorAll('#page-theme .vk-ui-choice__label')].every(el => [...el.textContent.matchAll(/\\S+/g)].every(word => {
-          const range = document.createRange(); range.setStart(el.firstChild, word.index); range.setEnd(el.firstChild, word.index + word[0].length);
-          return range.getClientRects().length === 1;
-        }))`), `${width}px/${scale}% ${theme}: appearance labels keep Vietnamese words intact`);
+        check(await appearanceRows(page, 'page'), `${width}px/${scale}% ${theme}: appearance choices keep whole labels and touch targets`);
         if (width < 760 && scale === 200) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
           await page.capture(`${width}-me-${theme}-text${scale}-appearance`);
@@ -1725,9 +1699,8 @@ async function adaptiveShell(page) {
           check(await page.eval(`(() => {
             const footer = document.querySelector('.vk-footer').getBoundingClientRect();
             const bar = document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect();
-            const help = document.querySelector('#page-theme-help').getBoundingClientRect();
-            return footer.bottom <= bar.top + 1 && help.bottom <= bar.top + 1;
-          })()`), `${width}px/${scale}% ${theme}: Me helper and final footer remain reachable above navigation`);
+            return footer.bottom <= bar.top + 1;
+          })()`), `${width}px/${scale}% ${theme}: final disclosure remains reachable above navigation`);
           await page.capture(`${width}-me-${theme}-text${scale}-end`);
           await page.eval(`scrollTo(0, 0)`);
         }
@@ -1835,6 +1808,14 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after rail changes');
   await openProfile(page);
   check(!(await page.dialogOpen('leave-editor')), 'opening Tôi utility does not invoke the leave guard');
+  await page.click('#overlay-text label:has([value="200"])');
+  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '32px'`, 'panel enlarges text in the dirty editor');
+  await page.click('#overlay-rail label:has([value="expanded"])');
+  await page.waitFor(`${RAIL_WIDTH} === 220`, 'explicit rail wins in the dirty editor');
+  await page.click('#overlay-rail label:has([value="auto"])');
+  await page.waitFor(`${RAIL_WIDTH} === 96`, 'automatic rail restores the focused editor default');
+  await page.click('#overlay-text label:has([value="100"])');
+  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '16px'`, 'panel restores the text size');
   for (const theme of ['light', 'system', 'dark']) {
     await chooseTheme(page, theme);
     await page.key('Escape');
@@ -1859,7 +1840,7 @@ async function shellWithDirtyEditor(page, editorPath, written, view, selected) {
   await page.waitFor(`${selected} === ${JSON.stringify(LAST_LINE)}`, 'selection after appearance utility');
   await page.eval(`(() => { const content = document.querySelector('.cm-content'); content.blur(); content.focus(); })()`);
   check((await page.eval(selected)) === LAST_LINE, 'native content focus immediately restores the CodeMirror selection');
-  check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, overlay and theme preserve EditorView, selection, text and dirty state');
+  check(await page.eval(view) && (await page.eval(selected)) === LAST_LINE && (await page.body()) === written && (await page.status()) === 'unsaved' && (await page.eval(`document.querySelector('input[name=title]').value`)) === TITLE, 'rail, text size and theme preserve EditorView, selection, text and dirty state');
 
   const focusedSelection = `document.activeElement?.matches('.cm-content') && ${selected} === ${JSON.stringify(LAST_LINE)}`;
   const selectionAfterEscape = `!document.querySelector('[data-testid=leave-editor]').open && ${focusedSelection}`;
