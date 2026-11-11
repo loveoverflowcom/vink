@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "invalid_username",
+    "message": "the username must be 3-30 ASCII characters (a-z, 0-9, _, .)"
+  }
+}

@@ -22,6 +22,19 @@ use crate::email_code::{
     SessionCredential, decide_attempt,
 };
 use crate::mail::Purpose;
+use crate::password::{Password, Username};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordRegistrationError {
+    UsernameTaken,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordSignInRejection {
+    InvalidCredentials,
+    AccountDisabled,
+    RateLimited,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreError {
@@ -127,6 +140,147 @@ impl AccountStore {
 
     pub fn policy(&self) -> &Policy {
         &self.policy
+    }
+
+    /// Registers a new account with username and password.
+    /// Hashes the password outside of database transactions (CPU-bound).
+    /// Inserts account and account_passwords, then issues an active session.
+    /// If the username is already taken, rolls back without leaving orphan rows.
+    pub async fn register_password(
+        &self,
+        username: &Username,
+        password: &Password,
+    ) -> Result<Result<NewSession, PasswordRegistrationError>, StoreError> {
+        let password_hash =
+            crate::password::hash_password(password).map_err(|_| StoreError::Unavailable)?;
+        let mut tx = self.pool.begin().await?;
+        let account_id = Uuid::now_v7();
+        sqlx::query("INSERT INTO accounts (id) VALUES ($1)")
+            .bind(account_id)
+            .execute(&mut *tx)
+            .await?;
+        let insert_result = sqlx::query(
+            "INSERT INTO account_passwords (account_id, username, password_hash)
+             VALUES ($1, $2, $3)",
+        )
+        .bind(account_id)
+        .bind(username.as_str())
+        .bind(&password_hash)
+        .execute(&mut *tx)
+        .await;
+
+        match insert_result {
+            Ok(_) => {}
+            Err(error) if is_unique_violation(&error) => {
+                tx.rollback().await?;
+                return Ok(Err(PasswordRegistrationError::UsernameTaken));
+            }
+            Err(error) => return Err(error.into()),
+        }
+
+        let session = self.issue_session(&mut tx, account_id).await?;
+        tx.commit().await?;
+        Ok(Ok(session))
+    }
+
+    /// Verifies username and password and issues a session.
+    /// Hashes/verifies outside row locks; verifies account and credential standing
+    /// under commit fence before issuing session.
+    pub async fn sign_in_password(
+        &self,
+        username: &Username,
+        password: &Password,
+    ) -> Result<Result<NewSession, PasswordSignInRejection>, StoreError> {
+        // Throttling per username: check recent failed attempts
+        let recent_failures: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM password_login_attempts
+              WHERE username = $1 AND created_at > now() - make_interval(secs => 900)",
+        )
+        .bind(username.as_str())
+        .fetch_one(&self.pool)
+        .await?;
+
+        if recent_failures >= 10 {
+            return Ok(Err(PasswordSignInRejection::RateLimited));
+        }
+
+        let row = sqlx::query(
+            "SELECT ap.account_id, ap.password_hash, ap.version,
+                    a.disabled_at IS NOT NULL AS disabled
+               FROM account_passwords ap
+               JOIN accounts a ON a.id = ap.account_id
+              WHERE ap.username = $1",
+        )
+        .bind(username.as_str())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        let Some(row) = row else {
+            crate::password::dummy_verify(password);
+            let _ =
+                sqlx::query("INSERT INTO password_login_attempts (id, username) VALUES ($1, $2)")
+                    .bind(Uuid::now_v7())
+                    .bind(username.as_str())
+                    .execute(&self.pool)
+                    .await;
+            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
+        };
+
+        let stored_hash: String = row.try_get("password_hash")?;
+        let account_id: Uuid = row.try_get("account_id")?;
+        let expected_version: i32 = row.try_get("version")?;
+        let initially_disabled: bool = row.try_get("disabled")?;
+
+        if initially_disabled {
+            return Ok(Err(PasswordSignInRejection::AccountDisabled));
+        }
+
+        let valid = crate::password::verify_password(&stored_hash, password);
+        if !valid {
+            let _ =
+                sqlx::query("INSERT INTO password_login_attempts (id, username) VALUES ($1, $2)")
+                    .bind(Uuid::now_v7())
+                    .bind(username.as_str())
+                    .execute(&self.pool)
+                    .await;
+            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
+        }
+
+        let mut tx = self.pool.begin().await?;
+        let check = sqlx::query(
+            "SELECT a.disabled_at IS NOT NULL AS disabled, ap.version
+               FROM accounts a
+               JOIN account_passwords ap ON ap.account_id = a.id
+              WHERE a.id = $1
+                FOR UPDATE OF a, ap",
+        )
+        .bind(account_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let Some(check_row) = check else {
+            tx.rollback().await?;
+            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
+        };
+
+        if check_row.try_get::<bool, _>("disabled")? {
+            tx.rollback().await?;
+            return Ok(Err(PasswordSignInRejection::AccountDisabled));
+        }
+
+        if check_row.try_get::<i32, _>("version")? != expected_version {
+            tx.rollback().await?;
+            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
+        }
+
+        let _ = sqlx::query("DELETE FROM password_login_attempts WHERE username = $1")
+            .bind(username.as_str())
+            .execute(&mut *tx)
+            .await;
+
+        let session = self.issue_session(&mut tx, account_id).await?;
+        tx.commit().await?;
+        Ok(Ok(session))
     }
 
     fn issued(&self, outcome: &ChallengeOutcome) {
@@ -676,6 +830,11 @@ pub async fn prune(pool: &PgPool, retention: Retention) -> Result<Pruned, StoreE
     .execute(pool)
     .await?
     .rows_affected();
+    let _ = sqlx::query(
+        "DELETE FROM password_login_attempts WHERE created_at < now() - INTERVAL '1 day'",
+    )
+    .execute(pool)
+    .await;
     Ok(Pruned {
         challenges,
         sessions,

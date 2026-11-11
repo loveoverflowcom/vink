@@ -20,7 +20,7 @@ pub enum LogFormat {
     Json,
 }
 
-/// Which authority `serve` runs (D-05).
+/// Which authority `serve` runs (D-05, ACC-03).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthorityChoice {
     /// Default: every verification answers `authority_not_configured`.
@@ -30,6 +30,14 @@ pub enum AuthorityChoice {
     EmailCode {
         mail: MailChoice,
         /// `VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT`: codes per 10 minutes across all addresses.
+        global_challenge_limit: Option<i64>,
+    },
+    /// `VINK_IDENTITY_AUTHORITY=password`: native accounts with username/password credentials,
+    /// no mail transport required.
+    Password,
+    /// `VINK_IDENTITY_AUTHORITY=native`: native accounts with both password and email-code methods.
+    Native {
+        mail: MailChoice,
         global_challenge_limit: Option<i64>,
     },
 }
@@ -370,13 +378,28 @@ fn authority(
             ] {
                 if set {
                     problems.push(format!(
-                        "{key}: only valid with VINK_IDENTITY_AUTHORITY=email-code"
+                        "{key}: only valid with VINK_IDENTITY_AUTHORITY=email-code or native"
                     ));
                 }
             }
             AuthorityChoice::NotConfigured
         }
-        Some("email-code") => {
+        Some("password") => {
+            for (set, key) in [
+                (outbox.is_some(), "VINK_IDENTITY_LOCAL_OUTBOX"),
+                (transport.is_some(), "VINK_IDENTITY_MAIL_TRANSPORT"),
+                (smtp_set, "VINK_IDENTITY_SMTP_*"),
+                (global.is_some(), "VINK_IDENTITY_GLOBAL_CHALLENGE_LIMIT"),
+            ] {
+                if set {
+                    problems.push(format!(
+                        "{key}: not used with VINK_IDENTITY_AUTHORITY=password (password does not send mail)"
+                    ));
+                }
+            }
+            AuthorityChoice::Password
+        }
+        Some(kind @ ("email-code" | "native")) => {
             let global_challenge_limit = match global {
                 None => None,
                 Some(raw) => match raw.trim().parse::<i64>() {
@@ -440,7 +463,11 @@ fn authority(
                 }
             };
             match mail {
-                Some(mail) => AuthorityChoice::EmailCode {
+                Some(mail) if kind == "email-code" => AuthorityChoice::EmailCode {
+                    mail,
+                    global_challenge_limit,
+                },
+                Some(mail) => AuthorityChoice::Native {
                     mail,
                     global_challenge_limit,
                 },
@@ -449,7 +476,7 @@ fn authority(
         }
         Some(other) => {
             problems.push(format!(
-                "VINK_IDENTITY_AUTHORITY: expected `email-code` or unset, got `{other}`"
+                "VINK_IDENTITY_AUTHORITY: expected `password`, `email-code`, `native` or unset, got `{other}`"
             ));
             AuthorityChoice::NotConfigured
         }
@@ -652,6 +679,12 @@ mod tests {
             .authority,
             local
         );
+        assert_eq!(
+            with(&[("VINK_IDENTITY_AUTHORITY", "password")])
+                .unwrap()
+                .authority,
+            AuthorityChoice::Password
+        );
         for (extra, expected) in [
             (
                 &[("VINK_IDENTITY_AUTHORITY", "email-code")][..],
@@ -666,7 +699,14 @@ mod tests {
                 "only valid with",
             ),
             (
-                &[("VINK_IDENTITY_AUTHORITY", "password")][..],
+                &[
+                    ("VINK_IDENTITY_AUTHORITY", "password"),
+                    ("VINK_IDENTITY_LOCAL_OUTBOX", "/run/vink/outbox"),
+                ][..],
+                "not used with VINK_IDENTITY_AUTHORITY=password",
+            ),
+            (
+                &[("VINK_IDENTITY_AUTHORITY", "unsupported")][..],
                 "VINK_IDENTITY_AUTHORITY: expected",
             ),
             (

@@ -18,16 +18,22 @@ use axum::routing::{any, get, post};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use crate::accounts::{ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, SignInOutcome};
+use crate::accounts::{
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, PasswordRegistrationError,
+    PasswordSignInRejection, SignInOutcome,
+};
 use crate::authority::{self, Authority, AuthorityError};
 use crate::contract::{
     CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
     EmailChangeChallengeRequest, EmailChangeCompleteRequest, EmailChangeResponse, IssuedSession,
-    MAX_BODY_BYTES, Operations, RevokeSessionRequest, RevokeSessionResponse,
-    SignInChallengeRequest, SignInCompleteRequest, SignInResponse, VerifyCredentialRequest,
+    MAX_BODY_BYTES, Operations, RegisterPasswordRejection, RegisterPasswordRequest,
+    RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse, SignInChallengeRequest,
+    SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest, SignInPasswordResponse,
+    SignInResponse, VerifyCredentialRequest,
 };
 use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
+use crate::password::{Password, Username};
 use crate::persistence::{SchemaState, role_is_privileged, schema_state};
 
 /// Server-side bound on one contract call, body upload included.
@@ -42,6 +48,7 @@ fn writes(path: &str) -> bool {
         "/identity/v1/sign-in/",
         "/identity/v1/sessions/",
         "/identity/v1/email-change/",
+        "/identity/v1/password/",
     ]
     .iter()
     .any(|prefix| path.starts_with(prefix))
@@ -117,10 +124,12 @@ impl IntoResponse for ContractError {
             Self::MethodNotAllowed => StatusCode::METHOD_NOT_ALLOWED,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::DependencyUnavailable | Self::DeadlineExceeded => StatusCode::SERVICE_UNAVAILABLE,
-            Self::InvalidEmail => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InvalidEmail | Self::InvalidUsername | Self::InvalidPassword => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::CredentialRejected => StatusCode::FORBIDDEN,
-            Self::AddressUnavailable => StatusCode::CONFLICT,
+            Self::AddressUnavailable | Self::UsernameTaken => StatusCode::CONFLICT,
         };
         (status, Json(self.envelope())).into_response()
     }
@@ -141,6 +150,8 @@ pub fn router(state: IdentityState) -> Router {
             "/identity/v1/email-change/complete",
             post(email_change_complete),
         )
+        .route("/identity/v1/password/register", post(register_password))
+        .route("/identity/v1/password/sign-in", post(sign_in_password))
         .route("/identity/{version}", any(unknown_operation))
         .route("/identity/{version}/{*rest}", any(unknown_operation))
         .method_not_allowed_fallback(method_not_allowed)
@@ -205,14 +216,17 @@ async fn authenticate_caller(
 async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> {
     let availability = state.inner.authority.availability();
     let email_code = state.inner.authority.email_code_availability();
+    let password = state.inner.authority.password_availability();
     Json(Capabilities {
         contract: CONTRACT.into(),
         authority: availability,
         operations: Operations {
             verify_credential: availability,
             sign_in: email_code,
-            revoke_session: email_code,
+            revoke_session: availability,
             email_change: email_code,
+            register_password: password,
+            sign_in_password: password,
         },
     })
 }
@@ -329,7 +343,7 @@ async fn revoke_session(
     body: Body,
 ) -> Result<Json<RevokeSessionResponse>, ContractError> {
     let request: RevokeSessionRequest = read_json(body).await?;
-    let store = state.inner.authority.email_code()?;
+    let store = state.inner.authority.store()?;
     let revoked = store.revoke(request.credential.expose()).await?;
     if revoked {
         tracing::info!("session revoked (logout)");
@@ -385,6 +399,112 @@ async fn email_change_complete(
         }
         EmailChangeOutcome::Rejected(reason) => Ok(Json(EmailChangeResponse::Rejected { reason })),
         EmailChangeOutcome::CredentialRejected => Err(ContractError::CredentialRejected),
+    }
+}
+
+async fn register_password(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: RegisterPasswordRequest = read_json(body).await?;
+    let store = state.inner.authority.password()?;
+    let username =
+        Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
+    let password =
+        Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
+
+    match store.register_password(&username, &password).await? {
+        Ok(session) => {
+            tracing::info!(
+                session = %session.session_id,
+                subject = %session.account_id,
+                "password account registered and session issued"
+            );
+            Ok(Json(RegisterPasswordResponse::Authenticated {
+                subject: authority::subject(session.account_id),
+                authenticated_at: session.authenticated_at,
+                session: IssuedSession {
+                    id: session.session_id.to_string(),
+                    credential: session.credential.encode(),
+                    expires_at: session.expires_at,
+                },
+            })
+            .into_response())
+        }
+        Err(PasswordRegistrationError::UsernameTaken) => {
+            Ok(Json(RegisterPasswordResponse::Rejected {
+                reason: RegisterPasswordRejection::UsernameTaken,
+            })
+            .into_response())
+        }
+    }
+}
+
+async fn sign_in_password(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: SignInPasswordRequest = read_json(body).await?;
+    let store = state.inner.authority.password()?;
+    let username = match Username::parse(request.username.expose()) {
+        Ok(u) => u,
+        Err(_) => {
+            if let Ok(pass) = Password::parse(request.password.expose()) {
+                crate::password::dummy_verify(&pass);
+            }
+            return Ok(Json(SignInPasswordResponse::Rejected {
+                reason: SignInPasswordRejection::InvalidCredentials,
+            })
+            .into_response());
+        }
+    };
+    let password = match Password::parse(request.password.expose()) {
+        Ok(p) => p,
+        Err(_) => {
+            if let Ok(dummy_pass) = Password::parse("dummy_pass_123") {
+                crate::password::dummy_verify(&dummy_pass);
+            }
+            return Ok(Json(SignInPasswordResponse::Rejected {
+                reason: SignInPasswordRejection::InvalidCredentials,
+            })
+            .into_response());
+        }
+    };
+
+    match store.sign_in_password(&username, &password).await? {
+        Ok(session) => {
+            tracing::info!(
+                session = %session.session_id,
+                subject = %session.account_id,
+                "password sign-in authenticated and session issued"
+            );
+            Ok(Json(SignInPasswordResponse::Authenticated {
+                subject: authority::subject(session.account_id),
+                authenticated_at: session.authenticated_at,
+                session: IssuedSession {
+                    id: session.session_id.to_string(),
+                    credential: session.credential.encode(),
+                    expires_at: session.expires_at,
+                },
+            })
+            .into_response())
+        }
+        Err(PasswordSignInRejection::InvalidCredentials) => {
+            Ok(Json(SignInPasswordResponse::Rejected {
+                reason: SignInPasswordRejection::InvalidCredentials,
+            })
+            .into_response())
+        }
+        Err(PasswordSignInRejection::AccountDisabled) => {
+            Ok(Json(SignInPasswordResponse::Rejected {
+                reason: SignInPasswordRejection::AccountDisabled,
+            })
+            .into_response())
+        }
+        Err(PasswordSignInRejection::RateLimited) => {
+            tracing::warn!("password sign-in refused: rate limited");
+            Err(ContractError::RateLimited)
+        }
     }
 }
 
@@ -742,6 +862,9 @@ mod tests {
             ContractError::RateLimited,
             ContractError::CredentialRejected,
             ContractError::AddressUnavailable,
+            ContractError::InvalidUsername,
+            ContractError::InvalidPassword,
+            ContractError::UsernameTaken,
         ] {
             let name = format!("error.{}.json", error.code());
             let envelope: ErrorEnvelope = serde_json::from_value(fixture(&name)).unwrap();
@@ -797,7 +920,7 @@ mod tests {
             std::sync::Arc::default(),
         );
         (
-            app(Authority::EmailCode(store), Some(CALLER), Some(CALLER)),
+            app(Authority::new_email_code(store), Some(CALLER), Some(CALLER)),
             dir,
         )
     }
@@ -826,6 +949,14 @@ mod tests {
                 (
                     "/identity/v1/email-change/complete",
                     r#"{"credential":"x","challenge":"x","code":"123456"}"#,
+                ),
+                (
+                    "/identity/v1/password/register",
+                    r#"{"username":"test_user","password":"valid_pass_123"}"#,
+                ),
+                (
+                    "/identity/v1/password/sign-in",
+                    r#"{"username":"test_user","password":"valid_pass_123"}"#,
                 ),
             ] {
                 let (status, answer) = send(&router, post(path, body)).await;
@@ -1052,5 +1183,91 @@ mod tests {
         let issued: SignInResponse =
             serde_json::from_value(fixture("sign_in.authenticated.json")).unwrap();
         assert!(!format!("{issued:?}").contains("FIXTURE"));
+    }
+
+    #[test]
+    fn password_shapes_match_their_fixtures() {
+        use crate::contract::*;
+        use time::macros::datetime;
+        let subject = Subject {
+            authority: "vink-identity".into(),
+            id: "018f3c2e-0000-7000-8000-00000000a001".into(),
+        };
+        let credential = fixture("password.sign_in.authenticated.json")["session"]["credential"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let shapes: [(&str, Value); 5] = [
+            (
+                "password.register.authenticated.json",
+                serde_json::to_value(RegisterPasswordResponse::Authenticated {
+                    subject: subject.clone(),
+                    authenticated_at: datetime!(2026-11-13 10:00:00 UTC),
+                    session: IssuedSession {
+                        id: "018f3c2e-0000-7000-8000-00000000b001".into(),
+                        credential: credential.clone(),
+                        expires_at: datetime!(2026-12-13 10:00:00 UTC),
+                    },
+                })
+                .unwrap(),
+            ),
+            (
+                "password.register.rejected.username_taken.json",
+                serde_json::to_value(RegisterPasswordResponse::Rejected {
+                    reason: RegisterPasswordRejection::UsernameTaken,
+                })
+                .unwrap(),
+            ),
+            (
+                "password.sign_in.authenticated.json",
+                serde_json::to_value(SignInPasswordResponse::Authenticated {
+                    subject,
+                    authenticated_at: datetime!(2026-11-13 10:00:00 UTC),
+                    session: IssuedSession {
+                        id: "018f3c2e-0000-7000-8000-00000000b001".into(),
+                        credential,
+                        expires_at: datetime!(2026-12-13 10:00:00 UTC),
+                    },
+                })
+                .unwrap(),
+            ),
+            (
+                "password.sign_in.rejected.invalid_credentials.json",
+                serde_json::to_value(SignInPasswordResponse::Rejected {
+                    reason: SignInPasswordRejection::InvalidCredentials,
+                })
+                .unwrap(),
+            ),
+            (
+                "capabilities.password.json",
+                serde_json::to_value(Capabilities {
+                    contract: CONTRACT.into(),
+                    authority: Availability::Available,
+                    operations: Operations {
+                        verify_credential: Availability::Available,
+                        sign_in: Availability::NotConfigured,
+                        revoke_session: Availability::Available,
+                        email_change: Availability::NotConfigured,
+                        register_password: Availability::Available,
+                        sign_in_password: Availability::Available,
+                    },
+                })
+                .unwrap(),
+            ),
+        ];
+        for (name, value) in shapes {
+            assert_eq!(value, fixture(name), "{name}");
+        }
+
+        let reg_req: RegisterPasswordRequest =
+            serde_json::from_value(fixture("password.register.request.json")).unwrap();
+        assert_eq!(reg_req.username.expose(), "author_01");
+        assert!(!format!("{reg_req:?}").contains("valid_password_123"));
+
+        let sign_in_req: SignInPasswordRequest =
+            serde_json::from_value(fixture("password.sign_in.request.json")).unwrap();
+        assert_eq!(sign_in_req.username.expose(), "author_01");
+        assert!(!format!("{sign_in_req:?}").contains("valid_password_123"));
     }
 }

@@ -81,7 +81,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | Yêu cầu | Vì sao không model | Đặc tả | Implementation và gap |
 | --- | --- | --- | --- |
 | HTG-01..06 | Quyền của hashtag là hệ quả của “chỉ index bài đủ điều kiện” (đã có trong M1/M5); phần còn lại là hàm thuần trên chuỗi, hợp unit test hơn | [hashtag](../architecture/hashtags.md) | **Chưa có** grammar, projection, tham số lọc, UI |
-| ACC-03 | Auth là ranh giới I/O và mật mã; model không thay kiểm chứng PostgreSQL/binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | **Chưa có** username/mật khẩu; chỉ có mã email (IMPLEMENTED) |
+| ACC-03 | Auth là ranh giới I/O và mật mã; model không thay kiểm chứng PostgreSQL/binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | **Đã có backend** username/mật khẩu native trong Identity + App (#152); Web UI / recovery chưa có |
 | WR-04, ED-02, D-11 | `DEFERRED` | — | Không triển khai |
 
 ## 2. Acceptance của lượt tài liệu/model

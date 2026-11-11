@@ -135,6 +135,35 @@ pub enum SignIn {
     Refused(ChallengeRefusal),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PasswordRegisterOutcome {
+    Authenticated(IssuedSession),
+    UsernameTaken,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordRegisterError {
+    InvalidUsername,
+    InvalidPassword,
+    RateLimited,
+    Call(CallError),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PasswordLoginOutcome {
+    Authenticated(IssuedSession),
+    InvalidCredentials,
+    AccountDisabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordLoginError {
+    InvalidUsername,
+    InvalidPassword,
+    RateLimited,
+    Call(CallError),
+}
+
 /// Availability reported by `GET /identity/v1/capabilities`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Authority {
@@ -171,6 +200,30 @@ struct WireChallenge {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
 enum WireSignIn {
+    Authenticated {
+        subject: WireSubject,
+        session: WireIssuedSession,
+    },
+    Rejected {
+        reason: String,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+enum WirePasswordRegister {
+    Authenticated {
+        subject: WireSubject,
+        session: WireIssuedSession,
+    },
+    Rejected {
+        reason: String,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+enum WirePasswordSignIn {
     Authenticated {
         subject: WireSubject,
         session: WireIssuedSession,
@@ -328,6 +381,102 @@ impl IdentityClient {
                 // An unknown reason is outside the contract: nothing is decided.
                 _ => return Err(malformed),
             })),
+        }
+    }
+
+    /// `POST /identity/v1/password/register`.
+    pub async fn register_password(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<PasswordRegisterOutcome, PasswordRegisterError> {
+        let body = serde_json::to_vec(&serde_json::json!({
+            "username": username,
+            "password": password,
+        }))
+        .map_err(|_| PasswordRegisterError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/password/register",
+                body,
+            )
+            .await
+            .map_err(PasswordRegisterError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (200, _) => {
+                let malformed =
+                    PasswordRegisterError::Call(CallError::Unavailable(Failure::MalformedResponse));
+                match serde_json::from_slice::<WirePasswordRegister>(&bytes)
+                    .map_err(|_| malformed)?
+                {
+                    WirePasswordRegister::Authenticated { subject, session } => {
+                        Ok(PasswordRegisterOutcome::Authenticated(IssuedSession {
+                            authority: subject.authority,
+                            subject: subject.id,
+                            credential: session.credential,
+                            expires_at: session.expires_at,
+                        }))
+                    }
+                    WirePasswordRegister::Rejected { reason } if reason == "username_taken" => {
+                        Ok(PasswordRegisterOutcome::UsernameTaken)
+                    }
+                    _ => Err(malformed),
+                }
+            }
+            (422, "invalid_username") => Err(PasswordRegisterError::InvalidUsername),
+            (422, "invalid_password") => Err(PasswordRegisterError::InvalidPassword),
+            (409, "username_taken") => Ok(PasswordRegisterOutcome::UsernameTaken),
+            (429, "rate_limited") => Err(PasswordRegisterError::RateLimited),
+            _ => Err(PasswordRegisterError::Call(error_for(status, &bytes))),
+        }
+    }
+
+    /// `POST /identity/v1/password/sign-in`.
+    pub async fn login_password(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<PasswordLoginOutcome, PasswordLoginError> {
+        let body = serde_json::to_vec(&serde_json::json!({
+            "username": username,
+            "password": password,
+        }))
+        .map_err(|_| PasswordLoginError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/password/sign-in",
+                body,
+            )
+            .await
+            .map_err(PasswordLoginError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (200, _) => {
+                let malformed =
+                    PasswordLoginError::Call(CallError::Unavailable(Failure::MalformedResponse));
+                match serde_json::from_slice::<WirePasswordSignIn>(&bytes).map_err(|_| malformed)? {
+                    WirePasswordSignIn::Authenticated { subject, session } => {
+                        Ok(PasswordLoginOutcome::Authenticated(IssuedSession {
+                            authority: subject.authority,
+                            subject: subject.id,
+                            credential: session.credential,
+                            expires_at: session.expires_at,
+                        }))
+                    }
+                    WirePasswordSignIn::Rejected { reason } => match reason.as_str() {
+                        "invalid_credentials" => Ok(PasswordLoginOutcome::InvalidCredentials),
+                        "account_disabled" => Ok(PasswordLoginOutcome::AccountDisabled),
+                        _ => Err(malformed),
+                    },
+                }
+            }
+            (422, "invalid_username") => Err(PasswordLoginError::InvalidUsername),
+            (422, "invalid_password") => Err(PasswordLoginError::InvalidPassword),
+            (429, "rate_limited") => Err(PasswordLoginError::RateLimited),
+            _ => Err(PasswordLoginError::Call(error_for(status, &bytes))),
         }
     }
 
@@ -526,6 +675,55 @@ mod tests {
         for (name, code) in [
             ("error.invalid_email.json", "invalid_email"),
             ("error.rate_limited.json", "rate_limited"),
+        ] {
+            assert_eq!(error_code(&fixture(name)), code);
+        }
+    }
+
+    #[test]
+    fn password_fixtures_decode_into_the_app_representation() {
+        match serde_json::from_slice::<WirePasswordRegister>(&fixture(
+            "password.register.authenticated.json",
+        ))
+        .unwrap()
+        {
+            WirePasswordRegister::Authenticated { subject, session } => {
+                assert_eq!(subject.authority, "vink-identity");
+                assert!(session.credential.starts_with("vink_s1_"));
+                assert!(!format!("{session:?}").contains("vink_s1_"));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            serde_json::from_slice::<WirePasswordRegister>(&fixture("password.register.rejected.username_taken.json")).unwrap(),
+            WirePasswordRegister::Rejected { ref reason } if reason == "username_taken"
+        ));
+
+        match serde_json::from_slice::<WirePasswordSignIn>(&fixture(
+            "password.sign_in.authenticated.json",
+        ))
+        .unwrap()
+        {
+            WirePasswordSignIn::Authenticated { subject, session } => {
+                assert_eq!(subject.authority, "vink-identity");
+                assert!(session.credential.starts_with("vink_s1_"));
+                assert!(!format!("{session:?}").contains("vink_s1_"));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            serde_json::from_slice::<WirePasswordSignIn>(&fixture("password.sign_in.rejected.invalid_credentials.json")).unwrap(),
+            WirePasswordSignIn::Rejected { ref reason } if reason == "invalid_credentials"
+        ));
+
+        let caps: WireCapabilities =
+            serde_json::from_slice(&fixture("capabilities.password.json")).unwrap();
+        assert!(matches!(caps.authority, WireAvailability::Available));
+
+        for (name, code) in [
+            ("error.invalid_username.json", "invalid_username"),
+            ("error.invalid_password.json", "invalid_password"),
+            ("error.username_taken.json", "username_taken"),
         ] {
             assert_eq!(error_code(&fixture(name)), code);
         }

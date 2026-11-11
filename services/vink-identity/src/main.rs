@@ -306,6 +306,15 @@ async fn serve(config: ServeConfig) -> Result<(), Failure> {
     let mut background = tokio::task::JoinSet::new();
     let (authority, label, mail) = match &config.authority {
         AuthorityChoice::NotConfigured => (Authority::NotConfigured, "not_configured", None),
+        AuthorityChoice::Password => {
+            let wake = Arc::new(Notify::new());
+            background.spawn(prune_periodically(pool.clone(), stopped.clone()));
+            (
+                Authority::new_password(AccountStore::new(pool.clone(), Policy::default(), wake)),
+                "password",
+                None,
+            )
+        }
         AuthorityChoice::EmailCode {
             mail,
             global_challenge_limit,
@@ -325,8 +334,38 @@ async fn serve(config: ServeConfig) -> Result<(), Failure> {
             background.spawn(worker.run(stopped.clone()));
             background.spawn(prune_periodically(pool.clone(), stopped.clone()));
             (
-                Authority::EmailCode(AccountStore::new(pool.clone(), policy, wake)),
+                Authority::new_email_code(AccountStore::new(pool.clone(), policy, wake)),
                 "email_code",
+                Some(mail.label()),
+            )
+        }
+        AuthorityChoice::Native {
+            mail,
+            global_challenge_limit,
+        } => {
+            let transport = transport(mail)?;
+            let mut policy = Policy::default();
+            if let Some(limit) = global_challenge_limit {
+                policy.max_challenges_globally = *limit;
+            }
+            let wake = Arc::new(Notify::new());
+            let worker = Worker::new(
+                pool.clone(),
+                transport,
+                DeliveryPolicy::default(),
+                wake.clone(),
+            );
+            background.spawn(worker.run(stopped.clone()));
+            background.spawn(prune_periodically(pool.clone(), stopped.clone()));
+            (
+                Authority::new_native(
+                    AccountStore::new(pool.clone(), policy, wake),
+                    vink_identity::authority::MethodCapabilities {
+                        email_code: true,
+                        password: true,
+                    },
+                ),
+                "native",
                 Some(mail.label()),
             )
         }

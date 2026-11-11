@@ -574,7 +574,7 @@ async fn the_rollback_script_drops_only_the_outbox(pool: PgPool) {
             .fetch_all(&pool)
             .await
             .unwrap();
-    assert_eq!(versions, [20261102000000, 20261107000000]);
+    assert_eq!(versions, [20261102000000, 20261107000000, 20261113000000]);
     let outbox: Option<String> = sqlx::query_scalar("SELECT to_regclass('mail_deliveries')::text")
         .fetch_one(&pool)
         .await

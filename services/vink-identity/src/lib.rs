@@ -18,6 +18,7 @@ pub mod delivery;
 pub mod email_code;
 pub mod http;
 pub mod mail;
+pub mod password;
 pub mod persistence;
 pub mod runtime;
 pub mod server;

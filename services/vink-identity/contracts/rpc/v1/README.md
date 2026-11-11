@@ -29,15 +29,17 @@ never reaches this socket and nothing it sends can name a caller or a subject.
 
 | Request | Success | Errors |
 | --- | --- | --- |
-| `GET /identity/v1/capabilities` | `200` [not configured](fixtures/capabilities.not_configured.json) or [email-code](fixtures/capabilities.email_code.json) | `401` |
+| `GET /identity/v1/capabilities` | `200` [not configured](fixtures/capabilities.not_configured.json), [email-code](fixtures/capabilities.email_code.json), or [password](fixtures/capabilities.password.json) | `401` |
 | `POST /identity/v1/verify-credential` with [verify.request.json](fixtures/verify.request.json) | `200` [authenticated](fixtures/verify.authenticated.json) or [rejected](fixtures/verify.rejected.json); email-code adds [session facts](fixtures/verify.authenticated.session.json) or a [reason](fixtures/verify.rejected.revoked.json) | `401`, `400`, `413`, `501`, `503` |
 | `POST /identity/v1/sign-in/challenges` with [request](fixtures/sign_in.challenge.request.json) | `202` [challenge.issued.json](fixtures/challenge.issued.json) | `401`, `400`, `413`, `422 invalid_email`, `429 rate_limited`, `501`, `503` |
 | `POST /identity/v1/sign-in/complete` with [request](fixtures/sign_in.complete.request.json) | `200` [authenticated](fixtures/sign_in.authenticated.json) or [rejected](fixtures/sign_in.rejected.json) | `401`, `400`, `413`, `501`, `503` |
 | `POST /identity/v1/sessions/revoke` with [request](fixtures/session.revoke.request.json) | `200` [session.revoked.json](fixtures/session.revoked.json) | `401`, `400`, `413`, `501`, `503` |
 | `POST /identity/v1/email-change/challenges` with [request](fixtures/email_change.challenge.request.json) | `202` [challenge.issued.json](fixtures/challenge.issued.json) | as sign-in, plus `403 credential_rejected`, `409 address_unavailable` |
 | `POST /identity/v1/email-change/complete` with [request](fixtures/email_change.complete.request.json) | `200` [changed](fixtures/email_change.changed.json) or [rejected](fixtures/email_change.rejected.json) | `401`, `400`, `413`, `403 credential_rejected`, `501`, `503` |
+| `POST /identity/v1/password/register` with [request](fixtures/password.register.request.json) | `200` [authenticated](fixtures/password.register.authenticated.json) or [rejected](fixtures/password.register.rejected.username_taken.json) | `401`, `400`, `413`, `422 invalid_username`, `422 invalid_password`, `429 rate_limited`, `501`, `503` |
+| `POST /identity/v1/password/sign-in` with [request](fixtures/password.sign_in.request.json) | `200` [authenticated](fixtures/password.sign_in.authenticated.json) or [rejected](fixtures/password.sign_in.rejected.invalid_credentials.json) | `401`, `400`, `413`, `429 rate_limited`, `501`, `503` |
 
-The four email-code operations answer `501 authority_not_configured` unless that authority runs.
+The four email-code operations answer `501 authority_not_configured` unless email-code is enabled; the two password operations answer `501 authority_not_configured` unless password is enabled.
 
 `credential` is an opaque string (1–4096 bytes) that an end user presented to the caller, for
 example a token issued by the future authority. Unknown request fields are rejected: a caller cannot

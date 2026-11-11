@@ -344,7 +344,14 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
 6. Số phận code mã email (giữ làm phụ/khôi phục hay gỡ bằng migration có chủ đích) do PR auth quyết
    định, không phải lượt tài liệu này.
 
-Không có bằng chứng runtime nào cho §12: phần này là hướng và gap, không phải hiện trạng.
+**Hiện trạng triển khai backend (#152):** backend native username/password credential đã được triển
+khai trên Identity (`vink-identity`) và App (`vink-app`):
+- Hash Argon2id với salt ngẫu nhiên (`argon2` crate, PHC string), pure policy `services/vink-identity/src/password.rs` (O-12: username chuẩn hóa chữ thường `a-z 0-9 _ .` từ 3–30 ký tự; mật khẩu 10–128 byte; cả hai ẩn trong `Debug`).
+- Bảng `account_passwords` (FK `accounts`, username UNIQUE, password_hash, version) và `password_login_attempts` (throttling 10 lần sai / 15 phút).
+- So khớp thời gian hằng số với `dummy_verify` khi username không tồn tại hoặc format sai.
+- Identity contract v1: `POST /identity/v1/password/register` và `POST /identity/v1/password/sign-in`.
+- App HTTP v1 edge: `POST /api/v1/auth/register` và `POST /api/v1/auth/login`, rate limit theo mạng nguồn (`PASSWORD_REGISTER` 5/giờ, `PASSWORD_LOGIN` 15/15 phút) trong PostgreSQL, phát cookie `__Host-vink_session`, thu hồi phiên cũ.
+- `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. Web UI form và luồng quên/khôi phục mật khẩu (O-11) thuộc scope tiếp theo.
 
 ## Nguồn (truy cập 07/11/2026)
 

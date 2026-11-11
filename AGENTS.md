@@ -140,9 +140,11 @@ controls (#150, #151). All share `verify discussion`; M2 lifecycle actions (`aut
 `mod_remove`) and the five target models have **no Rust replay** (model evidence only; see its README
 and the [registry](docs/development/product-decisions-registry.md)). Items marked `DESIGN_PROPOSED` or
 `OPEN` there are not owner decisions.
-D-05 is **Provisional** and not Accepted: the code implements the native email-code authority
-([ADR](docs/architecture/auth-authority.md)), while the product direction since 10/11/2026 is
-username + password as the primary method (ADR §12; not implemented). Since 10/11/2026 the backend has the
+D-05 is **Provisional** and not Accepted: the backend implements the native email-code authority
+and, since #152, native username/password credentials ([ADR](docs/architecture/auth-authority.md) §12:
+Argon2id, O-12 policy, `account_passwords`, dummy_verify, throttling, Identity contract v1 and App
+`/api/v1/auth/register` and `/api/v1/auth/login` with network-level rate limits and `__Host-vink_session`
+cookie; Web UI and recovery pending). Since 10/11/2026 the backend has the
 production path (ADR §11, [runbook](docs/development/auth-operations.md)): Identity commits each
 challenge with a delivery intent in its own `mail_deliveries` outbox and the `vink-identity serve`
 worker sends it at least once over SMTP (`lettre`, TLS, password file; Resend selected) or the local

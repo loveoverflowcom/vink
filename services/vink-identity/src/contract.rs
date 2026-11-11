@@ -118,6 +118,9 @@ pub struct Operations {
     pub sign_in: Availability,
     pub revoke_session: Availability,
     pub email_change: Availability,
+    /// Added within v1 (password authority).
+    pub register_password: Availability,
+    pub sign_in_password: Availability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -144,6 +147,10 @@ pub enum ContractError {
     RateLimited,
     CredentialRejected,
     AddressUnavailable,
+    /// Added within v1 for password operations.
+    InvalidUsername,
+    InvalidPassword,
+    UsernameTaken,
 }
 
 impl ContractError {
@@ -162,6 +169,9 @@ impl ContractError {
             Self::RateLimited => "rate_limited",
             Self::CredentialRejected => "credential_rejected",
             Self::AddressUnavailable => "address_unavailable",
+            Self::InvalidUsername => "invalid_username",
+            Self::InvalidPassword => "invalid_password",
+            Self::UsernameTaken => "username_taken",
         }
     }
 
@@ -186,6 +196,9 @@ impl ContractError {
             Self::RateLimited => "too many codes were requested; try later",
             Self::CredentialRejected => "the session credential is not valid; nothing was changed",
             Self::AddressUnavailable => "the address cannot be used for this account",
+            Self::InvalidUsername => "the username must be 3-30 ASCII characters (a-z, 0-9, _, .)",
+            Self::InvalidPassword => "the password must be at least 10 characters",
+            Self::UsernameTaken => "the username is already taken",
         }
     }
 
@@ -322,6 +335,65 @@ pub enum EmailChangeResponse {
     Rejected {
         reason: ChallengeRejection,
     },
+}
+
+// --- Password authority operations (added within v1; ACC-03, O-12). ---
+
+/// Body of `POST /identity/v1/password/register`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterPasswordRequest {
+    pub username: Bounded<64>,
+    pub password: Bounded<256>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub enum RegisterPasswordResponse {
+    Authenticated {
+        subject: Subject,
+        #[serde(with = "time::serde::rfc3339")]
+        authenticated_at: OffsetDateTime,
+        session: IssuedSession,
+    },
+    Rejected {
+        reason: RegisterPasswordRejection,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RegisterPasswordRejection {
+    UsernameTaken,
+}
+
+/// Body of `POST /identity/v1/password/sign-in`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SignInPasswordRequest {
+    pub username: Bounded<64>,
+    pub password: Bounded<256>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub enum SignInPasswordResponse {
+    Authenticated {
+        subject: Subject,
+        #[serde(with = "time::serde::rfc3339")]
+        authenticated_at: OffsetDateTime,
+        session: IssuedSession,
+    },
+    Rejected {
+        reason: SignInPasswordRejection,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SignInPasswordRejection {
+    InvalidCredentials,
+    AccountDisabled,
 }
 
 /// A non-empty string of at most `N` bytes whose content is never printed (addresses, handles

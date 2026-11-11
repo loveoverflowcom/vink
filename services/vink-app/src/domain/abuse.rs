@@ -185,6 +185,20 @@ pub const SIGN_IN_COMPLETE: RateLimit = RateLimit {
     window_seconds: 15 * 60,
 };
 
+/// Answering username/password: caps password spraying across accounts from a single network.
+pub const PASSWORD_LOGIN: RateLimit = RateLimit {
+    bucket: "password.login",
+    limit: 15,
+    window_seconds: 15 * 60,
+};
+
+/// Registering with username/password: caps bulk account creation from a single network.
+pub const PASSWORD_REGISTER: RateLimit = RateLimit {
+    bucket: "password.register",
+    limit: 5,
+    window_seconds: 60 * 60,
+};
+
 /// Decision for one request, given the window's count INCLUDING this request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admission {

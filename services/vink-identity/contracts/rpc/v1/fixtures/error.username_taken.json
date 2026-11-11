@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "username_taken",
+    "message": "the username is already taken"
+  }
+}

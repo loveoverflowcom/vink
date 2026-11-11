@@ -67,6 +67,10 @@ pub enum ApiError {
     ChallengeClosed,
     /// The mailbox was proven but its Identity account is disabled.
     AccountDisabled,
+    /// Wrong username or password on native password sign-in.
+    InvalidCredentials,
+    /// Username already registered on native password sign-in.
+    UsernameTaken,
     /// The principal is suspended by Vink.
     PrincipalSuspended,
     /// The draft tags moved past `expected_version`; `observed` is what is stored now.
@@ -119,6 +123,8 @@ impl ApiError {
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::InvalidCredentials => StatusCode::UNAUTHORIZED,
+            Self::UsernameTaken => StatusCode::CONFLICT,
             Self::ChallengeClosed => StatusCode::CONFLICT,
             Self::AccountDisabled | Self::PrincipalSuspended => StatusCode::FORBIDDEN,
             Self::TagConflict { .. } | Self::TagRetired { .. } => StatusCode::CONFLICT,
@@ -263,6 +269,18 @@ impl ApiError {
                 "the code is not correct; try again".to_string(),
                 None,
                 Some("code"),
+            ),
+            Self::InvalidCredentials => (
+                "invalid_credentials",
+                "invalid username or password".to_string(),
+                None,
+                None,
+            ),
+            Self::UsernameTaken => (
+                "username_taken",
+                "username is already taken".to_string(),
+                None,
+                Some("username"),
             ),
             Self::ChallengeClosed => (
                 "challenge_closed",
