@@ -74,10 +74,16 @@ export function createEditor(host: HTMLElement, options: EditorOptions): EditorH
             }));
             return false;
           },
-          mousedown() { pointerDown = true; cancelFocusRestore(); return false; },
-          mouseup() { pointerDown = false; return false; },
-          blur() { pointerDown = false; return false; },
-          keydown() { cancelFocusRestore(); return false; },
+        }),
+        // Observers, not handlers: CodeMirror stops at the first handler that takes an event,
+        // and the keymap above takes End, arrows, Mod-a, undo… before a handler here would see
+        // them. A key or press inside the restore frames is the writer's intent and must cancel
+        // the restore, or the restore re-selects what the key just moved away from.
+        EditorView.domEventObservers({
+          mousedown() { pointerDown = true; cancelFocusRestore(); },
+          mouseup() { pointerDown = false; },
+          blur() { pointerDown = false; },
+          keydown() { cancelFocusRestore(); },
         }),
         EditorView.contentAttributes.of({
           'aria-labelledby': options.labelledBy,
