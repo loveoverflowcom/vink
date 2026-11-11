@@ -115,6 +115,17 @@ pub fn check_comment_submission(publication: &Publication) -> Result<(), Tombsto
     }
 }
 
+/// Work-level gate for a writer removing their own comment (#157, AC-04, O-03 baseline).
+/// A tombstone keeps own removal; an unavailable work hides its thread, so removal answers as
+/// if the comment did not exist. The comment's own lifecycle still decides the transition.
+pub fn check_own_comment_removal(publication: &Publication) -> Result<(), TombstoneWriteError> {
+    if publication.access_plan().thread_accessible() {
+        Ok(())
+    } else {
+        Err(TombstoneWriteError::WorkUnavailable)
+    }
+}
+
 #[cfg(test)]
 mod replay;
 #[cfg(test)]

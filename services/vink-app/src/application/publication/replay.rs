@@ -9,11 +9,11 @@ use super::*;
 use crate::domain::discussion::lifecycle::{CommentState, Decision as CommentDecision, Transition};
 use crate::domain::discussion::visibility::CommentView;
 use crate::domain::ids::PrincipalId;
-use crate::domain::moderation::{AdminAuthority, WorkModeration};
+use crate::domain::moderation::{AdminAuthority, ModerationError, WorkModeration};
 use crate::domain::publication::tests::{owner, revision, save, snapshot, work};
 use crate::domain::publication::{
-    Audience, AuthorCommand, DeletionProvenance, Lifecycle, Publication, ReviewOutcome,
-    ReviewedRevision, WorkAccessPlan,
+    Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, Lifecycle, Moderation, Publication,
+    PublicationError, ReviewOutcome, ReviewedRevision, WorkAccessPlan,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -91,92 +91,114 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         for (index, step) in scenario.steps.iter().enumerate() {
             let c = &step.command;
             let outcome: &'static str = match c.op.as_str() {
+                // Model shell `publish` = author request + an admitted approval of revision 1
+                // (authority assumption: the evaluator/admin path is M1's, not M3's).
                 "publish" => {
-                    if !pub_state.facts().lifecycle.is_active() {
-                        "work_unavailable"
-                    } else if pub_state.facts().audience == Audience::Public {
-                        "published"
-                    } else {
-                        let expected = pub_state.facts().generation;
-                        let transition = pub_state
-                            .decide_author(
-                                owner(),
-                                AuthorCommand::RequestPublic {
-                                    revision: revision(1),
-                                    expected,
-                                },
-                            )
-                            .unwrap();
-                        let reviewed = transition
-                            .next
-                            .record_review(ReviewedRevision {
-                                work: work(1),
-                                revision: revision(1),
-                                hash: snapshot(1).content.hash().clone(),
-                                expected: transition.next.facts().revisions[0].moderation,
-                                outcome: ReviewOutcome::Approved,
-                            })
-                            .unwrap();
-                        pub_state = reviewed.next;
-                        ever_public = true;
-                        "published"
+                    let before = pub_state.clone();
+                    match pub_state.decide_author(
+                        owner(),
+                        AuthorCommand::RequestPublic {
+                            revision: revision(1),
+                            expected: pub_state.facts().generation,
+                        },
+                    ) {
+                        Ok(t) => {
+                            pub_state = match t.outcome {
+                                AuthorOutcome::Published => t.next,
+                                AuthorOutcome::Submitted => {
+                                    t.next
+                                        .record_review(ReviewedRevision {
+                                            work: work(1),
+                                            revision: revision(1),
+                                            hash: snapshot(1).content.hash().clone(),
+                                            expected: Moderation::Pending,
+                                            outcome: ReviewOutcome::Approved,
+                                        })
+                                        .unwrap()
+                                        .next
+                                }
+                                other => panic!("unexpected publish outcome {other:?}"),
+                            };
+                            ever_public = true;
+                            "published"
+                        }
+                        Err(PublicationError::WorkUnavailable) => {
+                            assert_eq!(pub_state, before);
+                            "work_unavailable"
+                        }
+                        Err(other) => panic!("unexpected publish refusal {other:?}"),
                     }
                 }
                 "make_private" => {
-                    if !pub_state.facts().lifecycle.is_active() {
-                        "work_unavailable"
-                    } else if pub_state.facts().audience == Audience::Private {
-                        "unchanged"
-                    } else {
-                        let transition = pub_state
-                            .decide_author(
-                                owner(),
-                                AuthorCommand::SetPrivate {
-                                    expected: pub_state.facts().generation,
-                                },
-                            )
-                            .unwrap();
-                        pub_state = transition.next;
-                        "made_private"
+                    let before = pub_state.clone();
+                    match pub_state.decide_author(
+                        owner(),
+                        AuthorCommand::SetPrivate {
+                            expected: pub_state.facts().generation,
+                        },
+                    ) {
+                        Ok(t) => {
+                            let outcome = match t.outcome {
+                                AuthorOutcome::MadePrivate => "made_private",
+                                AuthorOutcome::Reaffirmed => "unchanged",
+                                other => panic!("unexpected make_private outcome {other:?}"),
+                            };
+                            pub_state = t.next;
+                            outcome
+                        }
+                        Err(PublicationError::WorkUnavailable) => {
+                            assert_eq!(pub_state, before);
+                            "work_unavailable"
+                        }
+                        Err(other) => panic!("unexpected make_private refusal {other:?}"),
                     }
                 }
                 "author_delete" => {
-                    if !pub_state.facts().lifecycle.is_active() {
-                        "work_unavailable"
-                    } else {
-                        let had_tombstone = pub_state.readable_revision().is_some();
-                        let transition = pub_state
-                            .decide_author(
-                                owner(),
-                                AuthorCommand::Delete {
-                                    expected: Some(pub_state.facts().generation),
-                                },
-                            )
-                            .unwrap();
-                        pub_state = transition.next;
-                        if had_tombstone {
-                            "deleted_with_tombstone"
-                        } else {
-                            "deleted"
+                    let before = pub_state.clone();
+                    match pub_state.decide_author(
+                        owner(),
+                        AuthorCommand::Delete {
+                            expected: Some(pub_state.facts().generation),
+                        },
+                    ) {
+                        Ok(t) => {
+                            assert_eq!(t.outcome, AuthorOutcome::Deleted);
+                            pub_state = t.next;
+                            // The production provenance, not a harness pre-check, names the outcome.
+                            match pub_state.facts().lifecycle {
+                                Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(
+                                    _,
+                                )) => "deleted_with_tombstone",
+                                Lifecycle::AuthorDeleted(DeletionProvenance::Hidden) => "deleted",
+                                other => panic!("delete produced {other:?}"),
+                            }
                         }
+                        Err(PublicationError::WorkUnavailable) => {
+                            assert_eq!(pub_state, before);
+                            "work_unavailable"
+                        }
+                        Err(other) => panic!("unexpected author_delete refusal {other:?}"),
                     }
                 }
                 "moderation_remove" => {
-                    if !pub_state.facts().lifecycle.is_active() {
-                        "work_unavailable"
-                    } else {
-                        let transition = mod_state
-                            .apply_admin_remove(
-                                &pub_state,
-                                Some(AdminAuthority::scoped(
-                                    PrincipalId::from_uuid(uuid::Uuid::from_u128(9)),
-                                    work(1),
-                                )),
-                            )
-                            .unwrap();
-                        pub_state = transition.publication;
-                        mod_state = transition.moderation;
-                        "removed_by_moderation"
+                    let before = (pub_state.clone(), mod_state.clone());
+                    match mod_state.apply_admin_remove(
+                        &pub_state,
+                        Some(AdminAuthority::scoped(
+                            PrincipalId::from_uuid(uuid::Uuid::from_u128(c.actor as u128)),
+                            work(1),
+                        )),
+                    ) {
+                        Ok(t) => {
+                            pub_state = t.publication;
+                            mod_state = t.moderation;
+                            "removed_by_moderation"
+                        }
+                        Err(ModerationError::TargetGone) => {
+                            assert_eq!((pub_state.clone(), mod_state.clone()), before);
+                            "work_unavailable"
+                        }
+                        Err(other) => panic!("unexpected moderation_remove refusal {other:?}"),
                     }
                 }
                 "submit" => {
@@ -222,7 +244,7 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                     let actor = PrincipalId::from_uuid(uuid::Uuid::from_u128(c.actor as u128));
                     if *writer != actor
                         || !comment.is_present()
-                        || !pub_state.access_plan().thread_accessible()
+                        || check_own_comment_removal(&pub_state).is_err()
                     {
                         "comment_unavailable"
                     } else {
@@ -363,6 +385,29 @@ fn the_private_as_deleted_counterexample_is_refused_by_the_production_access_pla
     .unwrap();
     let scenario = &vectors.violation[0];
     assert_eq!(scenario.steps.len(), 4);
+    // The production calls below are bound to this exact trace; a regenerated counterexample
+    // with other inputs must fail here instead of passing against a stale hand-written replay.
+    let inputs: Vec<(&str, i64, u128, &str)> = scenario
+        .steps
+        .iter()
+        .map(|s| {
+            (
+                s.command.op.as_str(),
+                s.command.actor,
+                s.command.id,
+                s.command.value.as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        inputs,
+        [
+            ("publish", 1, 0, "none"),
+            ("submit", 2, 1, "none"),
+            ("review", 9, 1, "approved"),
+            ("make_private", 1, 0, "none"),
+        ]
+    );
 
     let mut pub_state = Publication::new(work(1), owner());
     pub_state = save(&pub_state, 1);

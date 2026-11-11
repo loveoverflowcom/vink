@@ -28,7 +28,10 @@ nhất của `../discussion`: typecheck, simulation TypeScript seed **41**, **1.
 - `application::publication::replay::quint_tombstone_scenarios_replay_against_production_access_and_discussion`:
   Replay cả 3 scenario (đủ **30/30 bước**: `author_deleted_public_work` 14, `private_then_deleted` 10,
   `moderation_removed` 6) qua `Publication`, `WorkModeration`, `plan_work_access` (`PublicBody`,
-  `AuthorTombstone`, `Unavailable`), `plan_comment_view`, và `check_comment_submission` (#157).
+  `AuthorTombstone`, `Unavailable`), `plan_comment_view`, `check_comment_submission` và
+  `check_own_comment_removal` (#157). Từ chối mức tác phẩm (`work_unavailable`) đến từ lỗi production
+  (`WorkUnavailable`, `TargetGone`), không từ guard của harness; shell `publish` giả định một approval
+  đã được admit (đường evaluator/admin thuộc M1).
 - `application::publication::replay::the_private_as_deleted_counterexample_is_refused_by_the_production_access_plan`:
   replay `tombstone-private-as-deleted-counterexample.json` (`mutatedPrivateStep`); mutant cho phép
   bài chuyển riêng tư hiện tombstone và đọc bình luận; production từ chối với `WorkAccessPlan::Unavailable`
@@ -44,7 +47,7 @@ nhất của `../discussion`: typecheck, simulation TypeScript seed **41**, **1.
 | `admin_decide` (cả hợp lệ và bị từ chối) | `WorkModeration::apply_admin_decision` (`AdminAuthority`, `DecisionVersion`, `DecisionReason`) + `Publication::record_review` | Durable admin grant provisioning, CLI/HTTP, audit row |
 | `reevaluate`, `policy_bump` | `WorkModeration::reevaluate` (cấp `EvaluationId` mới), `WorkModeration::bump_policy` | Policy persistence/governance, retry worker |
 | `author_delete` | `decide_author(Delete)` bắt `DeletionProvenance` (`PublicTombstone` vs `Hidden`), chuyển audience sang `Private`, tăng generation | Persistence migration / CLI / route (#158) |
-| `admin_remove` | `apply_admin_remove` kiểm `AdminAuthority`, xoá pointer/intent, chuyển `Lifecycle::Removed` | Persistence migration / CLI / route (#158) |
+| `admin_remove` | `apply_admin_remove` kiểm cặp work, `AdminAuthority` scoped và tác giả tự recuse, xoá pointer/intent, chuyển `Lifecycle::Removed` | Persistence migration / CLI / route (#158) |
 | `mutatedIntentStep` | Model NC + production guard refusal (`approved_unpublished`) | Durable commit race |
 | `mutatedOverrideStep` | Model NC + production guard refusal (`overridden`) | Durable commit race |
 
@@ -57,7 +60,7 @@ nhất của `../discussion`: typecheck, simulation TypeScript seed **41**, **1.
 | `moderation_remove` | `Lifecycle::Removed`, `WorkAccessPlan::Unavailable`, thread unavailable | Persistence (#158) |
 | `submit` trên tombstone | `check_comment_submission` trả `TombstoneWriteError::TombstoneReadOnly` | API 409 / UI (#158) |
 | `submit` trên unavailable | `check_comment_submission` trả `TombstoneWriteError::WorkUnavailable` | API 404 (#158) |
-| `remove_own` trên tombstone | `CommentState::remove_by_author()`, bình luận removed giữ anchor nếu có reply | Discussion API route (#158) |
+| `remove_own` trên tombstone / unavailable | `check_own_comment_removal` rồi `CommentState::remove_by_author()`; bình luận removed giữ anchor nếu có reply | Discussion API route (#158) |
 | `views` projection | `plan_work_access` + `plan_comment_view` khớp chính xác 30/30 bước viewer | SSR / reader UI (#158) |
 | `mutatedPrivateStep` | Model NC + production refusal (`Unavailable` thay vì tombstone) | Integration tests |
 

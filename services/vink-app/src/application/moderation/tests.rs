@@ -390,6 +390,31 @@ fn plan_work_admin_removal_enforces_active_standing_and_admin_authority() {
         Err(ModerationPlanError::Rejected(ModerationError::NotAdmin))
     );
 
+    // 3b. A grant on another work, or an author holding a grant on their own work, is refused
+    // (narrow scope and self-recusal, as for admin decisions). An author deletes instead.
+    for (actor, granted) in [(admin_actor, work(2)), (author_actor, work(1))] {
+        assert_eq!(
+            plan_work_admin_removal(
+                Some(actor),
+                Some(granted),
+                &saved.publication,
+                &saved.moderation
+            ),
+            Err(ModerationPlanError::Rejected(ModerationError::NotAdmin))
+        );
+    }
+
+    // 3c. Moderation facts of another work never pair with this publication.
+    assert_eq!(
+        plan_work_admin_removal(
+            Some(admin_actor),
+            Some(work(1)),
+            &saved.publication,
+            &WorkModeration::new(work(2))
+        ),
+        Err(ModerationPlanError::Rejected(ModerationError::InvalidFacts))
+    );
+
     // 4. Successful removal
     let removed = plan_work_admin_removal(
         Some(admin_actor),

@@ -1152,13 +1152,20 @@ impl WorkModeration {
     }
 
     /// Apply an admin removal to an active work (#157, AC-01, AC-05).
+    ///
+    /// Same narrow authority as [`Self::apply_admin_decision`]: scoped to `self.work`, and the
+    /// work's author recuses (an author deletes through `AuthorCommand::Delete`, which keeps a
+    /// lawful tombstone; removal would hide valid comments instead).
     pub fn apply_admin_remove(
         &self,
         publication: &Publication,
         authority: Option<AdminAuthority>,
     ) -> Result<AdminRemovalTransition, ModerationError> {
+        if self.0.work != publication.facts().work {
+            return Err(ModerationError::InvalidFacts);
+        }
         let authority = authority.ok_or(ModerationError::NotAdmin)?;
-        if authority.work() != publication.facts().work {
+        if authority.work() != self.0.work || authority.actor() == publication.facts().owner {
             return Err(ModerationError::NotAdmin);
         }
         if !publication.facts().lifecycle.is_active() {

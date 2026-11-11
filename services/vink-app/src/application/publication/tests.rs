@@ -248,10 +248,16 @@ fn read_planner_composes_access_and_discussion_visibility_truth_table() {
         plan_work_access(&deleted),
         WorkAccessPlan::AuthorTombstone { .. }
     ));
-    // Submission is refused as tombstone read-only
+    // Submission is refused as tombstone read-only; own removal stays lawful
     assert_eq!(
         check_comment_submission(&deleted),
         Err(TombstoneWriteError::TombstoneReadOnly)
+    );
+    assert_eq!(check_own_comment_removal(&public), Ok(()));
+    assert_eq!(check_own_comment_removal(&deleted), Ok(()));
+    assert_eq!(
+        check_own_comment_removal(&saved),
+        Err(TombstoneWriteError::WorkUnavailable)
     );
     // Valid approved comments are still visible
     assert_eq!(

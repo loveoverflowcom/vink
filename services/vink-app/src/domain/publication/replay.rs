@@ -85,17 +85,12 @@ fn moderation(value: &str) -> Moderation {
     }
 }
 
-fn lifecycle(value: &str) -> Lifecycle {
+/// M1 names the lifecycle kind only; deletion provenance is M3's and is checked there.
+fn lifecycle_kind(value: Lifecycle) -> &'static str {
     match value {
-        "active" => Lifecycle::Active,
-        "author_deleted" => {
-            Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(PublicPointer {
-                revision: revision(4),
-                intent_generation: generation(11),
-            }))
-        }
-        "removed" => Lifecycle::Removed,
-        _ => panic!("unknown lifecycle {value}"),
+        Lifecycle::Active => "active",
+        Lifecycle::AuthorDeleted(_) => "author_deleted",
+        Lifecycle::Removed => "removed",
     }
 }
 
@@ -127,7 +122,7 @@ pub(crate) fn project(state: &Publication, mod_state: &WorkModeration, expected:
             Audience::Private
         }
     );
-    assert_eq!(facts.lifecycle, lifecycle(&expected.lifecycle));
+    assert_eq!(lifecycle_kind(facts.lifecycle), expected.lifecycle);
     assert_eq!(facts.generation.get(), expected.generation);
     assert_eq!(
         facts.intent.map_or(0, |i| i.revision.as_uuid().as_u128()),

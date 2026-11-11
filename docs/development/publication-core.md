@@ -127,11 +127,12 @@ planning kết hợp với `domain::discussion::visibility`.
 | --- | --- |
 | `decide_author(Delete)` | Owner + active lifecycle; xoá pointer và intent; chuyển audience sang `Private`; tăng `intent_generation`; ghi nhận `DeletionProvenance::PublicTombstone` nếu tại thời điểm xóa bài có readable revision approved, hoặc `Hidden` nếu chưa từng công khai hoặc đang riêng tư |
 | `Publication::admin_remove()` | Xoá pointer và intent; chuyển lifecycle sang `Lifecycle::Removed`; giữ nguyên audience và generation |
-| `WorkModeration::apply_admin_remove` | Xác minh `AdminAuthority` scoped theo `(admin, work)`; uỷ quyền chuyển đổi sang `Publication::admin_remove` |
+| `WorkModeration::apply_admin_remove` | Cặp `WorkModeration`/`Publication` cùng work (`InvalidFacts` nếu lệch); `AdminAuthority` scoped theo `(admin, work)` và tác giả tự recuse như `apply_admin_decision` (`NotAdmin`; tác giả xoá bằng `Delete` để giữ tombstone hợp lệ); uỷ quyền chuyển đổi sang `Publication::admin_remove` |
 | `Publication::access_plan()` | `PublicBody(&Snapshot)` khi active + public + readable pointer; `AuthorTombstone` khi author deleted có tombstone; `Unavailable` trong mọi trường hợp khác (riêng tư, deleted hidden, moderation removed) |
 | `plan_work_access` | Application entry point trả về `WorkAccessPlan` |
 | `plan_comment_view` | Nếu thread không accessible (`Unavailable`), trả về `CommentView::Unavailable`; nếu là tombstone hoặc public body, chuyển tiếp sang `visibility::view` |
 | `check_comment_submission` | Barrier chống gửi bình luận: `PublicBody` cho phép gửi; `AuthorTombstone` trả lỗi `TombstoneReadOnly`; `Unavailable` trả lỗi `WorkUnavailable` |
+| `check_own_comment_removal` | Cổng mức tác phẩm cho người viết tự gỡ bình luận: cho phép trên `PublicBody` và `AuthorTombstone` (baseline O-03, vẫn OPEN); `Unavailable` trả `WorkUnavailable`. Lifecycle của bình luận vẫn do `CommentState` quyết định |
 
 ### Chuyển canonical M3 và hoàn tất 51/51 replay M1
 
@@ -144,7 +145,11 @@ planning kết hợp với `domain::discussion::visibility`.
    đã chuyển từ `services/vink-app/behavior/target/` sang `services/vink-app/behavior/publication/`.
 3. **Replay 30/30 bước M3 & Negative Control:**
    Replay đủ 3 scenario (`author_deleted_public_work` 14 bước, `private_then_deleted` 10 bước,
-   `moderation_removed` 6 bước) qua application planning và `Publication`. Replay mutant
+   `moderation_removed` 6 bước) qua application planning và `Publication`. Mọi lệnh mức tác phẩm,
+   kể cả từ chối (`work_unavailable`) và `make_private` lặp (`unchanged` = `Reaffirmed`), đều gọi
+   production rồi map kết quả/lỗi; outcome xoá lấy từ provenance production. Shell `publish` của
+   model = yêu cầu công khai + một approval đã được admit cho revision 1 (giả định authority; đường
+   evaluator/admin thuộc M1). Replay mutant
    `tombstone-private-as-deleted-counterexample.json` chứng minh bài riêng tư bị xoá không bao giờ
    lộ tombstone hay bình luận.
 
