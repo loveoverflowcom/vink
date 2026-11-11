@@ -334,7 +334,12 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
 
 1. Quy tắc username và mật khẩu (O-12): đề xuất ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất
    không phân biệt hoa thường, không hiển thị công khai; mật khẩu ≥ 10 ký tự, không luật ký tự bắt
-   buộc, Argon2id.
+   buộc, Argon2id. **11/11/2026 (`O-12@r2`, `PRODUCT_CONFIRMED` qua signoff ủy quyền):** mật khẩu
+   chuẩn hóa NFKC rồi đếm 10–128 ký tự, mỗi Unicode code point là một ký tự. Dữ liệu nhập vượt 4096
+   byte bị từ chối trước khi chuẩn hóa. Username giữ đề xuất trên.
+
+<!-- vdr: active O-12@r2 -->
+
 2. Lỗi đăng nhập đồng nhất (không lộ username tồn tại); rate limit theo mạng nguồn **và** theo
    username; đổi mật khẩu thu hồi phiên khác.
 3. Khôi phục tài khoản (O-11): nếu không có email, quên mật khẩu là mất tài khoản. Đề xuất email đã
@@ -348,7 +353,7 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
 
 **Hiện trạng triển khai backend (#152):** backend native username/password credential đã được triển
 khai trên Identity (`vink-identity`) và App (`vink-app`):
-- Hash Argon2id với salt ngẫu nhiên (`argon2` crate, PHC string), pure policy `services/vink-identity/src/password.rs` (O-12: username chuẩn hóa chữ thường `a-z 0-9 _ .` từ 3–30 ký tự; mật khẩu 10–128 byte; cả hai ẩn trong `Debug`).
+- Hash Argon2id với salt ngẫu nhiên (`argon2` crate, PHC string), pure policy `services/vink-identity/src/password.rs` (O-12: username chuẩn hóa chữ thường `a-z 0-9 _ .` từ 3–30 ký tự; mật khẩu 10–128 byte theo #152, đổi ngày 11/11/2026 theo `O-12@r2` thành 10–128 ký tự sau NFKC; cả hai ẩn trong `Debug`).
 - Bảng `account_passwords` (FK `accounts`, username UNIQUE, password_hash, version) và `password_login_attempts` (throttling 10 lần sai / 15 phút).
 - So khớp thời gian hằng số với `dummy_verify` khi username không tồn tại hoặc format sai.
 - Identity contract v1: `POST /identity/v1/password/register` và `POST /identity/v1/password/sign-in`.

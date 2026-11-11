@@ -181,8 +181,8 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
   (`HTG`), xếp hạng (`RANK/TOP`), quản trị kiểm duyệt (grant, ca, phản đối, dừng tự động, điều tra:
   `MOD-10..15`) và trang ẩn (`hidden`/`ever_public`/`public_epoch`, PUB-07).
 - **UI & trình duyệt:** Chưa có Web/CMP UI cho chọn audience/xuất bản, trang tombstone, sửa bình luận,
-  bộ sưu tập, hashtag, Đề xuất/Top 100, phản đối hay form đăng nhập username/mật khẩu (và làm rõ `O-12`
-  ký tự Unicode vs byte UTF-8).
+  bộ sưu tập, hashtag, Đề xuất/Top 100, phản đối hay form đăng nhập username/mật khẩu (policy
+  mật khẩu theo `O-12@r2` đã có ở backend: 10–128 ký tự sau NFKC).
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
   kênh thông báo quản trị viên.
 - **Model checking (Apalache):** NOT_RUN. Simulation là thực thi ngẫu nhiên có biên, không vét cạn.

@@ -1,10 +1,16 @@
 # Rà soát và chuyển Decision Registry sang TOML
 
-Lát cắt của [#164](https://github.com/loveoverflowcom/vink/issues/164) lấy nguồn tại
-`develop@0c5bb275c15342607e6701f14019c07e269c2a68`. Phạm vi có thể đối chiếu theo từng mục là
-[DecisionDelta §2–4](../architecture/product-decisions-20261110.md#2-decisiondelta). Tra cứu và
-ghi đề xuất qua [cargo xtask decision](../../decisions/README.md). Các đánh giá nghiệp vụ và
-phê duyệt sau lần nhập này còn cần nguồn quyết định tương ứng.
+Lát cắt của [#164](https://github.com/loveoverflowcom/vink/issues/164) khảo sát
+`develop@0c5bb275c15342607e6701f14019c07e269c2a68`. Lát cắt nhập lại tại
+`develop@af3c34bd624be18d404bd5789620759cae0b0ddb` sau khi #165 thêm §7 quản trị kiểm duyệt. Ở commit
+đó, §2–4 giống hệt bản khảo sát. Phạm vi có thể đối chiếu theo từng mục là
+[DecisionDelta §2–4](../architecture/product-decisions-20261110.md#2-decisiondelta) và §7.1–7.2.
+Tra cứu, ghi đề xuất và signoff đều qua [cargo xtask decision](../../decisions/README.md).
+
+**Rà soát và merge ngày 11/11/2026.** Chủ sản phẩm giao rà soát và merge PR #166 và ủy quyền chốt
+các điểm còn mở theo vision. Kết quả: CHOICE-01 thành `VDR-DECISION-SIGNOFF@r1`, `O-12` thành
+`O-12@r2`, đều có signoff ghi lời ủy quyền. Lượt nhập §7 đóng `O-05` và bổ sung `O-03`/`O-15`.
+Xem [các điểm đã chốt](#đã-chốt-khi-rà-soát-1111) và [các điểm còn mở](#còn-mở-hoặc-cần-rà-tiếp).
 
 ## Quyền sở hữu và kiểm kê
 
@@ -12,7 +18,8 @@ phê duyệt sau lần nhập này còn cần nguồn quyết định tương �
 | --- | --- | --- | --- |
 | [DecisionDelta §2](../architecture/product-decisions-20261110.md#2-decisiondelta) | `USER-01..15`, mapping bên dưới. PRD §14, vision §13, D-log, domain specs, AGENTS, skills và model đích | `migrate_decision` sang TOML. Giữ bảng gốc làm `historical_alias` và lịch sử code của lượt 10/11 | `USER-09` xác nhận bài ngắn và bộ sưu tập, cùng dòng ghi nhiều chương được hoãn (`WR-04`) |
 | [DecisionDelta §3–4](../architecture/product-decisions-20261110.md#3-lựa-chọn-triển-khai-design_proposed) | Bốn `CHOICE`, `O-01..16`. Specs theo miền và model M1–M6 | `migrate_decision` với trạng thái cũ. Scope đầy đủ cho CHOICE để tránh trùng với issue khác | Baseline model và câu hỏi có thể được review theo miền khi triển khai |
-| [DecisionDelta §1, §5–6](../architecture/product-decisions-20261110.md) | Giải nghĩa nhãn, UX/dữ liệu đề xuất, snapshot triển khai, kế hoạch PR | `keep_spec`, `keep_runtime_evidence` và lịch sử | Các mục chưa có ID riêng ở §5 cần review nếu muốn chuyển thành quyết định |
+| [DecisionDelta §7.1–7.2](../architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt) | `ADM-01..10`, revision mới của `O-03/05/15`, `O-17..19`. Publication spec §5–§8, moderation core, `governance.qnt` | `migrate_decision` tại `af3c34b`, nhóm `ADMIN-MODERATION-20261111`. Revision cũ của `O-03/05/15` được đánh dấu `historical` | Tên kiểu, mã từ chối và baseline kỹ thuật của §7 vẫn là `DESIGN_PROPOSED` ở owner Markdown/core |
+| [DecisionDelta §1, §5–6, §7.3](../architecture/product-decisions-20261110.md) | Giải nghĩa nhãn, UX/dữ liệu đề xuất, snapshot triển khai, kế hoạch PR, bàn giao §7 | `keep_spec`, `keep_runtime_evidence` và lịch sử | Các mục chưa có ID riêng ở §5 cần review nếu muốn chuyển thành quyết định |
 | [Vision](../../prd/vision.md), [requirements](../../prd/requirements.md), [LVE PRD](../../prd/literary-endorsement.md) | Phạm vi, ID/acceptance, hàng đề xuất UX và guard nghiệp vụ | `keep_spec`. Thêm đường tra record vào §14. ID requirement vẫn có owner ở PRD | Đối chiếu lại các điều kiện dễ hiểu khác nhau trong bảng review bên dưới |
 | [Sổ D/INV/S](../architecture/decisions.md), [tech stack](../architecture/tech-stack.md) | `D-01..19`, `INV-01..08`, `S-01..05`. Có hàng lẫn quyết định, phương án, lịch sử và bằng chứng | `pending_review` cho phần quyết định riêng. `keep_spec` cho INV. Giữ S-ID và bằng chứng spike | Cần tách phần sản phẩm và kiến trúc trong D-02, D-05..08, D-12, D-14..19. Các D-ID hiện chỉ tra được dưới dạng liên quan nếu nằm trong mapping |
 | [Ownership thảo luận](../architecture/discussion-ownership.md), [admission](../architecture/discussion-admission.md), [reads](../architecture/discussion-reads.md), [outbox](../architecture/discussion-outbox.md), [ranh giới Identity](../architecture/identity-postgres-boundaries.md), [auth authority](../architecture/auth-authority.md) | D-02/D-05/D-08/D-13, quyền tác giả và ủy quyền, `DISC-*` và `CHOICE-*` cục bộ | `pending_review` cho quyết định riêng của ADR. Giữ spec và hiện trạng tại owner | D-05 vẫn Provisional về authority. Lịch sử `USER-08@r1` chỉ nói phương thức đăng nhập |
@@ -22,7 +29,7 @@ phê duyệt sau lần nhập này còn cần nguồn quyết định tương �
 | [Development](README.md), [feature map](feature-map.md), [registry 10/11](product-decisions-registry.md) | Cấu trúc code, runner, hành vi đang có, implementation level và bằng chứng theo SHA | `keep_runtime_evidence`. Thêm link VDR để tra trạng thái quyết định | Những câu tóm tắt hiện trạng cũ trong PRD/D-log cần dọn trong lượt đối soát runtime |
 | [References](../references/sources.md), [skill adaptation](../references/skill-adaptation.md), [archive](../archive/initial/README.md) | Nguồn Cantos/Discourse, lịch sử bộ định hướng/skill và vision gốc | `historical_alias` hoặc `excluded_with_reason`. Giữ nguyên bằng chứng, snapshot và pin | Bản nguồn ngoài repo hoặc chat gốc của 10/11 chưa được xác minh độc lập |
 | [Skill index](../../.agents/skills/README.md), [AGENTS](../../AGENTS.md), [CLAUDE](../../CLAUDE.md) | Skill và reference của shape, specify, work-item, architect, why, recall, prompt, code-review, maintain-verification, behavior, publication, UI design | Cùng dùng một hướng dẫn tra cứu và luồng ghi qua specify. Giữ metadata discovery và Claude symlink | Các plugin ngoài repo và prompt đã sao chép sang issue/chat cần đối chiếu khi được dùng lại |
-| [Model đích](../../services/vink-app/behavior/target/README.md), [publication application](../../services/vink-app/src/application/publication.rs), [password core](../../services/vink-identity/src/password.rs) | `USER-05/06/09/12..15`, `CHOICE-01`, `O-03`, `O-12` và một số ID trong contract/migration | `keep_spec` cho model và `keep_runtime_evidence` cho code/test. Ghi trường hợp suy luận từ code bên dưới | Marker v1 có phạm vi Markdown. ID trong Rust, SQL, Quint, JSON và prompt cũ cần review theo miền |
+| [Model đích](../../services/vink-app/behavior/target/README.md), [publication application](../../services/vink-app/src/application/publication.rs), [password core](../../services/vink-identity/src/password.rs) | `USER-05/06/09/12..15`, `CHOICE-01`, `O-03`, `O-12` và một số ID trong contract/migration | `keep_spec` cho model và `keep_runtime_evidence` cho code/test. `password.rs` theo `O-12@r2` từ lượt này | Marker v1 có phạm vi Markdown. ID trong Rust, SQL, Quint, JSON và prompt cũ cần review theo miền |
 | [Dispatcher](../../xtask/src/main.rs), [checks](../../xtask/src/checks.rs), [workflow](../../.github/workflows/ci.yml), [Cargo.lock](../../Cargo.lock) | CLI, kiểm skill/link/ranh giới và lane local `quick` | `excluded_with_reason` khỏi record vì đây là tooling/config. Kiểm registry qua lane hiện có | Phần cưỡng chế ngoài checkout local cần lựa chọn nguồn quyền riêng |
 
 Kiểm kê duyệt nhóm nguồn qua danh sách file theo Git, heading/bảng và các tham chiếu
@@ -35,7 +42,8 @@ cho các consumer đã khai báo. Bảng kiểm kê ghi những nguồn nằm ng
 
 Các ID dưới đây giữ nguyên và mặc định ở `@r1`. `USER-08@r1` giữ phương thức mã email từng
 được đề xuất, với trạng thái Provisional và ngữ cảnh lịch sử. `USER-08@r2` là hướng đăng nhập
-chính được chốt trong DecisionDelta. Mỗi dòng TOML giữ dòng nguồn và các ID liên quan.
+chính được chốt trong DecisionDelta. Bảng dưới ghi trạng thái **hiện hành** sau lượt nhập §7 và các
+signoff của lượt rà soát. Mỗi dòng TOML giữ dòng nguồn và các ID liên quan.
 Requirement ID và D-ID có thể liên quan nhiều bản ghi. Chúng vẫn tra cứu chính tại owner.
 
 | ID | Trạng thái | D-ID, requirement hoặc chủ đề để truy vết |
@@ -57,17 +65,24 @@ Requirement ID và D-ID có thể liên quan nhiều bản ghi. Chúng vẫn tra
 | USER-15 | PRODUCT_CONFIRMED | D-08, COM-10, LVE-FR-04 |
 | PRODUCT-DECISIONS-20261110-CHOICE-01..04 | DESIGN_PROPOSED | Theo thứ tự sửa bình luận, điểm Đề xuất, cursor Top 100 và grammar hashtag |
 | O-01/02 | OPEN | Membership và thứ tự bộ sưu tập, COL-05/06 |
-| O-03/04/05/08/09/10 | OPEN | Quyền ghi, bình luận chờ, xóa khi đã riêng tư, purge, dữ liệu trang thay thế và khôi phục, PUB-04/05 |
+| O-03@r2, O-05@r2 | PRODUCT_CONFIRMED (§7.2) | Không ghi mới trên trang ẩn/thay thế; xóa từ trang ẩn sau khi từng công khai giữ bình luận, PUB-04/05/07, COM-11 |
+| O-04/08/09/10 | OPEN | Bình luận chờ, purge, dữ liệu trang thay thế và khôi phục, PUB-03/04/05 |
 | O-06/07 | OPEN | “Hữu ích” theo revision bình luận và vote dùng cho ranking, LVE-FR-04/RANK-02 |
-| O-11/12 | OPEN | Khôi phục và định dạng credential, ACC-03 |
+| O-11 | OPEN | Khôi phục tài khoản, ACC-03 |
+| O-12@r2 | PRODUCT_CONFIRMED (signoff ủy quyền 11/11) | Mật khẩu 10–128 ký tự sau NFKC, mỗi code point một ký tự; username giữ ACC-03 |
 | O-13/14 | OPEN | Giới hạn hashtag và tham số xếp hạng, HTG-06/RANK-01/04 |
-| O-15/16 | OPEN | Xét lại quyết định admin và hủy bản sửa chờ duyệt, MOD-10/COM-10 |
+| O-15@r2 | OPEN (đóng một phần ở §7.2) | Quyết định moderator phản đối được, kết luận admin là cấp cuối; phần còn mở là phản đối quyết định trực tiếp của admin, MOD-10 |
+| O-16 | OPEN | Hủy bản sửa chờ duyệt, COM-10 |
+| ADM-01..05, ADM-09/10 | PRODUCT_CONFIRMED (§7.1) | Admin tổng và grant, nhận ca, can thiệp, phản đối, dừng tự động, điều tra riêng, mặc định; MOD-09..15 |
+| ADM-06..08 | PRODUCT_CONFIRMED (§7.1) | Gửi duyệt theo phiên bản, trang “Nội dung đã được ẩn”, bình luận qua URL cũ; PUB-04..07, COM-11 |
+| O-17/18/19 | OPEN (§7.2) | URL cũ sau khi bác bản đang đăng, thời hạn grant/điều tra, danh mục thông báo; MOD-11/13/15, PUB-05, COM-11 |
+| VDR-DECISION-SIGNOFF@r1 | PRODUCT_CONFIRMED (signoff ủy quyền 11/11) | Nguồn xác nhận và mức cưỡng chế cho revision mới (CHOICE-01 của #164) |
 
 ## Lựa chọn của lát cắt và đánh đổi
 
 | ID của #164 | Cách triển khai | Khi cần xem lại |
 | --- | --- | --- |
-| CHOICE-01 | `OPEN`. Dùng pin riêng của tool để kiểm toàn vẹn dữ liệu nhập. Writer chỉ lưu `PENDING` | Chủ sản phẩm chọn nguồn xác nhận cho revision mới và mức cưỡng chế mong muốn |
+| CHOICE-01 | **Đã chốt** thành `VDR-DECISION-SIGNOFF@r1`. Signoff trích lời chủ sản phẩm, gắn `ID@rN` và SHA-256 của payload, vào `develop` qua merge do chủ sản phẩm làm hoặc yêu cầu. Cưỡng chế là local cộng CI, kiểm toàn vẹn chứ không xác thực danh tính | Khi có nhiều người ghi repo, hoặc khi cần chặn ghi ngoài workflow bằng branch protection, chữ ký hay GitHub App |
 | CHOICE-02 | Revision bất biến ở đường dẫn theo ID/revision. Bundle legacy được nhập một lần. `diff` đọc hai payload và chỉ in trường thay đổi | So sánh với file current cố định nếu PO cần xem diff dòng trực tiếp trên GitHub thường xuyên |
 | CHOICE-03 | Rust/Serde và validator làm contract v1, dùng phiên bản crate TOML đã có trong Cargo.lock | Khi có editor consumer, thử corpus chung và kiểm dialect trước khi sinh schema |
 | CHOICE-04 | Tra cứu và xuất từ TOML mỗi lần. Không có index/export tracked | Đo quy mô thật và xem PO có cần view dựng sẵn trên GitHub hay không |
@@ -75,28 +90,40 @@ Requirement ID và D-ID có thể liên quan nhiều bản ghi. Chúng vẫn tra
 | CHOICE-06 | Marker Markdown có mode active/historical ở một số consumer. Skill tra theo miền khi bắt đầu, handoff giữ pin | Cần audit dependency chưa khai báo, marker trong code/model và cập nhật pin sau khi duyệt ngữ nghĩa |
 | CHOICE-07 | Cutover theo nguồn đã đối soát. Lượt này chuyển §2–4 của DecisionDelta và dẫn consumer sang CLI | Sau khi chốt trust boundary, xử lý D/ADR và CHOICE issue-local theo từng miền, ưu tiên ID bị trộn trạng thái |
 
-## Cần chủ sản phẩm chốt hoặc reviewer đối soát
+## Đã chốt khi rà soát 11/11
+
+Nguồn: chủ sản phẩm ủy quyền trong phiên rà soát PR #166 (“những chỗ cần chốt thì tự suy luận theo
+vision mà làm”). Agent suy luận nội dung theo vision và ghi bằng `propose` cùng `signoff`. Chủ sản
+phẩm có thể thay bằng revision mới.
+
+| Điểm | Kết quả | Căn cứ theo vision và bằng chứng |
+| --- | --- | --- |
+| Nguồn xác nhận và mức cưỡng chế (CHOICE-01) | `VDR-DECISION-SIGNOFF@r1`: proposal luôn `PENDING`. Signoff trích lời chủ sản phẩm, gắn hash payload, có thể là `REJECTED`. Cưỡng chế ở CLI và `verify quick` trên CI | Kết quả AI không mang thẩm quyền (MOD-01..15), nên agent không tự chốt. Chủ sản phẩm làm việc qua agent bằng cùng tài khoản GitHub, nên phương án writer tách biệt không vận hành được. Test `signoff_binds_the_exact_payload_and_only_then_changes_current` kiểm hash sai, signoff cũ, revision nhập, outcome sai loại, trường tự khai, trùng signoff, payload bị sửa và rejection |
+| `O-12`: đơn vị độ dài mật khẩu | `O-12@r2`: chuẩn hóa NFKC, 10–128 ký tự, mỗi code point một ký tự. Dữ liệu nhập vượt 4096 byte bị từ chối trước khi chuẩn hóa. `Password::parse` đã đổi theo | Tiếng Việt và IME là ưu tiên: đếm byte làm chữ có dấu tính 2–3 lần, và bộ gõ dựng sẵn/tổ hợp cho hash khác nhau. NIST SP 800-63B tính mỗi code point là một ký tự. Chưa có tài khoản production. Test `password_length_counts_characters_after_nfkc` |
+| `O-05`: xóa bài từng công khai rồi chuyển riêng tư | Đã đóng ở DecisionDelta §7.2 (#165), nhập thành `O-05@r2`. Xóa từ trang ẩn sau khi từng công khai để lại trang thay thế và giữ bình luận. Bài chưa từng công khai không để lại gì. PUB-04 có ghi chú tại chỗ | Brief của chủ sản phẩm ngày 11/11 (ADM-07/08, PUB-07, COM-11). Core `WorkAccessPlan::AuthorHidden` và `tombstone.qnt` theo #165 |
+
+## Còn mở hoặc cần rà tiếp
 
 | Mức | Tình huống và quyết định cần ghi | Hệ quả và bằng chứng cần thêm |
 | --- | --- | --- |
-| Cần chủ sản phẩm chốt | **Nguồn xác nhận revision mới.** Một agent ghi proposal cập nhật `O-03`. Chọn receipt từ phiên/công cụ có danh tính PO được xác thực độc lập hoặc writer riêng với PO review đúng commit và payload | Receipt cần gắn ID, phạm vi, revision và hash, kiểm đúng actor và vô hiệu khi đổi payload. PR review cần writer khác reviewer và review còn hiệu lực với head đang xét. Thử ca thiếu, giả, stale và sai scope/payload ở nguồn đã chọn. |
-| Cần chủ sản phẩm chốt | **Mức cưỡng chế.** Workflow qua AI ở checkout local hay cần chặn ghi ngoài workflow ở repo từ xa | Cách local có kiểm tra ở công cụ và khi review. Cưỡng chế từ xa cần quyền, chính sách và bằng chứng vận hành độc lập. |
-| Cần chủ sản phẩm chốt khi làm auth | **O-11/O-12.** Xác định luồng khôi phục, vai trò email, ngưỡng và đơn vị độ dài mật khẩu | `Password::parse` dùng 10–128 byte UTF-8. PRD §14.6 nêu ≥10 ký tự trong đề xuất UX/dữ liệu. D-05 §12 ghi backend và ý định sản phẩm khác lớp. Ca tiếng Việt cần thử ASCII, nhiều byte và cách đếm ký tự đã chốt. |
-| Cần chủ sản phẩm chốt khi mở tombstone | **O-03/04/05/08/09/10.** Quyền ghi, số phận bình luận đang chờ, xóa bài từng công khai sau khi chuyển riêng tư, purge, dữ liệu hiển thị và khôi phục | PUB-04 dùng “đang công khai”, PUB-05 và DecisionDelta dùng “từng công khai”. Model có nhánh riêng và `O-05` đang mở. Code `application::publication` có baseline `O-03`. Cần chốt trước API/UI xóa và kiểm trường hợp thay đổi audience rồi xóa, cache/excerpt, tombstone và discussion. |
-| Cần chủ sản phẩm chốt khi mở tương ứng | **O-01/02/06/07/13/14/15/16.** Membership và thứ tự, neo ghi nhận qua bản sửa, giới hạn hashtag, tham số Đề xuất, quyền phản đối admin, rút bản sửa đang chờ | Các model và cột đề xuất trong PRD có phương án để thử. Xem lại cả COM-10/CHOICE-01, RANK-04/O-14 và LVE-FR-04 khi chọn rule có hiệu lực. |
-| Rà provenance | DecisionDelta ghi chủ sản phẩm đã xác nhận 15 mục trong lượt 10/11. Git object đã ghim là nguồn được nhập. Chat gốc và người ký chưa được truy vết độc lập | Dùng lại trạng thái đã ghi cho snapshot này. Khi nguồn gốc độc lập có thể truy cập, đối chiếu nếu phạm vi hoặc nội dung thay đổi. |
-| Rà migration | D-log trộn snapshot code với luật. Ở base của PR, D-05 và ACC-03 đầu PRD còn nói chỉ có mã email. PR đã cập nhật hai chỉ dẫn này theo backend #152. COM-10 mô tả giữ bản đang công khai, CHOICE-01 còn có chi tiết đề xuất | Tách bằng chứng lịch sử khỏi câu về hiện trạng. Review từng D/ADR và phần chi tiết có overlap. Mọi thay đổi nghĩa cần căn cứ từ owner. |
-| Rà giới hạn kỹ thuật | V1 chỉ so xung đột có cấu trúc cho tập audience bài viết. Graph kiểm tồn tại/cycle cho dependency revision khai báo. Head của proposal khác revision đang tra cứu | Khi hỗ trợ thêm approval, cần kiểm hai head có quyền hiệu lực trong cùng scope, thu hồi/supersede liên ID, quyền theo từng miền, và khôi phục/lỗi khi thao tác trên FS mục tiêu. |
-| Rà consumer | Marker mới có trong PRD, auth/publication spec và bản lịch sử. Dùng `refs` để liệt kê cụ thể. Code, model, prompt ngoài repo và marker bị xóa cần đối chiếu riêng | Truy vết theo ID khi chuyển thêm miền, chạy semantic review và test thực tế sau mỗi lần đổi pin. |
+| Cần chủ sản phẩm chốt khi làm auth | **O-11.** Luồng khôi phục và vai trò email | Đề xuất trong PRD là email đã xác minh làm kênh khôi phục tùy chọn. Cần chốt trước form Web username/mật khẩu |
+| Cần chủ sản phẩm chốt khi mở tombstone | **O-04/08/09/10, O-17.** Số phận bình luận đang chờ, purge, dữ liệu hiển thị, khôi phục, URL cũ sau khi bác bản đang đăng | Model và core đã có baseline. Cần chốt trước API/UI xóa và kiểm cache/excerpt, tombstone và discussion |
+| Cần chủ sản phẩm chốt khi mở tương ứng | **O-01/02/06/07/13/14/15/16/18/19.** Membership và thứ tự, neo “Hữu ích” qua bản sửa, giới hạn hashtag, tham số Đề xuất, phản đối quyết định trực tiếp của admin, rút bản sửa đang chờ, thời hạn grant/điều tra, danh mục thông báo | Các model và cột đề xuất trong PRD có phương án để thử. Xem lại cả COM-10/CHOICE-01, RANK-04/O-14 và LVE-FR-04 khi chọn rule có hiệu lực |
+| Rà provenance | DecisionDelta ghi chủ sản phẩm đã xác nhận 15 mục ngày 10/11 và brief §7 ngày 11/11. Git object đã ghim là nguồn được nhập. Chat gốc và người ký chưa được truy vết độc lập | Dùng lại trạng thái đã ghi cho snapshot này. Khi nguồn gốc độc lập có thể truy cập, đối chiếu nếu phạm vi hoặc nội dung thay đổi |
+| Rà migration | D-log trộn snapshot code với luật. Sổ D/ADR, `CHOICE` theo từng issue (`LVE-PR-01`, `TAG-PR-01`, `DISC-*`) và ID trong code/model chưa được chuyển | Lát cắt tiếp theo theo CHOICE-07: tách phần sản phẩm và kiến trúc trong D-02, D-05..08, D-12, D-14..19 theo từng miền. Mỗi D-ID chỉ có một authority sau khi chuyển. Mọi thay đổi nghĩa cần signoff |
+| Rà giới hạn kỹ thuật | V1 chỉ so xung đột có cấu trúc cho tập audience bài viết. Graph kiểm tồn tại/cycle cho dependency revision khai báo. Chưa có quan hệ `supersedes` giữa các ID: ADM-04 sửa luật của `USER-06`/`O-15` nhưng chỉ nối qua `MOD-10` | Khi cần, thêm quan hệ thay thế liên ID và kiểm xung đột liên miền. Trước đó, tra theo requirement ID (`query MOD-10`) để thấy mọi record hiện hành liên quan |
+| Rà consumer | Marker có trong PRD, auth/publication spec và bản lịch sử. Dùng `refs` để liệt kê cụ thể. Code, model, prompt ngoài repo và marker bị xóa cần đối chiếu riêng | Truy vết theo ID khi chuyển thêm miền, chạy semantic review và test thực tế sau mỗi lần đổi pin |
 
 ## Cutover và hoàn tác
 
-Tra §2–4 tại [TOML](../../decisions/decision-delta-20261110.toml). Dẫn lịch sử về
-[DecisionDelta gốc](https://github.com/loveoverflowcom/vink/blob/0c5bb275c15342607e6701f14019c07e269c2a68/docs/architecture/product-decisions-20261110.md).
+Tra §2–4 và §7.1–7.2 tại [TOML](../../decisions/decision-delta-20261110.toml) và các revision sau
+trong `decisions/proposals/` cùng `decisions/signoffs/`. Dẫn lịch sử về
+[DecisionDelta gốc](https://github.com/loveoverflowcom/vink/blob/af3c34bd624be18d404bd5789620759cae0b0ddb/docs/architecture/product-decisions-20261110.md).
 D-log, ADR ngoài phạm vi, PRD và registry bằng chứng tiếp tục dùng ở các vai trò ghi trong
 bảng trên. Khi có hai nguồn diễn giải lệch, ghi cả nguồn, SHA và hành vi bị ảnh hưởng để review.
 
-Để hoàn tác lát cắt, xuất/cất các proposal đã ghi sau merge, rồi revert cùng nhau phần CLI,
-checks, bundle, marker và hướng dẫn chuyển nguồn. DecisionDelta giữ nguyên các bảng gốc,
+Để hoàn tác lát cắt, xuất/cất các proposal và signoff đã ghi sau merge, rồi revert cùng nhau phần
+CLI, checks, bundle, marker và hướng dẫn chuyển nguồn. Đổi luật mật khẩu `O-12@r2` nằm trong
+`password.rs` và revert riêng được. DecisionDelta giữ nguyên các bảng gốc,
 vì vậy có thể mở lại đường tra Markdown theo SHA cũ. Khi tiếp tục chuyển miền, chốt lại
 ownership của từng ID, giữ link lịch sử và đối chiếu requirement/ADR trước khi đổi nguồn.

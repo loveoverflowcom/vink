@@ -98,9 +98,9 @@ fn check_marker<'a>(
         .entries
         .get(&key)
         .ok_or_else(|| format!("unknown VDR reference {key}"))?;
-    if !matches!(entry.origin, Origin::Legacy(_)) {
+    if matches!(entry.origin, Origin::Proposal(_)) && !entry.effective() {
         return Err(format!(
-            "{key}: pending proposal cannot back a Markdown decision reference"
+            "{key}: a pending or rejected proposal cannot back a Markdown decision reference"
         ));
     }
     if *mode == "active"

@@ -16,7 +16,9 @@ use std::{
 
 use serde_json::{Value, json};
 
-use record::{Base, Content, Entry, Key, Origin, Proposal, Registry, VERSION};
+use record::{
+    Base, Content, Entry, Key, Origin, Proposal, Registry, Signoff, SignoffInput, VERSION,
+};
 
 const HELP: &str = "usage: cargo xtask decision <command>
 
@@ -28,6 +30,7 @@ const HELP: &str = "usage: cargo xtask decision <command>
   diff ID@rN ID@rM                   compare the changed fields of two revisions
   propose ID new INPUT.toml          append a pending proposal for a new VDR-* ID
   propose ID REV:SHA256 INPUT.toml   append a pending revision at the expected head
+  signoff ID@rN SHA256 INPUT.toml    record the owner's outcome for that exact proposal payload
   refs                               report declared Markdown reference freshness
   migrate --dry-run                  render the pinned DecisionDelta import to stdout
   migrate                            install the pinned import once, without overwriting
@@ -60,6 +63,7 @@ pub fn run(root: &Path, args: &[&str], out: &mut impl Write) -> Result<(), Strin
         ["query", rest @ ..] => print_json(out, &query(&Registry::load(root)?, rest)?),
         ["diff", old, new] => print_json(out, &diff(&Registry::load(root)?, old, new)?),
         ["propose", id, base, input] => propose(root, id, base, Path::new(input), out),
+        ["signoff", pin, digest, input] => signoff(root, pin, digest, Path::new(input), out),
         _ => Err("unknown decision arguments; run cargo xtask decision --help".into()),
     }
 }
@@ -118,22 +122,37 @@ fn lookup(registry: &Registry, id: &str) -> Value {
     if let Some((key, entry)) = registry.current(id) {
         return json!({ "lookup": "current", "record": describe(registry, key, entry), "head": head });
     }
-    if head.is_some() {
-        return json!({ "lookup": "pending_only", "id": id, "current": null, "head": head });
+    if let Some((key, entry)) = registry.history(id).next_back() {
+        let lookup = if entry.signoff.is_some() {
+            "no_current"
+        } else {
+            "pending_only"
+        };
+        return json!({ "lookup": lookup, "id": id, "current": null, "head": head, "head_record": describe(registry, key, entry) });
     }
+    // An import group lists every revision it contained, superseded ones included.
+    if legacy::GROUPS.contains(&id) {
+        let revisions: Vec<_> = registry
+            .entries
+            .iter()
+            .filter(
+                |(_, entry)| matches!(&entry.origin, Origin::Legacy(source) if source.group == id),
+            )
+            .map(|(key, entry)| describe(registry, key, entry))
+            .collect();
+        return json!({ "lookup": "group", "id": id, "current": null, "revisions": revisions });
+    }
+    // Requirement and D-IDs are many-to-many links; list the current records that cite them.
     let related: Vec<_> = registry
         .entries
         .iter()
-        .filter_map(|(key, entry)| match &entry.origin {
-            Origin::Legacy(source)
-                if !source.historical
-                    && (id == legacy::GROUP_ID
-                        || source.related_ids.iter().any(|item| item == id)) =>
-            {
-                Some(describe(registry, key, entry))
-            }
-            _ => None,
+        .filter(|(key, entry)| {
+            entry.related_ids().any(|item| item == id)
+                && registry
+                    .current(&key.id)
+                    .is_some_and(|(current, _)| current == *key)
         })
+        .map(|(key, entry)| describe(registry, key, entry))
         .collect();
     json!({
         "lookup": if related.is_empty() { "unknown" } else { "related_only" },
@@ -148,17 +167,24 @@ fn describe(registry: &Registry, key: &Key, entry: &Entry) -> Value {
     value["id"] = json!(key.id);
     value["revision"] = json!(key.revision);
     value["sha256"] = json!(entry.hash);
+    let file = |dir: &str, path: &Path| {
+        format!(
+            "{dir}/{}",
+            path.file_name().unwrap_or_default().to_string_lossy()
+        )
+    };
     value["source"] = match &entry.origin {
         Origin::Legacy(source) => json!({
             "kind": "legacy_import",
-            "group": legacy::GROUP_ID,
+            "group": source.group,
             "path": legacy::SOURCE,
             "commit": legacy::COMMIT,
             "line": source.source_line,
         }),
         Origin::Proposal(_) => json!({
             "kind": "proposal",
-            "path": format!("{}/{}", record::PROPOSALS, entry.path.file_name().unwrap_or_default().to_string_lossy()),
+            "path": file(record::PROPOSALS, &entry.path),
+            "signoff_path": entry.signoff.as_ref().map(|signed| file(record::SIGNOFFS, &signed.path)),
         }),
     };
     // Compare only the structured work-audience field. Free text and other domains need review.
@@ -265,6 +291,7 @@ fn propose(
             hash: hash.clone(),
             path: path.clone(),
             origin: Origin::Proposal(base),
+            signoff: None,
         },
     );
     registry.check_dependencies()?;
@@ -278,6 +305,62 @@ fn propose(
     print_json(
         out,
         &json!({ "proposal": key.to_string(), "status": "PENDING", "sha256": hash }),
+    )
+}
+
+// The CLI checks payload binding and integrity. It cannot authenticate who decided: callers run
+// it only for the owner's explicit words about this exact revision, quoted in `source`.
+fn signoff(
+    root: &Path,
+    pin: &str,
+    digest: &str,
+    input: &Path,
+    out: &mut impl Write,
+) -> Result<(), String> {
+    let key = Key::parse(pin)?;
+    let digest = record::parse_digest(digest)?;
+    let registry = Registry::load(root)?;
+    let outcome: SignoffInput = record::decode(input, &record::read_file(input)?)?;
+    let mut signoff = Signoff {
+        version: VERSION,
+        id: key.id.clone(),
+        revision: key.revision,
+        sha256: digest.into(),
+        status: outcome.status,
+        decided_on: outcome.decided_on,
+        source: outcome.source,
+    };
+    let dir = root.join(record::SIGNOFFS);
+    let path = dir.join(signoff.filename());
+    // Validate the input file's fields under its own name before checking the target.
+    signoff.input().validate(
+        input,
+        registry
+            .entries
+            .get(&key)
+            .map_or(record::Kind::Product, |e| e.content.kind),
+    )?;
+    registry.attach(&path, &mut signoff)?;
+    let canonical = record::encode(&signoff)?;
+    match fs::create_dir(&dir) {
+        Ok(()) => {}
+        Err(error)
+            if error.kind() == io::ErrorKind::AlreadyExists && record::is_directory(&dir)? => {}
+        Err(error) => return Err(format!("{}: {error}", dir.display())),
+    }
+    publish(&path, canonical.as_bytes())?;
+    let effective = registry
+        .current(&key.id)
+        .is_none_or(|(current, _)| current.revision < key.revision)
+        && signoff.status != legacy::Status::Rejected;
+    print_json(
+        out,
+        &json!({
+            "signoff": key.to_string(),
+            "status": signoff.status,
+            "sha256": signoff.sha256,
+            "current": effective,
+        }),
     )
 }
 

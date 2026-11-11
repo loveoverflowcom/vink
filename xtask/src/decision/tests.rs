@@ -10,7 +10,11 @@ use std::{
 
 use serde_json::Value;
 
-use super::{legacy, publish, record::PROPOSALS, run};
+use super::{
+    legacy, publish,
+    record::{PROPOSALS, SIGNOFFS},
+    run,
+};
 
 const DRAFT: &str = r#"kind = "product"
 domain = "publication"
@@ -68,6 +72,16 @@ impl Sandbox {
         self.command(&["propose", id, base, path.to_str().unwrap()])
     }
 
+    fn proposed(&self, id: &str, base: &str, path: &Path) -> String {
+        let output: Value = serde_json::from_str(&self.propose(id, base, path).unwrap()).unwrap();
+        output["sha256"].as_str().unwrap().into()
+    }
+
+    fn signoff(&self, pin: &str, digest: &str, outcome: &str) -> Result<String, String> {
+        let path = self.write("signoff.toml", outcome);
+        self.command(&["signoff", pin, digest, path.to_str().unwrap()])
+    }
+
     fn head(&self, id: &str) -> String {
         let value = self.json(&["query", id]);
         let head = &value["result"]["head"];
@@ -97,7 +111,43 @@ fn imported_status_history_and_related_ids_resolve_without_git() {
         assert_eq!(result["record"]["source"]["commit"], legacy::COMMIT);
     }
     let bundle = sandbox.json(&["query", legacy::GROUP_ID]);
-    assert_eq!(bundle["result"]["related"].as_array().unwrap().len(), 35);
+    assert_eq!(bundle["result"]["lookup"], "group");
+    assert_eq!(bundle["result"]["revisions"].as_array().unwrap().len(), 36);
+    let admin = sandbox.json(&["query", legacy::ADMIN_GROUP_ID]);
+    assert_eq!(admin["result"]["revisions"].as_array().unwrap().len(), 16);
+    // §7 of 11/11 closes O-05 and revises O-03/O-15 without rewriting their 10/11 revision.
+    for (id, status) in [
+        ("O-03", "PRODUCT_CONFIRMED"),
+        ("O-05", "PRODUCT_CONFIRMED"),
+        ("O-15", "OPEN"),
+    ] {
+        let current = &sandbox.json(&["query", id])["result"]["record"];
+        assert_eq!(current["revision"], 2);
+        assert_eq!(current["status"], status);
+        assert_eq!(current["source"]["group"], legacy::ADMIN_GROUP_ID);
+        let first = &sandbox.json(&["query", &format!("{id}@r1")])["result"]["record"];
+        assert_eq!(first["status"], "OPEN");
+        assert_eq!(first["historical"], true);
+        assert_eq!(first["source"]["group"], legacy::GROUP_ID);
+    }
+    for (id, status) in [("ADM-04", "PRODUCT_CONFIRMED"), ("O-17", "OPEN")] {
+        let current = &sandbox.json(&["query", id])["result"]["record"];
+        assert_eq!(current["revision"], 1);
+        assert_eq!(current["status"], status);
+    }
+    let deletion = sandbox.json(&["query", "PUB-04"]);
+    let related = deletion["result"]["related"].as_array().unwrap();
+    assert!(
+        related
+            .iter()
+            .any(|r| r["id"] == "O-05" && r["revision"] == 2)
+    );
+    assert!(
+        !related
+            .iter()
+            .any(|r| r["revision"] == 1 && r["id"] == "O-05")
+    );
+    assert!(related.iter().any(|r| r["id"] == "ADM-08"));
     let account = sandbox.json(&["query", "ACC-03"]);
     assert_eq!(account["result"]["related"].as_array().unwrap().len(), 3);
     assert!(
@@ -145,7 +195,7 @@ fn imported_status_history_and_related_ids_resolve_without_git() {
             .as_array()
             .unwrap()
             .len(),
-        36
+        52
     );
 }
 
@@ -194,12 +244,17 @@ fn semantic_diff_reports_fields_and_pending_cannot_replace_current() {
         serde_json::json!([])
     );
 
-    let open = sandbox.head("O-03");
-    sandbox.propose("O-03", &open, &input).unwrap();
-    assert_eq!(
-        sandbox.json(&["query", "O-03"])["result"]["record"]["status"],
-        "OPEN"
-    );
+    let open = sandbox.head("O-12");
+    sandbox
+        .propose(
+            "O-12",
+            &open,
+            &sandbox.write("account.toml", &DRAFT.replace("publication", "account")),
+        )
+        .unwrap();
+    let lookup = sandbox.json(&["query", "O-12"]);
+    assert_eq!(lookup["result"]["record"]["status"], "OPEN");
+    assert_eq!(lookup["result"]["record"]["revision"], 1);
 }
 
 #[test]
@@ -231,6 +286,11 @@ fn rejects_malformed_inputs_and_self_attestations() {
             &format!("{DRAFT}requires = [\"USER-02@r1\", \"USER-02@r1\"]"),
             "requires",
         ),
+        (
+            &format!("{DRAFT}related_ids = [\"ACC-03\", \"ACC-03\"]"),
+            "related_ids",
+        ),
+        (&format!("{DRAFT}related_ids = [\"acc 03\"]"), "related_ids"),
         (
             &DRAFT.replace("\"Lý do\"", "2026-11-11T12:00:00Z"),
             "rationale",
@@ -488,7 +548,7 @@ fn historical_ref_is_valid_and_active_ref_must_target_current_import() {
         sandbox
             .command(&["refs"])
             .unwrap_err()
-            .contains("pending proposal")
+            .contains("pending or rejected proposal")
     );
     sandbox.write("prd/stale.md", "<!-- vdr: active USER-02@r1 -->\n");
     sandbox.command(&["validate"]).unwrap();
@@ -511,4 +571,245 @@ fn snapshot_and_toml_roundtrip_are_deterministic() {
         first.command(&["query"]).unwrap(),
         second.command(&["query"]).unwrap()
     );
+}
+
+const CONFIRMED: &str = r#"status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-11"
+source = "Chủ sản phẩm, chat 11/11/2026: “đồng ý bản này”"
+"#;
+
+#[test]
+fn signoff_binds_the_exact_payload_and_only_then_changes_current() {
+    let sandbox = Sandbox::new();
+    let account = sandbox.write(
+        "account.toml",
+        &format!(
+            "{}related_ids = [\"ACC-03\"]\n",
+            DRAFT.replace("publication", "account")
+        ),
+    );
+    let base = sandbox.head("O-12");
+    let digest = sandbox.proposed("O-12", &base, &account);
+    let legacy_digest = sandbox.json(&["query", "USER-02"])["result"]["record"]["sha256"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    let zero = "0".repeat(64);
+    for (pin, sha, outcome, message) in [
+        (
+            "O-12@r2",
+            zero.as_str(),
+            CONFIRMED,
+            "sha256: signoff is for payload",
+        ),
+        ("O-12@r2", "ABC", CONFIRMED, "lowercase SHA-256"),
+        ("O-12@r9", digest.as_str(), CONFIRMED, "unknown revision"),
+        (
+            "USER-02@r1",
+            legacy_digest.as_str(),
+            CONFIRMED,
+            "imported revisions",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &CONFIRMED.replace("PRODUCT_CONFIRMED", "ACCEPTED"),
+            "not a signoff outcome",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &CONFIRMED.replace("PRODUCT_CONFIRMED", "PENDING"),
+            "status",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &CONFIRMED.replace("2026-11-11", "2026-02-30"),
+            "decided_on",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &CONFIRMED.replace("\"2026-11-11\"", "2026-11-11T00:00:00Z"),
+            "decided_on",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &format!("{CONFIRMED}authority = \"product_owner\""),
+            "unknown field `authority`",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &format!("{CONFIRMED}sha256 = \"{zero}\""),
+            "unknown field `sha256`",
+        ),
+        (
+            "O-12@r2",
+            digest.as_str(),
+            &CONFIRMED.replace("Chủ sản phẩm, chat 11/11/2026: “đồng ý bản này”", " "),
+            "source",
+        ),
+    ] {
+        let error = sandbox.signoff(pin, sha, outcome).unwrap_err();
+        assert!(error.contains(message), "{pin} {message}: {error}");
+    }
+    assert!(!sandbox.0.join(SIGNOFFS).exists());
+    assert_eq!(
+        sandbox.json(&["query", "O-12"])["result"]["record"]["revision"],
+        1
+    );
+
+    let output: Value =
+        serde_json::from_str(&sandbox.signoff("O-12@r2", &digest, CONFIRMED).unwrap()).unwrap();
+    let traced = sandbox.json(&["query", "ACC-03"]);
+    assert!(
+        traced["result"]["related"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["id"] == "O-12" && r["revision"] == 2)
+    );
+    assert_eq!(output["current"], true);
+    let current = sandbox.json(&["query", "O-12"]);
+    assert_eq!(current["result"]["record"]["revision"], 2);
+    assert_eq!(current["result"]["record"]["status"], "PRODUCT_CONFIRMED");
+    assert_eq!(
+        current["result"]["record"]["signoff"]["decided_on"],
+        "2026-11-11"
+    );
+    assert_eq!(
+        current["result"]["record"]["source"]["signoff_path"],
+        format!("{SIGNOFFS}/O-12.r2.toml")
+    );
+    assert!(
+        sandbox
+            .signoff("O-12@r2", &digest, CONFIRMED)
+            .unwrap_err()
+            .contains("already has a signoff")
+    );
+    // Markdown can pin the signed revision; the imported one is now stale for active use.
+    sandbox.write(
+        "docs/auth.md",
+        "<!-- vdr: active O-12@r2 -->\n<!-- vdr: historical O-12@r1 -->\n",
+    );
+    sandbox.command(&["validate"]).unwrap();
+    sandbox.write("docs/old.md", "<!-- vdr: active O-12@r1 -->\n");
+    assert!(
+        sandbox
+            .command(&["refs"])
+            .unwrap_err()
+            .contains("stale active reference O-12@r1; current is O-12@r2")
+    );
+    fs::remove_file(sandbox.0.join("docs/old.md")).unwrap();
+
+    // A later revision stays pending; a rejection never makes it current.
+    let head = sandbox.head("O-12");
+    let next = sandbox.proposed("O-12", &head, &account);
+    sandbox.write("docs/next.md", "<!-- vdr: historical O-12@r3 -->\n");
+    assert!(
+        sandbox
+            .command(&["refs"])
+            .unwrap_err()
+            .contains("pending or rejected")
+    );
+    sandbox
+        .signoff(
+            "O-12@r3",
+            &next,
+            &CONFIRMED.replace("PRODUCT_CONFIRMED", "REJECTED"),
+        )
+        .unwrap();
+    assert!(
+        sandbox
+            .command(&["refs"])
+            .unwrap_err()
+            .contains("pending or rejected")
+    );
+    fs::remove_file(sandbox.0.join("docs/next.md")).unwrap();
+    let lookup = sandbox.json(&["query", "O-12"]);
+    assert_eq!(lookup["result"]["record"]["revision"], 2);
+    assert_eq!(lookup["result"]["head"]["revision"], 3);
+    assert_eq!(
+        sandbox.json(&["query", "O-12@r3"])["result"]["record"]["status"],
+        "REJECTED"
+    );
+    let diff = sandbox.json(&["diff", "O-12@r2", "O-12@r3"]);
+    assert!(
+        diff["changes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|change| change["field"] == "status" && change["after"] == "REJECTED")
+    );
+
+    // Architecture outcomes differ from product ones; a rejected-only ID has no current record.
+    let architecture = sandbox.write(
+        "arch.toml",
+        &DRAFT.replace("\"product\"", "\"architecture\""),
+    );
+    let arch = sandbox.proposed("VDR-ARCH", "new", &architecture);
+    assert!(
+        sandbox
+            .signoff("VDR-ARCH@r1", &arch, CONFIRMED)
+            .unwrap_err()
+            .contains("not a signoff outcome")
+    );
+    sandbox
+        .signoff(
+            "VDR-ARCH@r1",
+            &arch,
+            &CONFIRMED.replace("PRODUCT_CONFIRMED", "ACCEPTED"),
+        )
+        .unwrap();
+    assert_eq!(
+        sandbox.json(&["query", "VDR-ARCH"])["result"]["record"]["status"],
+        "ACCEPTED"
+    );
+    let input = sandbox.write("draft.toml", DRAFT);
+    let declined = sandbox.proposed("VDR-NO", "new", &input);
+    sandbox
+        .signoff(
+            "VDR-NO@r1",
+            &declined,
+            &CONFIRMED.replace("PRODUCT_CONFIRMED", "REJECTED"),
+        )
+        .unwrap();
+    assert_eq!(
+        sandbox.json(&["query", "VDR-NO"])["result"]["lookup"],
+        "no_current"
+    );
+
+    // Editing a signed payload, or the digest a signoff names, invalidates the signoff.
+    let path = sandbox.0.join(PROPOSALS).join("VDR-ARCH.r1.toml");
+    let saved = fs::read_to_string(&path).unwrap();
+    fs::write(&path, saved.replace("Dòng một.", "Dòng đã đổi.")).unwrap();
+    assert!(
+        sandbox
+            .command(&["validate"])
+            .unwrap_err()
+            .contains("VDR-ARCH@r1: sha256: signoff is for payload")
+    );
+    fs::write(&path, saved).unwrap();
+    let signed = sandbox.0.join(SIGNOFFS).join("VDR-NO.r1.toml");
+    let record = fs::read_to_string(&signed).unwrap();
+    fs::write(&signed, record.replace(&declined, &zero)).unwrap();
+    assert!(
+        sandbox
+            .command(&["validate"])
+            .unwrap_err()
+            .contains("VDR-NO@r1: sha256")
+    );
+    fs::write(&signed, record.replace("revision = 1", "revision = 2")).unwrap();
+    assert!(
+        sandbox
+            .command(&["validate"])
+            .unwrap_err()
+            .contains("does not match signoff filename")
+    );
+    fs::write(&signed, record).unwrap();
+    sandbox.write(&format!("{SIGNOFFS}/.tmp-interrupted"), "partial");
+    sandbox.command(&["validate"]).unwrap();
 }

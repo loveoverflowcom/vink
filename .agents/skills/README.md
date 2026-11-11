@@ -65,7 +65,9 @@ For a task that depends on a decision, start with
 working checkout and use the PRD/ADR for detailed requirements and IDs outside the migrated
 DecisionDelta slice. Keep the revision and snapshot in a handoff. An unavailable lookup needs
 a sourced gap or an explicit historical citation. Route proposals for migrated IDs through
-[vink-specify](vink-specify/SKILL.md). A clear fix with settled rules goes straight to its owner.
+[vink-specify](vink-specify/SKILL.md). Record a signoff only for the owner's own words about that
+exact revision; a proposal without one stays `PENDING` and never becomes current. A clear fix with
+settled rules goes straight to its owner.
 
 ## Shared conventions
 

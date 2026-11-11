@@ -23,7 +23,7 @@ Mỗi loại thông tin chỉ có một nơi sở hữu chính; các tài liệu
 | --- | --- |
 | Định hướng sản phẩm và phạm vi lớn | [`prd/vision.md`](../../../prd/vision.md) |
 | Yêu cầu và điều kiện nghiệm thu có ID (`WR`, `PUB`, `AUD`, `MOD`, `COM`, `LVE`, `TAG`, `COL`, `HTG`, `RANK`, `TOP`, `ACC`) | [`prd/requirements.md`](../../../prd/requirements.md) |
-| Quyết định đã chuyển từ DecisionDelta §2–4 (USER, CHOICE theo phạm vi, O) | [Kho TOML](../../../decisions/README.md), qua `cargo xtask decision` |
+| Quyết định đã chuyển từ DecisionDelta §2–4 và §7 (USER, CHOICE theo phạm vi, O, ADM) và revision `VDR-*` | [Kho TOML](../../../decisions/README.md), qua `cargo xtask decision` |
 | Quyết định kiến trúc và nguồn chưa chuyển (`D-*`, ADR) | [Sổ D-ID](../../../docs/architecture/decisions.md) và ADR theo chủ đề |
 | Đặc tả chi tiết theo miền | Tài liệu domain trong `docs/architecture/` (`publication-moderation.md`, `comment-editing.md`, `collections.md`, `discovery-ranking.md`, `hashtags.md`, …) |
 | Đặc tả giao diện và bố cục | `docs/design/` (theo quy ước [vink-layout-spec](../vink-layout-spec/SKILL.md)) |
@@ -36,9 +36,13 @@ Mỗi loại thông tin chỉ có một nơi sở hữu chính; các tài liệu
 2. Sau câu trả lời của chủ sản phẩm hoặc khi cần đưa một phương án ra review, soạn payload TOML
    theo [hợp đồng](../../../decisions/README.md). Giữ căn cứ và phạm vi được xác nhận trong
    bàn giao. Dùng `decision propose ID REV:SHA256 INPUT.toml`, rồi `decision diff` để kiểm nội dung.
-3. Revision mới ở `PENDING` trong kho. Ghi phần còn chờ nguồn xác nhận và đối chiếu tác động tới
-   PRD/spec/evidence. Khi chỉ thay đổi hiện trạng hoặc bằng chứng, cập nhật registry phát triển.
-   Với quyết định chưa chuyển, ghi vào owner Markdown tương ứng.
+3. Revision mới ở `PENDING` trong kho. Chỉ chạy `decision signoff ID@rN SHA256 INPUT.toml` khi chủ
+   sản phẩm đã duyệt, từ chối hoặc ủy quyền quyết định cho đúng revision đó, trong phiên hiện tại
+   hoặc trong brief/issue do chủ sản phẩm viết. Trích nguyên văn lời đó trong `source`. Không suy
+   signoff từ việc được giao việc hay từ một review. Thiếu lời đó thì giữ `PENDING` và ghi phần còn
+   chờ. Sau signoff, đối chiếu tác động tới PRD/spec/code/evidence và cập nhật marker `active`.
+   Khi chỉ thay đổi hiện trạng hoặc bằng chứng, cập nhật registry phát triển. Với quyết định chưa
+   chuyển, ghi vào owner Markdown tương ứng.
 
 ## 2. Bảy phần cần có của một đặc tả (viết theo độ sâu phù hợp)
 
@@ -75,9 +79,10 @@ Khi cập nhật tài liệu, phân biệt rõ: (1) **Quy tắc đang áp dụng
 lại phần còn hiệu lực), và (4) **Bằng chứng kiểm thử lịch sử** (giữ nguyên SHA và môi trường của lần
 chạy cũ; thêm kết quả mới ở mục riêng).
 
-**Khi code và tài liệu lệch nhau** (ví dụ PRD ghi mật khẩu `≥ 10 ký tự` nhưng `Password::parse` kiểm
-`10–128 byte`): tuyệt đối không tự ý sửa PRD để hợp thức hóa code khi chưa có xác nhận của chủ sản
-phẩm; hãy ghi rõ độ lệch tại mục hiện trạng/registry và đưa vào câu hỏi cần chốt khi làm phần liên quan.
+**Khi code và tài liệu lệch nhau** (ví dụ trước 11/11/2026 PRD ghi mật khẩu `≥ 10 ký tự` nhưng
+`Password::parse` kiểm `10–128 byte`): tuyệt đối không tự ý sửa PRD để hợp thức hóa code khi chưa có
+xác nhận của chủ sản phẩm; hãy ghi rõ độ lệch tại mục hiện trạng/registry và đưa vào câu hỏi cần chốt
+khi làm phần liên quan. Ca này được chốt bằng `O-12@r2` (đếm ký tự sau NFKC) rồi mới sửa code.
 
 ## 4. Duy trì đặc tả ở năm thời điểm và khi làm nhiều phiên/PR
 

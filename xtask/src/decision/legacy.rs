@@ -1,4 +1,5 @@
-//! Import the reviewed DecisionDelta slice. New signoffs require their own trust source.
+//! Import the reviewed DecisionDelta slices (§2–4 of 10/11 and the §7 admin addendum of 11/11).
+//! Later revisions go through proposals and owner signoffs, never through this importer.
 
 use std::{collections::BTreeMap, path::Path, process::Command};
 
@@ -8,15 +9,18 @@ use super::record::{self, Audience, Content, Entry, Key, Kind, Origin, VERSION};
 use crate::checks::sha256_hex;
 
 pub(super) const GROUP_ID: &str = "PRODUCT-DECISIONS-20261110";
+pub(super) const ADMIN_GROUP_ID: &str = "ADMIN-MODERATION-20261111";
+pub(super) const GROUPS: [&str; 2] = [GROUP_ID, ADMIN_GROUP_ID];
 pub(super) const FILE: &str = "decisions/decision-delta-20261110.toml";
-pub(super) const COMMIT: &str = "0c5bb275c15342607e6701f14019c07e269c2a68";
+// develop after #165 added §7; §2–4 are byte-identical to the first import at 0c5bb27.
+pub(super) const COMMIT: &str = "af3c34bd624be18d404bd5789620759cae0b0ddb";
 pub(super) const SOURCE: &str = "docs/architecture/product-decisions-20261110.md";
 // Independent of the editable TOML. Review changes to this pin and to the migration together.
 // This checks a legacy import, never an actor, owner receipt, or PR approval.
 pub(super) const IMPORT_SHA256: &str =
-    "7fe0b0855d48db691408c4f5205d94337b0ab86002bf8f718305acda982dee84";
+    "d6c1b35064ffdac9d3222e24c1c6d7314d07e9564711c617da0a2c3b4ccf7b07";
 
-#[derive(Clone, Copy, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(super) enum Status {
     ProductConfirmed,
@@ -24,6 +28,10 @@ pub(super) enum Status {
     Open,
     DesignProposed,
     Provisional,
+    /// Architecture only, and only through an owner signoff.
+    Accepted,
+    /// Signoff only: the owner declined this revision; it never becomes current.
+    Rejected,
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -41,11 +49,16 @@ pub(super) struct Context {
     model_baseline: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     change_impact: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    core: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Provenance {
+    pub group: String,
     pub status: Status,
     pub historical: bool,
     pub source_line: usize,
@@ -105,7 +118,8 @@ pub(super) fn load(root: &Path) -> Result<BTreeMap<Key, Entry>, String> {
                 content: row.content,
                 hash,
                 path: path.clone(),
-                origin: Origin::Legacy(row.legacy),
+                origin: Origin::Legacy(Box::new(row.legacy)),
+                signoff: None,
             },
         );
     }
@@ -136,16 +150,19 @@ pub(super) fn render(root: &Path) -> Result<String, String> {
         source_path: SOURCE.into(),
         records: Vec::new(),
     };
-    let mut counts = [0; 3];
+    let mut counts = [0; 5];
     let mut section = "";
+    let mut titles = BTreeMap::new();
     for (index, line) in text.lines().enumerate() {
-        if line.starts_with("## ") {
+        if line.starts_with("## ") || line.starts_with("### ") {
             section = line.split_whitespace().nth(1).unwrap_or_default();
         }
         let (table, prefix, expected_fields) = match section {
             "2." => (Table::Product, "| USER-", 6),
             "3." => (Table::Design, "| 0", 5),
             "4." => (Table::Open, "| O-", 4),
+            "7.1." => (Table::Admin, "| ADM-", 6),
+            "7.2." => (Table::AdminOpen, "| O-", 2),
             _ => continue,
         };
         if !line.starts_with(prefix) {
@@ -159,18 +176,31 @@ pub(super) fn render(root: &Path) -> Result<String, String> {
             ));
         }
         counts[table as usize] += 1;
-        import
-            .records
-            .extend(import_row(&fields, table, index + 1)?);
+        let rows = match table {
+            Table::Admin => vec![admin_row(&fields, index + 1)?],
+            Table::AdminOpen => vec![admin_open_row(&fields, &titles, index + 1)?],
+            _ => import_row(&fields, table, index + 1)?,
+        };
+        for row in &rows {
+            titles.insert(row.id.clone(), row.content.title.clone());
+        }
+        import.records.extend(rows);
     }
-    if counts != [15, 4, 16] {
+    if counts != [15, 4, 16, 10, 6] {
         return Err(format!(
-            "{SOURCE}: expected 15 USER, 4 CHOICE and 16 O rows, got {counts:?}"
+            "{SOURCE}: expected 15 USER, 4 CHOICE, 16 O, 10 ADM and 6 O-update rows, got {counts:?}"
         ));
     }
     import
         .records
         .sort_by(|a, b| (&a.id, a.revision).cmp(&(&b.id, b.revision)));
+    // A later revision in the source supersedes an earlier one of the same ID.
+    for index in 1..import.records.len() {
+        let (before, after) = import.records.split_at_mut(index);
+        if before[index - 1].id == after[0].id {
+            before[index - 1].legacy.historical = true;
+        }
+    }
     record::encode(&import)
 }
 
@@ -179,6 +209,120 @@ enum Table {
     Product,
     Design,
     Open,
+    Admin,
+    AdminOpen,
+}
+
+fn optional(field: &str) -> Option<String> {
+    (field != "—").then(|| field.into())
+}
+
+// §7.1: Quyết định | ID canonical | Luật cũ | Luật mới | Model | Core. The source marks the
+// rules PRODUCT_CONFIRMED and type names, rejection codes and technical baselines DESIGN_PROPOSED.
+fn admin_row(fields: &[&str], source_line: usize) -> Result<Row, String> {
+    let (id, title) = fields[0]
+        .split_once(' ')
+        .ok_or_else(|| format!("{SOURCE}:{source_line}: missing ID and title"))?;
+    let domain = match id {
+        "ADM-06" | "ADM-07" | "ADM-08" => "publication",
+        "ADM-01" | "ADM-02" | "ADM-03" | "ADM-04" | "ADM-05" | "ADM-09" | "ADM-10" => "moderation",
+        _ => return Err(format!("{SOURCE}:{source_line}: unmapped ID {id}")),
+    };
+    Ok(Row {
+        id: id.into(),
+        revision: 1,
+        content: Content {
+            kind: Kind::Product,
+            domain: domain.into(),
+            title: title.into(),
+            resolution: fields[3].into(),
+            rationale: None,
+            requires: vec![],
+            related_ids: vec![],
+            work_audiences: vec![],
+        },
+        legacy: Provenance {
+            group: ADMIN_GROUP_ID.into(),
+            status: Status::ProductConfirmed,
+            historical: false,
+            source_line,
+            related_ids: related_ids(fields[1]),
+            context: Context {
+                canonical_references: optional(fields[1]),
+                previous_rule: optional(fields[2]),
+                model: optional(fields[4]),
+                core: optional(fields[5]),
+                ..Context::default()
+            },
+        },
+    })
+}
+
+// §7.2: # | Thay đổi. An existing O-ID gets its next revision; a new one starts at r1.
+// “Đóng.” and an explicit `PRODUCT_CONFIRMED` close the question; everything else stays OPEN,
+// including “Đóng một phần.”, whose remaining part is still a question.
+fn admin_open_row(
+    fields: &[&str],
+    titles: &BTreeMap<String, String>,
+    source_line: usize,
+) -> Result<Row, String> {
+    let (id, change) = (fields[0], fields[1]);
+    let (domain, links, new_title) = match id {
+        "O-03" | "O-05" => ("publication", spec_links(id), None),
+        "O-15" => ("moderation", spec_links(id), None),
+        "O-17" => (
+            "publication",
+            "MOD-13, PUB-05",
+            Some("Trang ở URL cũ sau khi moderator bác bản đang đăng"),
+        ),
+        "O-18" => (
+            "moderation",
+            "MOD-11, MOD-15",
+            Some("Thời hạn mặc định của grant và hồ sơ điều tra"),
+        ),
+        "O-19" => (
+            "publication",
+            "COM-11",
+            Some("Danh mục sự kiện thông báo cho tác giả"),
+        ),
+        _ => return Err(format!("{SOURCE}:{source_line}: unmapped ID {id}")),
+    };
+    let (revision, title) = match (titles.get(id), new_title) {
+        (Some(title), None) => (2, title.clone()),
+        (None, Some(title)) => (1, title.into()),
+        _ => {
+            return Err(format!(
+                "{SOURCE}:{source_line}: unexpected revision for {id}"
+            ));
+        }
+    };
+    let status = if change.starts_with("**Đóng.**") || change.contains("(`PRODUCT_CONFIRMED`)") {
+        Status::ProductConfirmed
+    } else {
+        Status::Open
+    };
+    Ok(Row {
+        id: id.into(),
+        revision,
+        content: Content {
+            kind: Kind::Product,
+            domain: domain.into(),
+            title,
+            resolution: change.into(),
+            rationale: None,
+            requires: vec![],
+            related_ids: vec![],
+            work_audiences: vec![],
+        },
+        legacy: Provenance {
+            group: ADMIN_GROUP_ID.into(),
+            status,
+            historical: false,
+            source_line,
+            related_ids: related_ids(links),
+            context: Context::default(),
+        },
+    })
 }
 
 fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<Row>, String> {
@@ -246,6 +390,11 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
                 ..Context::default()
             },
         ),
+        Table::Admin | Table::AdminOpen => {
+            return Err(format!(
+                "{SOURCE}:{source_line}: §7 rows use their own importer"
+            ));
+        }
     };
     let mut rows = Vec::new();
     if id == "USER-08" {
@@ -261,9 +410,11 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
                 resolution: fields[2].into(),
                 rationale: None,
                 requires: vec![],
+                related_ids: vec![],
                 work_audiences: vec![],
             },
             legacy: Provenance {
+                group: GROUP_ID.into(),
                 status: Status::Provisional,
                 historical: true,
                 source_line,
@@ -286,6 +437,7 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
             resolution: resolution.into(),
             rationale,
             requires: vec![],
+            related_ids: vec![],
             work_audiences: if id == "USER-02" {
                 vec![Audience::Private, Audience::Public]
             } else {
@@ -293,6 +445,7 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
             },
         },
         legacy: Provenance {
+            group: GROUP_ID.into(),
             status,
             historical: false,
             source_line,

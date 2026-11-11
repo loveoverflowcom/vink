@@ -1,0 +1,33 @@
+version = 1
+id = "VDR-DECISION-SIGNOFF"
+revision = 1
+
+[content]
+kind = "product"
+domain = "decision-registry"
+title = "Nguồn xác nhận và mức cưỡng chế cho revision quyết định mới"
+resolution = """
+Revision mới chỉ có hiệu lực khi có signoff của chủ sản phẩm cho đúng `ID@rN` và SHA-256 của payload.
+Proposal luôn ở `PENDING`. Các trường tự khai như `status`, `approval` hay `authority` bị từ chối.
+
+Nguồn xác nhận là lời của chủ sản phẩm duyệt, từ chối hoặc ủy quyền quyết định cho đúng revision đó.
+Lời này được trích nguyên văn trong `source` cùng ngày quyết định. Agent chỉ chạy `decision signoff`
+khi lời đó có trong phiên làm việc hiện tại hoặc trong brief/issue do chủ sản phẩm viết. Signoff vào
+`develop` qua PR do chủ sản phẩm merge, hoặc do agent merge theo lệnh rõ ràng của chủ sản phẩm.
+Kết quả `REJECTED` giữ lại lời từ chối và không bao giờ thành hiện hành.
+
+Mức cưỡng chế gồm công cụ local và `verify quick` trên CI. Hai lớp này kiểm toàn vẹn: payload khớp hash,
+mỗi revision chỉ có một signoff và outcome hợp lệ theo loại quyết định. Chúng không xác thực danh tính
+người quyết định. Chưa bật branch protection, GitHub App hay chữ ký. Muốn chặn ghi ngoài workflow cần một
+quyết định riêng.
+"""
+rationale = """
+Vision đặt chủ sản phẩm làm người chốt nghiệp vụ, và kết quả AI không mang thẩm quyền. Vì vậy proposal
+do agent viết phải ở `PENDING` cho tới khi chủ sản phẩm lên tiếng. Chủ sản phẩm làm việc qua agent bằng
+cùng một tài khoản GitHub. Phương án writer tách biệt cộng review PR không vận hành được, vì GitHub không
+cho tác giả tự approve PR. Một receipt có danh tính xác thực độc lập cần hạ tầng mà runtime chưa có.
+Phương án chọn là chứng thực: trích nguyên văn lời chủ sản phẩm, gắn hash payload và merge có kiểm soát.
+Cách này bắt được payload bị đổi sau signoff, signoff cũ và signoff sai revision. Rủi ro còn lại là người
+có quyền ghi repo có thể tự viết signoff. Lịch sử Git và review PR là nơi phát hiện, và rủi ro này được
+ghi công khai.
+"""

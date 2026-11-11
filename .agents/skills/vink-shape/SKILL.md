@@ -46,7 +46,7 @@ hoặc lát cắt đã có đủ quyết định đi thẳng tới [vink-work-it
 Ví dụ: thêm một bảng PostgreSQL hay chọn cấu trúc index là lựa chọn kỹ thuật của agent; nhưng việc
 bảng đó lưu toàn văn nháp riêng, ai được đọc và dữ liệu có gửi sang provider AI hay không là quyết
 định sản phẩm cần căn cứ rõ. Một baseline kỹ thuật trong pure core cho mục đang `OPEN` (như `O-03`
-trên tombstone hay kiểm tra `10–128 byte` trong `Password::parse` so với `≥ 10 ký tự` ở `ACC-03`)
+trên tombstone trước #165, hay `O-12` trước khi `O-12@r2` chốt cách đếm ký tự mật khẩu)
 **không** có nghĩa chủ sản phẩm đã chốt; khi làm tới tính năng phụ thuộc trực tiếp vào nó, phải nêu
 rõ và hỏi chủ sản phẩm.
 

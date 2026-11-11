@@ -1,6 +1,7 @@
 /target/
 /decisions/.tmp-*
 /decisions/proposals/.tmp-*
+/decisions/signoffs/.tmp-*
 # Local configuration; .env.example is the committed template.
 .env
 node_modules/

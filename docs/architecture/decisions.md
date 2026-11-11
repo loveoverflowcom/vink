@@ -6,7 +6,7 @@
 [DecisionDelta](product-decisions-20261110.md) ghi luật cũ → luật mới, lựa chọn `DESIGN_PROPOSED`
 và các điểm `OPEN`. Trong bảng dưới, “**Hướng sản phẩm đã chốt**” nghĩa là chủ sản phẩm đã chọn
 ngữ nghĩa; nó **không** chuyển ADR thành Accepted và không nói runtime đã có. Các đoạn văn cũ được
-giữ làm lịch sử; chỗ bị thay có ghi chú ngày. Tra record của DecisionDelta §2–4 tại
+giữ làm lịch sử; chỗ bị thay có ghi chú ngày. Tra record của DecisionDelta §2–4 và §7.1–7.2 tại
 [kho TOML](../../decisions/README.md). D-ID, INV và spike bên dưới vẫn được tra cứu tại đây.
 
 ## 1. Ba quyết định ảnh hưởng lớn nhất
