@@ -1,9 +1,6 @@
 ---
 name: vink-code-review
-description: >-
-  Review an existing Vink PR, commit range, patch or working tree for actionable
-  regressions, ownership, publication/privacy risks and evidence gaps. Use for code
-  or repository-policy review; report-only unless the user also requests fixes.
+description: Review an existing Vink PR, commit range, patch or working tree for actionable regressions, ownership, publication/privacy risks and evidence gaps. Use for code or repository-policy review; report-only unless the user also requests fixes.
 ---
 
 # Vink code review
@@ -33,7 +30,7 @@ do not ask again solely because this skill defaults to report-only.
 
 | Change touches | Trace and challenge |
 | --- | --- |
-| Requirements, AGENTS, skills or other policy | Current user intent, proposed/accepted status, source provenance, routing, real paths and available commands |
+| Requirements, AGENTS, skills or other policy | Current user intent, four status dimensions (product decision, architecture status, implementation level, evidence), `OPEN`/`DESIGN_PROPOSED` items not elevated to `PRODUCT_CONFIRMED`, semantic drift between PRD and code (e.g. char vs byte bounds), registry consistency (`vink-specify`) and unasked product choices (`vink-shape`) |
 | Types, JSON/SQL parsing, errors | Construction bypasses, wrong-subject bindings, exact outcomes, useful conflict/unavailable distinctions |
 | Module/framework imports | Domain decisions hidden in handlers/components; abstractions without a consumer; server code leaking into WASM |
 | Drafts, revisions, moderation, publication | WR/PUB/MOD and INV IDs, exact snapshots, current authority, stale decisions, author intent, atomic pointer/outbox |

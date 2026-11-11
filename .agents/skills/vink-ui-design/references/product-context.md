@@ -21,13 +21,13 @@ Một người có thể giữ nhiều vai trò, nhưng đăng nhập hoặc quy
 cấp quyền đăng thay tác giả. Thiết kế trẻ trung không đồng nghĩa chính sách nhận
 người chưa thành niên đã được chốt.
 
-## Ba không gian
+## Các không gian trải nghiệm chính
 
 | Không gian | Mục tiêu | Điều phải nhìn thấy |
 | --- | --- | --- |
-| Bàn viết | Soạn và sửa riêng tư | Bản đang làm, trạng thái lưu, phiên bản và việc tiếp theo. |
-| Xưởng Viết | Chia sẻ và trưởng thành | Tác phẩm công khai, mong đợi phản hồi, góp ý gắn với văn bản. |
-| Tạp Chí | Khám phá có biên tập | Tuyển tập hữu hạn, lời dẫn, lý do giới thiệu, bản được tuyển. |
+| Bàn viết | Soạn, sửa riêng tư, chụp snapshot và chọn audience | Bản đang làm, trạng thái lưu, audience (“Chỉ mình tôi”/“Công khai”), kết quả duyệt từng bản và bản đang công khai. |
+| Trình đọc & Xưởng Viết | Đọc yên tĩnh, chia sẻ và trưởng thành qua phản hồi | Tác phẩm công khai (hoặc trang thay thế tombstone khi tác giả đã xóa bài công khai), mong đợi phản hồi, bình luận hai tầng và ghi nhận văn học. |
+| Khám phá & Bộ sưu tập | Tìm bài đọc phù hợp và tổ chức bài cá nhân | Danh sách hữu hạn (Mới, Đề xuất, Top 100, thẻ/hashtag) và bộ sưu tập cá nhân của tác giả (hiển thị theo phép AND quyền đọc). *Lưu ý:* Tạp Chí/tuyển chọn biên tập (`ED-02`) và tác phẩm nhiều chương (`WR-04`) đang `DEFERRED` từ 10/11/2026. |
 
 Đây là phạm vi trải nghiệm, không phải yêu cầu ba ứng dụng/tab/dashboard riêng.
 Trang tác phẩm và component có thể dùng chung. Khách có thể đọc bài công khai trọn

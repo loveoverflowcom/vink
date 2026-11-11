@@ -197,7 +197,24 @@ fn rel(root: &Path, path: &Path) -> String {
         .to_string()
 }
 
+const MAX_AGENTS_MD_BYTES: usize = 24_000;
+
 fn skills(root: &Path, problems: &mut Vec<String>) {
+    let agents_md = root.join("AGENTS.md");
+    if let Some(text) = read(&agents_md) {
+        if text.len() >= MAX_AGENTS_MD_BYTES {
+            problems.push(format!(
+                "AGENTS.md is {} bytes (must be < {MAX_AGENTS_MD_BYTES} bytes so Antigravity does not truncate project rules)",
+                text.len()
+            ));
+        }
+    } else {
+        problems.push("AGENTS.md is missing".into());
+    }
+    let claude_md = read(&root.join("CLAUDE.md")).unwrap_or_default();
+    if !claude_md.lines().any(|l| l.trim() == "@AGENTS.md") {
+        problems.push("CLAUDE.md must import `@AGENTS.md` for Claude Code parity".into());
+    }
     let dir = root.join(".agents/skills");
     let index = read(&dir.join("README.md")).unwrap_or_default();
     let Ok(entries) = std::fs::read_dir(&dir) else {
@@ -226,12 +243,8 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
         if !yaml.contains(&format!("${name}")) {
             problems.push(format!("{name}: default_prompt must invoke `${name}`"));
         }
-        if !root
-            .join(".claude/skills")
-            .join(&name)
-            .join("SKILL.md")
-            .is_file()
-        {
+        let claude_link = root.join(".claude/skills").join(&name);
+        if !claude_link.join("SKILL.md").is_file() {
             problems.push(format!(
                 "{name}: Claude Code cannot load it; add symlink .claude/skills/{name} -> ../../.agents/skills/{name}"
             ));
@@ -242,7 +255,8 @@ fn skills(root: &Path, problems: &mut Vec<String>) {
     }
 }
 
-/// Frontmatter needs `name` equal to the directory and a non-empty `description`.
+/// Frontmatter needs `name` equal to the directory and a single-line non-empty `description`
+/// for clean parsing across Codex, Claude Code and Antigravity.
 fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
     let mut problems = Vec::new();
     let mut lines = text.lines();
@@ -254,16 +268,14 @@ fn skill_frontmatter(name: &str, text: &str) -> Vec<String> {
         problems.push(format!("{name}: frontmatter `name` must be `{name}`"));
     }
     let description = front.iter().position(|l| l.starts_with("description:"));
-    let has_text = description.is_some_and(|i| {
+    let has_inline_text = description.is_some_and(|i| {
         let inline = front[i].trim_start_matches("description:").trim();
-        let folded = front[i + 1..]
-            .iter()
-            .take_while(|l| l.starts_with(' '))
-            .any(|l| !l.trim().is_empty());
-        (!inline.is_empty() && inline != ">-" && inline != ">" && inline != "|") || folded
+        !inline.is_empty() && inline != ">-" && inline != ">" && inline != "|"
     });
-    if !has_text {
-        problems.push(format!("{name}: frontmatter `description` is empty"));
+    if !has_inline_text {
+        problems.push(format!(
+            "{name}: frontmatter `description` must be a non-empty single-line string"
+        ));
     }
     problems
 }
@@ -962,7 +974,7 @@ mod tests {
 
     #[test]
     fn frontmatter_requires_matching_name_and_description() {
-        let ok = "---\nname: vink-x\ndescription: >-\n  Does x.\n---\n# X\n";
+        let ok = "---\nname: vink-x\ndescription: Does x.\n---\n# X\n";
         assert!(skill_frontmatter("vink-x", ok).is_empty());
         let bad = "---\nname: other\ndescription: >-\n---\n";
         assert_eq!(skill_frontmatter("vink-x", bad).len(), 2);

@@ -1,10 +1,6 @@
 ---
 name: vink-why
-description: >-
-  Investigate why a Vink design or behavior was chosen using decision records,
-  scoped Git history and relevant PR or issue context. Use for rationale,
-  rejected alternatives or reconsidering a decision; distinguish recorded intent
-  from an explanation inferred from code.
+description: Investigate why a Vink design or behavior was chosen using decision records, scoped Git history and relevant PR or issue context. Use for rationale, rejected alternatives or reconsidering a decision; distinguish recorded intent from an explanation inferred from code.
 ---
 
 # Vink why

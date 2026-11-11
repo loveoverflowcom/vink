@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vink Specify"
+  short_description: "Viết và duy trì đặc tả domain/UX/dữ liệu đúng nơi sở hữu"
+  default_prompt: "Dùng $vink-specify để chuyển quyết định đã chốt thành đặc tả và đồng bộ PRD, ADR, domain spec cùng các registry hiện trạng."
+policy:
+  allow_implicit_invocation: true

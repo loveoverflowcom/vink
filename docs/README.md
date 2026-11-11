@@ -28,9 +28,9 @@ Hướng kiến trúc: Vink sở hữu tác phẩm, vòng đời xuất bản **
 - **Ưu tiên từ yêu cầu mới:** AI hỗ trợ kiểm duyệt ngay từ MVP. Mức tự động hóa tăng sau khi có kết quả đánh giá và khả năng vận hành phù hợp.
 - **Đã chốt 03/11/2026:** Vink sở hữu bình luận (module trong app, PostgreSQL); tác giả bật/tắt bình luận theo tác phẩm, không sửa/xóa bình luận người khác.
 - **Khuyến nghị:** Vink sở hữu nội dung văn học, Rust modular monolith, một nguồn định danh Vink ổn định.
-- **Hướng sản phẩm đã chốt 10/11/2026 (chưa có runtime):** mạng xã hội bài ngắn với bộ sưu tập cá nhân; hai audience “Chỉ mình tôi”/“Công khai”; trợ lý AI là luồng duyệt mặc định cho bài và bình luận, quản trị viên ở trên và nhận phản đối; tác giả xóa bài để lại trang thay thế cùng bình luận hợp lệ; sửa bình luận có dấu “Đã sửa”; hashtag; Đề xuất và Top 100; username + mật khẩu là đăng nhập chính.
+- **Hướng sản phẩm đã chốt 10/11/2026 (mới triển khai một phần lõi và API):** mạng xã hội bài ngắn với bộ sưu tập cá nhân; hai audience “Chỉ mình tôi”/“Công khai”; trợ lý AI là luồng duyệt mặc định cho bài và bình luận, quản trị viên ở trên và nhận phản đối; tác giả xóa bài để lại trang thay thế cùng bình luận hợp lệ; sửa bình luận có dấu “Đã sửa”; hashtag; Đề xuất và Top 100; username + mật khẩu là đăng nhập chính (xem [registry](development/product-decisions-registry.md)).
 - **Hoãn 10/11/2026:** nhóm tuổi phục vụ (không phải quyết định mở cho mọi độ tuổi), tác phẩm nhiều chương, Tạp Chí/tuyển chọn.
-- **Chưa chốt:** D-05 chưa Accepted (code hiện chỉ có mã email; hướng mới là username + mật khẩu), công thức và tham số xếp hạng, retention/purge sau khi xóa, các điểm `OPEN` trong DecisionDelta, ngân sách hiệu suất/AI.
+- **Chưa chốt:** D-05 chưa Accepted (backend đã có cả mã email và username/mật khẩu `#152`, nhưng chưa có Web UI mật khẩu, khôi phục tài khoản hay mở khóa production), công thức và tham số xếp hạng, retention/purge sau khi xóa, các điểm `OPEN` (`O-01..O-16`) trong DecisionDelta, ngân sách hiệu suất/AI.
 - **Đã đối chiếu nguồn:** Cantos `develop` tại commit `a8e2b6f40b58e0e72a2bdab2d4f44240cb6a0330`; tài liệu chính thức Discourse và các công nghệ tham chiếu ngày 30/10/2026. Đây là bằng chứng về nguồn được đọc, không xác nhận trạng thái production.
 
 ## Những thay đổi chính so với vision ban đầu

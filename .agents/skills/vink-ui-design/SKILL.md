@@ -1,18 +1,19 @@
 ---
 name: vink-ui-design
-description: >-
-  Design Vink reading, writing, workshop and magazine experiences with layout
-  alternatives and a visible spec before UI generation. Use for Material 3
-  Expressive, tokens, Vietnamese typography, copy and accessibility; not backend policy.
+description: Design Vink reading, writing, discovery, collection and workshop experiences with layout alternatives and a visible spec before UI generation. Use for Material 3 Expressive, tokens, Vietnamese typography, copy and accessibility; not backend policy.
 ---
 
 # Vink UI design
 
-Read the [vision](../../../prd/vision.md), UX/WR/ED requirements in
-[requirements](../../../prd/requirements.md), and actual design/component owners.
-Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
+Read the [vision](../../../prd/vision.md), UX/WR/AUD/PUB/COL/HTG/RANK/TOP requirements in
+[requirements](../../../prd/requirements.md), the 10/11/2026
+[DecisionDelta](../../../docs/architecture/product-decisions-20261110.md) and actual
+design/component owners. Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
 [vink-cmp-mobile](../vink-cmp-mobile/SKILL.md) for renderer implementation and
 [vink-publication](../vink-publication/SKILL.md) for the meaning of publication states.
+When a screen or flow hits an unresolved product rule (`OPEN` items `O-01..O-16` or new authority/state
+questions), clarify it with [vink-shape](../vink-shape/SKILL.md); when a design settles or updates
+a documented UX/state contract, record it with [vink-specify](../vink-specify/SKILL.md).
 For an audit-only request, inspect and report; fixing requires scope already granted by the user.
 
 ## Design for the literary task
@@ -30,15 +31,24 @@ This adds no approval gate: continue when prototype/implementation is authorized
 stop at sketches or wait for selection only when requested. The spec owns any later
 structural/CTA changes as well; explain and update it before changing the UI again.
 
-The three spaces are experience scopes, not a mandate for three apps or fixed tabs.
+Since 10/11/2026 (`PRODUCT-DECISIONS-20261110`), Vink focuses on short-form literary posts and
+personal collections; multi-chapter works (`WR-04`), `Tạp Chí` / magazine curation (`ED-02`) and
+age policy (`D-11`) are `DEFERRED` (do not include them in default navigation or flows unless the
+user explicitly asks to explore them).
 
 | Surface | Expression | Main concern |
 | --- | --- | --- |
-| Bàn viết / editor | Low | Stable text, quiet tools, reliable save/revision state |
-| Long-form reader | Low | Vietnamese type, reading rhythm, poetry, calm navigation |
-| Xưởng Viết | Low–medium | Author feedback intent and constructive, contextual responses |
-| Tạp Chí / discovery | Medium | Editorial hierarchy, a small useful collection and visible selection context |
-| Moderation / author status | Restrained | Exact snapshot, reason, next action and current authority |
+| Bàn viết / editor | Low | Stable text, quiet tools, reliable save/snapshot/audience state |
+| Reader & tombstone | Low | Vietnamese type, reading rhythm, poetry, calm navigation, truthful tombstone (`PUB-04`) |
+| Xưởng Viết & discussion | Low–medium | Author feedback intent, two-tier comments, pending/edited marks (`COM-09/10`), endorsement |
+| Khám phá / Bộ sưu tập | Medium | Finite discovery (`Đề xuất`, `Top 100`, tags/hashtags) and personal collections (`COL-01..06`) |
+| Moderation / author status | Restrained | Separate audience, per-revision review outcome, current public pointer and honest appeal state |
+
+You may design **target UX ahead of backend/runtime completion**. Whenever a design includes
+capabilities not yet wired end-to-end in the current checkout, the spec must explicitly separate:
+(1) **Target UX vs current runtime behavior**, (2) **Mock/sample fixtures vs live API/store data**,
+and (3) **Runtime prerequisites** (migrations, endpoints, workers, auth) required before full
+acceptance.
 
 Apply M3 Expressive through hierarchy, shape, color, size, containment and purposeful motion.
 Keep text areas quiet; concentrate emphasis on the action or content that matters. Reuse or
@@ -67,16 +77,16 @@ exists; a future multilingual system is not required just to ship Vietnamese UI.
 status/blocker information visible; optional help may use an accessible disclosure. Never put
 the only explanation for a disabled action in a hover-only tooltip.
 
-Separate local edits, saving, saved, conflict, waiting for moderation, policy rejection,
-publication and magazine selection. Explain what the person can do next. Do not label an
-AI suggestion as a final human decision or an approved revision as already public. Render
-facts from their owner instead of duplicating authority checks in components.
+Separate local edits, saving, saved, conflict, audience (“Chỉ mình tôi” / “Công khai”), waiting
+for evaluation, retryable/needs-admin hold, policy rejection, current public pointer and tombstone
+deletion. Explain what the person can do next without promising an SLA or connected admin notification
+channel (`MOD-08`, `MOD-10`). Render facts from their owner instead of duplicating authority checks.
 
-Discovery must work with a small corpus: finite collections, a useful empty state and a clear
-way to participate. Do not manufacture users, reads, reviews or engagement. Feedback intent
-is context, not a star-score ranking or an exemption from community policy.
+Discovery must work with a small corpus: finite lists, truthful `Top 100` / `Đề xuất` states, a
+useful empty state and a clear way to participate. Do not manufacture users, reads, reviews or
+engagement. Feedback intent is context, not a star-score ranking or an exemption from policy.
 
-## Accessibility and evidence
+## Accessibility, evidence and references
 
 Check semantic headings/landmarks, named controls, visible focus, keyboard reachability,
 dialog focus restoration and alternatives to gestures/drag. Use text/icon/state as well as
@@ -84,28 +94,15 @@ color; measure contrast for actual themes. Allow text enlargement and reduced mo
 losing information or waiting for animation to complete an action.
 
 For a visual claim, capture and open the relevant state at a specified viewport, theme,
-locale and text scale (run the app with `cargo xtask dev`; seed sample data first). Recompute
-contrast for any changed color pair in both schemes. Compare before/after under the same scenario when available. Check
-loading, empty, error, pending and success states only where they apply. Interactive behavior,
-keyboard operation, a named screen reader and motion each require their own observation;
-an image cannot establish them.
-
-Report the changed flow/components, inspected artifacts and target conditions, concrete
-findings and material coverage gaps. For an audit, tie each finding to an observed problem
-and its user impact. A documentation/skill change alone needs link/metadata review, not screenshots.
-
-## Design workflows and references
+locale and text scale (`cargo xtask dev`; seed sample data first). Recompute contrast for any
+changed color pair in both schemes. Report the changed flow/components, inspected artifacts,
+concrete findings and material coverage gaps. A documentation/skill change alone needs
+link/metadata review, not screenshots.
 
 For a component-by-component audit use [vink-ui-inspector](../vink-ui-inspector/SKILL.md);
 for a scoped UI repair or implementation handoff use [vink-ui-fix](../vink-ui-fix/SKILL.md).
-These workflows complement, rather than replace, the existing Leptos and publication owners.
-
-Use the [layout template](../vink-layout-spec/references/layout-spec.md) for the selected
-direction and [examples](../vink-layout-spec/references/examples.md) when useful. LayoutSpec
-owns the notation; this skill owns design choices. Reuse the existing spec instead of
-maintaining a second tree in a preview or handoff.
-
-Read the applicable references: [product context](references/product-context.md),
-[design system](references/design-system.md), [surfaces and states](references/surfaces-and-states.md),
-[workflow and evidence](references/chat-workflow.md), and [source map](references/source-map.md).
-The bundled context is a dated snapshot; current repository files and explicit decisions take precedence.
+Use the [layout template](../vink-layout-spec/references/layout-spec.md) and
+[examples](../vink-layout-spec/references/examples.md). Read the applicable references:
+[product context](references/product-context.md), [design system](references/design-system.md),
+[surfaces and states](references/surfaces-and-states.md), [workflow and evidence](references/chat-workflow.md),
+and [source map](references/source-map.md).

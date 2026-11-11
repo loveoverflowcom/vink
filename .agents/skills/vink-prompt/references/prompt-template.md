@@ -17,7 +17,14 @@ SOURCES_AND_OWNERS:
   - [existing product/architecture files, requirement/D/INV/S IDs and actual code paths]
   - [only the relevant vink-* skills]
 DECISIONS:
-  - [what the user selected; what remains proposed or needs a decision]
+  confirmed:
+    - [owner-confirmed rule + authoritative source/ID]
+  open_product:
+    - [question requiring owner decision; decision_owner: product; affected_requirements: [...]; blocks: [only the dependent slice]]
+  open_technical:
+    - [technical choice the executing agent resolves from code/evidence; decision_owner: agent; affected_requirements: [...]; blocks: [...]]
+  assumptions:
+    - [reversible assumption or technical baseline used to proceed + condition to revisit]
 LAYOUT_SPEC: [UI only: selected spec/content or accessible path + revision; if missing,
   present the full/short vink-layout-spec before UI code/scripts/previews; retain the
   user's chosen direction and any explicit request to wait; no default approval gate]

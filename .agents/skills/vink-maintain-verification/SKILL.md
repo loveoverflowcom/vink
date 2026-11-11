@@ -1,10 +1,6 @@
 ---
 name: vink-maintain-verification
-description: >-
-  Maintain Vink's feature map and verification guidance against current routes,
-  code, tests and command owners. Use when requested to refresh verification,
-  investigate stale coverage or improve a repeated checking workflow; routine
-  feature implementation uses vink-engineering's verification guide.
+description: Maintain Vink's feature map and verification guidance against current routes, code, tests and command owners. Use when requested to refresh verification, investigate stale coverage or improve a repeated checking workflow; routine feature implementation uses vink-engineering's verification guide.
 ---
 
 # Vink maintain verification
@@ -22,7 +18,7 @@ require a full-stack run for documentation changes.
 | Setup, supported commands, prerequisites and lane limits | [Development guide](../../../docs/development/README.md) |
 | Executable commands and process setup | [xtask](../../../xtask/src/main.rs), [web runner](../../../xtask/src/web.rs), [CI](../../../.github/workflows/ci.yml) |
 | Which evidence a claim requires; result vocabulary | [Verification guide](../vink-engineering/references/verification.md) |
-| Product acceptance and open decisions | [Requirements](../../../prd/requirements.md), [decision log](../../../docs/architecture/decisions.md) |
+| Product acceptance, domain specs and decision registries | [Requirements](../../../prd/requirements.md), [decision log](../../../docs/architecture/decisions.md), [product-decisions-registry](../../../docs/development/product-decisions-registry.md) via [vink-specify](../vink-specify/SKILL.md) |
 
 The map is an index into source/tests, not another command manual or a permanent green status
 board. A test's presence is coverage intent; only a run on identified inputs is run evidence.

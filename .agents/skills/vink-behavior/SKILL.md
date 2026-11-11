@@ -1,9 +1,6 @@
 ---
 name: vink-behavior
-description: >-
-  Analyze Vink state transitions, permissions, publication races and retry/recovery;
-  author or review focused Quint models when the task warrants them. Use for semantic
-  impact and counterexamples without assuming an existing model registry or verifier.
+description: Analyze Vink state transitions, permissions, publication races and retry/recovery; author or review focused Quint models when the task warrants them. Use for semantic impact and counterexamples without assuming an existing model registry or verifier.
 ---
 
 # Vink stateful behavior
@@ -16,20 +13,20 @@ authority model and their generated traces live in `services/vink-app/behavior/d
 `verify discussion` checks both and replays their inputs through the real Rust decisions. The owner-local literary endorsement model/replay (LVE-PR-01) shares this runner;
 its [registry](../../../docs/development/endorsement-core.md) records separate semantics and gaps. They
 do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are in
-`docs/development/discussion-core.md`. The literary endorsement model (`endorsement.qnt`, LVE #73)
-shares that directory and lane; its registry is `docs/development/literary-endorsement-core.md`.
-`verify kani` checks single discussion decisions (version/generation arithmetic, viewer projection)
-over whole input domains; it is no sequence or race proof. There is no generic behavior lane.
+`docs/development/discussion-core.md`.
+`verify kani` checks single discussion/taxonomy/endorsement decisions over whole input domains; it
+is no sequence or race proof. There is no generic behavior lane.
 `services/vink-app/behavior/target` holds target specifications for the owner's decisions of
-10/11/2026 (tombstone, collections, comment editing, discovery ranking, appeals): they run as a step of `verify discussion`, have generated vectors and negative controls,
-and have **no Rust replay**, so they are model evidence only. #150 moved canonical M1 to
-`behavior/publication`, and #151 expanded its Rust replay to author, `ai_result`, `admin_decide`,
-`reevaluate` and `policy_bump` actions plus the 21-step `evaluator-vectors.json` script and both M1
-negative controls ([moderation-core](../../../docs/development/moderation-core.md)); only M2
-lifecycle mutations (`author_delete`, `mod_remove`) remain model-only in M1, while the 9
-`comment_edit.qnt` steps in `evaluator-vectors.json` are checked for contract/script compatibility
-only. When code implements one of the remaining target models, move the model to its owner directory
-with a replay instead of keeping a second model of the same policy.
+10/11/2026 (`collections`, `comment_edit`, `discovery`, `appeal`): they run as a step of `verify discussion`, have generated vectors and negative controls,
+and have **no Rust replay**, so they are model evidence only. `#150`, `#151` and `#157` moved
+canonical M1 (`publication.qnt`, 51/51 steps) and M3 (`tombstone.qnt`, 30/30 steps) to
+`behavior/publication` with full pure-core replay plus the 21-step `evaluator-vectors.json` script
+([publication-core](../../../docs/development/publication-core.md),
+[moderation-core](../../../docs/development/moderation-core.md)). When code implements one of the remaining target models, move the model to its owner directory
+with a replay instead of keeping a second model of the same policy. When modeling or replay exposes an
+unresolved product rule (`O-01..O-16`) or a conflict between PRD and code, route the question through
+[vink-shape](../vink-shape/SKILL.md) and record confirmed updates via
+[vink-specify](../vink-specify/SKILL.md).
 Other stateful code keeps its own boundary tests:
 draft CAS in `tests/postgres.rs`, the desk save state machine in
 `apps/vink-web/src/desk_state.rs`.

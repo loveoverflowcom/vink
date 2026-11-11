@@ -1,10 +1,6 @@
 ---
 name: vink-prototype
-description: >-
-  Build and evaluate a bounded Vink experiment to resolve a concrete uncertainty,
-  including S-01–S-05 spikes or competing UI/API approaches. Use when the user asks
-  to try or compare implementations; keep prototype evidence separate from full
-  feature acceptance and production readiness.
+description: Build and evaluate a bounded Vink experiment to resolve a concrete uncertainty, including S-01–S-05 spikes or competing UI/API approaches. Use when the user asks to try or compare implementations; keep prototype evidence separate from full feature acceptance and production readiness.
 ---
 
 # Vink prototype
