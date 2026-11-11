@@ -182,7 +182,11 @@ async fn require_same_origin(
     if allowed {
         next.run(request).await
     } else {
-        ApiError::Forbidden.into_response()
+        (
+            [(header::CACHE_CONTROL, HeaderValue::from_static("no-store"))],
+            ApiError::Forbidden,
+        )
+            .into_response()
     }
 }
 

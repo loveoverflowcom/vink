@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use argon2::{Argon2, PasswordHasher};
 use axum::body::Body;
 use axum::extract::connect_info::ConnectInfo;
 use axum::http::{Request, StatusCode};
@@ -11,6 +12,7 @@ use serde_json::Value;
 use sqlx::PgPool;
 use tokio::sync::Notify;
 use tower::ServiceExt;
+use uuid::Uuid;
 use vink_identity::accounts::{
     AccountStore, PasswordRegistrationError, PasswordSignInRejection, disable_account,
 };
@@ -68,7 +70,7 @@ async fn registration_and_sign_in_round_trip(pool: PgPool) {
 
     // Sign in with the right password produces a working session for the same account.
     let signed_in = store
-        .sign_in_password(&username, &password)
+        .sign_in_password(&username, password.expose())
         .await
         .unwrap()
         .expect("unexpected rejection");
@@ -80,6 +82,52 @@ async fn registration_and_sign_in_round_trip(pool: PgPool) {
         .unwrap()
         .unwrap();
     assert_eq!(verified2.account_id, session.account_id);
+}
+
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn old_raw_hashes_can_still_sign_in_to_the_same_account(pool: PgPool) {
+    let store = store(&pool);
+    for (name, raw) in [
+        ("old_short", "ệệệệ"),
+        ("old_noncanonical", "１２３４５６７８９０"),
+    ] {
+        // Reproduce the stored representation used before O-12@r2, with no normalization.
+        let account_id = Uuid::now_v7();
+        let hash = Argon2::default()
+            .hash_password(raw.as_bytes())
+            .unwrap()
+            .to_string();
+        sqlx::query("INSERT INTO accounts (id) VALUES ($1)")
+            .bind(account_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO account_passwords (account_id, username, password_hash) VALUES ($1, $2, $3)")
+            .bind(account_id)
+            .bind(name)
+            .bind(hash)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let username = Username::parse(name).unwrap();
+        let session = store
+            .sign_in_password(&username, raw)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(session.account_id, account_id);
+        assert!(matches!(
+            store
+                .sign_in_password(&username, "sai-mat-khau")
+                .await
+                .unwrap(),
+            Err(PasswordSignInRejection::InvalidCredentials)
+        ));
+    }
+    assert!(
+        Password::parse("ệệệệ").is_err(),
+        "new credentials use O-12@r2"
+    );
 }
 
 #[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
@@ -125,7 +173,7 @@ async fn wrong_password_and_unknown_username_are_rejected(pool: PgPool) {
 
     let wrong_pass = Password::parse("mat-khau-sai-hoan-toan").unwrap();
     let outcome = store
-        .sign_in_password(&username, &wrong_pass)
+        .sign_in_password(&username, wrong_pass.expose())
         .await
         .unwrap();
     assert!(matches!(
@@ -135,7 +183,7 @@ async fn wrong_password_and_unknown_username_are_rejected(pool: PgPool) {
 
     let unknown_user = Username::parse("chua_tung_co").unwrap();
     let outcome2 = store
-        .sign_in_password(&unknown_user, &password)
+        .sign_in_password(&unknown_user, password.expose())
         .await
         .unwrap();
     assert!(matches!(
@@ -158,7 +206,7 @@ async fn password_sign_in_throttling_after_repeated_failures(pool: PgPool) {
     let wrong_pass = Password::parse("mat-khau-doan-sai").unwrap();
     for _ in 0..10 {
         let outcome = store
-            .sign_in_password(&username, &wrong_pass)
+            .sign_in_password(&username, wrong_pass.expose())
             .await
             .unwrap();
         assert!(matches!(
@@ -169,7 +217,7 @@ async fn password_sign_in_throttling_after_repeated_failures(pool: PgPool) {
 
     // 11th attempt is throttled.
     let outcome11 = store
-        .sign_in_password(&username, &wrong_pass)
+        .sign_in_password(&username, wrong_pass.expose())
         .await
         .unwrap();
     assert!(matches!(
@@ -178,7 +226,10 @@ async fn password_sign_in_throttling_after_repeated_failures(pool: PgPool) {
     ));
 
     // Even with correct password, sign in is throttled until window clears.
-    let outcome_correct = store.sign_in_password(&username, &password).await.unwrap();
+    let outcome_correct = store
+        .sign_in_password(&username, password.expose())
+        .await
+        .unwrap();
     assert!(matches!(
         outcome_correct,
         Err(PasswordSignInRejection::RateLimited)
@@ -204,10 +255,20 @@ async fn disabled_account_cannot_sign_in_with_password_and_active_session_is_rev
     assert_eq!(verify_result, Err(CredentialRejection::AccountDisabled));
 
     // Sign in attempt returns AccountDisabled.
-    let outcome = store.sign_in_password(&username, &password).await.unwrap();
+    let outcome = store
+        .sign_in_password(&username, password.expose())
+        .await
+        .unwrap();
     assert!(matches!(
         outcome,
         Err(PasswordSignInRejection::AccountDisabled)
+    ));
+    assert!(matches!(
+        store
+            .sign_in_password(&username, "sai-mat-khau")
+            .await
+            .unwrap(),
+        Err(PasswordSignInRejection::InvalidCredentials)
     ));
 }
 

@@ -7,6 +7,7 @@
     "revoke_session": "available",
     "email_change": "available",
     "register_password": "not_configured",
-    "sign_in_password": "not_configured"
+    "sign_in_password": "not_configured",
+    "enroll_password": "not_configured"
   }
 }

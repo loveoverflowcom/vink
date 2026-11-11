@@ -120,5 +120,8 @@ Quyết định thuần có unit test trong `session.rs` (`cargo test -p vink-we
   phải chờ câu trả lời chậm của tài khoản cũ, tối đa bằng hạn request (30 s). Màn hình đã được dọn
   và ở trạng thái đang tải trong lúc đó; không có dữ liệu cũ nào được hiện.
 - Chưa có đổi bút danh, đổi email, danh sách phiên/thiết bị trên UI.
+- `/toi` vẫn dùng mã email và hiển thị “Vink không dùng mật khẩu”. Đăng ký, đăng nhập và thêm
+  username/mật khẩu đã có ở backend. Giao diện mật khẩu và cập nhật câu trên còn thiếu.
+  [Hợp đồng App](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05)
 - CMP/native chưa có luồng đăng nhập.
 - Đăng nhập production vẫn khóa (`VINK_AUTH_SIGN_IN` mặc định `disabled`); D-05 chưa Accepted.

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "already_signed_in",
+    "message": "this browser is already signed in; add a password to the signed-in account instead of registering"
+  }
+}

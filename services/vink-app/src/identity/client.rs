@@ -25,6 +25,8 @@ pub const CALL_TIMEOUT: Duration = Duration::from_millis(1500);
 pub const WRITE_TIMEOUT: Duration = Duration::from_millis(4500);
 /// Longest credential the contract accepts, in bytes.
 pub const MAX_CREDENTIAL_BYTES: usize = 4096;
+/// Raw password field limit of the Identity RPC contract.
+const MAX_PASSWORD_FIELD_BYTES: usize = 4096;
 const MAX_RESPONSE_BYTES: usize = 16 * 1024;
 
 /// What the Identity service decided about a presented credential.
@@ -164,6 +166,55 @@ pub enum PasswordLoginError {
     Call(CallError),
 }
 
+/// Why an enrollment challenge was not issued. Every variant means no credential was added.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollStartError {
+    /// The session is not (or no longer) valid.
+    CredentialRejected,
+    /// The account already has a username/password: nothing to add, nothing was mailed.
+    AlreadyEnrolled,
+    AccountDisabled,
+    /// The account has no verified address to prove control with.
+    NoVerifiedAddress,
+    RateLimited,
+    Call(CallError),
+}
+
+/// Identity's decision on one enrollment attempt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollOutcome {
+    /// The credential belongs to the session's own account now.
+    Enrolled,
+    Refused(EnrollRefusal),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollRefusal {
+    /// Wrong code; the challenge accepts another attempt.
+    InvalidCode,
+    /// Expired, used, exhausted, another account's or outdated: request a new code.
+    ChallengeClosed,
+    /// The username is taken. The code is not spent.
+    UsernameTaken,
+    AlreadyEnrolled,
+    AccountDisabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollError {
+    InvalidUsername,
+    InvalidPassword,
+    CredentialRejected,
+    Call(CallError),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollStatusError {
+    CredentialRejected,
+    AccountDisabled,
+    Call(CallError),
+}
+
 /// Availability reported by `GET /identity/v1/capabilities`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Authority {
@@ -190,7 +241,7 @@ struct WireSubject {
     id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct WireChallenge {
     challenge: String,
     #[serde(with = "time::serde::rfc3339")]
@@ -244,6 +295,18 @@ impl std::fmt::Debug for WireIssuedSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str("WireIssuedSession(<redacted>)")
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+enum WireEnroll {
+    Enrolled,
+    Rejected { reason: String },
+}
+
+#[derive(Deserialize)]
+struct WireEnrollmentStatus {
+    enrolled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -390,6 +453,9 @@ impl IdentityClient {
         username: &str,
         password: &str,
     ) -> Result<PasswordRegisterOutcome, PasswordRegisterError> {
+        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+            return Err(PasswordRegisterError::InvalidPassword);
+        }
         let body = serde_json::to_vec(&serde_json::json!({
             "username": username,
             "password": password,
@@ -427,6 +493,13 @@ impl IdentityClient {
             }
             (422, "invalid_username") => Err(PasswordRegisterError::InvalidUsername),
             (422, "invalid_password") => Err(PasswordRegisterError::InvalidPassword),
+            (400 | 413, "malformed_request" | "payload_too_large") => {
+                Err(if exceeds_username_bound(username) {
+                    PasswordRegisterError::InvalidUsername
+                } else {
+                    PasswordRegisterError::InvalidPassword
+                })
+            }
             (409, "username_taken") => Ok(PasswordRegisterOutcome::UsernameTaken),
             (429, "rate_limited") => Err(PasswordRegisterError::RateLimited),
             _ => Err(PasswordRegisterError::Call(error_for(status, &bytes))),
@@ -439,6 +512,9 @@ impl IdentityClient {
         username: &str,
         password: &str,
     ) -> Result<PasswordLoginOutcome, PasswordLoginError> {
+        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+            return Err(PasswordLoginError::InvalidPassword);
+        }
         let body = serde_json::to_vec(&serde_json::json!({
             "username": username,
             "password": password,
@@ -475,8 +551,136 @@ impl IdentityClient {
             }
             (422, "invalid_username") => Err(PasswordLoginError::InvalidUsername),
             (422, "invalid_password") => Err(PasswordLoginError::InvalidPassword),
+            (400 | 413, "malformed_request" | "payload_too_large") => {
+                Err(if exceeds_username_bound(username) {
+                    PasswordLoginError::InvalidUsername
+                } else {
+                    PasswordLoginError::InvalidPassword
+                })
+            }
             (429, "rate_limited") => Err(PasswordLoginError::RateLimited),
             _ => Err(PasswordLoginError::Call(error_for(status, &bytes))),
+        }
+    }
+
+    /// `POST /identity/v1/password/enroll/challenges`: a code goes to the verified address of the
+    /// account `credential` names. The account is never a parameter.
+    pub async fn start_password_enrollment(
+        &self,
+        credential: &str,
+    ) -> Result<IssuedChallenge, EnrollStartError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
+            .map_err(|_| EnrollStartError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/password/enroll/challenges",
+                body,
+            )
+            .await
+            .map_err(EnrollStartError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (202, _) => serde_json::from_slice::<WireChallenge>(&bytes)
+                .map(|wire| IssuedChallenge {
+                    handle: wire.challenge,
+                    expires_at: wire.expires_at,
+                })
+                .map_err(|_| {
+                    EnrollStartError::Call(CallError::Unavailable(Failure::MalformedResponse))
+                }),
+            (403, "credential_rejected") => Err(EnrollStartError::CredentialRejected),
+            (403, "account_disabled") => Err(EnrollStartError::AccountDisabled),
+            (409, "already_enrolled") => Err(EnrollStartError::AlreadyEnrolled),
+            (409, "address_unavailable") => Err(EnrollStartError::NoVerifiedAddress),
+            (429, "rate_limited") => Err(EnrollStartError::RateLimited),
+            _ => Err(EnrollStartError::Call(error_for(status, &bytes))),
+        }
+    }
+
+    /// `POST /identity/v1/password/enroll`. Identity owns the password policy; the App bounds
+    /// only what it sends over the transport.
+    pub async fn enroll_password(
+        &self,
+        credential: &str,
+        handle: &str,
+        code: &str,
+        username: &str,
+        password: &str,
+    ) -> Result<EnrollOutcome, EnrollError> {
+        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+            return Err(EnrollError::InvalidPassword);
+        }
+        let body = serde_json::to_vec(&serde_json::json!({
+            "credential": credential,
+            "challenge": handle,
+            "code": code,
+            "username": username,
+            "password": password,
+        }))
+        .map_err(|_| EnrollError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call_within(
+                self.write_timeout,
+                Method::POST,
+                "/identity/v1/password/enroll",
+                body,
+            )
+            .await
+            .map_err(EnrollError::Call)?;
+        let malformed = EnrollError::Call(CallError::Unavailable(Failure::MalformedResponse));
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (200, _) => {
+                match serde_json::from_slice::<WireEnroll>(&bytes).map_err(|_| malformed)? {
+                    WireEnroll::Enrolled => Ok(EnrollOutcome::Enrolled),
+                    WireEnroll::Rejected { reason } => {
+                        Ok(EnrollOutcome::Refused(match reason.as_str() {
+                            "invalid_code" => EnrollRefusal::InvalidCode,
+                            "challenge_closed" => EnrollRefusal::ChallengeClosed,
+                            "username_taken" => EnrollRefusal::UsernameTaken,
+                            "already_enrolled" => EnrollRefusal::AlreadyEnrolled,
+                            "account_disabled" => EnrollRefusal::AccountDisabled,
+                            // An unknown reason is outside the contract: nothing is decided.
+                            _ => return Err(malformed),
+                        }))
+                    }
+                }
+            }
+            (403, "credential_rejected") => Err(EnrollError::CredentialRejected),
+            (403, "account_disabled") => Ok(EnrollOutcome::Refused(EnrollRefusal::AccountDisabled)),
+            (422, "invalid_username") => Err(EnrollError::InvalidUsername),
+            (422, "invalid_password") => Err(EnrollError::InvalidPassword),
+            (400 | 413, "malformed_request" | "payload_too_large") => {
+                Err(if exceeds_username_bound(username) {
+                    EnrollError::InvalidUsername
+                } else {
+                    EnrollError::InvalidPassword
+                })
+            }
+            _ => Err(EnrollError::Call(error_for(status, &bytes))),
+        }
+    }
+
+    /// The status of the account named by the presenting credential. This sends no mail.
+    pub async fn password_enrollment_status(
+        &self,
+        credential: &str,
+    ) -> Result<bool, EnrollStatusError> {
+        let body = serde_json::to_vec(&serde_json::json!({ "credential": credential }))
+            .map_err(|_| EnrollStatusError::Call(CallError::Unavailable(Failure::Transport)))?;
+        let (status, bytes) = self
+            .call(Method::POST, "/identity/v1/password/enroll/status", body)
+            .await
+            .map_err(EnrollStatusError::Call)?;
+        match (status.as_u16(), error_code(&bytes).as_str()) {
+            (200, _) => serde_json::from_slice::<WireEnrollmentStatus>(&bytes)
+                .map(|response| response.enrolled)
+                .map_err(|_| {
+                    EnrollStatusError::Call(CallError::Unavailable(Failure::MalformedResponse))
+                }),
+            (403, "credential_rejected") => Err(EnrollStatusError::CredentialRejected),
+            (403, "account_disabled") => Err(EnrollStatusError::AccountDisabled),
+            _ => Err(EnrollStatusError::Call(error_for(status, &bytes))),
         }
     }
 
@@ -581,6 +785,15 @@ impl IdentityClient {
         driver.abort();
         result
     }
+}
+
+/// Identity bounds the wire fields (`username` 64 bytes, `password` 4096 bytes, the body 8 KiB)
+/// before it applies the O-12 policy, and answers a field beyond a bound with `400`/`413`. The App
+/// builds those bodies itself, so such an answer means exactly one of the two fields was too
+/// long: a rejected input, not an outage. This decides only which one; the policy stays in
+/// Identity.
+fn exceeds_username_bound(username: &str) -> bool {
+    username.len() > 64
 }
 
 fn error_code(bytes: &[u8]) -> String {
@@ -727,6 +940,51 @@ mod tests {
         ] {
             assert_eq!(error_code(&fixture(name)), code);
         }
+    }
+
+    #[test]
+    fn enrollment_fixtures_decode_into_the_app_representation() {
+        assert!(matches!(
+            serde_json::from_slice::<WireEnroll>(&fixture("password.enroll.enrolled.json"))
+                .unwrap(),
+            WireEnroll::Enrolled
+        ));
+        for (name, expected) in [
+            ("password.enroll.status.enrolled.json", true),
+            ("password.enroll.status.unenrolled.json", false),
+        ] {
+            let status = serde_json::from_slice::<WireEnrollmentStatus>(&fixture(name)).unwrap();
+            assert_eq!(status.enrolled, expected, "{name}");
+        }
+        for (name, expected) in [
+            (
+                "password.enroll.rejected.username_taken.json",
+                "username_taken",
+            ),
+            ("password.enroll.rejected.invalid_code.json", "invalid_code"),
+        ] {
+            assert!(matches!(
+                serde_json::from_slice::<WireEnroll>(&fixture(name)).unwrap(),
+                WireEnroll::Rejected { ref reason } if reason == expected
+            ));
+        }
+        for (name, code) in [
+            ("error.already_enrolled.json", "already_enrolled"),
+            ("error.account_disabled.json", "account_disabled"),
+            ("error.credential_rejected.json", "credential_rejected"),
+            ("error.address_unavailable.json", "address_unavailable"),
+        ] {
+            assert_eq!(error_code(&fixture(name)), code);
+        }
+        // The wire request carries the session and the proof, never an account.
+        let request: serde_json::Value =
+            serde_json::from_slice(&fixture("password.enroll.request.json")).unwrap();
+        let mut keys: Vec<_> = request.as_object().unwrap().keys().cloned().collect();
+        keys.sort();
+        assert_eq!(
+            keys,
+            ["challenge", "code", "credential", "password", "username"]
+        );
     }
 
     #[test]

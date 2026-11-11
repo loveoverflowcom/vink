@@ -46,8 +46,11 @@ use crate::email_code::{Code, EmailAddress};
 pub enum Purpose {
     SignIn,
     ChangeEmail,
+    /// Fresh proof of mailbox control before a signed-in account adds a username/password
+    /// credential (ACC-03). Bound to the account; never a sign-in or a recovery.
+    EnrollPassword,
     /// `vink-identity mail test`: proves the transport end to end. Never stored (the outbox
-    /// schema accepts only the two code purposes) and its text contains no usable code.
+    /// schema accepts only the three code purposes) and its text contains no usable code.
     TransportCheck,
 }
 
@@ -56,6 +59,7 @@ impl Purpose {
         match self {
             Purpose::SignIn => "sign_in",
             Purpose::ChangeEmail => "change_email",
+            Purpose::EnrollPassword => "enroll_password",
             Purpose::TransportCheck => "transport_check",
         }
     }
@@ -64,6 +68,7 @@ impl Purpose {
         match label {
             "sign_in" => Some(Purpose::SignIn),
             "change_email" => Some(Purpose::ChangeEmail),
+            "enroll_password" => Some(Purpose::EnrollPassword),
             _ => None,
         }
     }
@@ -128,6 +133,7 @@ pub fn render(message: &Message) -> (String, String) {
     let action = match message.purpose {
         Purpose::SignIn => "đăng nhập Vink",
         Purpose::ChangeEmail => "xác nhận địa chỉ email mới cho tài khoản Vink",
+        Purpose::EnrollPassword => "thêm mật khẩu đăng nhập cho tài khoản Vink",
         Purpose::TransportCheck => {
             return (
                 "Vink: thư kiểm tra đường gửi".into(),
@@ -139,10 +145,18 @@ pub fn render(message: &Message) -> (String, String) {
         }
     };
     let subject = format!("Mã {action}");
+    let ignore = match message.purpose {
+        Purpose::EnrollPassword => {
+            "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; mật khẩu sẽ không được thêm vào tài khoản."
+        }
+        _ => {
+            "Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; không ai đăng nhập được nếu không có mã."
+        }
+    };
     let body = format!(
         "Mã {action} của bạn là {code}.\n\n\
          Mã chỉ dùng được một lần, trên trình duyệt hoặc ứng dụng vừa yêu cầu, và hết hạn sau 10 phút.\n\
-         Nếu bạn không yêu cầu mã này, hãy bỏ qua thư; không ai đăng nhập được nếu không có mã.\n\n\
+         {ignore}\n\n\
          Vink — thư tự động, vui lòng không trả lời.\n",
         code = message.code.expose(),
     );

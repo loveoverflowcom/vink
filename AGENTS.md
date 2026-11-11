@@ -86,8 +86,10 @@ those registries rather than duplicating long status narratives across skills.
   [Auth Web](docs/development/auth-web.md)):** `services/vink-identity` and `services/vink-app`
   implement native email-code sign-in (with `mail_deliveries` outbox and Web `/toi` consumer) and,
   since `#152`, native **backend** username/password credentials (Argon2id, O-12 policy in
-  `services/vink-identity/src/password.rs`, `account_passwords`, `dummy_verify`, throttling and
-  App `/api/v1/auth/register` + `/api/v1/auth/login` with `__Host-vink_session` cookie). Web UI for
+  `services/vink-identity/src/password.rs`, `account_passwords`, throttling and App password
+  registration/sign-in with the `__Host-vink_session` cookie). Native accounts with verified
+  email can add a password on the same subject using a fresh code and read back enrollment
+  ([App auth contract](services/vink-app/contracts/http/v1/README.md#sign-in-d-05)). Web/CMP UI for
   username/password, account recovery (`O-11`) and production sign-in unlock (`VINK_AUTH_SIGN_IN`
   defaults to `disabled` in production) remain unimplemented. Every protected App write takes the
   shared standing fence (`principal::require_active`) at commit.

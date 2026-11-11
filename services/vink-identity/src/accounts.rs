@@ -36,6 +36,47 @@ pub enum PasswordSignInRejection {
     RateLimited,
 }
 
+/// Start of a credential enrollment (ACC-03): the proof is a code mailed to the account's own
+/// verified address.
+#[derive(Debug)]
+pub enum EnrollmentStart {
+    Issued(ChallengeOutcome),
+    /// The account already has a username/password. Changing it is a separate operation.
+    AlreadyEnrolled,
+    /// The account has no verified address to prove control with.
+    NoVerifiedAddress,
+    AccountDisabled,
+    CredentialRejected,
+}
+
+/// Why an enrollment did not attach the credential. Every variant means nothing was written.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollmentRejection {
+    /// Wrong code; the challenge still accepts another attempt.
+    InvalidCode,
+    /// Expired, used, out of attempts, not this account's, or its address is no longer the
+    /// account's verified address: request a new code.
+    ChallengeClosed,
+    /// The username belongs to an account. The code is NOT spent: pick another username.
+    UsernameTaken,
+    AlreadyEnrolled,
+    AccountDisabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EnrollmentOutcome {
+    /// The credential now belongs to the presenting session's own account.
+    Enrolled,
+    Rejected(EnrollmentRejection),
+    CredentialRejected,
+}
+
+enum ChallengeScope {
+    SignIn,
+    ChangeEmail(Uuid),
+    EnrollPassword { account: Uuid, session: Uuid },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StoreError {
     /// The database, the random generator or mail delivery failed; nothing was decided.
@@ -189,7 +230,7 @@ impl AccountStore {
     pub async fn sign_in_password(
         &self,
         username: &Username,
-        password: &Password,
+        raw_password: &str,
     ) -> Result<Result<NewSession, PasswordSignInRejection>, StoreError> {
         // Throttling per username: check recent failed attempts
         let recent_failures: i64 = sqlx::query_scalar(
@@ -215,8 +256,14 @@ impl AccountStore {
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(row) = row else {
-            crate::password::dummy_verify(password);
+        let stored_hash: Option<String> = row
+            .as_ref()
+            .map(|row| row.try_get("password_hash"))
+            .transpose()?;
+        let valid = crate::password::verify_sign_in(stored_hash, raw_password)
+            .await
+            .map_err(|_| StoreError::Unavailable)?;
+        let Some(row) = row.filter(|_| valid) else {
             let _ =
                 sqlx::query("INSERT INTO password_login_attempts (id, username) VALUES ($1, $2)")
                     .bind(Uuid::now_v7())
@@ -225,26 +272,11 @@ impl AccountStore {
                     .await;
             return Ok(Err(PasswordSignInRejection::InvalidCredentials));
         };
-
-        let stored_hash: String = row.try_get("password_hash")?;
-        let account_id: Uuid = row.try_get("account_id")?;
-        let expected_version: i32 = row.try_get("version")?;
-        let initially_disabled: bool = row.try_get("disabled")?;
-
-        if initially_disabled {
+        if row.try_get::<bool, _>("disabled")? {
             return Ok(Err(PasswordSignInRejection::AccountDisabled));
         }
-
-        let valid = crate::password::verify_password(&stored_hash, password);
-        if !valid {
-            let _ =
-                sqlx::query("INSERT INTO password_login_attempts (id, username) VALUES ($1, $2)")
-                    .bind(Uuid::now_v7())
-                    .bind(username.as_str())
-                    .execute(&self.pool)
-                    .await;
-            return Ok(Err(PasswordSignInRejection::InvalidCredentials));
-        }
+        let account_id: Uuid = row.try_get("account_id")?;
+        let expected_version: i32 = row.try_get("version")?;
 
         let mut tx = self.pool.begin().await?;
         let check = sqlx::query(
@@ -283,6 +315,185 @@ impl AccountStore {
         Ok(Ok(session))
     }
 
+    /// Reads only whether the session's account currently has a password, without sending mail
+    /// or attempting a write. A client can reconcile a lost enrollment response here.
+    pub async fn password_enrollment_status(
+        &self,
+        credential: &str,
+    ) -> Result<Result<bool, CredentialRejection>, StoreError> {
+        match self.verify(credential).await? {
+            Ok(session) => Ok(Ok(has_password(&self.pool, session.account_id).await?)),
+            Err(reason) => Ok(Err(reason)),
+        }
+    }
+
+    /// Starts adding a username/password to the session's own account. A fresh code goes to the
+    /// account's verified address; the account is read from the session, never from the request.
+    /// The challenge is bound to this session, including when the same account has other sessions.
+    pub async fn start_password_enrollment(
+        &self,
+        credential: &str,
+    ) -> Result<EnrollmentStart, StoreError> {
+        let session = match self.verify(credential).await? {
+            Ok(session) => session,
+            Err(CredentialRejection::AccountDisabled) => {
+                return Ok(EnrollmentStart::AccountDisabled);
+            }
+            Err(_) => return Ok(EnrollmentStart::CredentialRejected),
+        };
+        if has_password(&self.pool, session.account_id).await? {
+            return Ok(EnrollmentStart::AlreadyEnrolled);
+        }
+        let address: Option<String> =
+            sqlx::query_scalar("SELECT address FROM account_emails WHERE account_id = $1")
+                .bind(session.account_id)
+                .fetch_optional(&self.pool)
+                .await?;
+        let Some(address) = address.and_then(|raw| EmailAddress::parse(&raw)) else {
+            return Ok(EnrollmentStart::NoVerifiedAddress);
+        };
+        let mut tx = self.pool.begin().await?;
+        let outcome = self
+            .issue_challenge(
+                &mut tx,
+                &address,
+                ChallengeScope::EnrollPassword {
+                    account: session.account_id,
+                    session: session.session_id,
+                },
+                true,
+            )
+            .await?;
+        if matches!(outcome, ChallengeOutcome::Issued { .. }) {
+            // Issuance already holds the account row. Recheck the session and address before
+            // committing the delivery in case either changed while waiting for that lock.
+            match lock_session(&mut tx, &session).await? {
+                Ok(_) => {}
+                Err(CredentialRejection::AccountDisabled) => {
+                    return Ok(EnrollmentStart::AccountDisabled);
+                }
+                Err(_) => return Ok(EnrollmentStart::CredentialRejected),
+            }
+            if has_password(&mut *tx, session.account_id).await? {
+                return Ok(EnrollmentStart::AlreadyEnrolled);
+            }
+            let address_current: bool = sqlx::query_scalar(
+                "SELECT EXISTS (SELECT 1 FROM account_emails WHERE account_id = $1 AND address = $2)",
+            )
+            .bind(session.account_id)
+            .bind(address.as_str())
+            .fetch_one(&mut *tx)
+            .await?;
+            if !address_current {
+                return Ok(EnrollmentStart::NoVerifiedAddress);
+            }
+        }
+        tx.commit().await?;
+        self.issued(&outcome);
+        Ok(EnrollmentStart::Issued(outcome))
+    }
+
+    /// Attaches `username` and the (already hashed) password to the account of `credential`,
+    /// proven by the code of an enrollment challenge issued to that same session.
+    ///
+    /// The hash is computed by the caller before this call, so no transaction or row lock waits
+    /// on Argon2. Locks are taken in one order (the order `disable_account` uses): account row,
+    /// then session row, then challenge row; the unique index on `username` decides collisions.
+    /// A rejection that does not spend the code (`UsernameTaken`, `AlreadyEnrolled`,
+    /// `AccountDisabled`) rolls the whole transaction back; a wrong code is recorded and committed.
+    pub async fn enroll_password(
+        &self,
+        credential: &str,
+        handle: &ChallengeHandle,
+        code: &Code,
+        username: &Username,
+        password_hash: &str,
+    ) -> Result<EnrollmentOutcome, StoreError> {
+        let session = match self.verify(credential).await? {
+            Ok(session) => session,
+            Err(CredentialRejection::AccountDisabled) => {
+                return Ok(EnrollmentOutcome::Rejected(
+                    EnrollmentRejection::AccountDisabled,
+                ));
+            }
+            Err(_) => return Ok(EnrollmentOutcome::CredentialRejected),
+        };
+        let mut tx = self.pool.begin().await?;
+        // Re-check under lock: a disable or logout racing this call either commits first (and the
+        // enrollment is refused) or waits for it.
+        let session_expires_at = match lock_session(&mut tx, &session).await? {
+            Ok(expires_at) => expires_at,
+            Err(CredentialRejection::AccountDisabled) => {
+                return Ok(EnrollmentOutcome::Rejected(
+                    EnrollmentRejection::AccountDisabled,
+                ));
+            }
+            Err(_) => return Ok(EnrollmentOutcome::CredentialRejected),
+        };
+        // The account row is locked, so no other enrollment of this account runs now.
+        if has_password(&mut *tx, session.account_id).await? {
+            return Ok(EnrollmentOutcome::Rejected(
+                EnrollmentRejection::AlreadyEnrolled,
+            ));
+        }
+        let row = sqlx::query(
+            "SELECT c.code_hash, c.failed_attempts, c.expires_at,
+                    c.consumed_at IS NOT NULL AS consumed,
+                    c.expires_at <= clock_timestamp() AS expired
+               FROM email_challenges c
+               JOIN account_emails e ON e.account_id = c.account_id AND e.address = c.address
+              WHERE c.id = $1 AND c.purpose = 'enroll_password' AND c.account_id = $2
+                AND c.enrollment_session_id = $3
+                FOR UPDATE OF c",
+        )
+        .bind(handle.id)
+        .bind(session.account_id)
+        .bind(session.session_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+        let closed = Ok(EnrollmentOutcome::Rejected(
+            EnrollmentRejection::ChallengeClosed,
+        ));
+        let Some(row) = row else {
+            return closed;
+        };
+        if let Some(rejection) = self.attempt(&mut tx, handle, code, &row).await? {
+            tx.commit().await?;
+            return Ok(EnrollmentOutcome::Rejected(match rejection {
+                ChallengeRejection::InvalidCode => EnrollmentRejection::InvalidCode,
+                _ => EnrollmentRejection::ChallengeClosed,
+            }));
+        }
+        let inserted = sqlx::query(
+            "INSERT INTO account_passwords (account_id, username, password_hash)
+             VALUES ($1, $2, $3) ON CONFLICT ON CONSTRAINT account_passwords_username_key DO NOTHING",
+        )
+        .bind(session.account_id)
+        .bind(username.as_str())
+        .bind(password_hash)
+        .execute(&mut *tx)
+        .await?;
+        // A competing insert can hold the username until after either deadline. Check with
+        // wall-clock time after the wait, while both rows are still locked.
+        let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&mut *tx)
+            .await?;
+        if now >= session_expires_at {
+            return Ok(EnrollmentOutcome::CredentialRejected);
+        }
+        if now >= row.try_get::<OffsetDateTime, _>("expires_at")? {
+            return closed;
+        }
+        if inserted.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Ok(EnrollmentOutcome::Rejected(
+                EnrollmentRejection::UsernameTaken,
+            ));
+        }
+        tx.commit().await?;
+        Ok(EnrollmentOutcome::Enrolled)
+    }
+
     fn issued(&self, outcome: &ChallengeOutcome) {
         if matches!(outcome, ChallengeOutcome::Issued { .. }) {
             self.wake.notify_one();
@@ -297,7 +508,7 @@ impl AccountStore {
     ) -> Result<ChallengeOutcome, StoreError> {
         let mut tx = self.pool.begin().await?;
         let outcome = self
-            .issue_challenge(&mut tx, address, Purpose::SignIn, None, true)
+            .issue_challenge(&mut tx, address, ChallengeScope::SignIn, true)
             .await?;
         tx.commit().await?;
         self.issued(&outcome);
@@ -428,8 +639,7 @@ impl AccountStore {
             .issue_challenge(
                 &mut tx,
                 address,
-                Purpose::ChangeEmail,
-                Some(session.account_id),
+                ChallengeScope::ChangeEmail(session.account_id),
                 deliver,
             )
             .await?;
@@ -452,16 +662,7 @@ impl AccountStore {
         let mut tx = self.pool.begin().await?;
         // Re-check the session under lock: a logout or disable racing this change either commits
         // first (and the change is refused) or waits for it.
-        let still_active: Option<i32> = sqlx::query_scalar(
-            "SELECT 1 FROM sessions s JOIN accounts a ON a.id = s.account_id
-              WHERE s.id = $1 AND s.revoked_at IS NULL AND s.expires_at > now()
-                AND a.disabled_at IS NULL
-                FOR UPDATE OF s, a",
-        )
-        .bind(session.session_id)
-        .fetch_optional(&mut *tx)
-        .await?;
-        if still_active.is_none() {
+        if lock_session(&mut tx, &session).await?.is_err() {
             return Ok(EmailChangeOutcome::CredentialRejected);
         }
         let row = sqlx::query(
@@ -517,6 +718,15 @@ impl AccountStore {
         .bind(session.session_id)
         .execute(&mut *tx)
         .await?;
+        // Even the session that changed the address must prove control of the new one. Close
+        // outstanding enrollment proofs so an address change away and back cannot revive them.
+        sqlx::query(
+            "UPDATE email_challenges SET consumed_at = clock_timestamp()
+              WHERE account_id = $1 AND purpose = 'enroll_password' AND consumed_at IS NULL",
+        )
+        .bind(session.account_id)
+        .execute(&mut *tx)
+        .await?;
         tx.commit().await?;
         Ok(EmailChangeOutcome::Changed)
     }
@@ -569,17 +779,23 @@ impl AccountStore {
     /// the caller's transaction. Nothing is sent here: the worker sends after commit.
     ///
     /// The per-address and per-account ceilings are exact (an advisory lock per address and the
-    /// account's session row serialise them). The global ceiling is read without a lock, so
+    /// account row serialise them). The global ceiling is read without a lock, so
     /// concurrent requests can pass it by at most their number; it bounds mail volume, not a
     /// security property.
     async fn issue_challenge(
         &self,
         tx: &mut Transaction<'_, Postgres>,
         address: &EmailAddress,
-        purpose: Purpose,
-        account: Option<Uuid>,
+        scope: ChallengeScope,
         deliver: bool,
     ) -> Result<ChallengeOutcome, StoreError> {
+        let (purpose, account, enrollment_session) = match scope {
+            ChallengeScope::SignIn => (Purpose::SignIn, None, None),
+            ChallengeScope::ChangeEmail(account) => (Purpose::ChangeEmail, Some(account), None),
+            ChallengeScope::EnrollPassword { account, session } => {
+                (Purpose::EnrollPassword, Some(account), Some(session))
+            }
+        };
         // Serialise issuance per address so concurrent requests cannot both pass the throttle.
         sqlx::query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))")
             .bind(address.as_str())
@@ -629,8 +845,9 @@ impl AccountStore {
         let handle = ChallengeHandle::generate(Uuid::now_v7())?;
         let code = Code::generate()?;
         let expires_at: OffsetDateTime = sqlx::query_scalar(
-            "INSERT INTO email_challenges (id, purpose, address, account_id, code_hash, expires_at)
-             VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6))
+            "INSERT INTO email_challenges (id, purpose, address, account_id, code_hash, expires_at,
+                                           enrollment_session_id)
+             VALUES ($1, $2, $3, $4, $5, now() + make_interval(secs => $6), $7)
              RETURNING expires_at",
         )
         .bind(handle.id)
@@ -639,6 +856,7 @@ impl AccountStore {
         .bind(account)
         .bind(handle.code_hash(&code).as_slice())
         .bind(self.policy.challenge_ttl.as_seconds_f64())
+        .bind(enrollment_session)
         .fetch_one(&mut **tx)
         .await?;
         if deliver {
@@ -673,6 +891,47 @@ impl AccountStore {
             expires_at: row.try_get("expires_at")?,
         })
     }
+}
+
+async fn has_password<'e>(
+    db: impl sqlx::PgExecutor<'e>,
+    account: Uuid,
+) -> Result<bool, StoreError> {
+    Ok(
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM account_passwords WHERE account_id = $1)")
+            .bind(account)
+            .fetch_one(db)
+            .await?,
+    )
+}
+
+/// Account before session, as in disable. `NO KEY UPDATE` also allows another transaction to
+/// insert a foreign-key reference to the account without contending with this standing check.
+async fn lock_session(
+    tx: &mut Transaction<'_, Postgres>,
+    session: &ActiveSession,
+) -> Result<Result<OffsetDateTime, CredentialRejection>, StoreError> {
+    let disabled: Option<bool> = sqlx::query_scalar(
+        "SELECT disabled_at IS NOT NULL FROM accounts WHERE id = $1 FOR NO KEY UPDATE",
+    )
+    .bind(session.account_id)
+    .fetch_optional(&mut **tx)
+    .await?;
+    match disabled {
+        None => return Ok(Err(CredentialRejection::Unknown)),
+        Some(true) => return Ok(Err(CredentialRejection::AccountDisabled)),
+        Some(false) => {}
+    }
+    let expires_at = sqlx::query_scalar(
+        "SELECT expires_at FROM sessions
+          WHERE id = $1 AND account_id = $2 AND revoked_at IS NULL
+            AND expires_at > clock_timestamp() FOR NO KEY UPDATE",
+    )
+    .bind(session.session_id)
+    .bind(session.account_id)
+    .fetch_optional(&mut **tx)
+    .await?;
+    Ok(expires_at.ok_or(CredentialRejection::Revoked))
 }
 
 /// The account that verified `address`, created if none has. Two first sign-ins for one address

@@ -20,6 +20,8 @@ const CALLER: u32 = 501;
 mod delivery;
 #[path = "postgres/email_code.rs"]
 mod email_code;
+#[path = "postgres/enrollment.rs"]
+mod enrollment;
 #[path = "postgres/password.rs"]
 mod password;
 #[path = "support/smtp_sink.rs"]
@@ -56,7 +58,8 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
             20261102000000,
             20261107000000,
             20261112000000,
-            20261113000000
+            20261113000000,
+            20261114000000
         ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());

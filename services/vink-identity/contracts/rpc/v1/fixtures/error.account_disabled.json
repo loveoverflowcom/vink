@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "account_disabled",
+    "message": "the account is disabled; nothing was changed"
+  }
+}

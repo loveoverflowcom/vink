@@ -122,11 +122,15 @@ pub fn hash_password(password: &Password) -> Result<String, HashError> {
 
 /// Verifies a password against a stored PHC Argon2id hash.
 pub fn verify_password(stored_hash: &str, password: &Password) -> bool {
+    verify_raw(stored_hash, password.expose())
+}
+
+fn verify_raw(stored_hash: &str, password: &str) -> bool {
     let Ok(parsed) = PasswordHash::new(stored_hash) else {
         return false;
     };
     Argon2::default()
-        .verify_password(password.expose().as_bytes(), &parsed)
+        .verify_password(password.as_bytes(), &parsed)
         .is_ok()
 }
 
@@ -135,9 +139,33 @@ pub fn verify_password(stored_hash: &str, password: &Password) -> bool {
 const DUMMY_HASH: &str =
     "$argon2id$v=19$m=19456,t=2,p=1$eW91cmR1bW15c2FsdA$7B9Wf2ZcT28eQx2W+Xm7O3n0gQx9G5Y2vX7Z1p4B0k0";
 
-/// Performs dummy password verification so that missing username requests do not exit early.
-pub fn dummy_verify(password: &Password) {
-    let _ = verify_password(DUMMY_HASH, password);
+/// Check O-12@r2 credentials and the raw 10–128 byte hashes written before it. The raw input
+/// can only match an existing hash; new credentials always go through [`Password::parse`].
+/// For a given input, run the same candidate checks against a missing username's dummy hash.
+pub(crate) async fn verify_sign_in(hash: Option<String>, raw: &str) -> Result<bool, HashError> {
+    let raw = if raw.len() <= MAX_PASSWORD_INPUT_BYTES {
+        raw.to_owned()
+    } else {
+        String::new()
+    };
+    tokio::task::spawn_blocking(move || {
+        let normalized = Password::parse(&raw).ok();
+        let legacy = (MIN_PASSWORD_LEN..=MAX_PASSWORD_LEN).contains(&raw.len())
+            && normalized
+                .as_ref()
+                .is_none_or(|value| value.expose() != raw);
+        let candidate_hash = hash.as_deref().unwrap_or(DUMMY_HASH);
+        let normalized_match = normalized
+            .as_ref()
+            .is_some_and(|value| verify_password(candidate_hash, value));
+        let legacy_match = legacy && verify_raw(candidate_hash, &raw);
+        if normalized.is_none() && !legacy {
+            let _ = verify_raw(DUMMY_HASH, "dummy-passphrase");
+        }
+        hash.is_some() && (normalized_match || legacy_match)
+    })
+    .await
+    .map_err(|_| HashError)
 }
 
 #[cfg(test)]

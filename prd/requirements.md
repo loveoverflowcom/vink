@@ -338,6 +338,13 @@ Hành vi chi tiết: [hashtag](../docs/architecture/hashtags.md),
 
 | ID | Luật | Nghiệm thu tiêu biểu | Đề xuất UX/dữ liệu |
 | --- | --- | --- | --- |
-| ACC-03 | **Username + mật khẩu** là đăng nhập chính; mã email có thể bổ sung sau, chưa ưu tiên. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id. **11/11/2026 (`O-12@r2`, `PRODUCT_CONFIRMED`):** chuẩn hóa NFKC rồi đếm 10–128 ký tự, mỗi Unicode code point là một ký tự; `Password::parse` đã theo (trước đó kiểm 10–128 byte UTF-8). Email đã xác minh là kênh khôi phục tùy chọn (O-11) |
+| ACC-03 | **Username + mật khẩu** là đăng nhập chính; mã email có thể bổ sung sau, chưa ưu tiên. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id. **11/11/2026 (`O-12@r2`, `PRODUCT_CONFIRMED`):** chuẩn hóa NFKC rồi đếm 10–128 ký tự, mỗi Unicode code point là một ký tự; `Password::parse` đã theo (trước đó kiểm 10–128 byte UTF-8). Email đã xác minh là phương án đang xem xét cho khôi phục (`O-11`, `OPEN`) |
 
-**Hiện trạng (`IMPLEMENTED` một phần):** backend native username/mật khẩu đã có trong `vink-identity` và `vink-app` (`#152`, [ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính): bảng `account_passwords`, `password_login_attempts`, Argon2id, `dummy_verify`, route `/api/v1/auth/register` và `/api/v1/auth/login` kèm rate limit mạng và cookie `__Host-vink_session`) song song với authority mã email hiện hữu. **Chưa có:** form Web username/mật khẩu (màn `/toi` hiện mới nối luồng mã email), luồng quên/khôi phục mật khẩu (`O-11`) và mở khóa đăng nhập production (`VINK_AUTH_SIGN_IN` mặc định `disabled`).
+**Hiện trạng `persistence-api`.** Backend native có đăng ký và đăng nhập bằng username/mật khẩu
+(#152). Người đã đăng nhập bằng mã email có thể thêm mật khẩu sau khi xác nhận mã mới gửi đến
+địa chỉ đã xác minh. Cả hai phương thức tiếp tục đăng nhập vào cùng tài khoản và dùng chung
+principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu phiên khách.
+[ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)
+
+Web `/toi` hiện dùng mã email. Form Web/CMP cho mật khẩu và luồng khôi phục còn thiếu. `O-11` vẫn
+`OPEN`. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
