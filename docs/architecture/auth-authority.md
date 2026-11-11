@@ -20,6 +20,12 @@ mật độc lập, chưa có người chịu trách nhiệm vận hành auth.
 Bằng chứng chạy và ma trận kịch bản: [auth-authority-s03-evidence](../development/auth-authority-s03-evidence.md).
 Ranh giới database/process có từ trước: [identity-postgres-boundaries](identity-postgres-boundaries.md).
 
+**Record (11/11/2026):** quyết định auth authority tra tại `D-05@r1` (`PROVISIONAL`). Phương thức
+đăng nhập chính tra tại `USER-08@r2`. Tài liệu này giữ spike, so sánh, đường production, blocker
+trước khi Accepted và hiện trạng code.
+
+<!-- vdr: active D-05@r1 -->
+
 ## 1. Câu hỏi quyết định
 
 Vink cần một authority xác thực cho MVP/Pilot sao cho: principal Vink ổn định và độc lập

@@ -23,8 +23,8 @@ Mỗi loại thông tin chỉ có một nơi sở hữu chính; các tài liệu
 | --- | --- |
 | Định hướng sản phẩm và phạm vi lớn | [`prd/vision.md`](../../../prd/vision.md) |
 | Yêu cầu và điều kiện nghiệm thu có ID (`WR`, `PUB`, `AUD`, `MOD`, `COM`, `LVE`, `TAG`, `COL`, `HTG`, `RANK`, `TOP`, `ACC`) | [`prd/requirements.md`](../../../prd/requirements.md) |
-| Quyết định đã chuyển từ DecisionDelta §2–4 và §7 (USER, CHOICE theo phạm vi, O, ADM) và revision `VDR-*` | [Kho TOML](../../../decisions/README.md), qua `cargo xtask decision` |
-| Quyết định kiến trúc và nguồn chưa chuyển (`D-*`, ADR) | [Sổ D-ID](../../../docs/architecture/decisions.md) và ADR theo chủ đề |
+| Quyết định đã chuyển từ DecisionDelta §2–4 và §7 (USER, CHOICE theo phạm vi, O, ADM), D-02..D-19, CHOICE theo issue (`LVE-PR-01-CHOICE-*`, `TAG-PR-01-CHOICE-*`, `DISC-*-CHOICE-*`) và revision `VDR-*` | [Kho TOML](../../../decisions/README.md), qua `cargo xtask decision` |
+| D-01, INV, S-ID và quyết định chưa chuyển trong ADR hoặc registry phát triển | [Sổ D-ID](../../../docs/architecture/decisions.md) và owner theo chủ đề ([bảng kiểm kê](../../../docs/development/decision-registry-rollout.md#lát-cutover-sổ-dadr-11112026)) |
 | Đặc tả chi tiết theo miền | Tài liệu domain trong `docs/architecture/` (`publication-moderation.md`, `comment-editing.md`, `collections.md`, `discovery-ranking.md`, `hashtags.md`, …) |
 | Đặc tả giao diện và bố cục | `docs/design/` (theo quy ước [vink-layout-spec](../vink-layout-spec/SKILL.md)) |
 | Trạng thái triển khai, ánh xạ model/code và bằng chứng | Các registry trong `docs/development/` (`product-decisions-registry.md`, `*-core.md`, `*-runtime.md`, `feature-map.md`) |

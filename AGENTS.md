@@ -6,10 +6,11 @@ The user's current instructions take precedence over repository conventions.
 
 ## Repository reality and decisions
 
-For DecisionDelta entries (10/11 USER, scoped CHOICE and O IDs; 11/11 ADM and O-17..19) and
+For DecisionDelta entries (10/11 USER, scoped CHOICE and O IDs; 11/11 ADM and O-17..19), D-IDs,
+issue-scoped choices (`LVE-PR-01-CHOICE-02`, `TAG-PR-01-CHOICE-01`, `DISC-04-CHOICE-02`) and
 `VDR-*` records, resolve the relevant decision through [the TOML registry](decisions/README.md)
 at the task checkout. Read the PRD and domain owner for detailed rules and acceptance. The
-original DecisionDelta tables preserve their historical context. Use `vink-specify` to write
+original DecisionDelta tables and the D-log at its import commit preserve historical context. Use `vink-specify` to write
 proposals; a proposal stays `PENDING` until a signoff quotes the owner's own words about that
 exact revision (`VDR-DECISION-SIGNOFF@r1`). The
 [rollout inventory](docs/development/decision-registry-rollout.md) identifies other owners and
@@ -119,7 +120,8 @@ Keep these **four status dimensions** separate in docs, reviews and handoffs:
 [Tech stack](docs/architecture/tech-stack.md): Vink owns literary content and, since 03/11/2026,
 discussion in PostgreSQL; Discourse is a design reference only, never a runtime dependency, comment
 store, auth source or plugin target. The [decision log](docs/architecture/decisions.md) owns
-D-01–D-19, INV-01–INV-08 and S-01–S-05; importing documents, passing a check or an owner-confirmed
+D-01, INV-01–INV-08 and S-01–S-05 and points D-02–D-19 to their registry records (imported with the
+source status); importing documents, passing a check or an owner-confirmed
 product direction does not accept a proposal or implement behavior. A scoped prototype may explore a
 decision without settling it; record its assumptions and the evidence still needed.
 

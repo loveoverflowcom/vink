@@ -7,6 +7,11 @@ Phạm vi: phần **đọc** của DISC-02/03, giới hạn cursor/HTTP, bằng 
 PostgreSQL. Không bật `trusted-cohort.v1`, không đổi `premoderation.v1`, không làm outbox (DISC-04),
 cache/counter (DISC-05), reaction, ranking hay UI. Production auth vẫn chưa có (D-05 Provisional).
 
+**Record (11/11/2026):** CHOICE-02 của epic tra tại `DISC-02-03-CHOICE-02@r1` (`DESIGN_PROPOSED`).
+Các quyết định phụ ở §2, thiết kế và số đo vẫn thuộc tài liệu này.
+
+<!-- vdr: active DISC-02-03-CHOICE-02@r1 -->
+
 ## 1. GapMap tại HEAD thực thi
 
 | Mục | Trạng thái tại `8a58089` | Bằng chứng source |

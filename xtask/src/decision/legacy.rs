@@ -1,5 +1,6 @@
 //! Import the reviewed DecisionDelta slices (§2–4 of 10/11 and the §7 admin addendum of 11/11).
-//! Later revisions go through proposals and owner signoffs, never through this importer.
+//! The D-log/ADR cutover has its own pinned importer in `decision_log`. Later revisions go through
+//! proposals and owner signoffs, never through an importer.
 
 use std::{collections::BTreeMap, path::Path, process::Command};
 
@@ -34,25 +35,42 @@ pub(super) enum Status {
     Rejected,
 }
 
+/// Product decisions take product outcomes and architecture decisions architecture outcomes.
+pub(super) fn status_matches_kind(status: Status, kind: Kind) -> bool {
+    match kind {
+        Kind::Product => matches!(
+            status,
+            Status::ProductConfirmed | Status::Deferred | Status::Open
+        ),
+        Kind::Architecture => matches!(
+            status,
+            Status::DesignProposed | Status::Provisional | Status::Accepted
+        ),
+    }
+}
+
 #[derive(Default, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Context {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    canonical_references: Option<String>,
+    pub canonical_references: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    previous_rule: Option<String>,
+    pub previous_rule: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    alternative: Option<String>,
+    pub alternative: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    review_when: Option<String>,
+    pub review_when: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    model_baseline: Option<String>,
+    pub model_baseline: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    change_impact: Option<String>,
+    pub change_impact: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    model: Option<String>,
+    pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    core: Option<String>,
+    pub core: Option<String>,
+    /// D-log/ADR import: the verbatim source phrase that carries the imported status.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_status: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -62,17 +80,20 @@ pub(super) struct Provenance {
     pub status: Status,
     pub historical: bool,
     pub source_line: usize,
+    /// D-log/ADR import only: the file at that import's pinned commit. DecisionDelta rows omit it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_path: Option<String>,
     pub related_ids: Vec<String>,
     pub context: Context,
 }
 
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct Row {
-    id: String,
-    revision: u32,
-    content: Content,
-    legacy: Provenance,
+pub(super) struct Row {
+    pub id: String,
+    pub revision: u32,
+    pub content: Content,
+    pub legacy: Provenance,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -246,6 +267,7 @@ fn admin_row(fields: &[&str], source_line: usize) -> Result<Row, String> {
             status: Status::ProductConfirmed,
             historical: false,
             source_line,
+            source_path: None,
             related_ids: related_ids(fields[1]),
             context: Context {
                 canonical_references: optional(fields[1]),
@@ -319,6 +341,7 @@ fn admin_open_row(
             status,
             historical: false,
             source_line,
+            source_path: None,
             related_ids: related_ids(links),
             context: Context::default(),
         },
@@ -418,6 +441,7 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
                 status: Status::Provisional,
                 historical: true,
                 source_line,
+                source_path: None,
                 related_ids: related_ids.clone(),
                 context: Context::default(),
             },
@@ -449,6 +473,7 @@ fn import_row(fields: &[&str], table: Table, source_line: usize) -> Result<Vec<R
             status,
             historical: false,
             source_line,
+            source_path: None,
             related_ids,
             context,
         },

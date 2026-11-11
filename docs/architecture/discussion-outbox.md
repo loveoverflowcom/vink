@@ -9,6 +9,15 @@ Liên quan: [admission DISC-01](discussion-admission.md), [đọc public/riêng 
 [ownership thảo luận](discussion-ownership.md), [ranh giới Identity/PostgreSQL](identity-postgres-boundaries.md).
 Model và replay: [`outbox.qnt`](../../services/vink-app/behavior/discussion/README.md#model-outbox-disc-04-120).
 
+**Record (11/11/2026):** lựa chọn của prompt DISC-04 tra tại `DISC-04-CHOICE-01..04@r1`
+(`DESIGN_PROPOSED`). `DISC-04-CHOICE-02` là lựa chọn cho CHOICE-05 của epic. Thiết kế, runbook và
+bằng chứng vẫn thuộc tài liệu này.
+
+<!-- vdr: active DISC-04-CHOICE-01@r1 -->
+<!-- vdr: active DISC-04-CHOICE-02@r1 -->
+<!-- vdr: active DISC-04-CHOICE-03@r1 -->
+<!-- vdr: active DISC-04-CHOICE-04@r1 -->
+
 ## 1. Đối chiếu tại HEAD thực thi (AC-01)
 
 **GapMap** (capability → owner → contract → implementation → test → gap):

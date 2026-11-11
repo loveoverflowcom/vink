@@ -11,7 +11,7 @@ use std::{
 use serde_json::Value;
 
 use super::{
-    legacy, publish,
+    decision_log, legacy, publish,
     record::{PROPOSALS, SIGNOFFS},
     run,
 };
@@ -44,10 +44,9 @@ impl Sandbox {
             }
         };
         let sandbox = Self(path);
-        sandbox.write(
-            legacy::FILE,
-            &fs::read_to_string(crate::root().join(legacy::FILE)).unwrap(),
-        );
+        for file in [legacy::FILE, decision_log::FILE] {
+            sandbox.write(file, &fs::read_to_string(crate::root().join(file)).unwrap());
+        }
         sandbox
     }
 
@@ -195,8 +194,146 @@ fn imported_status_history_and_related_ids_resolve_without_git() {
             .as_array()
             .unwrap()
             .len(),
-        52
+        52 + 32
     );
+}
+
+#[test]
+fn decision_log_import_keeps_source_status_and_one_authority_per_d_id() {
+    let sandbox = Sandbox::new();
+    let group = sandbox.json(&["query", decision_log::GROUP_ID]);
+    let revisions = group["result"]["revisions"].as_array().unwrap();
+    assert_eq!(revisions.len(), 32);
+    for record in revisions {
+        // The importer never promotes: no ACCEPTED, and every status quotes its source phrase.
+        assert_ne!(record["status"], "ACCEPTED");
+        assert!(record["context"]["source_status"].as_str().is_some());
+        assert_eq!(record["source"]["commit"], decision_log::COMMIT);
+        assert!(
+            record["source"]["path"]
+                .as_str()
+                .unwrap()
+                .starts_with("docs/architecture/")
+        );
+    }
+    for (id, status, kind) in [
+        ("D-05", "PROVISIONAL", "architecture"),
+        ("D-08", "DESIGN_PROPOSED", "architecture"),
+        ("D-12", "DESIGN_PROPOSED", "architecture"),
+        ("D-13", "PRODUCT_CONFIRMED", "product"),
+        ("D-14", "DESIGN_PROPOSED", "architecture"),
+        ("LVE-PR-01-CHOICE-02", "DESIGN_PROPOSED", "architecture"),
+        ("TAG-PR-01-CHOICE-02", "DESIGN_PROPOSED", "architecture"),
+        ("DISC-01-CHOICE-01", "DESIGN_PROPOSED", "architecture"),
+    ] {
+        let result = &sandbox.json(&["query", id])["result"];
+        assert_eq!(result["lookup"], "current", "{id}");
+        assert_eq!(result["record"]["status"], status, "{id}");
+        assert_eq!(result["record"]["content"]["kind"], kind, "{id}");
+    }
+    // The 10/11 sign-in method stays with USER-08@r2; D-05 keeps only the authority decision.
+    let auth = &sandbox.json(&["query", "D-05"])["result"]["record"];
+    assert_eq!(auth["content"]["requires"][0], "USER-08@r2");
+    assert!(
+        !auth["content"]["resolution"]
+            .as_str()
+            .unwrap()
+            .contains("#152")
+    );
+    // D-02 keeps both source statuses as two scoped records.
+    let ownership = sandbox.json(&["query", "D-02"]);
+    let parts: Vec<_> = ownership["result"]["related"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| (r["id"].as_str().unwrap(), r["status"].as_str().unwrap()))
+        .collect();
+    assert_eq!(
+        parts,
+        [
+            ("D-02-CONTENT", "DESIGN_PROPOSED"),
+            ("D-02-DISCUSSION", "PRODUCT_CONFIRMED")
+        ]
+    );
+    // D-IDs fully owned by DecisionDelta records resolve to them, not to a second copy.
+    for (id, owner) in [
+        ("D-06", "USER-02"),
+        ("D-09", "USER-10"),
+        ("D-10", "USER-09"),
+        ("D-11", "USER-01"),
+        ("D-16", "USER-09"),
+        ("D-17", "USER-11"),
+        ("D-18", "USER-13"),
+        ("D-19", "USER-14"),
+    ] {
+        let result = &sandbox.json(&["query", id])["result"];
+        assert_eq!(result["lookup"], "related_only", "{id}");
+        assert!(
+            result["related"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|r| r["source"]["group"] != decision_log::GROUP_ID),
+            "{id}"
+        );
+        assert!(
+            result["related"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["id"] == owner),
+            "{id}"
+        );
+    }
+    assert_eq!(
+        sandbox.json(&["query", "D-01"])["result"]["lookup"],
+        "unknown"
+    );
+    // An imported revision keeps its source status; a change needs a proposal and a signoff.
+    let digest = auth["sha256"].as_str().unwrap();
+    assert!(
+        sandbox
+            .signoff(
+                "D-05@r1",
+                digest,
+                &CONFIRMED.replace("PRODUCT_CONFIRMED", "ACCEPTED")
+            )
+            .unwrap_err()
+            .contains("imported revisions keep their source status")
+    );
+    let input = sandbox.write(
+        "draft.toml",
+        &DRAFT.replace(
+            "kind = \"product\"\ndomain = \"publication\"",
+            "kind = \"architecture\"\ndomain = \"account\"",
+        ),
+    );
+    let head = sandbox.head("D-05");
+    sandbox.propose("D-05", &head, &input).unwrap();
+    let pending = sandbox.json(&["query", "D-05"]);
+    assert_eq!(pending["result"]["record"]["revision"], 1);
+    assert_eq!(pending["result"]["head"]["revision"], 2);
+}
+
+#[test]
+fn pinned_imports_render_byte_identical_when_their_sources_are_available() {
+    // CI uses a shallow checkout without the pinned objects; render needs them.
+    for (render, file) in [
+        (
+            legacy::render as fn(&Path) -> Result<String, String>,
+            legacy::FILE,
+        ),
+        (decision_log::render, decision_log::FILE),
+    ] {
+        match render(&crate::root()) {
+            Ok(text) => assert_eq!(
+                text,
+                fs::read_to_string(crate::root().join(file)).unwrap(),
+                "{file}"
+            ),
+            Err(error) => assert!(error.contains("unavailable"), "{error}"),
+        }
+    }
 }
 
 #[test]
@@ -316,7 +453,7 @@ fn rejects_malformed_inputs_and_self_attestations() {
     );
     assert!(
         sandbox
-            .propose("D-05", "new", &input)
+            .propose("D-99", "new", &input)
             .unwrap_err()
             .contains("VDR- ID")
     );
@@ -352,6 +489,23 @@ fn altered_import_and_proposal_schema_are_rejected() {
             .contains("version")
     );
     fs::write(&path, legacy).unwrap();
+
+    let path = sandbox.0.join(decision_log::FILE);
+    let imported = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        imported.replacen("status = \"PROVISIONAL\"", "status = \"ACCEPTED\"", 1),
+    )
+    .unwrap();
+    assert!(
+        sandbox
+            .command(&["query", "D-05"])
+            .unwrap_err()
+            .contains("differs from the reviewed")
+    );
+    fs::remove_file(&path).unwrap();
+    assert!(sandbox.command(&["validate"]).is_err());
+    fs::write(&path, imported).unwrap();
 
     let input = sandbox.write("draft.toml", DRAFT);
     sandbox.propose("VDR-TEST", "new", &input).unwrap();

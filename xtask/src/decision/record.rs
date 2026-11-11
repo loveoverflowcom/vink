@@ -7,7 +7,10 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use super::legacy::{self, Status};
+use super::{
+    decision_log,
+    legacy::{self, Status},
+};
 use crate::checks::sha256_hex;
 
 pub(super) const VERSION: u16 = 1;
@@ -423,8 +426,19 @@ impl Entry {
 
 impl Registry {
     pub fn load(root: &Path) -> Result<Self, String> {
+        let mut entries = legacy::load(root)?;
+        for (key, entry) in decision_log::load(root)? {
+            if entries.contains_key(&key) {
+                return Err(format!(
+                    "{}: {key} is already imported from {}",
+                    decision_log::FILE,
+                    legacy::FILE
+                ));
+            }
+            entries.insert(key, entry);
+        }
         let mut registry = Self {
-            entries: legacy::load(root)?,
+            entries,
             snapshot: String::new(),
         };
         let dir = root.join(PROPOSALS);
@@ -474,7 +488,11 @@ impl Registry {
             }
         }
         registry.check_dependencies()?;
-        let mut snapshot = format!("v{VERSION}:{}", legacy::IMPORT_SHA256);
+        let mut snapshot = format!(
+            "v{VERSION}:{}:{}",
+            legacy::IMPORT_SHA256,
+            decision_log::IMPORT_SHA256
+        );
         snapshot.extend(registry.entries.values().map(|entry| entry.hash.as_str()));
         snapshot.push_str(":signoffs:");
         snapshot.extend(

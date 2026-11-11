@@ -1,0 +1,763 @@
+version = 1
+source_commit = "73ab92f0064674833ec31bc7533b210149b26b79"
+
+[[records]]
+id = "D-02-CONTENT"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "Vink sở hữu content"
+resolution = "**Đề xuất:** Vink sở hữu Work/Chapter/Revision/Publication trong PostgreSQL."
+rationale = "Lợi ích là làm chủ bản nháp song song với bản công khai, quyền xuất bản, tuyển chọn và export. Chi phí là Vink phải xây một màn vận hành tác phẩm riêng và chịu trách nhiệm về revision schema, backup, migration."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 44
+source_path = "docs/architecture/decisions.md"
+related_ids = ["D-02"]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/decisions.md §1; docs/architecture/tech-stack.md"
+source_status = "Content: đề xuất ưu tiên"
+
+[[records]]
+id = "D-02-DISCUSSION"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "thảo luận do Vink sở hữu (Rust core + PostgreSQL App)"
+resolution = """
+**Đã chốt 03/11/2026 (chủ sản phẩm, phần thảo luận):** Vink cũng sở hữu bình luận bằng Rust core và PostgreSQL của App. Discourse chỉ là nguồn tham khảo thiết kế, API, kiểm duyệt và trải nghiệm cộng đồng; không là dependency runtime hay nơi lưu bình luận
+Discourse chỉ là tham khảo; Vink tự xây tiền kiểm, report/appeal, chống lạm dụng, thông báo trước khi mở công khai"""
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 44
+source_path = "docs/architecture/decisions.md"
+related_ids = ["D-02"]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/discussion-ownership.md"
+source_status = "Thảo luận: **đã chốt 03/11/2026**"
+
+[[records]]
+id = "D-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "Một Rust app + worker, chia module trước"
+resolution = """
+Một Rust app + worker, chia module trước
+Không tách microservices theo tên nghiệp vụ"""
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 45
+source_path = "docs/architecture/decisions.md"
+related_ids = []
+
+[records.legacy.context]
+canonical_references = "docs/architecture/tech-stack.md; docs/development/README.md"
+source_status = "Đề xuất"
+
+[[records]]
+id = "D-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "Leptos SSR + JavaScript editor"
+resolution = "Leptos SSR + JavaScript editor"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 46
+source_path = "docs/architecture/decisions.md"
+related_ids = ["S-01"]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/decisions.md §6 (S-01)"
+review_when = "Giữ nếu editor/SSR đạt; có thể đổi frontend mà giữ API/domain"
+source_status = "Cần spike"
+
+[[records]]
+id = "D-05"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "Auth authority"
+resolution = """
+Authority native trong `vink-identity`, phiên opaque, binding/đình chỉ ở App không đổi.
+App giữ principal/binding/đình chỉ; Keycloak và Supabase/Clerk không chọn cho pilot.
+Không còn DiscourseConnect"""
+requires = ["USER-08@r2"]
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "PROVISIONAL"
+historical = false
+source_line = 47
+source_path = "docs/architecture/decisions.md"
+related_ids = ["S-03"]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/auth-authority.md §6, §9, §11, §12; docs/development/auth-operations.md; docs/development/auth-web.md"
+review_when = """
+Blocker còn: chủ sản phẩm chấp nhận UX, gửi thật qua Resend + deliverability, edge/WAF, qualification trình duyệt trên HTTPS thật + native
+review bảo mật độc lập, người chịu trách nhiệm auth"""
+source_status = "**Đề xuất A cho pilot (Provisional, 07/11/2026)**; chưa Accepted."
+
+[[records]]
+id = "D-08"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh"
+resolution = """
+Bình luận mới tiền kiểm; sửa công khai theo gate đã chứng minh
+Nếu edit gate chưa đạt, chặn edit cả UI/API trong pilot."""
+requires = [
+    "USER-04@r1",
+    "USER-15@r1",
+]
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 50
+source_path = "docs/architecture/decisions.md"
+related_ids = [
+    "COM-02",
+    "COM-10",
+]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/discussion-admission.md §5, §8; docs/architecture/comment-editing.md; docs/development/discussion-core.md"
+source_status = "Cần spike"
+
+[[records]]
+id = "D-12"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "publication"
+title = "Rút bài và thu hồi discussion/excerpt"
+resolution = "Vink chặn đọc tác phẩm và thảo luận ngay vì cùng owner (nay chỉ đúng cho riêng tư/gỡ do kiểm duyệt); cache/excerpt có trạng thái riêng; không báo hoàn tất trước khi xác minh."
+requires = [
+    "ADM-07@r1",
+    "ADM-08@r1",
+    "USER-07@r1",
+]
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 54
+source_path = "docs/architecture/decisions.md"
+related_ids = [
+    "PUB-04",
+    "PUB-05",
+]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/decisions.md §5; docs/architecture/publication-moderation.md §6"
+source_status = "Cần chốt policy + spike"
+
+[[records]]
+id = "D-13"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác"
+resolution = """
+Tác giả bật/tắt bình luận theo tác phẩm; không sửa/xóa bình luận người khác
+Quyền bật/tắt tách khỏi quyền kiểm duyệt hệ thống; “tắt” chỉ ngừng nhận bình luận mới, không ẩn bình luận đã duyệt; tác phẩm mới mặc định bật; tác giả có grant kiểm duyệt vẫn tự né tác phẩm của mình (xác nhận 03/11/2026); bật/tắt dùng generation của ý định được chấp nhận, yêu cầu ở đúng generation hiện tại luôn tăng generation kể cả khi trùng chế độ (xác nhận 05/11/2026), xem [ADR](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm)"""
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 55
+source_path = "docs/architecture/decisions.md"
+related_ids = [
+    "COM-07",
+    "COM-08",
+]
+
+[records.legacy.context]
+canonical_references = "docs/architecture/discussion-ownership.md §4"
+source_status = "**Đã chốt 03/11/2026**"
+
+[[records]]
+id = "D-14"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "Ghi nhận văn học (LVE, #73): work revision, root, flat reply"
+resolution = """
+Ghi nhận văn học (LVE, #73): work revision, root, flat reply
+không đổi COM-07/08 hoặc luật #79"""
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 56
+source_path = "docs/architecture/decisions.md"
+related_ids = []
+
+[records.legacy.context]
+canonical_references = "docs/architecture/literary-endorsement.md; docs/development/endorsement-core.md; docs/development/literary-endorsement-runtime.md"
+source_status = "Lựa chọn pure slice LVE-PR-01, hợp nhất PR #80 sau #78 ngày 05/11/2026"
+
+[[records]]
+id = "D-15"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "Phân loại tác phẩm (TAG, #94/#95): catalog, thẻ nháp, metadata công khai"
+resolution = """
+Phân loại tác phẩm (TAG, #94/#95): catalog, thẻ nháp, metadata công khai
+Thẻ không cấp quyền, không xuất bản hay tuyển chọn"""
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 57
+source_path = "docs/architecture/decisions.md"
+related_ids = []
+
+[records.legacy.context]
+canonical_references = "docs/architecture/work-taxonomy.md; docs/development/taxonomy-core.md"
+review_when = "bắt buộc dạng bài khi gửi duyệt và duyệt lại snapshot metadata còn OPEN; curator theo người (grant/HTTP) chờ authority production"
+source_status = "Lựa chọn pure slice TAG-PR-01 ngày 08/11/2026, chưa Accepted"
+
+[[records]]
+id = "DISC-01-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "#120 CHOICE-01 risk-policy rollout, lát DISC-01"
+resolution = "**A** — admission thuần có version + đánh giá shadow; tiền kiểm 100% vẫn hiệu lực"
+rationale = "B cần authority trust có thu hồi, fence standing tại commit, worker hậu kiểm, provenance bền và delta D-08; chưa có thứ nào. A không đổi hành vi người dùng, cho số liệu so sánh khi có store. Không auto-approve dự phòng"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 50
+source_path = "docs/architecture/discussion-admission.md"
+related_ids = ["D-08"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core**"
+
+[[records]]
+id = "DISC-01-CHOICE-06"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "#120 CHOICE-06 trình bày gửi/thử lại, lát DISC-01"
+resolution = "**A** — giữ kết quả gửi có scope cạnh composer tới khi xác nhận/đối soát"
+rationale = "Khớp controller D2T-03 hiện có (receipt riêng, `#reply-recovery`). B (hàng local theo submission rồi dedup theo ID server) hợp di động hơn nhưng cần merge/paging/session/restart state; để designer xét lại. Không code UI, không ép UUIDv7"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 51
+source_path = "docs/architecture/discussion-admission.md"
+related_ids = []
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core**"
+
+[[records]]
+id = "DISC-02-03-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "#120 CHOICE-02 hợp đồng đọc công khai/riêng tư, lát DISC-02/03 phần 2"
+resolution = "**B+: giữ composed v1, thêm public projection độc lập và overlay riêng**"
+rationale = "Lý do: B+ tách dữ liệu công khai khỏi trạng thái người xem ở cả kiểu Rust lẫn wire mà không phá consumer hiện có."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 31
+source_path = "docs/architecture/discussion-reads.md"
+related_ids = []
+
+[records.legacy.context]
+alternative = """
+A: public endpoint + overlay, bỏ composed
+C: chỉ thêm overlay"""
+source_status = "Phạm vi: phần **đọc** của DISC-02/03"
+
+[[records]]
+id = "DISC-04-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Prompt DISC-04 CHOICE-01 event và delivery (#120)"
+resolution = "**A** — event bất biến + `discussion_deliveries` theo (event, consumer)"
+rationale = 'Test T6 cần "A xong, B lỗi → chỉ B retry" trên cùng event; B (một hàng/effect lặp metadata) gọn hơn khi chỉ một consumer nhưng phải giữ provenance nhất quán bằng tay. Đổi lại: một join khi claim (0,06 ms, §8) và retention phải chờ mọi delivery'
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 53
+source_path = "docs/architecture/discussion-outbox.md"
+related_ids = []
+
+[records.legacy.context]
+source_status = "Lát này là **hạ tầng bền + một consumer shadow/audit**."
+
+[[records]]
+id = "DISC-04-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Prompt DISC-04 CHOICE-02 đánh thức worker (#120, cho CHOICE-05 của epic)"
+resolution = "**A** — polling, backoff 1 s → 30 s có jitter, reset khi có việc"
+rationale = "Consumer duy nhất là audit; độ trễ ≤ ~37 s khi nhàn chấp nhận được; idle đo ~13 transaction/120 s. B (LISTEN/NOTIFY) cần connection riêng, đăng ký lại khi reconnect và vẫn phải poll; để DISC-05/hậu kiểm thật quyết khi có SLA. Đây là lựa chọn cho CHOICE-05 của epic (#120), không ghi đè ID lịch sử"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 54
+source_path = "docs/architecture/discussion-outbox.md"
+related_ids = []
+
+[records.legacy.context]
+source_status = "Lát này là **hạ tầng bền + một consumer shadow/audit**."
+
+[[records]]
+id = "DISC-04-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Prompt DISC-04 CHOICE-03 consumer đầu tiên (#120)"
+resolution = "**A** — `admission_shadow.v1` (shadow/audit)"
+rationale = "Đo điều kiện 7 của delta D-08 ([admission §5](discussion-admission.md#5-delta-com-02d-08-đề-xuất--proposed-chưa-accepted)): ứng viên `trusted-cohort.v1` quyết gì so với quyết định người. Dùng `decide_initial_review` thật; trust/rules/classifier **không có nguồn** nên là `Unknown/Unassessed` (không bịa) → ứng viên chỉ giữ lại hoặc từ chối. Đây là chỗ nguồn chậm (rules, classifier) sẽ cắm vào, ngoài transaction gửi. B (hậu kiểm) loại: không có ticket hợp lệ khi chỉ `premoderation.v1` hiệu lực"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 55
+source_path = "docs/architecture/discussion-outbox.md"
+related_ids = ["D-08"]
+
+[records.legacy.context]
+source_status = "Lát này là **hạ tầng bền + một consumer shadow/audit**."
+
+[[records]]
+id = "DISC-04-CHOICE-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Prompt DISC-04 CHOICE-04 mức tái sử dụng (#120)"
+resolution = "**A** — queue nằm cạnh owner thảo luận trong App"
+rationale = "Identity giữ `mail_deliveries` (một hàng/challenge, code trong hàng, thư ngoài DB). Yêu cầu khác nhau (fan-out, effect trong DB, requeue có audit). Không có primitive chung, không chia sẻ bảng, credential hay authority. Chỉ học pattern claim `SKIP LOCKED` + lease của #143"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 56
+source_path = "docs/architecture/discussion-outbox.md"
+related_ids = []
+
+[records.legacy.context]
+source_status = "Lát này là **hạ tầng bền + một consumer shadow/audit**."
+
+[[records]]
+id = "LVE-PR-01-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-01, lát LVE-PR-01"
+resolution = "A — một tín hiệu tích cực mỗi actor/target/anchor"
+rationale = "Nhỏ, không có nhu cầu facets đã xác định. B tăng policy/schema; C appraisal riêng để sau. Work “Đánh giá cao”, comment “Hữu ích”; không điểm chuyên môn. Count không nhân vì reason."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 47
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-01-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-02, lát LVE-PR-01"
+resolution = "B — work theo `RevisionId` của publication; comment theo original `CommentId`"
+rationale = "`revisions(work_id,id)` có FK, UPDATE bị trigger chặn. Rewrite tạo anchor mới với count riêng; A thừa kế ghi nhận qua rewrite, C cần content-change policy chưa có. Cùng revision được đăng lại giữ ghi nhận; không phụ thuộc số lần publication delete/reinsert. Không tự chuyển vote sang bản mới."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 48
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-01-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-03 (core ordering/retry), lát LVE-PR-01"
+resolution = "B ở **core ordering/retry** — accepted-command order + receipt exact payload"
+rationale = "Every accepted intent, kể cả same-state, tăng order. Mutation version riêng. A nhỏ hơn nhưng buộc client serialize mới tránh OFF/no-op trace; không dùng A để giảm invariant. Hình dạng HTTP POST/PUT vẫn OPEN cho PR API; contract identity/order/receipt phải giữ."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 49
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-01-CHOICE-08"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-08, lát LVE-PR-01"
+resolution = "A — chặn self endorsement"
+rationale = "Không có utility self-mark riêng với bookmark. Work author vẫn có thể vote comment của người khác trên bài mình."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 50
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-01-CHOICE-09"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-09, lát LVE-PR-01"
+resolution = "A — độc lập quyền gửi text"
+rationale = "COM-07 đóng root/reply create; không làm người viết tác phẩm có quyền xóa vote. Close, retry, reopen giữ cùng rules. Visibility/authority vẫn thắng."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 51
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-01-CHOICE-11"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-11, lát LVE-PR-01"
+resolution = "A — owner-local module trong `vink-app`"
+rationale = "Chưa có consumer Rust thứ hai; reuse IDs, placement và lifecycle predicate thật; không tạo crate chỉ để gọi “abstract”."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 52
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Đây là lựa chọn triển khai có phạm vi **pure core PR1**"
+
+[[records]]
+id = "LVE-PR-02-03-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-03 (HTTP), lát API + PostgreSQL #81 (LVE-PR-02/03)"
+resolution = "`PUT …/endorsement/me` mang trạng thái mong muốn, `command_key` (UUID của actor, trên mọi đích) và `expected_order`; `200 accepted` / `200 replayed` (lịch sử `committed` tách trạng thái hiện tại), `409` conflict, `422` key reuse"
+rationale = "POST lệnh cũng mang cùng key/order nên không bớt gì; không expose hai API song song"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 147
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi."
+
+[[records]]
+id = "LVE-PR-02-03-CHOICE-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-04, lát API + PostgreSQL #81 (LVE-PR-02/03)"
+resolution = "A — `work_endorsements` (PK work, revision, actor; FK revision cùng tác phẩm), `comment_endorsements`, `endorsement_receipts` (đích typed nullable + CHECK đúng một đích); token `1 ≤ version ≤ order`, `order ≥ 2`; trigger cấm đổi danh tính, order không tăng, version giảm, DELETE/TRUNCATE; receipt append-only"
+rationale = "Một bảng state chung thêm NULL/CHECK mà không bớt truy vấn; `(target_type, target_id)` không FK bị loại"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 148
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi."
+
+[[records]]
+id = "LVE-PR-02-03-CHOICE-05"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-05, lát API + PostgreSQL #81 (LVE-PR-02/03)"
+resolution = "A — đếm hàng `selected` khi đọc, partial index"
+rationale = "Counter giao dịch tuần tự hóa người ghi trên đích nóng; outbox chưa có nhu cầu. Số đo: [bằng chứng](../development/evidence/lve-postgres/README.md)"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 149
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi."
+
+[[records]]
+id = "LVE-PR-02-03-CHOICE-12"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-12, lát API + PostgreSQL #81 (LVE-PR-02/03)"
+resolution = "A — chỉ tổng số + trạng thái riêng; không endpoint/truy vấn nào trả danh sách người ghi nhận"
+rationale = "B cần owner consent/retention/withdrawal, chưa có"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 150
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi."
+
+[[records]]
+id = "LVE-PR-02-03-CHOICE-13"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-13, lát API + PostgreSQL #81 (LVE-PR-02/03)"
+resolution = "A — `GET …/endorsements` (công khai, không resolve actor) tách `GET …/endorsements/me` (`401` cho khách), batch ≤ 100 bình luận của một tác phẩm, đều `no-store`; READ-01/02 không đổi"
+rationale = "Gộp làm lỗi Identity che tổng số và buộc thêm trạng thái người xem vào biểu diễn công khai"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 151
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "Chọn cho lát gộp LVE-PR-02/03 (05/11/2026), port lên seam trên; không đổi semantics lõi."
+
+[[records]]
+id = "LVE-WP-04-CHOICE-10"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-10, lát Web adapter WP-04"
+resolution = "**A** — không optimistic: bấm chỉ đặt `Pending` (ghi chú “Đang gửi…”, MicroArc); giá trị và số đếm chỉ đổi theo ACK `accepted`/`replayed` (trạng thái hiện tại `endorsement`, không phải `committed`) hoặc đọc lại own state; mất phản hồi/timeout/`503`/`500` → `Uncertain` chặn bấm, “Kiểm tra lại” replay đúng lệnh (cùng key, order, trạng thái mong muốn, revision); own state chưa đọc/đọc lỗi → `Unknown`, “Kiểm tra lại” đọc lại"
+rationale = "B (optimistic có nhãn) cần phase mới + `toggle-contract-v2`, rollback hiển thị và fence ý định mới nhất xuyên thiết bị mà lõi không hứa; lợi ích là độ trễ cảm nhận của một nút nhỏ, không đáng rủi ro “đã ghi nhận” giả. Đánh giá lại nếu đo được độ trễ ghi thật làm người đọc bấm lặp"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 192
+source_path = "docs/architecture/literary-endorsement.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+source_status = "10 chốt A ở [lát Web adapter](#lát-web-adapter-wp-04-06112026)"
+
+[[records]]
+id = "TAG-PR-01-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#95 CHOICE-01 taxonomy pilot, lát TAG-PR-01"
+resolution = """
+Một catalog, mỗi thẻ thuộc đúng một facet trong enum **đóng** `{Form, Theme}`; luật số lượng là hằng trong code, không phải engine nhóm do dữ liệu định nghĩa.
+Số lượng: **dạng bài ≤ 1** (bằng type `Option`), **chủ đề ≤ 3** thẻ khác nhau sau khi resolve alias và khử trùng (`MAX_THEMES_PER_WORK`).
+Dạng bài **không bắt buộc** ở nháp; có bắt buộc khi gửi duyệt hay không là quyết định của owner publication."""
+rationale = "Tái dùng toàn bộ luật danh tính; facet đóng nên không thành engine taxonomy tổng quát; thêm facet là thay đổi code được review"
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 54
+source_path = "docs/architecture/work-taxonomy.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+alternative = """
+A. Trường dạng bài riêng + thẻ chủ đề
+C. Chỉ chủ đề"""
+review_when = "Xem lại khi dữ liệu pilot cho thấy tác giả thường chạm giới hạn, hoặc tác phẩm lai thường cần hai dạng bài (khi đó tăng hằng số, không đổi schema)."
+source_status = "**Trạng thái:** lựa chọn triển khai cho **pure core** của App"
+
+[[records]]
+id = "TAG-PR-01-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#95 CHOICE-02 gắn metadata công khai, lát TAG-PR-01"
+resolution = """
+Hash v1, `RevisionId` và anchor endorsement không đổi khi sửa thẻ; publication trỏ **cặp** (revision, metadata snapshot) và đổi cặp nguyên tử
+cập nhật tag-only **không được** bypass: chỉ transaction của owner publication (ý định tác giả + authority hiện hành + generation, PUB-01..03) được đổi binding; có cần duyệt lại snapshot metadata hay không là quyết định của owner đó, còn OPEN.
+`MetadataDigest` (SHA-256, separator `vink-work-metadata-v1`, thứ tự chủ đề có nghĩa) là danh tính nội dung của snapshot, tách hẳn khỏi `ContentHash` v1."""
+rationale = "Đánh đổi: thêm một version (thẻ nháp) và một ranh giới binding."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 72
+source_path = "docs/architecture/work-taxonomy.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+alternative = "Sửa tag-only phải tạo revision mới: `RevisionId` mới tách số “Đánh giá cao” (LVE neo revision) và lẫn danh tính văn bản với mô tả"
+source_status = "**Trạng thái:** lựa chọn triển khai cho **pure core** của App"
+
+[[records]]
+id = "TAG-PR-01-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#95 CHOICE-03 quản trị catalog, lát TAG-PR-01"
+resolution = """
+Curator (operator) tạo/đổi tên/mô tả/thêm alias/ngừng dùng; tác giả chỉ chọn thẻ có sẵn.
+“Chưa có thẻ này” trả `UnknownTag`, không có nút hay endpoint đề xuất giả."""
+rationale = "Phương án B (đề xuất chờ duyệt) cần hàng đợi, quyền, chống lạm dụng và bảo đảm đề xuất không lộ; chưa có dữ liệu pilot cho thấy thiếu thẻ thường xuyên."
+
+[records.legacy]
+group = "DECISION-LOG-20261111"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 91
+source_path = "docs/architecture/work-taxonomy.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+review_when = "Xem lại khi pilot ghi nhận nhiều lượt tìm không ra thẻ."
+source_status = "**Trạng thái:** lựa chọn triển khai cho **pure core** của App"

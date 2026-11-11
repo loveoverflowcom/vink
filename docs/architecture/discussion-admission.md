@@ -11,6 +11,14 @@ Lát tiếp theo nối đường gửi vào seam này: [§7 DISC-02/03](#7-lát-
 Registry bằng chứng và gap: [bình luận hai tầng](../development/discussion-core.md#registry-traceability-của-41);
 brief hành vi UI cho thiết kế sau: [discussion-submission-brief](../design/discussion-submission-brief.md).
 
+**Record (11/11/2026):** lựa chọn của lát tra tại `DISC-01-CHOICE-01@r1` và `DISC-01-CHOICE-06@r1`
+(`DESIGN_PROPOSED`). Gate sửa công khai của D-08 tra tại `D-08@r1`. Bảng §3 giữ ngữ cảnh lúc chọn.
+Delta §5 vẫn **PROPOSED** tại đây.
+
+<!-- vdr: active DISC-01-CHOICE-01@r1 -->
+<!-- vdr: active DISC-01-CHOICE-06@r1 -->
+<!-- vdr: active D-08@r1 -->
+
 ## 1. Baseline đối chiếu tại HEAD thực thi (AC-01)
 
 Các khẳng định ở §1 của epic được đọc lại trên source, không suy từ lời issue:
