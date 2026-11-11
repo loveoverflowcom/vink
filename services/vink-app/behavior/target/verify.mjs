@@ -414,7 +414,7 @@ try {
     { scripts: [{ name: 'publication_and_comment_edit', steps: vectors }] });
   console.log(`PASS evaluator script: ${vectors.length} scripted results cover all nine mock outcome classes`);
   console.log('NOT_RUN Apalache/model checking');
-  console.log('PARTIAL publication pure-core replay runs in Rust; evaluator/admin/lifecycle authority and all other target models remain NOT_IMPLEMENTED');
+  console.log('PARTIAL publication + moderation pure-core and scripted-evaluator replay runs in Rust (#150, #151); delete/remove lifecycle and all other target models remain NOT_IMPLEMENTED');
   rmSync(temporary, { recursive: true });
 } catch (error) {
   console.error(`FAIL ${error.message}\nIntermediate ITF traces, if any: ${temporary}`);

@@ -97,7 +97,10 @@ Logs local: `/tmp/vink150-focused.log`, `/tmp/vink150-quick-final.log`,
 
 ## Tích hợp tiếp
 
-#151 dùng seam admitted decision, không suy authority từ Approved. PR persistence sau phải reload
+[#151](moderation-core.md) (`domain::moderation`, `application::moderation`) nối contract evaluator,
+`ScriptedEvaluator` (9 lớp `evaluator-vectors.json`), guard precedence, `DecisionVersion` và
+`AdminAuthority` vào `Publication::record_review`, mở rộng replay M1 lên 46/51 bước cùng cả hai
+negative control (`mutatedIntentStep`, `mutatedOverrideStep`). PR persistence sau phải reload
 owner + **principal standing fence**, revision/hash + current decision/version, current audience,
 intent/generation và lifecycle trong cùng transaction; gọi policy trên facts mới, capture metadata
 bằng `capture_metadata_snapshot`, bind revision + metadata trong cùng pointer row và commit

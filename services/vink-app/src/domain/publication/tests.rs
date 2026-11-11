@@ -1,19 +1,19 @@
 use super::*;
 use crate::domain::document::{Document, Title};
 
-pub(super) fn work(n: u128) -> WorkId {
+pub(crate) fn work(n: u128) -> WorkId {
     WorkId::from_uuid(uuid::Uuid::from_u128(n))
 }
-pub(super) fn owner() -> PrincipalId {
+pub(crate) fn owner() -> PrincipalId {
     PrincipalId::from_uuid(uuid::Uuid::from_u128(1))
 }
-pub(super) fn revision(n: u128) -> RevisionId {
+pub(crate) fn revision(n: u128) -> RevisionId {
     RevisionId::from_uuid(uuid::Uuid::from_u128(n))
 }
-pub(super) fn generation(n: i64) -> IntentGeneration {
+pub(crate) fn generation(n: i64) -> IntentGeneration {
     IntentGeneration::new(n).unwrap()
 }
-pub(super) fn snapshot(n: u128) -> Snapshot {
+pub(crate) fn snapshot(n: u128) -> Snapshot {
     Snapshot {
         work: work(1),
         revision: revision(n),

@@ -495,6 +495,6 @@ impl Publication {
 }
 
 #[cfg(test)]
-mod replay;
+pub(crate) mod replay;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -78,6 +78,12 @@ id_type!(
     /// collide; this identity never does, and assignments and snapshots reference only it.
     TagId
 );
+id_type!(
+    /// Identity of one moderation evaluation attempt (#151, MOD-08). A retry after a timeout or
+    /// provider error issues a new `EvaluationId`, distinct from worker `ClaimGeneration` and
+    /// `DecisionVersion`.
+    EvaluationId
+);
 
 impl WorkId {
     /// Time-ordered identifier for a newly created work.
@@ -108,6 +114,13 @@ impl TagId {
     }
 }
 
+impl EvaluationId {
+    /// Server-chosen identity for one evaluation attempt; retries never reuse a consumed attempt.
+    pub fn generate() -> Self {
+        Self(Uuid::now_v7())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,6 +139,7 @@ mod tests {
             assert_eq!(ThreadId::parse(raw), None);
             assert_eq!(CommentId::parse(raw), None);
             assert_eq!(TagId::parse(raw), None);
+            assert_eq!(EvaluationId::parse(raw), None);
         }
     }
 
@@ -136,5 +150,6 @@ mod tests {
         assert_eq!(id.to_string(), raw);
         assert_eq!(WorkId::from_uuid(id.as_uuid()), id);
         assert_eq!(WorkId::generate().as_uuid().get_version_num(), 7);
+        assert_eq!(EvaluationId::generate().as_uuid().get_version_num(), 7);
     }
 }

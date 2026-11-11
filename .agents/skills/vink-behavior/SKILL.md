@@ -23,9 +23,13 @@ over whole input domains; it is no sequence or race proof. There is no generic b
 `services/vink-app/behavior/target` holds target specifications for the owner's decisions of
 10/11/2026 (tombstone, collections, comment editing, discovery ranking, appeals): they run as a step of `verify discussion`, have generated vectors and negative controls,
 and have **no Rust replay**, so they are model evidence only. #150 moved canonical M1 to
-`behavior/publication`: author commands and publication effects of admitted decisions have scoped
-Rust replay; job/policy/admin authority and lifecycle mutations remain model-only. When code
-implements one, move the model to its owner directory with a replay instead of keeping a second model of the same policy.
+`behavior/publication`, and #151 expanded its Rust replay to author, `ai_result`, `admin_decide`,
+`reevaluate` and `policy_bump` actions plus the 21-step `evaluator-vectors.json` script and both M1
+negative controls ([moderation-core](../../../docs/development/moderation-core.md)); only M2
+lifecycle mutations (`author_delete`, `mod_remove`) remain model-only in M1, while the 9
+`comment_edit.qnt` steps in `evaluator-vectors.json` are checked for contract/script compatibility
+only. When code implements one of the remaining target models, move the model to its owner directory
+with a replay instead of keeping a second model of the same policy.
 Other stateful code keeps its own boundary tests:
 draft CAS in `tests/postgres.rs`, the desk save state machine in
 `apps/vink-web/src/desk_state.rs`.

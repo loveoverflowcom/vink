@@ -1,0 +1,90 @@
+//! Moderation evaluation orchestration and deterministic local/test scripted mock (#151).
+//!
+//! No HTTP route, SQL adapter, background queue consumer or real AI provider is wired in `#151`.
+//! Future worker integration (`#152+`) must call [`ModerationEvaluator::evaluate`] outside DB
+//! locks, then re-read principal standing, revision binding, job state, policy version and
+//! decision version inside the apply transaction before committing (`MOD-07`, `MOD-08`).
+//! Note: [`crate::persistence::outbox::OutboxEvent`] currently carries only `comment_id`.
+
+use super::ports::BoundPrincipal;
+use crate::domain::ids::{EvaluationId, RevisionId, WorkId};
+use crate::domain::moderation::{
+    AdminAuthority, AdminDecision, AdminTransition, AuthorModerationTransition, EvaluationTicket,
+    EvaluationTransition, EvaluatorCapability, EvaluatorResult, ModerationError, WorkModeration,
+};
+pub use crate::domain::moderation::{
+    CanonicalEvaluatorScript, CanonicalEvaluatorVectors, CanonicalScriptResult,
+    CanonicalScriptStep, ModerationEvaluator, ScriptKind, ScriptedEvaluator, ScriptedStep,
+};
+use crate::domain::principal::Standing;
+use crate::domain::publication::{AuthorCommand, Publication};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+pub enum ModerationPlanError {
+    #[error("unauthenticated")]
+    Unauthenticated,
+    #[error("principal suspended")]
+    Suspended,
+    #[error(transparent)]
+    Rejected(#[from] ModerationError),
+}
+
+pub fn plan_author_publication(
+    actor: Option<BoundPrincipal>,
+    publication: &Publication,
+    moderation: &WorkModeration,
+    command: AuthorCommand,
+    new_evaluation_id: Option<EvaluationId>,
+) -> Result<AuthorModerationTransition, ModerationPlanError> {
+    let actor = actor.ok_or(ModerationPlanError::Unauthenticated)?;
+    if actor.standing != Standing::Active {
+        return Err(ModerationPlanError::Suspended);
+    }
+    Ok(moderation.decide_author(publication, actor.principal, command, new_evaluation_id)?)
+}
+
+pub fn plan_work_reevaluation(
+    publication: &Publication,
+    moderation: &WorkModeration,
+    revision: RevisionId,
+    evaluation_id: EvaluationId,
+) -> Result<(WorkModeration, EvaluationTicket), ModerationError> {
+    moderation.reevaluate(publication, revision, evaluation_id)
+}
+
+pub fn apply_work_evaluation_result(
+    publication: &Publication,
+    moderation: &WorkModeration,
+    result: &EvaluatorResult,
+) -> Result<EvaluationTransition, ModerationError> {
+    moderation.apply_evaluator_result(publication, Some(EvaluatorCapability::evaluator()), result)
+}
+
+pub fn evaluate_and_apply_work_revision<E: ModerationEvaluator>(
+    evaluator: &mut E,
+    publication: &Publication,
+    moderation: &WorkModeration,
+    ticket: &EvaluationTicket,
+) -> Result<(EvaluatorResult, EvaluationTransition), ModerationError> {
+    let result = evaluator.evaluate(ticket);
+    let transition = apply_work_evaluation_result(publication, moderation, &result)?;
+    Ok((result, transition))
+}
+
+pub fn plan_work_admin_decision(
+    actor: Option<BoundPrincipal>,
+    granted_work: Option<WorkId>,
+    publication: &Publication,
+    moderation: &WorkModeration,
+    decision: AdminDecision,
+) -> Result<AdminTransition, ModerationPlanError> {
+    let actor = actor.ok_or(ModerationPlanError::Unauthenticated)?;
+    if actor.standing != Standing::Active {
+        return Err(ModerationPlanError::Suspended);
+    }
+    let authority = granted_work.map(|work| AdminAuthority::scoped(actor.principal, work));
+    Ok(moderation.apply_admin_decision(publication, authority, decision)?)
+}
+
+#[cfg(test)]
+mod tests;

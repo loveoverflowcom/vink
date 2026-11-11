@@ -15,7 +15,9 @@ of that date and their target behavior are in the
 [publication/moderation target](../../../docs/architecture/publication-moderation.md); they have
 target Quint models in `services/vink-app/behavior/target`; #150 moved canonical M1 to
 `behavior/publication` with a pure core and scoped author/admitted-decision replay
-([coverage](../../../docs/development/publication-core.md)). No publication runtime exists. The [decision log](../../../docs/architecture/decisions.md)
+([coverage](../../../docs/development/publication-core.md)), and #151 added the pure moderation
+evaluator contract, deterministic `ScriptedEvaluator` and versioned work-revision decision/admin
+override core ([coverage](../../../docs/development/moderation-core.md)). No publication runtime exists. The [decision log](../../../docs/architecture/decisions.md)
 defines proposed guards, INV-01–INV-08 and the unresolved withdrawal policy D-12.
 Use [vink-engineering](../vink-engineering/SKILL.md) for boundaries and verification.
 This skill describes how to implement a selected scope; it does not accept open product decisions.
@@ -23,9 +25,11 @@ This skill describes how to implement a selected scope; it does not accept open 
 Implemented so far: `revisions` are immutable rows (a trigger rejects UPDATE) with a
 `content_hash`, and `publications` is a per-work pointer constrained to a revision of the same
 work. Public reads go only through that pointer. No runtime command creates revisions or moves the
-pointer yet; only the local development seed does. Publication intent and promotion/read eligibility have a pure core and application planning seam
-(#150); no SQL adapter, HTTP/UI, evaluator/admin authority, withdrawal, curation or publication
-outbox is implemented. `record_review` assumes an already-admitted decision; it grants no authority. Discussion is a Vink-owned module (no Discourse).
+pointer yet; only the local development seed does. Publication intent, promotion/read eligibility (#150) and work-revision evaluator/admin decision
+authority with a deterministic `ScriptedEvaluator` (#151) have pure cores and application planning
+seams; no SQL adapter, HTTP/UI, durable job queue, admin grant store, comment-edit consumer,
+withdrawal, curation or publication outbox is implemented. `Publication::record_review` requires a
+`WorkModeration` capability witness (`pub(in crate::domain)`). Discussion is a Vink-owned module (no Discourse).
 
 ## Keep independent facts independent
 
