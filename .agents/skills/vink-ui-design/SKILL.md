@@ -95,14 +95,22 @@ losing information or waiting for animation to complete an action.
 
 For a visual claim, capture and open the relevant state at a specified viewport, theme,
 locale and text scale (`cargo xtask dev`; seed sample data first). Recompute contrast for any
-changed color pair in both schemes. Report the changed flow/components, inspected artifacts,
-concrete findings and material coverage gaps. A documentation/skill change alone needs
-link/metadata review, not screenshots.
+changed color pair in both schemes. Compare before/after under the same scenario when available.
+Check loading, empty, error, pending and success states only where they apply. Interactive
+behavior, keyboard operation, a named screen reader and motion each require their own
+observation; an image cannot establish them.
+
+Report the changed flow/components, inspected artifacts and target conditions, concrete findings
+and material coverage gaps. For an audit, tie each finding to an observed problem and its user
+impact. A documentation/skill change alone needs link/metadata review, not screenshots.
 
 For a component-by-component audit use [vink-ui-inspector](../vink-ui-inspector/SKILL.md);
 for a scoped UI repair or implementation handoff use [vink-ui-fix](../vink-ui-fix/SKILL.md).
 Use the [layout template](../vink-layout-spec/references/layout-spec.md) and
-[examples](../vink-layout-spec/references/examples.md). Read the applicable references:
+[examples](../vink-layout-spec/references/examples.md); LayoutSpec owns the notation, this skill
+owns design choices, and a preview or handoff reuses the existing spec instead of keeping a second
+tree. Read the applicable references:
 [product context](references/product-context.md), [design system](references/design-system.md),
 [surfaces and states](references/surfaces-and-states.md), [workflow and evidence](references/chat-workflow.md),
-and [source map](references/source-map.md).
+and [source map](references/source-map.md). The bundled context is a dated snapshot; current
+repository files and explicit decisions take precedence.

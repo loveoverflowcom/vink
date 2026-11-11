@@ -39,7 +39,7 @@ bản, kiểm duyệt, xóa bài, tài khoản, AI) cần đủ 7 mặt sau (xem
 2. **Thuật ngữ domain:** bảng ánh xạ *tên trong sản phẩm ↔ tên trong code/API ↔ khái niệm mới đề xuất*.
 3. **Quyền (`Actor × hành động × đối tượng × điều kiện × nguồn quyền`):** tách rõ quyền giả định
    trong model với kiểm tra quyền bền vững tại thời điểm commit trong PostgreSQL.
-4. **Trạng thái và chuyển trạng thái:** điều kiện chuyển,version/generation fence, idempotency receipt
+4. **Trạng thái và chuyển trạng thái:** điều kiện chuyển, version/generation fence, idempotency receipt
    và các trạng thái không được gộp chung.
 5. **Trải nghiệm người dùng (UX contract):** hiển thị theo từng trạng thái, copy tiếng Việt, xử lý
    chờ/lỗi/xung đột. *Khi thiết kế đi trước runtime:* bắt buộc ghi rõ (a) đâu là target UX vs hành
@@ -76,7 +76,7 @@ phẩm; hãy ghi rõ độ lệch tại mục hiện trạng/registry và đưa 
 3. **Sau khi code thay đổi:** cập nhật hiện trạng triển khai, feature map và phần việc còn lại.
 4. **Trước khi viết prompt hoặc mở PR:** kiểm tra không có thông tin tự mâu thuẫn ngay trong cùng
    một tài liệu hoặc giữa PRD và registry.
-5. **Khi tiếp tục công việc trên nhánh mới:** đối chiếu các quyết định và PR đã合/merge từ phiên trước.
+5. **Khi tiếp tục công việc trên nhánh mới:** đối chiếu các quyết định và PR đã merge từ phiên trước.
 
 Khi công việc chia thành nhiều PR hoặc nhiều phiên song song: chỉ định **một** nhánh sở hữu cập nhật
 PRD/registry dùng chung hoặc chốt đặc tả chung trước khi tách nhánh để tránh xung đột tài liệu.

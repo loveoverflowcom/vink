@@ -101,6 +101,14 @@ Keep these **four status dimensions** separate in docs, reviews and handoffs:
 4. **Verification evidence:** exact command/lane, pinned SHA and boundary (`model`, `unit/kani`,
    `postgres`, `web`, `cmp`).
 
+[Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
+[Tech stack](docs/architecture/tech-stack.md): Vink owns literary content and, since 03/11/2026,
+discussion in PostgreSQL; Discourse is a design reference only, never a runtime dependency, comment
+store, auth source or plugin target. The [decision log](docs/architecture/decisions.md) owns
+D-01–D-19, INV-01–INV-08 and S-01–S-05; importing documents, passing a check or an owner-confirmed
+product direction does not accept a proposal or implement behavior. A scoped prototype may explore a
+decision without settling it; record its assumptions and the evidence still needed.
+
 When a request introduces or hits an unclear product/domain rule, use
 [`vink-shape`](.agents/skills/vink-shape/SKILL.md) to classify and elicit only the needed owner
 decisions; when recording decisions or reconciling drift between code and docs, use
