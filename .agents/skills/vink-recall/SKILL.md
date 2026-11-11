@@ -1,10 +1,6 @@
 ---
 name: vink-recall
-description: >-
-  Recover relevant Vink context from earlier chats or supplied handoffs and
-  reconcile it with the current checkout. Use when the user refers to prior
-  decisions, unfinished work or a lost blocker; ordinary continuation with
-  sufficient context does not need a history search.
+description: Recover relevant Vink context from earlier chats or supplied handoffs and reconcile it with the current checkout. Use when the user refers to prior decisions, unfinished work or a lost blocker; ordinary continuation with sufficient context does not need a history search.
 ---
 
 # Vink recall
@@ -20,8 +16,10 @@ agent's suggestion is historical evidence, not a fresh command.
   they can resolve something material that is missing.
 - Discover available chat tools. In Codex, use `list_threads` to locate likely Vink chats
   and `read_thread` for a small set of matches; in Claude Code, use session-history tools
-  such as `search_session_transcripts` when present, or `/resume`-able transcripts the user names; inspect the tool schema rather than assuming
-  search filters or result fields. Include archived chats when the clue points there and
+  such as `search_session_transcripts` when present, or `/resume`-able transcripts the user names;
+  in Antigravity, inspect `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`
+  (reading `transcript_full.jsonl` only for lines with `truncated_fields`); inspect the tool schema
+  rather than assuming search filters or result fields. Include archived chats when the clue points there and
   the available tool supports it. If a chat is still running and its progress matters, use
   `wait_threads` for a compact snapshot rather than rereading the whole transcript.
 - Do not assume a runtime exposes another runtime's history. Without a history tool, use supplied

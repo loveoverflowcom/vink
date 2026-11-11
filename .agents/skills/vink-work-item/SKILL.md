@@ -1,9 +1,6 @@
 ---
 name: vink-work-item
-description: >-
-  Deliver a bounded Vink feature, issue, bug fix or continuation from requirements
-  through implementation and honest verification. Use for requested code or repository
-  work; respect the specified branch and existing authorization for commits or PRs.
+description: Deliver a bounded Vink feature, issue, bug fix or continuation from requirements through implementation and honest verification. Use for requested code or repository work; respect the specified branch and existing authorization for commits or PRs.
 ---
 
 # Vink work item
@@ -33,7 +30,10 @@ prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
    branch, use `codex/<outcome>` by default. If the user requests a commit directly on develop,
    keep that workflow. Preserve existing edits; do not reset, stash or sweep unrelated files.
 4. Continue with reasonable reversible choices. If an unresolved product/security decision
-   changes correctness, complete independent work and ask the focused question. A prototype
+   (`OPEN` items `O-01..O-16`, or a change to authority, public visibility, lifecycle or data
+   meaning) affects correctness, complete independent work and use
+   [vink-shape](../vink-shape/SKILL.md) to classify and ask only the blocking product questions.
+   A small bug fix or clear technical slice proceeds directly without shaping. A prototype
    records provisional assumptions; it cannot claim the production acceptance it lacks.
 
 Do not require a new issue, planning hierarchy or accepted architecture for a small documentation
@@ -44,8 +44,10 @@ while the corresponding D decision is open.
 
 | Work | Guidance |
 | --- | --- |
+| Clarify product scope, open rules (`O-01..O-16`), owner questions | [vink-shape](../vink-shape/SKILL.md) (only when rules are unclear/open) |
+| Write or reconcile specs, PRD, decision records, registries | [vink-specify](../vink-specify/SKILL.md) |
 | Domain, API, PostgreSQL, worker, integration | [vink-engineering](../vink-engineering/SKILL.md) |
-| Revisions, moderation, publish/withdraw, curation | [vink-publication](../vink-publication/SKILL.md) |
+| Revisions, audiences, moderation, publish/tombstone | [vink-publication](../vink-publication/SKILL.md) |
 | State/guard/race impact or a useful Quint model | [vink-behavior](../vink-behavior/SKILL.md) |
 | Leptos SSR/hydration/editor/browser state | [vink-leptos-web](../vink-leptos-web/SKILL.md) |
 | Visual design, reading/writing UX, accessibility | [vink-ui-design](../vink-ui-design/SKILL.md) |
@@ -65,9 +67,11 @@ Cantos toolchain or invent gates. Finish focused checks and review the final dif
 evidence distinct. If a dependency is unavailable, deliver the independently verified portion
 and record exactly what remains unverified; keep runtime failures explicit rather than fake.
 
-Update the owning documentation if the change implements a proposed module, command or
-behavior, including the affected feature-map entry when the journey or coverage changes.
-Keep acceptance claims tied to evidence. Do not create a second status board or
+Update the owning documentation via [vink-specify](../vink-specify/SKILL.md) if the change
+implements a proposed module, command or behavior, or reveals drift between PRD, ADRs and
+registries (including the affected feature-map entry when the journey or coverage changes).
+Keep the four status dimensions (product decision, architecture decision, implementation level,
+evidence) distinct, and never silently rewrite a PRD rule to bless a code deviation. Do not create a second status board or
 require GitHub-only tracking when the project has not selected it.
 
 Use permission already granted in the conversation. When committing is requested, inspect the

@@ -1,11 +1,6 @@
 ---
 name: vink-ui-inspector
-description: >-
-  Kiểm tra UI/UX Vink theo từng thành phần từ screenshot, vùng được đánh dấu, nguồn
-  code, prototype hoặc trang được cho phép truy cập. Dùng khi user yêu cầu review,
-  audit, inspect, visual QA, so sánh thiết kế, responsive hoặc accessibility của
-  Bàn viết, trình đọc, Xưởng Viết, Tạp Chí và dashboard. Báo cáo bằng chứng, mức độ,
-  độ chắc chắn và coverage; review không tự trở thành quyền sửa hay đăng nội dung.
+description: Kiểm tra UI/UX Vink theo từng thành phần từ screenshot, vùng được đánh dấu, nguồn code, prototype hoặc trang được cho phép truy cập. Dùng khi user yêu cầu review, audit, inspect, visual QA, so sánh thiết kế, responsive hoặc accessibility của Bàn viết, trình đọc, Khám phá, bộ sưu tập, Xưởng Viết và dashboard (Tạp Chí đang hoãn trừ khi được yêu cầu riêng). Báo cáo bằng chứng, mức độ, độ chắc chắn và coverage; review không tự trở thành quyền sửa hay đăng nội dung.
 ---
 
 # Vink UI Inspector

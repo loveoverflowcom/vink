@@ -1,10 +1,6 @@
 ---
 name: vink-cmp-mobile
-description: >-
-  Build, fix or review Vink Kotlin Compose Multiplatform UI for Android/iOS,
-  shared primitives/patterns, native diagnostic hosts and Desktop previews.
-  Use for Compose layout, controlled input, theme, navigation, lifecycle and
-  native UI evidence; browser routes and CSS belong to vink-leptos-web.
+description: Build, fix or review Vink Kotlin Compose Multiplatform UI for Android/iOS, shared primitives/patterns, native diagnostic hosts and Desktop previews. Use for Compose layout, controlled input, theme, navigation, lifecycle and native UI evidence; browser routes and CSS belong to vink-leptos-web.
 ---
 
 # Vink CMP mobile

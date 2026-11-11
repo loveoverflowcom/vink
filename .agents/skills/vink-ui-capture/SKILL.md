@@ -1,10 +1,6 @@
 ---
 name: vink-ui-capture
-description: >-
-  Chụp và lập báo cáo hiện trạng UI/UX Vink từ app, component và preview đang chạy;
-  ghi navigation, states, tokens, nguồn và coverage để bàn giao review hoặc upload
-  Drive. Dùng khi cần snapshot triển khai có thể tái hiện; review ảnh có sẵn dùng
-  vink-ui-inspector, sửa UI dùng vink-ui-fix.
+description: Chụp và lập báo cáo hiện trạng UI/UX Vink từ app, component và preview đang chạy; ghi navigation, states, tokens, nguồn và coverage để bàn giao review hoặc upload Drive. Dùng khi cần snapshot triển khai có thể tái hiện; review ảnh có sẵn dùng vink-ui-inspector, sửa UI dùng vink-ui-fix.
 ---
 
 # Vink UI Capture

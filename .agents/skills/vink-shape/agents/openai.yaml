@@ -1,0 +1,6 @@
+interface:
+  display_name: "Vink Shape"
+  short_description: "Định hình nghiệp vụ, phân loại quyết định và hỏi chủ sản phẩm"
+  default_prompt: "Dùng $vink-shape để làm rõ phạm vi, phát hiện quy tắc còn mở và chỉ hỏi những quyết định sản phẩm thực sự cần thiết."
+policy:
+  allow_implicit_invocation: true

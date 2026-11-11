@@ -1,9 +1,6 @@
 ---
 name: vink-engineering
-description: >-
-  Implement or refactor Vink domain logic, Axum APIs, PostgreSQL persistence, the Vink-owned
-  two-tier discussion module and moderation workers. Use for backend, contracts, concurrency
-  and verification work; discover actual code and runners before applying the proposed stack.
+description: Implement or refactor Vink domain logic, Axum APIs, PostgreSQL persistence, the Vink-owned two-tier discussion module and moderation workers. Use for backend, contracts, concurrency and verification work; discover actual code and runners before applying the proposed stack.
 ---
 
 # Vink engineering
@@ -22,11 +19,12 @@ Do not copy Cantos runtime assumptions or create infrastructure to satisfy this 
 | Discussion decisions (two tiers, body, lifecycle, comments mode, permissions, visibility, idempotency, paging) | `services/vink-app/src/domain/discussion.rs` + `domain/discussion/`; [ADR](../../../docs/architecture/discussion-ownership.md), [registry](../../../docs/development/discussion-core.md) |
 | Literary endorsement decisions (LVE #73: work revision/root/reply, accepted order, receipts) | `services/vink-app/src/domain/endorsement.rs` + `domain/endorsement/`; [decision record](../../../docs/architecture/literary-endorsement.md), [registry](../../../docs/development/endorsement-core.md); use cases, routes and `PgStore` adapter: [runtime](../../../docs/development/literary-endorsement-runtime.md) |
 | Work taxonomy (#95: Vietnamese label/slug/search key, curated catalog, draft tags, metadata snapshot) | `services/vink-app/src/domain/taxonomy.rs` + `domain/taxonomy/`; [decision record](../../../docs/architecture/work-taxonomy.md), [registry](../../../docs/development/taxonomy-core.md); PostgreSQL adapter: [storage](../../../docs/development/taxonomy-postgres.md) (#96); catalog use cases, HTTP routes, `vink-app tag` and audit: [API](../../../docs/development/taxonomy-api.md) (#97) |
+| Publication, moderation and tombstone decisions (#150, #151, #157) | `services/vink-app/src/domain/publication.rs`, `domain/moderation.rs`; [publication-core](../../../docs/development/publication-core.md), [moderation-core](../../../docs/development/moderation-core.md); persistence/API (#158): [publication-runtime](../../../docs/development/publication-runtime.md) |
 | Use cases, actor checks, storage ports | `services/vink-app/src/application/` |
-| SQL, transactions, constraint classification | `services/vink-app/src/persistence/` (`postgres.rs`, `discussion.rs`) and `migrations/` |
+| SQL, transactions, constraint classification | `services/vink-app/src/persistence/` (`postgres.rs`, `discussion.rs`, `publication.rs`, `taxonomy.rs`) and `migrations/` |
 | Pools, migration lifecycle, schema state, connection-error classes | `packages/store-postgres/` (caller supplies its `Migrator`; no business SQL) |
 | PostgreSQL container, owner databases, migrator/runtime roles | `services/postgres/` (`provision.sh`, runbook) |
-| Authentication facts (no authority yet), Identity migrations, private contract | `services/vink-identity/` and `contracts/rpc/v1/`; never imported by `vink-app` |
+| Authentication facts (native email-code + username/password backend #152; D-05 Provisional), Identity migrations, private contract | `services/vink-identity/` (`password.rs`) and `contracts/rpc/v1/`; never imported by `vink-app` ([ADR](../../../docs/architecture/auth-authority.md)) |
 | HTTP API v1, health, Origin check, SSR host | `services/vink-app/src/http/` |
 | Canonical API contract and fixtures | `services/vink-app/contracts/http/v1/` |
 | Principal resolution seam; App's Identity client | `services/vink-app/src/identity/` (async resolver: principal / anonymous / unavailable) |
