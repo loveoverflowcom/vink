@@ -274,7 +274,8 @@ fn read_planner_composes_access_and_discussion_visibility_truth_table() {
         CommentView::Unavailable
     );
 
-    // 4. Private then deleted -> Unavailable
+    // 4. Public work made private -> hidden page with its thread (PUB-07); deleted from there
+    //    -> the author tombstone keeps the thread (ADMIN-MODERATION-20261111).
     let private = plan_publication(
         Some(author_actor),
         &public,
@@ -291,9 +292,29 @@ fn read_planner_composes_access_and_discussion_visibility_truth_table() {
     )
     .unwrap()
     .next;
-    assert_eq!(plan_work_access(&priv_deleted), WorkAccessPlan::Unavailable);
+    assert!(matches!(
+        plan_work_access(&private),
+        WorkAccessPlan::AuthorHidden { .. }
+    ));
+    assert_eq!(
+        plan_comment_view(&private, reader, approved_comment, None),
+        CommentView::Public
+    );
+    assert_eq!(
+        check_comment_submission(&private),
+        Err(TombstoneWriteError::HiddenReadOnly)
+    );
+    assert_eq!(check_own_comment_removal(&private), Ok(()));
+    assert_eq!(
+        plan_comment_review_context(&private),
+        CommentReviewContext::CommentOnly
+    );
+    assert!(matches!(
+        plan_work_access(&priv_deleted),
+        WorkAccessPlan::AuthorTombstone { .. }
+    ));
     assert_eq!(
         plan_comment_view(&priv_deleted, reader, approved_comment, None),
-        CommentView::Unavailable
+        CommentView::Public
     );
 }

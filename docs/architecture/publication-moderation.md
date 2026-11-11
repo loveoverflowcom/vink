@@ -1,16 +1,17 @@
 # Xuất bản, audience và kiểm duyệt bằng trợ lý AI — đặc tả đích
 
-**Ngày:** 10/11/2026 · **Nguồn:** `PRODUCT-DECISIONS-20261110`
-([DecisionDelta](product-decisions-20261110.md)), USER-02/03/05/06/07/14 ·
-**Yêu cầu:** AUD-01/02, PUB-01..05, MOD-01..10 ([requirements](../../prd/requirements.md)) ·
+**Ngày:** 10/11/2026, bổ sung 11/11/2026 · **Nguồn:** `PRODUCT-DECISIONS-20261110`,
+`ADMIN-MODERATION-20261111` ([DecisionDelta](product-decisions-20261110.md), §7),
+USER-02/03/05/06/07/14 · **Yêu cầu:** AUD-01/02, PUB-01..07, MOD-01..15, COM-11
+([requirements](../../prd/requirements.md)) ·
 **Quyết định:** D-06, D-07, D-12, D-19 ([decision log](decisions.md)).
 
 **Trạng thái:** `TARGET_BEHAVIOR`. Luật ghi “đã chốt” là `PRODUCT_CONFIRMED`; chi tiết ghi “đề
 xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md) và
 #151 có [contract evaluator + scripted mock + quyền áp quyết định thuần](../development/moderation-core.md);
-chưa có publication/moderation runtime. M1 canonical ở
-[`behavior/publication`](../../services/vink-app/behavior/publication/README.md); `tombstone.qnt`
-và `appeal.qnt` vẫn ở [`behavior/target`](../../services/vink-app/behavior/target/README.md). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
+chưa có publication/moderation runtime. M1, M3 (`tombstone.qnt`) và M4 quản trị (`governance.qnt`,
+thay `appeal.qnt`) canonical ở [`behavior/publication`](../../services/vink-app/behavior/publication/README.md);
+lõi quản trị ở [ADMIN-CORE-01](../development/moderation-core.md#admin-moderation-core--admin-core-01). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
 
 ## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, base `develop@4aeb083` + lõi thuần #150/#151)
 
@@ -38,7 +39,13 @@ Mọi mục dưới đây mô tả hành vi **đích**; phạm vi lõi thuần �
 | Bản công khai (pointer) | Bản mà người khác đang đọc được | Bản mới nhất được duyệt |
 | Vòng đời (lifecycle) | Đang hoạt động / tác giả đã xóa / bị kiểm duyệt gỡ | Audience |
 | Evaluator | Trợ lý AI: actor dịch vụ, chỉ nộp kết quả đánh giá | Admin; nguồn authority |
-| Quản trị viên (admin) | Chủ sản phẩm; quyết định thủ công và override | Người trực có SLA |
+| Quản trị viên (admin) | Admin tổng: quản lý quyền kiểm duyệt, kết luận phản đối, dừng/bật tự động, gỡ cả bài, điều tra riêng | Người trực có SLA |
+| Moderator | Người có grant duyệt tác phẩm hoặc bình luận, trong phạm vi grant | Vai trò ngầm định của tài khoản, tác giả bài |
+| Grant | Quyền duyệt `works` hoặc `comments`, cho cá nhân hoặc nhóm, toàn Vink hoặc một `WorkId`, có thể hết hạn | Cờ boolean toàn cục |
+| Ca (review case) | Một việc duyệt cho đúng một bản của tác phẩm hoặc bình luận, có phiên bản ca và tối đa một người nhận | Quyết định |
+| Hồ sơ phản đối (appeal) | Yêu cầu của chủ nội dung trên đúng một phiên bản quyết định bất lợi | Ca duyệt bản mới |
+| Hồ sơ điều tra | Quyền đọc từng lần một bản từng công khai của bài đã riêng tư, có căn cứ và audit | Quyền đọc bản nháp |
+| Trang ẩn | Trang ở URL cũ của bài đang công khai đã chuyển riêng tư: “Nội dung đã được ẩn” + bình luận | Trang thay thế sau khi xóa |
 
 ## 3. Bốn trục độc lập
 
@@ -48,7 +55,7 @@ cuối mục.
 | Trục | Giá trị | Ai đổi | Ghi chú |
 | --- | --- | --- | --- |
 | Audience | `private` \| `public` | Tác giả | Mặc định `private` (đề xuất). Mỗi lệnh được chấp nhận tăng `generation` |
-| Quyết định của từng bản | `none` → `pending` → `approved` \| `rejected` \| `needs_admin` | Evaluator (kết quả hợp lệ), admin | `by` ∈ {`ai`, `admin`}; bản mới bắt đầu `none` |
+| Quyết định của từng bản | `none` → `pending` → `approved` \| `rejected` \| `needs_admin` | Evaluator (kết quả hợp lệ khi tự động đang bật), moderator trong grant, admin | `by` ∈ {`ai`, `moderator`, `admin`}; gắn policy version; bản mới bắt đầu `none` |
 | Bản công khai | 0 hoặc một bản | Chỉ guard xuất bản | Không lệnh nào ghi trực tiếp |
 | Vòng đời | `active` \| `author_deleted` \| `removed` | Tác giả (xóa), admin (gỡ) | Hai trạng thái sau là terminal trong đặc tả này |
 
@@ -57,8 +64,8 @@ cuối mục.
 | Lệnh | Điều kiện | Kết quả |
 | --- | --- | --- |
 | Lưu bản | Bài đang hoạt động | Tạo bản mới `none`. **Không** gọi evaluator, không gửi gì ra ngoài (MOD-05, INV-08) |
-| Công khai bản r (kèm generation đã thấy) | Bản tồn tại; generation khớp, nếu không → `stale` | `none` → `pending` + tạo evaluation; `pending`/`needs_admin` → ghi ý định, chờ; `approved` → công khai ngay; `rejected` → từ chối (viết bản mới hoặc phản đối) |
-| Chỉ mình tôi (kèm generation) | generation khớp | Đóng đọc công khai ngay; bỏ ý định; **giữ** các quyết định đã có |
+| Công khai bản r (kèm generation đã thấy) | Bản tồn tại; generation khớp, nếu không → `stale` | `none` → `pending` + tạo evaluation; `pending` có ca mở → ghi ý định, chờ; `pending` mà ca đã đóng (vì chuyển riêng tư) → mở lượt mới (`resubmitted`); `needs_admin` → về hàng chờ người; `approved` còn hiệu lực ở policy hiện hành → công khai ngay; `approved` ở policy cũ → AI duyệt lại (quyết định của AI) hoặc về hàng chờ người (quyết định của người); `rejected` → từ chối (viết bản mới hoặc phản đối) |
+| Chỉ mình tôi (kèm generation) | generation khớp | Đóng đọc công khai ngay; bỏ ý định; **đóng** evaluation và phản đối đang mở của tác phẩm; **giữ** các quyết định đã có. Nếu bài đang công khai: URL cũ thành trang ẩn (§6) |
 | Xóa bài | Bài đang hoạt động | Mục 6 |
 
 **Guard xuất bản** — đọc lại tại commit của mọi lệnh có thể đổi bản công khai (PUB-01, INV-01):
@@ -71,7 +78,9 @@ publish(r) hợp lệ ⇔ lifecycle = active
 ```
 
 Hệ quả: Approved không tự công khai bài đang “Chỉ mình tôi”; bản r1 vẫn công khai khi r2 chờ hoặc
-bị từ chối (PUB-02); admin duyệt một bản không có ý định công khai thì bản đó vẫn chưa công khai.
+bị từ chối (PUB-02); người duyệt một bản không có ý định công khai thì bản đó vẫn chưa công khai.
+**11/11/2026:** kết quả AI hay kết luận của người tới **sau** khi chuyển riêng tư bị từ chối
+(`withdrawn` / `case_closed`), không còn ghi `approved_unpublished` cho bản đã rút (PUB-06).
 
 ## 4. Contract evaluator và mock
 
@@ -141,47 +150,131 @@ kiểm tương thích hợp đồng/script). Chưa dựng queue/worker/provider 
 **không** phù hợp: nó là tín hiệu “chỉ được giữ lại, không bao giờ làm sạch” của policy ứng viên cũ,
 khác ngữ nghĩa evaluator quyết định.
 
-## 5. Quản trị viên và phản đối
+## 5. Quản trị viên, moderator và phản đối
 
-**Quản trị viên (MOD-09, đã chốt).** Admin quyết định thủ công trên **một bản đã được gửi duyệt**
-và có thể đảo quyết định của AI. Quyết định của admin trên bản đó thắng mọi kết quả AI tới sau hoặc
-được retry cho cùng bản; worker không tự gỡ override. Admin **không**: quyết định trên bản chỉ lưu
-riêng, công khai thay tác giả, hồi sinh bài tác giả đã xóa, bỏ qua audit. Mỗi override ghi actor,
-lý do bắt buộc và bản/decision version được xét. Dashboard và thao tác production: phát triển sau;
-bước đầu (đề xuất) là lệnh operator `vink-app` như các quyền vận hành hiện có.
+Luật mục này là `PRODUCT_CONFIRMED` từ 10/11/2026 (MOD-08..10) và 11/11/2026 (MOD-11..15,
+`ADMIN-MODERATION-20261111`). Tên kiểu và mã từ chối là `DESIGN_PROPOSED`.
 
-**Không có người trực, không SLA (MOD-08, đã chốt).** `needs_admin` là trạng thái của bản, không
-phải bằng chứng admin đã nhận. Không có chuỗi nào hứa thời hạn.
+**Không có người trực, không SLA (MOD-08).** `needs_admin` là trạng thái của bản, không phải bằng
+chứng có người đã nhận. Không chuỗi nào hứa thời hạn.
 
-**Phản đối quyết định của AI (MOD-10, đã chốt hướng; chi tiết đề xuất).**
+### 5.1. Vai trò và ủy quyền (MOD-09, MOD-11)
+
+- **Admin tổng** quản lý quyền kiểm duyệt (cấp/thu hồi grant, quản lý nhóm), kết luận phản đối,
+  dừng/bật chế độ tự động, gỡ cả bài và mở hồ sơ điều tra. Admin cũng làm được mọi việc của
+  moderator.
+- **Grant** gồm: grantee (một principal hoặc một nhóm do admin quản lý), capability `works` hoặc
+  `comments` (độc lập: grant bình luận không duyệt được tác phẩm và ngược lại), phạm vi toàn Vink
+  hoặc một `WorkId` (bình luận của bài W thuộc phạm vi W), hạn tùy chọn. Grant bình luận hiện hành
+  (`vink-app moderator grant`, bảng `moderator_grants`) được **kế thừa** như grant `comments` toàn Vink.
+- **Kiểm lại mỗi lần đọc hoặc xử lý:** admin còn hiệu lực hoặc có ít nhất một grant chưa thu hồi,
+  chưa hết hạn, đúng capability và phạm vi, và (với nhóm) người đó **hiện** là thành viên; tài khoản
+  không bị khóa. Căn cứ quyền (admin hoặc grant cụ thể) được ghi cùng mỗi kết luận.
+- **Tự né:** không ai duyệt nội dung do mình viết; không ai duyệt bình luận thuộc bài do mình
+  viết (kể cả admin). Mã: `recused`.
+
+### 5.2. Ca duyệt và nhận ca (MOD-12)
+
+Ca được mở khi một bản cần người: evaluator trả `uncertain`/`invalid_output`, lỗi đã hết lượt thử,
+chế độ tự động đang dừng, quyết định của người cần xem lại vì policy đổi, hay moderator chủ động
+can thiệp trên bản đang đăng. Trạng thái của ca tách ba mức mà lịch sử phân biệt:
+**đã ghi nhận** (`queued`), **đã có người nhận** (`claimed`), **đã có kết luận** (`concluded`);
+thêm `escalated` (chờ admin) và `closed` (đóng vì tác giả chuyển riêng tư, bài bị xóa/gỡ).
+
+| Lệnh | Ai | Điều kiện | Kết quả |
+| --- | --- | --- | --- |
+| Nhận ca | Người có quyền với ca | `queued`; `expected` = phiên bản ca | `claimed` bởi người đó + căn cứ quyền |
+| Trả ca | Người nhận | `claimed` bởi chính họ | `queued` |
+| Ghi chú nội bộ | Người nhận, admin | Ca chưa đóng | Ghi chú tách khỏi lý do gửi người viết |
+| Chuyển lên admin | Người nhận | `claimed` bởi chính họ | `escalated`; chỉ admin nhận được |
+| Admin nhận lại | Admin | Ca chưa kết luận/đóng; lý do bắt buộc | `claimed` bởi admin |
+| Kiểm lại quyền | Hệ thống | Người nhận mất quyền thực tế | `queued` (`authority_lost`); nếu còn grant hợp lệ khác thì giữ ca và đổi căn cứ |
+| Kết luận | Người nhận | `claimed` bởi chính họ, quyền còn hiệu lực, `expected` ca + phiên bản quyết định khớp | `concluded`; quyết định mới áp qua owner (publication hoặc discussion) |
+
+Mọi lệnh đổi trạng thái tăng phiên bản ca; lệnh mang phiên bản cũ nhận `stale_case`, nên hai
+moderator tranh ca hay kết luận đồng thời thì chỉ một được áp dụng.
+
+### 5.3. Can thiệp (MOD-13)
+
+- Moderator `works` duyệt, từ chối hoặc ghi đè quyết định AI của một bản đã gửi duyệt, và bác
+  **bản đang đăng** để ngừng hiển thị bản đó. Quyết định của người (`moderator` hoặc `admin`) trên
+  một bản thắng mọi kết quả AI tới sau hoặc retry cho cùng bản.
+- **Chỉ admin gỡ cả bài**: kết thúc quyền đọc qua URL cũ, kể cả bình luận (case C ở §6).
+- Moderator `comments` duyệt/từ chối bình luận và **ẩn rồi khôi phục đúng bản đã duyệt**: ẩn chỉ
+  áp cho bình luận đang được duyệt; khôi phục chỉ khi bình luận vẫn đúng như lúc ẩn (cùng phiên bản,
+  chưa bị người viết gỡ, chưa đổi quyết định). Khôi phục dùng lại quy tắc hiển thị gốc và phản hồi
+  hiện hành. Gỡ của người viết và gỡ theo cơ chế cũ (terminal) vẫn có hiệu lực.
+- Người duyệt không: quyết định trên bản chỉ lưu riêng, công khai thay tác giả, hồi sinh bài đã
+  xóa/gỡ, bỏ qua audit. Mỗi kết luận ghi actor, căn cứ quyền, lý do bắt buộc (cho từ chối, ẩn, gỡ,
+  đảo AI) và phiên bản; ghi chú nội bộ không gửi người viết.
+
+### 5.4. Phản đối (MOD-10)
 
 | Bước | Có trong đặc tả | Có thật hiện nay |
 | --- | --- | --- |
 | Mở dialog | Không ghi gì | Không có UI |
-| Tạo case | Case gắn `decision_version`; lưu bền; trả “đã ghi nhận, **chưa gửi**” | Không |
-| Gửi thông báo cho admin | **Không có trong giai đoạn này**: kênh chưa kết nối; không trạng thái nào được ghi “đã gửi” | Không |
-| Admin nhận | Chỉ suy ra từ hành động của admin trên case | Không |
-| Admin xử lý | Giữ nguyên hoặc đảo, có lý do; tạo decision version mới `by admin` | Không |
+| Tạo hồ sơ | Gắn đúng phiên bản quyết định bất lợi; lưu bền; trả “đã ghi nhận, **chưa gửi**” | Core thuần |
+| Gửi thông báo cho admin | **Không có trong giai đoạn này**: không trạng thái nào được ghi “đã gửi” | Không |
+| Admin nhận | Suy ra từ hành động của admin trên hồ sơ | Core thuần |
+| Admin kết luận | Giữ nguyên hoặc đảo, lý do bắt buộc; tạo phiên bản quyết định mới `by admin` | Core thuần |
 
-Luật của case: chỉ chủ nội dung tạo được (người khác nhận “không tìm thấy”); cùng key + cùng quyết
-định → trả lại case cũ; key khác cho cùng quyết định → vẫn case cũ; quyết định đã đổi → từ chối
-`stale_decision`; quyết định đang `needs_admin` → `awaiting_admin`; quyết định của admin → là cuối
-(O-15). Admin xử lý case mà quyết định đã sang version khác → case đóng `superseded`, không đổi gì.
+- Chỉ chủ nội dung tạo được (người khác: `not_found`). Phản đối được quyết định bất lợi
+  (`rejected`, ẩn bình luận) của **AI hoặc moderator**; quyết định của admin là cấp cuối
+  (`final_decision`); quyết định không bất lợi: `nothing_to_appeal`.
+- Một hồ sơ cho mỗi phiên bản quyết định: gửi lại cùng key hay key khác trả hồ sơ đã có;
+  phiên bản quyết định đã đổi: `stale_decision`.
+- Khi hồ sơ mở, chỉ admin kết luận trên quyết định đó; moderator nhận `appeal_open`.
+- Kết luận của admin tạo phiên bản quyết định mới; AI tới muộn bị `overridden`. Bản mới của tác
+  giả có ca riêng; kết luận đảo cho bản cũ chỉ công khai bản đó nếu ý định công khai **hiện hành**
+  vẫn trỏ đúng bản (guard §3), nếu không là `approved_unpublished`.
+- Tác giả chuyển riêng tư đóng hồ sơ phản đối của tác phẩm (`withdrawn`); kết luận sau đó bị từ chối.
 
 Copy đề xuất khi chưa có delivery (chưa dựng UI):
 
 > Cần quản trị viên xem xét. Kênh gửi yêu cầu chưa được kết nối; chưa có thông báo được gửi.
 
-## 6. Xóa, riêng tư, gỡ và tombstone
+### 5.5. Dừng và bật chế độ tự động (MOD-14)
 
-Bốn trường hợp phải tách (PUB-05, đã chốt):
+Admin dừng AI áp quyết định (có phiên bản, lý do). Khi dừng: lượt gửi mới vào thẳng hàng chờ
+người; evaluation đang mở chuyển sang hàng chờ người (`rerouted`); kết quả AI tới sau đó bị từ chối
+`automation_paused` và không ghi gì. Bật lại chỉ áp cho lượt gửi mới: ca đã chuyển tiếp tục theo
+luồng người duyệt. Dừng tự động **không** dừng moderator/admin.
+
+### 5.6. Gửi duyệt theo phiên bản (PUB-06)
+
+Tạo, lưu, sửa bài riêng tư không mở ca. Chỉ yêu cầu công khai của tác giả kích hoạt kiểm duyệt
+snapshot. Bản đã đăng vẫn hiển thị khi bản sửa đang chờ hoặc bị từ chối. Chuyển riêng tư đóng
+evaluation (`withdrawn`), ca và phản đối đang mở của tác phẩm, giữ lịch sử quyết định. Công khai
+lại:
+
+| Quyết định hiện có của bản r | Kết quả |
+| --- | --- |
+| `pending`, evaluation còn mở | Chờ (`waiting`) |
+| `pending`, evaluation đã đóng do chuyển riêng tư | Lượt AI mới (`resubmitted`), hoặc hàng chờ người nếu tự động đang dừng |
+| `needs_admin` | Về hàng chờ người |
+| `approved` ở policy hiện hành | Công khai ngay |
+| `approved` của AI ở policy cũ | Lượt AI mới cho đúng snapshot (`rereview`), chưa công khai |
+| `approved` của người ở policy cũ | Về hàng chờ người có thẩm quyền (`rereview`), chưa công khai |
+
+### 5.7. Điều tra riêng (MOD-15)
+
+Một admin đang có quyền, **không** là tác giả bài, mở hồ sơ khi có căn cứ vi phạm cụ thể, nguồn
+bằng chứng và đúng ID của một bản **từng công khai** của bài đã chuyển riêng tư. Mỗi lần đọc: kiểm
+lại quyền admin, xung đột lợi ích, hồ sơ còn mở, chưa hết hạn, đúng bản; ghi audit (người đọc, hồ
+sơ, bản, thời điểm) **trước** khi trả đúng snapshot đó. Hồ sơ chỉ ghi kết luận và căn cứ, không
+chép nội dung. Quyền kết thúc khi hồ sơ đóng hoặc điều kiện truy cập hết hiệu lực. Mặc định quyền
+theo từng lần đọc; không có quyền đọc bản nháp hay bản chưa từng công khai.
+
+## 6. Xóa, riêng tư, gỡ, trang ẩn và tombstone
+
+Bốn trường hợp phải tách (PUB-05, đã chốt; B đổi ngày 11/11/2026):
 
 | | Trường hợp | Trang ở URL cũ (người khác) | Nội dung, preview, listing | Bình luận đọc được |
 | --- | --- | --- | --- | --- |
-| A | Tác giả **xóa** bài đang công khai | Trang thay thế: “Nội dung đã được tác giả xoá” | Không | Bình luận đã duyệt, chưa gỡ. Người viết thấy thêm bình luận chờ/bị từ chối **của mình** |
-| B | Tác giả chuyển **Chỉ mình tôi** | Không tìm thấy | Không | Không. Công khai lại thì thảo luận trở lại |
-| C | Hệ thống/admin **gỡ** vì vi phạm | Không tìm thấy | Không | Không |
-| D | Chưa từng công khai, hoặc xóa khi đang ẩn | Không tìm thấy | Không | Không |
+| A | Tác giả **xóa** bài từng công khai (đang công khai hoặc đang ở trang ẩn) | Trang thay thế: “Nội dung đã được tác giả xoá” | Không | Bình luận đã duyệt, chưa gỡ. Người viết thấy thêm bình luận chờ/bị từ chối **của mình** |
+| B | Tác giả chuyển **Chỉ mình tôi** bài **đang công khai** | Trang ẩn: “Nội dung đã được ẩn” | Không | Như A. Công khai lại thì bài trở lại |
+| C | Admin **gỡ** cả bài vì vi phạm | Không tìm thấy | Không | Không |
+| D | Chưa từng công khai | Không tìm thấy | Không | Không |
 
 - “Listing” gồm Khám phá, tìm kiếm, hashtag, Đề xuất, Top 100, bài liên quan và bộ sưu tập.
 - “Preview” là mọi thứ **hệ thống** sinh từ nội dung bài: snippet, trích dẫn, thẻ chia sẻ, chữ
@@ -189,27 +282,38 @@ Bốn trường hợp phải tách (PUB-05, đã chốt):
   bình luận là nội dung của bình luận đó, theo vòng đời riêng; không hứa thu hồi mọi bản sao và
   không xóa hàng loạt lời bình.
 - Xóa, ẩn hay gỡ bài **không** xóa hay sửa bình luận của ai.
-- A không phải audience thứ ba: đó là ngữ nghĩa của trạng thái “tác giả đã xóa”.
+- A và B không phải audience thứ ba: đó là ngữ nghĩa của “tác giả đã xóa” và của “chuyển riêng tư
+  sau khi từng công khai”.
 
-<!-- vdr: active O-03@r1 -->
+<!-- vdr: active O-03@r2 -->
 
-- Đề xuất (O-03/04/05/09): tombstone không nhận bình luận, phản hồi hay vote mới; người viết vẫn
-  gỡ được bình luận của mình; kiểm duyệt vẫn quyết định được từng bình luận; xóa khi bài đang “Chỉ
-  mình tôi” không để lại tombstone; tombstone không hiện tiêu đề, tên tác giả, thẻ hay hashtag.
-- Còn `OPEN`: retention/purge vật lý (O-08), khôi phục (O-10).
+- Trên trang ẩn và trang thay thế (COM-11): đọc bình luận, xử lý ca đã gửi (kiểm duyệt dùng
+  snapshot bình luận, **không** đưa thân bài cho evaluator hay người duyệt), người viết tự gỡ được.
+  Không bình luận, phản hồi, bản sửa hay “Hữu ích” mới (O-03).
+- Bài đang công khai bị moderator **bác bản đang đăng**: bản đó ngừng hiển thị; URL cũ theo O-17
+  (đề xuất tối thiểu: không tìm thấy cho tới khi có bản được duyệt).
+- Khi công khai lại, thông báo cho tác giả bài chỉ áp dụng cho sự kiện **mới** sau lúc công khai;
+  sự kiện phát sinh lúc ẩn bị bỏ qua (O-19 giữ danh mục sự kiện).
+- Tombstone/trang ẩn không hiện tiêu đề, tên tác giả, thẻ hay hashtag (O-09).
+- Còn `OPEN`: retention/purge vật lý (O-08), khôi phục bài đã xóa/gỡ (O-10).
 
 ## 7. Bảng quyền
 
-| Hành động | Tác giả bài | Người khác / khách | Evaluator | Admin |
-| --- | --- | --- | --- | --- |
-| Đọc bản nháp, bản chưa công khai | Có | Không | Chỉ bản được gửi đánh giá | Chỉ bản đã gửi duyệt |
-| Lưu bản, đổi audience, xóa bài | Có | Không (không phân biệt được với không tồn tại) | Không | Không |
-| Nộp kết quả đánh giá | Không | Không | Có, qua kiểm ở mục 4 | — |
-| Quyết định/override một bản | Không | Không | Không | Có, kèm lý do |
-| Gỡ bài vì vi phạm | Không | Không | Không | Có |
-| Phản đối quyết định | Có (bài của mình) | Không | Không | — |
-| Xử lý case | Không | Không | Không | Có |
-| Sửa/xóa bình luận người khác | **Không** (COM-08) | Không | Không | Chỉ gỡ theo kiểm duyệt |
+| Hành động | Tác giả bài | Người khác / khách | Evaluator | Moderator (trong grant) | Admin |
+| --- | --- | --- | --- | --- | --- |
+| Đọc bản nháp, bản chưa công khai | Có | Không | Chỉ bản được gửi đánh giá | Chỉ bản có ca trong phạm vi | Chỉ bản có ca; bản từng công khai qua hồ sơ điều tra (§5.7) |
+| Lưu bản, đổi audience, xóa bài | Có | Không (không phân biệt được với không tồn tại) | Không | Không | Không |
+| Nộp kết quả đánh giá | Không | Không | Có, khi tự động đang bật, qua kiểm ở mục 4 | — | — |
+| Nhận ca, trả ca, ghi chú, chuyển admin | Không | Không | Không | Có (tự né nội dung của mình) | Có, kèm nhận lại có lý do |
+| Quyết định/ghi đè AI một bản | Không | Không | Không | Có, kèm lý do | Có, kèm lý do |
+| Bác bản đang đăng | Không | Không | Không | Có (`works`) | Có |
+| Gỡ cả bài vì vi phạm | Không | Không | Không | **Không** | Có |
+| Ẩn/khôi phục bình luận đã duyệt | Không | Không | Không | Có (`comments`) | Có |
+| Phản đối quyết định | Có (nội dung của mình; quyết định AI hoặc moderator) | Không | Không | — | — |
+| Kết luận phản đối | Không | Không | Không | Không | Có (cấp cuối) |
+| Cấp/thu hồi grant, quản lý nhóm, dừng/bật tự động | Không | Không | Không | Không | Có |
+| Mở hồ sơ điều tra, đọc bản từng công khai | Không | Không | Không | Không | Có (không xung đột, từng lần đọc) |
+| Sửa/xóa bình luận người khác | **Không** (COM-08) | Không | Không | Chỉ ẩn/gỡ theo kiểm duyệt | Chỉ ẩn/gỡ theo kiểm duyệt |
 
 ## 8. Use case
 
@@ -221,16 +325,25 @@ Bốn trường hợp phải tách (PUB-05, đã chốt):
 | 4 | Tab cũ gửi “công khai” sau khi tab mới đã đổi | `stale`, không đổi gì | bước 18, 28 |
 | 5 | Policy đổi khi đang chờ | Kết quả cũ bị bỏ; hỏi lại | bước 20–22 |
 | 6 | Evaluator không chắc; admin duyệt; kết quả AI muộn từ chối | Quyết định admin giữ nguyên | bước 23–26 |
-| 7 | Về “Chỉ mình tôi” trong lúc chờ; kết quả duyệt tới | Được duyệt nhưng không công khai | bước 33–35 |
-| 8 | Tác giả xóa; kết quả/admin tới sau | Không hồi sinh | bước 37–40 |
-| 9 | Xóa bài có ba bình luận (duyệt, từ chối, chờ) | Tombstone giữ đúng bình luận đã duyệt | `tombstone` scenario A |
-| 10 | Chuyển riêng tư rồi mở link cũ | Không trang, không bình luận | scenario B |
-| 11 | Phản đối hai lần, rồi admin đảo quyết định | Một case; override có lý do; AI muộn không đè | `appeal` scenario 1 |
+| 7 | Về “Chỉ mình tôi” trong lúc chờ; kết quả duyệt tới | `withdrawn`, không quyết định mới; công khai lại → lượt mới | bước 33–37 |
+| 8 | Tác giả xóa; kết quả/admin tới sau | Không hồi sinh | `audience_moderation_override` cuối |
+| 9 | Xóa bài có ba bình luận (duyệt, từ chối, chờ) | Trang thay thế giữ đúng bình luận đã duyệt | `tombstone` scenario A |
+| 10 | Bài đang công khai chuyển riêng tư rồi mở link cũ | Trang ẩn + bình luận đã duyệt; gửi mới bị chặn; công khai lại thì bài trở lại | scenario B |
+| 11 | Ẩn rồi xóa | Bình luận vẫn đọc qua URL cũ | scenario B |
+| 12 | Bản AI duyệt ở policy cũ, bản người duyệt ở policy cũ, rồi công khai lại | AI duyệt lại đúng snapshot / về hàng chờ người; không công khai trước kết luận | `publication` `policy_rereview` |
+| 13 | Thu hồi grant hoặc rời nhóm khi đang xử lý | Kết luận bị từ chối; ca về hàng chờ (trừ khi còn grant khác) | `governance` `grants_and_claims` |
+| 14 | Hai moderator tranh ca | Người sau `stale_case` | `governance` `grants_and_claims` |
+| 15 | AI đến muộn sau người duyệt, sau dừng tự động, sau chuyển riêng tư | `overridden` / `automation_paused` / `withdrawn` | `governance` `automation_and_late_results`, `publication` |
+| 16 | Phản đối trùng, phản đối bản cũ, phản đối quyết định của moderator | Một hồ sơ; `stale_decision`; admin kết luận cuối | `governance` `appeals` |
+| 17 | Đọc điều tra sai bản hoặc hết quyền | Từ chối, không audit “đã đọc” | `governance` `investigation` |
 
 ## 9. Bằng chứng và gap
 
-Model, invariant, negative control và lệnh chạy: [README target](../../services/vink-app/behavior/target/README.md).
+Model, invariant, negative control và lệnh chạy: [README publication](../../services/vink-app/behavior/publication/README.md)
+(M1, M3, M4 `governance.qnt`) và [README target](../../services/vink-app/behavior/target/README.md).
 Bảng yêu cầu → invariant → gap: [registry](../development/product-decisions-registry.md).
 Bằng chứng M1 gồm model và scoped pure Rust replay (#150; [coverage](../development/publication-core.md)).
-Các model khác chỉ có bằng chứng model. Chưa có migration/transaction publication, API, UI, worker,
-evaluator/authority runtime hay kênh thông báo.
+M3 và M4 (quản trị kiểm duyệt, 11/11/2026) có replay qua core thuần. Các model target còn lại chỉ có
+bằng chứng model. #158 có migration/API cho snapshot, ý định công khai và trạng thái tác giả; chưa
+có migration cho grant/ca/phản đối/chế độ tự động/điều tra hay trường trang ẩn, chưa có worker,
+evaluator/authority runtime, UI hay kênh thông báo.

@@ -1,0 +1,15 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../publication/governance.qnt",
+  "invariant": "pausedAiWritesNothing",
+  "command": ["quint","run","../publication/governance.qnt","--backend=typescript","--seed=41","--step=mutatedPauseStep","--max-steps=3","--max-samples=1","--invariant=pausedAiWritesNothing","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedPauseStep", "steps": [
+      {"command":{"a":1,"actor":0,"b":0,"op":"submit","value":"none"},"outcome":"submitted_ai","state":{"granted":[],"members":[],"now":0,"automation":"enabled","workPublic":true,"decisions":{"1":{"by":"none","verdict":"pending","version":1},"2":{"by":"none","verdict":"none","version":1},"3":{"by":"none","verdict":"none","version":1},"4":{"by":"none","verdict":"none","version":1}},"jobs":{"1":{"state":"open","target":1}},"cases":{},"appeals":{},"investigations":{},"reads":[]}},
+      {"command":{"a":0,"actor":4,"b":0,"op":"pause","value":"none"},"outcome":"paused","state":{"granted":[],"members":[],"now":0,"automation":"paused","workPublic":true,"decisions":{"1":{"by":"none","verdict":"pending","version":1},"2":{"by":"none","verdict":"none","version":1},"3":{"by":"none","verdict":"none","version":1},"4":{"by":"none","verdict":"none","version":1}},"jobs":{"1":{"state":"rerouted","target":1}},"cases":{"1":{"basis":0,"claimant":0,"fence":1,"notes":0,"state":"queued","target":1,"version":1}},"appeals":{},"investigations":{},"reads":[]}},
+      {"command":{"a":1,"actor":0,"b":0,"op":"ai_result","value":"approve"},"outcome":"applied","state":{"granted":[],"members":[],"now":0,"automation":"paused","workPublic":true,"decisions":{"1":{"by":"ai","verdict":"approved","version":2},"2":{"by":"none","verdict":"none","version":1},"3":{"by":"none","verdict":"none","version":1},"4":{"by":"none","verdict":"none","version":1}},"jobs":{"1":{"state":"applied","target":1}},"cases":{"1":{"basis":0,"claimant":0,"fence":1,"notes":0,"state":"queued","target":1,"version":1}},"appeals":{},"investigations":{},"reads":[]}}
+    ]}
+  ]
+}

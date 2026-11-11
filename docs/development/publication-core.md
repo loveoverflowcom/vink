@@ -136,6 +136,9 @@ planning kết hợp với `domain::discussion::visibility`.
 
 ### Chuyển canonical M3 và hoàn tất 51/51 replay M1
 
+> Lịch sử của #157. Số bước và scenario hiện hành (M1 64, M3 41, NC mới) ở
+> [PUB-HIDDEN-01](#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01).
+
 1. **Khử hoàn toàn 5 bước model-only trong M1:**
    Tất cả 51 bước của `publication-vectors.json` (`author`: 24, `ai_result`: 13, `admin_decide`: 6,
    `admin_remove`: 3, `reevaluate`: 4, `policy_bump`: 1) đã chạy 100% qua code production thật của
@@ -161,3 +164,49 @@ planning kết hợp với `domain::discussion::visibility`.
 - **#159 Worker & Evaluator:** Dispatch durable job khi submit revision; evaluator kết nối worker và áp dụng
   quyết định vào publication fact đã serialize.
 
+
+## Trang ẩn và gửi duyệt theo phiên bản — PUB-HIDDEN-01
+
+**Phạm vi:** `ADMIN-MODERATION-20261111` cho PUB-05 (sửa), PUB-06, PUB-07, COM-11
+([DecisionDelta §7](../architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt),
+[đặc tả §6](../architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone)). Chỉ có
+core thuần, application planning, model và replay; persistence mới dựng tập con bảo thủ (bên dưới).
+
+### Core
+
+- `PublicationFacts` thêm `hidden` (pointer cuối khi tác giả chuyển một bài đang công khai sang riêng
+  tư), `ever_public` (các revision từng đọc được) và `public_epoch` (`PublicEpoch`, tăng mỗi lần bài
+  trở lại công khai).
+- `WorkAccessPlan::AuthorHidden { last_pointer }`: URL cũ chỉ hiện “Nội dung đã được ẩn” và bình luận
+  đủ điều kiện; thân bài, metadata, snippet và listing biến mất. Bài chưa từng công khai hoặc bị admin
+  gỡ vẫn là `Unavailable`.
+- Xóa từ trang ẩn của bài từng công khai để lại tombstone (`DeletionProvenance::PublicTombstone`), giữ
+  bình luận (đóng O-05); bài chưa từng công khai không để lại gì.
+- `Publication::should_notify_author`: khi công khai lại chỉ báo sự kiện mới hơn `public_epoch` hiện
+  hành (không báo quyết định đã có trong lúc ẩn).
+- Gửi duyệt theo phiên bản (PUB-06) do `WorkModeration::decide_author_with` sở hữu: chỉ yêu cầu
+  công khai mở ca; chuyển riêng tư thu hồi job (`JobState::Withdrawn`) và báo caller đóng ca/phản đối;
+  công khai lại dùng quyết định còn hiệu lực đúng snapshot + policy, policy đổi → lượt mới
+  ([moderation-core](moderation-core.md#admin-moderation-core--admin-core-01)).
+
+### Application
+
+- `check_comment_submission` trả `TombstoneWriteError::HiddenReadOnly` trên trang ẩn (đọc, xử lý ca đã
+  gửi và tự gỡ vẫn được; tạo mới/sửa/tương tác bị chặn). `TombstoneWriteError::as_str` cho mã ổn định.
+- `plan_comment_review_context`: người duyệt bình luận chỉ thấy thân bài khi bài đang công khai
+  (`WithWork`), còn lại `CommentOnly`.
+
+### Bằng chứng
+
+M1 64/64 bước (`policy_rereview` mới, NC `pointerMovesLawfully`) và M3 41/41 bước (4 scenario, NC
+`noExceptionForUnavailableWork` và `noNoticeFromHiddenPeriod`) replay qua production; xem
+[behavior/publication](../../services/vink-app/behavior/publication/README.md). Unit test trong
+`domain::publication::tests` và `application::publication::tests`.
+
+### Persistence gap (#158 → đợt tích hợp)
+
+`persistence::publication::load_paired_state` hiện dựng `hidden = None`, `ever_public` chỉ từ pointer
+đọc được hoặc tombstone, `public_epoch` 0/1 và `RevisionDecisionFacts.policy` = policy hiện tại của bài;
+`set-private` qua #158 vì vậy vẫn trả không tìm thấy (chưa có trang ẩn) và chưa ghi `withdrawn` cho
+job. Cần migration cho `hidden_*`, `ever_public`, `public_epoch`, policy theo quyết định, trạng thái
+job `withdrawn`/`rerouted`; sau đó reader SSR trang ẩn (`200` + `noindex`) và chặn ghi ở API.

@@ -1,13 +1,15 @@
 # Đặc tả đích — quyết định sản phẩm 10/11/2026
 
-**Trạng thái bốn model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Bốn model ở đây
-chưa có domain consumer hay Rust replay cho aggregate của chúng. M1 và M3 đã chuyển nguyên vẹn sang
-[`../publication`](../publication/README.md): #150, #151 và #157 replay đủ 51/51 bước của M1 (author,
-evaluator, admin override, reevaluate, policy bump, delete, remove và cả hai negative control) và
-30/30 bước của M3 (`tombstone.qnt`, 3 scenario và negative control) qua lõi thuần
-`Publication` + `WorkModeration` và tầng `application::publication`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
-(12 bước `publication.qnt` qua full consumer, 9 bước `comment_edit.qnt` chỉ kiểm hợp đồng/script);
-bốn model còn lại vẫn là model-only.
+**Trạng thái ba model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Ba model ở đây
+(`collections`, `comment_edit`, `discovery`) chưa có domain consumer hay Rust replay cho aggregate
+của chúng. M1 và M3 đã chuyển nguyên vẹn sang [`../publication`](../publication/README.md): sau
+`ADMIN-MODERATION-20261111`, production replay đủ 64/64 bước của M1 (author, evaluator, moderator/admin,
+policy re-review, delete, remove và cả hai negative control) và 41/41 bước của M3 (`tombstone.qnt`,
+4 scenario và hai negative control) qua lõi thuần `Publication` + `WorkModeration` và tầng
+`application::publication`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
+(15 bước `publication.qnt` qua full consumer, 9 bước `comment_edit.qnt` chỉ kiểm hợp đồng/script).
+`appeal.qnt` (M6 cũ) đã bị thay bởi M4 [`../publication/governance.qnt`](../publication/governance.qnt)
+(quản trị kiểm duyệt: grant, ca, phản đối, dừng tự động, điều tra; 105 bước, replay qua production).
 Một canonical model cho mỗi policy; không có bản publication hay tombstone cạnh tranh ở thư mục này.
 
 Phân vai: PRD/decision log giữ ý định và quyết định; model ở đây giữ state/transition/invariant đã
@@ -19,10 +21,10 @@ chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown
 | --- | --- | --- | --- |
 | [`../publication/publication.qnt`](../publication/publication.qnt) (M1, pure core #150, #151, #157) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
 | `collections.qnt` (M2) | Phép AND bài × bộ sưu tập; chủ/khách/người khác; thêm/bỏ; đổi audience khi đang đọc/phân trang; link và số đếm | COL-01..06 | [bộ sưu tập](../../../../docs/architecture/collections.md) |
-| [`../publication/tombstone.qnt`](../publication/tombstone.qnt) (M3, pure core #157) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone) |
+| [`../publication/tombstone.qnt`](../publication/tombstone.qnt) (M3, pure core #157) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone) |
 | `comment_edit.qnt` (M4) | Bản hiển thị và bản chờ tách nhau; sửa/duyệt/từ chối/override/xóa; hai tab, retry, callback cũ; dấu “Đã sửa”; vote theo bản | COM-02/08/09/10, MOD-09, LVE-FR-04 | [sửa bình luận](../../../../docs/architecture/comment-editing.md) |
 | `discovery.qnt` (M5) | Eligibility trước ranking; Đề xuất ≠ Top; thứ tự/tie ổn định; trần; snapshot và thu hồi | RANK-01..04, TOP-01..04 | [Đề xuất và Top 100](../../../../docs/architecture/discovery-ranking.md) |
-| `appeal.qnt` (M6) | Case gắn decision version; không nhân case; dialog/mock không thành “đã gửi”; override có provenance; AI cũ không đè | MOD-04/08/09/10 | [mục 5](../../../../docs/architecture/publication-moderation.md#5-quản-trị-viên-và-phản-đối) |
+| [`../publication/governance.qnt`](../publication/governance.qnt) (M4 quản trị, pure core `ADMIN-MODERATION-20261111`; thay `appeal.qnt`) | Admin/moderator, grant và nhóm, nhận ca, phản đối theo phiên bản quyết định, dừng tự động, điều tra riêng | MOD-09..15, PUB-06 | [mục 5](../../../../docs/architecture/publication-moderation.md#5-quản-trị-viên-moderator-và-phản-đối) |
 
 Mỗi model: miền hữu hạn ghi ở đầu file, giả định actor/authority, action có guard, invariant có
 tên, scenario đạt tới được, scenario lỗi/race, và negative control. **Giả định chung, không phải
@@ -44,7 +46,7 @@ Runner, cho từng model:
 1. `quint typecheck` (gồm cả action mutation).
 2. Random simulation `step`: seed `41`, **1.000 samples × tối đa 40 transition**, backend
    `typescript`, kiểm invariant tổng (`publicationSafe`, `collectionsSafe`, `tombstoneSafe`,
-   `commentEditSafe`, `discoverySafe`, `appealSafe`).
+   `commentEditSafe`, `discoverySafe`, `governanceSafe`).
 3. Scenario xác định (1 sample) xuất ITF thật → `*-vectors.json`
    (`vink-target-spec-vectors-v1`): mỗi bước gồm command, outcome và state sau commit. JS chỉ
    chuyển kiểu ITF, không tính lại transition. Runner đòi đủ danh sách outcome và các điều kiện
@@ -70,12 +72,12 @@ Apalache/model checking: **NOT_RUN**. Không có khẳng định liveness nào.
 
 | Model | Scenario (số bước) | Negative control → invariant vi phạm |
 | --- | --- | --- |
-| `publication` | `audience_moderation_override` (40), `moderation_removal` (11) | `mutatedOverrideStep` (bỏ guard admin override: kết quả AI muộn đảo quyết định admin) → `adminOverrideWins`; `mutatedIntentStep` (bỏ guard ý định: duyệt là công khai dù tác giả đã về riêng tư) → `publicNeedsEverything` |
-| `tombstone` | `author_deleted_public_work` (14), `private_then_deleted` (10), `moderation_removed` (6) | `mutatedPrivateStep` (coi “riêng tư” như “tác giả xóa”: link cũ đọc được bình luận) → `noExceptionForHiddenWork` |
+| `publication` | `audience_moderation_override` (44), `policy_rereview` (9), `moderation_removal` (11) | `mutatedOverrideStep` (bỏ guard admin override: kết quả AI muộn đảo quyết định admin) → `adminOverrideWins`; `mutatedIntentStep` (bỏ guard ý định: duyệt r1 công khai r1 dù ý định đã trỏ r2) → `pointerMovesLawfully` |
+| `tombstone` | `author_deleted_public_work` (14), `hidden_then_public_then_deleted` (16), `never_public` (4), `moderation_removed` (7) | `mutatedRemovedStep` (coi “admin gỡ” như “tác giả ẩn”: link cũ đọc được bình luận) → `noExceptionForUnavailableWork`; `mutatedNoticeStep` (công khai lại báo cả quyết định trong lúc ẩn) → `noNoticeFromHiddenPeriod` |
+| `governance` | `grants_and_claims` (39), `automation_and_late_results` (16), `appeals` (31), `investigation` (19) | `mutatedAuthorityStep` → `conclusionNeedsLiveAuthority`; `mutatedClaimStep` → `claimNeverStolen`; `mutatedAppealStep` → `oneAppealPerDecision`; `mutatedPauseStep` → `pausedAiWritesNothing`; `mutatedReadStep` → `readsAreAuthorized` |
 | `collections` | `permission_truth_table` (36) | `mutatedOrStep` (AND thành OR: khách thấy bài công khai trong bộ sưu tập riêng tư) → `closedCollectionLeaksNothing` |
 | `comment_edit` | `edit_review_override` (31), `removal_during_review` (9) | `mutatedOverwriteStep` (bản sửa ghi đè chữ công khai trước khi duyệt) → `pendingNeverPublic` |
 | `discovery` | `recommend_and_top` (25) | `mutatedStaleAccessStep` (chỉ kiểm quyền lúc chụp snapshot) → `servedIsReadableNow`; `mutatedFilterLastStep` (lấy top toàn cục rồi mới lọc) → `snapshotIsTopOfFilteredSet` |
-| `appeal` | `appeal_escalation_overturn` (21), `appeal_upheld` (5) | `mutatedDuplicateStep` (bỏ receipt/kiểm case đang mở: retry tạo case thứ hai) → `oneOpenCasePerDecision`; `mutatedDeliveryStep` (mock báo “đã gửi”) → `nothingIsDelivered` |
 
 ## Không được chứng minh
 
@@ -96,7 +98,7 @@ và xóa model khỏi đây. Không giữ hai model cho cùng một policy.
 | `comment_edit.qnt` | `../discussion`, cạnh `lifecycle.qnt`; phần quyết định của evaluator hợp nhất vào `admission.qnt` | PR sửa bình luận / evaluator cho bình luận |
 | `publication.qnt` | Đã chuyển sang `../publication` trong #150; vectors và hai counterexample đi cùng | Author/publication có replay một phần; #151 tiếp tục evaluator/admin trên cùng model |
 | `tombstone.qnt` | Đã chuyển sang `../publication` trong #157; vectors và negative control đi cùng | Pure core + application access plan replay #157 |
-| `appeal.qnt` | Thư mục behavior của owner xuất bản / kiểm duyệt | PR phản đối |
+| `appeal.qnt` | Đã thay bằng `../publication/governance.qnt` (M4) trong `ADMIN-MODERATION-20261111`; file và vectors cũ đã xóa | Pure core + replay; chưa migration/API/worker |
 | `collections.qnt` | Thư mục behavior của module bộ sưu tập | PR bộ sưu tập |
 | `discovery.qnt` | Cạnh owner discovery | PR Đề xuất/Top 100 |
 

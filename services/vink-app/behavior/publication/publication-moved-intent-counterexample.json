@@ -1,0 +1,17 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../publication/publication.qnt",
+  "invariant": "pointerMovesLawfully",
+  "command": ["quint","run","../publication/publication.qnt","--backend=typescript","--seed=41","--step=mutatedIntentStep","--max-steps=5","--max-samples=1","--invariant=pointerMovesLawfully","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedIntentStep", "steps": [
+      {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none","policy":0}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},
+      {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none","policy":0},"2":{"by":"none","decision":"none","policy":0}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},
+      {"command":{"actor":"author","expected":1,"job":0,"op":"request_public","rev":1,"value":"none"},"outcome":"submitted","state":{"revs":{"1":{"by":"none","decision":"pending","policy":1},"2":{"by":"none","decision":"none","policy":0}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":0,"lifecycle":"active","generation":2,"policy":1}},
+      {"command":{"actor":"author","expected":2,"job":0,"op":"request_public","rev":2,"value":"none"},"outcome":"submitted","state":{"revs":{"1":{"by":"none","decision":"pending","policy":1},"2":{"by":"none","decision":"pending","policy":1}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"},"2":{"policy":1,"rev":2,"state":"open"}},"audience":"public","desired":2,"intended":[1,2],"pointer":0,"lifecycle":"active","generation":3,"policy":1}},
+      {"command":{"actor":"evaluator","expected":0,"job":1,"op":"ai_result","rev":1,"value":"approve"},"outcome":"published","state":{"revs":{"1":{"by":"ai","decision":"approved","policy":1},"2":{"by":"none","decision":"pending","policy":1}},"jobs":{"1":{"policy":1,"rev":1,"state":"applied"},"2":{"policy":1,"rev":2,"state":"open"}},"audience":"public","desired":2,"intended":[1,2],"pointer":1,"lifecycle":"active","generation":3,"policy":1}}
+    ]}
+  ]
+}

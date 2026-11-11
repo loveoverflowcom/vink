@@ -13,11 +13,30 @@
 //!   promotion/unpublish to [`Publication::record_review`] (`MOD-02`, `MOD-07`, `AUD-02`, `PUB-01`).
 //! - Once an admin decision is recorded on a revision ([`DecisionBy::Admin`]), late AI callbacks
 //!   for that revision are refused with [`EvaluationRefusal::Overridden`] (`MOD-09`, `INV-02`).
+//!
+//! ADMIN-MODERATION-20261111 adds the governance owners as submodules: [`authority`] (admins,
+//! grants, groups, recusal), [`case`] (claims fenced by case and decision versions), [`appeal`]
+//! (one appeal per adverse decision version of the evaluator or a moderator, admin final),
+//! [`automation`] (pause/resume) and [`investigation`] (per-read audited access to a once-public
+//! revision). Here: a moderator's decision ([`DecisionBy::Moderator`]) also wins over late AI
+//! results; making a work private withdraws its open jobs ([`JobState::Withdrawn`]) and refuses
+//! later human decisions ([`ModerationError::CaseClosed`]); republishing an approval of an older
+//! policy re-reviews the exact snapshot (PUB-06); a paused automation reroutes jobs to humans.
 
+pub mod appeal;
+pub mod authority;
+pub mod automation;
+pub mod case;
+pub mod investigation;
+
+use self::appeal::{AppealConclusion, AppealVerdict};
+use self::authority::{AuthorityBasis, ReviewCapability, VerifiedAuthority};
+use self::automation::AutomationMode;
+use self::case::{CaseConclusion, CaseVerdict, ReviewSubject};
 use super::discussion::submission::PayloadDigest;
-use super::ids::{CommentId, EvaluationId, PrincipalId, RevisionId, WorkId};
+use super::ids::{CommentId, EvaluationId, GrantId, PrincipalId, RevisionId, WorkId};
 use super::publication::{
-    AuthorCommand, AuthorOutcome, Effects, EvaluationRequest, Moderation, PointerEffect,
+    Audience, AuthorCommand, AuthorOutcome, Effects, EvaluationRequest, Moderation, PointerEffect,
     Publication, PublicationError, ReviewOutcome, ReviewedRevision,
 };
 use super::revision::ContentHash;
@@ -275,13 +294,25 @@ pub struct EvaluatorResult {
     pub outcome: EvaluatorOutcome,
 }
 
-/// Capability token representing the evaluator callback path.
+/// Capability token representing the evaluator callback path, bound to the automation mode
+/// read in the same commit (MOD-14).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EvaluatorCapability(());
+pub struct EvaluatorCapability(AutomationMode);
 
 impl EvaluatorCapability {
+    /// The evaluator path while automation is enabled. Until a durable automation store exists
+    /// (`ADMIN-MODERATION-20261111` runtime gap) callers that have no mode use this.
     pub const fn evaluator() -> Self {
-        Self(())
+        Self(AutomationMode::Enabled)
+    }
+
+    /// The evaluator path under the mode read in the applying commit.
+    pub const fn under(mode: AutomationMode) -> Self {
+        Self(mode)
+    }
+
+    pub const fn mode(self) -> AutomationMode {
+        self.0
     }
 }
 
@@ -290,6 +321,10 @@ pub enum JobState {
     Open,
     Applied,
     Failed,
+    /// The author made the work private while the job was open (PUB-06).
+    Withdrawn,
+    /// Automation was paused; the revision went to the human queue (MOD-14).
+    Rerouted,
 }
 
 impl JobState {
@@ -298,6 +333,8 @@ impl JobState {
             Self::Open => "open",
             Self::Applied => "applied",
             Self::Failed => "failed",
+            Self::Withdrawn => "withdrawn",
+            Self::Rerouted => "rerouted",
         }
     }
 }
@@ -317,6 +354,10 @@ pub enum EvaluationRefusal {
     NotEvaluator,
     #[error("unknown evaluation job")]
     UnknownJob,
+    #[error("the author withdrew the work while this job was open")]
+    Withdrawn,
+    #[error("automatic moderation is paused; the result has no effect")]
+    AutomationPaused,
     #[error("evaluation job was already consumed")]
     Duplicate,
     #[error("evaluation result targets a different subject")]
@@ -338,6 +379,8 @@ impl EvaluationRefusal {
         match self {
             Self::NotEvaluator => "not_evaluator",
             Self::UnknownJob => "unknown_job",
+            Self::Withdrawn => "withdrawn",
+            Self::AutomationPaused => "automation_paused",
             Self::Duplicate => "duplicate",
             Self::WrongTarget => "wrong_target",
             Self::WrongRevision => "wrong_revision",
@@ -361,8 +404,9 @@ pub struct TargetRevisionFacts {
 /// Shared pure guard-precedence validator for work and comment evaluation results (CHOICE-01 A).
 ///
 /// Enforces the exact refusal precedence from `publication.qnt` and `comment_edit.qnt`:
-/// `NotEvaluator` -> `WrongTarget` (cross-subject consumer) -> `UnknownJob` -> `Duplicate` ->
-/// `WrongTarget` / `WrongRevision` -> `TargetGone` -> `Overridden` -> `StalePolicy` -> `Superseded`.
+/// `NotEvaluator` -> `WrongTarget` (cross-subject consumer) -> `UnknownJob` -> `Withdrawn` ->
+/// `AutomationPaused` -> `Duplicate` -> `WrongTarget` / `WrongRevision` -> `TargetGone` ->
+/// `Overridden` (any human decision) -> `StalePolicy` -> `Superseded`.
 pub fn validate_evaluation_result<'a>(
     capability: Option<EvaluatorCapability>,
     expected_subject: Option<EvaluationSubject>,
@@ -371,9 +415,9 @@ pub fn validate_evaluation_result<'a>(
     result: &EvaluatorResult,
     lookup_revision: impl FnOnce(RevisionId) -> Option<TargetRevisionFacts>,
 ) -> Result<&'a EvaluationJobFacts, EvaluationRefusal> {
-    if capability.is_none() {
+    let Some(capability) = capability else {
         return Err(EvaluationRefusal::NotEvaluator);
-    }
+    };
     if let Some(subject) = expected_subject
         && !subject.matches(&result.target)
     {
@@ -383,6 +427,12 @@ pub fn validate_evaluation_result<'a>(
         .iter()
         .find(|j| j.id == result.evaluation_id)
         .ok_or(EvaluationRefusal::UnknownJob)?;
+    if job.state == JobState::Withdrawn {
+        return Err(EvaluationRefusal::Withdrawn);
+    }
+    if job.state == JobState::Rerouted || capability.mode() == AutomationMode::Paused {
+        return Err(EvaluationRefusal::AutomationPaused);
+    }
     if job.state != JobState::Open {
         return Err(EvaluationRefusal::Duplicate);
     }
@@ -415,7 +465,10 @@ pub fn validate_evaluation_result<'a>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecisionBy {
     Ai,
+    Moderator,
     Admin,
+    /// Waiting for a person after a policy change (PUB-06); no evaluator result decides it.
+    PolicyRereview,
     Legacy,
 }
 
@@ -423,9 +476,16 @@ impl DecisionBy {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Ai => "ai",
+            Self::Moderator => "moderator",
             Self::Admin => "admin",
+            Self::PolicyRereview => "rereview",
             Self::Legacy => "legacy",
         }
+    }
+
+    /// A person decided (or must decide): no evaluator result may change it (MOD-09).
+    pub const fn is_human(self) -> bool {
+        matches!(self, Self::Moderator | Self::Admin | Self::PolicyRereview)
     }
 }
 
@@ -505,6 +565,15 @@ pub enum DecisionProvenance {
         verdict: AdminVerdict,
         reason: DecisionReason,
     },
+    /// A moderator decided under the named grant (MOD-11, MOD-13).
+    Moderator {
+        actor: PrincipalId,
+        grant: GrantId,
+        verdict: AdminVerdict,
+        reason: DecisionReason,
+    },
+    /// A human approval of an older policy went back to the human queue (PUB-06).
+    PolicyRereview,
     LegacyBootstrap,
 }
 
@@ -513,7 +582,16 @@ impl DecisionProvenance {
         match self {
             Self::AiApproved | Self::AiRejected(_) | Self::AiNeedsAdmin(_) => DecisionBy::Ai,
             Self::Admin { .. } => DecisionBy::Admin,
+            Self::Moderator { .. } => DecisionBy::Moderator,
+            Self::PolicyRereview => DecisionBy::PolicyRereview,
             Self::LegacyBootstrap => DecisionBy::Legacy,
+        }
+    }
+
+    const fn human_verdict(&self) -> Option<AdminVerdict> {
+        match self {
+            Self::Admin { verdict, .. } | Self::Moderator { verdict, .. } => Some(*verdict),
+            _ => None,
         }
     }
 }
@@ -523,6 +601,8 @@ pub struct RevisionDecisionFacts {
     pub revision: RevisionId,
     pub digest: ContentHash,
     pub version: DecisionVersion,
+    /// Policy in force when the current decision (or submission, while pending) was made.
+    pub policy: PolicyVersion,
     pub provenance: Option<DecisionProvenance>,
 }
 
@@ -571,13 +651,33 @@ pub struct WorkModerationFacts {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WorkModeration(WorkModerationFacts);
 
+/// How a submitted revision is routed by an author command (PUB-06, MOD-14).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReviewRequest {
+    /// Nothing to review (save, private, delete, waiting on an open job or a human case).
+    None,
+    /// First submission of an unsubmitted revision.
+    Fresh,
+    /// A pending revision whose job was withdrawn (or is stale) is reviewed again.
+    Resubmitted,
+    /// An approval of an older policy is reviewed again for the exact snapshot.
+    PolicyRereview,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorModerationTransition {
     pub publication: Publication,
     pub moderation: WorkModeration,
     pub outcome: AuthorOutcome,
     pub effects: Effects,
+    /// Evaluator ticket, when automation is enabled and a review was requested.
     pub ticket: Option<EvaluationTicket>,
+    pub review: ReviewRequest,
+    /// Revision that must be in the human queue (paused automation, needs-admin, re-review of
+    /// a human decision). The case owner opens or keeps its case.
+    pub human_review: Option<RevisionId>,
+    /// The author made the work private: the caller closes the work's cases and appeals.
+    pub withdrawn_reviews: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -647,6 +747,8 @@ pub struct AdminRemovalTransition {
 pub enum ReevaluateRefusal {
     #[error("work is not active")]
     WorkUnavailable,
+    #[error("the work is private; its reviews were withdrawn")]
+    Withdrawn,
     #[error("unknown revision")]
     UnknownRevision,
     #[error("revision is not pending evaluation")]
@@ -687,6 +789,10 @@ pub enum ModerationError {
     WrongHash,
     #[error("decision version changed")]
     StaleDecision,
+    #[error("the author made the work private; its review cases are closed")]
+    CaseClosed,
+    #[error("authority does not cover work review of this work")]
+    WrongAuthority,
     #[error(transparent)]
     Refused(#[from] EvaluationRefusal),
     #[error(transparent)]
@@ -730,32 +836,33 @@ impl WorkModeration {
             if &rev.digest != pub_rev.snapshot.content.hash() {
                 return Err(ModerationError::InvalidFacts);
             }
+            if rev.policy > facts.policy {
+                return Err(ModerationError::InvalidFacts);
+            }
+            let human = rev
+                .provenance
+                .as_ref()
+                .and_then(DecisionProvenance::human_verdict);
             match (pub_rev.moderation, &rev.provenance) {
                 (Moderation::Unsubmitted, _) => return Err(ModerationError::InvalidFacts),
-                (Moderation::Pending, None) if rev.version == DecisionVersion::FIRST => {}
+                // A first submission, or an AI re-review after a policy change (PUB-06).
+                (Moderation::Pending, None) => {}
                 (
                     Moderation::Approved,
-                    Some(
-                        DecisionProvenance::AiApproved
-                        | DecisionProvenance::Admin {
-                            verdict: AdminVerdict::Approve,
-                            ..
-                        }
-                        | DecisionProvenance::LegacyBootstrap,
-                    ),
+                    Some(DecisionProvenance::AiApproved | DecisionProvenance::LegacyBootstrap),
                 ) if rev.version > DecisionVersion::FIRST => {}
-                (
-                    Moderation::Rejected,
-                    Some(
-                        DecisionProvenance::AiRejected(_)
-                        | DecisionProvenance::Admin {
-                            verdict: AdminVerdict::Reject,
-                            ..
-                        },
-                    ),
-                ) if rev.version > DecisionVersion::FIRST => {}
-                (Moderation::NeedsAdmin, Some(DecisionProvenance::AiNeedsAdmin(_)))
+                (Moderation::Approved, Some(_))
+                    if human == Some(AdminVerdict::Approve)
+                        && rev.version > DecisionVersion::FIRST => {}
+                (Moderation::Rejected, Some(DecisionProvenance::AiRejected(_)))
                     if rev.version > DecisionVersion::FIRST => {}
+                (Moderation::Rejected, Some(_))
+                    if human == Some(AdminVerdict::Reject)
+                        && rev.version > DecisionVersion::FIRST => {}
+                (
+                    Moderation::NeedsAdmin,
+                    Some(DecisionProvenance::AiNeedsAdmin(_) | DecisionProvenance::PolicyRereview),
+                ) if rev.version > DecisionVersion::FIRST => {}
                 _ => return Err(ModerationError::InvalidFacts),
             }
         }
@@ -817,8 +924,7 @@ impl WorkModeration {
         self.0.revisions.iter().find(|r| r.revision == revision)
     }
 
-    /// Execute an author command against [`Publication`] and open an [`EvaluationTicket`] iff the
-    /// command submitted an unsubmitted revision (`MOD-05`, `INV-08`).
+    /// Execute an author command with automation enabled. See [`Self::decide_author_with`].
     pub fn decide_author(
         &self,
         publication: &Publication,
@@ -826,39 +932,190 @@ impl WorkModeration {
         command: AuthorCommand,
         new_evaluation_id: Option<EvaluationId>,
     ) -> Result<AuthorModerationTransition, ModerationError> {
+        self.decide_author_with(
+            publication,
+            actor,
+            command,
+            new_evaluation_id,
+            AutomationMode::Enabled,
+        )
+    }
+
+    fn open_job(
+        &mut self,
+        request: &EvaluationRequest,
+        evaluation_id: Option<EvaluationId>,
+    ) -> Result<EvaluationTicket, ModerationError> {
+        let evaluation_id = evaluation_id.ok_or(ModerationError::MissingEvaluationId)?;
+        if self.0.jobs.iter().any(|j| j.id == evaluation_id) {
+            return Err(ModerationError::DuplicateEvaluationId);
+        }
+        let ticket = EvaluationTicket::for_work_revision(evaluation_id, request, self.0.policy);
+        self.0.jobs.push(EvaluationJobFacts {
+            id: ticket.id,
+            target: ticket.target.clone(),
+            policy: ticket.policy,
+            state: JobState::Open,
+        });
+        Ok(ticket)
+    }
+
+    fn has_open_job(&self, revision: RevisionId) -> bool {
+        self.0.jobs.iter().any(|j| {
+            j.state == JobState::Open
+                && j.policy == self.0.policy
+                && j.target.revision() == revision
+        })
+    }
+
+    /// Execute an author command against [`Publication`] and route review (PUB-06, MOD-05,
+    /// MOD-14, INV-08):
+    /// - a private save opens nothing;
+    /// - a first submission, or a pending revision whose job was withdrawn, goes to the
+    ///   evaluator (or to the human queue while automation is paused);
+    /// - republishing an approval of an older policy re-reviews the exact snapshot: an AI (or
+    ///   legacy) approval goes back to the evaluator, a human approval to the human queue;
+    /// - making the work private withdraws every open job and tells the caller to close the
+    ///   work's cases and appeals; decisions already made are kept.
+    pub fn decide_author_with(
+        &self,
+        publication: &Publication,
+        actor: PrincipalId,
+        command: AuthorCommand,
+        new_evaluation_id: Option<EvaluationId>,
+        automation: AutomationMode,
+    ) -> Result<AuthorModerationTransition, ModerationError> {
         if self.0.work != publication.facts().work {
             return Err(ModerationError::InvalidFacts);
         }
-        let transition = publication.decide_author(actor, command)?;
         let mut next = self.clone();
-        let ticket = if let Some(request) = &transition.effects.evaluation {
-            let evaluation_id = new_evaluation_id.ok_or(ModerationError::MissingEvaluationId)?;
-            if next.0.jobs.iter().any(|j| j.id == evaluation_id) {
-                return Err(ModerationError::DuplicateEvaluationId);
+        let mut source = publication.clone();
+        let mut review = ReviewRequest::None;
+        let mut human_review = None;
+
+        // PUB-06: an approval of an older policy is not reused for a new public intent.
+        if let AuthorCommand::RequestPublic { revision, expected } = &command
+            && actor == publication.facts().owner
+            && publication.facts().lifecycle.is_active()
+            && *expected == publication.facts().generation
+            && publication
+                .facts()
+                .revisions
+                .iter()
+                .any(|r| r.snapshot.revision == *revision && r.moderation == Moderation::Approved)
+            && publication.readable_revision().map(|s| s.revision) != Some(*revision)
+            && let Some(decision) = self.revision_decision(*revision)
+            && decision.policy < self.0.policy
+        {
+            let human = decision
+                .provenance
+                .as_ref()
+                .is_some_and(|p| p.decision_by().is_human());
+            let to = if human {
+                Moderation::NeedsAdmin
+            } else {
+                Moderation::Pending
+            };
+            source = publication.reopen_review(*revision, to)?;
+            let slot = next
+                .0
+                .revisions
+                .iter_mut()
+                .find(|r| r.revision == *revision)
+                .ok_or(ModerationError::InvalidFacts)?;
+            slot.version = slot.version.next()?;
+            slot.policy = self.0.policy;
+            slot.provenance = human.then_some(DecisionProvenance::PolicyRereview);
+            review = ReviewRequest::PolicyRereview;
+        }
+
+        let transition = source.decide_author(actor, command.clone())?;
+
+        match (&command, transition.outcome) {
+            (AuthorCommand::SetPrivate { .. }, _) => {
+                for job in &mut next.0.jobs {
+                    if matches!(job.state, JobState::Open | JobState::Rerouted) {
+                        job.state = JobState::Withdrawn;
+                    }
+                }
             }
-            let ticket = EvaluationTicket::for_work_revision(evaluation_id, request, next.0.policy);
-            next.0.revisions.push(RevisionDecisionFacts {
-                revision: request.revision,
-                digest: request.hash.clone(),
-                version: DecisionVersion::FIRST,
-                provenance: None,
-            });
-            next.0.jobs.push(EvaluationJobFacts {
-                id: ticket.id,
-                target: ticket.target.clone(),
-                policy: ticket.policy,
-                state: JobState::Open,
-            });
-            Some(ticket)
+            (AuthorCommand::RequestPublic { revision, .. }, outcome) => {
+                let moderation = transition
+                    .next
+                    .facts()
+                    .revisions
+                    .iter()
+                    .find(|r| r.snapshot.revision == *revision)
+                    .map(|r| r.moderation);
+                if outcome == AuthorOutcome::Submitted {
+                    next.0.revisions.push(RevisionDecisionFacts {
+                        revision: *revision,
+                        digest: transition
+                            .effects
+                            .evaluation
+                            .as_ref()
+                            .map(|e| e.hash.clone())
+                            .ok_or(ModerationError::InvalidFacts)?,
+                        version: DecisionVersion::FIRST,
+                        policy: self.0.policy,
+                        provenance: None,
+                    });
+                    review = ReviewRequest::Fresh;
+                } else if review == ReviewRequest::None
+                    && moderation == Some(Moderation::Pending)
+                    && !next.has_open_job(*revision)
+                {
+                    review = ReviewRequest::Resubmitted;
+                }
+                if moderation == Some(Moderation::NeedsAdmin) {
+                    human_review = Some(*revision);
+                }
+            }
+            _ => {}
+        }
+
+        let ticket = if matches!(
+            review,
+            ReviewRequest::Fresh | ReviewRequest::Resubmitted | ReviewRequest::PolicyRereview
+        ) && human_review.is_none()
+        {
+            let AuthorCommand::RequestPublic { revision, .. } = &command else {
+                return Err(ModerationError::InvalidFacts);
+            };
+            if automation == AutomationMode::Paused {
+                human_review = Some(*revision);
+                None
+            } else {
+                let request = match &transition.effects.evaluation {
+                    Some(request) => request.clone(),
+                    None => EvaluationRequest {
+                        work: self.0.work,
+                        revision: *revision,
+                        hash: transition
+                            .next
+                            .facts()
+                            .revisions
+                            .iter()
+                            .find(|r| r.snapshot.revision == *revision)
+                            .map(|r| r.snapshot.content.hash().clone())
+                            .ok_or(ModerationError::InvalidFacts)?,
+                    },
+                };
+                Some(next.open_job(&request, new_evaluation_id)?)
+            }
         } else {
             None
         };
+
         Ok(AuthorModerationTransition {
             publication: transition.next,
             moderation: next,
             outcome: transition.outcome,
             effects: transition.effects,
             ticket,
+            review,
+            human_review,
+            withdrawn_reviews: matches!(command, AuthorCommand::SetPrivate { .. }),
         })
     }
 
@@ -876,6 +1133,9 @@ impl WorkModeration {
         if !publication.facts().lifecycle.is_active() {
             return Err(ReevaluateRefusal::WorkUnavailable.into());
         }
+        if publication.facts().audience == Audience::Private {
+            return Err(ReevaluateRefusal::Withdrawn.into());
+        }
         let Some(pub_rev) = publication
             .facts()
             .revisions
@@ -887,32 +1147,18 @@ impl WorkModeration {
         if pub_rev.moderation != Moderation::Pending {
             return Err(ReevaluateRefusal::NotPending.into());
         }
-        if self.0.jobs.iter().any(|j| {
-            j.state == JobState::Open
-                && j.policy == self.0.policy
-                && j.target.revision() == revision
-        }) {
+        if self.has_open_job(revision) {
             return Err(ReevaluateRefusal::JobAlreadyOpen.into());
         }
-        if self.0.jobs.iter().any(|j| j.id == evaluation_id) {
-            return Err(ModerationError::DuplicateEvaluationId);
-        }
-        let ticket = EvaluationTicket {
-            id: evaluation_id,
-            target: EvaluationTarget::WorkRevision {
+        let mut next = self.clone();
+        let ticket = next.open_job(
+            &EvaluationRequest {
                 work: self.0.work,
                 revision,
-                digest: pub_rev.snapshot.content.hash().clone(),
+                hash: pub_rev.snapshot.content.hash().clone(),
             },
-            policy: self.0.policy,
-        };
-        let mut next = self.clone();
-        next.0.jobs.push(EvaluationJobFacts {
-            id: ticket.id,
-            target: ticket.target.clone(),
-            policy: ticket.policy,
-            state: JobState::Open,
-        });
+            Some(evaluation_id),
+        )?;
         Ok((next, ticket))
     }
 
@@ -920,6 +1166,28 @@ impl WorkModeration {
         let mut next = self.clone();
         next.0.policy = self.0.policy.next()?;
         Ok(next)
+    }
+
+    /// Pause reroute (MOD-14): every open job leaves the evaluator; the returned revisions are
+    /// those still waiting for a decision, which go to the human queue (a revision a person
+    /// already decided keeps that decision). Results that still arrive are refused
+    /// `AutomationPaused`.
+    pub fn reroute_to_humans(&self) -> (Self, Vec<RevisionId>) {
+        let mut next = self.clone();
+        let mut revisions = Vec::new();
+        for job in &mut next.0.jobs {
+            if job.state == JobState::Open {
+                job.state = JobState::Rerouted;
+                let revision = job.target.revision();
+                let undecided = self
+                    .revision_decision(revision)
+                    .is_some_and(|d| d.provenance.is_none());
+                if undecided && !revisions.contains(&revision) {
+                    revisions.push(revision);
+                }
+            }
+        }
+        (next, revisions)
     }
 
     /// Validate and apply an [`EvaluatorResult`] to [`WorkModeration`] and [`Publication`].
@@ -938,7 +1206,7 @@ impl WorkModeration {
             return Err(ModerationError::InvalidFacts);
         }
         let pub_facts = publication.facts();
-        validate_evaluation_result(
+        let job = validate_evaluation_result(
             capability,
             Some(EvaluationSubject::Work(self.0.work)),
             &self.0.jobs,
@@ -957,12 +1225,14 @@ impl WorkModeration {
                         digest: pub_rev.snapshot.content.hash().clone(),
                     },
                     target_active: pub_facts.lifecycle.is_active(),
-                    overridden_by_admin: rev_decision.and_then(RevisionDecisionFacts::decision_by)
-                        == Some(DecisionBy::Admin),
+                    overridden_by_admin: rev_decision
+                        .and_then(RevisionDecisionFacts::decision_by)
+                        .is_some_and(DecisionBy::is_human),
                     candidate_pending: pub_rev.moderation == Moderation::Pending,
                 })
             },
         )?;
+        let job_policy = job.policy;
 
         let revision = result.target.revision();
         let mut next = self.clone();
@@ -1020,6 +1290,7 @@ impl WorkModeration {
             .find(|r| r.revision == revision)
             .ok_or(ModerationError::InvalidFacts)?;
         rev_slot.version = rev_slot.version.next()?;
+        rev_slot.policy = job_policy;
         rev_slot.provenance = Some(provenance);
 
         let review = publication.record_review(ReviewedRevision {
@@ -1054,28 +1325,16 @@ impl WorkModeration {
         })
     }
 
-    /// Validate and apply a narrow-authority admin decision (`AC-05`, `MOD-09`, `INV-02`).
-    ///
-    /// Requires an [`AdminAuthority`] scoped to `self.work` whose actor is not the work's author,
-    /// an existing submitted revision (`!= Unsubmitted`), an active work lifecycle, matching
-    /// content digest, and matching `expected: DecisionVersion`. Delegates pointer promotion or
-    /// unpublication to [`Publication::record_review`].
-    pub fn apply_admin_decision(
+    /// Shared human decision path (admin or moderator). Checks lifecycle, private withdrawal,
+    /// submission, digest and the decision-version fence, then records `provenance` and runs the
+    /// publication guard.
+    fn apply_human(
         &self,
         publication: &Publication,
-        authority: Option<AdminAuthority>,
         decision: AdminDecision,
+        provenance: DecisionProvenance,
     ) -> Result<AdminTransition, ModerationError> {
-        if self.0.work != publication.facts().work {
-            return Err(ModerationError::InvalidFacts);
-        }
         let pub_facts = publication.facts();
-        let Some(authority) = authority else {
-            return Err(ModerationError::NotAdmin);
-        };
-        if authority.work() != self.0.work || authority.actor() == pub_facts.owner {
-            return Err(ModerationError::NotAdmin);
-        }
         let Some(pub_rev) = pub_facts
             .revisions
             .iter()
@@ -1088,6 +1347,10 @@ impl WorkModeration {
         }
         if pub_rev.moderation == Moderation::Unsubmitted {
             return Err(ModerationError::NotSubmitted);
+        }
+        // PUB-06: making the work private closed its review cases and appeals.
+        if pub_facts.audience == Audience::Private {
+            return Err(ModerationError::CaseClosed);
         }
         if &decision.digest != pub_rev.snapshot.content.hash() {
             return Err(ModerationError::WrongHash);
@@ -1107,11 +1370,8 @@ impl WorkModeration {
             .find(|r| r.revision == decision.revision)
             .ok_or(ModerationError::InvalidFacts)?;
         rev_slot.version = rev_slot.version.next()?;
-        rev_slot.provenance = Some(DecisionProvenance::Admin {
-            actor: authority.actor(),
-            verdict: decision.verdict,
-            reason: decision.reason,
-        });
+        rev_slot.policy = self.0.policy;
+        rev_slot.provenance = Some(provenance);
 
         let review_outcome = match decision.verdict {
             AdminVerdict::Approve => ReviewOutcome::Approved,
@@ -1154,6 +1414,163 @@ impl WorkModeration {
             outcome,
             effects: review.effects,
         })
+    }
+
+    /// Validate and apply a narrow-authority admin decision (`AC-05`, `MOD-09`, `INV-02`).
+    ///
+    /// Requires an [`AdminAuthority`] scoped to `self.work` whose actor is not the work's author,
+    /// an existing submitted revision (`!= Unsubmitted`), an active, non-private work, matching
+    /// content digest, and matching `expected: DecisionVersion`. Delegates pointer promotion or
+    /// unpublication to [`Publication::record_review`].
+    pub fn apply_admin_decision(
+        &self,
+        publication: &Publication,
+        authority: Option<AdminAuthority>,
+        decision: AdminDecision,
+    ) -> Result<AdminTransition, ModerationError> {
+        if self.0.work != publication.facts().work {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let Some(authority) = authority else {
+            return Err(ModerationError::NotAdmin);
+        };
+        if authority.work() != self.0.work || authority.actor() == publication.facts().owner {
+            return Err(ModerationError::NotAdmin);
+        }
+        let provenance = DecisionProvenance::Admin {
+            actor: authority.actor(),
+            verdict: decision.verdict,
+            reason: decision.reason.clone(),
+        };
+        self.apply_human(publication, decision, provenance)
+    }
+
+    /// A human decision under a freshly [`VerifiedAuthority`] of work review for this work
+    /// (MOD-11, MOD-13): a moderator's grant or an admin seat, recorded in the provenance.
+    pub fn apply_human_decision(
+        &self,
+        publication: &Publication,
+        authority: &VerifiedAuthority,
+        decision: AdminDecision,
+    ) -> Result<AdminTransition, ModerationError> {
+        if self.0.work != publication.facts().work {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let target = authority.target();
+        if target.capability != ReviewCapability::Works
+            || target.work != self.0.work
+            || target.content_owner != publication.facts().owner
+        {
+            return Err(ModerationError::WrongAuthority);
+        }
+        let provenance = match authority.basis() {
+            AuthorityBasis::Admin => DecisionProvenance::Admin {
+                actor: authority.actor(),
+                verdict: decision.verdict,
+                reason: decision.reason.clone(),
+            },
+            AuthorityBasis::Grant(grant) => DecisionProvenance::Moderator {
+                actor: authority.actor(),
+                grant,
+                verdict: decision.verdict,
+                reason: decision.reason.clone(),
+            },
+        };
+        self.apply_human(publication, decision, provenance)
+    }
+
+    /// Apply a concluded case on a work revision (MOD-12). The case already fenced its own
+    /// version and the decision version it saw; this re-fences the decision version here.
+    pub fn apply_case_conclusion(
+        &self,
+        publication: &Publication,
+        conclusion: &CaseConclusion,
+    ) -> Result<AdminTransition, ModerationError> {
+        let ReviewSubject::WorkRevision {
+            work,
+            revision,
+            digest,
+            decision,
+        } = &conclusion.subject
+        else {
+            return Err(ModerationError::WrongAuthority);
+        };
+        if *work != self.0.work {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let reason = match &conclusion.reason {
+            Some(reason) => reason.clone(),
+            None => DecisionReason::parse("approved on review")?,
+        };
+        self.apply_human_decision(
+            publication,
+            &conclusion.authority,
+            AdminDecision {
+                revision: *revision,
+                digest: digest.clone(),
+                expected: *decision,
+                verdict: match conclusion.verdict {
+                    CaseVerdict::Approve => AdminVerdict::Approve,
+                    CaseVerdict::Reject => AdminVerdict::Reject,
+                },
+                reason,
+            },
+        )
+    }
+
+    /// Apply an admin's appeal conclusion (MOD-10): uphold keeps the verdict, reverse flips it;
+    /// both create a new admin decision version. Publishing still needs the author's current
+    /// intent on that exact revision.
+    pub fn apply_appeal_conclusion(
+        &self,
+        publication: &Publication,
+        conclusion: &AppealConclusion,
+    ) -> Result<AdminTransition, ModerationError> {
+        let ReviewSubject::WorkRevision {
+            work,
+            revision,
+            digest,
+            decision,
+        } = &conclusion.subject
+        else {
+            return Err(ModerationError::WrongAuthority);
+        };
+        if *work != self.0.work || conclusion.admin.actor() == publication.facts().owner {
+            return Err(ModerationError::NotAdmin);
+        }
+        let current = publication
+            .facts()
+            .revisions
+            .iter()
+            .find(|r| r.snapshot.revision == *revision)
+            .ok_or(ModerationError::UnknownRevision)?
+            .moderation;
+        let appealed = match current {
+            Moderation::Approved => AdminVerdict::Approve,
+            Moderation::Rejected => AdminVerdict::Reject,
+            _ => return Err(ModerationError::StaleDecision),
+        };
+        let verdict = match (conclusion.verdict, appealed) {
+            (AppealVerdict::Uphold, v) => v,
+            (AppealVerdict::Reverse, AdminVerdict::Approve) => AdminVerdict::Reject,
+            (AppealVerdict::Reverse, AdminVerdict::Reject) => AdminVerdict::Approve,
+        };
+        let provenance = DecisionProvenance::Admin {
+            actor: conclusion.admin.actor(),
+            verdict,
+            reason: conclusion.reason.clone(),
+        };
+        self.apply_human(
+            publication,
+            AdminDecision {
+                revision: *revision,
+                digest: digest.clone(),
+                expected: *decision,
+                verdict,
+                reason: conclusion.reason.clone(),
+            },
+            provenance,
+        )
     }
 
     /// Apply an admin removal to an active work (#157, AC-01, AC-05).
@@ -1459,6 +1876,10 @@ impl ModerationEvaluator for ScriptedEvaluator {
     }
 }
 
+#[cfg(test)]
+mod governance_replay;
+#[cfg(test)]
+mod governance_tests;
 #[cfg(test)]
 mod replay;
 #[cfg(test)]

@@ -7,8 +7,13 @@
 // ASSUMPTIONS, not proofs: each action is one serialized commit; actors are who they say they
 // are (auth is D-05); the evaluator is a service capability that can only submit results; the
 // admin is the product owner acting through a future operator surface. No clock, no SLA.
+// ADMIN-MODERATION-20261111 (PUB-06): making the work private withdraws its open evaluations and
+// closes its review cases (late results and decisions write nothing); republishing a pending
+// revision whose evaluation was withdrawn asks again; an approval of an older policy is reviewed
+// again for the exact snapshot (by the evaluator if the AI approved it, by a person otherwise).
+// Who the person is (admin or moderator under a grant) is governance.qnt; here "admin".
 module publication {
-  type Revision = { decision: str, by: str }
+  type Revision = { decision: str, by: str, policy: int }
   type Job = { rev: int, policy: int, state: str }
   // actor: author | other | evaluator | system | admin. `expected` is the audience generation
   // the author's tab saw; `value` is the evaluator outcome or the admin verdict.
@@ -18,7 +23,7 @@ module publication {
     pointer: int, lifecycle: str, generation: int, policy: int,
   }
   pure val maxRevs = 4
-  pure val maxJobs = 6
+  pure val maxJobs = 8
   pure val maxPolicy = 2
   pure def cmd(op: str, actor: str, rev: int, job: int, expected: int, value: str): Command =
     { op: op, actor: actor, rev: rev, job: job, expected: expected, value: value }
@@ -82,7 +87,10 @@ module publication {
   pure def publish(s: Snapshot, r: int, intentGuard: bool): Snapshot =
     if (lawful(s, r, intentGuard)) s.with("pointer", r) else s
   pure def setRev(s: Snapshot, r: int, decision: str, by: str): Snapshot =
-    s.with("revs", s.revs.set(r, { decision: decision, by: by }))
+    s.with("revs", s.revs.set(r, { decision: decision, by: by, policy: s.policy }))
+  pure val humanBy = Set("admin", "rereview")
+  pure def openFor(s: Snapshot, r: int): bool = s.jobs.keys().exists(j =>
+    s.jobs.get(j).rev == r and s.jobs.get(j).state == "open" and s.jobs.get(j).policy == s.policy)
 
   // A private save: a new immutable snapshot, no evaluation, no provider call (MOD-05, INV-08).
   action snapshot(c: Command): bool = {
@@ -90,33 +98,46 @@ module publication {
     if (c.actor != "author") refuse(c, "not_found")
     else if (lifecycle != "active") refuse(c, "work_unavailable")
     else if (id > maxRevs) refuse(c, "limit")
-    else commit(c, "saved", current.with("revs", revs.put(id, { decision: "none", by: "none" })), requested)
+    else commit(c, "saved", current.with("revs", revs.put(id, { decision: "none", by: "none", policy: 0 })), requested)
   }
 
-  // "Công khai": the author's intent for exactly one snapshot. It never skips moderation.
+  // "Công khai": the author's intent for exactly one snapshot. It never skips moderation, and
+  // an approval is reused only under the policy it was made for (PUB-06).
   action requestPublic(c: Command): bool = {
     val job = jobs.keys().size() + 1
     val intent = current.with("audience", "public").with("desired", c.rev)
       .with("intended", intended.union(Set(c.rev))).with("generation", generation + 1)
+    val ask = intent.with("jobs", jobs.put(job, { rev: c.rev, policy: policy, state: "open" }))
+    val rev = if (revs.keys().contains(c.rev)) revs.get(c.rev) else { decision: "none", by: "none", policy: 0 }
     if (c.actor != "author") refuse(c, "not_found")
     else if (lifecycle != "active") refuse(c, "work_unavailable")
     else if (not(revs.keys().contains(c.rev))) refuse(c, "unknown_revision")
     else if (c.expected != generation) refuse(c, "stale")
-    else if (revs.get(c.rev).decision == "rejected") refuse(c, "revision_rejected")
-    else if (revs.get(c.rev).decision == "approved")
+    else if (rev.decision == "rejected") refuse(c, "revision_rejected")
+    else if (rev.decision == "approved" and (rev.policy == policy or pointer == c.rev))
       commit(c, "published", intent.with("pointer", c.rev), requested)
-    else if (revs.get(c.rev).decision != "none") commit(c, "waiting", intent, requested)
+    // An approval of an older policy: a person's goes back to people, the AI's to the AI.
+    else if (rev.decision == "approved" and humanBy.contains(rev.by))
+      commit(c, "rereview", setRev(intent, c.rev, "needs_admin", "rereview"), requested)
+    else if (rev.decision == "approved")
+      if (job > maxJobs) refuse(c, "limit")
+      else commit(c, "rereview", setRev(ask, c.rev, "pending", "none"), requested)
+    // Pending, but its evaluation was withdrawn when the work went private: ask again.
+    else if (rev.decision == "pending" and not(openFor(current, c.rev)))
+      if (job > maxJobs) refuse(c, "limit")
+      else commit(c, "resubmitted", ask, requested)
+    else if (rev.decision != "none") commit(c, "waiting", intent, requested)
     else if (job > maxJobs) refuse(c, "limit")
-    else commit(c, "submitted",
-      setRev(intent, c.rev, "pending", "none")
-        .with("jobs", jobs.put(job, { rev: c.rev, policy: policy, state: "open" })),
-      requested.union(Set(c.rev)))
+    else commit(c, "submitted", setRev(ask, c.rev, "pending", "none"), requested.union(Set(c.rev)))
   }
 
-  // "Chỉ mình tôi": closes public reading at once. Decisions already made are kept.
+  // "Chỉ mình tôi": closes public reading at once and withdraws open evaluations (their cases
+  // and appeals close). Decisions already made are kept.
   action setPrivate(c: Command): bool = {
     val after = current.with("audience", "private").with("desired", 0).with("intended", Set())
       .with("pointer", 0).with("generation", generation + 1)
+      .with("jobs", jobs.keys().mapBy(j =>
+        if (jobs.get(j).state == "open") jobs.get(j).with("state", "withdrawn") else jobs.get(j)))
     if (c.actor != "author") refuse(c, "not_found")
     else if (lifecycle != "active") refuse(c, "work_unavailable")
     else if (c.expected != generation) refuse(c, "stale")
@@ -132,10 +153,11 @@ module publication {
     val closed = current.with("jobs", jobs.setBy(c.job, j => j.with("state", "applied")))
     if (c.actor != "evaluator") refuse(c, "not_evaluator")
     else if (not(known)) refuse(c, "unknown_job")
+    else if (job.state == "withdrawn") refuse(c, "withdrawn")
     else if (job.state != "open") refuse(c, "duplicate")
     else if (job.rev != c.rev) refuse(c, "wrong_revision")
     else if (lifecycle != "active") refuse(c, "target_gone")
-    else if (overrideGuard and revs.get(c.rev).by == "admin") refuse(c, "overridden")
+    else if (overrideGuard and humanBy.contains(revs.get(c.rev).by)) refuse(c, "overridden")
     else if (job.policy != policy) refuse(c, "stale_policy")
     else if (c.value == "approve") {
       val after = publish(setRev(closed, c.rev, "approved", "ai"), c.rev, intentGuard)
@@ -154,7 +176,7 @@ module publication {
     val job = jobs.keys().size() + 1
     val open = jobs.keys().exists(j =>
       jobs.get(j).rev == c.rev and jobs.get(j).state == "open" and jobs.get(j).policy == policy)
-    if (lifecycle != "active" or not(revs.keys().contains(c.rev)) or
+    if (lifecycle != "active" or audience != "public" or not(revs.keys().contains(c.rev)) or
         revs.get(c.rev).decision != "pending" or open) refuse(c, "not_needed")
     else if (job > maxJobs) refuse(c, "limit")
     else commit(c, "requeued",
@@ -168,6 +190,8 @@ module publication {
     else if (not(revs.keys().contains(c.rev))) refuse(c, "unknown_revision")
     else if (lifecycle != "active") refuse(c, "target_gone")
     else if (revs.get(c.rev).decision == "none") refuse(c, "not_submitted")
+    // PUB-06: the author made the work private; its review cases are closed.
+    else if (audience == "private") refuse(c, "case_closed")
     else if (c.value == "approve") {
       val after = publish(setRev(current, c.rev, "approved", "admin"), c.rev, true)
       commit(c, if (after.pointer == c.rev) "published" else "approved_unpublished", after, requested)
@@ -224,8 +248,9 @@ module publication {
   }
 
   // Private save, failure and retry, a wrong revision, r1 public while r2 is rejected, an old
-  // tab, a policy change, an admin override that a late result cannot undo, private again,
-  // approval without intent, author deletion and results arriving after it.
+  // tab, a policy change, an admin override that a late result cannot undo, private again (late
+  // results withdrawn, decisions refused), republishing an approval of the old policy, a
+  // withdrawn evaluation asked again, approval without intent, author deletion after it.
   pure val lifecycleScenario = List(
     save,                          // r1: private, no evaluation
     decide("admin", 1, "approve"), // not_submitted: the admin has no say over a private save
@@ -238,7 +263,7 @@ module publication {
     requeue(1),                    // not_needed
     ai(2, 2, "approve"),           // wrong_revision
     ai(6, 1, "approve"),           // unknown_job
-    ai(2, 1, "approve"),           // published: pointer r1
+    ai(2, 1, "approve"),           // published: pointer r1, approved under policy 1
     save,                          // r2
     goPublic("author", 2, 3),      // submitted: job 3, generation 4; r1 stays public
     ai(3, 2, "reject"),            // rejected: r1 stays public (PUB-02)
@@ -253,23 +278,42 @@ module publication {
     decide("evaluator", 3, "approve"), // not_admin: the evaluator is not an admin
     decide("admin", 3, "approve"), // published: pointer r3, decided by the admin
     ai(4, 3, "reject"),            // overridden: the late result loses to the admin
-    goPrivate(5),                  // made_private: pointer 0, generation 6
+    goPrivate(5),                  // made_private: pointer 0, generation 6; job 4 withdrawn
     goPublic("author", 3, 5),      // stale: the old tab does not republish
     goPrivate(6),                  // reaffirmed: generation 7
-    goPublic("author", 1, 7),      // published: r1 was approved, generation 8
+    goPublic("author", 1, 7),      // rereview: r1's AI approval is of policy 1; job 6
+    ai(4, 3, "approve"),           // withdrawn: the late result of a private period
+    ai(6, 1, "approve"),           // published: r1 approved again under policy 2
     decide("admin", 1, "reject"),  // unpublished: the admin withdraws r1
     save,                          // r4
-    goPublic("author", 4, 8),      // submitted: job 6, generation 9
-    goPrivate(9),                  // made_private: the intent is withdrawn, generation 10
-    ai(6, 4, "approve"),           // approved_unpublished: approval alone publishes nothing
-    goPublic("author", 4, 10),     // published
+    goPublic("author", 4, 8),      // submitted: job 7, generation 9
+    goPrivate(9),                  // made_private: job 7 withdrawn, generation 10
+    ai(7, 4, "approve"),           // withdrawn: no decision while the work is private
+    decide("admin", 4, "approve"), // case_closed: no human decision either
+    goPublic("author", 4, 10),     // resubmitted: job 8, generation 11
+    decide("admin", 1, "approve"), // approved_unpublished: r1 is not the current intent
+    ai(8, 4, "approve"),           // published: r4
     authorDelete,                  // deleted
     goPublic("author", 4, 12),     // work_unavailable
     decide("admin", 4, "approve"), // target_gone
-    ai(4, 3, "approve"),           // target_gone: job 4 never applied, and still cannot
   )
   action lifecycleStep = all {
     cursor < lifecycleScenario.length(), dispatch(lifecycleScenario.nth(cursor)),
+  }
+
+  // A person's approval of an older policy goes back to people, not to the evaluator.
+  pure val rereviewScenario = List(
+    save, goPublic("author", 1, 1),
+    ai(1, 1, "uncertain"),         // needs_admin
+    decide("admin", 1, "approve"), // published under policy 1
+    goPrivate(2),                  // made_private
+    policyBump,                    // policy 2
+    goPublic("author", 1, 3),      // rereview: needs a person again, no evaluation
+    requeue(1),                    // not_needed: nothing for the evaluator
+    decide("admin", 1, "approve"), // published under policy 2
+  )
+  action rereviewStep = all {
+    cursor < rereviewScenario.length(), dispatch(rereviewScenario.nth(cursor)),
   }
 
   // Moderation removal is not author deletion: terminal here, nothing comes back.
@@ -296,25 +340,30 @@ module publication {
   action mutatedOverrideStep = all {
     cursor < lateResult.length(), dispatchWith(lateResult.nth(cursor), false, true),
   }
-  // Negative control 2: without the intent guard an approval publishes a work the author has
-  // made private again.
-  pure val withdrawnIntent = List(save, goPublic("author", 1, 1), goPrivate(2), ai(1, 1, "approve"))
+  // Negative control 2: without the intent guard an approval of r1 publishes it although the
+  // author's current public intent names r2.
+  pure val withdrawnIntent = List(save, save, goPublic("author", 1, 1), goPublic("author", 2, 2),
+    ai(1, 1, "approve"))
   action mutatedIntentStep = all {
     cursor < withdrawnIntent.length(), dispatchWith(withdrawnIntent.nth(cursor), true, false),
   }
 
   pure val refusals = Set("not_found", "work_unavailable", "limit", "unknown_revision", "stale",
     "revision_rejected", "not_evaluator", "unknown_job", "duplicate", "wrong_revision",
-    "target_gone", "overridden", "stale_policy", "not_needed", "not_admin", "not_submitted")
+    "target_gone", "overridden", "stale_policy", "not_needed", "not_admin", "not_submitted",
+    "withdrawn", "case_closed")
 
   // PUB-01 / INV-01: a public revision needs the author's intent, an approval and a live work.
   val publicNeedsEverything = pointer == 0 or (lifecycle == "active" and audience == "public" and
     revs.get(pointer).decision == "approved" and intended.contains(pointer))
   // MOD-05 / INV-08: only revisions the author asked to publish are ever sent for evaluation.
   val privateSaveNeverEvaluated = jobs.keys().forall(j => requested.contains(jobs.get(j).rev))
-  // USER-14: once the admin decided a revision, only the admin changes that decision.
-  val adminOverrideWins = previous.revs.keys().forall(r => previous.revs.get(r).by != "admin" or
-    revs.get(r) == previous.revs.get(r) or command.op == "admin_decide")
+  // USER-14: once a person decided a revision, only a person changes that decision, or the author
+  // republishing it under a newer policy sends it back to people (PUB-06).
+  val adminOverrideWins = previous.revs.keys().forall(r => not(humanBy.contains(previous.revs.get(r).by)) or
+    revs.get(r) == previous.revs.get(r) or command.op == "admin_decide" or
+    (command.op == "request_public" and command.rev == r and previous.revs.get(r).policy < policy and
+      revs.get(r) == { decision: "needs_admin", by: "rereview", policy: policy }))
   val refusalWritesNothing = not(refusals.contains(outcome)) or current == previous
   // MOD-03: a failure, an unusable output or a rejection never changes what is public.
   val failureNeverPublishes = not(command.op == "ai_result" and command.value != "approve") or
@@ -326,16 +375,25 @@ module publication {
   // MOD-02: a decision belongs to one revision; a new snapshot starts undecided.
   val decisionsAreVersionBound = revs.keys().forall(r =>
     if (previous.revs.keys().contains(r)) revs.get(r) == previous.revs.get(r) or r == command.rev
-    else revs.get(r) == { decision: "none", by: "none" })
+    else revs.get(r) == { decision: "none", by: "none", policy: 0 })
   val evaluatorOnlyDecidesPending = not(command.op == "ai_result" and revs != previous.revs) or
     (previous.revs.get(command.rev).decision == "pending" and revs.get(command.rev).by == "ai")
   // PUB-03 / COM-07 style fence: an older tab never undoes a newer accepted audience intent.
   val audienceFence = generation == previous.generation or
     (generation == previous.generation + 1 and
       (command.expected == previous.generation or command.op == "author_delete"))
+  // PUB-06: while the work is private no evaluation is open and no decision changes.
+  val privateWithdrawsReview = lifecycle != "active" or audience == "public" or
+    jobs.keys().forall(j => jobs.get(j).state != "open")
+  val privateFreezesDecisions = not(previous.audience == "private" and previous.lifecycle == "active" and
+    command.op != "request_public") or previous.revs.keys().forall(r => revs.get(r) == previous.revs.get(r))
+  // PUB-06: republishing never reuses an approval of an older policy.
+  val staleApprovalNeverRepublishes = not(command.op == "request_public" and pointer != 0 and
+    pointer != previous.pointer) or revs.get(pointer).policy == policy
   val finiteDomain = revs.keys().size() <= maxRevs and jobs.keys().size() <= maxJobs and
     policy <= maxPolicy
   val publicationSafe = publicNeedsEverything and privateSaveNeverEvaluated and adminOverrideWins and
     refusalWritesNothing and failureNeverPublishes and noResurrection and pointerMovesLawfully and
-    decisionsAreVersionBound and evaluatorOnlyDecidesPending and audienceFence and finiteDomain
+    decisionsAreVersionBound and evaluatorOnlyDecidesPending and audienceFence and
+    privateWithdrawsReview and privateFreezesDecisions and staleApprovalNeverRepublishes and finiteDomain
 }

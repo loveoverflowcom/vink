@@ -11,7 +11,7 @@ quyết định áp lên `develop@31a62b1` (sau [#49](https://github.com/loveove
 > quyết định ([admission §8](discussion-admission.md#8-hướng-đích-sau-quyết-định-10112026)) và người
 > viết được sửa bình luận của mình ([đặc tả](comment-editing.md)). D-12 tách xóa bài khỏi chuyển
 > riêng tư: bài bị tác giả xóa để lại trang thay thế cùng bình luận hợp lệ
-> ([đặc tả](publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone)). Tất cả là hành vi đích,
+> ([đặc tả](publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone)). Tất cả là hành vi đích,
 > **chưa có code**; tài liệu này tiếp tục mô tả hiện trạng.
 
 ## 1. Quyết định

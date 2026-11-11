@@ -42,6 +42,7 @@ pub mod admission;
 #[cfg(test)]
 mod admission_replay;
 pub mod body;
+pub mod hide;
 pub mod lifecycle;
 #[cfg(test)]
 mod lifecycle_replay;

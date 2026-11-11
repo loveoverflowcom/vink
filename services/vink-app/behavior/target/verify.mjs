@@ -1,6 +1,6 @@
-// Shared Quint runner for the five remaining target specifications and the canonical M1
-// in ../publication. It exports real ITF states without recomputing transitions. M1 has
-// scoped Rust replay (#150); see ../publication/README.md for its exact action coverage.
+// Shared Quint runner for the remaining target specifications and the canonical M1, M3 and M4
+// in ../publication. It exports real ITF states without recomputing transitions. The canonical
+// models have scoped Rust replay; see ../publication/README.md for their exact coverage.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -96,7 +96,8 @@ function fixture(name, header, lists) {
   const content = `{\n${Object.entries(header).map(([key, item]) =>
     `  ${JSON.stringify(key)}: ${JSON.stringify(item)}`).concat(body).join(',\n')}\n}\n`;
   JSON.parse(content);
-  const path = join(directory, name.startsWith('publication-') || name.startsWith('tombstone-') ? '../publication' : '.', name);
+  const canonical = ['publication-', 'tombstone-', 'governance-'].some(prefix => name.startsWith(prefix));
+  const path = join(directory, canonical ? '../publication' : '.', name);
   if (write) {
     writeFileSync(path, content);
     console.log(`WRITE ${name}`);
@@ -120,31 +121,46 @@ const pair = (list, ...key) => list.find(entry => JSON.stringify(entry.key) === 
 
 const models = [
   {
-    file: '../publication/publication.qnt', safe: 'publicationSafe', bounds: 'revisions<=4, jobs<=6, policies<=2',
+    file: '../publication/publication.qnt', safe: 'publicationSafe', bounds: 'revisions<=4, jobs<=8, policies<=2',
     fields: ['revs', 'jobs', 'audience', 'desired', 'intended', 'pointer', 'lifecycle', 'generation', 'policy'],
     scenarios: [
-      ['audience_moderation_override', 'lifecycleStep', 40],
+      ['audience_moderation_override', 'lifecycleStep', 44],
+      ['policy_rereview', 'rereviewStep', 9],
       ['moderation_removal', 'removalStep', 11],
     ],
     check(all) {
-      const [life, removal] = all;
-      reached([...life, ...removal], ['saved', 'not_submitted', 'not_found', 'submitted', 'waiting',
+      const [life, rereview, removal] = all;
+      reached([...life, ...rereview, ...removal], ['saved', 'not_submitted', 'not_found', 'submitted', 'waiting',
         'retryable', 'duplicate', 'requeued', 'not_needed', 'wrong_revision', 'unknown_job', 'published',
         'rejected', 'revision_rejected', 'stale', 'policy_changed', 'stale_policy', 'needs_admin',
         'not_admin', 'overridden', 'made_private', 'reaffirmed', 'unpublished', 'approved_unpublished',
-        'deleted', 'work_unavailable', 'target_gone', 'removed'], 'publication');
-      // Non-vacuity: r1 stays public while r2 is rejected; an approval without intent publishes
-      // nothing; the admin's approval survives the late rejection; nothing returns after deletion.
+        'deleted', 'work_unavailable', 'target_gone', 'removed', 'withdrawn', 'case_closed', 'resubmitted',
+        'rereview'], 'publication');
+      // Non-vacuity: r1 stays public while r2 is rejected; an approval of a revision the author no
+      // longer intends publishes nothing; the admin's approval survives the late rejection; nothing
+      // returns after deletion; a private work takes no decision; old-policy approvals are reviewed.
       const rejected = at(life, 'rejected');
       assert.deepEqual([rejected.command.rev, rejected.state.pointer], [2, 1]);
       const withheld = at(life, 'approved_unpublished');
-      assert.deepEqual([withheld.state.pointer, withheld.state.audience, withheld.state.revs[4].decision],
-        [0, 'private', 'approved']);
+      assert.deepEqual([withheld.command.rev, withheld.state.desired, withheld.state.revs[1].decision],
+        [1, 4, 'approved']);
       const overridden = at(life, 'overridden');
       assert.deepEqual([overridden.command.value, overridden.state.revs[3], overridden.state.pointer],
-        ['reject', { decision: 'approved', by: 'admin' }, 3]);
+        ['reject', { decision: 'approved', by: 'admin', policy: 2 }, 3]);
+      const late = at(life, 'withdrawn', 1);
+      assert.deepEqual([late.state.audience, late.state.revs[4].decision, late.state.jobs[7].state],
+        ['private', 'pending', 'withdrawn']);
+      assert.equal(at(life, 'case_closed').state.revs[4].decision, 'pending');
+      const again = at(life, 'resubmitted');
+      assert.deepEqual([again.state.jobs[8], again.state.pointer], [{ policy: 2, rev: 4, state: 'open' }, 0]);
+      const aiRereview = at(life, 'rereview');
+      assert.deepEqual([aiRereview.state.revs[1], aiRereview.state.pointer, aiRereview.state.jobs[6].rev],
+        [{ decision: 'pending', by: 'none', policy: 2 }, 0, 1]);
+      const humanRereview = at(rereview, 'rereview');
+      assert.deepEqual([humanRereview.state.revs[1], humanRereview.state.pointer, Object.keys(humanRereview.state.jobs).length],
+        [{ decision: 'needs_admin', by: 'rereview', policy: 2 }, 0, 1]);
       const deleted = life.findIndex(step => step.outcome === 'deleted');
-      assert(life.slice(deleted).length > 3 && life.slice(deleted).every(step => step.state.pointer === 0));
+      assert(life.slice(deleted).length >= 3 && life.slice(deleted).every(step => step.state.pointer === 0));
       assert(life.some(step => step.command.op === 'snapshot' && Object.keys(step.state.jobs).length === 0),
         'a private save must exist with no evaluation');
     },
@@ -152,49 +168,135 @@ const models = [
       ['publication-late-result-counterexample.json', 'mutatedOverrideStep', 4, 'adminOverrideWins', steps => {
         // The admin approved r1; the evaluator's late rejection replaced that decision.
         const [before, last] = steps.slice(-2);
-        assert.deepEqual(before.state.revs[1], { decision: 'approved', by: 'admin' });
-        assert.deepEqual([last.command.op, last.state.revs[1]], ['ai_result', { decision: 'rejected', by: 'ai' }]);
+        assert.deepEqual(before.state.revs[1], { decision: 'approved', by: 'admin', policy: 1 });
+        assert.deepEqual([last.command.op, last.state.revs[1]], ['ai_result', { decision: 'rejected', by: 'ai', policy: 1 }]);
       }],
-      ['publication-withdrawn-intent-counterexample.json', 'mutatedIntentStep', 4, 'publicNeedsEverything', steps => {
-        // The author went back to "only me"; the approval published the work anyway.
+      ['publication-moved-intent-counterexample.json', 'mutatedIntentStep', 5, 'pointerMovesLawfully', steps => {
+        // The author's public intent names r2; the approval of r1 published r1 anyway.
         const last = steps.at(-1);
-        assert.deepEqual([last.outcome, last.state.audience, last.state.pointer], ['published', 'private', 1]);
+        assert.deepEqual([last.outcome, last.state.desired, last.state.pointer], ['published', 2, 1]);
       }],
     ],
   },
   {
     file: '../publication/tombstone.qnt', safe: 'tombstoneSafe', bounds: 'comments<=4, viewers=guest+2',
-    fields: ['status', 'everPublic', 'comments', 'views'],
+    fields: ['status', 'everPublic', 'comments', 'views', 'notified'],
     scenarios: [
       ['author_deleted_public_work', 'deletedStep', 14],
-      ['private_then_deleted', 'privateStep', 10],
-      ['moderation_removed', 'removedStep', 6],
+      ['hidden_then_public_then_deleted', 'hiddenStep', 16],
+      ['never_public', 'neverPublicStep', 4],
+      ['moderation_removed', 'removedStep', 7],
     ],
     check(all) {
-      const [deleted, hidden, removed] = all;
+      const [deleted, hidden, never, removed] = all;
       reached(all.flat(), ['published', 'created', 'reviewed', 'deleted_with_tombstone', 'tombstone_read_only',
-        'comment_unavailable', 'comment_removed', 'work_unavailable', 'made_private', 'unchanged', 'deleted',
-        'removed_by_moderation'], 'tombstone');
+        'hidden_read_only', 'comment_unavailable', 'comment_removed', 'work_unavailable', 'made_private',
+        'unchanged', 'deleted', 'removed_by_moderation', 'duplicate'], 'tombstone');
       // A: the old URL is a tombstone without body, preview or listing; the approved comment
       // stays, a rejected or pending one is only its writer's.
       const tomb = at(deleted, 'deleted_with_tombstone').state.views;
       assert.deepEqual(tomb[0], { page: 'tombstone', listed: false, snippet: false, comments: [1] });
       assert.deepEqual([tomb[2].comments, tomb[3].comments], [[1, 3], [1, 2]]);
-      // B, C, D: no page and no comment for anybody else.
+      // B: the hidden page keeps the approved comment for guests and the pending one for its writer.
+      const page = at(hidden, 'made_private').state.views;
+      assert.deepEqual(page[0], { page: 'hidden', listed: false, snippet: false, comments: [1] });
+      assert.deepEqual(page[3].comments, [1, 2, 3]);
+      // A comment approved while hidden is shown but its approval does not notify the author,
+      // not even after republication; an approval in the new public period does.
+      const quiet = at(hidden, 'reviewed', 1);
+      assert.deepEqual([quiet.state.status, quiet.state.views[0].comments, quiet.state.notified], ['hidden', [1, 2], [1]]);
+      assert.deepEqual(at(hidden, 'published', 1).state.notified, [1]);
+      assert.deepEqual(at(hidden, 'reviewed', 2).state.notified, [1, 4]);
+      // Hidden then deleted keeps the thread on the tombstone.
+      assert.deepEqual(at(hidden, 'deleted_with_tombstone').state.views[0].comments, [1, 2, 4]);
+      // C and D: no page and no comment for anybody else.
       const nothing = { page: 'not_found', listed: false, snippet: false, comments: [] };
-      for (const state of [at(hidden, 'made_private').state, at(hidden, 'deleted').state,
-        at(removed, 'removed_by_moderation').state, deleted[0].state]) {
-        assert(Object.keys(state.comments).length > 0 || state.status === 'unpublished');
+      for (const state of [at(never, 'deleted').state, at(removed, 'removed_by_moderation').state, deleted[0].state]) {
+        assert(Object.keys(state.comments).length > 0 || ['unpublished', 'deleted_hidden'].includes(state.status));
         for (const viewer of [0, 2, 3]) assert.deepEqual(state.views[viewer], nothing);
       }
-      assert.deepEqual(at(hidden, 'published', 1).state.views[0].comments, [1], 'public again restores the thread');
     },
     mutants: [
-      ['tombstone-private-as-deleted-counterexample.json', 'mutatedPrivateStep', 4, 'noExceptionForHiddenWork', steps => {
-        // The work is private, yet a guest reads its comment through the old link.
+      ['tombstone-removed-as-hidden-counterexample.json', 'mutatedRemovedStep', 4, 'noExceptionForUnavailableWork', steps => {
+        // An admin removed the work, yet a guest reads its comment through the old link.
         const last = steps.at(-1);
         assert.deepEqual([last.state.status, last.state.views[0].page, last.state.views[0].comments],
-          ['private', 'tombstone', [1]]);
+          ['moderation_removed', 'hidden', [1]]);
+      }],
+      ['tombstone-hidden-notice-counterexample.json', 'mutatedNoticeStep', 5, 'noNoticeFromHiddenPeriod', steps => {
+        // Republication told the author about an approval made while the work was hidden.
+        const last = steps.at(-1);
+        assert.deepEqual([last.command.op, last.state.notified], ['publish', [1]]);
+      }],
+    ],
+  },
+  {
+    file: '../publication/governance.qnt', safe: 'governanceSafe',
+    bounds: 'principals=5, grants=5, targets=4, cases<6, jobs<6, appeals<4, investigations=5, ticks<=6',
+    fields: ['granted', 'members', 'now', 'automation', 'workPublic', 'decisions', 'jobs', 'cases', 'appeals',
+      'investigations', 'reads'],
+    scenarios: [
+      ['grants_and_claims', 'claimsStep', 39],
+      ['automation_and_late_results', 'automationStep', 16],
+      ['appeals', 'appealsStep', 31],
+      ['investigation', 'investigationStep', 19],
+    ],
+    check(all) {
+      const [claims, automation, appeals, investigation] = all;
+      reached(all.flat(), ['granted', 'revoked', 'joined', 'left', 'ticked', 'submitted_ai', 'needs_human',
+        'applied', 'claimed', 'released', 'noted', 'escalated', 'taken_over', 'basis_changed', 'authority_lost',
+        'concluded', 'intervened', 'paused', 'resumed', 'made_private', 'made_public', 'appeal_recorded',
+        'upheld', 'reversed', 'investigation_opened', 'read_audited', 'investigation_closed', 'not_admin',
+        'not_authorized', 'recused', 'stale_case', 'already_claimed', 'not_claimant', 'escalated_to_admin',
+        'overridden', 'automation_paused', 'withdrawn', 'not_needed', 'stale_decision', 'appeal_open',
+        'appeal_replayed', 'final_decision', 'nothing_to_appeal', 'already_resolved', 'not_found', 'conflict',
+        'condition_lapsed', 'never_public', 'expired', 'not_investigator', 'wrong_revision', 'closed'], 'governance');
+      // The race: one claimant, the other is stale.
+      assert.deepEqual(at(claims, 'stale_case').state.cases[1].claimant, 2);
+      // Kept through another grant, then lost and queued.
+      assert.deepEqual(at(claims, 'basis_changed').state.cases[1].basis, 4);
+      const lost = at(claims, 'authority_lost');
+      assert.deepEqual([lost.state.cases[1].state, lost.state.cases[1].claimant], ['queued', 0]);
+      assert.deepEqual(at(claims, 'concluded').state.decisions[1], { version: 3, verdict: 'approved', by: 'admin' });
+      // Late AI results write nothing.
+      assert.deepEqual(at(automation, 'overridden').state.decisions[1], { version: 2, verdict: 'approved', by: 'moderator' });
+      const paused = at(automation, 'paused').state;
+      assert.deepEqual([paused.jobs[2].state, paused.jobs[3].state, Object.keys(paused.cases).length], ['rerouted', 'rerouted', 3]);
+      assert.equal(at(automation, 'automation_paused', 1).state.automation, 'enabled');
+      assert.equal(at(automation, 'withdrawn').state.jobs[4].state, 'withdrawn');
+      // Appeals: one per decision, nothing delivered, a moderator's decision is appealable.
+      assert.deepEqual(at(appeals, 'appeal_replayed').state.appeals, { 1: { target: 1, decision: 2, by: 'ai', state: 'open', notice: 'not_sent' } });
+      assert.deepEqual(at(appeals, 'upheld').state.decisions[1], { version: 3, verdict: 'rejected', by: 'admin' });
+      assert.equal(at(appeals, 'appeal_recorded', 1).state.appeals[2].by, 'moderator');
+      assert.deepEqual(at(appeals, 'reversed').state.decisions[2], { version: 3, verdict: 'approved', by: 'admin' });
+      assert.equal(at(appeals, 'made_private').state.appeals[3].state, 'closed');
+      // Investigation: each read is audited, only the exact once-public revision.
+      assert.deepEqual(at(investigation, 'read_audited', 1).state.reads, [[1, 1], [5, 1]]);
+      assert.deepEqual(at(investigation, 'closed').state.reads, [[1, 1], [5, 1]]);
+    },
+    mutants: [
+      ['governance-lost-authority-counterexample.json', 'mutatedAuthorityStep', 6, 'conclusionNeedsLiveAuthority', steps => {
+        // Grant 1 was revoked, yet moderator 2 concluded the case it held.
+        const last = steps.at(-1);
+        assert.deepEqual([last.outcome, last.state.granted, last.state.decisions[1].by], ['concluded', [], 'moderator']);
+      }],
+      ['governance-stolen-claim-counterexample.json', 'mutatedClaimStep', 6, 'claimNeverStolen', steps => {
+        // Moderator 3 took the case moderator 2 held, with a stale version.
+        const last = steps.at(-1);
+        assert.deepEqual([last.outcome, last.state.cases[1].claimant], ['claimed', 3]);
+      }],
+      ['governance-duplicate-appeal-counterexample.json', 'mutatedAppealStep', 4, 'oneAppealPerDecision', steps => {
+        // The retried appeal opened a second one on the same decision version.
+        assert.equal(Object.keys(steps.at(-1).state.appeals).length, 2);
+      }],
+      ['governance-paused-result-counterexample.json', 'mutatedPauseStep', 3, 'pausedAiWritesNothing', steps => {
+        // Automation is paused, yet the evaluator's approval became the decision.
+        const last = steps.at(-1);
+        assert.deepEqual([last.state.automation, last.state.decisions[1].by], ['paused', 'ai']);
+      }],
+      ['governance-wrong-read-counterexample.json', 'mutatedReadStep', 3, 'readsAreAuthorized', steps => {
+        // The file names revision 1; the read returned the never-public revision 2.
+        assert.deepEqual(steps.at(-1).state.reads, [[1, 2]]);
       }],
     ],
   },
@@ -302,47 +404,6 @@ const models = [
       }],
     ],
   },
-  {
-    file: 'appeal.qnt', safe: 'appealSafe', bounds: 'cases<=4, decision versions<=6, keys=1..4',
-    fields: ['decision', 'cases', 'receipts', 'answer'],
-    scenarios: [
-      ['appeal_escalation_overturn', 'overturnStep', 21],
-      ['appeal_upheld', 'upholdStep', 5],
-    ],
-    check(all) {
-      const [overturn, uphold] = all;
-      reached(all.flat(), ['dialog_shown', 'not_found', 'recorded_not_delivered', 'replayed', 'key_reused',
-        'already_open', 'not_admin', 'reason_required', 'unknown_case', 'not_needed', 'decided',
-        'stale_decision', 'awaiting_admin', 'escalated', 'case_superseded', 'overturned', 'already_resolved',
-        'overridden', 'nothing_to_appeal', 'stale', 'upheld', 'final_decision'], 'appeal');
-      // Dialog ≠ case ≠ sent ≠ seen ≠ resolved.
-      assert.deepEqual(at(overturn, 'dialog_shown').state.cases, {});
-      const recorded = at(overturn, 'recorded_not_delivered');
-      assert.deepEqual(recorded.state.cases[1], { appellant: 2, decision: 1, state: 'open', notice: 'not_sent', seen: false });
-      for (const outcome of ['replayed', 'already_open']) {
-        const again = at(overturn, outcome);
-        assert.deepEqual([Object.keys(again.state.cases).length, again.state.answer], [1, 1]);
-      }
-      const flagged = at(overturn, 'escalated');
-      assert.deepEqual([flagged.state.cases[2].notice, flagged.state.cases[2].seen], ['not_sent', false]);
-      const overturned = at(overturn, 'overturned');
-      assert.deepEqual(overturned.state.decision, { version: 3, verdict: 'approved', by: 'admin', reason: 'context' });
-      assert.deepEqual(at(overturn, 'overridden').state.decision, overturned.state.decision);
-      assert.equal(at(uphold, 'upheld').state.decision.verdict, 'rejected');
-    },
-    mutants: [
-      ['appeal-duplicate-counterexample.json', 'mutatedDuplicateStep', 2, 'oneOpenCasePerDecision', steps => {
-        // The retried request opened a second case for the same decision.
-        const cases = Object.values(steps.at(-1).state.cases);
-        assert.deepEqual(cases.map(item => [item.appellant, item.decision, item.state]),
-          [[2, 1, 'open'], [2, 1, 'open']]);
-      }],
-      ['appeal-fake-delivery-counterexample.json', 'mutatedDeliveryStep', 2, 'nothingIsDelivered', steps => {
-        // A mock claimed a notification was sent although no channel is connected.
-        assert.equal(steps.at(-1).state.cases[1].notice, 'sent');
-      }],
-    ],
-  },
 ];
 
 // The scripted evaluator of the contract, read back from the model's own traces: which result
@@ -351,7 +412,7 @@ function evaluatorVectors(results) {
   const classify = step => {
     if (step.outcome === 'wrong_revision') return 'WrongRevision';
     if (step.outcome === 'duplicate') return 'DuplicateResult';
-    if (['overridden', 'target_gone', 'superseded', 'stale_policy'].includes(step.outcome)) return 'DelayedResult';
+    if (['overridden', 'target_gone', 'superseded', 'stale_policy', 'withdrawn'].includes(step.outcome)) return 'DelayedResult';
     return { approve: 'Approve', reject: 'Reject', uncertain: 'NeedsAdmin', timeout: 'Timeout',
       provider_error: 'ProviderError', invalid_output: 'InvalidOutput' }[step.command.value];
   };
@@ -387,7 +448,7 @@ try {
     simulation(model.file, 'step', maxSteps, samples, model.safe);
     console.log(`PASS ${model.file}: typecheck; simulation ${model.safe} seed=${seed}, samples=${samples}, max_steps=${maxSteps}, ${model.bounds}`);
     const name = basename(model.file, '.qnt');
-    const modelStatus = ['publication', 'tombstone'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
+    const modelStatus = ['publication', 'tombstone', 'governance'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
     const scenarios = model.scenarios.map(([scenario, step, length]) => {
       const out = join(temporary, `${name}-${scenario}.itf.json`);
       simulation(model.file, step, length, 1, model.safe, out);
@@ -414,7 +475,7 @@ try {
     { scripts: [{ name: 'publication_and_comment_edit', steps: vectors }] });
   console.log(`PASS evaluator script: ${vectors.length} scripted results cover all nine mock outcome classes`);
   console.log('NOT_RUN Apalache/model checking');
-  console.log('PARTIAL publication + moderation pure-core and scripted-evaluator replay runs in Rust (#150, #151); delete/remove lifecycle and all other target models remain NOT_IMPLEMENTED');
+  console.log('PARTIAL publication (M1), tombstone/hidden access (M3) and moderation governance (M4) replay through the Rust pure core; all other target models remain NOT_IMPLEMENTED');
   rmSync(temporary, { recursive: true });
 } catch (error) {
   console.error(`FAIL ${error.message}\nIntermediate ITF traces, if any: ${temporary}`);

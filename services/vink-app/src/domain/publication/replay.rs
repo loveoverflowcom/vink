@@ -1,9 +1,10 @@
-//! M1 publication + moderation replay (#150, #151, #157).
+//! M1 publication + moderation replay (#150, #151, #157, ADMIN-MODERATION-20261111).
 //!
 //! Commands run through the production [`Publication`] and [`WorkModeration`] cores, not a test
-//! reducer. All 51 steps across `publication-vectors.json` run through production
-//! (`author`: 24, `ai_result`: 13, `admin_decide`: 6, `admin_remove`: 3, `reevaluate`: 4, `policy_bump`: 1).
-//! All delete/remove lifecycle steps run through real domain and application transitions (#157).
+//! reducer. All 64 steps across `publication-vectors.json` run through production
+//! (`author`: 28, `ai_result`: 16, `admin_decide`: 10, `admin_remove`: 3, `reevaluate`: 5,
+//! `policy_bump`: 2), including withdrawn evaluations and closed cases after "Chỉ mình tôi",
+//! resubmission and the policy re-review of an old approval (PUB-06).
 
 use super::tests::{generation, owner, revision, snapshot, work};
 use super::*;
@@ -11,7 +12,7 @@ use crate::domain::moderation::tests::{admin, evaluation_id, reason};
 use crate::domain::moderation::{
     AdminAuthority, AdminDecision, AdminVerdict, DecisionBy, DecisionVersion, EvaluationTarget,
     EvaluatorCapability, EvaluatorOutcome, EvaluatorResult, JobState, ModerationError,
-    PolicyReasonCode, PolicyVersion, WorkModeration,
+    PolicyReasonCode, PolicyVersion, ReviewRequest, WorkModeration,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -65,6 +66,7 @@ pub(crate) struct State {
 pub(crate) struct Decision {
     pub(crate) by: String,
     pub(crate) decision: String,
+    pub(crate) policy: i64,
 }
 
 #[derive(Deserialize)]
@@ -99,6 +101,7 @@ fn decision_by(value: &str) -> Option<DecisionBy> {
         "none" => None,
         "ai" => Some(DecisionBy::Ai),
         "admin" => Some(DecisionBy::Admin),
+        "rereview" => Some(DecisionBy::PolicyRereview),
         _ => panic!("unknown decision_by {value}"),
     }
 }
@@ -108,6 +111,7 @@ fn job_state(value: &str) -> JobState {
         "open" => JobState::Open,
         "applied" => JobState::Applied,
         "failed" => JobState::Failed,
+        "withdrawn" => JobState::Withdrawn,
         _ => panic!("unknown job state {value}"),
     }
 }
@@ -143,10 +147,12 @@ pub(crate) fn project(state: &Publication, mod_state: &WorkModeration, expected:
         let rev_num = r.snapshot.revision.as_uuid().as_u128();
         let expected_rev = &expected.revs[&rev_num];
         assert_eq!(r.moderation, moderation(&expected_rev.decision));
-        let actual_by = mod_state
-            .revision_decision(r.snapshot.revision)
-            .and_then(|d| d.decision_by());
-        assert_eq!(actual_by, decision_by(&expected_rev.by));
+        let decision = mod_state.revision_decision(r.snapshot.revision);
+        assert_eq!(
+            decision.and_then(|d| d.decision_by()),
+            decision_by(&expected_rev.by)
+        );
+        assert_eq!(decision.map_or(0, |d| d.policy.get()), expected_rev.policy);
     }
     assert_eq!(mod_state.facts().policy.get(), expected.policy);
     assert_eq!(mod_state.facts().jobs.len(), expected.jobs.len());
@@ -168,6 +174,8 @@ fn author_outcome(
     result: &Result<crate::domain::moderation::AuthorModerationTransition, ModerationError>,
 ) -> &'static str {
     match result {
+        Ok(t) if t.review == ReviewRequest::PolicyRereview => "rereview",
+        Ok(t) if t.review == ReviewRequest::Resubmitted => "resubmitted",
         Ok(t) => match t.outcome {
             AuthorOutcome::Saved => "saved",
             AuthorOutcome::Submitted => "submitted",
@@ -240,10 +248,17 @@ pub(crate) fn replay_step(
                 t.effects.evaluation.as_ref().map(|r| r.revision),
                 (step.outcome == "submitted").then(|| revision(c.rev))
             );
+            let opened = step.state.jobs.len() > before_mod.facts().jobs.len();
             assert_eq!(
                 t.ticket.as_ref().map(|ticket| ticket.id),
-                (step.outcome == "submitted").then_some(next_eval_id)
+                opened.then_some(next_eval_id)
             );
+            // A person's approval of an older policy goes back to people, never to the AI.
+            assert_eq!(
+                t.human_review,
+                (step.outcome == "rereview" && !opened).then(|| revision(c.rev))
+            );
+            assert_eq!(t.withdrawn_reviews, c.op == "set_private");
             if let Some(e) = &t.effects.evaluation {
                 assert_eq!(e.hash, snapshot(c.rev).content.hash().clone());
             }
@@ -349,6 +364,7 @@ pub(crate) fn replay_step(
                     ModerationError::UnknownRevision => "unknown_revision",
                     ModerationError::TargetGone => "target_gone",
                     ModerationError::NotSubmitted => "not_submitted",
+                    ModerationError::CaseClosed => "case_closed",
                     other => panic!("unexpected admin refusal {other:?}"),
                 };
                 assert_eq!(code, step.outcome);
@@ -438,34 +454,35 @@ fn quint_publication_author_inputs_and_admitted_decision_effects_replay_through_
     assert_eq!(
         counts,
         BTreeMap::from([
-            ("admin_decide", 6),
+            ("admin_decide", 10),
             ("admin_remove", 3),
-            ("ai_result", 13),
-            ("author", 24),
-            ("policy_bump", 1),
-            ("reevaluate", 4),
+            ("ai_result", 16),
+            ("author", 28),
+            ("policy_bump", 2),
+            ("reevaluate", 5),
         ])
     );
 }
 
 #[test]
-fn the_withdrawn_intent_counterexample_is_refused_by_the_production_publication_guard() {
+fn the_moved_intent_counterexample_is_refused_by_the_production_publication_guard() {
     let vectors: Counterexample = serde_json::from_str(include_str!(
-        "../../../behavior/publication/publication-withdrawn-intent-counterexample.json"
+        "../../../behavior/publication/publication-moved-intent-counterexample.json"
     ))
     .unwrap();
     let scenario = &vectors.violation[0];
-    assert_eq!(scenario.steps.len(), 4);
+    assert_eq!(scenario.steps.len(), 5);
     let mut state = Publication::new(work(1), owner());
     let mut mod_state = WorkModeration::new(work(1));
-    for step in &scenario.steps[..3] {
+    for step in &scenario.steps[..4] {
         replay_step(&mut state, &mut mod_state, step);
         project(&state, &mod_state, &step.state);
     }
-    let last = &scenario.steps[3];
+    let last = &scenario.steps[4];
     assert_eq!(
-        last.state.pointer, 1,
-        "the mutant must actually publish after withdrawal"
+        (last.state.pointer, last.state.desired),
+        (1, 2),
+        "the mutant must actually publish r1 while the intent names r2"
     );
     let result = mod_state
         .apply_evaluator_result(
