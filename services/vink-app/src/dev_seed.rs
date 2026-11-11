@@ -94,7 +94,23 @@ pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
     .await?;
     sqlx::query(
         "INSERT INTO publications (work_id, revision_id, generation, published_at)
-         VALUES ($1, $2, 1, now()) ON CONFLICT (work_id) DO NOTHING",
+         VALUES ($1, $2, 2, now()) ON CONFLICT (work_id) DO NOTHING",
+    )
+    .bind(SAMPLE_WORK)
+    .bind(SAMPLE_REVISION)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO work_revision_moderation (work_id, revision_id, decision_version, moderation, provenance_kind, created_at, updated_at)
+         VALUES ($1, $2, 2, 'approved', 'legacy_bootstrap', now(), now()) ON CONFLICT (work_id, revision_id) DO NOTHING",
+    )
+    .bind(SAMPLE_WORK)
+    .bind(SAMPLE_REVISION)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO work_publications (work_id, audience, lifecycle, generation, intent_revision_id, intent_generation, pointer_revision_id, pointer_intent_generation, policy_version, updated_at)
+         VALUES ($1, 'public', 'active', 2, $2, 2, $2, 2, 1, now()) ON CONFLICT (work_id) DO NOTHING",
     )
     .bind(SAMPLE_WORK)
     .bind(SAMPLE_REVISION)

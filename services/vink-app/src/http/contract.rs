@@ -629,6 +629,106 @@ pub struct SavedDraftTagsResponse {
     pub themes: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CaptureSnapshotRequest {
+    pub command_key: String,
+    pub expected_draft_version: i64,
+    pub expected_metadata_version: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CapturedSnapshotResponse {
+    pub outcome: &'static str,
+    pub revision_id: String,
+    pub content_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_snapshot_id: Option<String>,
+    pub draft_version: i64,
+    pub metadata_version: i64,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RequestPublicRequest {
+    pub command_key: String,
+    pub revision_id: String,
+    pub expected_generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RequestPublicResponse {
+    pub outcome: &'static str,
+    pub revision_id: String,
+    pub generation: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ticket_id: Option<String>,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SetPrivateRequest {
+    pub command_key: String,
+    pub expected_generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SetPrivateResponse {
+    pub outcome: &'static str,
+    pub generation: i64,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AuthorPublicationState {
+    pub work_id: String,
+    pub audience: &'static str,
+    pub lifecycle: &'static str,
+    pub generation: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub intent: Option<PublishIntentView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pointer: Option<PublicPointerView>,
+    pub revisions: Vec<AuthorRevisionView>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub open_ticket: Option<OpenTicketView>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublishIntentView {
+    pub revision_id: String,
+    pub generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct PublicPointerView {
+    pub revision_id: String,
+    pub intent_generation: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AuthorRevisionView {
+    pub revision_id: String,
+    pub title: String,
+    pub content_hash: String,
+    pub moderation: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub decision_version: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_snapshot_id: Option<String>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: time::OffsetDateTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct OpenTicketView {
+    pub evaluation_id: String,
+    pub revision_id: String,
+    pub policy_version: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,

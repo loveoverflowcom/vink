@@ -51,6 +51,7 @@ fn classify_inner(error: sqlx::Error) -> StoreError {
                     | "work_endorsements_actor_id_fkey"
                     | "comment_endorsements_actor_id_fkey"
                     | "endorsement_receipts_actor_id_fkey"
+                    | "work_publication_command_receipts_actor_id_fkey"
                     | "principal_suspensions_principal_id_fkey"
             )
         )
@@ -64,7 +65,7 @@ fn classify_inner(error: sqlx::Error) -> StoreError {
     }
 }
 
-fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
+pub(crate) fn integrity(what: &str, detail: impl std::fmt::Display) -> StoreError {
     StoreError::Integrity(format!("{what}: {detail}"))
 }
 

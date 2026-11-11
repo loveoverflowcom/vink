@@ -29,6 +29,20 @@ impl ContentHash {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        if raw.len() == 64 && raw.bytes().all(|b| b.is_ascii_hexdigit()) {
+            Some(Self(raw.to_ascii_lowercase()))
+        } else {
+            None
+        }
+    }
+}
+
+impl std::fmt::Display for ContentHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
 }
 
 fn push_str(hasher: &mut Sha256, value: &str) {
