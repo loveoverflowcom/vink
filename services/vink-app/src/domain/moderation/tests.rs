@@ -586,7 +586,8 @@ fn approval_with_withdrawn_intent_or_inactive_lifecycle_never_publishes_and_r1_s
         Some(&snapshot(1))
     );
 
-    // Author withdraws to Private; admin overrides r2 to Approve -> ApprovedUnpublished, pointer stays None!
+    // Author withdraws to Private: the work's review cases close (PUB-06). A later admin decision
+    // on r2 is refused and writes nothing; the decision history is kept.
     let made_private = rejected_r2
         .moderation
         .decide_author(
@@ -599,9 +600,13 @@ fn approval_with_withdrawn_intent_or_inactive_lifecycle_never_publishes_and_r1_s
         )
         .unwrap();
     assert_eq!(made_private.publication.readable_revision(), None);
-    let admin_approved_private = made_private
-        .moderation
-        .apply_admin_decision(
+    assert!(made_private.withdrawn_reviews);
+    assert!(matches!(
+        made_private.publication.access_plan(),
+        crate::domain::publication::WorkAccessPlan::AuthorHidden { .. }
+    ));
+    assert_eq!(
+        made_private.moderation.apply_admin_decision(
             &made_private.publication,
             Some(AdminAuthority::scoped(admin(), work(1))),
             AdminDecision {
@@ -611,16 +616,15 @@ fn approval_with_withdrawn_intent_or_inactive_lifecycle_never_publishes_and_r1_s
                 verdict: AdminVerdict::Approve,
                 reason: reason("Chấp thuận sau khi xem xét ngữ cảnh văn học"),
             },
-        )
-        .unwrap();
-    assert_eq!(
-        admin_approved_private.outcome,
-        AdminOutcome::ApprovedUnpublished
+        ),
+        Err(ModerationError::CaseClosed)
     );
-    assert_eq!(admin_approved_private.publication.readable_revision(), None);
     assert_eq!(
-        admin_approved_private.effects.pointer,
-        PointerEffect::Unchanged
+        made_private
+            .moderation
+            .revision_decision(revision(2))
+            .map(|d| d.version),
+        Some(DecisionVersion::new(2).unwrap())
     );
 }
 
@@ -684,6 +688,10 @@ fn restore_rejects_inconsistent_moderation_facts_and_version_exhaustion_refuses_
         revision: revision(1),
         intent_generation: generation(2),
     });
+    // A pointer without the once-public record is corrupt (MOD-15 needs that history).
+    assert!(Publication::restore(pub_approved_facts.clone()).is_err());
+    pub_approved_facts.ever_public = vec![revision(1)];
+    pub_approved_facts.public_epoch = crate::domain::publication::PublicEpoch::new(1).unwrap();
     let pub_approved = Publication::restore(pub_approved_facts).unwrap();
     let mut mod_approved_facts = mod_state.facts().clone();
     mod_approved_facts.revisions[0].version = DecisionVersion::new(2).unwrap();

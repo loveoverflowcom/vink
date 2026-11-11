@@ -1,9 +1,12 @@
-//! Tombstone scenario and negative control Quint trace replay (#157).
+//! Tombstone / hidden page scenario and negative control Quint trace replay (#157,
+//! ADMIN-MODERATION-20261111).
 //!
-//! Replays all 3 scenarios from `tombstone-vectors.json` (30 steps across `author_deleted_public_work`,
-//! `private_then_deleted`, `moderation_removed`) against production [`Publication`], [`WorkModeration`],
-//! [`plan_work_access`], and discussion visibility planning. Also replays the `tombstone-private-as-deleted-counterexample.json`
-//! negative control to ensure private works never project as tombstones.
+//! Replays all 4 scenarios from `tombstone-vectors.json` (41 steps across
+//! `author_deleted_public_work`, `hidden_then_public_then_deleted`, `never_public`,
+//! `moderation_removed`) against production [`Publication`], [`WorkModeration`],
+//! [`plan_work_access`], discussion visibility planning, the comment review context and the
+//! author-notification fence. Also replays both negative controls: an admin removal is never
+//! the hidden page, and an approval made while hidden never notifies after republication.
 
 use super::*;
 use crate::domain::discussion::lifecycle::{CommentState, Decision as CommentDecision, Transition};
@@ -12,8 +15,9 @@ use crate::domain::ids::PrincipalId;
 use crate::domain::moderation::{AdminAuthority, ModerationError, WorkModeration};
 use crate::domain::publication::tests::{owner, revision, save, snapshot, work};
 use crate::domain::publication::{
-    Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, Lifecycle, Moderation, Publication,
-    PublicationError, ReviewOutcome, ReviewedRevision, WorkAccessPlan,
+    Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, Lifecycle, Moderation,
+    NotificationStamp, Publication, PublicationError, ReviewOutcome, ReviewedRevision,
+    WorkAccessPlan,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -51,6 +55,7 @@ struct TombstoneState {
     ever_public: bool,
     comments: BTreeMap<u128, TombstoneComment>,
     views: BTreeMap<i64, TombstoneView>,
+    notified: Vec<u128>,
 }
 
 #[derive(Deserialize)]
@@ -87,6 +92,9 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         pub_state = save(&pub_state, 1);
         let mut comments: BTreeMap<u128, (PrincipalId, CommentState)> = BTreeMap::new();
         let mut ever_public = false;
+        // Every approval with the stamp of the moment it happened, and those that notified.
+        let mut approvals: Vec<(u128, NotificationStamp)> = Vec::new();
+        let mut notified: Vec<u128> = Vec::new();
 
         for (index, step) in scenario.steps.iter().enumerate() {
             let c = &step.command;
@@ -209,8 +217,7 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                                 e.insert((writer, CommentState::SUBMITTED));
                                 "created"
                             }
-                            Err(TombstoneWriteError::TombstoneReadOnly) => "tombstone_read_only",
-                            Err(TombstoneWriteError::WorkUnavailable) => "work_unavailable",
+                            Err(error) => error.as_str(),
                         }
                     } else {
                         "duplicate"
@@ -228,9 +235,24 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                             "rejected" => CommentDecision::Reject,
                             other => panic!("unknown review value {other}"),
                         };
+                        // COM-11: a reviewer of a comment on a non-public work sees only the comment.
+                        assert_eq!(
+                            matches!(
+                                plan_comment_review_context(&pub_state),
+                                CommentReviewContext::WithWork(_)
+                            ),
+                            pub_state.readable_revision().is_some()
+                        );
                         match comment.decide(comment.version(), decision) {
                             Ok(Transition::Changed(next)) | Ok(Transition::Unchanged(next)) => {
                                 *comment = next;
+                                if decision == CommentDecision::Approve {
+                                    let stamp = pub_state.notification_stamp();
+                                    approvals.push((c.id, stamp));
+                                    if pub_state.should_notify_author(stamp) {
+                                        notified.push(c.id);
+                                    }
+                                }
                                 "reviewed"
                             }
                             Err(_) => "invalid_transition",
@@ -273,15 +295,23 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                 scenario.name, index
             );
 
-            let expected_status = match &step.state.status as &str {
-                "unpublished" => "unpublished",
-                "public" => "public",
-                "private" => "private",
-                "author_deleted" => "author_deleted",
-                "deleted_hidden" => "deleted_hidden",
-                "moderation_removed" => "moderation_removed",
-                other => panic!("unknown model status {other}"),
-            };
+            // An approval that did not notify when it happened never becomes deliverable later,
+            // not even after republication (no backlog of the hidden period).
+            for (id, stamp) in approvals.iter().filter(|(id, _)| !notified.contains(id)) {
+                assert!(
+                    !pub_state.should_notify_author(*stamp),
+                    "scenario {} step {}: an old approval of comment {id} would notify",
+                    scenario.name,
+                    index
+                );
+            }
+            assert_eq!(
+                notified, step.state.notified,
+                "{} step {}",
+                scenario.name, index
+            );
+
+            let expected_status = step.state.status.as_str();
             let actual_status = match pub_state.facts().lifecycle {
                 Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(_)) => {
                     "author_deleted"
@@ -291,9 +321,10 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                 Lifecycle::Active => {
                     if pub_state.facts().audience == Audience::Public {
                         "public"
-                    } else if ever_public {
-                        "private"
+                    } else if pub_state.facts().hidden.is_some() {
+                        "hidden"
                     } else {
+                        assert!(!ever_public || pub_state.facts().ever_public.is_empty());
                         "unpublished"
                     }
                 }
@@ -374,20 +405,11 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         }
     }
 
-    assert_eq!(total_steps, 30);
+    assert_eq!(total_steps, 41);
 }
 
-#[test]
-fn the_private_as_deleted_counterexample_is_refused_by_the_production_access_plan() {
-    let vectors: TombstoneCounterexample = serde_json::from_str(include_str!(
-        "../../../behavior/publication/tombstone-private-as-deleted-counterexample.json"
-    ))
-    .unwrap();
-    let scenario = &vectors.violation[0];
-    assert_eq!(scenario.steps.len(), 4);
-    // The production calls below are bound to this exact trace; a regenerated counterexample
-    // with other inputs must fail here instead of passing against a stale hand-written replay.
-    let inputs: Vec<(&str, i64, u128, &str)> = scenario
+fn trace_inputs(scenario: &TombstoneScenario) -> Vec<(&str, i64, u128, &str)> {
+    scenario
         .steps
         .iter()
         .map(|s| {
@@ -398,21 +420,10 @@ fn the_private_as_deleted_counterexample_is_refused_by_the_production_access_pla
                 s.command.value.as_str(),
             )
         })
-        .collect();
-    assert_eq!(
-        inputs,
-        [
-            ("publish", 1, 0, "none"),
-            ("submit", 2, 1, "none"),
-            ("review", 9, 1, "approved"),
-            ("make_private", 1, 0, "none"),
-        ]
-    );
+        .collect()
+}
 
-    let mut pub_state = Publication::new(work(1), owner());
-    pub_state = save(&pub_state, 1);
-
-    // Step 1: publish
+fn published(pub_state: &Publication) -> Publication {
     let expected = pub_state.facts().generation;
     let t = pub_state
         .decide_author(
@@ -423,8 +434,10 @@ fn the_private_as_deleted_counterexample_is_refused_by_the_production_access_pla
             },
         )
         .unwrap();
-    let r = t
-        .next
+    if t.outcome == AuthorOutcome::Published {
+        return t.next;
+    }
+    t.next
         .record_review(ReviewedRevision {
             work: work(1),
             revision: revision(1),
@@ -432,55 +445,116 @@ fn the_private_as_deleted_counterexample_is_refused_by_the_production_access_pla
             expected: t.next.facts().revisions[0].moderation,
             outcome: ReviewOutcome::Approved,
         })
-        .unwrap();
-    pub_state = r.next;
+        .unwrap()
+        .next
+}
 
-    // Step 2: submit comment 1 by writer 2
-    let writer2 = PrincipalId::from_uuid(uuid::Uuid::from_u128(2));
-    assert!(check_comment_submission(&pub_state).is_ok());
-    let mut comment1 = CommentState::SUBMITTED;
+fn approved_comment() -> CommentState {
+    match CommentState::SUBMITTED
+        .decide(CommentState::SUBMITTED.version(), CommentDecision::Approve)
+    {
+        Ok(Transition::Changed(s)) => s,
+        other => panic!("{other:?}"),
+    }
+}
 
-    // Step 3: review comment 1 approved
-    let t = comment1
-        .decide(comment1.version(), CommentDecision::Approve)
-        .unwrap();
-    comment1 = match t {
-        Transition::Changed(s) | Transition::Unchanged(s) => s,
-    };
-
-    // Step 4: author makes work private
-    let t = pub_state
-        .decide_author(
-            owner(),
-            AuthorCommand::SetPrivate {
-                expected: pub_state.facts().generation,
-            },
-        )
-        .unwrap();
-    pub_state = t.next;
-
-    // The mutant counterexample asserts that a guest (viewer 0) sees a tombstone page with comment 1:
+#[test]
+fn the_removed_as_hidden_counterexample_is_refused_by_the_production_access_plan() {
+    let vectors: TombstoneCounterexample = serde_json::from_str(include_str!(
+        "../../../behavior/publication/tombstone-removed-as-hidden-counterexample.json"
+    ))
+    .unwrap();
+    let scenario = &vectors.violation[0];
+    // The production calls below are bound to this exact trace; a regenerated counterexample
+    // with other inputs must fail here instead of passing against a stale hand-written replay.
+    assert_eq!(
+        trace_inputs(scenario),
+        [
+            ("publish", 1, 0, "none"),
+            ("submit", 2, 1, "none"),
+            ("review", 9, 1, "approved"),
+            ("moderation_remove", 9, 0, "none"),
+        ]
+    );
     let mutant_last = &scenario.steps[3];
-    assert_eq!(mutant_last.state.status, "private");
-    assert_eq!(mutant_last.state.views[&0].page, "tombstone");
+    assert_eq!(mutant_last.state.status, "moderation_removed");
+    assert_eq!(mutant_last.state.views[&0].page, "hidden");
     assert_eq!(mutant_last.state.views[&0].comments, vec![1]);
 
-    // Production refuses: access_plan is Unavailable, not tombstone:
-    let access = plan_work_access(&pub_state);
+    let pub_state = published(&save(&Publication::new(work(1), owner()), 1));
+    let writer2 = PrincipalId::from_uuid(uuid::Uuid::from_u128(2));
+    assert!(check_comment_submission(&pub_state).is_ok());
+    let comment1 = approved_comment();
+    let removed = WorkModeration::new(work(1))
+        .apply_admin_remove(
+            &pub_state,
+            Some(AdminAuthority::scoped(
+                PrincipalId::from_uuid(uuid::Uuid::from_u128(9)),
+                work(1),
+            )),
+        )
+        .unwrap()
+        .publication;
+
+    // Production refuses the mutant: an admin removal is not found, with no thread.
+    let access = plan_work_access(&removed);
     assert_eq!(access, WorkAccessPlan::Unavailable);
     assert_eq!(access.page_kind(), "not_found");
     assert!(!access.thread_accessible());
+    assert_eq!(removed.facts().hidden, None);
+    for viewer in [None, Some(writer2)] {
+        assert_eq!(
+            plan_comment_view(&removed, writer2, comment1, viewer),
+            CommentView::Unavailable
+        );
+    }
+}
 
-    // Guests and other viewers get CommentView::Unavailable:
-    let guest_view = plan_comment_view(&pub_state, writer2, comment1, None);
+#[test]
+fn the_hidden_notice_counterexample_is_refused_by_the_production_notification_fence() {
+    let vectors: TombstoneCounterexample = serde_json::from_str(include_str!(
+        "../../../behavior/publication/tombstone-hidden-notice-counterexample.json"
+    ))
+    .unwrap();
+    let scenario = &vectors.violation[0];
     assert_eq!(
-        guest_view,
-        crate::domain::discussion::visibility::CommentView::Unavailable
+        trace_inputs(scenario),
+        [
+            ("publish", 1, 0, "none"),
+            ("submit", 2, 1, "none"),
+            ("make_private", 1, 0, "none"),
+            ("review", 9, 1, "approved"),
+            ("publish", 1, 0, "none"),
+        ]
     );
+    let mutant_last = &scenario.steps[4];
+    assert_eq!(mutant_last.state.notified, vec![1]);
 
-    let writer2_view = plan_comment_view(&pub_state, writer2, comment1, Some(writer2));
-    assert_eq!(
-        writer2_view,
-        crate::domain::discussion::visibility::CommentView::Unavailable
-    );
+    let public = published(&save(&Publication::new(work(1), owner()), 1));
+    assert!(check_comment_submission(&public).is_ok());
+    let hidden = public
+        .decide_author(
+            owner(),
+            AuthorCommand::SetPrivate {
+                expected: public.facts().generation,
+            },
+        )
+        .unwrap()
+        .next;
+    assert!(matches!(
+        plan_work_access(&hidden),
+        WorkAccessPlan::AuthorHidden { .. }
+    ));
+    // The approval happens on the hidden page: its stamp is of a non-readable moment.
+    let stamp = hidden.notification_stamp();
+    assert!(!hidden.should_notify_author(stamp));
+    let again = published(&hidden);
+    assert!(matches!(
+        plan_work_access(&again),
+        WorkAccessPlan::PublicBody(_)
+    ));
+    // Production refuses the mutant: republication delivers nothing from the hidden period.
+    assert!(!again.should_notify_author(stamp));
+    assert!(again.should_notify_author(again.notification_stamp()));
+    assert!(again.facts().public_epoch > public.facts().public_epoch);
 }

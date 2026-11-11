@@ -1,0 +1,16 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../publication/tombstone.qnt",
+  "invariant": "noExceptionForUnavailableWork",
+  "command": ["quint","run","../publication/tombstone.qnt","--backend=typescript","--seed=41","--step=mutatedRemovedStep","--max-steps=4","--max-samples=1","--invariant=noExceptionForUnavailableWork","--verbosity=1"],
+  "violation": [
+    {"name": "mutatedRemovedStep", "steps": [
+      {"command":{"actor":1,"id":0,"op":"publish","value":"none"},"outcome":"published","state":{"status":"public","everPublic":true,"comments":{},"views":{"0":{"comments":[],"listed":true,"page":"body","snippet":true},"2":{"comments":[],"listed":true,"page":"body","snippet":true},"3":{"comments":[],"listed":true,"page":"body","snippet":true}},"notified":[]}},
+      {"command":{"actor":2,"id":1,"op":"submit","value":"none"},"outcome":"created","state":{"status":"public","everPublic":true,"comments":{"1":{"removed":false,"review":"pending","writer":2}},"views":{"0":{"comments":[],"listed":true,"page":"body","snippet":true},"2":{"comments":[1],"listed":true,"page":"body","snippet":true},"3":{"comments":[],"listed":true,"page":"body","snippet":true}},"notified":[]}},
+      {"command":{"actor":9,"id":1,"op":"review","value":"approved"},"outcome":"reviewed","state":{"status":"public","everPublic":true,"comments":{"1":{"removed":false,"review":"approved","writer":2}},"views":{"0":{"comments":[1],"listed":true,"page":"body","snippet":true},"2":{"comments":[1],"listed":true,"page":"body","snippet":true},"3":{"comments":[1],"listed":true,"page":"body","snippet":true}},"notified":[1]}},
+      {"command":{"actor":9,"id":0,"op":"moderation_remove","value":"none"},"outcome":"removed_by_moderation","state":{"status":"moderation_removed","everPublic":true,"comments":{"1":{"removed":false,"review":"approved","writer":2}},"views":{"0":{"comments":[1],"listed":false,"page":"hidden","snippet":false},"2":{"comments":[1],"listed":false,"page":"hidden","snippet":false},"3":{"comments":[1],"listed":false,"page":"hidden","snippet":false}},"notified":[1]}}
+    ]}
+  ]
+}

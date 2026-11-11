@@ -19,10 +19,10 @@ chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown
 | --- | --- | --- | --- |
 | [`../publication/publication.qnt`](../publication/publication.qnt) (M1, pure core #150, #151, #157) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
 | `collections.qnt` (M2) | Phép AND bài × bộ sưu tập; chủ/khách/người khác; thêm/bỏ; đổi audience khi đang đọc/phân trang; link và số đếm | COL-01..06 | [bộ sưu tập](../../../../docs/architecture/collections.md) |
-| [`../publication/tombstone.qnt`](../publication/tombstone.qnt) (M3, pure core #157) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone) |
+| [`../publication/tombstone.qnt`](../publication/tombstone.qnt) (M3, pure core #157) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone) |
 | `comment_edit.qnt` (M4) | Bản hiển thị và bản chờ tách nhau; sửa/duyệt/từ chối/override/xóa; hai tab, retry, callback cũ; dấu “Đã sửa”; vote theo bản | COM-02/08/09/10, MOD-09, LVE-FR-04 | [sửa bình luận](../../../../docs/architecture/comment-editing.md) |
 | `discovery.qnt` (M5) | Eligibility trước ranking; Đề xuất ≠ Top; thứ tự/tie ổn định; trần; snapshot và thu hồi | RANK-01..04, TOP-01..04 | [Đề xuất và Top 100](../../../../docs/architecture/discovery-ranking.md) |
-| `appeal.qnt` (M6) | Case gắn decision version; không nhân case; dialog/mock không thành “đã gửi”; override có provenance; AI cũ không đè | MOD-04/08/09/10 | [mục 5](../../../../docs/architecture/publication-moderation.md#5-quản-trị-viên-và-phản-đối) |
+| `appeal.qnt` (M6) | Case gắn decision version; không nhân case; dialog/mock không thành “đã gửi”; override có provenance; AI cũ không đè | MOD-04/08/09/10 | [mục 5](../../../../docs/architecture/publication-moderation.md#5-quản-trị-viên-moderator-và-phản-đối) |
 
 Mỗi model: miền hữu hạn ghi ở đầu file, giả định actor/authority, action có guard, invariant có
 tên, scenario đạt tới được, scenario lỗi/race, và negative control. **Giả định chung, không phải

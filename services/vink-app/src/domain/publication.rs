@@ -9,6 +9,12 @@
 //! precedence before calling it. Future storage must reload these facts and principal standing
 //! at commit, atomically bind revision + metadata, and commit audit/outbox with the pointer.
 //!
+//! ADMIN-MODERATION-20261111 (PUB-06/07, COM-11): making a *readable* work private keeps its
+//! last pointer as [`PublicationFacts::hidden`], so the old URL answers the hidden page
+//! ([`WorkAccessPlan::AuthorHidden`]) with its eligible comments; deleting from there leaves the
+//! author tombstone. [`PublicationFacts::ever_public`] scopes investigations (MOD-15) and
+//! [`PublicationFacts::public_epoch`] fences author notifications after republication.
+//!
 //! Baselines chosen for this slice, not new product decisions: start private at generation 1;
 //! every accepted audience command (including reaffirmation) increments it; inactive lifecycle
 //! facts cannot be restored to active through any command. Restoration checks consistency, not
@@ -111,6 +117,30 @@ pub struct PublishIntent {
 
 /// The author intent that authorized an existing pointer. It may be older than the current
 /// intent; it is retained so restoration does not equate current intent with public reading.
+/// Number of times the work became readable after not being readable (COM-11). Events carry
+/// the epoch they happened in; only events of the current readable epoch notify the author.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PublicEpoch(i64);
+
+impl PublicEpoch {
+    pub const NEVER: Self = Self(0);
+
+    pub fn new(raw: i64) -> Option<Self> {
+        (raw >= 0).then_some(Self(raw))
+    }
+
+    pub const fn get(self) -> i64 {
+        self.0
+    }
+}
+
+/// When an event happened, relative to the work's readability (COM-11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NotificationStamp {
+    pub epoch: PublicEpoch,
+    pub readable: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PublicPointer {
     pub revision: RevisionId,
@@ -127,6 +157,12 @@ pub struct PublicationFacts {
     pub generation: IntentGeneration,
     pub intent: Option<PublishIntent>,
     pub pointer: Option<PublicPointer>,
+    /// PUB-07: the readable pointer withdrawn when the author made the public work private.
+    /// Cleared when a pointer is readable again or an admin removes the work.
+    pub hidden: Option<PublicPointer>,
+    /// MOD-15: revisions that were readable by others at some point, in first-read order.
+    pub ever_public: Vec<RevisionId>,
+    pub public_epoch: PublicEpoch,
     pub revisions: Vec<RevisionFacts>,
 }
 
@@ -257,7 +293,10 @@ pub enum WorkAccessPlan<'a> {
     /// Author deleted a work that was readable: body/metadata/snippets/listings are gone,
     /// but the thread remains accessible as a tombstone page.
     AuthorTombstone { last_pointer: PublicPointer },
-    /// Private, never-public, deleted while hidden, or removed by moderation.
+    /// PUB-07: the author made a public work private. The old URL shows only “Nội dung đã được
+    /// ẩn” and the eligible comments; body/metadata/snippets/listings are gone.
+    AuthorHidden { last_pointer: PublicPointer },
+    /// Never public, removed by an admin, or not readable for another reason.
     /// Nothing is readable on old links or discovery listings.
     Unavailable,
 }
@@ -272,13 +311,22 @@ impl<'a> WorkAccessPlan<'a> {
     }
 
     pub const fn thread_accessible(&self) -> bool {
-        matches!(self, Self::PublicBody(_) | Self::AuthorTombstone { .. })
+        matches!(
+            self,
+            Self::PublicBody(_) | Self::AuthorTombstone { .. } | Self::AuthorHidden { .. }
+        )
+    }
+
+    /// New comments, replies, edits and interactions need a readable body (O-03, COM-11).
+    pub const fn accepts_new_writes(&self) -> bool {
+        matches!(self, Self::PublicBody(_))
     }
 
     pub const fn page_kind(&self) -> &'static str {
         match self {
             Self::PublicBody(_) => "body",
             Self::AuthorTombstone { .. } => "tombstone",
+            Self::AuthorHidden { .. } => "hidden",
             Self::Unavailable => "not_found",
         }
     }
@@ -322,6 +370,9 @@ impl Publication {
             generation: IntentGeneration::FIRST,
             intent: None,
             pointer: None,
+            hidden: None,
+            ever_public: vec![],
+            public_epoch: PublicEpoch::NEVER,
             revisions: vec![],
         })
     }
@@ -352,9 +403,8 @@ impl Publication {
                     DeletionProvenance::PublicTombstone(pointer) => {
                         if pointer.intent_generation <= IntentGeneration::FIRST
                             || pointer.intent_generation >= state.0.generation
-                            || !state
-                                .revision(pointer.revision)
-                                .is_ok_and(|r| r.moderation == Moderation::Approved)
+                            || state.revision(pointer.revision).is_err()
+                            || !state.0.ever_public.contains(&pointer.revision)
                         {
                             return Err(PublicationError::InvalidFacts);
                         }
@@ -389,8 +439,26 @@ impl Publication {
         {
             return Err(PublicationError::InvalidFacts);
         }
+        for (i, revision) in state.0.ever_public.iter().enumerate() {
+            if state.revision(*revision).is_err() || state.0.ever_public[..i].contains(revision) {
+                return Err(PublicationError::InvalidFacts);
+            }
+        }
+        if state.0.ever_public.is_empty() != (state.0.public_epoch == PublicEpoch::NEVER) {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if let Some(hidden) = state.0.hidden
+            && (state.0.lifecycle != Lifecycle::Active
+                || state.0.pointer.is_some()
+                || hidden.intent_generation <= IntentGeneration::FIRST
+                || hidden.intent_generation >= state.0.generation
+                || !state.0.ever_public.contains(&hidden.revision))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
         if let Some(pointer) = state.0.pointer
             && (state.0.lifecycle != Lifecycle::Active
+                || !state.0.ever_public.contains(&pointer.revision)
                 || state.0.audience != Audience::Public
                 || pointer.intent_generation <= IntentGeneration::FIRST
                 || pointer.intent_generation > state.0.generation
@@ -455,9 +523,56 @@ impl Publication {
             self.0.lifecycle
         {
             WorkAccessPlan::AuthorTombstone { last_pointer }
+        } else if let Some(last_pointer) = self.0.hidden.filter(|_| self.0.lifecycle.is_active()) {
+            WorkAccessPlan::AuthorHidden { last_pointer }
         } else {
             WorkAccessPlan::Unavailable
         }
+    }
+
+    /// Stamp for an event happening now (a comment approved, a reply, an endorsement).
+    pub fn notification_stamp(&self) -> NotificationStamp {
+        NotificationStamp {
+            epoch: self.0.public_epoch,
+            readable: self.readable_revision().is_some(),
+        }
+    }
+
+    /// COM-11: after republication only events of the current readable epoch reach the author;
+    /// events that happened while hidden (or in an earlier epoch) are skipped.
+    pub fn should_notify_author(&self, event: NotificationStamp) -> bool {
+        event.readable && self.readable_revision().is_some() && event.epoch == self.0.public_epoch
+    }
+
+    /// Moderation-owned re-review of an approved revision whose decision belongs to an older
+    /// policy (PUB-06). Only `Pending` (evaluator) or `NeedsAdmin` (human queue); never the
+    /// revision readable right now.
+    pub(crate) fn reopen_review(
+        &self,
+        revision: RevisionId,
+        to: Moderation,
+    ) -> Result<Self, PublicationError> {
+        self.active()?;
+        if !matches!(to, Moderation::Pending | Moderation::NeedsAdmin) {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if self.revision(revision)?.moderation != Moderation::Approved {
+            return Err(PublicationError::StaleModeration);
+        }
+        if self
+            .readable_revision()
+            .is_some_and(|s| s.revision == revision)
+        {
+            return Err(PublicationError::StaleModeration);
+        }
+        let mut next = self.clone();
+        next.0
+            .revisions
+            .iter_mut()
+            .find(|r| r.snapshot.revision == revision)
+            .ok_or(PublicationError::UnknownRevision)?
+            .moderation = to;
+        Ok(next)
     }
 
     /// Moderator/admin removal of a work. Clears intent and public pointer while preserving
@@ -467,6 +582,7 @@ impl Publication {
         let mut next = self.clone();
         next.0.lifecycle = Lifecycle::Removed;
         next.0.intent = None;
+        next.0.hidden = None;
         let mut effects = Effects::NONE;
         if next.0.pointer.is_some() {
             next.0.pointer = None;
@@ -481,7 +597,15 @@ impl Publication {
                 revision: intent.revision,
                 intent_generation: intent.generation,
             };
+            if self.readable_revision().is_none() {
+                // Saturating: an i64 epoch cannot realistically overflow; never panic here.
+                self.0.public_epoch = PublicEpoch(self.0.public_epoch.0.saturating_add(1));
+            }
+            if !self.0.ever_public.contains(&intent.revision) {
+                self.0.ever_public.push(intent.revision);
+            }
             self.0.pointer = Some(pointer);
+            self.0.hidden = None;
             effects.pointer = PointerEffect::Set(pointer);
         }
     }
@@ -555,6 +679,13 @@ impl Publication {
                 next.0.generation = expected.next()?;
                 next.0.audience = Audience::Private;
                 next.0.intent = None;
+                if let Some(pointer) = self
+                    .0
+                    .pointer
+                    .filter(|_| self.readable_revision().is_some())
+                {
+                    next.0.hidden = Some(pointer);
+                }
                 next.0.pointer = None;
                 effects.pointer = PointerEffect::Clear;
                 if self.0.audience == Audience::Public {
@@ -569,16 +700,20 @@ impl Publication {
                 {
                     return Err(PublicationError::Stale);
                 }
+                // PUB-05/07: a work that is readable, or shows the hidden page, leaves the
+                // author tombstone; a never-public work leaves nothing.
                 let provenance = if let Some(pointer) = self
                     .0
                     .pointer
                     .filter(|_| self.readable_revision().is_some())
+                    .or(self.0.hidden)
                 {
                     DeletionProvenance::PublicTombstone(pointer)
                 } else {
                     DeletionProvenance::Hidden
                 };
                 next.0.lifecycle = Lifecycle::AuthorDeleted(provenance);
+                next.0.hidden = None;
                 next.0.generation = self.0.generation.next()?;
                 next.0.audience = Audience::Private;
                 next.0.intent = None;
