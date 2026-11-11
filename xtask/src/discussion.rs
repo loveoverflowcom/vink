@@ -30,11 +30,14 @@ const FILTERS: [&str; 14] = [
     "application::publication::",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 17] = [
+const REPLAYS: [&str; 20] = [
     "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
-    "domain::publication::replay::the_withdrawn_intent_counterexample_is_refused_by_the_production_publication_guard",
+    "domain::publication::replay::the_moved_intent_counterexample_is_refused_by_the_production_publication_guard",
     "application::publication::replay::quint_tombstone_scenarios_replay_against_production_access_and_discussion",
-    "application::publication::replay::the_private_as_deleted_counterexample_is_refused_by_the_production_access_plan",
+    "application::publication::replay::the_removed_as_hidden_counterexample_is_refused_by_the_production_access_plan",
+    "application::publication::replay::the_hidden_notice_counterexample_is_refused_by_the_production_notification_fence",
+    "domain::moderation::governance_replay::quint_governance_scenarios_replay_through_production",
+    "domain::moderation::governance_replay::the_governance_counterexamples_are_refused_by_production",
     "domain::moderation::replay::quint_evaluator_vectors_replay_publication_steps_and_check_comment_contract",
     "domain::moderation::replay::the_admin_late_result_counterexample_is_refused_by_the_production_moderation_guard",
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",

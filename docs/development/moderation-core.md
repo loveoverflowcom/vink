@@ -84,6 +84,47 @@ Source: [`domain/moderation.rs`](../../services/vink-app/src/domain/moderation.r
   bảng grant, lệnh CLI hay route HTTP cấp/kiểm tra quyền admin cho tác phẩm ở commit boundary.
 - **Comment-edit consumer (`#154`):** `EvaluationTarget::CommentRevision` mới kiểm tương thích hợp
   đồng/script trên 9 bước của `evaluator-vectors.json`; bình luận đang chạy vẫn theo `premoderation.v1`.
-- **Appeal & notification (`#153+`):** chưa có case phản đối, receipt hay kênh thông báo (MOD-10).
+- **Appeal & notification (`#153+`):** core thuần của phản đối có từ `ADMIN-CORE-01` bên dưới; chưa
+  có bảng, receipt lưu bền hay kênh thông báo (MOD-10).
 - **Production AI & MOD-06:** chưa có provider AI thật, bộ đánh giá tiếng Việt hay cơ chế bật/tắt
   auto-approval ở production (`/health` và worker tiếp tục báo `ai_moderation: not_implemented`).
+
+## Admin moderation core — ADMIN-CORE-01
+
+**Phạm vi:** `ADMIN-MODERATION-20261111` ([DecisionDelta §7](../architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt),
+[đặc tả §5–§8](../architecture/publication-moderation.md#5-quản-trị-viên-moderator-và-phản-đối)):
+admin tổng, grant moderator, nhận ca, can thiệp, phản đối, dừng tự động và điều tra riêng (MOD-09..15,
+PUB-06). Chỉ có **Rust thuần + model M4 + replay**; không migration, store, API/CLI, worker hay UI.
+Tên kiểu, mã từ chối và baseline kỹ thuật là `DESIGN_PROPOSED`; luật là `PRODUCT_CONFIRMED`.
+
+### Module và hợp đồng
+
+| Module | Hợp đồng chính |
+| --- | --- |
+| [`authority`](../../services/vink-app/src/domain/moderation/authority.rs) | `ModerationDirectory::restore(DirectoryFacts)` kiểm grant/nhóm trùng, grantee nhóm không tồn tại, grant kế thừa sai dạng (`InvalidInheritance`: chỉ `Comments` toàn Vink cho một principal). `resolve` trả `VerifiedAuthority` (không constructor công khai; doctest `compile_fail` + lawful twin) theo thứ tự: tạm khóa → không có cơ sở (`NotAuthorized`) → tự né nội dung của mình hoặc bình luận trên bài của mình (`Recused`, kể cả admin). Grant `Works`/`Comments` độc lập, toàn Vink hoặc một `WorkId`, hết hạn tại `expires_at`, thu hồi giữ dòng audit; nhóm xét theo thành viên tại lúc kiểm. `grant`/`revoke`/`set_membership` kiểm lại `AdminSeat`, trả `DirectoryAudit`; lặp lại → `Unchanged` |
+| [`case`](../../services/vink-app/src/domain/moderation/case.rs) | `ReviewCase` cho một `ReviewSubject` chính xác (revision + digest + `DecisionVersion`, hoặc bình luận + `ModerationVersion`). Mọi lệnh được chấp nhận tăng `CaseVersion`; phiên bản cũ → `StaleCase` (hai người tranh ca, đúng một thắng). `claim`/`release`/`note` (`InternalNote` ≤ 2.000 ký tự, không gửi người viết)/`escalate`/`take_over` (chỉ admin, bắt buộc lý do)/`revalidate` (mất mọi cơ sở → về hàng chờ; còn grant khác → giữ ca với cơ sở mới)/`conclude` (fence phiên bản quyết định → `StaleDecision`; phản đối đang mở → chỉ admin; `Reject` cần lý do). `close` đóng ca đang mở; ca đã kết luận/đóng trả `CaseClosed` và không đổi |
+| [`appeal`](../../services/vink-app/src/domain/moderation/appeal.rs) | `AppealBook::file`: chỉ chủ nội dung, trên quyết định bất lợi của AI hoặc moderator, đúng phiên bản đã thấy; quyết định admin là cuối (`FinalDecision`); một hồ sơ mỗi phiên bản (retry với key khác trả `Filed::Existing`); `Notice::NotSent` vì không có kênh. `conclude`: chỉ admin, không phải chủ nội dung, bắt buộc lý do, đúng phiên bản; `close_open` khi bài chuyển riêng tư |
+| [`automation`](../../services/vink-app/src/domain/moderation/automation.rs) | `Automation::set`: admin, fence `AutomationVersion`, bắt buộc lý do, trả `AutomationAudit`. Khi dừng: việc mới và job đang mở sang hàng chờ người (`WorkModeration::reroute_to_humans`, `JobState::Rerouted`), kết quả tới sau bị `AutomationPaused`; bật lại chỉ áp lượt gửi mới |
+| [`investigation`](../../services/vink-app/src/domain/moderation/investigation.rs) | `Investigation::open`: admin không phải tác giả, `ViolationBasis` + `EvidenceSource` (≤ 500 ký tự), đúng ID revision từng công khai của bài đang riêng tư. `read` kiểm lại mọi điều kiện rồi trả `ReadAudit` **trước** snapshot (adapter phải commit audit rồi mới trả); `close` chỉ người mở, ghi kết luận + căn cứ, không sao chép văn bản |
+| [`WorkModeration`](../../services/vink-app/src/domain/moderation.rs) | `apply_human_decision` (moderator/admin dưới `VerifiedAuthority`; `DecisionBy::Moderator`), `apply_case_conclusion`, `apply_appeal_conclusion` (tạo phiên bản admin mới; công khai chỉ khi ý định hiện hành trỏ đúng bản), `decide_author_with` (thu hồi job → `JobState::Withdrawn` khi riêng tư, gửi lại, duyệt lại theo policy → `DecisionBy::PolicyRereview`, route sang người khi dừng), `reroute_to_humans`; từ chối `withdrawn`, `automation_paused`, `case_closed` |
+| [`discussion::hide`](../../services/vink-app/src/domain/discussion/hide.rs) | Moderator bình luận ẩn đúng bản đã duyệt (`HiddenApproval`) và khôi phục chỉ khi bình luận vẫn đúng trạng thái đã ẩn; gỡ của người viết và gỡ terminal cũ giữ nguyên |
+
+### Bằng chứng
+
+| Lớp | Nguồn |
+| --- | --- |
+| Model M4 | [`governance.qnt`](../../services/vink-app/behavior/publication/governance.qnt): 4 scenario, 105 bước, 5 negative control (`conclusionNeedsLiveAuthority`, `claimNeverStolen`, `oneAppealPerDecision`, `pausedAiWritesNothing`, `readsAreAuthorized`); thay `target/appeal.qnt` |
+| Replay | `domain::moderation::governance_replay` (2 test, trong `REPLAYS` của `verify discussion`): 105/105 bước qua production, chiếu lại toàn bộ state sau mỗi bước; 5 counterexample bị production từ chối |
+| Unit test | `domain::moderation::governance_tests`: restore lỗi (kể cả `InvalidInheritance`), phạm vi/hạn/thu hồi/nhóm/tạm khóa/tự né, `resolve_preferring`, audit và `Unchanged`/`UnknownGrant`/`UnknownGroup`/`DuplicateGrant`, `AdminSeat` cũ bị kiểm lại; `InternalNote` rỗng/dài/ký tự điều khiển, `ReviewCase::restore`, tranh ca, `take_over` không lý do, `revalidate` (giữ/đổi cơ sở/mất quyền), `conclude` (`WrongSubject`, `StaleDecision`, `AppealOpen`, thiếu lý do), `close` lặp; mọi từ chối của `AppealBook`; `Automation` (`Stale`, `Unchanged`, `ReasonRequired`, `VersionExhausted`); `Investigation` (`NeverPublic`, `Conflict`, `Expired`, `WrongRevision`, `WrongWork`, `NotInvestigator`, `ConditionLapsed` sau khi công khai lại, `close` lặp); `discussion::hide::tests` |
+
+### Còn `NOT_IMPLEMENTED`
+
+- Migration/store: grant + nhóm (kế thừa `moderator_grants` thành grant `Comments` toàn Vink), ca + ghi
+  chú, hồ sơ phản đối, chế độ tự động có phiên bản, hồ sơ điều tra + audit đọc (commit trước khi trả
+  snapshot), bản ghi ẩn bình luận; provenance `moderator`/`policy_rereview` và trạng thái job
+  `withdrawn`/`rerouted` trong SQL.
+- Runtime: `EvaluatorCapability::evaluator()` và `decide_author` vẫn mặc định `Enabled`; worker chưa đọc
+  chế độ tự động từ store; chưa có CLI/API admin cho grant, ca, phản đối, dừng/bật, điều tra.
+- Comment evaluator consumer (`#154`): M4 dùng shared validator + lifecycle cho bình luận.
+- O-17 (URL cũ sau khi moderator bác bản đang đăng) chỉ là đề xuất tối thiểu; O-18, O-19 còn `OPEN`.
+- Design/UI, báo cáo độc giả, quản lý policy, khóa tài khoản: đợt sau.

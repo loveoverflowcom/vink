@@ -156,3 +156,46 @@ trong lượt này.
 | 11 | UI Web, dashboard admin, provider AI thật, email admin | theo giao việc sau | `apps/vink-web`, hạ tầng | — |
 
 4–10 độc lập với nhau sau khi 2–3 có; 1 có thể đi song song với 2 ở mức lõi thuần.
+
+## 7. Bổ sung 11/11/2026 — quản trị kiểm duyệt
+
+**ID:** `ADMIN-MODERATION-20261111` · **Nguồn:** brief của chủ sản phẩm ngày 11/11/2026 (“Vink
+Admin — chốt PRD, SSOT và domain/core kiểm duyệt”) · **Mốc:** bình luận theo #120/#148, core tác
+phẩm theo #151/#157, điểm nối runtime #158/#159. Luật ở bảng dưới là `PRODUCT_CONFIRMED`; tên kiểu,
+mã từ chối và baseline kỹ thuật là `DESIGN_PROPOSED`. Lượt này có **PRD/SSOT, core Rust thuần,
+model Quint và replay**; không migration, API/CLI, worker, design/UI.
+
+### 7.1. DecisionDelta
+
+| Quyết định | ID canonical | Luật cũ | Luật mới | Model | Core |
+| --- | --- | --- | --- | --- | --- |
+| ADM-01 Admin tổng và moderator | MOD-09, MOD-11 | Một vai trò admin; grant moderator chỉ cho bình luận | Admin tổng quản lý quyền, phản đối cuối cùng và chế độ tự động. Grant duyệt tác phẩm và grant duyệt bình luận độc lập; cá nhân hoặc nhóm do admin quản lý; toàn Vink hoặc một `WorkId`; có hạn. Grant bình luận hiện hành được kế thừa. Kiểm lại quyền, tư cách tài khoản, thành viên nhóm ở mỗi lần đọc/xử lý; tự né nội dung của mình và bình luận trên bài của mình | `governance.qnt` | `domain::moderation::authority` |
+| ADM-02 Nhận ca | MOD-12 | Không có khái niệm ca | Một người nhận mỗi lúc; trả ca, ghi chú nội bộ, chuyển admin; mất quyền thực tế → về hàng chờ trừ khi còn grant hợp lệ khác; admin nhận lại có lý do; kết luận kiểm phiên bản ca + phiên bản quyết định | `governance.qnt` | `domain::moderation::case` |
+| ADM-03 Can thiệp | MOD-13 | Chỉ admin quyết định tác phẩm; bình luận: duyệt/từ chối/gỡ (terminal) | Moderator duyệt/từ chối/ghi đè AI trong grant; moderator tác phẩm bác bản đang đăng; chỉ admin gỡ cả bài. Moderator bình luận ẩn và khôi phục đúng bản đã duyệt; gỡ của người viết và gỡ cũ vẫn hiệu lực | `publication.qnt`, `governance.qnt` | `WorkModeration::apply_human_decision`, `discussion::hide` |
+| ADM-04 Phản đối | MOD-10 | Chỉ phản đối quyết định AI; quyết định admin là cuối (O-15) | Phản đối quyết định bất lợi của AI **hoặc moderator**; một hồ sơ mỗi phiên bản quyết định; khi mở chỉ admin kết luận; giữ/đảo đều có lý do, tạo phiên bản mới; admin là cấp cuối; bản mới có ca riêng; kết luận bản cũ chỉ công khai nếu ý định hiện hành trỏ đúng bản | `governance.qnt` (thay `target/appeal.qnt`) | `domain::moderation::appeal` |
+| ADM-05 Dừng tự động | MOD-14 | Không có | Dừng: việc mới và việc AI đang chờ sang hàng chờ người; kết quả AI đang chạy mất hiệu lực. Bật lại chỉ cho lượt gửi mới; lịch sử phân biệt ghi nhận / có người nhận / có kết luận | `governance.qnt` | `domain::moderation::automation` |
+| ADM-06 Gửi duyệt theo phiên bản | PUB-06 | Approved của bản cũ luôn dùng lại được; kết quả Approved tới sau khi chuyển riêng tư vẫn ghi quyết định (`approved_unpublished`) | Chỉ yêu cầu công khai mở ca; chuyển riêng tư **đóng** ca và phản đối, kết quả tới trễ không tạo quyết định; công khai lại dùng quyết định còn hiệu lực đúng snapshot + policy, policy đổi → lượt mới, quyết định người → người có thẩm quyền | `publication.qnt` | `WorkModeration::decide_author`, `JobState::Withdrawn` |
+| ADM-07 Trang “Nội dung đã được ẩn” | PUB-05, PUB-07 | B: URL cũ không tìm thấy, ẩn cả thảo luận | Bài đang công khai chuyển riêng tư: URL cũ chỉ hiện “Nội dung đã được ẩn” + bình luận đủ điều kiện; rút khỏi đọc công khai, tìm kiếm, Khám phá, Đề xuất. Chưa từng công khai và bị admin gỡ: không tìm thấy | `tombstone.qnt` | `WorkAccessPlan::AuthorHidden` |
+| ADM-08 Bình luận qua URL cũ | COM-11, PUB-04 | Tombstone chỉ sau khi xóa bài đang công khai; xóa khi đang ẩn không để lại gì (O-05) | Trang ẩn và trang thay thế: đọc, xử lý ca đã gửi, tự gỡ; chặn tạo mới/sửa/tương tác. Kiểm duyệt bình luận không thấy thân bài. Xóa từ trang ẩn giữ bình luận. Công khai lại: chỉ thông báo sự kiện mới | `tombstone.qnt` | `application::publication`, `Publication::should_notify_author` |
+| ADM-09 Điều tra riêng | MOD-15 | Không có; admin không đọc bản riêng | Admin có quyền, không xung đột, căn cứ cụ thể, nguồn bằng chứng, đúng ID bản từng công khai; mỗi lần đọc kiểm quyền và audit trước khi trả snapshot; hồ sơ chỉ ghi kết luận và căn cứ; hết khi đóng hoặc điều kiện hết hiệu lực | `governance.qnt` | `domain::moderation::investigation` |
+| ADM-10 Mặc định và phạm vi | — | — | Quyền điều tra theo từng lần đọc; ca nhận kết thúc bằng trả ca, mất quyền hoặc admin tiếp quản; giữ chính sách lưu dữ liệu hiện hành (O-08). Migration, API/CLI, worker, design/UI, báo cáo độc giả, quản lý policy, khóa tài khoản: đợt tích hợp sau | — | — |
+
+### 7.2. Điểm `OPEN` bị thay hoặc thêm
+
+| # | Thay đổi |
+| --- | --- |
+| O-03 | Mở rộng: “không ghi mới” áp cho cả trang ẩn (PUB-07); xử lý ca đã gửi và tự gỡ vẫn được (`PRODUCT_CONFIRMED`) |
+| O-05 | **Đóng.** Xóa bài khi đang ẩn **sau khi từng công khai** giữ bình luận qua URL cũ (trang thay thế); bài chưa từng công khai vẫn không để lại gì |
+| O-15 | **Đóng một phần.** Quyết định của moderator phản đối được; kết luận admin là cấp cuối. Cấp xét lại thứ hai trên kết luận admin vẫn không có |
+| O-17 | (mới) Trang ở URL cũ sau khi moderator **bác bản đang đăng** của bài vẫn đang ở “Công khai”: đề xuất tối thiểu là không tìm thấy cho tới khi có bản được duyệt mới (bài không phải do tác giả ẩn). Đổi sang trang ẩn cần luật cho bình luận |
+| O-18 | (mới) Thời hạn mặc định của grant/hồ sơ điều tra: không có giá trị mặc định; người cấp đặt hạn hoặc để không hạn |
+| O-19 | (mới) Danh mục sự kiện thông báo cho tác giả: core chỉ có fence “sự kiện mới sau lúc công khai”; kênh thông báo chưa có |
+
+### 7.3. Bàn giao
+
+Chi tiết hành vi: [publication-moderation §5–§8](publication-moderation.md#5-quản-trị-viên-moderator-và-phản-đối).
+Core và bằng chứng: [moderation-core](../development/moderation-core.md#admin-moderation-core--admin-core-01),
+[publication-core](../development/publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01),
+[registry](../development/product-decisions-registry.md). Đợt tích hợp tiếp theo: migration cho grant,
+nhóm, ca, phản đối, chế độ tự động, hồ sơ điều tra, `hidden`/`ever_public`/`public_epoch` của
+publication và trạng thái job `withdrawn`; lệnh operator/API; worker áp kết quả với fence chế độ tự động.

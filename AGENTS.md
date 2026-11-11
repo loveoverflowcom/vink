@@ -54,17 +54,22 @@ those registries rather than duplicating long status narratives across skills.
   `HTG`, `RANK`, `TOP`, `ACC-03`). Runtime implementation is partial:
   - Pure publication/tombstone core + application planning (`#150`, `#157`,
     [publication-core](docs/development/publication-core.md)) and pure evaluator/admin moderation
-    core + `ScriptedEvaluator` (`#151`, [moderation-core](docs/development/moderation-core.md))
-    replay 51/51 M1 steps, 30/30 M3 steps and 21 `evaluator-vectors.json` steps in `verify
-    discussion`.
+    core + `ScriptedEvaluator` (`#151`, [moderation-core](docs/development/moderation-core.md)).
+  - Admin moderation governance (`ADMIN-MODERATION-20261111`, DecisionDelta §7: MOD-09..15,
+    PUB-06/07, COM-11) is **pure core only**: `domain::moderation::{authority, case, appeal,
+    automation, investigation}`, moderator decisions, withdrawn/rerouted jobs, the hidden page
+    (`WorkAccessPlan::AuthorHidden`) and comment hide/restore. `verify discussion` replays 64/64 M1,
+    41/41 M3, 105/105 M4 governance (`governance.qnt`, replaced `target/appeal.qnt`) and 24
+    `evaluator-vectors.json` steps. No migration, store, CLI/API, worker or UI; the #158 loader still
+    builds `hidden = None`, so `set-private` answers not found.
   - Author publication persistence + HTTP API (`#158`,
     [publication-runtime](docs/development/publication-runtime.md)) implements snapshot capture,
     `request-public` (writes an `open` ticket not yet consumed), `set-private` and owner state read,
     with pre-#158 pointers backfilled as `legacy_bootstrap`.
-  - Remaining target models (`collections`, `comment_edit`, `discovery`, `appeal` in
+  - Remaining target models (`collections`, `comment_edit`, `discovery` in
     `services/vink-app/behavior/target`) are **model evidence only**; no UI consumer, delete/remove
-    route, evaluator worker, real AI provider, admin grant store, appeal, collection, hashtag,
-    ranking or comment edit exists in runtime. Items marked `DESIGN_PROPOSED` or `OPEN` (`O-01..O-16`)
+    route, evaluator worker, real AI provider, admin grant store, appeal store, collection, hashtag,
+    ranking or comment edit exists in runtime. Items marked `DESIGN_PROPOSED` or `OPEN` (`O-01..O-19`)
     are not owner product decisions, even when a safe baseline is coded in pure core.
 - **Authentication and principal standing (D-05 Provisional, not Accepted;
   [ADR](docs/architecture/auth-authority.md), [runbook](docs/development/auth-operations.md),
@@ -136,7 +141,7 @@ The following boundaries guide work within the selected scope:
 - Preserve Vietnamese Unicode, IME composition, paragraph/poem structure and unsaved text.
   Material 3 Expressive should support a calm reader and editor; Vink has its own visual identity.
 - AI results are untrusted input. Do not turn manuscript text into tool instructions or send
-  private drafts to providers merely because autosave ran. Follow MOD-01–MOD-10 for moderation:
+  private drafts to providers merely because autosave ran. Follow MOD-01–MOD-15 for moderation:
   an evaluator result carries no authority, a failure or timeout never approves, an admin
   decision on a revision beats a late evaluator result, and no real provider, admin channel or
   auto-approval is enabled.
@@ -156,7 +161,7 @@ pure decisions (the lane fails if a named replay test is not selected); locking,
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
 runs the owner-local manifests and requires every declared harness to verify. The `discussion` lane
 also runs the target specifications of `behavior/target` (typecheck, simulation, scenarios, vector
-drift, negative controls) and canonical M1/M3 in `behavior/publication`. The remaining target actions have no Rust replay. Every crate inherits
+drift, negative controls) and canonical M1/M3/M4 governance in `behavior/publication`. The remaining target actions have no Rust replay. Every crate inherits
 `unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable
 rustdoc ignores its error code. `specs/behavior` and a generic behavior lane do not exist. Do not
 add a runner merely to validate documentation or skills. Keep `AGENTS.md` under 24,000 bytes so all

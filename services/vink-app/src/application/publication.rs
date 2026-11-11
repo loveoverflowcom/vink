@@ -26,6 +26,35 @@ pub enum TombstoneWriteError {
     WorkUnavailable,
     #[error("tombstones are read-only")]
     TombstoneReadOnly,
+    /// COM-11: the hidden page of a work made private keeps its thread readable, not writable.
+    #[error("the hidden page is read-only")]
+    HiddenReadOnly,
+}
+
+impl TombstoneWriteError {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::WorkUnavailable => "work_unavailable",
+            Self::TombstoneReadOnly => "tombstone_read_only",
+            Self::HiddenReadOnly => "hidden_read_only",
+        }
+    }
+}
+
+/// What a comment's reviewer (evaluator or person) may see of the work (COM-11): the readable
+/// body only while the work is public; on the hidden page or tombstone only the comment's own
+/// snapshot, never the withdrawn body.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommentReviewContext<'a> {
+    WithWork(&'a crate::domain::publication::Snapshot),
+    CommentOnly,
+}
+
+pub fn plan_comment_review_context(publication: &Publication) -> CommentReviewContext<'_> {
+    match publication.access_plan() {
+        WorkAccessPlan::PublicBody(snapshot) => CommentReviewContext::WithWork(snapshot),
+        _ => CommentReviewContext::CommentOnly,
+    }
 }
 
 pub fn plan_publication(
@@ -111,6 +140,7 @@ pub fn check_comment_submission(publication: &Publication) -> Result<(), Tombsto
     match publication.access_plan() {
         WorkAccessPlan::PublicBody(_) => Ok(()),
         WorkAccessPlan::AuthorTombstone { .. } => Err(TombstoneWriteError::TombstoneReadOnly),
+        WorkAccessPlan::AuthorHidden { .. } => Err(TombstoneWriteError::HiddenReadOnly),
         WorkAccessPlan::Unavailable => Err(TombstoneWriteError::WorkUnavailable),
     }
 }

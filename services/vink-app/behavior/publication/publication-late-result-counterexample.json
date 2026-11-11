@@ -7,10 +7,10 @@
   "command": ["quint","run","../publication/publication.qnt","--backend=typescript","--seed=41","--step=mutatedOverrideStep","--max-steps=4","--max-samples=1","--invariant=adminOverrideWins","--verbosity=1"],
   "violation": [
     {"name": "mutatedOverrideStep", "steps": [
-      {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none"}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},
-      {"command":{"actor":"author","expected":1,"job":0,"op":"request_public","rev":1,"value":"none"},"outcome":"submitted","state":{"revs":{"1":{"by":"none","decision":"pending"}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":0,"lifecycle":"active","generation":2,"policy":1}},
-      {"command":{"actor":"admin","expected":0,"job":0,"op":"admin_decide","rev":1,"value":"approve"},"outcome":"published","state":{"revs":{"1":{"by":"admin","decision":"approved"}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":1,"lifecycle":"active","generation":2,"policy":1}},
-      {"command":{"actor":"evaluator","expected":0,"job":1,"op":"ai_result","rev":1,"value":"reject"},"outcome":"rejected","state":{"revs":{"1":{"by":"ai","decision":"rejected"}},"jobs":{"1":{"policy":1,"rev":1,"state":"applied"}},"audience":"public","desired":1,"intended":[1],"pointer":1,"lifecycle":"active","generation":2,"policy":1}}
+      {"command":{"actor":"author","expected":0,"job":0,"op":"snapshot","rev":0,"value":"none"},"outcome":"saved","state":{"revs":{"1":{"by":"none","decision":"none","policy":0}},"jobs":{},"audience":"private","desired":0,"intended":[],"pointer":0,"lifecycle":"active","generation":1,"policy":1}},
+      {"command":{"actor":"author","expected":1,"job":0,"op":"request_public","rev":1,"value":"none"},"outcome":"submitted","state":{"revs":{"1":{"by":"none","decision":"pending","policy":1}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":0,"lifecycle":"active","generation":2,"policy":1}},
+      {"command":{"actor":"admin","expected":0,"job":0,"op":"admin_decide","rev":1,"value":"approve"},"outcome":"published","state":{"revs":{"1":{"by":"admin","decision":"approved","policy":1}},"jobs":{"1":{"policy":1,"rev":1,"state":"open"}},"audience":"public","desired":1,"intended":[1],"pointer":1,"lifecycle":"active","generation":2,"policy":1}},
+      {"command":{"actor":"evaluator","expected":0,"job":1,"op":"ai_result","rev":1,"value":"reject"},"outcome":"rejected","state":{"revs":{"1":{"by":"ai","decision":"rejected","policy":1}},"jobs":{"1":{"policy":1,"rev":1,"state":"applied"}},"audience":"public","desired":1,"intended":[1],"pointer":1,"lifecycle":"active","generation":2,"policy":1}}
     ]}
   ]
 }

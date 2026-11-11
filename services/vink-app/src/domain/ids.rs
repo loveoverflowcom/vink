@@ -85,6 +85,28 @@ id_type!(
     EvaluationId
 );
 
+id_type!(
+    /// One moderation grant (ADMIN-MODERATION-20261111, MOD-11): a capability for a principal or a
+    /// group, global or scoped to one work. Revocation keeps the identity for audit.
+    GrantId
+);
+id_type!(
+    /// A moderator group managed by an admin (MOD-11). Membership is re-read at every check.
+    GroupId
+);
+id_type!(
+    /// One review case for one exact work revision or comment (MOD-12).
+    CaseId
+);
+id_type!(
+    /// One appeal on one adverse decision version (MOD-10).
+    AppealId
+);
+id_type!(
+    /// One investigation file of an admin on a once-public revision (MOD-15).
+    InvestigationId
+);
+
 impl WorkId {
     /// Time-ordered identifier for a newly created work.
     pub fn generate() -> Self {

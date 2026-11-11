@@ -28,8 +28,8 @@ use crate::domain::moderation::{
 use crate::domain::principal::Standing;
 use crate::domain::publication::{
     Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, IntentGeneration, Lifecycle,
-    Moderation, PointerEffect, PublicPointer, Publication, PublicationError, PublicationFacts,
-    PublishIntent, RevisionFacts, Snapshot,
+    Moderation, PointerEffect, PublicEpoch, PublicPointer, Publication, PublicationError,
+    PublicationFacts, PublishIntent, RevisionFacts, Snapshot,
 };
 use crate::domain::revision::{ContentHash, RevisionContent};
 use crate::domain::taxonomy::MetadataVersion;
@@ -264,6 +264,12 @@ pub(super) async fn load_paired_state(
                         revision: rev_id,
                         digest: content.hash().clone(),
                         version: dec_version,
+                        // ADMIN-MODERATION-20261111 runtime gap: no column records the policy of
+                        // a decision yet. No command bumps the stored policy either, so every
+                        // stored decision belongs to the work's current policy version.
+                        policy: PolicyVersion::new(pub_row.policy_version).ok_or_else(|| {
+                            integrity("moderation policy version invalid", pub_row.policy_version)
+                        })?,
                         provenance,
                     }),
                 )
@@ -371,6 +377,23 @@ pub(super) async fn load_paired_state(
         _ => None,
     };
 
+    // ADMIN-MODERATION-20261111 runtime gap: no column stores the hidden-page pointer, the
+    // once-public revisions or the public epoch yet (PUB-07, MOD-15, COM-11). Reconstruct the
+    // conservative subset the current rows prove: the readable or tombstone pointer was public.
+    // A work made private through #158 therefore still answers not_found until a migration lands.
+    let ever_public: Vec<RevisionId> = pointer
+        .map(|p| p.revision)
+        .or(match lifecycle {
+            Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(p)) => Some(p.revision),
+            _ => None,
+        })
+        .into_iter()
+        .collect();
+    let public_epoch = if ever_public.is_empty() {
+        PublicEpoch::NEVER
+    } else {
+        PublicEpoch::new(1).ok_or_else(|| integrity("public epoch invalid", 1))?
+    };
     let publication_facts = PublicationFacts {
         work: work_id,
         owner: actor,
@@ -379,6 +402,9 @@ pub(super) async fn load_paired_state(
         generation,
         intent,
         pointer,
+        hidden: None,
+        ever_public,
+        public_epoch,
         revisions: pub_revisions,
     };
 

@@ -402,18 +402,28 @@ fn author_delete_and_admin_remove_transitions_and_access_plans() {
     assert!(!deleted_pub.next.access_plan().allows_snippet());
     assert!(deleted_pub.next.access_plan().thread_accessible());
 
-    // 2. Delete on a private work produces Hidden provenance
+    // 2. A public work made private shows the hidden page; deleting it from there keeps the
+    //    once-public pointer as the tombstone (PUB-07, ADMIN-MODERATION-20261111).
     let private_work = private(&public).next;
+    assert_eq!(
+        private_work.access_plan(),
+        WorkAccessPlan::AuthorHidden {
+            last_pointer: pointer
+        }
+    );
+    assert!(!private_work.access_plan().is_listed());
+    assert!(!private_work.access_plan().allows_snippet());
+    assert!(private_work.access_plan().thread_accessible());
+    assert!(!private_work.access_plan().accepts_new_writes());
     let deleted_priv = private_work
         .decide_author(owner(), AuthorCommand::Delete { expected: None })
         .unwrap();
     assert_eq!(deleted_priv.outcome, AuthorOutcome::Deleted);
     assert_eq!(
         deleted_priv.next.facts().lifecycle,
-        Lifecycle::AuthorDeleted(DeletionProvenance::Hidden)
+        Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(pointer))
     );
-    assert_eq!(deleted_priv.next.access_plan(), WorkAccessPlan::Unavailable);
-    assert!(!deleted_priv.next.access_plan().thread_accessible());
+    assert!(deleted_priv.next.access_plan().thread_accessible());
 
     // 3. Delete on never-public work produces Hidden provenance
     let never_public = save(&Publication::new(work(1), owner()), 1);
@@ -487,9 +497,15 @@ fn restore_validates_deletion_provenance_and_fails_closed_on_corruption() {
         Ok(deleted.clone())
     );
 
-    // Incompatible: PublicTombstone with unapproved revision
+    // A once-public revision may later be rejected by a moderator; the tombstone stays valid.
+    let mut rejected_later = deleted.facts().clone();
+    rejected_later.revisions[0].moderation = Moderation::Rejected;
+    assert!(Publication::restore(rejected_later).is_ok());
+
+    // Incompatible: PublicTombstone of a revision that was never public
     let mut corrupted = deleted.facts().clone();
-    corrupted.revisions[0].moderation = Moderation::Rejected;
+    corrupted.ever_public.clear();
+    corrupted.public_epoch = PublicEpoch::NEVER;
     assert_eq!(
         Publication::restore(corrupted),
         Err(PublicationError::InvalidFacts)

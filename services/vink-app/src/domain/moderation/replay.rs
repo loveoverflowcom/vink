@@ -2,7 +2,7 @@
 //! control (#151, AC-07).
 //!
 //! Explicitly separates the two scopes in `evaluator-vectors.json`:
-//! - **12 `publication.qnt` steps** execute end-to-end through [`ScriptedEvaluator`],
+//! - **15 `publication.qnt` steps** execute end-to-end through [`ScriptedEvaluator`],
 //!   [`apply_work_evaluation_result`], [`WorkModeration::apply_evaluator_result`] and
 //!   [`Publication::record_review`].
 //! - **9 `comment_edit.qnt` steps** execute through [`ScriptedEvaluator`] and the shared
@@ -203,7 +203,7 @@ fn quint_evaluator_vectors_replay_publication_steps_and_check_comment_contract()
     assert_eq!(script_vectors.format, "vink-moderation-evaluator-script-v1");
     assert_eq!(script_vectors.scripts.len(), 1);
     let script_steps = &script_vectors.scripts[0].steps;
-    assert_eq!(script_steps.len(), 21);
+    assert_eq!(script_steps.len(), 24);
 
     let pub_vectors: PublicationVectors = serde_json::from_str(include_str!(
         "../../../behavior/publication/publication-vectors.json"
@@ -320,12 +320,12 @@ fn quint_evaluator_vectors_replay_publication_steps_and_check_comment_contract()
 
     assert_eq!(evaluator.remaining(), 0);
     assert_eq!(evaluator.unscripted_calls(), 0);
-    assert_eq!(evaluator.executed_kinds().len(), 21);
+    assert_eq!(evaluator.executed_kinds().len(), 24);
     let covered: BTreeSet<ScriptKind> = evaluator.executed_kinds().iter().copied().collect();
     assert_eq!(covered, BTreeSet::from(ScriptKind::ALL));
     assert_eq!(
         counts,
-        BTreeMap::from([("comment_contract_only", 9), ("publication_consumer", 12),])
+        BTreeMap::from([("comment_contract_only", 9), ("publication_consumer", 15),])
     );
 }
 
