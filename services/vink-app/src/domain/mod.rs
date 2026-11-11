@@ -8,6 +8,7 @@ pub mod document;
 pub mod draft;
 pub mod endorsement;
 pub mod ids;
+pub mod moderation;
 pub mod principal;
 pub mod publication;
 pub mod revision;

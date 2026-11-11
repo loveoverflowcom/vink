@@ -5,8 +5,9 @@
 [`services/vink-app/behavior/target`](../../services/vink-app/behavior/target/README.md).
 
 Registry này nối **yêu cầu → model/invariant/scenario → gap implementation** và ghi bằng chứng đã
-chạy. #150 hiện thực lõi publication thuần (M1, replay một phần), xem
-[publication-core](publication-core.md); các runtime gap được giữ riêng theo từng action. Bằng
+chạy. #150 và #151 hiện thực lõi publication + moderation thuần, `ScriptedEvaluator` và replay 46/51
+bước của M1 cùng 21 bước `evaluator-vectors.json`, xem [publication-core](publication-core.md) và
+[moderation-core](moderation-core.md); các runtime gap được giữ riêng theo từng action. Bằng
 chứng “model” nghĩa là typecheck + simulation có biên + scenario + negative control của Quint,
 không phải code, PostgreSQL, API hay trình duyệt. Registry của code đang chạy vẫn ở
 [discussion-core](discussion-core.md), [endorsement-core](endorsement-core.md),
@@ -20,13 +21,13 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 
 | Yêu cầu | Invariant (`publication.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
-| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Pure core #150:** `Publication::decide_author`, `promotion_eligible`, `record_review`; replay author và admitted decision effects. Chưa có migration/transaction/route; runtime `publications` vẫn do seed ghi |
-| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Pure core #150:** `readable_revision` không đòi current intent = pointer; r1/r2 unit + replay. Chưa có lệnh runtime tạo revision/đổi pointer |
-| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Pure core #150:** SaveSnapshot trả effects không evaluation. Chưa có evaluator hay đường gửi nội dung ra ngoài |
-| MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Chưa có** port, job, bảng kết quả, worker consumer. Contract mới là văn bản |
-| MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Chưa có.** Không có trần retry, watchdog hay trạng thái hiển thị cho tác giả |
-| MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Chưa có** vai trò admin (chỉ grant moderator cho bình luận và operator CLI) |
-| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure guard #150:** terminal restored facts chặn author/review/promotion. Chưa có lệnh xóa/gỡ; model lifecycle actions được nạp như fixture, không replay transition |
+| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Pure core #150 + #151:** `Publication::decide_author`, `WorkModeration::decide_author`, `promotion_eligible`, `record_review`; replay 46/51 bước M1. Chưa có migration/transaction/route; runtime `publications` vẫn do seed ghi |
+| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Pure core #150 + #151:** `readable_revision` không đòi current intent = pointer; r1/r2 unit + replay. Chưa có lệnh runtime tạo revision/đổi pointer |
+| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Pure core #150 + #151:** `SaveSnapshot` trả `ticket = None`; `RawEvaluatorOutput` từ chối trường lạ và phân loại output sai thành `InvalidOutput` → `NeedsAdmin`. Chưa có evaluator hay đường gửi nội dung ra ngoài |
+| MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Pure core + mock #151:** `EvaluationTarget`, `EvaluationTicket`, `EvaluatorResult`, `validate_evaluation_result`, `ScriptedEvaluator` (đủ 9 lớp `ScriptKind`); replay 12 bước publication consumer + 9 bước comment contract. Chưa có bảng job/result hay worker consumer |
+| MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Pure core #151:** `Timeout` / `ProviderError` đóng job sang `Failed` (`retryable`), giữ nguyên `Pending` và pointer; `reevaluate` đòi `EvaluationId` mới. Chưa có trần retry DB, watchdog hay UI |
+| MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Pure core #151:** `AdminAuthority` hẹp gắn `(actor, work)`, `DecisionVersion`, `DecisionReason`, `apply_admin_decision` + replay NC `mutatedOverrideStep`. Chưa có bảng grant/CLI/HTTP cấp quyền admin bền vững |
+| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure guard #150 + #151:** terminal restored facts chặn author (`work_unavailable`), admin và evaluator (`target_gone`). Chưa có lệnh xóa/gỡ; model lifecycle actions được nạp như fixture (`#155`) |
 
 ### 1.2. Xóa bài và tombstone (M3)
 
@@ -138,9 +139,11 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 
 ## 4. Gap kiểm thử còn lại
 
-- M1 đã về `behavior/publication`, replay author actions và admitted decision effects (#150).
-  Job/policy/authority/admin/lifecycle mutations và năm model trong `behavior/target` chưa có replay;
-  bảng action coverage ở [publication-core](publication-core.md).
+- M1 đã về `behavior/publication`, replay 46/51 bước (author, evaluator, admin override, reevaluate,
+  policy bump và cả hai negative control) cùng 21 bước `evaluator-vectors.json` qua `ScriptedEvaluator`
+  (#150, #151). Delete/remove lifecycle mutations và năm model trong `behavior/target` chưa có
+  aggregate replay; bảng coverage ở [publication-core](publication-core.md) và
+  [moderation-core](moderation-core.md).
 - Không có bằng chứng PostgreSQL cho race: publish × đổi audience × kết quả evaluator; sửa × duyệt ×
   gỡ bình luận; đọc bộ sưu tập × đổi audience; Top snapshot × thu hồi.
 - Không có contract HTTP/fixture, không có UI, không có kiểm trình duyệt.

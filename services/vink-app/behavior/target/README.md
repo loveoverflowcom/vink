@@ -1,9 +1,12 @@
 # Đặc tả đích — quyết định sản phẩm 10/11/2026
 
-**Trạng thái các model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Năm model ở đây
-chưa có Rust replay. M1 đã chuyển nguyên vẹn sang
-[`../publication`](../publication/README.md): #150 replay author commands và publication effects
-của quyết định đã được admission xác nhận; evaluator/admin/lifecycle authority vẫn là model-only.
+**Trạng thái năm model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Năm model ở đây
+chưa có domain consumer hay Rust replay cho aggregate của chúng. M1 đã chuyển nguyên vẹn sang
+[`../publication`](../publication/README.md): #150 và #151 replay 46/51 bước của M1 (author,
+evaluator, admin override, reevaluate, policy bump và cả hai negative control) qua lõi thuần
+`Publication` + `WorkModeration`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
+(12 bước `publication.qnt` qua full consumer, 9 bước `comment_edit.qnt` chỉ kiểm hợp đồng/script);
+delete/remove lifecycle và năm model còn lại vẫn là model-only.
 Một canonical model cho mỗi policy; không có bản publication cạnh tranh ở thư mục này.
 
 Phân vai: PRD/decision log giữ ý định và quyết định; model ở đây giữ state/transition/invariant đã

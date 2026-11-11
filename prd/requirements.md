@@ -243,7 +243,7 @@ PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của
 
 Nguồn: `PRODUCT-DECISIONS-20261110`, [DecisionDelta](../docs/architecture/product-decisions-20261110.md).
 Cột “Trạng thái” dùng nhãn của tài liệu đó: phần **luật** là `PRODUCT_CONFIRMED` trừ khi ghi khác;
-cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **#150 có lõi publication thuần cho AUD/PUB-01/02; chưa tích hợp runtime**; model
+cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **#150 có lõi publication thuần cho AUD/PUB-01/02 và #151 có lõi moderation evaluator + scripted mock cho MOD-07..09; chưa tích hợp runtime**; model
 và gap từng action ở [registry](../docs/development/product-decisions-registry.md). Không dòng nào đổi nghĩa
 của COM-07/08, MOD-01/05, INV-01..08.
 

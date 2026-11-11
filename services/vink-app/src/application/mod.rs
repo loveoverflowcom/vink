@@ -7,6 +7,7 @@ pub mod catalog;
 pub mod discovery;
 pub mod discussion;
 pub mod endorsement;
+pub mod moderation;
 pub mod ports;
 pub mod post_review;
 pub mod publication;

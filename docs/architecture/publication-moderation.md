@@ -6,12 +6,13 @@
 **Quyết định:** D-06, D-07, D-12, D-19 ([decision log](decisions.md)).
 
 **Trạng thái:** `TARGET_BEHAVIOR`. Luật ghi “đã chốt” là `PRODUCT_CONFIRMED`; chi tiết ghi “đề
-xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md), application planning seam và
-replay theo action; chưa có publication runtime. M1 canonical ở
+xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md) và
+#151 có [contract evaluator + scripted mock + quyền áp quyết định thuần](../development/moderation-core.md);
+chưa có publication/moderation runtime. M1 canonical ở
 [`behavior/publication`](../../services/vink-app/behavior/publication/README.md); `tombstone.qnt`
 và `appeal.qnt` vẫn ở [`behavior/target`](../../services/vink-app/behavior/target/README.md). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
 
-## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, base `develop@e16b1cc` + lõi thuần #150)
+## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, base `develop@4aeb083` + lõi thuần #150/#151)
 
 | Thứ | Có gì | Nguồn |
 | --- | --- | --- |
@@ -20,7 +21,7 @@ và `appeal.qnt` vẫn ở [`behavior/target`](../../services/vink-app/behavior/
 | Publication | Một hàng `publications(work_id, revision_id, generation, published_at, metadata_snapshot_id)`; “công khai” = có hàng | cùng migration, `20261108000000_work_taxonomy` |
 | Lệnh publish/rút/xóa | **Không có**. Chỉ `dev_seed`, `xtask provision` và fixture SQL ghi `publications`; test giả lập rút bằng `DELETE FROM publications` | `dev_seed.rs`, comment bảng: “Publish/withdraw commands … are not implemented” |
 | Audience | Lõi thuần #150; **chưa có** cột/lệnh runtime | `domain/publication.rs` |
-| Evaluator, quyết định cho tác phẩm, admin, appeal | **Không có**; `/health` và worker báo `ai_moderation: not_implemented` | `http/health.rs`, `bin/vink-worker.rs` |
+| Evaluator, quyết định cho tác phẩm, admin, appeal | Lõi thuần `domain::moderation` + `ScriptedEvaluator` test-only (#151); **chưa có** bảng SQL, worker consumer, CLI/HTTP hay appeal; `/health` và worker báo `ai_moderation: not_implemented` | `domain/moderation.rs`, `application/moderation.rs`, `http/health.rs` |
 | Thảo luận khi không có publication | `readable_thread` trả `None` → `404` cho đọc; gửi bị `WorkNotPublic`; hàng bình luận không bị xóa | `persistence/discussion.rs`, `domain/discussion/submission.rs` |
 
 Mọi mục dưới đây mô tả hành vi **đích**; phạm vi lõi thuần đã có và phần chưa tích hợp được tách trong [publication-core](../development/publication-core.md).
@@ -129,13 +130,16 @@ Mock là **kịch bản tất định**: harness điều khiển outcome, thứ 
 thời điểm giả lập; không `sleep`, không mạng, không secret, không model key. Mock không được: luôn
 trả `Approve`, tự cấp quyền admin, ghi SQL, hay thay logic domain cần kiểm.
 
-**Lượt này:** bản đặc tả ban đầu chưa có seam để cắm mock cho tác phẩm; #150 chỉ thêm seam quyết định đã được xác nhận (`record_review`), chưa validation evaluator. Bản đặc tả này không viết
-mock Rust và không dựng pipeline. Bộ kịch bản được sinh từ trace của chính model:
+**Lượt này:** #150 thêm seam quyết định đã được xác nhận (`record_review`) và #151 thêm
+[`domain::moderation`](../../services/vink-app/src/domain/moderation.rs) +
+[`ScriptedEvaluator`](../../services/vink-app/src/application/moderation.rs) đọc trực tiếp
 [`evaluator-vectors.json`](../../services/vink-app/behavior/target/evaluator-vectors.json)
-(format `vink-moderation-evaluator-script-v1`, 21 kết quả phủ đủ chín loại trên, mỗi dòng ghi kết
-quả được nộp và điều App phải làm). PR runtime số 3 dùng file này làm đầu vào cho mock test-only
-đầu tiên. Seam `AdmissionFacts.classifier` của bình luận **không** phù hợp: nó là tín hiệu “chỉ
-được giữ lại, không bao giờ làm sạch” của policy ứng viên cũ, khác ngữ nghĩa evaluator quyết định.
+(format `vink-moderation-evaluator-script-v1`, 21 kết quả phủ đủ chín loại trên: 12 bước
+`publication.qnt` chạy qua full consumer `WorkModeration` + `Publication`, 9 bước `comment_edit.qnt`
+kiểm tương thích hợp đồng/script). Chưa dựng queue/worker/provider runtime; chi tiết ở
+[moderation-core](../development/moderation-core.md). Seam `AdmissionFacts.classifier` của bình luận
+**không** phù hợp: nó là tín hiệu “chỉ được giữ lại, không bao giờ làm sạch” của policy ứng viên cũ,
+khác ngữ nghĩa evaluator quyết định.
 
 ## 5. Quản trị viên và phản đối
 

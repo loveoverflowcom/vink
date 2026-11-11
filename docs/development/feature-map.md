@@ -155,8 +155,8 @@ tại; nguồn và bằng chứng model ở [registry](product-decisions-registr
 
 | Hành vi đích | Yêu cầu | Hiện có trong app | Bằng chứng hiện có |
 | --- | --- | --- | --- |
-| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Lõi thuần + application planning seam #150; runtime publication vẫn chỉ đến từ seed | [Pure core/replay](publication-core.md); model M1 canonical ở `behavior/publication` |
-| Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Không; `ai_moderation: not_implemented` | Model `publication.qnt`, vectors evaluator |
+| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Lõi thuần + application planning seam #150/#151; runtime publication vẫn chỉ đến từ seed | [Pure core/replay](publication-core.md); model M1 canonical ở `behavior/publication` |
+| Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Lõi thuần `domain::moderation` + `ScriptedEvaluator` test-only #151; runtime `/health` và worker vẫn `ai_moderation: not_implemented` | [Moderation core/replay](moderation-core.md); replay M1 + `evaluator-vectors.json` |
 | Phản đối quyết định | MOD-10 | Không | Model `appeal.qnt` |
 | Tác giả xóa bài, trang thay thế còn bình luận | PUB-04/05 | Không; không có publication thì thảo luận `404` | Model `tombstone.qnt` |
 | Sửa bình luận, dấu “Đã sửa” | COM-10 | Không; chỉ gỡ được bình luận của mình | Model `comment_edit.qnt` |
