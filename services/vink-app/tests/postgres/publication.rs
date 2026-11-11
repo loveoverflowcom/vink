@@ -683,3 +683,222 @@ async fn test_schema_upgrade_and_legacy_compatibility(pool: PgPool) {
         Some(vink_app::domain::moderation::DecisionProvenance::LegacyBootstrap)
     );
 }
+
+const PUBLICATION_MIGRATION: i64 = 20_261_116_000_000;
+
+fn down_script() -> String {
+    include_str!("../../migrations-rollback/20261116000000_work_publication_persistence.down.sql")
+        .to_owned()
+}
+
+async fn run_down(pool: &PgPool) -> Result<(), sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    sqlx::raw_sql(sqlx::AssertSqlSafe(down_script()))
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await
+}
+
+/// Upgrade through the real migration: a pointer written by the old code (generation 1, no paired
+/// rows) is backfilled as a lawful public state with an honest `legacy_bootstrap` decision, the
+/// author can read and withdraw it, and an unrelated work without a pointer becomes private.
+#[sqlx::test(migrations = false)]
+async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
+    use sqlx::migrate::Migrator;
+    use vink_app::persistence::{MIGRATOR, migrate};
+
+    Migrator::with_migrations(
+        MIGRATOR
+            .migrations
+            .iter()
+            .filter(|m| m.version < PUBLICATION_MIGRATION)
+            .cloned()
+            .collect(),
+    )
+    .run(&pool)
+    .await
+    .unwrap();
+    // The old schema has no paired tables: the seed writes the pointer alone.
+    let vink = seeded(&pool).await;
+    sqlx::query("UPDATE publications SET generation = 1 WHERE work_id = $1")
+        .bind(dev_seed::SAMPLE_WORK)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let unpublished = Uuid::now_v7();
+    sqlx::query("INSERT INTO works (id, owner_id) VALUES ($1, $2)")
+        .bind(unpublished)
+        .bind(dev_seed::SAMPLE_AUTHOR)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let report = migrate(&pool).await.unwrap();
+    assert_eq!(report.applied, vec![PUBLICATION_MIGRATION]);
+
+    let row: (String, i64, Option<Uuid>, Option<Uuid>) = sqlx::query_as(
+        "SELECT audience, generation, intent_revision_id, pointer_revision_id
+           FROM work_publications WHERE work_id = $1",
+    )
+    .bind(dev_seed::SAMPLE_WORK)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        row,
+        (
+            "public".into(),
+            2,
+            Some(dev_seed::SAMPLE_REVISION),
+            Some(dev_seed::SAMPLE_REVISION)
+        )
+    );
+    let pointer_generation: i64 =
+        sqlx::query_scalar("SELECT generation FROM publications WHERE work_id = $1")
+            .bind(dev_seed::SAMPLE_WORK)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(pointer_generation, 2);
+    let private: (String, i64) =
+        sqlx::query_as("SELECT audience, generation FROM work_publications WHERE work_id = $1")
+            .bind(unpublished)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(private, ("private".into(), 1));
+
+    let facts = vink
+        .load_author_publication_state(
+            Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR)),
+            WorkId::from_uuid(dev_seed::SAMPLE_WORK),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        facts.moderation.facts().revisions[0].provenance,
+        Some(vink_app::domain::moderation::DecisionProvenance::LegacyBootstrap)
+    );
+    // Seeding the upgraded database again changes nothing.
+    dev_seed::apply(&pool).await.unwrap();
+    let withdrawn = vink
+        .set_private(
+            Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR)),
+            WorkId::from_uuid(dev_seed::SAMPLE_WORK),
+            "upgrade-private-1",
+            2,
+        )
+        .await
+        .unwrap();
+    assert_eq!(withdrawn.outcome.as_str(), "made_private");
+    // A later seed never re-creates the pointer the author withdrew.
+    dev_seed::apply(&pool).await.unwrap();
+    let pointers: i64 = sqlx::query_scalar("SELECT count(*) FROM publications WHERE work_id = $1")
+        .bind(dev_seed::SAMPLE_WORK)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(pointers, 0);
+}
+
+/// The down script backs out unused schema only: once an author command was accepted it refuses
+/// and leaves every row in place.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn backout_refuses_after_an_author_command_and_drops_unused_schema(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    let accepted = vink
+        .set_private(
+            Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR)),
+            WorkId::from_uuid(dev_seed::SAMPLE_WORK),
+            "backout-private-1",
+            2,
+        )
+        .await
+        .unwrap();
+    assert_eq!(accepted.generation.get(), 3);
+    let refusal = run_down(&pool).await.unwrap_err().to_string();
+    assert!(refusal.contains("roll forward"), "{refusal}");
+    let receipts: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM work_publication_command_receipts")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(receipts, 1);
+
+    sqlx::query("DELETE FROM work_publication_command_receipts")
+        .execute(&pool)
+        .await
+        .unwrap();
+    run_down(&pool).await.unwrap();
+    let table: Option<String> = sqlx::query_scalar("SELECT to_regclass('work_publications')::text")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(table, None);
+    let latest: i64 = sqlx::query_scalar("SELECT max(version) FROM _sqlx_migrations")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(latest < PUBLICATION_MIGRATION);
+}
+
+/// A lost answer retried concurrently with the same key: exactly one command is applied and the
+/// other attempt replays its receipt (never a stale refusal, a key error or a 5xx).
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn concurrent_retries_with_one_key_apply_once_and_replay(pool: PgPool) {
+    let vink = Arc::new(seeded(&pool).await);
+    let author = Some(PrincipalId::from_uuid(dev_seed::SAMPLE_AUTHOR));
+    let work = WorkId::from_uuid(dev_seed::SAMPLE_WORK);
+
+    let mut tasks = tokio::task::JoinSet::new();
+    for _ in 0..4 {
+        let vink = vink.clone();
+        tasks.spawn(async move {
+            vink.capture_snapshot(author, work, "same-capture-key", 1, 1)
+                .await
+        });
+    }
+    let captures: Vec<_> = tasks
+        .join_all()
+        .await
+        .into_iter()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(captures.iter().filter(|c| !c.replayed).count(), 1);
+    assert!(
+        captures
+            .iter()
+            .all(|c| c.revision_id == captures[0].revision_id)
+    );
+    let revisions: i64 = sqlx::query_scalar("SELECT count(*) FROM revisions WHERE work_id = $1")
+        .bind(dev_seed::SAMPLE_WORK)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(revisions, 2, "the seeded revision and exactly one capture");
+
+    let mut tasks = tokio::task::JoinSet::new();
+    for _ in 0..4 {
+        let vink = vink.clone();
+        let revision = captures[0].revision_id;
+        tasks.spawn(async move {
+            vink.request_public(author, work, "same-request-key", revision, 2)
+                .await
+        });
+    }
+    let requests: Vec<_> = tasks
+        .join_all()
+        .await
+        .into_iter()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(requests.iter().filter(|r| !r.replayed).count(), 1);
+    assert!(requests.iter().all(|r| r.generation.get() == 3));
+    let jobs: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1")
+            .bind(dev_seed::SAMPLE_WORK)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(jobs, 1);
+}

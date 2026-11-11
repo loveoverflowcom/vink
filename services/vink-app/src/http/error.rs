@@ -382,13 +382,23 @@ impl ApiError {
                 None,
                 Some("command_key"),
             ),
+            // The field names the version that moved, so a client reconciles the right one.
+            Self::SnapshotConflict {
+                current_draft_version: None,
+                current_metadata_version: Some(current),
+            } => (
+                "version_conflict",
+                "draft metadata changed since expected_metadata_version; nothing was written"
+                    .to_string(),
+                Some(*current),
+                Some("expected_metadata_version"),
+            ),
             Self::SnapshotConflict {
                 current_draft_version,
                 ..
             } => (
                 "version_conflict",
-                "draft text or metadata changed since expected version; nothing was written"
-                    .to_string(),
+                "draft text changed since expected_draft_version; nothing was written".to_string(),
                 *current_draft_version,
                 Some("expected_draft_version"),
             ),

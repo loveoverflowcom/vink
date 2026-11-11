@@ -442,6 +442,12 @@ không tìm thấy harness, nên lane đòi dòng tổng kết khớp **đúng s
 harness đã đăng ký của manifest (`xtask/src/kani.rs`) với 0 failure: module harness bị compile-out là FAIL, không phải PASS rỗng. Job CI `kani`
 cài bản pin rồi gọi cùng lệnh. Thiếu verifier là FAIL/NOT_RUN, không thay bằng unit test.
 
+Manifest `services/vink-app/kani/Cargo.toml` chỉ liệt kê crate mà `src/domain` import, pin đúng
+version trong `Cargo.lock` của workspace (lockfile riêng cạnh manifest). Một import mới trong
+domain cần thêm vào manifest cùng thay đổi đó: `serde_json` của #151 thiếu ở đây làm job `kani`
+đỏ (`E0433`, chưa harness nào chạy) trên `develop` cho đến #158. `quick` không biên dịch manifest
+này, nên chạy `cargo xtask verify kani` khi đổi import của domain.
+
 Kani 0.67.0 chạy các harness tuần tự theo mặc định. Khi cần kiểm nhanh hoặc đo tài nguyên
 của một harness, chọn tên đầy đủ và manifest sở hữu nó. Ví dụ trên macOS:
 
@@ -499,7 +505,9 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
   process/database/contract; không authority, không mapping subject → principal, App chưa gọi nó.
 - Gửi duyệt, moderation người/AI, publish/withdraw, curation, Tạp Chí ở runtime
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). #150 có [lõi publication intent thuần](publication-core.md)
-  và application planning seam; chỉ seed local tạo `publications`.
+  và application planning seam; #158 thêm [API tác giả](publication-runtime.md) (snapshot, yêu cầu
+  công khai tạo ticket `open` chưa ai xử lý, chuyển riêng tư xóa con trỏ). Chưa có UI, worker
+  evaluator hay quản trị viên, nên ngoài seed/legacy chưa revision mới nào được công khai.
 - UI kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, inbox, hậu kiểm theo admission,
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).

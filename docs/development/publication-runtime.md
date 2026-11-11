@@ -19,10 +19,13 @@ Discussion và Endorsement thực hiện đọc/ghi với thứ tự khóa: `pub
 2. `work_publications WHERE work_id = $1 FOR UPDATE`
 3. `works WHERE id = $1 FOR SHARE`
 4. `principals WHERE id = $1 FOR UPDATE` (thông qua `locked_standing`)
+5. Đọc receipt `(actor, work, operation, command_key)` — sau standing fence, như endorsement: khóa principal tuần tự hóa mọi lệnh của cùng actor, nên retry đồng thời cùng key chờ lệnh đầu rồi replay receipt đã commit (không `409` stale, không `500`). Principal bị đình chỉ nhận `403` kể cả khi gửi lại key cũ.
+
+Thứ tự này cùng chiều với lưu nháp/thẻ (principal → work → draft/metadata) và discussion/endorsement (`publications` → principal), nên không tạo chu trình chờ. Bảng `work_publications` có dòng từ migration hoặc lần chụp snapshot đầu; work mới chưa chụp được đọc như `private`/generation 1.
 
 ## 2. API Endpoints
 
-Tất cả các endpoint tác giả trả về header `Cache-Control: private, no-cache, no-store`.
+Tất cả các endpoint tác giả trả về header `Cache-Control: no-store`, lỗi cũng vậy. Mọi lệnh ghi đi qua kiểm `Origin` chung của API; không phải chủ tác phẩm nhận `404` như tác phẩm không tồn tại.
 
 | Method | Path | Quyền / Auth | Mô tả |
 | --- | --- | --- | --- |
@@ -38,19 +41,19 @@ Tất cả các endpoint tác giả trả về header `Cache-Control: private, n
 - Đọc có điều kiện với `If-None-Match` chứa ETag cũ của revision trước đó **trả về `404 Not Found`**, tuyệt đối **không trả về `304 Not Modified`**.
 - Discovery feed (`GET /api/v1/works`) loại bỏ tác phẩm private khỏi kết quả.
 
-## 4. Tương thích dữ liệu kế thừa (Legacy Bootstrap)
+## 4. Tương thích dữ liệu kế thừa (Legacy Bootstrap) và backout
 
-- Tác phẩm/revision khởi tạo trước migration được nâng lên generation 2.
-- `work_revision_moderation` được gắn `DecisionProvenance::LegacyBootstrap` cho các bản ghi kế thừa, cho phép khôi phục trạng thái `Moderation::Approved` mà không vi phạm quy tắc provenance.
+- Con trỏ `publications` có trước migration được nâng lên generation 2 và ghép một dòng `work_publications` công khai cùng quyết định `approved` với provenance `legacy_bootstrap` (`DecisionProvenance::LegacyBootstrap`): ghi nhận trung thực rằng bản này đã công khai trước khi có kiểm duyệt, không phải AI hay quản trị viên duyệt. Chỉ migration và dev seed tạo provenance này; không lệnh runtime nào tạo được.
+- Work không có con trỏ thành `private`, generation 1.
+- `dev_seed` chỉ ghép trạng thái này khi tạo work lần đầu: chạy lại seed không tạo lại con trỏ mà tác giả đã thu hồi; trên schema trước #158 seed chỉ ghi con trỏ và backfill của migration ghép phần còn lại.
+- Backout: [`20261116000000_work_publication_persistence.down.sql`](../../services/vink-app/migrations-rollback/20261116000000_work_publication_persistence.down.sql) chỉ dùng khi schema chưa được dùng. Có receipt, ticket hay quyết định không phải `legacy_bootstrap` thì script từ chối: giữ dữ liệu và roll forward. `publications.generation` giữ ≥ 2, schema cũ chấp nhận.
+- Lỗi `409 version_conflict` của snapshot nêu đúng trường đã đổi: `expected_draft_version` (kèm `current_version` của nháp) hoặc `expected_metadata_version` (kèm version metadata hiện tại).
 
 ## 5. Verification Evidence
 
-- `cargo xtask verify quick`: PASS (fmt, clippy server/browser/preview, type boundary doctests, unit & contract tests, repo checks).
-- `cargo xtask verify discussion`: PASS (Quint models, target specifications, production Rust trace replays).
-- `services/vink-app/tests/postgres/publication.rs`:
-  - `test_publication_state_and_snapshot_capture_lifecycle`: PASS
-  - `test_request_public_and_ticket_creation`: PASS
-  - `test_r1_remains_readable_while_r2_is_submitted`: PASS
-  - `test_set_private_clears_pointer_and_enforces_privacy`: PASS
-  - `test_lock_ordering_concurrency_set_private_and_publications_share`: PASS
-  - `test_schema_upgrade_and_legacy_compatibility`: PASS
+Lần chạy 11/11/2026 trên nhánh `codex/publication-persistence-api` (PostgreSQL 17 cục bộ):
+
+- `cargo xtask verify quick`, `cargo xtask verify discussion`, `cargo xtask verify postgres`, `cargo xtask verify kani` — kết quả ghi trong PR #161.
+- `services/vink-app/tests/postgres/publication.rs` (9 test): vòng đời snapshot, ticket, r1/r2, riêng tư/ETag `404`, khóa `publications` FOR SHARE, legacy seed, nâng cấp migration thật, backout, retry đồng thời cùng key (thất bại với adapter đọc receipt trước khóa).
+
+Chưa có: UI/browser/CMP consumer, worker evaluator/admin, xóa tác phẩm, replay của request-public trả lại `ticket_id` (đọc qua `GET …/publication/state`).

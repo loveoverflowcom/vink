@@ -13,6 +13,7 @@ path = "lib.rs"
 # Versions match the workspace Cargo.lock; only the domain's own imports are listed.
 [dependencies]
 serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
 sha2 = "=0.11.1"
 thiserror = "=2.0.21"
 time = "=0.3.55"

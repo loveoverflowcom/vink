@@ -34,29 +34,26 @@ use crate::domain::publication::{
 use crate::domain::revision::{ContentHash, RevisionContent};
 use crate::domain::taxonomy::MetadataVersion;
 
-fn parse_outcome(raw: &str) -> AuthorOutcome {
-    match raw {
-        "saved" => AuthorOutcome::Saved,
-        "submitted" => AuthorOutcome::Submitted,
-        "waiting" => AuthorOutcome::Waiting,
-        "published" => AuthorOutcome::Published,
-        "made_private" => AuthorOutcome::MadePrivate,
-        "reaffirmed" => AuthorOutcome::Reaffirmed,
-        "deleted" => AuthorOutcome::Deleted,
-        _ => AuthorOutcome::Waiting,
-    }
+/// A stored receipt outcome; anything else is corruption, never a guessed answer.
+fn parse_outcome(raw: &str) -> Result<AuthorOutcome, StoreError> {
+    [
+        AuthorOutcome::Saved,
+        AuthorOutcome::Submitted,
+        AuthorOutcome::Waiting,
+        AuthorOutcome::Published,
+        AuthorOutcome::MadePrivate,
+        AuthorOutcome::Reaffirmed,
+        AuthorOutcome::Deleted,
+    ]
+    .into_iter()
+    .find(|outcome| outcome.as_str() == raw)
+    .ok_or_else(|| integrity("unknown receipt outcome", raw))
 }
 
-pub(super) fn outcome_as_str(outcome: AuthorOutcome) -> &'static str {
-    match outcome {
-        AuthorOutcome::Saved => "saved",
-        AuthorOutcome::Submitted => "submitted",
-        AuthorOutcome::Waiting => "waiting",
-        AuthorOutcome::Published => "published",
-        AuthorOutcome::MadePrivate => "made_private",
-        AuthorOutcome::Reaffirmed => "reaffirmed",
-        AuthorOutcome::Deleted => "deleted",
-    }
+/// The stored generation of an accepted command's receipt (written for every accepted command).
+fn receipt_generation(raw: Option<i64>) -> Result<IntentGeneration, StoreError> {
+    raw.and_then(IntentGeneration::new)
+        .ok_or_else(|| integrity("receipt generation", raw.unwrap_or_default()))
 }
 
 pub(super) async fn load_paired_state(
@@ -457,7 +454,46 @@ impl AuthorPublicationStore for PgStore {
 
             let mut tx = self.pool().begin().await.map_err(classify)?;
 
-            // 1. Receipt check
+            // 2. Lock graph: pointer FOR UPDATE -> work_publications FOR UPDATE -> works FOR SHARE -> principals FOR UPDATE
+            let _: Option<Uuid> =
+                query_scalar("SELECT revision_id FROM publications WHERE work_id = $1 FOR UPDATE")
+                    .bind(work_id.as_uuid())
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(classify)?;
+
+            let _: Option<Uuid> =
+                query_scalar("SELECT work_id FROM work_publications WHERE work_id = $1 FOR UPDATE")
+                    .bind(work_id.as_uuid())
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(classify)?;
+
+            let owner: Option<Uuid> =
+                query_scalar("SELECT owner_id FROM works WHERE id = $1 FOR SHARE")
+                    .bind(work_id.as_uuid())
+                    .fetch_optional(&mut *tx)
+                    .await
+                    .map_err(classify)?;
+
+            let Some(owner) = owner else {
+                tx.rollback().await.map_err(classify)?;
+                return Ok(CaptureSnapshotOutcome::NotFound);
+            };
+
+            if owner != actor.as_uuid() {
+                tx.rollback().await.map_err(classify)?;
+                return Ok(CaptureSnapshotOutcome::NotFound);
+            }
+
+            let standing = locked_standing(&mut tx, actor).await?;
+            if standing != Standing::Active {
+                return Err(StoreError::PrincipalSuspended);
+            }
+
+            // Receipt after the standing fence: the actor's principal row FOR UPDATE serializes
+            // every command of this actor, so a concurrent retry with the same key waits for the
+            // first and replays its committed answer instead of racing it (as endorsement does).
             #[derive(sqlx::FromRow)]
             struct ReceiptRow {
                 payload_digest: Vec<u8>,
@@ -505,43 +541,6 @@ impl AuthorPublicationStore for PgStore {
                 }
             }
 
-            // 2. Lock graph: pointer FOR UPDATE -> work_publications FOR UPDATE -> works FOR SHARE -> principals FOR UPDATE
-            let _: Option<Uuid> =
-                query_scalar("SELECT revision_id FROM publications WHERE work_id = $1 FOR UPDATE")
-                    .bind(work_id.as_uuid())
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-
-            let _: Option<Uuid> =
-                query_scalar("SELECT work_id FROM work_publications WHERE work_id = $1 FOR UPDATE")
-                    .bind(work_id.as_uuid())
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-
-            let owner: Option<Uuid> =
-                query_scalar("SELECT owner_id FROM works WHERE id = $1 FOR SHARE")
-                    .bind(work_id.as_uuid())
-                    .fetch_optional(&mut *tx)
-                    .await
-                    .map_err(classify)?;
-
-            let Some(owner) = owner else {
-                tx.rollback().await.map_err(classify)?;
-                return Ok(CaptureSnapshotOutcome::NotFound);
-            };
-
-            if owner != actor.as_uuid() {
-                tx.rollback().await.map_err(classify)?;
-                return Ok(CaptureSnapshotOutcome::NotFound);
-            }
-
-            let standing = locked_standing(&mut tx, actor).await?;
-            if standing != Standing::Active {
-                return Err(StoreError::PrincipalSuspended);
-            }
-
             // 3. Working draft check
             #[derive(sqlx::FromRow)]
             struct DraftRow {
@@ -577,9 +576,10 @@ impl AuthorPublicationStore for PgStore {
             let metadata_snapshot_id = match metadata_capture {
                 SnapshotCapture::Captured { id, .. } => id,
                 SnapshotCapture::Conflict { current } => {
+                    // Only the metadata moved: the draft matched, so it is not reported as stale.
                     tx.rollback().await.map_err(classify)?;
                     return Ok(CaptureSnapshotOutcome::Conflict {
-                        current_draft_version: Some(expected_draft_version),
+                        current_draft_version: None,
                         current_metadata_version: Some(current),
                     });
                 }
@@ -665,46 +665,6 @@ impl AuthorPublicationStore for PgStore {
 
             let mut tx = self.pool().begin().await.map_err(classify)?;
 
-            // 1. Receipt check
-            #[derive(sqlx::FromRow)]
-            struct ReceiptRow {
-                payload_digest: Vec<u8>,
-                outcome: String,
-                generation: Option<i64>,
-            }
-
-            let stored: Option<ReceiptRow> = query_as(
-                "SELECT payload_digest, outcome, generation
-                   FROM work_publication_command_receipts
-                  WHERE actor_id = $1 AND work_id = $2 AND operation = 'request_public' AND command_key = $3",
-            )
-            .bind(actor.as_uuid())
-            .bind(work_id.as_uuid())
-            .bind(&command_key)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-            if let Some(receipt) = stored {
-                if receipt.payload_digest == digest.as_slice() {
-                    let outcome = parse_outcome(&receipt.outcome);
-                    let receipt_gen = IntentGeneration::new(
-                        receipt.generation.unwrap_or(expected_generation.get()),
-                    )
-                    .unwrap_or(expected_generation);
-                    tx.commit().await.map_err(classify)?;
-                    return Ok(RequestPublicOutcome::Accepted(AuthorPublicRequestOutcome {
-                        outcome,
-                        generation: receipt_gen,
-                        ticket: None,
-                        replayed: true,
-                    }));
-                } else {
-                    tx.rollback().await.map_err(classify)?;
-                    return Ok(RequestPublicOutcome::KeyReused);
-                }
-            }
-
             // 2. Lock graph: publications FOR UPDATE -> work_publications FOR UPDATE -> works FOR SHARE -> principals FOR UPDATE
             let _: Option<Uuid> =
                 query_scalar("SELECT revision_id FROM publications WHERE work_id = $1 FOR UPDATE")
@@ -740,6 +700,45 @@ impl AuthorPublicationStore for PgStore {
             let standing = locked_standing(&mut tx, actor).await?;
             if standing != Standing::Active {
                 return Err(StoreError::PrincipalSuspended);
+            }
+
+            // Receipt after the standing fence: the actor's principal row FOR UPDATE serializes
+            // every command of this actor, so a concurrent retry with the same key waits for the
+            // first and replays its committed answer instead of racing it (as endorsement does).
+            #[derive(sqlx::FromRow)]
+            struct ReceiptRow {
+                payload_digest: Vec<u8>,
+                outcome: String,
+                generation: Option<i64>,
+            }
+
+            let stored: Option<ReceiptRow> = query_as(
+                "SELECT payload_digest, outcome, generation
+                   FROM work_publication_command_receipts
+                  WHERE actor_id = $1 AND work_id = $2 AND operation = 'request_public' AND command_key = $3",
+            )
+            .bind(actor.as_uuid())
+            .bind(work_id.as_uuid())
+            .bind(&command_key)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+
+            if let Some(receipt) = stored {
+                if receipt.payload_digest == digest.as_slice() {
+                    let outcome = parse_outcome(&receipt.outcome)?;
+                    let receipt_gen = receipt_generation(receipt.generation)?;
+                    tx.commit().await.map_err(classify)?;
+                    return Ok(RequestPublicOutcome::Accepted(AuthorPublicRequestOutcome {
+                        outcome,
+                        generation: receipt_gen,
+                        ticket: None,
+                        replayed: true,
+                    }));
+                } else {
+                    tx.rollback().await.map_err(classify)?;
+                    return Ok(RequestPublicOutcome::KeyReused);
+                }
             }
 
             // 3. Load paired state
@@ -885,13 +884,11 @@ impl AuthorPublicationStore for PgStore {
 
             // 6. If ticket produced, write work_revision_moderation and work_evaluation_jobs
             if let Some(ticket) = &transition.ticket {
+                // The domain opens a ticket only for an unsubmitted revision, which has no row:
+                // a conflict here is a desync to refuse, never a decision to reset.
                 query(
                     "INSERT INTO work_revision_moderation (work_id, revision_id, decision_version, moderation, created_at, updated_at)
-                     VALUES ($1, $2, 1, 'pending', now(), now())
-                     ON CONFLICT (work_id, revision_id) DO UPDATE SET
-                         moderation = 'pending',
-                         decision_version = 1,
-                         updated_at = now()",
+                     VALUES ($1, $2, 1, 'pending', now(), now())",
                 )
                 .bind(work_id.as_uuid())
                 .bind(revision_id.as_uuid())
@@ -929,7 +926,7 @@ impl AuthorPublicationStore for PgStore {
             .bind(work_id.as_uuid())
             .bind(&command_key)
             .bind(digest.as_slice())
-            .bind(outcome_as_str(transition.outcome))
+            .bind(transition.outcome.as_str())
             .bind(revision_id.as_uuid())
             .bind(next_pub.generation.get())
             .execute(&mut *tx)
@@ -960,45 +957,6 @@ impl AuthorPublicationStore for PgStore {
             let digest = Sha256::digest(payload_bytes.as_bytes());
 
             let mut tx = self.pool().begin().await.map_err(classify)?;
-
-            // 1. Receipt check
-            #[derive(sqlx::FromRow)]
-            struct ReceiptRow {
-                payload_digest: Vec<u8>,
-                outcome: String,
-                generation: Option<i64>,
-            }
-
-            let stored: Option<ReceiptRow> = query_as(
-                "SELECT payload_digest, outcome, generation
-                   FROM work_publication_command_receipts
-                  WHERE actor_id = $1 AND work_id = $2 AND operation = 'set_private' AND command_key = $3",
-            )
-            .bind(actor.as_uuid())
-            .bind(work_id.as_uuid())
-            .bind(&command_key)
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-            if let Some(receipt) = stored {
-                if receipt.payload_digest == digest.as_slice() {
-                    let outcome = parse_outcome(&receipt.outcome);
-                    let receipt_gen = IntentGeneration::new(
-                        receipt.generation.unwrap_or(expected_generation.get()),
-                    )
-                    .unwrap_or(expected_generation);
-                    tx.commit().await.map_err(classify)?;
-                    return Ok(SetPrivateOutcome::Accepted(AuthorPrivateOutcome {
-                        outcome,
-                        generation: receipt_gen,
-                        replayed: true,
-                    }));
-                } else {
-                    tx.rollback().await.map_err(classify)?;
-                    return Ok(SetPrivateOutcome::KeyReused);
-                }
-            }
 
             // 2. Lock graph: publications FOR UPDATE -> work_publications FOR UPDATE -> works FOR SHARE -> principals FOR UPDATE
             let _: Option<Uuid> =
@@ -1035,6 +993,44 @@ impl AuthorPublicationStore for PgStore {
             let standing = locked_standing(&mut tx, actor).await?;
             if standing != Standing::Active {
                 return Err(StoreError::PrincipalSuspended);
+            }
+
+            // Receipt after the standing fence: the actor's principal row FOR UPDATE serializes
+            // every command of this actor, so a concurrent retry with the same key waits for the
+            // first and replays its committed answer instead of racing it (as endorsement does).
+            #[derive(sqlx::FromRow)]
+            struct ReceiptRow {
+                payload_digest: Vec<u8>,
+                outcome: String,
+                generation: Option<i64>,
+            }
+
+            let stored: Option<ReceiptRow> = query_as(
+                "SELECT payload_digest, outcome, generation
+                   FROM work_publication_command_receipts
+                  WHERE actor_id = $1 AND work_id = $2 AND operation = 'set_private' AND command_key = $3",
+            )
+            .bind(actor.as_uuid())
+            .bind(work_id.as_uuid())
+            .bind(&command_key)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+
+            if let Some(receipt) = stored {
+                if receipt.payload_digest == digest.as_slice() {
+                    let outcome = parse_outcome(&receipt.outcome)?;
+                    let receipt_gen = receipt_generation(receipt.generation)?;
+                    tx.commit().await.map_err(classify)?;
+                    return Ok(SetPrivateOutcome::Accepted(AuthorPrivateOutcome {
+                        outcome,
+                        generation: receipt_gen,
+                        replayed: true,
+                    }));
+                } else {
+                    tx.rollback().await.map_err(classify)?;
+                    return Ok(SetPrivateOutcome::KeyReused);
+                }
             }
 
             // 3. Load paired state
@@ -1126,7 +1122,7 @@ impl AuthorPublicationStore for PgStore {
             .bind(work_id.as_uuid())
             .bind(&command_key)
             .bind(digest.as_slice())
-            .bind(outcome_as_str(transition.outcome))
+            .bind(transition.outcome.as_str())
             .bind(next_pub.generation.get())
             .execute(&mut *tx)
             .await
