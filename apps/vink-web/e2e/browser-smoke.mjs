@@ -426,7 +426,7 @@ class Page {
   }
 
   /** A key press as the browser receives it from the keyboard. */
-  async key(name, modifiers = 0) {
+  async key(name, modifiers = 0, { settle = true } = {}) {
     const { code, keyCode, text, key = name } = KEYS[name];
     // A key that types text (Enter) needs `keyDown` with that text to activate links/buttons.
     for (const type of [text ? 'keyDown' : 'rawKeyDown', 'keyUp']) {
@@ -434,7 +434,8 @@ class Page {
     }
     // Give native selectionchange and CodeMirror's focus observer a rendering opportunity
     // before the next synthetic input, as between separate human key/pointer actions.
-    await this.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    // `settle: false` is for a check of what happens inside those frames.
+    if (settle) await this.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
   }
 
   /** Native document/line movement differs on macOS; don't edit a selection through the DOM. */
@@ -442,8 +443,8 @@ class Page {
     return this.key(this.mac ? 'ArrowLeft' : 'Home', (this.mac ? META : 0) | modifiers);
   }
 
-  lineEnd() {
-    return this.key(this.mac ? 'ArrowRight' : 'End', this.mac ? META : 0);
+  lineEnd(options) {
+    return this.key(this.mac ? 'ArrowRight' : 'End', this.mac ? META : 0, options);
   }
 
   /** Focuses CodeMirror, uses the platform document-end shortcut and inserts committed text. */
@@ -2984,7 +2985,36 @@ async function mainPhase(page) {
   check((await page.eval(selected)) === LAST_LINE && (await page.body()) === written, 'Escape keeps the text and selection');
   check(await page.eval(view), 'dialog kept the same EditorView');
 
-  await page.lineEnd();
+  // Returning focus restores the saved selection over the next two frames. A key the editor's
+  // keymap handles inside them must win: on Linux CI, End arrived ~20 ms after the dialog closed,
+  // the late restore re-selected the line and the typed text replaced it. Hold animation frames
+  // from that focus until the key is in, so the key lands inside the restore on every platform.
+  await page.click('#navigation-primary a[href="/"]');
+  await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog again from the Khám phá rail link');
+  await page.eval(`(() => {
+    const raf = window.requestAnimationFrame.bind(window);
+    window.__vinkFocused = new Promise((resolve) => {
+      const hold = (event) => {
+        if (!event.target.matches?.('[data-testid=editor-body] .cm-content')) return;
+        window.removeEventListener('focus', hold, true);
+        const held = [];
+        window.requestAnimationFrame = (callback) => { held.push(callback); return 0; };
+        window.__vinkReleaseFrames = () => {
+          window.requestAnimationFrame = raf;
+          held.forEach((callback) => raf(callback));
+          return held.length;
+        };
+        resolve();
+      };
+      // Capture runs before CodeMirror's own focus handler schedules its restore.
+      window.addEventListener('focus', hold, true);
+    });
+  })()`);
+  await page.key('Escape', 0, { settle: false });
+  await page.eval(`window.__vinkFocused`);
+  await page.lineEnd({ settle: false });
+  check((await page.eval(`window.__vinkReleaseFrames()`)) > 0, 'line end reached the editor while frames from the returning focus were held');
+  await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))))`);
   await page.send('Input.insertText', { text: ' Thêm' });
   check((await page.body()) === `${written} Thêm`, 'typed after the dialog');
   await page.key('z', page.mod);

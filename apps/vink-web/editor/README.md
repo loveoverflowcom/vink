@@ -35,6 +35,11 @@ sau mobile resize, EditorView/text/undo và không phát draft writes.
 Giữ vùng chọn qua frame đầu sau focus rồi khôi phục ở frame kế tiếp, vì Chrome có thể
 gửi sự kiện đổi caret của hộp thoại sau frame đầu;
 keydown, mousedown, document edit, lần focus mới hoặc destroy hủy callback cũ.
+Keydown/mousedown là `domEventObservers`, không phải handler: CodeMirror dừng ở handler
+đầu tiên nhận sự kiện, và keymap nhận End, mũi tên, Mod-a, undo… trước. Khi còn là handler,
+End bấm trong hai frame đó (CI Linux, ~20 ms sau khi hộp thoại rời trang đóng) bị lần khôi
+phục chọn lại cả dòng, rồi chữ gõ tiếp thay mất dòng ấy. Smoke giữ animation frame từ lúc
+focus trở lại tới khi phím vào editor, nên kiểm được cửa sổ này trên mọi nền tảng.
 Chọn vị trí bằng chuột tiếp tục dùng hành vi CodeMirror hiện có.
 
 `cargo xtask build` (và `dev`, `verify web`) chạy `npm ci --ignore-scripts` khi
