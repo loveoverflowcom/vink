@@ -190,6 +190,9 @@ Bốn trường hợp phải tách (PUB-05, đã chốt):
   không xóa hàng loạt lời bình.
 - Xóa, ẩn hay gỡ bài **không** xóa hay sửa bình luận của ai.
 - A không phải audience thứ ba: đó là ngữ nghĩa của trạng thái “tác giả đã xóa”.
+
+<!-- vdr: active O-03@r1 -->
+
 - Đề xuất (O-03/04/05/09): tombstone không nhận bình luận, phản hồi hay vote mới; người viết vẫn
   gỡ được bình luận của mình; kiểm duyệt vẫn quyết định được từng bình luận; xóa khi bài đang “Chỉ
   mình tôi” không để lại tombstone; tombstone không hiện tiêu đề, tên tác giả, thẻ hay hashtag.

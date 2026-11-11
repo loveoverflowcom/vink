@@ -11,6 +11,12 @@ code, hành vi đích đã được mô hình hóa và phần còn mở. Các ow
 [requirements](../../prd/requirements.md) giữ ID và acceptance, [decision log](decisions.md) giữ
 D-ID; file này không thay chúng.
 
+**Tra cứu sau #164.** [Kho quyết định TOML](../../decisions/README.md) sở hữu record của §2–4.
+Giữ các bảng bên dưới làm snapshot 10/11, gồm hiện trạng code ghi ở thời điểm đó. Tra mục
+hiện hành, lịch sử và đề xuất bằng `cargo xtask decision query`.
+
+<!-- vdr: historical USER-08@r1 -->
+
 ## 1. Cách đọc trạng thái
 
 | Nhãn | Nghĩa | Không có nghĩa |

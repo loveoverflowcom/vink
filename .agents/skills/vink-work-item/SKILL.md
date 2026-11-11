@@ -20,9 +20,11 @@ prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
 1. State one reviewable outcome, affected requirement IDs and acceptance. Retain a PR/chat/count
    constraint the user supplied. A prompt-only request belongs to
    [vink-prompt](../vink-prompt/SKILL.md), not implementation.
-2. Read current code/manifests and decision status. Determine what exists, what is proposed
-   and what prerequisite actually affects this slice. Extend the existing skeleton
-   (`apps/vink-web`, `services/vink-app`, `xtask`) rather than scaffolding a competing one.
+2. Read current code/manifests and decision status. Resolve decisions the task depends on through
+   the [registry](../../../decisions/README.md) for migrated IDs and the PRD/ADR for the rest.
+   Determine what exists, what is proposed and what prerequisite actually affects this slice.
+   Extend the existing skeleton (`apps/vink-web`, `services/vink-app`, `xtask`) rather than
+   scaffolding a competing one.
    A merged PR is not proof of runtime acceptance; an absent database is not a reason to stop
    independent pure-code work.
 3. Inspect Git status and pin the starting branch/SHA and requested base. Use the explicit

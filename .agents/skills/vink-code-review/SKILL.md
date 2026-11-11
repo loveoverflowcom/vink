@@ -15,7 +15,9 @@ not a reason to expand scope or impose every possible check.
 Identify BASE/HEAD and merge-base for a branch/PR, or the exact patch/local tree being reviewed.
 Inventory tracked, staged and relevant untracked files. Read the changed owners and callers
 beyond the diff. Inspect PR head content, not just a remembered base. For a proposed finding,
-check whether it was introduced by this change or is a clearly labeled pre-existing issue.
+check whether it was introduced by this change or is a clearly labeled pre-existing issue. Review migrated
+decision changes with the [TOML registry](../../../decisions/README.md) and its semantic diff.
+A fresh pin covers revision freshness. Review the actual rule and its consumers separately.
 
 Review-only work does not modify files, move/reset/stash the user's tree, post a GitHub review,
 approve, merge or deploy. Read-only focused checks may run when supported: `cargo xtask verify

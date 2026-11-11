@@ -10,7 +10,9 @@ Produce a design that answers a concrete product or engineering question. Begin 
 [decisions](../../../docs/architecture/decisions.md), and actual code located through the
 [development guide](../../../docs/development/README.md). Read
 [vink-how](../vink-how/SKILL.md) or [vink-why](../vink-why/SKILL.md) only when the mechanism or
-past rationale is unclear. Do not make every task run a fixed discovery ceremony.
+past rationale is unclear. Resolve affected migrated decisions from the
+[TOML registry](../../../decisions/README.md) before treating a choice as settled. Do not make
+every task run a fixed discovery ceremony.
 
 ## Frame the choice through usage
 

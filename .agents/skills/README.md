@@ -58,6 +58,15 @@ task actually touches:
    Go directly to `vink-work-item` or `vink-ui-fix` (skip `vink-shape`). If implementation changes
    runtime status or exposes doc/code drift, run `vink-specify` before finishing.
 
+## Resolve a decision
+
+For a task that depends on a decision, start with
+[the decision registry](../../decisions/README.md). Query the relevant domain or ID at the
+working checkout and use the PRD/ADR for detailed requirements and IDs outside the migrated
+DecisionDelta slice. Keep the revision and snapshot in a handoff. An unavailable lookup needs
+a sourced gap or an explicit historical citation. Route proposals for migrated IDs through
+[vink-specify](vink-specify/SKILL.md). A clear fix with settled rules goes straight to its owner.
+
 ## Shared conventions
 
 - Keep product/architecture proposals, owner product decisions (`PRODUCT_CONFIRMED` / `DEFERRED` /

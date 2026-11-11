@@ -1,7 +1,7 @@
 # Registry — quyết định sản phẩm 10/11/2026
 
 **Nguồn:** `PRODUCT-DECISIONS-20261110` · **Quyết định và lựa chọn:**
-[DecisionDelta](../architecture/product-decisions-20261110.md) · **Model:**
+[kho TOML](../../decisions/README.md) và [DecisionDelta lịch sử](../architecture/product-decisions-20261110.md) · **Model:**
 [`services/vink-app/behavior/target`](../../services/vink-app/behavior/target/README.md).
 
 Registry này nối **yêu cầu → model/invariant/scenario → gap implementation** và ghi bằng chứng đã

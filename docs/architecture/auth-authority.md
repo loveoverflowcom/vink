@@ -308,6 +308,8 @@ mặc định tắt; đăng xuất và xác minh phiên cũ không phụ thuộc
 
 ## 12. Đổi hướng 10/11/2026: username + mật khẩu là chính
 
+<!-- vdr: active USER-08@r2 -->
+
 **Quyết định (`PRODUCT_CONFIRMED`, USER-08 → ACC-03):** username + mật khẩu là đăng nhập chính; mã
 email có thể bổ sung sau, chưa ưu tiên; username đăng nhập khác bút danh công khai và không buộc
 trùng nhau. Lượt 10/11/2026 **không** viết runtime auth, không xóa code mã email, không bỏ

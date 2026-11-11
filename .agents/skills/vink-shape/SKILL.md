@@ -7,11 +7,12 @@ description: Định hình tính năng Vink, phát hiện khoảng trống nghi�
 
 Làm rõ nghiệp vụ trước khi đặc tả hoặc triển khai. Bắt đầu từ một tình huống sử dụng cụ thể:
 **Ai đang làm gì, với đối tượng nào, mong đợi kết quả gì, và điều gì xảy ra khi thao tác không thành công?**
-Sau đó đối chiếu code hiện hành, [requirements](../../../prd/requirements.md),
-[DecisionDelta 10/11/2026](../../../docs/architecture/product-decisions-20261110.md),
+Tra ID hoặc miền liên quan trong [kho TOML](../../../decisions/README.md). Đối chiếu kết quả
+với code hiện hành, [requirements](../../../prd/requirements.md),
 [decision log](../../../docs/architecture/decisions.md),
-[registry quyết định](../../../docs/development/product-decisions-registry.md) và
-[bản đồ miền Vink](references/domain-lenses.md).
+[registry triển khai và bằng chứng](../../../docs/development/product-decisions-registry.md) và
+[bản đồ miền Vink](references/domain-lenses.md). Chỉ dùng revision lịch sử để giải thích bối cảnh.
+Khi kết quả là `OPEN`, giữ câu hỏi và ghi rõ phần việc phụ thuộc vào lựa chọn đó.
 
 Không biến mọi tác vụ thành thủ tục hỏi đáp: một bản sửa lỗi giao diện rõ nghĩa, refactor kỹ thuật
 hoặc lát cắt đã có đủ quyết định đi thẳng tới [vink-work-item](../vink-work-item/SKILL.md) hoặc

@@ -1,5 +1,9 @@
 # Bản đồ tính năng và đường kiểm chứng Vink
 
+Với thay đổi liên quan đến quyết định ngày 10/11, tra ID và revision tại
+[kho quyết định TOML](../../decisions/README.md). Phạm vi và kiểm chứng của công cụ nằm trong
+[bàn giao #164](decision-registry-rollout.md).
+
 **Đối chiếu mã nguồn:** 31/10/2026, nền `20635b45c856990638c06eaab011b9940da852dc`; hàng font tự host
 thêm ngày 01/11/2026 cùng baseline Lavender; các hàng Bàn viết (CodeMirror, guard rời trang, xem
 trước, export) đối chiếu lại ngày 01/11/2026 trên nền `c9d1e74` cho [#6](https://github.com/loveoverflowcom/vink/issues/6).

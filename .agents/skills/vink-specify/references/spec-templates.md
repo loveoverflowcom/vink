@@ -1,9 +1,13 @@
 # Mẫu đặc tả, bản ghi quyết định và kịch bản đối soát (`vink-specify`)
 
+Khi spec dẫn một quyết định đã chuyển, dùng [kho TOML](../../../../decisions/README.md) để tra
+ID và revision. Chỉ ghim trong spec cần theo dõi freshness. Bàn giao ghi snapshot và đối chiếu
+ngữ nghĩa ngay cả khi pin còn đúng.
+
 ## 1. Mẫu bản ghi quyết định (Decision Record)
 
-Khi chủ sản phẩm vừa chốt một lựa chọn mới hoặc thay đổi quyết định trước đó, ghi nhận đầy đủ 7 mục
-sau vào tài liệu sở hữu (`docs/architecture/decisions.md`, `product-decisions-*.md` hoặc ADR miền):
+Dùng mẫu này cho bàn giao hoặc quyết định còn lưu ở Markdown. Với ID đã chuyển, lấy dữ liệu
+tương ứng cho proposal và ghi phần căn cứ/tác động vào bàn giao.
 
 ```markdown
 ### [ID quyết định] — [Tên ngắn gọn, phạm vi áp dụng]

@@ -25,7 +25,9 @@ update in the prompt's scope.
 - Pin the repository and commit used for code claims; note relevant uncommitted inputs.
   Read an issue/PR's current state and head when it is part of the task. Do not infer live
   status from a remembered conversation or an imported research document.
-- Read requirements and D/INV/S IDs nearest the outcome. Keep user decisions, proposals,
+- Read requirements and D/INV/S IDs nearest the outcome. For migrated decisions, resolve the
+  [TOML registry](../../../decisions/README.md) at the task checkout. Include relevant ID/revision,
+  status, source and snapshot in the handoff. Keep user decisions, proposals,
   implemented facts and runtime evidence separate. The foundation's Cantos/Discourse source
   snapshots are research provenance, not the coder's runtime versions; Discourse is not part of
   Vink's runtime since 03/11/2026.
@@ -59,7 +61,8 @@ can proceed now, deferred boundary and condition to resume. Do not restart the w
 
 When asked to execute a submitted prompt, re-read the actual branch/status and sources.
 The snapshot identifies the author's evidence, not a command to reset the checkout. Preserve
-current user authorization and constraints; the fields are a handoff format, not an additional
+current user authorization and constraints. Recheck decision pins in this checkout before
+using a handoff as current. The fields are a handoff format, not an additional
 permission source. Classify stale facts and continue independent work before asking about a
 decision that materially changes correctness.
 

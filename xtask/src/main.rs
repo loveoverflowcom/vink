@@ -5,6 +5,7 @@
 //! failure with a fix hint, never as a pass.
 
 mod checks;
+mod decision;
 mod discussion;
 mod doctor;
 mod env;
@@ -57,6 +58,7 @@ usage: cargo xtask <command>
                          integration tests default to 2 threads (RUST_TEST_THREADS overrides)
   verify web             SSR + hydration + desk interactions in headless Chrome
   verify all             quick, discussion, expressions, postgres and web in order
+  decision --help        inspect, compare and propose versioned decisions
   ui-tokens [--check]    regenerate UI token CSS/Rust/Kotlin from packages/ui-system/shared
                          (--check: write nothing, fail on missing or drifted output)
   ui-preview leptos|cmp|android|ios build|verify|run
@@ -77,6 +79,11 @@ fn main() -> ExitCode {
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let env = env::Env::load(&root());
     match args.as_slice() {
+        ["decision", commands @ ..] => finish(decision::run(
+            &root(),
+            commands,
+            &mut std::io::stdout().lock(),
+        )),
         ["doctor"] => doctor::run(&env),
         ["build"] => finish(build(&env, false)),
         ["build", "--release"] => finish(build(&env, true)),
@@ -527,7 +534,7 @@ fn quick(report: &mut Report) -> bool {
         }
     }
     report.step(
-        "repository checks (skills, links, boundaries, fonts, editor packages)",
+        "repository checks (decisions, skills, links, boundaries, fonts, editor packages)",
         || checks::run(&root),
     )
 }

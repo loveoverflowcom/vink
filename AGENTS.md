@@ -6,6 +6,13 @@ The user's current instructions take precedence over repository conventions.
 
 ## Repository reality and decisions
 
+For the 10/11 DecisionDelta entries (USER, scoped CHOICE, and O IDs), resolve the relevant
+decision through [the TOML registry](decisions/README.md) at the task checkout. Read the
+PRD and domain owner for detailed rules and acceptance. The original DecisionDelta tables
+preserve their historical context. Use `vink-specify` to write proposals for migrated IDs.
+The [rollout inventory](docs/development/decision-registry-rollout.md) identifies other owners
+and the remaining approval and migration work.
+
 The repository holds product/architecture proposals, agent skills and a modular Rust workspace
 ([layout and commands](docs/development/README.md)). Inspect actual files and the owning
 registries in `docs/development/` before claiming a capability; keep slice-by-slice detail in
@@ -101,7 +108,7 @@ Keep these **four status dimensions** separate in docs, reviews and handoffs:
 4. **Verification evidence:** exact command/lane, pinned SHA and boundary (`model`, `unit/kani`,
    `postgres`, `web`, `cmp`).
 
-[Vision](prd/vision.md) and [requirements](prd/requirements.md) own product intent and IDs.
+[Vision](prd/vision.md) and [requirements](prd/requirements.md) own the product spec and requirement IDs.
 [Tech stack](docs/architecture/tech-stack.md): Vink owns literary content and, since 03/11/2026,
 discussion in PostgreSQL; Discourse is a design reference only, never a runtime dependency, comment
 store, auth source or plugin target. The [decision log](docs/architecture/decisions.md) owns

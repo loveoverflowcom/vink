@@ -12,7 +12,7 @@ thành qua phản hồi có ích. Vòng lặp cần hỗ trợ: **viết → đ�
 Ưu tiên người viết cá nhân và người đọc chủ động, bắt đầu từ thơ, tản văn, truyện
 ngắn, nhật ký công khai và bài tập sáng tác. Từ 10/11/2026 Vink là mạng xã hội các bài viết
 ngắn/tản văn: không làm UI nhiều chương; tác giả tổ chức bài bằng bộ sưu tập cá nhân
-([quyết định](../../../../docs/architecture/product-decisions-20261110.md); chưa có UI nào).
+(`USER-09` trong [kho quyết định](../../../../decisions/README.md), bộ sưu tập chưa có UI).
 
 Vai trò: khách đọc, tác giả và quản trị viên; kiểm duyệt mặc định do trợ lý AI thực hiện (hướng
 đã chốt 10/11/2026, hiện chỉ có đặc tả). “Người duyệt chính sách” và “biên tập Tạp Chí” là vai trò

@@ -5,7 +5,8 @@
 **Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 quyết định nghiệp vụ
 ([DecisionDelta](../docs/architecture/product-decisions-20261110.md)). Yêu cầu mới có ID ở
 [§14](#14-quyết-định-sản-phẩm-10112026); các dòng cũ bị thay đổi được ghi chú tại chỗ, không đánh
-số lại và không xóa lịch sử. Mọi yêu cầu §14 hiện **chưa có implementation**.
+số lại và không xóa lịch sử. Mức triển khai từng phần và bằng chứng nằm ở [§14](#14-quyết-định-sản-phẩm-10112026) và
+[registry phát triển](../docs/development/product-decisions-registry.md).
 
 ## 1. Mục tiêu của MVP
 
@@ -105,7 +106,7 @@ Vink tự làm màn quản trị nhỏ cho bình luận (hàng đợi duyệt c�
 | --- | --- | --- | --- |
 | ACC-01 | Must — Pilot | Một định danh Vink ổn định và mapping có chứng cứ | Đổi email/bút danh không đổi tác giả của tác phẩm; account provisioning lỗi không làm tạo sai người; các session và database Cantos không được dùng chung |
 | ACC-02 | Must — Pilot | Quyền và trạng thái khóa nhất quán | Đăng nhập không tự cấp quyền biên tập/admin; thử logout/ban/revoke qua Vink và mọi API đang bật; các trường hợp chưa đồng bộ có cơ chế đóng quyền phù hợp |
-| ACC-03 | Must — Pilot (10/11/2026) | Đăng nhập chính bằng username + mật khẩu | Xem [§14.6](#146-tài-khoản-acc-03). Hiện trạng: chỉ có mã email một lần; **chưa có** username/mật khẩu |
+| ACC-03 | Must — Pilot (10/11/2026) | Đăng nhập chính bằng username + mật khẩu | Xem [§14.6](#146-tài-khoản-acc-03) và mức triển khai trong phần đầu §14 |
 | OPS-01 | Must — Pilot | Giao dịch publication/outbox và job có thể phục hồi | Rollback không để pointer và event lệch; worker chết thu hồi lease được; reprocess không làm đăng lại bài đã rút hoặc phát lại quyết định cũ |
 | OPS-02 | Must — Pilot | Backup/restore và export có phạm vi rõ | Có bản backup thử, phục hồi trên môi trường tách biệt và đối chiếu tác phẩm, revisions, publication, mapping và jobs; giữ rollback/recovery không làm mất quyền kiểm soát |
 | OPS-03 | Must — Beta | Quan sát độ trễ, chi phí và khả năng vận hành | Có dashboard/log đủ biết tuổi hàng đợi, job lỗi, provider cost và backlog; người phụ trách và ngân sách được xác định; chưa có benchmark thì không gắn nhãn “đạt SLA” |
@@ -241,7 +242,12 @@ PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của
 
 ## 14. Quyết định sản phẩm 10/11/2026
 
-Nguồn: `PRODUCT-DECISIONS-20261110`, [DecisionDelta](../docs/architecture/product-decisions-20261110.md).
+Các record của `PRODUCT-DECISIONS-20261110` đã nhập tra tại [kho TOML](../decisions/README.md).
+[DecisionDelta](../docs/architecture/product-decisions-20261110.md) lưu snapshot của lượt 10/11.
+
+<!-- vdr: active USER-02@r1 -->
+<!-- vdr: active USER-08@r2 -->
+
 Cột “Trạng thái” dùng nhãn của tài liệu đó: phần **luật** là `PRODUCT_CONFIRMED` trừ khi ghi khác;
 cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **Hiện trạng triển khai từng phần:** `#150`, `#151`, `#157` có lõi thuần + application planning cho publication, moderation evaluator/admin và tombstone lifecycle; `#158` có PostgreSQL + HTTP API v1 cho snapshot, `request-public`, `set-private` và đọc trạng thái của tác giả ([runtime](../docs/development/publication-runtime.md)); `#152` có backend native username/mật khẩu trong Identity + App ([ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)). Các phần còn lại (UI consumer, xóa/gỡ ở tầng SQL/HTTP/UI, worker/provider AI, bộ sưu tập, sửa bình luận, hashtag, xếp hạng, phản đối) chưa có runtime; model
 và gap từng action ở [registry](../docs/development/product-decisions-registry.md). Không dòng nào đổi nghĩa

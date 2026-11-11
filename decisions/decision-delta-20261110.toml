@@ -1,0 +1,836 @@
+version = 1
+source_commit = "0c5bb275c15342607e6701f14019c07e269c2a68"
+source_path = "docs/architecture/product-decisions-20261110.md"
+
+[[records]]
+id = "O-01"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "collections"
+title = "Một bài thuộc một hay nhiều bộ sưu tập?"
+resolution = "Một bài thuộc một hay nhiều bộ sưu tập?"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 77
+related_ids = ["COL-06"]
+
+[records.legacy.context]
+model_baseline = "Nhiều (membership là tập cặp bài–bộ sưu tập)"
+change_impact = "Chỉ-một cần ràng buộc unique và luật “chuyển” thay “thêm”"
+
+[[records]]
+id = "O-02"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "collections"
+title = "Thứ tự bài trong bộ sưu tập"
+resolution = "Thứ tự bài trong bộ sưu tập"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 78
+related_ids = ["COL-05"]
+
+[records.legacy.context]
+model_baseline = "Thứ tự do tác giả đặt; thêm mới vào cuối"
+change_impact = "Sắp tự động theo thời gian bỏ được cột vị trí nhưng mất quyền sắp xếp"
+
+[[records]]
+id = "O-03"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Quyền ghi trên tombstone (bình luận/phản hồi mới, “Hữu ích” mới)"
+resolution = "Quyền ghi trên tombstone (bình luận/phản hồi mới, “Hữu ích” mới)"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 79
+related_ids = [
+    "PUB-04",
+    "PUB-05",
+]
+
+[records.legacy.context]
+model_baseline = "**Không ghi mới**; người viết vẫn gỡ được bình luận của mình; kiểm duyệt vẫn quyết định được"
+change_impact = "Mở ghi cần luật riêng cho thông báo, tác giả đã xóa không còn bật/tắt được"
+
+[[records]]
+id = "O-04"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Bình luận đang chờ khi bài bị tác giả xóa có được duyệt rồi hiện trên tombstone?"
+resolution = "Bình luận đang chờ khi bài bị tác giả xóa có được duyệt rồi hiện trên tombstone?"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 80
+related_ids = [
+    "PUB-04",
+    "PUB-05",
+]
+
+[records.legacy.context]
+model_baseline = "Có: bình luận theo vòng đời riêng của nó"
+change_impact = "“Đóng băng” cần mốc thời gian xóa và một trạng thái mới cho bình luận"
+
+[[records]]
+id = "O-05"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Xóa bài khi đang “Chỉ mình tôi” (từng công khai) có để lại tombstone?"
+resolution = "Xóa bài khi đang “Chỉ mình tôi” (từng công khai) có để lại tombstone?"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 81
+related_ids = [
+    "PUB-04",
+    "PUB-05",
+]
+
+[records.legacy.context]
+model_baseline = "Không: xóa không được nới rộng thứ đang hiển thị"
+change_impact = "Có tombstone sẽ làm bình luận đọc lại được sau khi tác giả đã ẩn"
+
+[[records]]
+id = "O-06"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "“Hữu ích” khi bình luận được sửa"
+resolution = "“Hữu ích” khi bình luận được sửa"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 82
+related_ids = [
+    "COM-10",
+    "LVE-FR-04",
+]
+
+[records.legacy.context]
+model_baseline = "Vote ở lại với revision được vote (LVE-FR-04); tổng công khai chỉ đếm bản đang hiển thị"
+change_impact = "Giữ vote qua bản sửa cần chấp nhận “vote cho nội dung cũ là vote cho bản viết lại”"
+
+[[records]]
+id = "O-07"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discovery"
+title = "“Đánh giá cao” khi bài đăng revision mới ảnh hưởng xếp hạng"
+resolution = "“Đánh giá cao” khi bài đăng revision mới ảnh hưởng xếp hạng"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 83
+related_ids = [
+    "LVE-FR-01",
+    "RANK-02",
+]
+
+[records.legacy.context]
+model_baseline = "Giữ luật LVE hiện hành: count theo revision công khai hiện tại, nên bản mới bắt đầu lại"
+change_impact = "Mang count qua bản sửa nhỏ cần định nghĩa “sửa nhỏ” và chống lạm dụng"
+
+[[records]]
+id = "O-08"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Retention/purge vật lý sau khi tác giả xóa"
+resolution = "Retention/purge vật lý sau khi tác giả xóa"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 84
+related_ids = [
+    "PUB-03",
+    "PUB-04",
+]
+
+[records.legacy.context]
+model_baseline = "Không purge tự động; nội dung không còn đường đọc công khai"
+change_impact = "Purge cần thời hạn, phạm vi audit và xử lý backup"
+
+[[records]]
+id = "O-09"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Tombstone hiển thị gì ngoài câu thông báo"
+resolution = "Tombstone hiển thị gì ngoài câu thông báo"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 85
+related_ids = ["PUB-04"]
+
+[records.legacy.context]
+model_baseline = "Không tiêu đề, nội dung, thẻ, hashtag, bộ sưu tập; không tên tác giả"
+change_impact = "Hiện tên tác giả/tiêu đề là đường đọc lại một phần nội dung"
+
+[[records]]
+id = "O-10"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Khôi phục bài đã xóa / bài bị kiểm duyệt gỡ"
+resolution = "Khôi phục bài đã xóa / bài bị kiểm duyệt gỡ"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 86
+related_ids = [
+    "PUB-03",
+    "PUB-04",
+]
+
+[records.legacy.context]
+model_baseline = "Không có trong model (terminal)"
+change_impact = "Cần transition có review và luật cho bình luận/vote cũ"
+
+[[records]]
+id = "O-11"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "account"
+title = "Khôi phục tài khoản khi dùng username + password"
+resolution = "Khôi phục tài khoản khi dùng username + password"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 87
+related_ids = ["ACC-03"]
+
+[records.legacy.context]
+model_baseline = "Email đã xác minh là kênh khôi phục **tùy chọn** (tái dùng hạ tầng mã email)"
+change_impact = "Không có kênh khôi phục: quên mật khẩu là mất tài khoản"
+
+[[records]]
+id = "O-12"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "account"
+title = "Quy tắc username và mật khẩu"
+resolution = "Quy tắc username và mật khẩu"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 88
+related_ids = ["ACC-03"]
+
+[records.legacy.context]
+model_baseline = "Xem ACC-03 (ASCII thường, 3–30 ký tự, duy nhất không phân biệt hoa thường; mật khẩu ≥ 10 ký tự, Argon2id)"
+change_impact = "Username Unicode cần luật chống giả mạo ký tự"
+
+[[records]]
+id = "O-13"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "hashtags"
+title = "Giới hạn hashtag mỗi bài"
+resolution = "Giới hạn hashtag mỗi bài"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 89
+related_ids = ["HTG-06"]
+
+[records.legacy.context]
+model_baseline = "10 hashtag khác nhau đầu tiên được index; phần còn lại là chữ thường"
+change_impact = "Từ chối khi gửi thay vì bỏ qua cần lỗi và copy riêng"
+
+[[records]]
+id = "O-14"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discovery"
+title = "Tham số `H`, cửa sổ, timestamp độ mới"
+resolution = "Tham số `H`, cửa sổ, timestamp độ mới"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 90
+related_ids = [
+    "RANK-01",
+    "RANK-04",
+]
+
+[records.legacy.context]
+model_baseline = "`H` có version và bounds; độ mới = thời điểm công khai lần đầu của bài"
+change_impact = "Dùng thời điểm revision hiện tại sẽ cho phép sửa để “bump”"
+
+[[records]]
+id = "O-15"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "moderation"
+title = "Ai được phản đối quyết định của admin"
+resolution = "Ai được phản đối quyết định của admin"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 91
+related_ids = ["MOD-10"]
+
+[records.legacy.context]
+model_baseline = "Không ai trong giai đoạn này: quyết định admin là cuối"
+change_impact = "Cần cấp xét lại thứ hai và người thực hiện"
+
+[[records]]
+id = "O-16"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "Người viết rút bản sửa đang chờ"
+resolution = "Người viết rút bản sửa đang chờ"
+
+[records.legacy]
+status = "OPEN"
+historical = false
+source_line = 92
+related_ids = ["COM-10"]
+
+[records.legacy.context]
+model_baseline = "Chưa có lệnh riêng; sửa lần nữa thay candidate"
+change_impact = "Cần lệnh “hủy bản sửa” và trạng thái tương ứng"
+
+[[records]]
+id = "PRODUCT-DECISIONS-20261110-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "Bản sửa bình luận đang chờ duyệt"
+resolution = "**A** — giữ bản công khai đã duyệt; bản sửa là candidate riêng. “Đã sửa” gắn bản đang hiển thị"
+rationale = "A giữ mạch thảo luận nhưng người viết thấy chữ cũ lâu hơn nếu evaluator chậm; bản cũ có thể bị admin gỡ trong lúc chờ (model có nhánh này: không còn gì công khai cho tới khi candidate được duyệt)"
+
+[records.legacy]
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 62
+related_ids = ["COM-10"]
+
+[records.legacy.context]
+alternative = "B — tạm ẩn nội dung trong lúc duyệt sửa"
+review_when = "Policy yêu cầu rút bản cũ ngay khi người viết sửa; hoặc đo thấy thời gian chờ làm người đọc trả lời nhầm bản cũ"
+
+[[records]]
+id = "PRODUCT-DECISIONS-20261110-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discovery"
+title = "Điểm đề xuất"
+resolution = "**A** — `recommend.v1`: `score = H × ⌊log2(1 + votes)⌋ − tuổi`; thứ tự tương đương khóa `first_published_at + H × ⌊log2(1 + votes)⌋`"
+rationale = "A: một tham số `H`, thứ tự không phụ thuộc đồng hồ (cursor không trôi theo thời gian), không có “vách” cửa sổ; đổi lại bậc thang theo lũy thừa 2. B dễ giải thích theo phần trăm nhưng cần hai trọng số + cửa sổ + trần vote, và thứ tự đổi khi bài rơi khỏi cửa sổ"
+
+[records.legacy]
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 63
+related_ids = [
+    "RANK-01",
+    "RANK-04",
+]
+
+[records.legacy.context]
+alternative = "B — tổng vote và độ mới đã chuẩn hóa trong một cửa sổ"
+review_when = "Có dữ liệu thật để tuning; chủ sản phẩm muốn bài cũ nhiều vote không bao giờ vượt bài mới"
+
+[[records]]
+id = "PRODUCT-DECISIONS-20261110-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discovery"
+title = "Phân trang Top 100"
+resolution = "**A** — snapshot hữu hạn ≤ 100 ứng viên chụp ở trang đầu, mang trong cursor; mỗi lần đọc kiểm lại quyền hiện hành; hết hạn → tín hiệu làm mới"
+rationale = "A không lặp/thiếu trong snapshot dù vote đổi, không cần bảng snapshot hay Redis (100 ID ≈ 2 KB); đổi lại cursor lớn và bài mới đủ điều kiện chỉ thấy sau khi làm mới. B buộc bắt đầu lại gần như mọi lần vì vote đổi liên tục"
+
+[records.legacy]
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 64
+related_ids = ["TOP-04"]
+
+[records.legacy.context]
+alternative = "B — ranking version đổi thì cursor hết hiệu lực"
+review_when = "Cursor vượt giới hạn URL/HTTP đã đo; cần Top theo nhiều bộ lọc với snapshot dùng chung"
+
+[[records]]
+id = "PRODUCT-DECISIONS-20261110-CHOICE-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "hashtags"
+title = "Nhận diện hashtag"
+resolution = "**A** — trích từ nội dung bản công khai theo grammar rõ; index là projection dẫn xuất theo revision"
+rationale = "A: một nguồn sự thật (chữ của revision bất biến), được kiểm duyệt cùng nội dung, không thêm store riêng cần đồng bộ, không tạo hệ tag thứ hai cạnh catalog. B sạch hơn cho UI nhưng cần version/kiểm duyệt riêng cho chữ tự do và dễ lẫn với thẻ curated"
+
+[records.legacy]
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 65
+related_ids = [
+    "HTG-01",
+    "HTG-04",
+    "HTG-05",
+]
+
+[records.legacy.context]
+alternative = "B — danh sách hashtag có cấu trúc gắn với bài"
+review_when = "Editor cần chip hashtag có cấu trúc; hoặc hashtag phải đổi được mà không tạo revision"
+
+[[records]]
+id = "USER-01"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "audience-age"
+title = "Chưa xử lý nhóm tuổi"
+resolution = "`DEFERRED`. Không code/thiết kế age gate, ngày sinh, parental consent. Hoãn **không** phải quyết định mở cho mọi độ tuổi"
+
+[records.legacy]
+status = "DEFERRED"
+historical = false
+source_line = 34
+related_ids = ["D-11"]
+
+[records.legacy.context]
+canonical_references = "D-11; vision §2, §12"
+previous_rule = "“Nhóm người trưởng thành được mời” là phương án giảm phạm vi (đề xuất)"
+
+[[records]]
+id = "USER-02"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Hai mức riêng tư"
+resolution = "Đúng hai audience: **Chỉ mình tôi** / **Công khai**. Audience tách khỏi trạng thái kiểm duyệt; công khai không bỏ kiểm duyệt; Approved không tự công khai bài chỉ lưu riêng"
+work_audiences = [
+    "private",
+    "public",
+]
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 35
+related_ids = [
+    "AUD-01",
+    "AUD-02",
+    "D-06",
+    "PUB-01",
+]
+
+[records.legacy.context]
+canonical_references = "D-06; AUD-01, AUD-02; PUB-01"
+previous_rule = "“Nháp riêng + public publication”, unlisted/nhóm kín “để sau”"
+
+[[records]]
+id = "USER-03"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "moderation"
+title = "Kiểm duyệt bài bằng trợ lý AI, hiện dùng mock"
+resolution = "AI **có thể tự quyết định duyệt** theo policy. Lượt này chỉ đặc tả contract + mock scripted; không provider thật"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 36
+related_ids = [
+    "D-07",
+    "MOD-02",
+    "MOD-05",
+    "MOD-07",
+]
+
+[records.legacy.context]
+canonical_references = "D-07; MOD-07; MOD-02, MOD-05"
+previous_rule = "Pilot: AI chỉ tư vấn, người duyệt quyết định"
+
+[[records]]
+id = "USER-04"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "Bình luận cũng do AI kiểm duyệt"
+resolution = "Gốc và phản hồi đi qua evaluator: gửi → chờ đánh giá → kết quả hợp lệ → áp quyết định. Bỏ yêu cầu “chỉ người đáng tin mới được AI duyệt” khỏi phần đã chốt"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 37
+related_ids = [
+    "COM-02",
+    "COM-09",
+    "D-08",
+]
+
+[records.legacy.context]
+canonical_references = "D-08; COM-02, COM-09"
+previous_rule = "Tiền kiểm bởi người có grant; ứng viên đăng-trước chỉ cho “người đáng tin”"
+
+[[records]]
+id = "USER-05"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "moderation"
+title = "AI là luồng mặc định, không tự đặt SLA"
+resolution = "Không mặc định có người trực. Timeout/lỗi/output hỏng/không đủ căn cứ: **không công khai**, giữ retry được hoặc “cần admin”. Không cam kết 24/48 giờ"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 38
+related_ids = [
+    "D-07",
+    "MOD-03",
+    "MOD-08",
+]
+
+[records.legacy.context]
+canonical_references = "D-07; MOD-03, MOD-08"
+previous_rule = "“Human review được vận hành”, “khung xử lý được thông báo”"
+
+[[records]]
+id = "USER-06"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "moderation"
+title = "Phản đối AI chuyển về admin, chưa gửi thật"
+resolution = "Đích xử lý cuối là chủ sản phẩm (admin). Lượt này chỉ đặc tả case + dialog; không gửi mail, không inbox. Phân biệt: mở dialog / tạo case / gửi / admin nhận / admin xử lý"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 39
+related_ids = [
+    "D-19",
+    "MOD-04",
+    "MOD-10",
+]
+
+[records.legacy.context]
+canonical_references = "D-19; MOD-04, MOD-10"
+previous_rule = "Appeal tới moderator, có màn vận hành"
+
+[[records]]
+id = "USER-07"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "publication"
+title = "Tác giả xóa bài: trang thay thế + bình luận qua link cũ"
+resolution = "Tách A (tác giả xóa bài từng công khai: tombstone + bình luận hợp lệ), B (chuyển riêng tư), C (kiểm duyệt gỡ), D (chưa từng công khai). Ngoại lệ chỉ cho A"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 40
+related_ids = [
+    "D-12",
+    "PUB-03",
+    "PUB-04",
+    "PUB-05",
+]
+
+[records.legacy.context]
+canonical_references = "D-12; PUB-03, PUB-04, PUB-05"
+previous_rule = "Rút bài chặn đọc/ghi cả thảo luận cùng lúc"
+
+[[records]]
+id = "USER-08"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "Phương thức đăng nhập được đề xuất trước 10/11/2026"
+resolution = "Đề xuất A: mã email một lần (Provisional)"
+
+[records.legacy]
+status = "PROVISIONAL"
+historical = true
+source_line = 41
+related_ids = [
+    "ACC-03",
+    "D-05",
+]
+
+[records.legacy.context]
+
+[[records]]
+id = "USER-08"
+revision = 2
+
+[records.content]
+kind = "product"
+domain = "account"
+title = "Username + mật khẩu là chính"
+resolution = "Username + password là đăng nhập chính; mã email có thể bổ sung sau. Username ≠ bút danh"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 41
+related_ids = [
+    "ACC-03",
+    "D-05",
+]
+
+[records.legacy.context]
+canonical_references = "D-05; ACC-03"
+previous_rule = "Đề xuất A: mã email một lần (Provisional)"
+
+[[records]]
+id = "USER-09"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "collections"
+title = "Bài ngắn và bộ sưu tập cá nhân"
+resolution = "Mạng xã hội bài ngắn/tản văn; **không** nhiều chương. Bộ sưu tập cá nhân (hai audience), hiển thị = AND ba điều kiện"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 42
+related_ids = [
+    "COL-01",
+    "COL-02",
+    "COL-03",
+    "COL-04",
+    "COL-05",
+    "COL-06",
+    "D-10",
+    "D-16",
+    "WR-04",
+]
+
+[records.legacy.context]
+canonical_references = "D-10, D-16; WR-04; COL-01..06"
+previous_rule = "Một phần trước, nhiều chương cơ bản ở beta"
+
+[[records]]
+id = "USER-10"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "curation"
+title = "Chưa có Tạp Chí"
+resolution = "`DEFERRED`, giữ lịch sử; không còn là gate của mạng xã hội bài ngắn"
+
+[records.legacy]
+status = "DEFERRED"
+historical = false
+source_line = 43
+related_ids = [
+    "D-09",
+    "ED-02",
+]
+
+[records.legacy.context]
+canonical_references = "D-09; ED-02; vision §3"
+previous_rule = "Tạp Chí là một trong ba không gian, có acceptance pilot"
+
+[[records]]
+id = "USER-11"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "hashtags"
+title = "Hashtag để lọc"
+resolution = "Hashtag do tác giả dùng, để click/lọc/tìm; tách khỏi catalog curated; không index hashtag riêng tư"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 44
+related_ids = [
+    "D-15",
+    "D-17",
+    "HTG-01",
+    "HTG-02",
+    "HTG-03",
+    "HTG-04",
+    "HTG-05",
+    "HTG-06",
+]
+
+[records.legacy.context]
+canonical_references = "D-15, D-17; HTG-01..06"
+previous_rule = "Chỉ có catalog curated (dạng bài ≤ 1, chủ đề ≤ 3)"
+
+[[records]]
+id = "USER-12"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discovery"
+title = "Đề xuất = đánh giá cao + gần đây"
+resolution = "Một chính sách kết hợp vote hợp lệ và độ mới. Công thức/trọng số **chưa chốt**"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 45
+related_ids = [
+    "D-14",
+    "D-18",
+    "RANK-01",
+    "RANK-02",
+    "RANK-03",
+    "RANK-04",
+]
+
+[records.legacy.context]
+canonical_references = "D-14, D-18; RANK-01..04"
+previous_rule = "Ranking OPEN; “hệ recommendation riêng” là Later"
+
+[[records]]
+id = "USER-13"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discovery"
+title = "Top 100 theo đánh giá cao"
+resolution = "Chế độ riêng: lọc → sắp theo vote giảm dần → tối đa 100 → phân trang; quyền hiện hành thắng snapshot"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 46
+related_ids = [
+    "D-18",
+    "TOP-01",
+    "TOP-02",
+    "TOP-03",
+    "TOP-04",
+]
+
+[records.legacy.context]
+canonical_references = "D-18; TOP-01..04"
+previous_rule = "Không có"
+
+[[records]]
+id = "USER-14"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "moderation"
+title = "AI tự duyệt, admin cao hơn"
+resolution = "AI là actor dịch vụ có capability giới hạn; admin override trên phiên bản đang xét thắng callback AI muộn; admin không vượt privacy/audit"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 47
+related_ids = [
+    "D-19",
+    "INV-03",
+    "MOD-09",
+]
+
+[records.legacy.context]
+canonical_references = "D-19; MOD-09; INV-03"
+previous_rule = "Human override thắng callback"
+
+[[records]]
+id = "USER-15"
+revision = 1
+
+[records.content]
+kind = "product"
+domain = "discussion"
+title = "Sửa bình luận công khai, có dấu đã sửa"
+resolution = "Người viết sửa bình luận của mình; bản sửa có revision, đi qua kiểm duyệt; công khai có dấu “Đã sửa”; lưu không đổi nội dung không tạo dấu"
+
+[records.legacy]
+status = "PRODUCT_CONFIRMED"
+historical = false
+source_line = 48
+related_ids = [
+    "COM-10",
+    "D-08",
+    "LVE-FR-04",
+]
+
+[records.legacy.context]
+canonical_references = "D-08; COM-10; LVE-FR-04"
+previous_rule = "Chặn sửa bình luận trong pilot"
