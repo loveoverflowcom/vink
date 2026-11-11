@@ -689,5 +689,12 @@ fn restore_rejects_inconsistent_moderation_facts_and_version_exhaustion_refuses_
     mod_approved_facts.revisions[0].version = DecisionVersion::new(2).unwrap();
     mod_approved_facts.revisions[0].provenance = Some(DecisionProvenance::AiApproved);
     mod_approved_facts.jobs[0].state = JobState::Applied;
-    assert!(WorkModeration::restore(&pub_approved, mod_approved_facts).is_ok());
+    assert!(WorkModeration::restore(&pub_approved, mod_approved_facts.clone()).is_ok());
+
+    mod_approved_facts.revisions[0].provenance = Some(DecisionProvenance::LegacyBootstrap);
+    let restored = WorkModeration::restore(&pub_approved, mod_approved_facts).unwrap();
+    assert_eq!(
+        restored.facts().revisions[0].decision_by(),
+        Some(crate::domain::moderation::DecisionBy::Legacy)
+    );
 }

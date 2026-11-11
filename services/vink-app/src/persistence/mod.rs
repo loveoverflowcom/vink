@@ -12,6 +12,7 @@ pub mod outbox;
 pub mod post_review;
 mod postgres;
 mod principal;
+mod publication;
 mod taxonomy;
 
 use sqlx::migrate::Migrator;

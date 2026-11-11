@@ -7,6 +7,7 @@ use crate::application::catalog::{CatalogQueryInput, CatalogReadError};
 use crate::application::discovery::{DiscoveryError, DiscoveryInput};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
 use crate::application::endorsement::{EndorsementError, EndorsementInput};
+use crate::application::publication::AuthorPublicationError;
 use crate::application::taxonomy::{TagError, TagInput, TagRejection};
 use crate::application::{DraftError, InvalidInput, ReadError};
 use crate::domain::endorsement::EndorsementState;
@@ -95,6 +96,17 @@ pub enum ApiError {
         tag_id: TagId,
     },
     TooManyThemes,
+    PublicationConflict {
+        current_generation: i64,
+    },
+    RevisionRejected,
+    UnknownRevision,
+    WorkUnavailable,
+    PublicationKeyReused,
+    SnapshotConflict {
+        current_draft_version: Option<i64>,
+        current_metadata_version: Option<i64>,
+    },
     DependencyUnavailable,
     Internal,
 }
@@ -113,13 +125,20 @@ impl ApiError {
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
             | Self::DiscussionConflict { .. }
+            | Self::PublicationConflict { .. }
+            | Self::RevisionRejected
+            | Self::WorkUnavailable
+            | Self::SnapshotConflict { .. }
             | Self::CommentsClosed
             | Self::TargetUnavailable
             | Self::CommentRemoved
             | Self::ModerationConflict { .. }
             | Self::EndorsementConflict { .. }
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
-            Self::KeyReused | Self::EndorsementKeyReused => StatusCode::UNPROCESSABLE_ENTITY,
+            Self::KeyReused | Self::EndorsementKeyReused | Self::PublicationKeyReused => {
+                StatusCode::UNPROCESSABLE_ENTITY
+            }
+            Self::UnknownRevision => StatusCode::NOT_FOUND,
             Self::AuthorityNotConfigured => StatusCode::NOT_IMPLEMENTED,
             Self::RateLimited { .. } => StatusCode::TOO_MANY_REQUESTS,
             Self::CodeRejected => StatusCode::UNPROCESSABLE_ENTITY,
@@ -331,6 +350,57 @@ impl ApiError {
                 "a work has at most three distinct themes; nothing was written".to_string(),
                 None,
                 Some("themes"),
+            ),
+            Self::PublicationConflict { current_generation } => (
+                "version_conflict",
+                "audience intent generation changed; nothing was written".to_string(),
+                Some(*current_generation),
+                Some("expected_generation"),
+            ),
+            Self::RevisionRejected => (
+                "revision_rejected",
+                "the requested revision was rejected by moderation; nothing was written".to_string(),
+                None,
+                Some("revision_id"),
+            ),
+            Self::UnknownRevision => (
+                "unknown_revision",
+                "the revision was not found on this work".to_string(),
+                None,
+                Some("revision_id"),
+            ),
+            Self::WorkUnavailable => (
+                "work_unavailable",
+                "the work is not active; nothing was written".to_string(),
+                None,
+                None,
+            ),
+            Self::PublicationKeyReused => (
+                "idempotency_key_reused",
+                "command_key was already used for a different command or payload; nothing was written"
+                    .to_string(),
+                None,
+                Some("command_key"),
+            ),
+            // The field names the version that moved, so a client reconciles the right one.
+            Self::SnapshotConflict {
+                current_draft_version: None,
+                current_metadata_version: Some(current),
+            } => (
+                "version_conflict",
+                "draft metadata changed since expected_metadata_version; nothing was written"
+                    .to_string(),
+                Some(*current),
+                Some("expected_metadata_version"),
+            ),
+            Self::SnapshotConflict {
+                current_draft_version,
+                ..
+            } => (
+                "version_conflict",
+                "draft text changed since expected_draft_version; nothing was written".to_string(),
+                *current_draft_version,
+                Some("expected_draft_version"),
             ),
             Self::DependencyUnavailable => (
                 "dependency_unavailable",
@@ -563,6 +633,36 @@ impl From<DiscoveryError> for ApiError {
             DiscoveryError::Invalid(invalid) => invalid.into(),
             DiscoveryError::Unavailable => Self::DependencyUnavailable,
             DiscoveryError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<AuthorPublicationError> for ApiError {
+    fn from(error: AuthorPublicationError) -> Self {
+        match error {
+            AuthorPublicationError::Unauthenticated => Self::Unauthenticated,
+            AuthorPublicationError::Suspended => Self::PrincipalSuspended,
+            AuthorPublicationError::NotFound => Self::NotFound,
+            AuthorPublicationError::Stale { current_generation } => {
+                Self::PublicationConflict { current_generation }
+            }
+            AuthorPublicationError::RevisionRejected => Self::RevisionRejected,
+            AuthorPublicationError::UnknownRevision => Self::UnknownRevision,
+            AuthorPublicationError::WorkUnavailable => Self::WorkUnavailable,
+            AuthorPublicationError::DraftOrMetadataConflict {
+                current_draft_version,
+                current_metadata_version,
+            } => Self::SnapshotConflict {
+                current_draft_version,
+                current_metadata_version,
+            },
+            AuthorPublicationError::KeyReused => Self::PublicationKeyReused,
+            AuthorPublicationError::InvalidCommandKey(_) => Self::Validation {
+                field: "command_key",
+                message: "command key must be 8-128 characters of A-Z, a-z, 0-9, '-' or '_'".into(),
+            },
+            AuthorPublicationError::Unavailable => Self::DependencyUnavailable,
+            AuthorPublicationError::Internal => Self::Internal,
         }
     }
 }

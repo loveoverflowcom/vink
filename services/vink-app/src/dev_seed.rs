@@ -92,14 +92,52 @@ pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
     .bind(SAMPLE_AUTHOR)
     .execute(&mut *tx)
     .await?;
-    sqlx::query(
-        "INSERT INTO publications (work_id, revision_id, generation, published_at)
-         VALUES ($1, $2, 1, now()) ON CONFLICT (work_id) DO NOTHING",
-    )
-    .bind(SAMPLE_WORK)
-    .bind(SAMPLE_REVISION)
-    .execute(&mut *tx)
-    .await?;
+    // The paired publication state (#158) is seeded only once, with the work: a later run must
+    // never re-create a pointer the author has since withdrawn. A schema older than #158 gets the
+    // pointer alone, and that migration's backfill pairs it.
+    let paired: bool = sqlx::query_scalar("SELECT to_regclass('work_publications') IS NOT NULL")
+        .fetch_one(&mut *tx)
+        .await?;
+    let seed_pointer = if paired {
+        sqlx::query(
+            "INSERT INTO work_publications (work_id, audience, lifecycle, generation,
+                                            intent_revision_id, intent_generation,
+                                            pointer_revision_id, pointer_intent_generation,
+                                            policy_version, updated_at)
+             VALUES ($1, 'public', 'active', 2, $2, 2, $2, 2, 1, now())
+             ON CONFLICT (work_id) DO NOTHING",
+        )
+        .bind(SAMPLE_WORK)
+        .bind(SAMPLE_REVISION)
+        .execute(&mut *tx)
+        .await?
+        .rows_affected()
+            == 1
+    } else {
+        true
+    };
+    if seed_pointer {
+        if paired {
+            sqlx::query(
+                "INSERT INTO work_revision_moderation (work_id, revision_id, decision_version,
+                                                       moderation, provenance_kind)
+                 VALUES ($1, $2, 2, 'approved', 'legacy_bootstrap')
+                 ON CONFLICT (work_id, revision_id) DO NOTHING",
+            )
+            .bind(SAMPLE_WORK)
+            .bind(SAMPLE_REVISION)
+            .execute(&mut *tx)
+            .await?;
+        }
+        sqlx::query(
+            "INSERT INTO publications (work_id, revision_id, generation, published_at)
+             VALUES ($1, $2, 2, now()) ON CONFLICT (work_id) DO NOTHING",
+        )
+        .bind(SAMPLE_WORK)
+        .bind(SAMPLE_REVISION)
+        .execute(&mut *tx)
+        .await?;
+    }
     sqlx::query(
         "INSERT INTO working_drafts (work_id, version, title, document)
          VALUES ($1, 1, $2, $3) ON CONFLICT (work_id) DO NOTHING",

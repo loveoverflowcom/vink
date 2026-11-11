@@ -125,12 +125,16 @@ short posts with personal collections (no chapters, no Tạp Chí, age policy de
 (“Chỉ mình tôi”/“Công khai”), an AI evaluator as the default moderation flow for works and comments
 with the admin above it and appeals going to the admin, author deletion leaving a tombstone that
 keeps valid comments, comment editing with an “Đã sửa” mark, hashtags, a Recommended feed and a
-Top 100, and username + password as the primary sign-in. **None of it has runtime code**
+Top 100, and username + password as the primary sign-in. **Little of it has runtime code**
 (publication has a pure core and application planning seam in #150,
 [registry](docs/development/publication-core.md), and work-revision evaluator/admin decision
 authority with a deterministic `ScriptedEvaluator` has a pure core and application planning seam in
-#151, [registry](docs/development/moderation-core.md)): no runtime
-audience, publish/delete command, durable evaluator job or real AI provider, admin grant store,
+#151, [registry](docs/development/moderation-core.md)). #158 adds only the author publication API
+over PostgreSQL ([runtime](docs/development/publication-runtime.md)): snapshot capture, request
+public (writes an `open` evaluation ticket that nothing consumes, so new revisions stay pending),
+set private (clears the public pointer) and an owner state read; pre-#158 pointers are backfilled
+as `legacy_bootstrap` approvals. No UI consumer, delete command, evaluator worker
+or real AI provider, admin grant store,
 appeal, collection, hashtag, ranking, comment edit or password exists. Requirement IDs are in PRD §14
 (AUD, PUB-04/05, MOD-07..10, COM-09/10, COL, HTG, RANK, TOP, ACC-03); five target Quint models with
 generated vectors and negative controls live in `services/vink-app/behavior/target`; canonical M1

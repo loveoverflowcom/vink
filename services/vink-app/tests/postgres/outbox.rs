@@ -1441,7 +1441,17 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
         .unwrap();
     let comments = count(&pool, "SELECT count(*) FROM comments").await;
     let receipts = count(&pool, "SELECT count(*) FROM discussion_command_receipts").await;
-    // Newest first, after draining: no operator ticket exists in this shadow-only test.
+    // Newest first, after draining: no author publication command or operator ticket exists in
+    // this shadow-only test.
+    rollback(
+        pool.clone(),
+        include_str!(
+            "../../migrations-rollback/20261116000000_work_publication_persistence.down.sql"
+        )
+        .to_owned(),
+    )
+    .await
+    .unwrap();
     rollback(
         pool.clone(),
         include_str!("../../migrations-rollback/20261115000000_comment_post_review.down.sql")

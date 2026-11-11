@@ -9,14 +9,17 @@ use tower_http::set_header::SetResponseHeaderLayer;
 
 use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
+    AuthorPublicationState, AuthorRevisionView, CaptureSnapshotRequest, CapturedSnapshotResponse,
     CommentEndorsementRequest, CommentsSettings, CommentsSettingsRequest, DiscussionPage, Draft,
     DraftCard, DraftList, DraftTags, EndorsementQuery, EndorsementSummaryList,
     EndorsementWriteResponse, ModerationDecisionRequest, ModerationDecisionResponse,
-    ModerationQueueResponse, OwnCommentList, OwnCommentsParams, OwnEndorsementList, PageQuery,
-    PublicDiscussionPage, PublicReplyList, Publication, RemovedCommentResponse, ReplyList,
-    SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
-    SubmitCommentRequest, SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView,
-    TagSuggestionList, TagSuggestionQuery, WorkEndorsementRequest, WorkList,
+    ModerationQueueResponse, OpenTicketView, OwnCommentList, OwnCommentsParams, OwnEndorsementList,
+    PageQuery, PublicDiscussionPage, PublicPointerView, PublicReplyList, Publication,
+    PublishIntentView, RemovedCommentResponse, ReplyList, RequestPublicRequest,
+    RequestPublicResponse, SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse,
+    SavedDraftTagsResponse, SetPrivateRequest, SetPrivateResponse, SubmitCommentRequest,
+    SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView, TagSuggestionList,
+    TagSuggestionQuery, WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
@@ -27,7 +30,7 @@ use crate::application::endorsement::{SetCommentEndorsement, SetWorkEndorsement}
 use crate::application::taxonomy::SaveWorkTags;
 use crate::domain::discovery::MAX_FILTER_REFS;
 use crate::domain::discussion::settings::CommentsMode;
-use crate::domain::ids::{CommentId, WorkId};
+use crate::domain::ids::{CommentId, RevisionId, WorkId};
 
 pub fn routes(state: AppState) -> Router<AppState> {
     let drafts = Router::new()
@@ -120,9 +123,36 @@ pub fn routes(state: AppState) -> Router<AppState> {
             header::CACHE_CONTROL,
             HeaderValue::from_static(PUBLIC_ERROR_CACHE_CONTROL),
         ));
+    // Author publication commands and state read (PUB-RUNTIME-01, #158).
+    // Private/author responses must never enter a shared cache.
+    let publication_author = Router::new()
+        .route("/works/{work_id}/snapshots", post(capture_snapshot))
+        .route("/works/{work_id}/publication/submit", post(request_public))
+        .route(
+            "/works/{work_id}/publication/request-public",
+            post(request_public),
+        )
+        .route("/works/{work_id}/publication/private", post(set_private))
+        .route(
+            "/works/{work_id}/publication/set-private",
+            post(set_private),
+        )
+        .route(
+            "/works/{work_id}/publication/state",
+            get(get_author_publication_state),
+        )
+        .route(
+            "/works/{work_id}/publication/me",
+            get(get_author_publication_state),
+        )
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CACHE_CONTROL,
+            HeaderValue::from_static("no-store"),
+        ));
     Router::new()
         .merge(public)
         .merge(drafts)
+        .merge(publication_author)
         .merge(discussion)
         .merge(endorsement)
         .merge(catalog)
@@ -286,6 +316,194 @@ async fn get_draft(
 ) -> Result<Json<Draft>, ApiError> {
     let draft = state.vink.load_draft(actor, work_id(&raw)?).await?;
     Ok(Json(Draft::from(&draft)))
+}
+
+async fn capture_snapshot(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<CaptureSnapshotRequest>, JsonRejection>,
+) -> Result<(StatusCode, Json<CapturedSnapshotResponse>), ApiError> {
+    let work = work_id(&raw)?;
+    let request = json_body(body)?;
+    let capture = state
+        .vink
+        .capture_snapshot(
+            actor,
+            work,
+            &request.command_key,
+            request.expected_draft_version,
+            request.expected_metadata_version,
+        )
+        .await?;
+    let status = if capture.replayed {
+        StatusCode::OK
+    } else {
+        StatusCode::CREATED
+    };
+    Ok((
+        status,
+        Json(CapturedSnapshotResponse {
+            outcome: "saved",
+            revision_id: capture.revision_id.to_string(),
+            content_hash: capture.content_hash.to_string(),
+            metadata_snapshot_id: capture.metadata_snapshot_id.map(|id| id.to_string()),
+            draft_version: capture.draft_version.get(),
+            metadata_version: capture.metadata_version.get(),
+            replayed: capture.replayed,
+        }),
+    ))
+}
+
+async fn request_public(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<RequestPublicRequest>, JsonRejection>,
+) -> Result<Json<RequestPublicResponse>, ApiError> {
+    let work = work_id(&raw)?;
+    let request = json_body(body)?;
+    let rev = RevisionId::parse(&request.revision_id).ok_or(ApiError::Validation {
+        field: "revision_id",
+        message: "revision_id must be a valid UUID".into(),
+    })?;
+    let outcome = state
+        .vink
+        .request_public(
+            actor,
+            work,
+            &request.command_key,
+            rev,
+            request.expected_generation,
+        )
+        .await?;
+    Ok(Json(RequestPublicResponse {
+        outcome: outcome.outcome.as_str(),
+        revision_id: request.revision_id,
+        generation: outcome.generation.get(),
+        ticket_id: outcome.ticket.map(|t| t.id.to_string()),
+        replayed: outcome.replayed,
+    }))
+}
+
+async fn set_private(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<SetPrivateRequest>, JsonRejection>,
+) -> Result<Json<SetPrivateResponse>, ApiError> {
+    let work = work_id(&raw)?;
+    let request = json_body(body)?;
+    let outcome = state
+        .vink
+        .set_private(
+            actor,
+            work,
+            &request.command_key,
+            request.expected_generation,
+        )
+        .await?;
+    Ok(Json(SetPrivateResponse {
+        outcome: outcome.outcome.as_str(),
+        generation: outcome.generation.get(),
+        replayed: outcome.replayed,
+    }))
+}
+
+async fn get_author_publication_state(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+) -> Result<Json<AuthorPublicationState>, ApiError> {
+    let work = work_id(&raw)?;
+    let facts = state
+        .vink
+        .load_author_publication_state(actor, work)
+        .await?;
+
+    let pub_facts = facts.publication.facts();
+    let mod_facts = facts.moderation.facts();
+
+    let audience = match pub_facts.audience {
+        crate::domain::publication::Audience::Private => "private",
+        crate::domain::publication::Audience::Public => "public",
+    };
+
+    let lifecycle = match pub_facts.lifecycle {
+        crate::domain::publication::Lifecycle::Active => "active",
+        crate::domain::publication::Lifecycle::AuthorDeleted(_) => "author_deleted",
+        crate::domain::publication::Lifecycle::Removed => "removed",
+    };
+
+    let intent = pub_facts.intent.map(|i| PublishIntentView {
+        revision_id: i.revision.to_string(),
+        generation: i.generation.get(),
+    });
+
+    let pointer = pub_facts.pointer.map(|p| PublicPointerView {
+        revision_id: p.revision.to_string(),
+        intent_generation: p.intent_generation.get(),
+    });
+
+    let mut revisions = Vec::with_capacity(pub_facts.revisions.len());
+    for rev in &pub_facts.revisions {
+        let meta = facts
+            .revision_metadata
+            .iter()
+            .find(|(id, ..)| *id == rev.snapshot.revision);
+        let (title, meta_snapshot_id, created_at) = match meta {
+            Some((_, t, m, c)) => (t.clone(), m.map(|id| id.to_string()), *c),
+            None => (
+                rev.snapshot.content.title().as_str().to_string(),
+                None,
+                time::OffsetDateTime::now_utc(),
+            ),
+        };
+
+        let mod_decision = mod_facts
+            .revisions
+            .iter()
+            .find(|r| r.revision == rev.snapshot.revision);
+
+        let moderation = match rev.moderation {
+            crate::domain::publication::Moderation::Unsubmitted => "unsubmitted",
+            crate::domain::publication::Moderation::Pending => "pending",
+            crate::domain::publication::Moderation::Approved => "approved",
+            crate::domain::publication::Moderation::Rejected => "rejected",
+            crate::domain::publication::Moderation::NeedsAdmin => "needs_admin",
+        };
+
+        revisions.push(AuthorRevisionView {
+            revision_id: rev.snapshot.revision.to_string(),
+            title,
+            content_hash: rev.snapshot.content.hash().to_string(),
+            moderation,
+            decision_version: mod_decision.map(|d| d.version.get()),
+            metadata_snapshot_id: meta_snapshot_id,
+            created_at,
+        });
+    }
+
+    let open_ticket = mod_facts
+        .jobs
+        .iter()
+        .find(|j| j.state == crate::domain::moderation::JobState::Open)
+        .map(|j| OpenTicketView {
+            evaluation_id: j.id.to_string(),
+            revision_id: j.target.revision().to_string(),
+            policy_version: j.policy.get(),
+        });
+
+    Ok(Json(AuthorPublicationState {
+        work_id: work.to_string(),
+        audience,
+        lifecycle,
+        generation: pub_facts.generation.get(),
+        intent,
+        pointer,
+        revisions,
+        open_ticket,
+    }))
 }
 
 async fn save_draft(

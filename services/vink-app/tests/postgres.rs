@@ -46,6 +46,8 @@ mod outbox;
 mod post_review;
 #[path = "postgres/principal.rs"]
 mod principal;
+#[path = "postgres/publication.rs"]
+mod publication;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]

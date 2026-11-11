@@ -416,6 +416,7 @@ pub fn validate_evaluation_result<'a>(
 pub enum DecisionBy {
     Ai,
     Admin,
+    Legacy,
 }
 
 impl DecisionBy {
@@ -423,6 +424,7 @@ impl DecisionBy {
         match self {
             Self::Ai => "ai",
             Self::Admin => "admin",
+            Self::Legacy => "legacy",
         }
     }
 }
@@ -503,6 +505,7 @@ pub enum DecisionProvenance {
         verdict: AdminVerdict,
         reason: DecisionReason,
     },
+    LegacyBootstrap,
 }
 
 impl DecisionProvenance {
@@ -510,6 +513,7 @@ impl DecisionProvenance {
         match self {
             Self::AiApproved | Self::AiRejected(_) | Self::AiNeedsAdmin(_) => DecisionBy::Ai,
             Self::Admin { .. } => DecisionBy::Admin,
+            Self::LegacyBootstrap => DecisionBy::Legacy,
         }
     }
 }
@@ -736,7 +740,8 @@ impl WorkModeration {
                         | DecisionProvenance::Admin {
                             verdict: AdminVerdict::Approve,
                             ..
-                        },
+                        }
+                        | DecisionProvenance::LegacyBootstrap,
                     ),
                 ) if rev.version > DecisionVersion::FIRST => {}
                 (

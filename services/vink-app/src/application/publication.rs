@@ -126,6 +126,181 @@ pub fn check_own_comment_removal(publication: &Publication) -> Result<(), Tombst
     }
 }
 
+use super::Vink;
+use super::ports::{
+    AuthorPrivateOutcome, AuthorPublicRequestOutcome, AuthorPublicationStateFacts,
+    AuthorPublicationStore, AuthorSnapshotCapture, CaptureSnapshotOutcome, RequestPublicOutcome,
+    SetPrivateOutcome, StoreError,
+};
+use crate::domain::discussion::submission::{CommandKey, CommandKeyError};
+use crate::domain::draft::DraftVersion;
+use crate::domain::ids::{RevisionId, WorkId};
+use crate::domain::publication::IntentGeneration;
+use crate::domain::taxonomy::MetadataVersion;
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum AuthorPublicationError {
+    #[error("unauthenticated")]
+    Unauthenticated,
+    #[error("principal suspended")]
+    Suspended,
+    #[error("not found")]
+    NotFound,
+    #[error("audience intent generation changed; current generation is {current_generation}")]
+    Stale { current_generation: i64 },
+    #[error("revision was rejected")]
+    RevisionRejected,
+    #[error("unknown revision")]
+    UnknownRevision,
+    #[error("work is unavailable")]
+    WorkUnavailable,
+    #[error("version conflict")]
+    DraftOrMetadataConflict {
+        current_draft_version: Option<i64>,
+        current_metadata_version: Option<i64>,
+    },
+    #[error("command key was already used for a different payload")]
+    KeyReused,
+    #[error("invalid command key: {0}")]
+    InvalidCommandKey(#[from] CommandKeyError),
+    #[error("storage unavailable")]
+    Unavailable,
+    #[error("stored data failed validation")]
+    Internal,
+}
+
+impl From<StoreError> for AuthorPublicationError {
+    fn from(error: StoreError) -> Self {
+        match error {
+            StoreError::Unavailable(_) => Self::Unavailable,
+            StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::PrincipalSuspended => Self::Suspended,
+            StoreError::Integrity(_) => Self::Internal,
+        }
+    }
+}
+
+impl<S> Vink<S>
+where
+    S: AuthorPublicationStore,
+{
+    pub async fn load_author_publication_state(
+        &self,
+        actor: Option<PrincipalId>,
+        work_id: WorkId,
+    ) -> Result<AuthorPublicationStateFacts, AuthorPublicationError> {
+        let actor = actor.ok_or(AuthorPublicationError::Unauthenticated)?;
+        self.store
+            .load_author_publication_state(actor, work_id)
+            .await?
+            .ok_or(AuthorPublicationError::NotFound)
+    }
+
+    pub async fn capture_snapshot(
+        &self,
+        actor: Option<PrincipalId>,
+        work_id: WorkId,
+        command_key: &str,
+        expected_draft_version: i64,
+        expected_metadata_version: i64,
+    ) -> Result<AuthorSnapshotCapture, AuthorPublicationError> {
+        let actor = actor.ok_or(AuthorPublicationError::Unauthenticated)?;
+        let key = CommandKey::parse(command_key)?;
+        let draft_ver = DraftVersion::new(expected_draft_version).ok_or(
+            AuthorPublicationError::DraftOrMetadataConflict {
+                current_draft_version: None,
+                current_metadata_version: None,
+            },
+        )?;
+        let meta_ver = MetadataVersion::new(expected_metadata_version).ok_or(
+            AuthorPublicationError::DraftOrMetadataConflict {
+                current_draft_version: None,
+                current_metadata_version: None,
+            },
+        )?;
+
+        match self
+            .store
+            .capture_snapshot(actor, work_id, key.as_str(), draft_ver, meta_ver)
+            .await?
+        {
+            CaptureSnapshotOutcome::Saved(capture) => Ok(capture),
+            CaptureSnapshotOutcome::Conflict {
+                current_draft_version,
+                current_metadata_version,
+            } => Err(AuthorPublicationError::DraftOrMetadataConflict {
+                current_draft_version: current_draft_version.map(|v| v.get()),
+                current_metadata_version: current_metadata_version.map(|v| v.get()),
+            }),
+            CaptureSnapshotOutcome::KeyReused => Err(AuthorPublicationError::KeyReused),
+            CaptureSnapshotOutcome::NotFound => Err(AuthorPublicationError::NotFound),
+        }
+    }
+
+    pub async fn request_public(
+        &self,
+        actor: Option<PrincipalId>,
+        work_id: WorkId,
+        command_key: &str,
+        revision_id: RevisionId,
+        expected_generation: i64,
+    ) -> Result<AuthorPublicRequestOutcome, AuthorPublicationError> {
+        let actor = actor.ok_or(AuthorPublicationError::Unauthenticated)?;
+        let key = CommandKey::parse(command_key)?;
+        let generation =
+            IntentGeneration::new(expected_generation).ok_or(AuthorPublicationError::Stale {
+                current_generation: 1,
+            })?;
+
+        match self
+            .store
+            .request_public(actor, work_id, key.as_str(), revision_id, generation)
+            .await?
+        {
+            RequestPublicOutcome::Accepted(outcome) => Ok(outcome),
+            RequestPublicOutcome::Stale { current_generation } => {
+                Err(AuthorPublicationError::Stale {
+                    current_generation: current_generation.get(),
+                })
+            }
+            RequestPublicOutcome::RevisionRejected => Err(AuthorPublicationError::RevisionRejected),
+            RequestPublicOutcome::UnknownRevision => Err(AuthorPublicationError::UnknownRevision),
+            RequestPublicOutcome::WorkUnavailable => Err(AuthorPublicationError::WorkUnavailable),
+            RequestPublicOutcome::KeyReused => Err(AuthorPublicationError::KeyReused),
+            RequestPublicOutcome::NotFound => Err(AuthorPublicationError::NotFound),
+        }
+    }
+
+    pub async fn set_private(
+        &self,
+        actor: Option<PrincipalId>,
+        work_id: WorkId,
+        command_key: &str,
+        expected_generation: i64,
+    ) -> Result<AuthorPrivateOutcome, AuthorPublicationError> {
+        let actor = actor.ok_or(AuthorPublicationError::Unauthenticated)?;
+        let key = CommandKey::parse(command_key)?;
+        let generation =
+            IntentGeneration::new(expected_generation).ok_or(AuthorPublicationError::Stale {
+                current_generation: 1,
+            })?;
+
+        match self
+            .store
+            .set_private(actor, work_id, key.as_str(), generation)
+            .await?
+        {
+            SetPrivateOutcome::Accepted(outcome) => Ok(outcome),
+            SetPrivateOutcome::Stale { current_generation } => Err(AuthorPublicationError::Stale {
+                current_generation: current_generation.get(),
+            }),
+            SetPrivateOutcome::WorkUnavailable => Err(AuthorPublicationError::WorkUnavailable),
+            SetPrivateOutcome::KeyReused => Err(AuthorPublicationError::KeyReused),
+            SetPrivateOutcome::NotFound => Err(AuthorPublicationError::NotFound),
+        }
+    }
+}
+
 #[cfg(test)]
 mod replay;
 #[cfg(test)]

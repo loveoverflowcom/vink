@@ -40,7 +40,10 @@ use crate::domain::endorsement::{
     EndorsementTargetFacts,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, TagId, WorkId};
+use crate::domain::moderation::{EvaluationTicket, WorkModeration};
 use crate::domain::principal::{PenName, Standing, SubjectKey};
+use crate::domain::publication::{AuthorOutcome, IntentGeneration, Publication};
+use crate::domain::revision::ContentHash;
 use crate::domain::taxonomy::{
     CatalogCommand, CatalogOutcome, CatalogTag, CatalogVersion, MetadataSnapshot, MetadataVersion,
     SlugHolder, SlugKind, TagAlias, TagChange, TagLabel, TagOutcome, TagSlug, WorkTags,
@@ -168,6 +171,108 @@ pub trait PublicationStore: Send + Sync {
         &self,
         work_id: WorkId,
     ) -> impl Future<Output = Result<Option<PublicationFacts>, StoreError>> + Send;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorSnapshotCapture {
+    pub revision_id: RevisionId,
+    pub content_hash: ContentHash,
+    pub metadata_snapshot_id: Option<uuid::Uuid>,
+    pub draft_version: DraftVersion,
+    pub metadata_version: MetadataVersion,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CaptureSnapshotOutcome {
+    Saved(AuthorSnapshotCapture),
+    Conflict {
+        current_draft_version: Option<DraftVersion>,
+        current_metadata_version: Option<MetadataVersion>,
+    },
+    KeyReused,
+    NotFound,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorPublicRequestOutcome {
+    pub outcome: AuthorOutcome,
+    pub generation: IntentGeneration,
+    pub ticket: Option<EvaluationTicket>,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RequestPublicOutcome {
+    Accepted(AuthorPublicRequestOutcome),
+    Stale {
+        current_generation: IntentGeneration,
+    },
+    RevisionRejected,
+    UnknownRevision,
+    WorkUnavailable,
+    KeyReused,
+    NotFound,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorPrivateOutcome {
+    pub outcome: AuthorOutcome,
+    pub generation: IntentGeneration,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SetPrivateOutcome {
+    Accepted(AuthorPrivateOutcome),
+    Stale {
+        current_generation: IntentGeneration,
+    },
+    WorkUnavailable,
+    KeyReused,
+    NotFound,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AuthorPublicationStateFacts {
+    pub publication: Publication,
+    pub moderation: WorkModeration,
+    pub revision_metadata: Vec<(RevisionId, String, Option<uuid::Uuid>, OffsetDateTime)>,
+}
+
+/// Author publication commands and owner state persistence (PUB-RUNTIME-01, #158).
+pub trait AuthorPublicationStore: Send + Sync {
+    fn load_author_publication_state(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+    ) -> impl Future<Output = Result<Option<AuthorPublicationStateFacts>, StoreError>> + Send;
+
+    fn capture_snapshot(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+        command_key: &str,
+        expected_draft_version: DraftVersion,
+        expected_metadata_version: MetadataVersion,
+    ) -> impl Future<Output = Result<CaptureSnapshotOutcome, StoreError>> + Send;
+
+    fn request_public(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+        command_key: &str,
+        revision_id: RevisionId,
+        expected_generation: IntentGeneration,
+    ) -> impl Future<Output = Result<RequestPublicOutcome, StoreError>> + Send;
+
+    fn set_private(
+        &self,
+        actor: PrincipalId,
+        work_id: WorkId,
+        command_key: &str,
+        expected_generation: IntentGeneration,
+    ) -> impl Future<Output = Result<SetPrivateOutcome, StoreError>> + Send;
 }
 
 /// Vink-owned discussion storage. Every write method runs one transaction that loads the facts

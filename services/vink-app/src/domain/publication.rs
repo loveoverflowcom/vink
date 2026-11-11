@@ -175,6 +175,20 @@ pub enum AuthorOutcome {
     Deleted,
 }
 
+impl AuthorOutcome {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Saved => "saved",
+            Self::Submitted => "submitted",
+            Self::Waiting => "waiting",
+            Self::Published => "published",
+            Self::MadePrivate => "made_private",
+            Self::Reaffirmed => "reaffirmed",
+            Self::Deleted => "deleted",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluationRequest {
     pub work: WorkId,
