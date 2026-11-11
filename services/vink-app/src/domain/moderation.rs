@@ -1879,6 +1879,8 @@ impl ModerationEvaluator for ScriptedEvaluator {
 #[cfg(test)]
 mod governance_replay;
 #[cfg(test)]
+mod governance_tests;
+#[cfg(test)]
 mod replay;
 #[cfg(test)]
 pub(crate) mod tests;

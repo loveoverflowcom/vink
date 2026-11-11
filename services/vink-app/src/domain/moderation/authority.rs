@@ -298,7 +298,7 @@ impl ModerationDirectory {
                     || grant.scope != GrantScope::Global
                     || !matches!(grant.grantee, Grantee::Principal(_)))
             {
-                return Err(DirectoryError::InvalidFacts);
+                return Err(DirectoryError::InvalidInheritance);
             }
         }
         for (i, group) in facts.groups.iter().enumerate() {

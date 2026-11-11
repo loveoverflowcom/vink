@@ -9,9 +9,9 @@ USER-02/03/05/06/07/14 · **Yêu cầu:** AUD-01/02, PUB-01..07, MOD-01..15, COM
 **Trạng thái:** `TARGET_BEHAVIOR`. Luật ghi “đã chốt” là `PRODUCT_CONFIRMED`; chi tiết ghi “đề
 xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md) và
 #151 có [contract evaluator + scripted mock + quyền áp quyết định thuần](../development/moderation-core.md);
-chưa có publication/moderation runtime. M1 canonical ở
-[`behavior/publication`](../../services/vink-app/behavior/publication/README.md); `tombstone.qnt`
-và `appeal.qnt` vẫn ở [`behavior/target`](../../services/vink-app/behavior/target/README.md). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
+chưa có publication/moderation runtime. M1, M3 (`tombstone.qnt`) và M4 quản trị (`governance.qnt`,
+thay `appeal.qnt`) canonical ở [`behavior/publication`](../../services/vink-app/behavior/publication/README.md);
+lõi quản trị ở [ADMIN-CORE-01](../development/moderation-core.md#admin-moderation-core--admin-core-01). Tài liệu này không chấp nhận ADR nào và không bật gì ở production.
 
 ## 1. Hiện trạng (`CURRENT_IMPLEMENTATION`, base `develop@4aeb083` + lõi thuần #150/#151)
 

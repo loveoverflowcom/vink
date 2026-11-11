@@ -581,8 +581,9 @@ impl ReviewCase {
         ))
     }
 
-    /// System close (private work, deleted/removed target, superseded decision). Idempotent on a
-    /// case that is already concluded or closed.
+    /// System close (private work, deleted/removed target, superseded decision). A case that is
+    /// already concluded or closed is refused [`CaseRefusal::CaseClosed`] and left unchanged, so a
+    /// repeated close is harmless.
     pub fn close(&self, reason: CloseReason) -> Result<CaseTransition, CaseRefusal> {
         if !self.0.state.is_open() {
             return Err(CaseRefusal::CaseClosed);
