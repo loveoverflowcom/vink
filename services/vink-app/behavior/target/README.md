@@ -1,13 +1,14 @@
 # Đặc tả đích — quyết định sản phẩm 10/11/2026
 
-**Trạng thái năm model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Năm model ở đây
-chưa có domain consumer hay Rust replay cho aggregate của chúng. M1 đã chuyển nguyên vẹn sang
-[`../publication`](../publication/README.md): #150 và #151 replay 46/51 bước của M1 (author,
-evaluator, admin override, reevaluate, policy bump và cả hai negative control) qua lõi thuần
-`Publication` + `WorkModeration`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
+**Trạng thái bốn model còn trong thư mục: `TARGET_SPEC_NOT_IMPLEMENTED`.** Bốn model ở đây
+chưa có domain consumer hay Rust replay cho aggregate của chúng. M1 và M3 đã chuyển nguyên vẹn sang
+[`../publication`](../publication/README.md): #150, #151 và #157 replay đủ 51/51 bước của M1 (author,
+evaluator, admin override, reevaluate, policy bump, delete, remove và cả hai negative control) và
+30/30 bước của M3 (`tombstone.qnt`, 3 scenario và negative control) qua lõi thuần
+`Publication` + `WorkModeration` và tầng `application::publication`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
 (12 bước `publication.qnt` qua full consumer, 9 bước `comment_edit.qnt` chỉ kiểm hợp đồng/script);
-delete/remove lifecycle và năm model còn lại vẫn là model-only.
-Một canonical model cho mỗi policy; không có bản publication cạnh tranh ở thư mục này.
+bốn model còn lại vẫn là model-only.
+Một canonical model cho mỗi policy; không có bản publication hay tombstone cạnh tranh ở thư mục này.
 
 Phân vai: PRD/decision log giữ ý định và quyết định; model ở đây giữ state/transition/invariant đã
 chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown **không** phải nguồn này.
@@ -16,9 +17,9 @@ chọn; Rust (khi có) là implementation; mock evaluator và sơ đồ Markdown
 
 | Model | Phạm vi | Yêu cầu | Đặc tả văn bản |
 | --- | --- | --- | --- |
-| [`../publication/publication.qnt`](../publication/publication.qnt) (M1, replay một phần) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
+| [`../publication/publication.qnt`](../publication/publication.qnt) (M1, pure core #150, #151, #157) | Một bài: audience ≠ quyết định ≠ bản công khai ≠ vòng đời; kết quả evaluator đúng/sai/cũ/trùng; admin override; xóa/riêng tư; không hồi sinh | AUD-01/02, PUB-01/02, MOD-02/03/05/07/08/09, INV-01/02/03/07/08 | [xuất bản và kiểm duyệt](../../../../docs/architecture/publication-moderation.md) |
 | `collections.qnt` (M2) | Phép AND bài × bộ sưu tập; chủ/khách/người khác; thêm/bỏ; đổi audience khi đang đọc/phân trang; link và số đếm | COL-01..06 | [bộ sưu tập](../../../../docs/architecture/collections.md) |
-| `tombstone.qnt` (M3) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone) |
+| [`../publication/tombstone.qnt`](../publication/tombstone.qnt) (M3, pure core #157) | Tác giả xóa ≠ riêng tư ≠ kiểm duyệt gỡ ≠ chưa từng công khai; trang thay thế; bình luận hợp lệ | PUB-03/04/05 | [mục 6](../../../../docs/architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-và-tombstone) |
 | `comment_edit.qnt` (M4) | Bản hiển thị và bản chờ tách nhau; sửa/duyệt/từ chối/override/xóa; hai tab, retry, callback cũ; dấu “Đã sửa”; vote theo bản | COM-02/08/09/10, MOD-09, LVE-FR-04 | [sửa bình luận](../../../../docs/architecture/comment-editing.md) |
 | `discovery.qnt` (M5) | Eligibility trước ranking; Đề xuất ≠ Top; thứ tự/tie ổn định; trần; snapshot và thu hồi | RANK-01..04, TOP-01..04 | [Đề xuất và Top 100](../../../../docs/architecture/discovery-ranking.md) |
 | `appeal.qnt` (M6) | Case gắn decision version; không nhân case; dialog/mock không thành “đã gửi”; override có provenance; AI cũ không đè | MOD-04/08/09/10 | [mục 5](../../../../docs/architecture/publication-moderation.md#5-quản-trị-viên-và-phản-đối) |
@@ -94,7 +95,8 @@ và xóa model khỏi đây. Không giữ hai model cho cùng một policy.
 | --- | --- | --- |
 | `comment_edit.qnt` | `../discussion`, cạnh `lifecycle.qnt`; phần quyết định của evaluator hợp nhất vào `admission.qnt` | PR sửa bình luận / evaluator cho bình luận |
 | `publication.qnt` | Đã chuyển sang `../publication` trong #150; vectors và hai counterexample đi cùng | Author/publication có replay một phần; #151 tiếp tục evaluator/admin trên cùng model |
-| `tombstone.qnt`, `appeal.qnt` | Thư mục behavior của owner xuất bản | PR tombstone, phản đối |
+| `tombstone.qnt` | Đã chuyển sang `../publication` trong #157; vectors và negative control đi cùng | Pure core + application access plan replay #157 |
+| `appeal.qnt` | Thư mục behavior của owner xuất bản / kiểm duyệt | PR phản đối |
 | `collections.qnt` | Thư mục behavior của module bộ sưu tập | PR bộ sưu tập |
 | `discovery.qnt` | Cạnh owner discovery | PR Đề xuất/Top 100 |
 

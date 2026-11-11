@@ -1,8 +1,8 @@
 {
   "format": "vink-target-spec-vectors-v1",
-  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
   "quint_version": "0.33.1",
-  "model": "tombstone.qnt",
+  "model": "../publication/tombstone.qnt",
   "scenarios": [
     {"name": "author_deleted_public_work", "steps": [
       {"command":{"actor":2,"id":1,"op":"submit","value":"none"},"outcome":"work_unavailable","state":{"status":"unpublished","everPublic":false,"comments":{},"views":{"0":{"comments":[],"listed":false,"page":"not_found","snippet":false},"2":{"comments":[],"listed":false,"page":"not_found","snippet":false},"3":{"comments":[],"listed":false,"page":"not_found","snippet":false}}}},

@@ -13,7 +13,7 @@ use crate::process::{self, Report, cargo};
 
 const MODEL_DIR: &str = "services/vink-app/behavior/discussion";
 const TARGET_DIR: &str = "services/vink-app/behavior/target";
-const FILTERS: [&str; 13] = [
+const FILTERS: [&str; 14] = [
     "domain::discussion::tests",
     "domain::discussion::admission::tests",
     "domain::discussion::admission_replay",
@@ -27,11 +27,14 @@ const FILTERS: [&str; 13] = [
     "domain::moderation::",
     "domain::publication::",
     "application::moderation::",
+    "application::publication::",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 15] = [
+const REPLAYS: [&str; 17] = [
     "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
     "domain::publication::replay::the_withdrawn_intent_counterexample_is_refused_by_the_production_publication_guard",
+    "application::publication::replay::quint_tombstone_scenarios_replay_against_production_access_and_discussion",
+    "application::publication::replay::the_private_as_deleted_counterexample_is_refused_by_the_production_access_plan",
     "domain::moderation::replay::quint_evaluator_vectors_replay_publication_steps_and_check_comment_contract",
     "domain::moderation::replay::the_admin_late_result_counterexample_is_refused_by_the_production_moderation_guard",
     "domain::discussion::tests::quint_generated_inputs_replay_against_the_production_creation_seam",

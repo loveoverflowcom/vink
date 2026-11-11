@@ -1,10 +1,10 @@
 {
   "format": "vink-target-spec-counterexample-v1",
-  "status": "TARGET_SPEC_NOT_IMPLEMENTED",
+  "status": "PARTIAL_PURE_CORE_CONFORMANCE",
   "quint_version": "0.33.1",
-  "model": "tombstone.qnt",
+  "model": "../publication/tombstone.qnt",
   "invariant": "noExceptionForHiddenWork",
-  "command": ["quint","run","tombstone.qnt","--backend=typescript","--seed=41","--step=mutatedPrivateStep","--max-steps=4","--max-samples=1","--invariant=noExceptionForHiddenWork","--verbosity=1"],
+  "command": ["quint","run","../publication/tombstone.qnt","--backend=typescript","--seed=41","--step=mutatedPrivateStep","--max-steps=4","--max-samples=1","--invariant=noExceptionForHiddenWork","--verbosity=1"],
   "violation": [
     {"name": "mutatedPrivateStep", "steps": [
       {"command":{"actor":1,"id":0,"op":"publish","value":"none"},"outcome":"published","state":{"status":"public","everPublic":true,"comments":{},"views":{"0":{"comments":[],"listed":true,"page":"body","snippet":true},"2":{"comments":[],"listed":true,"page":"body","snippet":true},"3":{"comments":[],"listed":true,"page":"body","snippet":true}}}},

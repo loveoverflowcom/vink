@@ -116,3 +116,178 @@ fn use_case_calls_the_real_core_for_r1_r2_withdrawal_and_stale_commands() {
     let republished = public(&private.next, r1);
     assert_eq!(republished.outcome, AuthorOutcome::Published);
 }
+
+#[test]
+fn read_planner_composes_access_and_discussion_visibility_truth_table() {
+    let author_actor = BoundPrincipal {
+        principal: PrincipalId::from_uuid(uuid::Uuid::from_u128(1)),
+        standing: Standing::Active,
+    };
+    let reader = PrincipalId::from_uuid(uuid::Uuid::from_u128(2));
+    let stranger = PrincipalId::from_uuid(uuid::Uuid::from_u128(3));
+    let work = WorkId::from_uuid(uuid::Uuid::from_u128(1));
+    let r1 = RevisionId::from_uuid(uuid::Uuid::from_u128(1));
+    let content = RevisionContent::new(Title::parse("Mưa").unwrap(), Document::empty()).unwrap();
+
+    let initial = Publication::new(work, author_actor.principal);
+    let saved = plan_publication(
+        Some(author_actor),
+        &initial,
+        AuthorCommand::SaveSnapshot(Snapshot {
+            work,
+            revision: r1,
+            content,
+        }),
+    )
+    .unwrap()
+    .next;
+
+    // 1. Unpublished work
+    assert_eq!(plan_work_access(&saved), WorkAccessPlan::Unavailable);
+    assert_eq!(
+        check_comment_submission(&saved),
+        Err(TombstoneWriteError::WorkUnavailable)
+    );
+    let comment_state = CommentState::SUBMITTED;
+    assert_eq!(
+        plan_comment_view(&saved, reader, comment_state, None),
+        CommentView::Unavailable
+    );
+    assert_eq!(
+        plan_root_listing(&saved, reader, comment_state, 0, None),
+        None
+    );
+    assert_eq!(
+        plan_reply_context(&saved, false, None),
+        ReplyContext::Unavailable
+    );
+    assert_eq!(
+        plan_own_overlay(&saved, reader, comment_state, Some(reader)),
+        None
+    );
+
+    // 2. Public work
+    let requested = plan_publication(
+        Some(author_actor),
+        &saved,
+        AuthorCommand::RequestPublic {
+            revision: r1,
+            expected: saved.facts().generation,
+        },
+    )
+    .unwrap()
+    .next;
+    let public = requested
+        .record_review(ReviewedRevision {
+            work,
+            revision: r1,
+            hash: requested.facts().revisions[0]
+                .snapshot
+                .content
+                .hash()
+                .clone(),
+            expected: Moderation::Pending,
+            outcome: ReviewOutcome::Approved,
+        })
+        .unwrap()
+        .next;
+
+    assert!(matches!(
+        plan_work_access(&public),
+        WorkAccessPlan::PublicBody(_)
+    ));
+    assert_eq!(check_comment_submission(&public), Ok(()));
+
+    // For public comment:
+    let approved_comment = match comment_state
+        .decide(
+            comment_state.version(),
+            crate::domain::discussion::lifecycle::Decision::Approve,
+        )
+        .unwrap()
+    {
+        crate::domain::discussion::lifecycle::Transition::Changed(s)
+        | crate::domain::discussion::lifecycle::Transition::Unchanged(s) => s,
+    };
+    assert_eq!(
+        plan_comment_view(&public, reader, approved_comment, None),
+        CommentView::Public
+    );
+    assert_eq!(
+        plan_root_listing(&public, reader, approved_comment, 0, None),
+        Some(RootListing::Shown(CommentView::Public))
+    );
+    assert_eq!(plan_reply_context(&public, false, None), ReplyContext::Root);
+
+    // For pending comment: author of comment sees OwnPending, stranger sees Unavailable
+    assert_eq!(
+        plan_comment_view(&public, reader, comment_state, Some(reader)),
+        CommentView::OwnPending
+    );
+    assert_eq!(
+        plan_comment_view(&public, reader, comment_state, Some(stranger)),
+        CommentView::Unavailable
+    );
+    assert_eq!(
+        plan_comment_view(&public, reader, comment_state, None),
+        CommentView::Unavailable
+    );
+
+    // 3. Author-deleted public work -> Tombstone
+    let deleted = plan_publication(
+        Some(author_actor),
+        &public,
+        AuthorCommand::Delete {
+            expected: Some(public.facts().generation),
+        },
+    )
+    .unwrap()
+    .next;
+
+    assert!(matches!(
+        plan_work_access(&deleted),
+        WorkAccessPlan::AuthorTombstone { .. }
+    ));
+    // Submission is refused as tombstone read-only
+    assert_eq!(
+        check_comment_submission(&deleted),
+        Err(TombstoneWriteError::TombstoneReadOnly)
+    );
+    // Valid approved comments are still visible
+    assert_eq!(
+        plan_comment_view(&deleted, reader, approved_comment, None),
+        CommentView::Public
+    );
+    // Own pending comments are visible only to the writer
+    assert_eq!(
+        plan_comment_view(&deleted, reader, comment_state, Some(reader)),
+        CommentView::OwnPending
+    );
+    assert_eq!(
+        plan_comment_view(&deleted, reader, comment_state, None),
+        CommentView::Unavailable
+    );
+
+    // 4. Private then deleted -> Unavailable
+    let private = plan_publication(
+        Some(author_actor),
+        &public,
+        AuthorCommand::SetPrivate {
+            expected: public.facts().generation,
+        },
+    )
+    .unwrap()
+    .next;
+    let priv_deleted = plan_publication(
+        Some(author_actor),
+        &private,
+        AuthorCommand::Delete { expected: None },
+    )
+    .unwrap()
+    .next;
+    assert_eq!(plan_work_access(&priv_deleted), WorkAccessPlan::Unavailable);
+    assert_eq!(
+        plan_comment_view(&priv_deleted, reader, approved_comment, None),
+        CommentView::Unavailable
+    );
+}

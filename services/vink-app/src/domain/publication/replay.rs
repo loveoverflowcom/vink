@@ -1,10 +1,9 @@
-//! M1 publication + moderation replay (#150, #151).
+//! M1 publication + moderation replay (#150, #151, #157).
 //!
 //! Commands run through the production [`Publication`] and [`WorkModeration`] cores, not a test
-//! reducer. Out of 51 steps across `publication-vectors.json`, 46 run through production
-//! (`author`: 22, `ai_result`: 13, `admin_decide`: 6, `reevaluate`: 4, `policy_bump`: 1).
-//! Only the 5 delete/remove lifecycle steps (`lifecycle_fixture`: 2 terminal state loads,
-//! `outside_scope`: 3 delete/remove refusals) remain outside scope until `#155` (M2 tombstone).
+//! reducer. All 51 steps across `publication-vectors.json` run through production
+//! (`author`: 24, `ai_result`: 13, `admin_decide`: 6, `admin_remove`: 3, `reevaluate`: 4, `policy_bump`: 1).
+//! All delete/remove lifecycle steps run through real domain and application transitions (#157).
 
 use super::tests::{generation, owner, revision, snapshot, work};
 use super::*;
@@ -89,7 +88,12 @@ fn moderation(value: &str) -> Moderation {
 fn lifecycle(value: &str) -> Lifecycle {
     match value {
         "active" => Lifecycle::Active,
-        "author_deleted" => Lifecycle::AuthorDeleted,
+        "author_deleted" => {
+            Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(PublicPointer {
+                revision: revision(4),
+                intent_generation: generation(11),
+            }))
+        }
         "removed" => Lifecycle::Removed,
         _ => panic!("unknown lifecycle {value}"),
     }
@@ -176,6 +180,7 @@ fn author_outcome(
             AuthorOutcome::Published => "published",
             AuthorOutcome::MadePrivate => "made_private",
             AuthorOutcome::Reaffirmed => "reaffirmed",
+            AuthorOutcome::Deleted => "deleted",
         },
         Err(ModerationError::Publication(PublicationError::NotFound)) => "not_found",
         Err(ModerationError::Publication(PublicationError::WorkUnavailable)) => "work_unavailable",
@@ -219,6 +224,9 @@ pub(crate) fn replay_step(
         "set_private" => Some(AuthorCommand::SetPrivate {
             expected: generation(c.expected),
         }),
+        "author_delete" => Some(AuthorCommand::Delete {
+            expected: IntentGeneration::new(c.expected),
+        }),
         _ => None,
     };
     if let Some(command) = command {
@@ -248,7 +256,7 @@ pub(crate) fn replay_step(
                 t.effects.pointer,
                 match step.outcome.as_str() {
                     "published" => PointerEffect::Set(t.publication.facts().pointer.unwrap()),
-                    "made_private" | "reaffirmed" => PointerEffect::Clear,
+                    "made_private" | "reaffirmed" | "deleted" => PointerEffect::Clear,
                     _ => PointerEffect::Unchanged,
                 }
             );
@@ -379,23 +387,33 @@ pub(crate) fn replay_step(
             PolicyVersion::new(step.state.policy).unwrap()
         );
         "policy_bump"
-    } else if matches!(step.outcome.as_str(), "deleted" | "removed") {
-        // Delete/remove commands belong to #155 (M2 tombstone); load terminal lifecycle facts.
-        let mut facts = state.facts().clone();
-        facts.lifecycle = lifecycle(&step.state.lifecycle);
-        facts.generation = generation(step.state.generation);
-        facts.audience = if step.state.audience == "public" {
-            Audience::Public
-        } else {
-            Audience::Private
-        };
-        facts.intent = None;
-        facts.pointer = None;
-        *state = Publication::restore(facts).unwrap();
-        "lifecycle_fixture"
+    } else if c.op == "admin_remove" {
+        let before_pub = state.clone();
+        let before_mod = mod_state.clone();
+        let authority = (c.actor == "admin").then(|| AdminAuthority::scoped(admin(), work(1)));
+        let applied = mod_state.apply_admin_remove(state, authority);
+        match applied {
+            Ok(t) => {
+                assert_eq!(step.outcome, "removed");
+                assert_eq!(t.effects.evaluation, None);
+                assert_eq!(t.effects.pointer, PointerEffect::Clear);
+                *state = t.publication;
+                *mod_state = t.moderation;
+            }
+            Err(err) => {
+                let code = match err {
+                    ModerationError::NotAdmin => "not_admin",
+                    ModerationError::TargetGone => "target_gone",
+                    other => panic!("unexpected admin_remove refusal {other:?}"),
+                };
+                assert_eq!(code, step.outcome);
+                assert_eq!(*state, before_pub);
+                assert_eq!(*mod_state, before_mod);
+            }
+        }
+        "admin_remove"
     } else {
-        // Refused delete/remove commands belong to #155 (M2 tombstone).
-        "outside_scope"
+        panic!("unexpected command op {}", c.op);
     }
 }
 
@@ -426,10 +444,9 @@ fn quint_publication_author_inputs_and_admitted_decision_effects_replay_through_
         counts,
         BTreeMap::from([
             ("admin_decide", 6),
+            ("admin_remove", 3),
             ("ai_result", 13),
-            ("author", 22),
-            ("lifecycle_fixture", 2),
-            ("outside_scope", 3),
+            ("author", 24),
             ("policy_bump", 1),
             ("reevaluate", 4),
         ])

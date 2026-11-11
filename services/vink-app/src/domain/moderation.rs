@@ -17,7 +17,7 @@
 use super::discussion::submission::PayloadDigest;
 use super::ids::{CommentId, EvaluationId, PrincipalId, RevisionId, WorkId};
 use super::publication::{
-    AuthorCommand, AuthorOutcome, Effects, EvaluationRequest, Lifecycle, Moderation, PointerEffect,
+    AuthorCommand, AuthorOutcome, Effects, EvaluationRequest, Moderation, PointerEffect,
     Publication, PublicationError, ReviewOutcome, ReviewedRevision,
 };
 use super::revision::ContentHash;
@@ -632,6 +632,13 @@ pub struct AdminTransition {
     pub effects: Effects,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdminRemovalTransition {
+    pub publication: Publication,
+    pub moderation: WorkModeration,
+    pub effects: Effects,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum ReevaluateRefusal {
     #[error("work is not active")]
@@ -861,7 +868,7 @@ impl WorkModeration {
         if self.0.work != publication.facts().work {
             return Err(ModerationError::InvalidFacts);
         }
-        if publication.facts().lifecycle != Lifecycle::Active {
+        if !publication.facts().lifecycle.is_active() {
             return Err(ReevaluateRefusal::WorkUnavailable.into());
         }
         let Some(pub_rev) = publication
@@ -944,7 +951,7 @@ impl WorkModeration {
                         revision,
                         digest: pub_rev.snapshot.content.hash().clone(),
                     },
-                    target_active: pub_facts.lifecycle == Lifecycle::Active,
+                    target_active: pub_facts.lifecycle.is_active(),
                     overridden_by_admin: rev_decision.and_then(RevisionDecisionFacts::decision_by)
                         == Some(DecisionBy::Admin),
                     candidate_pending: pub_rev.moderation == Moderation::Pending,
@@ -1071,7 +1078,7 @@ impl WorkModeration {
         else {
             return Err(ModerationError::UnknownRevision);
         };
-        if pub_facts.lifecycle != Lifecycle::Active {
+        if !pub_facts.lifecycle.is_active() {
             return Err(ModerationError::TargetGone);
         }
         if pub_rev.moderation == Moderation::Unsubmitted {
@@ -1141,6 +1148,27 @@ impl WorkModeration {
             moderation: next,
             outcome,
             effects: review.effects,
+        })
+    }
+
+    /// Apply an admin removal to an active work (#157, AC-01, AC-05).
+    pub fn apply_admin_remove(
+        &self,
+        publication: &Publication,
+        authority: Option<AdminAuthority>,
+    ) -> Result<AdminRemovalTransition, ModerationError> {
+        let authority = authority.ok_or(ModerationError::NotAdmin)?;
+        if authority.work() != publication.facts().work {
+            return Err(ModerationError::NotAdmin);
+        }
+        if !publication.facts().lifecycle.is_active() {
+            return Err(ModerationError::TargetGone);
+        }
+        let (next_pub, effects) = publication.admin_remove()?;
+        Ok(AdminRemovalTransition {
+            publication: next_pub,
+            moderation: self.clone(),
+            effects,
         })
     }
 }
