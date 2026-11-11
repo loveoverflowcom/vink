@@ -4,7 +4,10 @@
 `ADMIN-MODERATION-20261111` ([DecisionDelta](product-decisions-20261110.md), §7),
 USER-02/03/05/06/07/14 · **Yêu cầu:** AUD-01/02, PUB-01..07, MOD-01..15, COM-11
 ([requirements](../../prd/requirements.md)) ·
-**Quyết định:** D-06, D-07, D-12, D-19 ([decision log](decisions.md)).
+**Quyết định:** D-06, D-07, D-12, D-19 ([decision log](decisions.md)). Từ 11/11/2026, D-06/07/19
+tra ra USER/ADM của kho TOML; phần thu hồi của D-12 là `D-12@r1`.
+
+<!-- vdr: active D-12@r1 -->
 
 **Trạng thái:** `TARGET_BEHAVIOR`. Luật ghi “đã chốt” là `PRODUCT_CONFIRMED`; chi tiết ghi “đề
 xuất” là `DESIGN_PROPOSED`. #150 có [lõi publication thuần](../development/publication-core.md) và

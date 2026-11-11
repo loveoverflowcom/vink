@@ -1,5 +1,6 @@
 //! Repository decision queries and proposals. Read-only queries work in a shallow checkout.
 
+mod decision_log;
 mod legacy;
 mod record;
 mod refs;
@@ -32,15 +33,25 @@ const HELP: &str = "usage: cargo xtask decision <command>
   propose ID REV:SHA256 INPUT.toml   append a pending revision at the expected head
   signoff ID@rN SHA256 INPUT.toml    record the owner's outcome for that exact proposal payload
   refs                               report declared Markdown reference freshness
-  migrate --dry-run                  render the pinned DecisionDelta import to stdout
-  migrate                            install the pinned import once, without overwriting
+  migrate --dry-run [GROUP]          render a pinned import to stdout (default: DecisionDelta)
+  migrate [GROUP]                    install a pinned import once, without overwriting
+                                     GROUP: PRODUCT-DECISIONS-20261110 or DECISION-LOG-20261111
 
 See decisions/README.md for format, coverage and the approval boundary.";
 
 pub fn run(root: &Path, args: &[&str], out: &mut impl Write) -> Result<(), String> {
     match args {
         [] | ["--help"] => writeln!(out, "{HELP}").map_err(io_error),
-        ["migrate"] | ["migrate", "--dry-run"] => migrate(root, args.len() == 2, out),
+        ["migrate", rest @ ..] => {
+            let (dry_run, group) = match rest {
+                [] => (false, legacy::GROUP_ID),
+                ["--dry-run"] => (true, legacy::GROUP_ID),
+                [group] if !group.starts_with('-') => (false, *group),
+                ["--dry-run", group] => (true, *group),
+                _ => return Err("expected migrate [--dry-run] [GROUP]".into()),
+            };
+            migrate(root, dry_run, group, out)
+        }
         ["validate"] => {
             let registry = Registry::load(root)?;
             let references = refs::report(root, &registry)?;
@@ -131,7 +142,7 @@ fn lookup(registry: &Registry, id: &str) -> Value {
         return json!({ "lookup": lookup, "id": id, "current": null, "head": head, "head_record": describe(registry, key, entry) });
     }
     // An import group lists every revision it contained, superseded ones included.
-    if legacy::GROUPS.contains(&id) {
+    if legacy::GROUPS.contains(&id) || id == decision_log::GROUP_ID {
         let revisions: Vec<_> = registry
             .entries
             .iter()
@@ -174,6 +185,13 @@ fn describe(registry: &Registry, key: &Key, entry: &Entry) -> Value {
         )
     };
     value["source"] = match &entry.origin {
+        Origin::Legacy(source) if source.group == decision_log::GROUP_ID => json!({
+            "kind": "legacy_import",
+            "group": source.group,
+            "path": source.source_path,
+            "commit": decision_log::COMMIT,
+            "line": source.source_line,
+        }),
         Origin::Legacy(source) => json!({
             "kind": "legacy_import",
             "group": source.group,
@@ -364,24 +382,40 @@ fn signoff(
     )
 }
 
-fn migrate(root: &Path, dry_run: bool, out: &mut impl Write) -> Result<(), String> {
-    let text = legacy::render(root)?;
+type Verify = fn(&str) -> Result<(), String>;
+
+fn migrate(root: &Path, dry_run: bool, group: &str, out: &mut impl Write) -> Result<(), String> {
+    let (text, verify, file): (String, Verify, &str) = match group {
+        legacy::GROUP_ID => (legacy::render(root)?, legacy::verify_import, legacy::FILE),
+        decision_log::GROUP_ID => (
+            decision_log::render(root)?,
+            decision_log::verify_import,
+            decision_log::FILE,
+        ),
+        _ => {
+            return Err(format!(
+                "unknown import group {group:?}; expected {} or {}",
+                legacy::GROUP_ID,
+                decision_log::GROUP_ID
+            ));
+        }
+    };
     if dry_run {
         return out.write_all(text.as_bytes()).map_err(io_error);
     }
-    legacy::verify_import(&text)?;
+    verify(&text)?;
     if !record::is_directory(&root.join("decisions"))? {
         return Err("decisions: missing registry directory".into());
     }
-    let path = root.join(legacy::FILE);
+    let path = root.join(file);
     match fs::symlink_metadata(&path) {
         Ok(_) => {
-            legacy::verify_import(&record::read_file(&path)?)?;
-            writeln!(out, "{} already matches the pinned import", legacy::FILE).map_err(io_error)
+            verify(&record::read_file(&path)?)?;
+            writeln!(out, "{file} already matches the pinned import").map_err(io_error)
         }
         Err(e) if e.kind() == io::ErrorKind::NotFound => {
             publish(&path, text.as_bytes())?;
-            writeln!(out, "installed {}", legacy::FILE).map_err(io_error)
+            writeln!(out, "installed {file}").map_err(io_error)
         }
         Err(e) => Err(format!("{}: {e}", path.display())),
     }

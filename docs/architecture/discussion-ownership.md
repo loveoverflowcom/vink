@@ -14,6 +14,13 @@ quyết định áp lên `develop@31a62b1` (sau [#49](https://github.com/loveove
 > ([đặc tả](publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone)). Tất cả là hành vi đích,
 > **chưa có code**; tài liệu này tiếp tục mô tả hiện trạng.
 
+**Record (11/11/2026):** quyết định owner tra tại `D-02-DISCUSSION@r1`. Quyền bật/tắt của tác giả
+tra tại `D-13@r1`. Cả hai giữ trạng thái `PRODUCT_CONFIRMED` của nguồn. Tài liệu này giữ bố trí,
+HOW, bất biến đã hiện thực và rollout.
+
+<!-- vdr: active D-02-DISCUSSION@r1 -->
+<!-- vdr: active D-13@r1 -->
+
 ## 1. Quyết định
 
 1. **Vink tự xây hệ thống bình luận** bằng Rust core thuần và PostgreSQL của App. Module

@@ -14,6 +14,25 @@ phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/
 > bắt đầu lại khi đăng revision mới ảnh hưởng thứ hạng (O-07), và “Hữu ích” khi bình luận được sửa
 > (O-06, [đặc tả](comment-editing.md)). Không lựa chọn nào của lát LVE bị đổi; chưa có code xếp hạng.
 
+**Record (11/11/2026):** phạm vi D-14 tra tại `D-14@r1`. Lựa chọn của #73 tra theo lát:
+`LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*` (#81) và `LVE-WP-04-CHOICE-10`, đều `DESIGN_PROPOSED`.
+Các bảng dưới giữ lý do và lịch sử lúc chọn. CHOICE-06 (ranking) chưa chọn. CHOICE-07 (icon) cần
+rà vì registry runtime ghi đã gắn glyph Pen Flight R2 A.
+
+<!-- vdr: active D-14@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-01@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-02@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-03@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-08@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-09@r1 -->
+<!-- vdr: active LVE-PR-01-CHOICE-11@r1 -->
+<!-- vdr: active LVE-PR-02-03-CHOICE-03@r1 -->
+<!-- vdr: active LVE-PR-02-03-CHOICE-04@r1 -->
+<!-- vdr: active LVE-PR-02-03-CHOICE-05@r1 -->
+<!-- vdr: active LVE-PR-02-03-CHOICE-12@r1 -->
+<!-- vdr: active LVE-PR-02-03-CHOICE-13@r1 -->
+<!-- vdr: active LVE-WP-04-CHOICE-10@r1 -->
+
 ## Hợp nhất sau #78/#79
 
 Theo yêu cầu merge PR #80, slice này tiếp nối lõi #78 đã vào develop. Chỉ giữ

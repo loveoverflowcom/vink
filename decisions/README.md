@@ -1,12 +1,14 @@
 # Kho quyết định Vink
 
-[Bundle nhập](decision-delta-20261110.toml) lưu các quyết định, đề xuất và câu hỏi của
-DecisionDelta: §2–4 của lượt 10/11/2026 (`PRODUCT-DECISIONS-20261110`) và §7 quản trị kiểm duyệt
-của lượt 11/11/2026 (`ADMIN-MODERATION-20261111`). Mỗi revision sau đó gồm một proposal trong
+[Bundle nhập DecisionDelta](decision-delta-20261110.toml) lưu các quyết định, đề xuất và câu hỏi
+của DecisionDelta: §2–4 của lượt 10/11/2026 (`PRODUCT-DECISIONS-20261110`) và §7 quản trị kiểm duyệt
+của lượt 11/11/2026 (`ADMIN-MODERATION-20261111`). [Bundle nhập sổ D/ADR](decision-log-20261111.toml)
+(`DECISION-LOG-20261111`) lưu phần quyết định của D-02..D-15 và các `CHOICE` theo issue trong ADR
+thảo luận, literary endorsement và phân loại. Mỗi revision sau đó gồm một proposal trong
 `proposals/`, và chỉ có hiệu lực khi có signoff của chủ sản phẩm trong `signoffs/`.
 [Bảng kiểm kê và bàn giao](../docs/development/decision-registry-rollout.md) ghi phạm vi đã chuyển,
-nguồn còn dùng và các điểm còn mở. PRD vẫn sở hữu yêu cầu và tiêu chí nghiệm thu. ADR sở hữu các
-quyết định kiến trúc ngoài phạm vi nhập. Các registry phát triển ghi mức triển khai và bằng chứng.
+nguồn còn dùng và các điểm còn mở. PRD vẫn sở hữu yêu cầu và tiêu chí nghiệm thu. ADR giữ thiết kế,
+lý do và các quyết định ngoài phạm vi nhập. Các registry phát triển ghi mức triển khai và bằng chứng.
 
 ## Tra cứu theo phạm vi công việc
 
@@ -16,8 +18,11 @@ cargo xtask decision query --domain publication
 cargo xtask decision query O-05
 cargo xtask decision query USER-08 --history
 cargo xtask decision query USER-08@r1
+cargo xtask decision query D-05
 cargo xtask decision query D-07
+cargo xtask decision query LVE-PR-01-CHOICE-02
 cargo xtask decision query ADMIN-MODERATION-20261111
+cargo xtask decision query DECISION-LOG-20261111
 cargo xtask decision diff O-12@r1 O-12@r2
 cargo xtask decision refs
 cargo xtask decision validate
@@ -31,15 +36,20 @@ cargo xtask decision validate
 - `query ID@rN` và `--history` đọc được revision lịch sử, pending hoặc bị từ chối. `pending_only`
   nghĩa là ID chưa có revision hiệu lực và head đang chờ signoff. `no_current` nghĩa là signoff cuối
   đã từ chối. `group` liệt kê mọi revision một lượt nhập đã chứa, kể cả revision bị thay sau đó.
-  `related_only` liệt kê các record hiện hành nhắc đến D-ID hay requirement ID. Ví dụ `D-07` liên
-  quan cả `USER-03` và `USER-05`. Tra ADR hoặc PRD để đọc chính ID đã yêu cầu. `unknown` là kết quả
-  tra cứu hợp lệ và cho biết kho chưa có ID hoặc revision đó.
+  `related_only` liệt kê các record hiện hành nhắc đến D-ID hay requirement ID. D-ID đã chuyển
+  (`D-05`) trả `current`. D-ID mà record DecisionDelta sở hữu trọn vẹn (`historical_alias`) trả
+  `related_only`. Ví dụ `D-07` trả cả `USER-03` và `USER-05`. `D-02` trả hai phần có trạng thái riêng
+  là `D-02-CONTENT` và `D-02-DISCUSSION`. Requirement ID vẫn tra chính ở PRD. `unknown` là kết quả
+  tra cứu hợp lệ và cho biết kho chưa có ID hoặc revision đó. Ví dụ `D-01` vẫn tra ở sổ D-ID.
+- `CHOICE` theo issue luôn mang phạm vi lát trong ID, như `LVE-PR-01-CHOICE-02`, `TAG-PR-01-CHOICE-01`,
+  `DISC-01-CHOICE-01` hay `DISC-04-CHOICE-02`. `query CHOICE-01` trả `unknown`.
 - Khi bàn giao, lưu Git SHA, `snapshot_sha256`, `ID@rN` và `source` từ kết quả. `query` không
   đối số xuất toàn bộ revision dưới dạng JSON. Dữ liệu xuất được dựng lại mỗi lần từ TOML.
 - Khi CLI lỗi hoặc không chạy được, nêu nguồn và SHA của dữ liệu đã đọc cùng phần chưa xác minh.
   [DecisionDelta tại commit nhập](https://github.com/loveoverflowcom/vink/blob/af3c34bd624be18d404bd5789620759cae0b0ddb/docs/architecture/product-decisions-20261110.md)
-  là bản đối chiếu lịch sử. Khi phạm vi hiện hành chưa xác định được, ghi `UNKNOWN` và tra owner
-  của miền. Query và validate chạy được ở checkout nông. Lệnh migrate cần Git object của nguồn.
+  và [sổ D-ID tại commit nhập](https://github.com/loveoverflowcom/vink/blob/73ab92f0064674833ec31bc7533b210149b26b79/docs/architecture/decisions.md)
+  là bản đối chiếu lịch sử. Record nhập từ sổ D/ADR ghi `source.path` và dòng nguồn tại commit
+  nhập. Khi phạm vi hiện hành chưa xác định được, ghi `UNKNOWN` và tra owner của miền. Query và validate chạy được ở checkout nông. Lệnh migrate cần Git object của nguồn.
 
 ## Đề xuất một revision
 
@@ -129,12 +139,12 @@ cargo xtask decision signoff O-12@r2 SHA256 /tmp/decision-signoff.toml
   `inf`/`nan` và `null` nằm ngoài hợp đồng v1.
 - **Tính ổn định.** Writer dùng thứ tự field của Rust và chuẩn hóa thứ tự các danh sách dạng tập.
   SHA-256 của proposal tính trên TOML render từ dữ liệu đã validate. Snapshot băm version, digest
-  bundle nhập, các digest revision theo thứ tự ID và revision, rồi digest signoff. Comment trong
+  hai bundle nhập, các digest revision theo thứ tự ID và revision, rồi digest signoff. Comment trong
   input là ghi chú tạm. Khi thay đổi serializer hoặc format, phải thử lại roundtrip, đối chiếu hash
   cũ và thêm đường nâng phiên bản nếu output đổi.
-- **Lịch sử và phê duyệt.** Bundle nhập có pin SHA-256 độc lập trong xtask, đối chiếu được bằng
-  `migrate --dry-run`. SHA của proposal dùng cho so sánh payload, chống ghi đè cùng base và gắn
-  signoff. Các field tự khai như `approval`, `authority` và `status` bị từ chối trong proposal.
+- **Lịch sử và phê duyệt.** Mỗi bundle nhập có pin SHA-256 độc lập trong xtask, đối chiếu được
+  bằng `migrate --dry-run [GROUP]`. SHA của proposal dùng cho so sánh payload, chống ghi đè cùng
+  base và gắn signoff. Các field tự khai như `approval`, `authority` và `status` bị từ chối trong proposal.
 - **Ranh giới tin cậy.** Signoff là chứng thực, không phải xác thực. CLI và `verify quick` trên CI
   kiểm payload khớp hash, signoff không trùng và outcome hợp lệ theo loại quyết định. Chúng không
   biết ai đã viết file. Trust anchor là lời trích của chủ sản phẩm cùng lần merge vào `develop` do
@@ -164,10 +174,20 @@ nhiều nơi.
 ```bash
 cargo xtask decision migrate --dry-run > /tmp/vink-decision-delta.toml
 cmp /tmp/vink-decision-delta.toml decisions/decision-delta-20261110.toml
+cargo xtask decision migrate --dry-run DECISION-LOG-20261111 > /tmp/vink-decision-log.toml
+cmp /tmp/vink-decision-log.toml decisions/decision-log-20261111.toml
 cargo xtask decision migrate
+cargo xtask decision migrate DECISION-LOG-20261111
 ```
 
-Dry-run đọc đúng Git object đã ghim (`af3c34b`, sau khi #165 thêm §7; §2–4 giống hệt bản
-`0c5bb27` của lần nhập đầu) và in kết quả ra stdout. Lệnh migrate cài bundle nếu thiếu hoặc báo
-file hiện tại khớp. Lỗi khác biệt yêu cầu đối chiếu nguồn và pin trước khi sửa. Importer không nhận
-thêm nguồn Markdown mới: quyết định sau lượt 11/11 đi qua proposal và signoff.
+Dry-run đọc đúng Git object đã ghim và in kết quả ra stdout. DecisionDelta đọc `af3c34b`, sau khi
+#165 thêm §7; §2–4 giống hệt bản `0c5bb27` của lần nhập đầu. Sổ D/ADR đọc `73ab92f`, sau khi #166
+merge kho TOML. Lệnh migrate cài bundle nếu thiếu hoặc báo file hiện tại khớp. Lỗi khác biệt yêu cầu
+đối chiếu nguồn và pin trước khi sửa.
+
+Importer sổ D/ADR (`xtask/src/decision/decision_log.rs`) chỉ chép trạng thái nguồn đã ghi tại commit
+ghim. Mỗi câu của record là một ô bảng hoặc một trích dẫn mà `render` phải tìm thấy nguyên văn trong
+khối nguồn đã khai báo. Trạng thái được trích trong `context.source_status`. Importer không nhận
+`ACCEPTED` và không ghép trạng thái sai loại quyết định. Tiêu đề của `CHOICE` theo issue chỉ là nhãn.
+Importer không là đường ghi quyết định: luật mới hoặc thay đổi nghĩa sau lượt 11/11 đi qua proposal
+và signoff. Muốn nhập thêm một nguồn Markdown, cần một pin riêng, trích nguyên văn và review riêng.

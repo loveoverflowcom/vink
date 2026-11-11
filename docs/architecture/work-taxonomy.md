@@ -15,6 +15,15 @@ baseline `develop@6c97917b6a7aa4c51f3b2fe816462c8a0a47fc64`. **Trạng thái:** 
 > cho hashtag. Nguyên tắc “bỏ dấu chỉ để tìm ứng viên, không quyết định danh tính” (TAG-FR-03) được
 > dùng lại. Chưa có code hashtag.
 
+**Record (11/11/2026):** phạm vi D-15 tra tại `D-15@r1`. CHOICE-01..03 của lát tra tại
+`TAG-PR-01-CHOICE-01..03@r1` (`DESIGN_PROPOSED`). Luật core, hợp đồng và phần ngoài phạm vi vẫn thuộc
+tài liệu này.
+
+<!-- vdr: active D-15@r1 -->
+<!-- vdr: active TAG-PR-01-CHOICE-01@r1 -->
+<!-- vdr: active TAG-PR-01-CHOICE-02@r1 -->
+<!-- vdr: active TAG-PR-01-CHOICE-03@r1 -->
+
 ## 1. Hiện trạng đã đối chiếu (source review)
 
 | Finding | Source | Hệ quả cho core |
