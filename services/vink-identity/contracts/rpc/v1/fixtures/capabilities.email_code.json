@@ -5,6 +5,8 @@
     "verify_credential": "available",
     "sign_in": "available",
     "revoke_session": "available",
-    "email_change": "available"
+    "email_change": "available",
+    "register_password": "not_configured",
+    "sign_in_password": "not_configured"
   }
 }

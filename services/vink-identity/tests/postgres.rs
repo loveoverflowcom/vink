@@ -20,6 +20,8 @@ const CALLER: u32 = 501;
 mod delivery;
 #[path = "postgres/email_code.rs"]
 mod email_code;
+#[path = "postgres/password.rs"]
+mod password;
 #[path = "support/smtp_sink.rs"]
 mod smtp_sink;
 
@@ -50,7 +52,12 @@ async fn serve_is_not_ready_until_identity_migrates_and_migrating_twice_is_a_no_
     let first = migrate(&pool).await.unwrap();
     assert_eq!(
         first.applied,
-        vec![20261102000000, 20261107000000, 20261112000000]
+        vec![
+            20261102000000,
+            20261107000000,
+            20261112000000,
+            20261113000000
+        ]
     );
     assert!(migrate(&pool).await.unwrap().applied.is_empty());
 
@@ -88,9 +95,11 @@ async fn identity_owns_only_credential_and_session_tables(pool: PgPool) {
         [
             "_sqlx_migrations",
             "account_emails",
+            "account_passwords",
             "accounts",
             "email_challenges",
             "mail_deliveries",
+            "password_login_attempts",
             "sessions"
         ]
     );

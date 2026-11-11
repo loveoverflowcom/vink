@@ -1,11 +1,14 @@
 //! The authentication authority behind the contract.
 //!
-//! Two exist in a built binary:
+//! Three configurations exist in a built binary:
 //! - [`Authority::NotConfigured`] (default): every verification answers `authority_not_configured`.
-//! - [`Authority::EmailCode`] (`VINK_IDENTITY_AUTHORITY=email-code`, D-05/S-03 spike): native
-//!   accounts proven by a one-time code sent to the address, with opaque server-side sessions.
-//!   Its only mail transport is the local outbox, so **production authentication stays
-//!   NOT_IMPLEMENTED** until a real transport, edge rate limits and a security review exist.
+//! - [`Authority::Native`] with `email_code` (`VINK_IDENTITY_AUTHORITY=email-code`, D-05/S-03 spike):
+//!   native accounts proven by a one-time code sent to the address, with opaque server-side sessions.
+//! - [`Authority::Native`] with `password` (`VINK_IDENTITY_AUTHORITY=password`, ACC-03, O-12):
+//!   native accounts with username and Argon2id password credentials, without mail dependency.
+//!
+//! Production authentication stays NOT_IMPLEMENTED until a real transport, edge rate limits
+//! and an independent security review exist.
 //!
 //! The positive fixture below compiles only into this crate's unit tests; it proves response
 //! shapes and is never a fallback.
@@ -30,19 +33,52 @@ impl From<StoreError> for AuthorityError {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct MethodCapabilities {
+    pub email_code: bool,
+    pub password: bool,
+}
+
 #[derive(Debug)]
 pub enum Authority {
     NotConfigured,
-    EmailCode(AccountStore),
+    Native {
+        store: AccountStore,
+        methods: MethodCapabilities,
+    },
     #[cfg(test)]
     Fixture(fixture::Fixture),
 }
 
 impl Authority {
+    pub fn new_email_code(store: AccountStore) -> Self {
+        Self::Native {
+            store,
+            methods: MethodCapabilities {
+                email_code: true,
+                password: false,
+            },
+        }
+    }
+
+    pub fn new_password(store: AccountStore) -> Self {
+        Self::Native {
+            store,
+            methods: MethodCapabilities {
+                email_code: false,
+                password: true,
+            },
+        }
+    }
+
+    pub fn new_native(store: AccountStore, methods: MethodCapabilities) -> Self {
+        Self::Native { store, methods }
+    }
+
     pub fn availability(&self) -> Availability {
         match self {
             Authority::NotConfigured => Availability::NotConfigured,
-            Authority::EmailCode(_) => Availability::Available,
+            Authority::Native { .. } => Availability::Available,
             #[cfg(test)]
             Authority::Fixture(_) => Availability::Available,
         }
@@ -51,15 +87,39 @@ impl Authority {
     /// Availability of the email-code operations (sign-in, revoke, email change).
     pub fn email_code_availability(&self) -> Availability {
         match self {
-            Authority::EmailCode(_) => Availability::Available,
+            Authority::Native { methods, .. } if methods.email_code => Availability::Available,
             _ => Availability::NotConfigured,
+        }
+    }
+
+    /// Availability of the password operations (register, sign-in).
+    pub fn password_availability(&self) -> Availability {
+        match self {
+            Authority::Native { methods, .. } if methods.password => Availability::Available,
+            _ => Availability::NotConfigured,
+        }
+    }
+
+    /// The account store for session operations (verify, revoke).
+    pub fn store(&self) -> Result<&AccountStore, AuthorityError> {
+        match self {
+            Authority::Native { store, .. } => Ok(store),
+            _ => Err(AuthorityError::NotConfigured),
         }
     }
 
     /// The account store, for the email-code operations.
     pub fn email_code(&self) -> Result<&AccountStore, AuthorityError> {
         match self {
-            Authority::EmailCode(store) => Ok(store),
+            Authority::Native { store, methods } if methods.email_code => Ok(store),
+            _ => Err(AuthorityError::NotConfigured),
+        }
+    }
+
+    /// The account store, for the password operations.
+    pub fn password(&self) -> Result<&AccountStore, AuthorityError> {
+        match self {
+            Authority::Native { store, methods } if methods.password => Ok(store),
             _ => Err(AuthorityError::NotConfigured),
         }
     }
@@ -73,19 +133,21 @@ impl Authority {
                 let _ = credential;
                 Err(AuthorityError::NotConfigured)
             }
-            Authority::EmailCode(store) => Ok(match store.verify(credential.expose()).await? {
-                Ok(session) => VerifyCredentialResponse::Authenticated {
-                    subject: subject(session.account_id),
-                    authenticated_at: session.authenticated_at,
-                    session: Some(SessionFacts {
-                        id: session.session_id.to_string(),
-                        expires_at: session.expires_at,
-                    }),
-                },
-                Err(reason) => VerifyCredentialResponse::Rejected {
-                    reason: Some(reason),
-                },
-            }),
+            Authority::Native { store, .. } => {
+                Ok(match store.verify(credential.expose()).await? {
+                    Ok(session) => VerifyCredentialResponse::Authenticated {
+                        subject: subject(session.account_id),
+                        authenticated_at: session.authenticated_at,
+                        session: Some(SessionFacts {
+                            id: session.session_id.to_string(),
+                            expires_at: session.expires_at,
+                        }),
+                    },
+                    Err(reason) => VerifyCredentialResponse::Rejected {
+                        reason: Some(reason),
+                    },
+                })
+            }
             #[cfg(test)]
             Authority::Fixture(fixture) => fixture.verify(credential),
         }

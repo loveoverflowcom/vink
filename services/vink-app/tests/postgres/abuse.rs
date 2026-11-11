@@ -171,6 +171,57 @@ async fn the_edge_answers_429_with_retry_after_from_the_shared_counter(pool: PgP
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn password_routes_enforce_rate_limits_at_the_edge(pool: PgPool) {
+    dev_seed::apply(&pool).await.unwrap();
+    let unreachable = vink_app::identity::IdentityClient::new(
+        std::path::PathBuf::from("/nonexistent/vink-identity.sock"),
+        0,
+    );
+    let router = router(
+        AppState::new(
+            Vink::new(PgStore::new(pool.clone())),
+            Arc::new(vink_app::identity::NoAuthority),
+            ORIGIN,
+            std::path::Path::new("target/site"),
+        )
+        .with_sign_in(Some(unreachable)),
+    )
+    .layer(axum::Extension(axum::extract::ConnectInfo(
+        SocketAddr::from(([198, 51, 100, 31], 4000)),
+    )));
+
+    // Test PASSWORD_REGISTER rate limit (limit = 5).
+    let mut answers = Vec::new();
+    for _ in 0..=vink_app::domain::abuse::PASSWORD_REGISTER.limit {
+        let response = router
+            .clone()
+            .oneshot(
+                Request::post("/api/v1/auth/register")
+                    .header(header::ORIGIN, ORIGIN)
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"username":"test_user","password":"test_password_123"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        answers.push((
+            response.status(),
+            response.headers().get(header::RETRY_AFTER).cloned(),
+        ));
+    }
+    let (last, rest) = answers.split_last().unwrap();
+    assert!(
+        rest.iter()
+            .all(|(status, retry)| *status == StatusCode::SERVICE_UNAVAILABLE && retry.is_none()),
+        "admitted requests forward to unreachable identity (503)"
+    );
+    assert_eq!(last.0, StatusCode::TOO_MANY_REQUESTS);
+    assert!(last.1.is_some(), "429 answers carry Retry-After");
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn prune_and_rollback_touch_only_rate_limit_windows(pool: PgPool) {
     let vink = seeded(&pool).await;
     vink.admit(&SIGN_IN_CHALLENGE, &network("198.51.100.40"))

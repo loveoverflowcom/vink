@@ -5,6 +5,8 @@
     "verify_credential": "not_configured",
     "sign_in": "not_configured",
     "revoke_session": "not_configured",
-    "email_change": "not_configured"
+    "email_change": "not_configured",
+    "register_password": "not_configured",
+    "sign_in_password": "not_configured"
   }
 }

@@ -399,7 +399,9 @@ impl Run<'_> {
         }
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
         if code != Some(0)
-            || !stderr.contains("applied=[20261102000000, 20261107000000, 20261112000000]")
+            || !stderr.contains(
+                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000]",
+            )
         {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));
         }

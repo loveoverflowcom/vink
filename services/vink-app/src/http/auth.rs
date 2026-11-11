@@ -34,10 +34,14 @@ use crate::application::Vink;
 use crate::application::account::AccountError;
 use crate::application::ports::{RateLimitStore, StoreError};
 use crate::domain::abuse::{
-    Admission, Network, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE, client_address,
+    Admission, Network, PASSWORD_LOGIN, PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE,
+    SIGN_IN_COMPLETE, client_address,
 };
 use crate::domain::principal::{Standing, SubjectKey};
-use crate::identity::client::{CallError, ChallengeRefusal, SignIn, StartError};
+use crate::identity::client::{
+    CallError, ChallengeRefusal, IssuedSession, PasswordLoginError, PasswordLoginOutcome,
+    PasswordRegisterError, PasswordRegisterOutcome, SignIn, StartError,
+};
 use crate::identity::{IdentityClient, Resolution, SESSION_COOKIE, bind, presented_credential};
 
 /// Holds the challenge handle between "send me a code" and "here is the code". `Strict`: the
@@ -48,6 +52,10 @@ pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/auth/sign-in/challenges", post(start_sign_in))
         .route("/auth/sign-in/complete", post(complete_sign_in))
+        .route("/auth/register", post(register))
+        .route("/auth/password/register", post(register))
+        .route("/auth/login", post(login))
+        .route("/auth/password/login", post(login))
         .route("/auth/session", get(session_state).delete(sign_out))
         .route("/auth/session/account", get(current_account))
         .route("/auth/principal", post(provision_principal))
@@ -73,6 +81,38 @@ pub struct ChallengeSent {
 #[serde(deny_unknown_fields)]
 pub struct CompleteSignInRequest {
     pub code: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterRequest {
+    pub username: String,
+    pub password: String,
+}
+
+impl std::fmt::Debug for RegisterRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegisterRequest")
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .finish()
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+impl std::fmt::Debug for LoginRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginRequest")
+            .field("username", &self.username)
+            .field("password", &"<redacted>")
+            .finish()
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -328,7 +368,86 @@ async fn complete_sign_in(
         }
         Err(error) => return Err(unavailable(error)),
     };
-    // From here a valid session exists in Identity, held only in this function.
+    establish_session(&state, client, session, previous, true).await
+}
+
+/// `POST /auth/register` (and `/auth/password/register`): native username/password registration.
+async fn register(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Response, ApiError> {
+    let client = sign_in_client(&state)?;
+    let (parts, body) = request.into_parts();
+    admit(&state, &parts, &PASSWORD_REGISTER).await?;
+    let previous = single_cookie(&parts.headers, SESSION_COOKIE).map(str::to_string);
+    let request: RegisterRequest = json(parts, body).await?;
+    let session = match client
+        .register_password(request.username.trim(), &request.password)
+        .await
+    {
+        Ok(PasswordRegisterOutcome::Authenticated(session)) => session,
+        Ok(PasswordRegisterOutcome::UsernameTaken) => return Err(ApiError::UsernameTaken),
+        Err(PasswordRegisterError::InvalidUsername) => {
+            return Err(ApiError::Validation {
+                field: "username",
+                message:
+                    "username must be 3-30 characters of lowercase letters, digits, '_' or '.'"
+                        .into(),
+            });
+        }
+        Err(PasswordRegisterError::InvalidPassword) => {
+            return Err(ApiError::Validation {
+                field: "password",
+                message: "password must be between 10 and 128 characters".into(),
+            });
+        }
+        Err(PasswordRegisterError::RateLimited) => {
+            return Err(ApiError::RateLimited {
+                retry_after_seconds: None,
+            });
+        }
+        Err(PasswordRegisterError::Call(error)) => return Err(unavailable(error)),
+    };
+    establish_session(&state, client, session, previous, false).await
+}
+
+/// `POST /auth/login` (and `/auth/password/login`): native username/password sign-in.
+async fn login(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Response, ApiError> {
+    let client = sign_in_client(&state)?;
+    let (parts, body) = request.into_parts();
+    admit(&state, &parts, &PASSWORD_LOGIN).await?;
+    let previous = single_cookie(&parts.headers, SESSION_COOKIE).map(str::to_string);
+    let request: LoginRequest = json(parts, body).await?;
+    let session = match client
+        .login_password(request.username.trim(), &request.password)
+        .await
+    {
+        Ok(PasswordLoginOutcome::Authenticated(session)) => session,
+        Ok(PasswordLoginOutcome::InvalidCredentials) => return Err(ApiError::InvalidCredentials),
+        Ok(PasswordLoginOutcome::AccountDisabled) => return Err(ApiError::AccountDisabled),
+        Err(PasswordLoginError::InvalidUsername | PasswordLoginError::InvalidPassword) => {
+            return Err(ApiError::InvalidCredentials);
+        }
+        Err(PasswordLoginError::RateLimited) => {
+            return Err(ApiError::RateLimited {
+                retry_after_seconds: None,
+            });
+        }
+        Err(PasswordLoginError::Call(error)) => return Err(unavailable(error)),
+    };
+    establish_session(&state, client, session, previous, false).await
+}
+
+async fn establish_session(
+    state: &AppState,
+    client: &IdentityClient,
+    session: IssuedSession,
+    previous: Option<String>,
+    clear_challenge: bool,
+) -> Result<Response, ApiError> {
     let revoke = || async {
         if client.revoke(&session.credential).await.is_err() {
             // The credential never left the server; it cannot be presented by anyone.
@@ -345,7 +464,12 @@ async fn complete_sign_in(
         Resolution::Unbound(_) => (SessionStateKind::NeedsPrincipal, None),
         Resolution::Suspended(_) => {
             revoke().await;
-            return Ok(with_cleared(ApiError::PrincipalSuspended.into_response()));
+            let resp = ApiError::PrincipalSuspended.into_response();
+            return Ok(if clear_challenge {
+                with_cleared(resp)
+            } else {
+                resp
+            });
         }
         Resolution::Anonymous | Resolution::Unavailable => {
             revoke().await;
@@ -368,7 +492,9 @@ async fn complete_sign_in(
     .into_response();
     let headers = response.headers_mut();
     headers.append(header::SET_COOKIE, set);
-    headers.append(header::SET_COOKIE, clear(CHALLENGE_COOKIE));
+    if clear_challenge {
+        headers.append(header::SET_COOKIE, clear(CHALLENGE_COOKIE));
+    }
     if let Some(previous) = previous.filter(|previous| *previous != session.credential)
         && client.revoke(&previous).await.is_err()
     {
@@ -580,11 +706,16 @@ mod tests {
             serde_json::from_value(fixture("auth.challenge.request.json")).unwrap();
         let _: CompleteSignInRequest =
             serde_json::from_value(fixture("auth.complete.request.json")).unwrap();
+        let _: RegisterRequest =
+            serde_json::from_value(fixture("auth.register.request.json")).unwrap();
+        let _: LoginRequest = serde_json::from_value(fixture("auth.login.request.json")).unwrap();
         let _: ProvisionPrincipalRequest =
             serde_json::from_value(fixture("auth.principal.request.json")).unwrap();
         // A client cannot name its subject, principal or role.
         for (name, field) in [
             ("auth.complete.request.json", "subject"),
+            ("auth.register.request.json", "role"),
+            ("auth.login.request.json", "role"),
             ("auth.principal.request.json", "principal_id"),
             ("auth.principal.request.json", "role"),
         ] {
@@ -594,6 +725,10 @@ mod tests {
                 "auth.complete.request.json" => {
                     serde_json::from_value::<CompleteSignInRequest>(raw).is_ok()
                 }
+                "auth.register.request.json" => {
+                    serde_json::from_value::<RegisterRequest>(raw).is_ok()
+                }
+                "auth.login.request.json" => serde_json::from_value::<LoginRequest>(raw).is_ok(),
                 _ => serde_json::from_value::<ProvisionPrincipalRequest>(raw).is_ok(),
             };
             assert!(!decoded, "{name} accepted {field}");
@@ -612,6 +747,12 @@ mod tests {
                 429,
             ),
             ("error.code_rejected.json", ApiError::CodeRejected, 422),
+            (
+                "error.invalid_credentials.json",
+                ApiError::InvalidCredentials,
+                401,
+            ),
+            ("error.username_taken.json", ApiError::UsernameTaken, 409),
             (
                 "error.challenge_closed.json",
                 ApiError::ChallengeClosed,
