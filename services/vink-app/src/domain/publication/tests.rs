@@ -24,7 +24,7 @@ pub(crate) fn snapshot(n: u128) -> Snapshot {
         .unwrap(),
     }
 }
-pub(super) fn save(state: &Publication, n: u128) -> Publication {
+pub(crate) fn save(state: &Publication, n: u128) -> Publication {
     let result = state
         .decide_author(owner(), AuthorCommand::SaveSnapshot(snapshot(n)))
         .unwrap();
@@ -265,7 +265,10 @@ fn restore_rejects_inconsistent_bindings_and_accepts_old_pointer_with_new_intent
     let mut f = base.clone();
     f.revisions[0].moderation = Moderation::Rejected;
     invalid.push(f);
-    for lifecycle in [Lifecycle::AuthorDeleted, Lifecycle::Removed] {
+    for lifecycle in [
+        Lifecycle::AuthorDeleted(DeletionProvenance::Hidden),
+        Lifecycle::Removed,
+    ] {
         let mut f = base.clone();
         f.lifecycle = lifecycle;
         invalid.push(f);
@@ -275,7 +278,7 @@ fn restore_rejects_inconsistent_bindings_and_accepts_old_pointer_with_new_intent
     invalid.push(f);
     let mut f = private(&r2).next.facts().clone();
     f.audience = Audience::Public;
-    f.lifecycle = Lifecycle::AuthorDeleted;
+    f.lifecycle = Lifecycle::AuthorDeleted(DeletionProvenance::Hidden);
     invalid.push(f);
     for facts in invalid {
         assert_eq!(
@@ -330,7 +333,10 @@ fn inactive_facts_never_publish_or_resurrect_and_reviews_recheck_exact_binding()
         pending.record_review(wrong),
         Err(PublicationError::StaleModeration)
     );
-    for lifecycle in [Lifecycle::AuthorDeleted, Lifecycle::Removed] {
+    for lifecycle in [
+        Lifecycle::AuthorDeleted(DeletionProvenance::Hidden),
+        Lifecycle::Removed,
+    ] {
         let mut facts = private(&pending).next.facts().clone();
         facts.lifecycle = lifecycle;
         let terminal = Publication::restore(facts).unwrap();
@@ -356,4 +362,168 @@ fn inactive_facts_never_publish_or_resurrect_and_reviews_recheck_exact_binding()
             Err(PublicationError::WorkUnavailable)
         );
     }
+}
+
+#[test]
+fn author_delete_and_admin_remove_transitions_and_access_plans() {
+    let saved = save(&Publication::new(work(1), owner()), 1);
+    let requested = request(&saved, 1);
+    let public = review(&requested.next, 1, ReviewOutcome::Approved).next;
+
+    // 1. Delete on a public work produces a PublicTombstone
+    let deleted_pub = public
+        .decide_author(
+            owner(),
+            AuthorCommand::Delete {
+                expected: Some(public.facts().generation),
+            },
+        )
+        .unwrap();
+    assert_eq!(deleted_pub.outcome, AuthorOutcome::Deleted);
+    assert_eq!(deleted_pub.effects.pointer, PointerEffect::Clear);
+    assert_eq!(deleted_pub.next.facts().audience, Audience::Private);
+    assert_eq!(deleted_pub.next.facts().generation.get(), 3);
+    assert_eq!(deleted_pub.next.readable_revision(), None);
+    let pointer = PublicPointer {
+        revision: revision(1),
+        intent_generation: generation(2),
+    };
+    assert_eq!(
+        deleted_pub.next.facts().lifecycle,
+        Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(pointer))
+    );
+    assert_eq!(
+        deleted_pub.next.access_plan(),
+        WorkAccessPlan::AuthorTombstone {
+            last_pointer: pointer
+        }
+    );
+    assert!(!deleted_pub.next.access_plan().is_listed());
+    assert!(!deleted_pub.next.access_plan().allows_snippet());
+    assert!(deleted_pub.next.access_plan().thread_accessible());
+
+    // 2. Delete on a private work produces Hidden provenance
+    let private_work = private(&public).next;
+    let deleted_priv = private_work
+        .decide_author(owner(), AuthorCommand::Delete { expected: None })
+        .unwrap();
+    assert_eq!(deleted_priv.outcome, AuthorOutcome::Deleted);
+    assert_eq!(
+        deleted_priv.next.facts().lifecycle,
+        Lifecycle::AuthorDeleted(DeletionProvenance::Hidden)
+    );
+    assert_eq!(deleted_priv.next.access_plan(), WorkAccessPlan::Unavailable);
+    assert!(!deleted_priv.next.access_plan().thread_accessible());
+
+    // 3. Delete on never-public work produces Hidden provenance
+    let never_public = save(&Publication::new(work(1), owner()), 1);
+    let deleted_never = never_public
+        .decide_author(owner(), AuthorCommand::Delete { expected: None })
+        .unwrap();
+    assert_eq!(
+        deleted_never.next.facts().lifecycle,
+        Lifecycle::AuthorDeleted(DeletionProvenance::Hidden)
+    );
+    assert_eq!(
+        deleted_never.next.access_plan(),
+        WorkAccessPlan::Unavailable
+    );
+
+    // 4. Admin remove clears pointer, does not advance generation, keeps audience
+    let (removed, effects) = public.admin_remove().unwrap();
+    assert_eq!(effects.pointer, PointerEffect::Clear);
+    assert_eq!(removed.facts().lifecycle, Lifecycle::Removed);
+    assert_eq!(removed.facts().audience, Audience::Public);
+    assert_eq!(removed.facts().generation, public.facts().generation);
+    assert_eq!(removed.access_plan(), WorkAccessPlan::Unavailable);
+
+    // 5. Subsequent mutations on deleted or removed fail with WorkUnavailable
+    for terminal in [&deleted_pub.next, &removed] {
+        assert_eq!(
+            terminal.decide_author(owner(), AuthorCommand::Delete { expected: None }),
+            Err(PublicationError::WorkUnavailable)
+        );
+        assert_eq!(
+            terminal.admin_remove(),
+            Err(PublicationError::WorkUnavailable)
+        );
+        assert_eq!(
+            terminal.decide_author(
+                owner(),
+                AuthorCommand::RequestPublic {
+                    revision: revision(1),
+                    expected: terminal.facts().generation,
+                }
+            ),
+            Err(PublicationError::WorkUnavailable)
+        );
+    }
+
+    // 6. Stale generation on Delete fails with Stale
+    assert_eq!(
+        public.decide_author(
+            owner(),
+            AuthorCommand::Delete {
+                expected: Some(generation(99))
+            }
+        ),
+        Err(PublicationError::Stale)
+    );
+}
+
+#[test]
+fn restore_validates_deletion_provenance_and_fails_closed_on_corruption() {
+    let saved = save(&Publication::new(work(1), owner()), 1);
+    let requested = request(&saved, 1);
+    let public = review(&requested.next, 1, ReviewOutcome::Approved).next;
+    let deleted = public
+        .decide_author(owner(), AuthorCommand::Delete { expected: None })
+        .unwrap()
+        .next;
+
+    // Valid restore
+    assert_eq!(
+        Publication::restore(deleted.facts().clone()),
+        Ok(deleted.clone())
+    );
+
+    // Incompatible: PublicTombstone with unapproved revision
+    let mut corrupted = deleted.facts().clone();
+    corrupted.revisions[0].moderation = Moderation::Rejected;
+    assert_eq!(
+        Publication::restore(corrupted),
+        Err(PublicationError::InvalidFacts)
+    );
+
+    // Incompatible: PublicTombstone with cross-work revision
+    let mut corrupted = deleted.facts().clone();
+    corrupted.lifecycle =
+        Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(PublicPointer {
+            revision: revision(999),
+            intent_generation: generation(2),
+        }));
+    assert_eq!(
+        Publication::restore(corrupted),
+        Err(PublicationError::InvalidFacts)
+    );
+
+    // Incompatible: PublicTombstone with future intent_generation
+    let mut corrupted = deleted.facts().clone();
+    corrupted.lifecycle =
+        Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(PublicPointer {
+            revision: revision(1),
+            intent_generation: generation(99),
+        }));
+    assert_eq!(
+        Publication::restore(corrupted),
+        Err(PublicationError::InvalidFacts)
+    );
+
+    // Incompatible: AuthorDeleted with Audience::Public
+    let mut corrupted = deleted.facts().clone();
+    corrupted.audience = Audience::Public;
+    assert_eq!(
+        Publication::restore(corrupted),
+        Err(PublicationError::InvalidFacts)
+    );
 }

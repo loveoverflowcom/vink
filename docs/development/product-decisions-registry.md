@@ -5,11 +5,11 @@
 [`services/vink-app/behavior/target`](../../services/vink-app/behavior/target/README.md).
 
 Registry này nối **yêu cầu → model/invariant/scenario → gap implementation** và ghi bằng chứng đã
-chạy. #150 và #151 hiện thực lõi publication + moderation thuần, `ScriptedEvaluator` và replay 46/51
-bước của M1 cùng 21 bước `evaluator-vectors.json`, xem [publication-core](publication-core.md) và
-[moderation-core](moderation-core.md); các runtime gap được giữ riêng theo từng action. Bằng
-chứng “model” nghĩa là typecheck + simulation có biên + scenario + negative control của Quint,
-không phải code, PostgreSQL, API hay trình duyệt. Registry của code đang chạy vẫn ở
+chạy. #150, #151 và #157 hiện thực lõi publication + moderation + tombstone access thuần, `ScriptedEvaluator`
+và replay đủ 51/51 bước của M1 cùng 30/30 bước của M3 và 21 bước `evaluator-vectors.json`, xem
+[publication-core](publication-core.md) và [moderation-core](moderation-core.md); các runtime gap được
+giữ riêng theo từng action. Bằng chứng “model” nghĩa là typecheck + simulation có biên + scenario + negative
+control của Quint, không phải code, PostgreSQL, API hay trình duyệt. Registry của code đang chạy vẫn ở
 [discussion-core](discussion-core.md), [endorsement-core](endorsement-core.md),
 [taxonomy-core](taxonomy-core.md) và không bị sửa để khớp hướng đích.
 
@@ -27,15 +27,15 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Pure core + mock #151:** `EvaluationTarget`, `EvaluationTicket`, `EvaluatorResult`, `validate_evaluation_result`, `ScriptedEvaluator` (đủ 9 lớp `ScriptKind`); replay 12 bước publication consumer + 9 bước comment contract. Chưa có bảng job/result hay worker consumer |
 | MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Pure core #151:** `Timeout` / `ProviderError` đóng job sang `Failed` (`retryable`), giữ nguyên `Pending` và pointer; `reevaluate` đòi `EvaluationId` mới. Chưa có trần retry DB, watchdog hay UI |
 | MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Pure core #151:** `AdminAuthority` hẹp gắn `(actor, work)`, `DecisionVersion`, `DecisionReason`, `apply_admin_decision` + replay NC `mutatedOverrideStep`. Chưa có bảng grant/CLI/HTTP cấp quyền admin bền vững |
-| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure guard #150 + #151:** terminal restored facts chặn author (`work_unavailable`), admin và evaluator (`target_gone`). Chưa có lệnh xóa/gỡ; model lifecycle actions được nạp như fixture (`#155`) |
+| PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure core #157:** `decide_author(Delete)` và `apply_admin_remove` là transition sản xuất thật, replay đủ 51/51 bước của M1. Chưa có persistence migration, CLI/route hay tombstone query (#158) |
 
 ### 1.2. Xóa bài và tombstone (M3)
 
 | Yêu cầu | Invariant (`tombstone.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
-| PUB-04 | `bodyOnlyWhilePublic`, `tombstoneOnlyAfterAuthorDeletesPublicWork`, `tombstoneKeepsApprovedComments`, `othersSeeOnlyApproved` | `author_deleted_public_work` (8: khách thấy trang thay thế + bình luận 1; người viết thấy thêm bình luận của mình) | **Chưa có.** Hiện không có publication → `readable_thread` trả `None` → thảo luận `404`. Cần trạng thái “tác giả đã xóa” và đường đọc thảo luận riêng cho nó |
-| PUB-05 | `noExceptionForHiddenWork`, `deletionIsTerminal` | `private_then_deleted` (4, 9), `moderation_removed` (4), bước đầu của scenario A (chưa công khai). NC `mutatedPrivateStep` | **Chưa có.** Hành vi hiện tại của mọi trường hợp “không có publication” trùng với B/C/D |
-| PUB-05 (không xóa bình luận theo bài) | `workChangesKeepComments`, `noNewTextOffPublic` | (9) `tombstone_read_only`; (12) người viết gỡ bình luận của mình | Hàng bình luận hiện cũng không bị xóa khi mất publication (IMPLEMENTED, kiểm ở lane `postgres` của thảo luận); phần còn lại chưa có |
+| PUB-04 | `bodyOnlyWhilePublic`, `tombstoneOnlyAfterAuthorDeletesPublicWork`, `tombstoneKeepsApprovedComments`, `othersSeeOnlyApproved` | `author_deleted_public_work` (8: khách thấy trang thay thế + bình luận 1; người viết thấy thêm bình luận của mình) | **Pure core #157:** `Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(pointer))`, `WorkAccessPlan::AuthorTombstone { last_pointer }` cho phép đọc thread cũ; `plan_comment_view` và `check_comment_submission` kiểm barrier. Chưa có migration schema tombstone, API hay UI (#158) |
+| PUB-05 | `noExceptionForHiddenWork`, `deletionIsTerminal` | `private_then_deleted` (4, 9), `moderation_removed` (4), bước đầu của scenario A (chưa công khai). NC `mutatedPrivateStep` | **Pure core #157:** `Lifecycle::AuthorDeleted(DeletionProvenance::Hidden)` và `Lifecycle::Removed` chiếu `WorkAccessPlan::Unavailable` (thread_accessible = false, 404). Replay 30/30 bước và NC `mutatedPrivateStep` qua production |
+| PUB-05 (không xóa bình luận theo bài) | `workChangesKeepComments`, `noNewTextOffPublic` | (9) `tombstone_read_only`; (12) người viết gỡ bình luận của mình | **Pure core #157:** `check_comment_submission` từ chối `TombstoneReadOnly`, người viết gỡ bằng `remove_by_author()`. Hàng bình luận không bị xóa (kiểm ở `postgres` thảo luận). Runtime route/HTTP chưa có (#158) |
 
 ### 1.3. Bộ sưu tập (M2)
 
@@ -92,7 +92,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | AC-02 Phân biệt nhãn trạng thái | Đạt | DecisionDelta §1; mỗi đặc tả có dòng trạng thái và mục hiện trạng |
 | AC-03 Username/mật khẩu là hướng chính, hiện trạng mã email đúng | Đạt (tài liệu) | ADR D-05 §12, D-05, ACC-03 |
 | AC-04 AI auto-approval và admin override có version/authority | Đạt (model) | M1, M4, M6; contract evaluator; không gì được gửi đi |
-| AC-05 Xóa ≠ riêng tư ≠ kiểm duyệt gỡ | Đạt (model) | M3 + negative control |
+| AC-05 Xóa ≠ riêng tư ≠ kiểm duyệt gỡ | Đạt (pure core #157) | M3 + negative control; `Lifecycle::AuthorDeleted(DeletionProvenance)` và `WorkAccessPlan` replay 30/30 bước |
 | AC-06 AND bộ sưu tập × bài, có bảng chân trị và negative test | Đạt (model) | M2 + negative control |
 | AC-07 Sửa bình luận có revision, kiểm duyệt, dấu | Đạt (model) | M4 + negative control |
 | AC-08 Đề xuất và Top 100 là hai policy | Đạt (model) | M5 + hai negative control |

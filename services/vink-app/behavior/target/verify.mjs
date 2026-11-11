@@ -96,7 +96,7 @@ function fixture(name, header, lists) {
   const content = `{\n${Object.entries(header).map(([key, item]) =>
     `  ${JSON.stringify(key)}: ${JSON.stringify(item)}`).concat(body).join(',\n')}\n}\n`;
   JSON.parse(content);
-  const path = join(directory, name.startsWith('publication-') ? '../publication' : '.', name);
+  const path = join(directory, name.startsWith('publication-') || name.startsWith('tombstone-') ? '../publication' : '.', name);
   if (write) {
     writeFileSync(path, content);
     console.log(`WRITE ${name}`);
@@ -163,7 +163,7 @@ const models = [
     ],
   },
   {
-    file: 'tombstone.qnt', safe: 'tombstoneSafe', bounds: 'comments<=4, viewers=guest+2',
+    file: '../publication/tombstone.qnt', safe: 'tombstoneSafe', bounds: 'comments<=4, viewers=guest+2',
     fields: ['status', 'everPublic', 'comments', 'views'],
     scenarios: [
       ['author_deleted_public_work', 'deletedStep', 14],
@@ -387,7 +387,7 @@ try {
     simulation(model.file, 'step', maxSteps, samples, model.safe);
     console.log(`PASS ${model.file}: typecheck; simulation ${model.safe} seed=${seed}, samples=${samples}, max_steps=${maxSteps}, ${model.bounds}`);
     const name = basename(model.file, '.qnt');
-    const modelStatus = name === 'publication' ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
+    const modelStatus = ['publication', 'tombstone'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
     const scenarios = model.scenarios.map(([scenario, step, length]) => {
       const out = join(temporary, `${name}-${scenario}.itf.json`);
       simulation(model.file, step, length, 1, model.safe, out);

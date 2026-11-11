@@ -23,11 +23,37 @@ pub enum Audience {
     Public,
 }
 
+/// Provenance recorded when an author deletes their work (#157, PUB-04, PUB-05).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeletionProvenance {
+    /// Author deleted a work that had a readable public pointer at deletion time.
+    /// Retains the exact public pointer that was readable, allowing valid comments
+    /// to remain accessible on the tombstone without resurrecting content.
+    PublicTombstone(PublicPointer),
+    /// Author deleted a work that was private, unpublished, or never had an approved pointer.
+    /// Old links answer not_found and no tombstone is created.
+    Hidden,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Lifecycle {
     Active,
-    AuthorDeleted,
+    AuthorDeleted(DeletionProvenance),
     Removed,
+}
+
+impl Lifecycle {
+    pub const fn is_active(self) -> bool {
+        matches!(self, Self::Active)
+    }
+
+    pub const fn is_author_deleted(self) -> bool {
+        matches!(self, Self::AuthorDeleted(_))
+    }
+
+    pub const fn is_removed(self) -> bool {
+        matches!(self, Self::Removed)
+    }
 }
 
 /// Facts supplied by the moderation owner, scoped to one immutable revision.
@@ -133,6 +159,9 @@ pub enum AuthorCommand {
     SetPrivate {
         expected: IntentGeneration,
     },
+    Delete {
+        expected: Option<IntentGeneration>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,6 +172,7 @@ pub enum AuthorOutcome {
     Published,
     MadePrivate,
     Reaffirmed,
+    Deleted,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -204,6 +234,42 @@ pub struct ReviewTransition {
     pub effects: Effects,
 }
 
+/// Typed public read/access projection (#157, AC-03, CHOICE-02 A).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WorkAccessPlan<'a> {
+    /// Work is active and public: returns the exact readable snapshot binding.
+    /// Content, listings, and snippets/previews are lawful.
+    PublicBody(&'a Snapshot),
+    /// Author deleted a work that was readable: body/metadata/snippets/listings are gone,
+    /// but the thread remains accessible as a tombstone page.
+    AuthorTombstone { last_pointer: PublicPointer },
+    /// Private, never-public, deleted while hidden, or removed by moderation.
+    /// Nothing is readable on old links or discovery listings.
+    Unavailable,
+}
+
+impl<'a> WorkAccessPlan<'a> {
+    pub const fn is_listed(&self) -> bool {
+        matches!(self, Self::PublicBody(_))
+    }
+
+    pub const fn allows_snippet(&self) -> bool {
+        matches!(self, Self::PublicBody(_))
+    }
+
+    pub const fn thread_accessible(&self) -> bool {
+        matches!(self, Self::PublicBody(_) | Self::AuthorTombstone { .. })
+    }
+
+    pub const fn page_kind(&self) -> &'static str {
+        match self {
+            Self::PublicBody(_) => "body",
+            Self::AuthorTombstone { .. } => "tombstone",
+            Self::Unavailable => "not_found",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum PublicationError {
     #[error("work not found or owned by someone else")]
@@ -262,13 +328,34 @@ impl Publication {
         {
             return Err(PublicationError::InvalidFacts);
         }
-        if (state.0.lifecycle == Lifecycle::AuthorDeleted && state.0.audience != Audience::Private)
-            || (state.0.generation == IntentGeneration::FIRST
-                && state
-                    .0
-                    .revisions
-                    .iter()
-                    .any(|r| r.moderation != Moderation::Unsubmitted))
+        match state.0.lifecycle {
+            Lifecycle::Active => {}
+            Lifecycle::AuthorDeleted(provenance) => {
+                if state.0.audience != Audience::Private {
+                    return Err(PublicationError::InvalidFacts);
+                }
+                match provenance {
+                    DeletionProvenance::PublicTombstone(pointer) => {
+                        if pointer.intent_generation <= IntentGeneration::FIRST
+                            || pointer.intent_generation >= state.0.generation
+                            || !state
+                                .revision(pointer.revision)
+                                .is_ok_and(|r| r.moderation == Moderation::Approved)
+                        {
+                            return Err(PublicationError::InvalidFacts);
+                        }
+                    }
+                    DeletionProvenance::Hidden => {}
+                }
+            }
+            Lifecycle::Removed => {}
+        }
+        if state.0.generation == IntentGeneration::FIRST
+            && state
+                .0
+                .revisions
+                .iter()
+                .any(|r| r.moderation != Moderation::Unsubmitted)
         {
             return Err(PublicationError::InvalidFacts);
         }
@@ -344,6 +431,34 @@ impl Publication {
             && self.0.audience == Audience::Public
             && revision.moderation == Moderation::Approved)
             .then_some(&revision.snapshot)
+    }
+
+    /// Access classification for readers, discovery listings, previews, and thread access (#157, AC-03).
+    pub fn access_plan(&self) -> WorkAccessPlan<'_> {
+        if let Some(snapshot) = self.readable_revision() {
+            WorkAccessPlan::PublicBody(snapshot)
+        } else if let Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(last_pointer)) =
+            self.0.lifecycle
+        {
+            WorkAccessPlan::AuthorTombstone { last_pointer }
+        } else {
+            WorkAccessPlan::Unavailable
+        }
+    }
+
+    /// Moderator/admin removal of a work. Clears intent and public pointer while preserving
+    /// revision history. Does not advance generation (#157, AC-01, AC-05).
+    pub fn admin_remove(&self) -> Result<(Self, Effects), PublicationError> {
+        self.active()?;
+        let mut next = self.clone();
+        next.0.lifecycle = Lifecycle::Removed;
+        next.0.intent = None;
+        let mut effects = Effects::NONE;
+        if next.0.pointer.is_some() {
+            next.0.pointer = None;
+            effects.pointer = PointerEffect::Clear;
+        }
+        Ok((next, effects))
     }
 
     fn promote(&mut self, effects: &mut Effects) {
@@ -433,6 +548,29 @@ impl Publication {
                 } else {
                     AuthorOutcome::Reaffirmed
                 }
+            }
+            AuthorCommand::Delete { expected } => {
+                if let Some(expected) = expected
+                    && expected != self.0.generation
+                {
+                    return Err(PublicationError::Stale);
+                }
+                let provenance = if let Some(pointer) = self
+                    .0
+                    .pointer
+                    .filter(|_| self.readable_revision().is_some())
+                {
+                    DeletionProvenance::PublicTombstone(pointer)
+                } else {
+                    DeletionProvenance::Hidden
+                };
+                next.0.lifecycle = Lifecycle::AuthorDeleted(provenance);
+                next.0.generation = self.0.generation.next()?;
+                next.0.audience = Audience::Private;
+                next.0.intent = None;
+                next.0.pointer = None;
+                effects.pointer = PointerEffect::Clear;
+                AuthorOutcome::Deleted
             }
         };
         Ok(AuthorTransition {

@@ -4,8 +4,8 @@ use crate::domain::moderation::{
     AdminOutcome, AdminVerdict, AppliedEvaluation, DecisionVersion, EvaluationRefusal,
     EvaluationTarget, EvaluatorOutcome, NeedsAdminCause, PolicyReasonCode,
 };
-use crate::domain::publication::AuthorOutcome;
 use crate::domain::publication::tests::{owner, revision, snapshot, work};
+use crate::domain::publication::{AuthorOutcome, Lifecycle};
 
 #[test]
 fn unauthenticated_and_suspended_principals_are_refused_before_any_author_or_admin_plan() {
@@ -335,4 +335,104 @@ fn scripted_evaluator_steps_all_nine_classes_and_never_falls_back_to_approve_whe
     let executed: std::collections::BTreeSet<ScriptKind> =
         scripted.executed_kinds().iter().copied().collect();
     assert_eq!(executed, std::collections::BTreeSet::from(ScriptKind::ALL));
+}
+
+#[test]
+fn plan_work_admin_removal_enforces_active_standing_and_admin_authority() {
+    let author_actor = BoundPrincipal {
+        principal: owner(),
+        standing: Standing::Active,
+    };
+    let admin_actor = BoundPrincipal {
+        principal: admin(),
+        standing: Standing::Active,
+    };
+    let initial_pub = Publication::new(work(1), owner());
+    let initial_mod = WorkModeration::new(work(1));
+
+    let saved = plan_author_publication(
+        Some(author_actor),
+        &initial_pub,
+        &initial_mod,
+        AuthorCommand::SaveSnapshot(snapshot(1)),
+        None,
+    )
+    .unwrap();
+
+    // 1. Unauthenticated fails
+    assert_eq!(
+        plan_work_admin_removal(None, Some(work(1)), &saved.publication, &saved.moderation),
+        Err(ModerationPlanError::Unauthenticated)
+    );
+
+    // 2. Suspended fails
+    assert_eq!(
+        plan_work_admin_removal(
+            Some(BoundPrincipal {
+                standing: Standing::Suspended,
+                ..admin_actor
+            }),
+            Some(work(1)),
+            &saved.publication,
+            &saved.moderation
+        ),
+        Err(ModerationPlanError::Suspended)
+    );
+
+    // 3. No admin grant fails NotAdmin
+    assert_eq!(
+        plan_work_admin_removal(
+            Some(admin_actor),
+            None,
+            &saved.publication,
+            &saved.moderation
+        ),
+        Err(ModerationPlanError::Rejected(ModerationError::NotAdmin))
+    );
+
+    // 3b. A grant on another work, or an author holding a grant on their own work, is refused
+    // (narrow scope and self-recusal, as for admin decisions). An author deletes instead.
+    for (actor, granted) in [(admin_actor, work(2)), (author_actor, work(1))] {
+        assert_eq!(
+            plan_work_admin_removal(
+                Some(actor),
+                Some(granted),
+                &saved.publication,
+                &saved.moderation
+            ),
+            Err(ModerationPlanError::Rejected(ModerationError::NotAdmin))
+        );
+    }
+
+    // 3c. Moderation facts of another work never pair with this publication.
+    assert_eq!(
+        plan_work_admin_removal(
+            Some(admin_actor),
+            Some(work(1)),
+            &saved.publication,
+            &WorkModeration::new(work(2))
+        ),
+        Err(ModerationPlanError::Rejected(ModerationError::InvalidFacts))
+    );
+
+    // 4. Successful removal
+    let removed = plan_work_admin_removal(
+        Some(admin_actor),
+        Some(work(1)),
+        &saved.publication,
+        &saved.moderation,
+    )
+    .unwrap();
+    assert_eq!(removed.publication.facts().lifecycle, Lifecycle::Removed);
+
+    // 5. Calling again on already removed work fails TargetGone
+    assert_eq!(
+        plan_work_admin_removal(
+            Some(admin_actor),
+            Some(work(1)),
+            &removed.publication,
+            &removed.moderation
+        ),
+        Err(ModerationPlanError::Rejected(ModerationError::TargetGone))
+    );
 }

@@ -100,10 +100,64 @@ Logs local: `/tmp/vink150-focused.log`, `/tmp/vink150-quick-final.log`,
 [#151](moderation-core.md) (`domain::moderation`, `application::moderation`) nối contract evaluator,
 `ScriptedEvaluator` (9 lớp `evaluator-vectors.json`), guard precedence, `DecisionVersion` và
 `AdminAuthority` vào `Publication::record_review`, mở rộng replay M1 lên 46/51 bước cùng cả hai
-negative control (`mutatedIntentStep`, `mutatedOverrideStep`). PR persistence sau phải reload
-owner + **principal standing fence**, revision/hash + current decision/version, current audience,
-intent/generation và lifecycle trong cùng transaction; gọi policy trên facts mới, capture metadata
-bằng `capture_metadata_snapshot`, bind revision + metadata trong cùng pointer row và commit
-receipt/audit/outbox cùng effect. Không sửa public reads sang working_drafts. Public access hiện
-hành vẫn cần check ở read/commit/cache boundary; pure PASS không chứng minh SQL locks, race,
-rollback hay authorization. Sau đó mới nối HTTP/SSR/UI, delete/tombstone, worker và evaluator thật.
+negative control (`mutatedIntentStep`, `mutatedOverrideStep`).
+
+## Delete/remove lifecycle và tombstone access — PUB-LIFECYCLE-01 (#157)
+
+**Phạm vi:** Core delete/remove lifecycle, typed deletion provenance, và typed access projection
+(`PublicBody(Snapshot)` | `AuthorTombstone { last_pointer }` | `Unavailable`), cùng tầng application
+planning kết hợp với `domain::discussion::visibility`.
+
+### Lựa chọn thiết kế
+
+- **CHOICE-01 A (Typed Deletion Provenance):**
+  `Lifecycle::AuthorDeleted(DeletionProvenance)` với hai variant:
+  `DeletionProvenance::PublicTombstone(PublicPointer)` và `DeletionProvenance::Hidden`.
+  Loại bỏ trạng thái vô lý ở mức kiểu dữ liệu (như `Removed` mang tombstone pointer), bảo đảm
+  dữ liệu lịch sử thiếu/sai hỏng sẽ fail-closed khi restore.
+- **CHOICE-02 A (Typed Access Plan):**
+  `Publication::access_plan()` trả về `WorkAccessPlan<'a>` đóng gói logic kiểm tra quyền truy cập:
+  `PublicBody(&'a Snapshot)`, `AuthorTombstone { last_pointer }`, hoặc `Unavailable`.
+  Các hàm planning ở tầng application (`plan_work_access`, `plan_comment_view`, `check_comment_submission`)
+  tiêu thụ kiểu này mà không cần lặp lại điều kiện rẽ nhánh.
+
+### Core transitions & Application Seam
+
+| API / Method | Hợp đồng và hành vi |
+| --- | --- |
+| `decide_author(Delete)` | Owner + active lifecycle; xoá pointer và intent; chuyển audience sang `Private`; tăng `intent_generation`; ghi nhận `DeletionProvenance::PublicTombstone` nếu tại thời điểm xóa bài có readable revision approved, hoặc `Hidden` nếu chưa từng công khai hoặc đang riêng tư |
+| `Publication::admin_remove()` | Xoá pointer và intent; chuyển lifecycle sang `Lifecycle::Removed`; giữ nguyên audience và generation |
+| `WorkModeration::apply_admin_remove` | Cặp `WorkModeration`/`Publication` cùng work (`InvalidFacts` nếu lệch); `AdminAuthority` scoped theo `(admin, work)` và tác giả tự recuse như `apply_admin_decision` (`NotAdmin`; tác giả xoá bằng `Delete` để giữ tombstone hợp lệ); uỷ quyền chuyển đổi sang `Publication::admin_remove` |
+| `Publication::access_plan()` | `PublicBody(&Snapshot)` khi active + public + readable pointer; `AuthorTombstone` khi author deleted có tombstone; `Unavailable` trong mọi trường hợp khác (riêng tư, deleted hidden, moderation removed) |
+| `plan_work_access` | Application entry point trả về `WorkAccessPlan` |
+| `plan_comment_view` | Nếu thread không accessible (`Unavailable`), trả về `CommentView::Unavailable`; nếu là tombstone hoặc public body, chuyển tiếp sang `visibility::view` |
+| `check_comment_submission` | Barrier chống gửi bình luận: `PublicBody` cho phép gửi; `AuthorTombstone` trả lỗi `TombstoneReadOnly`; `Unavailable` trả lỗi `WorkUnavailable` |
+| `check_own_comment_removal` | Cổng mức tác phẩm cho người viết tự gỡ bình luận: cho phép trên `PublicBody` và `AuthorTombstone` (baseline O-03, vẫn OPEN); `Unavailable` trả `WorkUnavailable`. Lifecycle của bình luận vẫn do `CommentState` quyết định |
+
+### Chuyển canonical M3 và hoàn tất 51/51 replay M1
+
+1. **Khử hoàn toàn 5 bước model-only trong M1:**
+   Tất cả 51 bước của `publication-vectors.json` (`author`: 24, `ai_result`: 13, `admin_decide`: 6,
+   `admin_remove`: 3, `reevaluate`: 4, `policy_bump`: 1) đã chạy 100% qua code production thật của
+   `Publication` và `WorkModeration`.
+2. **Chuyển canonical M3:**
+   `tombstone.qnt`, `tombstone-vectors.json`, và `tombstone-private-as-deleted-counterexample.json`
+   đã chuyển từ `services/vink-app/behavior/target/` sang `services/vink-app/behavior/publication/`.
+3. **Replay 30/30 bước M3 & Negative Control:**
+   Replay đủ 3 scenario (`author_deleted_public_work` 14 bước, `private_then_deleted` 10 bước,
+   `moderation_removed` 6 bước) qua application planning và `Publication`. Mọi lệnh mức tác phẩm,
+   kể cả từ chối (`work_unavailable`) và `make_private` lặp (`unchanged` = `Reaffirmed`), đều gọi
+   production rồi map kết quả/lỗi; outcome xoá lấy từ provenance production. Shell `publish` của
+   model = yêu cầu công khai + một approval đã được admit cho revision 1 (giả định authority; đường
+   evaluator/admin thuộc M1). Replay mutant
+   `tombstone-private-as-deleted-counterexample.json` chứng minh bài riêng tư bị xoá không bao giờ
+   lộ tombstone hay bình luận.
+
+### Bàn giao cho PR runtime (#158 SQL/API, #159 worker/evaluator)
+
+- **#158 Persistence & API:** Cần lưu `DeletionProvenance` trong bảng `publications` hoặc cột trạng thái
+  tương ứng, áp dụng standing fence tại commit, tạo route `DELETE /api/v1/works/{id}` (tác giả) và
+  `POST /api/v1/admin/works/{id}/remove` (quản trị viên), và tích hợp reader SSR/UI cho trang tombstone.
+- **#159 Worker & Evaluator:** Dispatch durable job khi submit revision; evaluator kết nối worker và áp dụng
+  quyết định vào publication fact đã serialize.
+

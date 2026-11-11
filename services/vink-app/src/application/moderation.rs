@@ -9,8 +9,9 @@
 use super::ports::BoundPrincipal;
 use crate::domain::ids::{EvaluationId, RevisionId, WorkId};
 use crate::domain::moderation::{
-    AdminAuthority, AdminDecision, AdminTransition, AuthorModerationTransition, EvaluationTicket,
-    EvaluationTransition, EvaluatorCapability, EvaluatorResult, ModerationError, WorkModeration,
+    AdminAuthority, AdminDecision, AdminRemovalTransition, AdminTransition,
+    AuthorModerationTransition, EvaluationTicket, EvaluationTransition, EvaluatorCapability,
+    EvaluatorResult, ModerationError, WorkModeration,
 };
 pub use crate::domain::moderation::{
     CanonicalEvaluatorScript, CanonicalEvaluatorVectors, CanonicalScriptResult,
@@ -84,6 +85,20 @@ pub fn plan_work_admin_decision(
     }
     let authority = granted_work.map(|work| AdminAuthority::scoped(actor.principal, work));
     Ok(moderation.apply_admin_decision(publication, authority, decision)?)
+}
+
+pub fn plan_work_admin_removal(
+    actor: Option<BoundPrincipal>,
+    granted_work: Option<WorkId>,
+    publication: &Publication,
+    moderation: &WorkModeration,
+) -> Result<AdminRemovalTransition, ModerationPlanError> {
+    let actor = actor.ok_or(ModerationPlanError::Unauthenticated)?;
+    if actor.standing != Standing::Active {
+        return Err(ModerationPlanError::Suspended);
+    }
+    let authority = granted_work.map(|work| AdminAuthority::scoped(actor.principal, work));
+    Ok(moderation.apply_admin_remove(publication, authority)?)
 }
 
 #[cfg(test)]
