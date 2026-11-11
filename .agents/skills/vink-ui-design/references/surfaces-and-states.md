@@ -8,11 +8,11 @@ thiết kế, không khẳng định tính năng đã chạy. Dùng requirement 
 
 | Vai trò / bề mặt | Nội dung ưu tiên | Hành động chính | Cần tránh |
 | --- | --- | --- | --- |
-| Tác giả / Bàn viết | Bản đang viết, trạng thái lưu/duyệt, phản hồi liên quan | Viết tiếp hoặc tạo bản thảo khi chưa có bài | Bảng KPI lượt thích che bản thảo; hứa autosave khi chỉ lưu thủ công |
-| Người đọc / khám phá | Một lời dẫn, tuyển tập nhỏ, bài hợp ngữ cảnh, nội dung đã lưu khi có | Đọc một bài hoặc tiếp tục đọc | Feed vô hạn trống, hero quá lớn, xếp hạng văn chương bằng sao |
-| Xưởng Viết | Tác phẩm, loại phản hồi tác giả mong muốn, thảo luận liên quan | Đọc và góp ý | Form nhận xét dài bắt buộc, áp lực tích điểm để được đăng |
-| Biên tập / Tạp Chí | Tuyển tập, lý do chọn, snapshot, bản cần xác nhận lại | Xem tác phẩm đúng bản hoặc xử lý mục chờ | Đồng nhất được tuyển với đủ điều kiện chính sách |
-| Người duyệt | Hàng đợi theo tuổi/trạng thái, nội dung theo quyền, lý do và appeal | Đọc case và quyết định theo authority | AI score thành phán quyết; mặc định lộ toàn bộ nháp riêng |
+| Tác giả / Bàn viết | Bản đang viết, audience, trạng thái lưu/duyệt từng bản, phản hồi liên quan | Viết tiếp, lưu nháp hoặc chọn công khai snapshot | Bảng KPI lượt thích che bản thảo; hứa autosave khi chỉ lưu thủ công |
+| Người đọc / Khám phá & Bộ sưu tập | Bài hợp ngữ cảnh, lọc theo thẻ/hashtag, Đề xuất / Top 100 hữu hạn, bộ sưu tập cá nhân | Đọc một bài hoặc duyệt bộ sưu tập | Feed vô hạn trống, hero quá lớn, xếp hạng văn chương bằng sao, lộ tên/số đếm bộ sưu tập riêng tư |
+| Xưởng Viết & Thảo luận | Tác phẩm, loại phản hồi tác giả mong muốn, thảo luận hai tầng và “Đánh giá cao” / “Hữu ích” | Đọc, ghi nhận và góp ý | Form nhận xét dài bắt buộc, áp lực tích điểm để được đăng |
+| Quản trị viên / Kiểm duyệt | Bản/bình luận `NeedsAdmin`, quyết định override có lý do, case phản đối (`MOD-09/10`) | Xem đúng revision/bình luận và quyết định theo authority | AI score thành phán quyết không thể override; hứa đã gửi thông báo khi chưa nối kênh |
+| *(Hoãn)* Biên tập / Tạp Chí (`DEFERRED` 10/11/2026) | Chỉ thiết kế khi user yêu cầu riêng | — | Đưa Tạp Chí hoặc nhiều chương vào luồng mặc định khi đang `DEFERRED` |
 
 Nếu user muốn vài dashboard, hỏi ít nhất có thể: suy ra vai trò từ ngữ cảnh trước.
 Không tự nhân ba app vì Vink có ba không gian. Có thể thử ba cách bố cục cho cùng

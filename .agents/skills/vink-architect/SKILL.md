@@ -1,10 +1,6 @@
 ---
 name: vink-architect
-description: >-
-  Design a substantial Vink change by comparing viable alternatives against
-  current owners, product constraints and evidence, then define verifiable
-  implementation slices. Use for architecture decisions or changes spanning
-  boundaries; small fixes belong directly to vink-work-item.
+description: Design a substantial Vink change by comparing viable alternatives against current owners, product constraints and evidence, then define verifiable implementation slices. Use for architecture decisions or changes spanning boundaries; small fixes belong directly to vink-work-item.
 ---
 
 # Vink architect
@@ -27,8 +23,11 @@ Do not publish invented endpoints as an implemented contract.
 Identify the few decisions this task actually needs: content ownership, commit boundary,
 browser/server separation, identity source, recovery, or operational cost. Record assumptions
 that remain provisional. Routine reversible implementation choices do not need a new approval;
-an unresolved product choice such as auth authority or automatic moderation cannot be silently
-settled by a prototype. Continue independent work while a necessary choice is clarified.
+an unresolved product choice such as auth authority, tombstone write policy (`O-03`) or automatic
+moderation cannot be silently settled by a prototype. When an architectural tradeoff hinges on an
+undecided product rule, use [vink-shape](../vink-shape/SKILL.md) to separate owner product
+decisions from engineering choices; when recording a confirmed decision or updating specs/registries,
+use [vink-specify](../vink-specify/SKILL.md). Continue independent work while a necessary choice is clarified.
 
 ## Compare viable alternatives
 

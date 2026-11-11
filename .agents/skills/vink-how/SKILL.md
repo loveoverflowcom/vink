@@ -1,9 +1,6 @@
 ---
 name: vink-how
-description: >-
-  Trace and explain how an existing Vink feature works through UI, application,
-  persistence and tests. Use for codebase questions, onboarding or understanding
-  a flow before changing it; use vink-why for historical design rationale.
+description: Trace and explain how an existing Vink feature works through UI, application, persistence and tests. Use for codebase questions, onboarding or understanding a flow before changing it; use vink-why for historical design rationale.
 ---
 
 # Vink how

@@ -145,3 +145,24 @@ Theatre/player, media session, download/outbox, auth, localization catalog, modu
 dependency hay lệnh kiểm của Cantos; không dựng app native sản phẩm. Các mục loại
 trừ CMP ở lịch sử chuyển skills ngày 30–31/10 vẫn mô tả lần chuyển đó; bổ sung này
 là phạm vi mới được người dùng yêu cầu, không nâng bằng chứng native cũ thành PASS.
+
+## Định hình nghiệp vụ và duy trì đặc tả: `vink-shape` + `vink-specify` (11/11/2026)
+
+Sau khi đối chiếu `develop` tại `23d1972` / `300a45f` (sau đợt quyết định sản phẩm 10/11/2026 và các
+PR `#150`–`#161`), bổ sung hai skill nối từ quyết định của chủ sản phẩm tới đặc tả và các phiên làm
+việc tiếp theo:
+
+- [vink-shape](../../.agents/skills/vink-shape/SKILL.md): gộp định tuyến nghiệp vụ và elicitation;
+  bắt đầu từ tình huống sử dụng cụ thể, quét 6 nhóm (mục tiêu, quyền, vòng đời, UX, dữ liệu, vận
+  hành), phân loại quyết định chủ sản phẩm vs lựa chọn kỹ thuật của agent, hỏi tối đa 1–3 câu theo
+  mẫu “1 tình huống – 2 phương án – 1 khuyến nghị” và xuất hợp đồng `DECISIONS` (`confirmed`,
+  `open_product`, `open_technical`, `assumptions`) khớp với `VINK_PROMPT_INPUT_V1`.
+- [vink-specify](../../.agents/skills/vink-specify/SKILL.md): gộp viết đặc tả domain/UX/dữ liệu và
+  duy trì đặc tả liên tục ở 5 thời điểm; cập nhật đúng tài liệu sở hữu (`prd/`, `docs/architecture/`,
+  `docs/design/`, `docs/development/`), giữ tách bạch 4 chiều trạng thái (quyết định sản phẩm, kiến
+  trúc, mức triển khai, bằng chứng), kiểm soát ranh giới dữ liệu gửi sang AI provider và bảo toàn
+  lịch sử quyết định/bằng chứng.
+
+Đồng thời chuẩn hóa toàn bộ 22 skills và `AGENTS.md` để tương thích đồng thời trên **Codex**,
+**Claude Code** và **Antigravity** (`AGENTS.md < 24,000` byte để không bị cắt trong `<user_rules>`,
+frontmatter `description:` một dòng, `agents/openai.yaml` và symlink `.claude/skills/*`).

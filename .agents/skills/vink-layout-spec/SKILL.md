@@ -1,10 +1,6 @@
 ---
 name: vink-layout-spec
-description: >-
-  Mô tả bố cục Vink bằng cây vùng, phân cấp, responsive, theme và trạng thái trước
-  khi sinh UI. Dùng cho phác thảo layout, phương án đã chọn hoặc mô tả vùng sửa nhỏ;
-  cung cấp quy ước dùng chung cho Design, Fix, Inspector và frontend, không tự mở
-  rộng sang triển khai hay audit toàn màn.
+description: Mô tả bố cục Vink bằng cây vùng, phân cấp, responsive, theme và trạng thái trước khi sinh UI. Dùng cho phác thảo layout, phương án đã chọn hoặc mô tả vùng sửa nhỏ; cung cấp quy ước dùng chung cho Design, Fix, Inspector và frontend, không tự mở rộng sang triển khai hay audit toàn màn.
 ---
 
 # Vink Layout Spec

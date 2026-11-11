@@ -1,78 +1,74 @@
-# Vink skills
+# Vink agent skills
 
-Các skills được viết riêng cho Vink, kế thừa có chọn lọc hướng dẫn Cantos và draft về workflow
-coding agent, rồi đối chiếu với skeleton đã triển khai. Skills là phương pháp làm việc;
-yêu cầu nằm trong [prd/](../../prd/vision.md), quyết định trong
-[docs/architecture](../../docs/architecture/decisions.md), còn cấu trúc code, lệnh và giới hạn
-hiện tại nằm ở [docs/development](../../docs/development/README.md) — nguồn lệnh duy nhất.
-Đọc [AGENTS.md](../../AGENTS.md), rồi chỉ nạp skill và reference phù hợp với nhiệm vụ.
+Start with [AGENTS.md](../../AGENTS.md) and the [documentation map](../../docs/README.md).
+Pick one primary skill for the task; load a second only when the slice crosses its boundary.
+Do not run a full discovery ceremony for a small, clear change.
 
-| Skill | Dùng khi |
+## Runtime discovery
+
+The skill source of truth lives in `.agents/skills/<name>/SKILL.md` (with `agents/openai.yaml`
+metadata for Codex and `.claude/skills/<name>` symlinks for Claude Code). All three agent runtimes
+supported by this repository read the same canonical instructions:
+
+| Runtime | Project rules | Skill discovery | Explicit invocation |
+| --- | --- | --- | --- |
+| **Codex** | `AGENTS.md` | `.agents/skills/<name>/SKILL.md` + `agents/openai.yaml` | `$vink-<name>` (e.g. `$vink-shape`, `$vink-work-item`) |
+| **Claude Code** | `CLAUDE.md` (`@AGENTS.md`) | `.claude/skills/<name>` symlink → `../../.agents/skills/<name>` | `/vink-<name>` (e.g. `/vink-shape`, `/vink-work-item`) |
+| **Antigravity** | `AGENTS.md` (must stay `< 24,000` bytes so `<user_rules>` never truncates) | `.agents/skills/<name>/SKILL.md` (single-line `description:` frontmatter) | Mention the skill name or read `.agents/skills/<name>/SKILL.md` |
+
+## Choose the right skill
+
+| Task | Skill |
 | --- | --- |
-| [vink-how](vink-how/SKILL.md) | Lần theo và giải thích cơ chế đang có từ UI/API tới nơi giữ dữ liệu và kiểm thử |
-| [vink-why](vink-why/SKILL.md) | Tìm lý do thiết kế, phương án từng cân nhắc và điều kiện xem xét lại từ nguồn có dẫn chứng |
-| [vink-recall](vink-recall/SKILL.md) | Tìm lại ngữ cảnh chat/handoff liên quan rồi đối chiếu với checkout hiện tại |
-| [vink-architect](vink-architect/SKILL.md) | So sánh thiết kế cho thay đổi lớn và chia lát cắt có thể kiểm chứng |
-| [vink-prototype](vink-prototype/SKILL.md) | Thử một giả thuyết hoặc phần của S-01–S-05 trong phạm vi rõ, ghi kết quả và giới hạn |
-| [vink-maintain-verification](vink-maintain-verification/SKILL.md) | Bảo trì bản đồ tính năng, coverage và hướng dẫn/công cụ kiểm chứng theo code thật |
-| [vink-work-item](vink-work-item/SKILL.md) | Triển khai feature, issue, sửa lỗi hoặc tiếp tục một lát cắt có thể nghiệm thu |
-| [vink-engineering](vink-engineering/SKILL.md) | Sửa domain, application, PostgreSQL, API/contract, worker, tích hợp và chọn cách kiểm chứng |
-| [vink-publication](vink-publication/SKILL.md) | Sửa revision, kiểm duyệt AI/người, ý định xuất bản, rút bài hoặc tuyển chọn |
-| [vink-behavior](vink-behavior/SKILL.md) | Phân tích state/guard/race, viết hoặc review model Quint có phạm vi rõ |
-| [vink-leptos-web](vink-leptos-web/SKILL.md) | Làm Leptos SSR/hydration, route, Bàn viết, editor, autosave và browser state |
-| [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) | Làm UI Kotlin Compose Multiplatform, shared primitives/patterns, Android/iOS diagnostic hosts và Desktop preview |
-| [vink-layout-spec](vink-layout-spec/SKILL.md) | Mô tả cây bố cục, responsive/theme/state trước sinh UI; dùng chung cho thiết kế, sửa nhỏ và đối chiếu |
-| [vink-ui-design](vink-ui-design/SKILL.md) | Thiết kế/review M3 Expressive, token, typography tiếng Việt, trải nghiệm đọc và accessibility |
-| [vink-ui-fix](vink-ui-fix/SKILL.md) | Sửa lỗi UI có phạm vi rõ hoặc bàn giao thiết kế để triển khai |
-| [vink-ui-inspector](vink-ui-inspector/SKILL.md) | Kiểm tra UI theo từng thành phần, kịch bản và bằng chứng |
-| [vink-ui-capture](vink-ui-capture/SKILL.md) | Chụp hiện trạng app/component/preview, ghi navigation, tokens và manifest để bàn giao review |
-| [vink-ui-evidence-drive](vink-ui-evidence-drive/SKILL.md) | Upload/resume UI evidence lên Drive, xác minh file và cập nhật screen index + graph |
-| [vink-code-review](vink-code-review/SKILL.md) | Review diff, commit, branch hoặc PR; mặc định trả findings và không sửa |
-| [vink-prompt](vink-prompt/SKILL.md) | Viết prompt triển khai, chia scope, review thành prompt sửa hoặc prompt tiếp tục |
+| Clarify feature scope, detect open product rules (`O-01..O-16`), classify product vs technical choices and ask the owner | [vink-shape](vink-shape/SKILL.md) |
+| Turn confirmed decisions into domain/UX/data specs, update owning docs (`prd/`, `docs/architecture/`, `docs/development/`) and reconcile doc/code drift | [vink-specify](vink-specify/SKILL.md) |
+| Implement a feature, issue, bug fix or continuation | [vink-work-item](vink-work-item/SKILL.md) |
+| Write or execute a self-contained Vink prompt for another coding chat | [vink-prompt](vink-prompt/SKILL.md) |
+| Explain how an existing Vink flow works in code | [vink-how](vink-how/SKILL.md) |
+| Investigate why a design or behavior was chosen | [vink-why](vink-why/SKILL.md) |
+| Recover context from earlier chats or handoffs | [vink-recall](vink-recall/SKILL.md) |
+| Compare architecture options and slice a large change | [vink-architect](vink-architect/SKILL.md) |
+| Run a bounded spike or compare competing implementations | [vink-prototype](vink-prototype/SKILL.md) |
+| Domain, Axum API, PostgreSQL, discussion module, worker and verification | [vink-engineering](vink-engineering/SKILL.md) |
+| Revisions, audiences, moderation, publish intent, pointers and tombstone deletion | [vink-publication](vink-publication/SKILL.md) |
+| Leptos SSR/hydration, routes, browser state and JS editor | [vink-leptos-web](vink-leptos-web/SKILL.md) |
+| Kotlin Compose Multiplatform `:ui`/`:patterns`, Android/iOS diagnostic hosts and Desktop previews | [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) |
+| Expressive M3 reading/writing/discovery/collection UX, tokens, Vietnamese typography and accessibility | [vink-ui-design](vink-ui-design/SKILL.md) |
+| Describe and compare UI layout structure before generating or editing UI | [vink-layout-spec](vink-layout-spec/SKILL.md) |
+| Capture a reproducible UI/UX implementation snapshot and coverage report from a checkout | [vink-ui-capture](vink-ui-capture/SKILL.md) |
+| Upload a captured UI evidence bundle to Google Drive and update the review index | [vink-ui-evidence-drive](vink-ui-evidence-drive/SKILL.md) |
+| Component-by-component UI/UX audit from screenshots, source or a permitted live page | [vink-ui-inspector](vink-ui-inspector/SKILL.md) |
+| Repair a scoped UI defect or prepare an implementation handoff from findings/designs | [vink-ui-fix](vink-ui-fix/SKILL.md) |
+| State-transition/race impact and focused Quint models | [vink-behavior](vink-behavior/SKILL.md) |
+| Refresh the feature map or verification workflow | [vink-maintain-verification](vink-maintain-verification/SKILL.md) |
+| Review a PR, commit range, patch or local diff | [vink-code-review](vink-code-review/SKILL.md) |
 
-## Định tuyến nhanh
+## Conditional routing for `vink-shape` and `vink-specify`
 
-| Tình huống | Skill | Điều cần giữ |
-| --- | --- | --- |
-| “Luồng lưu nháp hoạt động thế nào?” | `vink-how` | Lần theo source, chỉ rõ owner và giới hạn; đọc test không đồng nghĩa đã chạy |
-| “Vì sao tách nháp khỏi publication?” | `vink-why` | Phân biệt lý do được ghi nhận với suy luận; không tự chấp nhận đề xuất |
-| “Lần trước chốt gì, đang vướng đâu?” | `vink-recall` | Tìm đúng chat nếu có tool, kiểm lại code; lịch sử không ghi đè yêu cầu hiện tại |
-| “Thiết kế autosave/editor hoặc luồng mới” | `vink-architect` | So sánh theo trải nghiệm, owner và bằng chứng; việc nhỏ không cần vòng kiến trúc |
-| “Thử phương án A/B, làm spike S-01” | `vink-prototype` | Nêu câu hỏi và điều kiện dừng; demo không hoàn tất cả spike hay nghiệm thu production |
-| “Cập nhật cách agent tự kiểm tra Vink” | `vink-maintain-verification` | Đối chiếu [feature map](../../docs/development/feature-map.md), source và assertion; không tạo runner cạnh tranh |
-| Viết prompt cho agent khác | `vink-prompt` | Chỉ soạn prompt; không sửa code, commit, push hay đăng bình luận |
-| Review diff/PR | `vink-code-review` | Findings trước, xếp theo mức độ; chỉ sửa khi người dùng giao thêm việc sửa |
-| Dựng hoặc mở rộng skeleton | `vink-work-item` + `vink-engineering`; thêm `vink-leptos-web`/`vink-ui-design` khi chạm web | Tiếp tục từ code hiện có, không scaffold bản cạnh tranh; chạy lane theo phần đã đổi |
-| Audit ảnh hoặc giao diện | `vink-ui-inspector` | Mở bằng chứng, báo finding và coverage; review không tự cấp quyền sửa |
-| Chụp/report UI hiện tại, component, preview, tokens | `vink-ui-capture` | Ảnh runtime thật, build/SHA và ma trận; tách product, recipe, preview và native/off-screen |
-| Upload hoặc resume bộ ảnh UI lên Drive | `vink-ui-evidence-drive` | Dùng bundle/manifest đã có, giữ history, readback file/link; không tự sửa UI hay đổi quyền chia sẻ |
-| Phác thảo bố cục hoặc đặc tả hướng đã chọn | `vink-layout-spec` | Cây vùng là nguồn chính; spec-only dừng đúng phạm vi, không tự sinh UI |
-| Màn mới/redesign và prototype UI | `vink-ui-design` + `vink-layout-spec` (+ `vink-prototype` khi thử nghiệm) | 2–3 hướng cấu trúc nếu chưa chọn, spec trước sinh UI; đã giao làm thì tiếp tục không chờ duyệt mặc định |
-| Sửa lỗi UI có phạm vi rõ | `vink-ui-fix` (+ `vink-leptos-web` khi chạm component) | Xuất spec vùng rút gọn trước patch, giữ nghĩa trạng thái, kiểm cùng kịch bản |
-| UI CMP, Kotlin, Android/iOS hoặc preview native | `vink-cmp-mobile` (+ `vink-ui-fix` khi sửa lỗi) | Tìm đúng library/pattern/host, giữ input/lifecycle; Desktop, native compile và runtime là các bằng chứng riêng |
-| Đổi copy hoặc layout | `vink-ui-design` (+ `vink-leptos-web` nếu đổi component) | Không cần model Quint; mở ảnh ở viewport/theme liên quan, chạy `verify quick` và `verify web` nếu hành vi đổi |
-| Sửa lưu nháp, version, xung đột | `vink-engineering` (+ `vink-leptos-web` cho UI) | CAS cần `verify postgres`; máy trạng thái UI cần unit test và `verify web` |
-| Thiếu PostgreSQL, công cụ model hoặc Chrome | Skill đang dùng + [verification](vink-engineering/references/verification.md) | Làm phần độc lập; báo `FAIL`/`NOT_RUN` cho lớp chưa chạy; không báo integration `PASS` |
-| Revision, moderation, publish, withdraw | `vink-publication` + `vink-engineering` (+ `vink-behavior` khi có race) | Không đổi D-xx thành Accepted; guard kiểm lại tại commit |
+Do not force every request through a multi-skill pipeline. Route conditionally based on what the
+task actually touches:
 
-Chỉ chọn skill giải quyết câu hỏi đang có, không bắt mọi thay đổi đi qua cả chuỗi. Phần
-“teach” trong draft được tích hợp vào `vink-how`, `vink-why` và `vink-architect`: giải thích
-bằng luồng cụ thể, lý do và đánh đổi. `vink-recall` không bắt buộc tool lịch sử; các skill
-không tự tạo agent song song, cloud workspace hay lịch bảo trì hằng ngày.
+1. **New idea, UX flow, or change to permissions/states/data with unclear rules:**
+   `vink-shape` (classify & ask 1–3 concrete product questions if needed) → `vink-specify` (update
+   owning docs) → `vink-architect` / `vink-ui-design` / `vink-work-item` / `vink-prompt`.
+2. **Owner just answered a product question or changed a prior decision:**
+   `vink-specify` (record the Decision Record, supersession, and updated status across `prd/`,
+   domain specs and `docs/development/` registries) → continue implementation or handoff.
+3. **Clear bug fix, small UI repair, or bounded slice with settled rules:**
+   Go directly to `vink-work-item` or `vink-ui-fix` (skip `vink-shape`). If implementation changes
+   runtime status or exposes doc/code drift, run `vink-specify` before finishing.
 
-Quy ước bố cục do `vink-layout-spec` sở hữu. Design, Fix, Inspector, frontend,
-prototype và prompt dùng nó theo phạm vi; LayoutSpec không gọi ngược các workflow.
-Audit không cần thiết kế mới; thay đổi backend/tài liệu không cần đặc tả UI.
+## Shared conventions
 
-Có thể gọi bằng `$vink-work-item`, `$vink-code-review`, `$vink-prompt`… trong Codex, hoặc
-`/vink-work-item`, `/vink-code-review`… trong Claude Code (qua [.claude/skills](../../.claude/skills), mỗi
-mục là symlink tới thư mục ở đây; Claude Code đọc [CLAUDE.md](../../CLAUDE.md) import `AGENTS.md`),
-hoặc yêu cầu agent đọc trực tiếp file `SKILL.md` tương ứng. Các mục `agents/openai.yaml`
-cung cấp tên hiển thị và prompt mẫu; không yêu cầu plugin Cantos hay dịch vụ ngoài. Đây là bản
-canonical duy nhất: runtime khác nên tham chiếu thư mục này (symlink) thay vì chép thêm một bộ; thêm skill mới thì
-tạo thêm symlink cùng tên trong `.claude/skills`.
-`cargo xtask verify quick` kiểm frontmatter, `agents/openai.yaml`, danh sách ở bảng trên và link.
-
-Nguồn, commit Cantos, draft bổ sung và lý do chọn từng skill nằm tại
-[Skill adaptation](../../docs/references/skill-adaptation.md). Skills dẫn tới chủ sở hữu và
-không tự chuyển decision đề xuất thành Accepted.
+- Keep product/architecture proposals, owner product decisions (`PRODUCT_CONFIRMED` / `DEFERRED` /
+  `OPEN`), architecture status (`DESIGN_PROPOSED` / `Provisional` / `Accepted`), implementation
+  level (`core` / `persistence-api` / `worker-provider` / `web` / `cmp`), and verification evidence
+  separate.
+- Use `cargo xtask verify quick|discussion|expressions|kani|postgres|web` from
+  [docs/development](../../docs/development/README.md) when verification is in scope, and
+  [verification.md](vink-engineering/references/verification.md) for reporting.
+- Respect user authorization already granted in the active conversation; do not ask again merely
+  because a skill has a conservative default, and do not infer permission to push, publish or post
+  externally from a local edit.
+- Provenance for how these skills were adapted from Cantos and the coding-agent workflow draft
+  lives in [skill-adaptation.md](../../docs/references/skill-adaptation.md).

@@ -1,9 +1,6 @@
 ---
 name: vink-prompt
-description: >-
-  Write self-contained implementation, repair, split-scope or continuation prompts
-  for Vink using current repository evidence. Use when asked for a Vink prompt or
-  work-chat handoff; authoring alone does not execute code or post to GitHub.
+description: Write self-contained implementation, repair, split-scope or continuation prompts for Vink using current repository evidence. Use when asked for a Vink prompt or work-chat handoff; authoring alone does not execute code or post to GitHub.
 ---
 
 # Vink prompt
@@ -13,6 +10,11 @@ Read [AGENTS.md](../../../AGENTS.md), the [documentation map](../../../docs/READ
 relevant sources and actual code. Use the lightweight
 [VINK_PROMPT_INPUT_V1 template](references/prompt-template.md); no Cantos plugin or parser is
 required. Write the prompt in the user's language and retain exact paths, IDs and commands.
+If the request has unresolved product rules that block scoping, use
+[vink-shape](../vink-shape/SKILL.md) to classify decisions into `confirmed`, `open_product`,
+`open_technical` and `assumptions`; if the user just confirmed decisions that belong in repo docs,
+record them with [vink-specify](../vink-specify/SKILL.md) when authorized or include that doc
+update in the prompt's scope.
 
 ## Gather only relevant evidence
 

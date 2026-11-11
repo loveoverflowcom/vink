@@ -1,9 +1,6 @@
 ---
 name: vink-leptos-web
-description: >-
-  Build or change Vink Leptos SSR/hydration, routes, resources, actions, browser
-  state and the JavaScript writing editor. Use for Vietnamese input, autosave,
-  revision conflicts and public/private rendering; discover actual package commands first.
+description: Build or change Vink Leptos SSR/hydration, routes, resources, actions, browser state and the JavaScript writing editor. Use for Vietnamese input, autosave, revision conflicts and public/private rendering; discover actual package commands first.
 ---
 
 # Vink Leptos web

@@ -244,11 +244,11 @@ PUB-01..03, UX-02 và D-01/05/06/12; không đổi nghĩa của chúng hay của
 
 Nguồn: `PRODUCT-DECISIONS-20261110`, [DecisionDelta](../docs/architecture/product-decisions-20261110.md).
 Cột “Trạng thái” dùng nhãn của tài liệu đó: phần **luật** là `PRODUCT_CONFIRMED` trừ khi ghi khác;
-cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **11/11/2026** (`ADMIN-MODERATION-20261111`,
+cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **Hiện trạng triển khai từng phần:** `#150`, `#151`, `#157` có lõi thuần + application planning cho publication, moderation evaluator/admin và tombstone lifecycle; `#158` có PostgreSQL + HTTP API v1 cho snapshot, `request-public`, `set-private` và đọc trạng thái của tác giả ([runtime](../docs/development/publication-runtime.md)); `#152` có backend native username/mật khẩu trong Identity + App ([ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)). Các phần còn lại (UI consumer, xóa/gỡ ở tầng SQL/HTTP/UI, worker/provider AI, bộ sưu tập, sửa bình luận, hashtag, xếp hạng, phản đối) chưa có runtime. **11/11/2026** (`ADMIN-MODERATION-20261111`,
 [DecisionDelta §7](../docs/architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt)):
 admin tổng, grant moderator, nhận ca, phản đối cả quyết định của moderator, dừng tự động, điều tra
 riêng và trang “Nội dung đã được ẩn” thay luật cũ của PUB-05 B, MOD-09 và MOD-10; có core thuần,
-model và replay (chưa migration/API/worker/UI). **#150 có lõi publication thuần cho AUD/PUB-01/02 và #151 có lõi moderation evaluator + scripted mock cho MOD-07..09; chưa tích hợp runtime**; model
+model và replay (chưa migration/API/worker/UI). Model
 và gap từng action ở [registry](../docs/development/product-decisions-registry.md). Không dòng nào đổi nghĩa
 của COM-07/08, MOD-01/05, INV-01..08.
 
@@ -329,8 +329,6 @@ Hành vi chi tiết: [hashtag](../docs/architecture/hashtags.md),
 
 | ID | Luật | Nghiệm thu tiêu biểu | Đề xuất UX/dữ liệu |
 | --- | --- | --- | --- |
-| ACC-03 | **Username + mật khẩu** là đăng nhập chính; mã email có thể bổ sung sau, chưa ưu tiên. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id. Email đã xác minh là kênh khôi phục tùy chọn (O-11, O-12) |
+| ACC-03 | **Username + mật khẩu** là đăng nhập chính; mã email có thể bổ sung sau, chưa ưu tiên. Username đăng nhập **khác** bút danh công khai; không yêu cầu trùng nhau. Đổi hướng không được bỏ session/rate-limit/security guard hiện có | Đăng nhập bằng username + mật khẩu tạo cùng loại phiên như hiện nay; bút danh đổi không đổi username; lỗi đăng nhập không tiết lộ username có tồn tại | Username: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường, không hiển thị công khai. Mật khẩu: ≥ 10 ký tự, không luật ký tự bắt buộc, Argon2id (lưu ý `O-12`: code `Password::parse` hiện kiểm 10–128 byte UTF-8, cần làm rõ ký tự Unicode vs byte khi mở UI/policy). Email đã xác minh là kênh khôi phục tùy chọn (O-11, O-12) |
 
-**Hiện trạng (IMPLEMENTED):** chỉ có authority native mã email một lần
-([ADR D-05](../docs/architecture/auth-authority.md)); code đó không chứng minh username/mật khẩu
-đã có. Lượt này không viết runtime auth và không xóa code mã email.
+**Hiện trạng (`IMPLEMENTED` một phần):** backend native username/mật khẩu đã có trong `vink-identity` và `vink-app` (`#152`, [ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính): bảng `account_passwords`, `password_login_attempts`, Argon2id, `dummy_verify`, route `/api/v1/auth/register` và `/api/v1/auth/login` kèm rate limit mạng và cookie `__Host-vink_session`) song song với authority mã email hiện hữu. **Chưa có:** form Web username/mật khẩu (màn `/toi` hiện mới nối luồng mã email), luồng quên/khôi phục mật khẩu (`O-11`) và mở khóa đăng nhập production (`VINK_AUTH_SIGN_IN` mặc định `disabled`).

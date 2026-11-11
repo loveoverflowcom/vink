@@ -1,11 +1,6 @@
 ---
 name: vink-ui-fix
-description: >-
-  Sửa một lỗi UI Vink có phạm vi rõ hoặc soạn bàn giao triển khai từ
-  ảnh, finding, issue, source hoặc phương án đã chọn. Dùng cho layout, overflow,
-  typography, copy, icon, focus và trình bày trạng thái; tìm owner hiện có, giữ
-  semantics sản phẩm, kiểm lại cùng kịch bản. Khi không có quyền/công cụ sửa code,
-  cung cấp đặc tả hoặc prompt Vink có nguồn; không gọi bàn giao là bản sửa đã chạy.
+description: Sửa một lỗi UI Vink có phạm vi rõ hoặc soạn bàn giao triển khai từ ảnh, finding, issue, source hoặc phương án đã chọn. Dùng cho layout, overflow, typography, copy, icon, focus và trình bày trạng thái; tìm owner hiện có, giữ semantics sản phẩm, kiểm lại cùng kịch bản. Khi không có quyền/công cụ sửa code, cung cấp đặc tả hoặc prompt Vink có nguồn; không gọi bàn giao là bản sửa đã chạy.
 ---
 
 # Vink UI Fix
@@ -50,7 +45,9 @@ caller/component, CSS/token, copy, presentation mapping, save state/API. Giữ
 Nếu dữ liệu/domain decision sai, đừng che bằng CSS hoặc điều kiện UI. Nêu phần
 nghiệp vụ cần sửa và tiếp tục phần độc lập trong phạm vi user đã giao. Những thay
 đổi quyền, privacy, publication, durability hoặc schema cần đúng owner và bằng
-chứng; một task UI không tự chốt chúng.
+chứng; một task UI không tự chốt chúng (nếu gặp quy tắc sản phẩm chưa rõ, dùng
+[vink-shape](../vink-shape/SKILL.md); nếu cần đối soát đặc tả, dùng
+[vink-specify](../vink-specify/SKILL.md); sửa layout/copy rõ nghĩa không cần qua shaping).
 
 ## 3. Sửa ở ranh giới nhỏ nhất
 

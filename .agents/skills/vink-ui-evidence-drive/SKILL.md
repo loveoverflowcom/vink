@@ -1,10 +1,6 @@
 ---
 name: vink-ui-evidence-drive
-description: >-
-  Upload hoặc tiếp tục upload bundle UI evidence Vink lên Google Drive, xác minh
-  ảnh/metadata, map design reference theo từng surface và cập nhật screen index
-  cùng navigation graph. Dùng sau capture để bàn giao bước review; không tự chụp
-  lại, sửa UI hay biến thiết kế tham chiếu thành ảnh triển khai.
+description: Upload hoặc tiếp tục upload bundle UI evidence Vink lên Google Drive, xác minh ảnh/metadata, map design reference theo từng surface và cập nhật screen index cùng navigation graph. Dùng sau capture để bàn giao bước review; không tự chụp lại, sửa UI hay biến thiết kế tham chiếu thành ảnh triển khai.
 ---
 
 # Vink UI Evidence → Drive
