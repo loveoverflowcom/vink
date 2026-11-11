@@ -1,0 +1,11 @@
+version = 1
+id = "VDR-DECISION-SIGNOFF"
+revision = 1
+sha256 = "add9c28677a66d759cc4c352eada0ebf92cc64dcc0849d489f2d89f16a022dc2"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-11"
+source = """
+Chủ sản phẩm ủy quyền trong phiên giao rà soát và merge PR #166 ngày 11/11/2026: “những chỗ cần chốt
+thì tự suy luận theo vision mà làm, không sao hết”. Agent suy luận nội dung theo vision. Chủ sản phẩm
+có thể thay bằng một revision mới.
+"""

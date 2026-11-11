@@ -1,0 +1,11 @@
+version = 1
+id = "O-12"
+revision = 2
+sha256 = "8cbd2660d039ddaf05fdabe29c99489aec9cdfa5ea4581a8075bcdcd3f5fa84f"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-11"
+source = """
+Chủ sản phẩm ủy quyền trong phiên giao rà soát và merge PR #166 ngày 11/11/2026: “những chỗ cần chốt
+thì tự suy luận theo vision mà làm, không sao hết”. Agent suy luận nội dung theo vision. Chủ sản phẩm
+có thể thay bằng một revision mới.
+"""

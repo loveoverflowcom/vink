@@ -6,8 +6,8 @@ description: Design Vink reading, writing, discovery, collection and workshop ex
 # Vink UI design
 
 Read the [vision](../../../prd/vision.md), UX/WR/AUD/PUB/COL/HTG/RANK/TOP requirements in
-[requirements](../../../prd/requirements.md), the 10/11/2026
-[DecisionDelta](../../../docs/architecture/product-decisions-20261110.md) and actual
+[requirements](../../../prd/requirements.md), the relevant decisions in the
+[TOML registry](../../../decisions/README.md) and actual
 design/component owners. Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
 [vink-cmp-mobile](../vink-cmp-mobile/SKILL.md) for renderer implementation and
 [vink-publication](../vink-publication/SKILL.md) for the meaning of publication states.

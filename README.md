@@ -29,6 +29,7 @@ Ngoài owner thảo luận, các lựa chọn này chưa phải ADR Accepted; ed
 
 - [Bản đồ tài liệu và bộ định hướng v0.3](docs/README.md)
 - [Phát triển: setup, lệnh, cấu trúc code và giới hạn skeleton](docs/development/README.md)
+- [Kho quyết định TOML và cách tra cứu](decisions/README.md)
 - [Vision và định hướng sản phẩm](prd/vision.md)
 - [Requirements và tiêu chí nghiệm thu](prd/requirements.md)
 - [Tech stack và so sánh kiến trúc](docs/architecture/tech-stack.md)

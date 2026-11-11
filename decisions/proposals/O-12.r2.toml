@@ -1,0 +1,33 @@
+version = 1
+id = "O-12"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "dcf9cd75e5477b4864bc2a3ffe373ec323db572c70b31989ffee43c4b3aef799"
+
+[content]
+kind = "product"
+domain = "account"
+title = "Quy tắc username và mật khẩu"
+resolution = """
+Username giữ luật ACC-03: ASCII thường `a–z 0–9 _ .`, 3–30 ký tự, duy nhất không phân biệt hoa thường
+và không hiển thị công khai.
+
+Mật khẩu được chuẩn hóa Unicode NFKC trước khi đếm và băm. Độ dài là 10–128 ký tự, trong đó mỗi Unicode
+code point sau chuẩn hóa tính là một ký tự. Một chữ tiếng Việt có dấu tính là một ký tự và cho cùng một
+hash, dù gõ dựng sẵn hay tổ hợp. Không bắt buộc lớp ký tự. Băm bằng Argon2id. Dữ liệu nhập vượt 4096 byte
+bị từ chối trước khi chuẩn hóa.
+
+Khôi phục tài khoản vẫn thuộc O-11.
+"""
+rationale = """
+Vision ưu tiên tiếng Việt và IME. Nếu đếm byte UTF-8, mỗi chữ có dấu chiếm 2–3 byte, nên mật khẩu chỉ 4–5
+chữ đã đạt ngưỡng 10. Khi đó con số này không còn khớp với “≥ 10 ký tự” ghi trong PRD. Nếu không chuẩn hóa,
+cùng một mật khẩu gõ bằng Telex/VNI ở chế độ dựng sẵn và chế độ tổ hợp cho hai hash khác nhau, nên người
+dùng đổi máy hay đổi bộ gõ sẽ không đăng nhập được. NIST SP 800-63B tính mỗi code point là một ký tự và
+khuyến nghị chuẩn hóa NFKC/NFKD. Hiện chưa có tài khoản production (`VINK_AUTH_SIGN_IN` mặc định
+`disabled`), nên đổi luật không cần migrate hash. Username Unicode vẫn nằm ngoài phạm vi vì cần luật
+chống giả mạo ký tự.
+"""
+related_ids = ["ACC-03"]

@@ -1,9 +1,13 @@
 # Mẫu đặc tả, bản ghi quyết định và kịch bản đối soát (`vink-specify`)
 
+Khi spec dẫn một quyết định đã chuyển, dùng [kho TOML](../../../../decisions/README.md) để tra
+ID và revision. Chỉ ghim trong spec cần theo dõi freshness. Bàn giao ghi snapshot và đối chiếu
+ngữ nghĩa ngay cả khi pin còn đúng.
+
 ## 1. Mẫu bản ghi quyết định (Decision Record)
 
-Khi chủ sản phẩm vừa chốt một lựa chọn mới hoặc thay đổi quyết định trước đó, ghi nhận đầy đủ 7 mục
-sau vào tài liệu sở hữu (`docs/architecture/decisions.md`, `product-decisions-*.md` hoặc ADR miền):
+Dùng mẫu này cho bàn giao hoặc quyết định còn lưu ở Markdown. Với ID đã chuyển, lấy dữ liệu
+tương ứng cho proposal và ghi phần căn cứ/tác động vào bàn giao.
 
 ```markdown
 ### [ID quyết định] — [Tên ngắn gọn, phạm vi áp dụng]
@@ -77,7 +81,8 @@ Chỉ dùng các mục có liên quan tới phạm vi thay đổi; giữ ngắn 
    - `vink-specify` cập nhật `prd/requirements.md` và `product-decisions-registry.md` để phản ánh
      backend `#152` đã có, tách phần Web UI / recovery / production unlock còn thiếu, đồng thời ghi
      rõ độ lệch giữa PRD (`≥ 10 ký tự`) và `Password::parse` (`10–128 byte` UTF-8) mà không tự ý sửa
-     luật sản phẩm để hợp thức hóa code.
+     luật sản phẩm để hợp thức hóa code. Khi chủ sản phẩm ủy quyền chốt, luật mới được ghi bằng
+     proposal + signoff (`O-12@r2`: 10–128 ký tự sau NFKC) trước khi đổi `Password::parse`.
 4. **Sửa một lỗi giao diện đơn giản mà không kích hoạt quy trình hỏi không cần thiết:**
    - Khi yêu cầu chỉ là sửa tràn chữ tiêu đề dài hoặc khoảng cách nút trên Bàn viết, `vink-ui-fix`
      hoặc `vink-work-item` xử lý trực tiếp cùng LayoutSpec rút gọn, không gọi `vink-shape`.

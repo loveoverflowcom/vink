@@ -7,7 +7,7 @@ description: Implement or review Vink literary revisions, audiences, moderation 
 
 Read [requirements](../../../prd/requirements.md): WR-03, PUB-01–PUB-05, AUD-01/02, MOD-01–MOD-10,
 COM-01–COM-04 and COM-09/10 (`ED-02` magazine curation and `WR-04` multi-chapter works are
-`DEFERRED` since 10/11/2026). Read the [DecisionDelta](../../../docs/architecture/product-decisions-20261110.md),
+`DEFERRED` since 10/11/2026). Resolve the relevant USER and O IDs in the [TOML registry](../../../decisions/README.md). Read the
 [publication/moderation target](../../../docs/architecture/publication-moderation.md),
 [decision log](../../../docs/architecture/decisions.md) and the owning registries:
 [product-decisions-registry](../../../docs/development/product-decisions-registry.md),

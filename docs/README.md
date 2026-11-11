@@ -4,9 +4,10 @@
 
 **Phiên bản:** 0.3 · **Ngày:** 30/10/2026 (UTC+07), cập nhật 10/11/2026 · **Trạng thái:** Đề xuất để review, chưa phải ADR đã được phê duyệt hay hệ thống đã triển khai.
 
-**Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 quyết định nghiệp vụ; bắt đầu từ
-[DecisionDelta](architecture/product-decisions-20261110.md) để biết luật nào đã chốt, luật cũ nào bị
-thay hoặc hoãn, code hiện làm gì và hành vi đích nào mới chỉ có model.
+**Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 mục nghiệp vụ. Tra các mục đã nhập tại
+[kho quyết định TOML](../decisions/README.md), xem thay đổi theo thời điểm trong
+[DecisionDelta](architecture/product-decisions-20261110.md) và mức triển khai trong
+[registry phát triển](development/product-decisions-registry.md).
 
 **Vink giúp người viết Việt duy trì việc viết, tìm được người đọc phù hợp và tiến bộ qua phản hồi tử tế.** Trải nghiệm ưu tiên văn bản, tiếng Việt và cộng đồng có chủ đích; thiết kế trẻ trung theo Material 3 Expressive, đồng thời đủ yên tĩnh để đọc dài.
 
@@ -55,6 +56,7 @@ Bộ đề xuất v0.2 đã được đưa vào repository Vink ngày 30/10/2026
 | Sản phẩm | [Vision](../prd/vision.md), [Requirements](../prd/requirements.md) | Định vị, phạm vi và acceptance có ID; các mục vẫn giữ trạng thái đề xuất |
 | Kiến trúc | [Tech stack](architecture/tech-stack.md), [Decision log](architecture/decisions.md), [Ranh giới PostgreSQL/Identity](architecture/identity-postgres-boundaries.md), [Auth authority D-05](architecture/auth-authority.md) | So sánh phương án, quyết định mở, bất biến và S-01–S-05; ranh giới database/role theo owner do người dùng yêu cầu; D-05 đề xuất authority native mã email (Provisional, spike S-03); chưa phải ADR Accepted |
 | Quyết định sản phẩm 10/11/2026 | [DecisionDelta + kế hoạch](architecture/product-decisions-20261110.md), [xuất bản/kiểm duyệt/tombstone](architecture/publication-moderation.md), [sửa bình luận](architecture/comment-editing.md), [bộ sưu tập](architecture/collections.md), [Đề xuất và Top 100](architecture/discovery-ranking.md), [hashtag](architecture/hashtags.md), [registry](development/product-decisions-registry.md), [model đích](../services/vink-app/behavior/target/README.md) | Luật đã chốt, lựa chọn đề xuất, điểm mở, sáu model Quint đích có negative control; #150 có [lõi publication thuần](development/publication-core.md) và #151 có [lõi moderation evaluator + scripted mock](development/moderation-core.md); #158 có [API tác giả + PostgreSQL](development/publication-runtime.md) (chưa UI, chưa worker evaluator), không phải ADR Accepted |
+| Kho quyết định | [TOML và CLI](../decisions/README.md), [bảng kiểm kê và việc còn mở](development/decision-registry-rollout.md) | Tra USER/CHOICE/O/ADM từ DecisionDelta 10/11 và 11/11, lưu proposal, signoff của chủ sản phẩm và xem revision diff |
 | Bằng chứng nguồn | [Sources](references/sources.md) | Nguồn nghiên cứu của foundation, có commit và giới hạn bằng chứng |
 | Phát triển | [Development](development/README.md), [API v1](../services/vink-app/contracts/http/v1/README.md) | Setup, lệnh `cargo xtask`, cấu trúc code, bằng chứng và giới hạn skeleton; contract do server sở hữu |
 | Discussion hai tầng | [Core/registry](development/discussion-core.md), [ownership đã chốt](architecture/discussion-ownership.md), [admission #120](architecture/discussion-admission.md), [đọc public/overlay #120](architecture/discussion-reads.md), [outbox/worker #120](architecture/discussion-outbox.md), [LayoutSpec UI](design/discussion-ui.md) | Core/lifecycle + Quint replay, PostgreSQL/API và Web reader hai tầng; ghi cục bộ qua LocalFixture, production auth và Google assets còn thiếu |

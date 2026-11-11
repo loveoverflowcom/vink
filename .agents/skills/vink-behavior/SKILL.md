@@ -7,7 +7,8 @@ description: Analyze Vink state transitions, permissions, publication races and 
 
 Use [requirements](../../../prd/requirements.md) and
 [the decision log](../../../docs/architecture/decisions.md) to locate the relevant rule,
-INV ID and decision status. Inspect the real implementation separately. The foundation
+INV ID and decision status. Resolve migrated IDs through the
+[TOML registry](../../../decisions/README.md). Inspect the real implementation separately. The foundation
 proposes Quint. The scoped two-tier creation model, the comment lifecycle/mode/moderation
 authority model and their generated traces live in `services/vink-app/behavior/discussion`;
 `verify discussion` checks both and replays their inputs through the real Rust decisions. The owner-local literary endorsement model/replay (LVE-PR-01) shares this runner;

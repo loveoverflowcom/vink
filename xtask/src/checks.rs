@@ -17,6 +17,9 @@ pub const BRAND_DIR: &str = "apps/vink-web/assets/brand";
 pub fn run(root: &Path) -> Result<(), String> {
     let mut problems = Vec::new();
     skills(root, &mut problems);
+    if let Err(problem) = crate::decision::check(root) {
+        problems.push(problem);
+    }
     links(root, &mut problems);
     boundaries(root, &mut problems);
     fonts(root, &mut problems);
@@ -826,7 +829,7 @@ fn editor_packages(root: &Path, problems: &mut Vec<String>) {
     }
 }
 
-fn sha256_hex(bytes: &[u8]) -> String {
+pub(crate) fn sha256_hex(bytes: &[u8]) -> String {
     Sha256::digest(bytes)
         .iter()
         .map(|byte| format!("{byte:02x}"))

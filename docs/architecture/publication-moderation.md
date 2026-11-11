@@ -284,6 +284,9 @@ Bốn trường hợp phải tách (PUB-05, đã chốt; B đổi ngày 11/11/20
 - Xóa, ẩn hay gỡ bài **không** xóa hay sửa bình luận của ai.
 - A và B không phải audience thứ ba: đó là ngữ nghĩa của “tác giả đã xóa” và của “chuyển riêng tư
   sau khi từng công khai”.
+
+<!-- vdr: active O-03@r2 -->
+
 - Trên trang ẩn và trang thay thế (COM-11): đọc bình luận, xử lý ca đã gửi (kiểm duyệt dùng
   snapshot bình luận, **không** đưa thân bài cho evaluator hay người duyệt), người viết tự gỡ được.
   Không bình luận, phản hồi, bản sửa hay “Hữu ích” mới (O-03).

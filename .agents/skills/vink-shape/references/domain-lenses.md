@@ -1,5 +1,9 @@
 # Bản đồ miền Vink và điểm cần lưu ý khi định hình (`vink-shape`)
 
+Dùng các ID dưới đây để tra tại [kho TOML](../../../../decisions/README.md) ở đầu công việc.
+Phần tóm tắt cung cấp bối cảnh để đặt câu hỏi. CHOICE của lượt 10/11 có ID đầy đủ dạng
+`PRODUCT-DECISIONS-20261110-CHOICE-NN`.
+
 Tài liệu này chỉ dẫn thẳng tới nơi sở hữu từng quy tắc trong repo để tránh tạo bản sao thứ hai của
 các bất biến (`INV-*`, `D-*`, `O-*`). Luôn đọc nguồn gốc trước khi kết luận một điểm là đã chốt hay
 còn mở.
@@ -74,9 +78,9 @@ còn mở.
   [`services/vink-identity/src/password.rs`](../../../../services/vink-identity/src/password.rs).
 - **Đã chốt (`PRODUCT_CONFIRMED`):**
   - Username + mật khẩu là phương thức đăng nhập chính; username khác bút danh công khai (`ACC-03`).
+  - `O-12@r2` (11/11/2026): mật khẩu chuẩn hóa NFKC, 10–128 ký tự, mỗi code point một ký tự;
+    `Password::parse` đã theo. Copy lỗi trên UI phải nói “ký tự”, không nói byte.
 - **Điểm cần làm rõ khi làm UI/policy:**
-  - `O-12`: PRD ghi mật khẩu `≥ 10 ký tự`, trong khi `Password::parse` hiện kiểm `10–128 byte` UTF-8.
-    Cần chốt rõ đếm ký tự Unicode (NFC/grapheme/code point) hay byte và thông báo lỗi tương ứng.
   - `O-11`: Luồng khôi phục tài khoản qua email đã xác minh (tùy chọn) và cách chuyển tiếp tài khoản
     chỉ-email trong môi trường thử nghiệm.
 

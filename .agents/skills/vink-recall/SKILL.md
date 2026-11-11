@@ -33,6 +33,10 @@ agent's suggestion is historical evidence, not a fresh command.
 
 ## Reconcile with this checkout
 
+- Resolve any migrated decision in the [TOML registry](../../../decisions/README.md).
+  Compare the handoff's ID, revision and snapshot with this checkout. A historical pin describes
+  what the earlier task used. Flag a current pin that has drifted and inspect the actual change.
+  If the registry is unavailable, record the gap and retain the sourced historical claim.
 Inspect branch, HEAD, status and relevant code. Check any cited issue/PR's current state if it
 affects the next action. Compare recovered facts with the
 [development guide](../../../docs/development/README.md) and

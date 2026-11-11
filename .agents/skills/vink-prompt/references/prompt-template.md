@@ -17,6 +17,7 @@ SOURCES_AND_OWNERS:
   - [existing product/architecture files, requirement/D/INV/S IDs and actual code paths]
   - [only the relevant vink-* skills]
 DECISIONS:
+  registry_refs: [when relevant, decision ID@revision, status, source and snapshot hash]
   confirmed:
     - [owner-confirmed rule + authoritative source/ID]
   open_product:

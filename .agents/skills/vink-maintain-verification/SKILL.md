@@ -20,6 +20,9 @@ require a full-stack run for documentation changes.
 | Which evidence a claim requires; result vocabulary | [Verification guide](../vink-engineering/references/verification.md) |
 | Product acceptance, domain specs and decision registries | [Requirements](../../../prd/requirements.md), [decision log](../../../docs/architecture/decisions.md), [product-decisions-registry](../../../docs/development/product-decisions-registry.md) via [vink-specify](../vink-specify/SKILL.md) |
 
+Use the [TOML registry](../../../decisions/README.md) for migrated decision status.
+Reference freshness and semantic/test coverage need their own evidence.
+
 The map is an index into source/tests, not another command manual or a permanent green status
 board. A test's presence is coverage intent; only a run on identified inputs is run evidence.
 

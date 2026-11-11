@@ -7,7 +7,9 @@ description: Investigate why a Vink design or behavior was chosen using decision
 
 Answer a specific design question with provenance. Read [AGENTS.md](../../../AGENTS.md),
 the relevant [decision log](../../../docs/architecture/decisions.md) entries and the current
-code before reconstructing history. Use [vink-how](../vink-how/SKILL.md) when the current
+code before reconstructing history. For migrated decisions, query the
+[TOML registry](../../../decisions/README.md) by exact revision or with `--history`. Preserve the
+legacy source SHA and compare revisions with `decision diff`. Use [vink-how](../vink-how/SKILL.md) when the current
 mechanism itself is unclear; a plausible implementation does not establish its author's intent.
 
 ## Gather the narrow evidence chain
