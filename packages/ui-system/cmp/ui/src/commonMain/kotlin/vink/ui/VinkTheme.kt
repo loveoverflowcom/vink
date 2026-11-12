@@ -1,5 +1,7 @@
 package vink.ui
 
+import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -129,6 +131,12 @@ class VinkMotion(val reduced: Boolean) {
     val mediumMs: Int get() = if (reduced) VinkMotionTokens.DurationMediumReducedMs else VinkMotionTokens.DurationMediumMs
     val loopMs: Int get() = VinkMotionTokens.DurationLoopMs
     val loopsRun: Boolean get() = !reduced
+
+    /** Colour/opacity feedback; timing remains separate from loading gates and timeouts. */
+    fun <T> effects(): TweenSpec<T> = tween(shortMs, easing = VinkMotionTokens.EaseEmphasized)
+
+    /** Small positional transitions. Never controls when an intent is dispatched. */
+    fun <T> spatial(): TweenSpec<T> = tween(mediumMs, easing = VinkMotionTokens.EaseSpatial)
 }
 
 /** Everything a descendant may read about its scope. */

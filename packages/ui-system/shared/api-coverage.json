@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.3.1",
+  "version": "0.4.0",
   "components": [
     {
       "renderer": "leptos",
@@ -384,7 +384,7 @@
       "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkActions.kt",
       "symbol": "VinkFilterChip",
-      "entry": "action.filter-chip"
+      "entry": "composition.interaction"
     },
     {
       "renderer": "cmp",
@@ -456,7 +456,7 @@
       "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFeedback.kt",
       "symbol": "VinkDialog",
-      "entry": "state.dialog"
+      "entry": "composition.interaction"
     },
     {
       "renderer": "cmp",
@@ -468,19 +468,19 @@
       "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
       "symbol": "VinkTextField",
-      "entry": "field.text-field"
+      "entry": "composition.interaction"
     },
     {
       "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
       "symbol": "VinkTextArea",
-      "entry": "field.text-area"
+      "entry": "composition.interaction"
     },
     {
       "renderer": "cmp",
       "source": "packages/ui-system/cmp/ui/src/commonMain/kotlin/vink/ui/VinkFields.kt",
       "symbol": "VinkSearchField",
-      "entry": "field.search-field"
+      "entry": "composition.interaction"
     },
     {
       "renderer": "cmp",

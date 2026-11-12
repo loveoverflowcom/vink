@@ -52,6 +52,43 @@ class DiagnosticTest {
         ui.onNodeWithText("Đã nhận 1 lần kích hoạt").assertExists()
     }
 
+    @Test fun interactionImeClearAndSheetKeepControlledText() {
+        ui.runOnIdle { ui.activity.model.update("interaction") { it.copy(entry = "composition.interaction", scenario = "sheet") } }
+        ui.onNodeWithTag("interaction-title").performImeAction()
+        ui.onNodeWithTag("interaction-search").assertIsFocused().performTextReplacement("Tiếng Việt")
+        ui.onNodeWithContentDescription("Xóa chữ tìm").performClick()
+        ui.onNodeWithTag("interaction-search").assertIsFocused().assert(
+            SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.EditableText, androidx.compose.ui.text.AnnotatedString("")),
+        )
+        ui.onNodeWithTag("interaction-search").performTextReplacement("Thơ")
+        ui.onNodeWithTag("interaction-search").performImeAction()
+        ui.onNodeWithTag("interaction-count").assertTextContains("Đã tìm 1 lần")
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        ui.onNodeWithTag("interaction-trigger").performScrollTo().performClick()
+        ui.onNodeWithTag("interaction-close").performScrollTo().performClick()
+        ui.onNodeWithTag("interaction-title").assertTextContains("Tiếng Việt [Mẫu]")
+    }
+
+    @Test fun dialogWindowBackDismissesOnceAndExplicitPolicyRefuses() {
+        ui.runOnIdle { ui.activity.model.update("interaction") { it.copy(entry = "composition.interaction", scenario = "default") } }
+        // Test keyboard focus in keyboard input mode; touch mode does not make buttons focusable.
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+            .sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_TAB)
+        androidx.test.espresso.Espresso.closeSoftKeyboard()
+        ui.onNodeWithTag("interaction-trigger").performScrollTo().performSemanticsAction(
+            androidx.compose.ui.semantics.SemanticsActions.OnClick,
+        ) { it() }
+        ui.onNodeWithTag("interaction-close").assertExists().assertIsFocused()
+        androidx.test.espresso.Espresso.pressBack()
+        ui.onNodeWithTag("interaction-close").assertDoesNotExist()
+        ui.onNodeWithTag("interaction-trigger").assertIsFocused()
+        ui.runOnIdle { ui.activity.model.update("explicit") { it.copy(scenario = "explicit") } }
+        ui.onNodeWithTag("interaction-trigger").performScrollTo().performClick()
+        androidx.test.espresso.Espresso.pressBack()
+        ui.onNodeWithTag("interaction-close").assertExists().performScrollTo().performClick()
+        ui.onNodeWithTag("interaction-close").assertDoesNotExist()
+    }
+
     @Test fun webpSpecimenRendersPixelsAndReplacesThemWithFallback() {
         val alt = "[Mẫu] Ảnh nền lavender"
         val failed = "[Mẫu] Bìa tập thơ — Không tải được ảnh"

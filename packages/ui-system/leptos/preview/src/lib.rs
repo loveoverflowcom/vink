@@ -26,7 +26,7 @@ use vink_ui::{Density, MotionPreference, Preferences, ThemePreference, ThemeScop
 pub use components::EventLog;
 
 /// Catalog IDs this preview renders; a test keeps it equal to the shared catalog.
-pub const REGISTERED: [&str; 52] = [
+pub const REGISTERED: [&str; 53] = [
     "foundation.color-roles",
     "foundation.typography",
     "foundation.shape-spacing",
@@ -79,6 +79,7 @@ pub const REGISTERED: [&str; 52] = [
     "composition.feedback",
     "composition.endorsement",
     "composition.tag-selector",
+    "composition.interaction",
 ];
 
 /// Custom properties the inspector reads back from the rendered specimen scope.
@@ -473,6 +474,9 @@ where
 /// The specimen for a catalog entry and scenario, always inside a scope the inspector reads.
 pub fn specimen(id: &str, scenario: &str) -> AnyView {
     let body = match id {
+        "composition.interaction" => view! {
+            <p>"Mẫu dành riêng cho native: IME Next/Search/Done, FocusRequester và Back của Android. Web dùng input/form DOM và NavigationGuard của host; xem các mẫu field và navigation hiện có."</p>
+        }.into_any(),
         "foundation.color-roles" => color_roles(scenario == "nested-theme"),
         "foundation.typography" => typography(scenario == "combining-marks"),
         "foundation.shape-spacing" => shape_spacing(),

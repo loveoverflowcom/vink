@@ -22,6 +22,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
@@ -226,6 +227,8 @@ fun VinkFilterChip(
     state: ActionState = ActionState.Enabled,
 ) {
     val c = LocalVink.current.colors
+    val container by rememberEffectColor(c[if (selected) ColorRole.SecondaryContainer else ColorRole.SurfaceContainer])
+    val labelColor by rememberEffectColor(c[if (selected) ColorRole.OnSecondaryContainer else ColorRole.OnSurfaceVariant])
     Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
     FilterChip(
         selected = selected,
@@ -241,10 +244,10 @@ fun VinkFilterChip(
         },
         shape = RoundedCornerShape(VinkDimens.RadiusSm),
         colors = FilterChipDefaults.filterChipColors(
-            containerColor = c[ColorRole.SurfaceContainer],
-            labelColor = c[ColorRole.OnSurfaceVariant],
-            selectedContainerColor = c[ColorRole.SecondaryContainer],
-            selectedLabelColor = c[ColorRole.OnSecondaryContainer],
+            containerColor = container,
+            labelColor = labelColor,
+            selectedContainerColor = container,
+            selectedLabelColor = labelColor,
             selectedLeadingIconColor = c[ColorRole.OnSecondaryContainer],
             disabledLabelColor = c[ColorRole.DisabledContent],
         ),

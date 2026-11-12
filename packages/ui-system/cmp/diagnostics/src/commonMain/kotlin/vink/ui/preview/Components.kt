@@ -99,6 +99,7 @@ val COMPONENT_IDS: List<String> = VinkCatalog.entries.map { it.id }.filterNot { 
 @Composable
 fun ComponentSpecimen(id: String, scenario: String): Boolean {
     when (id) {
+        "composition.interaction" -> InteractionSpecimen(scenario)
         "text.text" -> TextText(scenario == "long-label")
         "text.heading" -> TextHeading()
         "layout.surface" -> LayoutSurface(scenario == "nested-theme")

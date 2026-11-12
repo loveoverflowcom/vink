@@ -205,3 +205,12 @@ Vectors chung (lawful combinations, intent, placement, `LoadingGate`) ở
   (`Saved` → `Confirmed`, `Conflict` → `Failed(Conflict)`).
 - Pilot nhỏ trong UIS-03: `Button` pending của thư viện hiện `LoadingIndicator` trong slot `status`.
   Không màn nào của app đổi sang component mới trong PR này.
+
+## CMP dialog interaction foundation (12/11/2026)
+
+`VinkDialog.closeReason` (mặc định Dismiss) dùng `CloseReason.focusReturn`; Navigate không request
+trigger, target không attach thì thử optional `mainFocus`. Caller giữ open và policy. Entrance
+fade/spatial không quyết định đóng; unmount ngay khi open=false, callback window cũ bị vô hiệu.
+Panel cuộn, Sheet consume inset của window riêng và vẫn không kéo để đóng. Android Back dùng
+adapter trong dialog window; không suy predictive Back từ Key.Back. Leptos Dialog chưa có API
+closeReason; Web navigation giữ owner cũ. [Contract và giới hạn](../../../docs/design/ui-interaction-foundation.md).

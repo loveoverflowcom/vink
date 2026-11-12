@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -1482,6 +1482,33 @@
       "status": {
         "leptos": "implemented-unverified",
         "cmp": "implemented-unverified"
+      }
+    },
+    {
+      "id": "composition.interaction",
+      "family": "composition",
+      "label": "Tương tác native [Mẫu]",
+      "summary": "IME Next/Search/Done, clear-focus, motion chip và dialog/sheet controlled; không kết nối dịch vụ.",
+      "scenarios": [
+        {
+          "id": "default",
+          "label": "Form và dialog"
+        },
+        {
+          "id": "sheet",
+          "label": "Sheet cuộn, không kéo để đóng"
+        },
+        {
+          "id": "explicit",
+          "label": "Chỉ đóng bằng thao tác tường minh"
+        }
+      ],
+      "status": {
+        "leptos": "unsupported",
+        "cmp": "implemented-unverified"
+      },
+      "unsupported": {
+        "leptos": "Native-only IME actions, FocusRequester and Android dialog Back recipe. Web uses DOM inputs/forms and the host NavigationGuard; this does not replace their existing preview/browser scenarios."
       }
     }
   ]

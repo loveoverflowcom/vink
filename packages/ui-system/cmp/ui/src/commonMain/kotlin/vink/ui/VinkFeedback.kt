@@ -9,6 +9,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +25,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
@@ -30,9 +34,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
@@ -54,6 +60,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -449,8 +456,9 @@ fun rememberSnackbarTimeout(message: SnackbarMessage?, onDismiss: () -> Unit) {
 /**
  * A controlled dialog: Title → Context → Content → Actions. [dismiss] decides which gestures may
  * close it without an action (Escape/Back, click outside); [initialFocus] is requested once it
- * opens (for a destructive confirmation: the safe action) and [returnFocus] after it closes.
- * No focus coordinator or stacking here: one dialog per screen until UIS-04.
+ * opens (for a destructive confirmation: the safe action). [closeReason] delegates focus return
+ * to the existing navigation policy; a detached trigger falls back to [mainFocus]. The caller
+ * owns open and its OverlayLayer; no exit animation can close a later opening.
  *
  * Platform: `Dialog` is an overlay layer in the same window on desktop (Compose 1.9), a separate
  * dialog window on Android and a presented layer on iOS; Escape (desktop) and Back (Android) are
@@ -470,32 +478,49 @@ fun VinkDialog(
     context: String? = null,
     initialFocus: FocusRequester? = null,
     returnFocus: FocusRequester? = null,
+    closeReason: CloseReason = CloseReason.Dismiss,
+    mainFocus: FocusRequester? = null,
     content: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit,
 ) {
     var wasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(open) {
+    val windowFocused = LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(open, windowFocused) {
         if (open) {
             wasOpen = true
-        } else if (wasOpen) {
+        } else if (wasOpen && (closeReason == CloseReason.Navigate || windowFocused)) {
             wasOpen = false
-            runCatching { returnFocus?.requestFocus() }
+            if (closeReason.focusReturn(returnFocus != null) != FocusReturn.Leave) {
+                val returned = runCatching { returnFocus?.requestFocus() == true }.getOrDefault(false)
+                if (!returned) runCatching { mainFocus?.requestFocus() }
+            }
         }
     }
     if (!open) return
     val onDismissNow by rememberUpdatedState(onDismiss)
+    val dismissNow by rememberUpdatedState(dismiss)
+    // A callback retained by a disposed platform window cannot dismiss a new opening.
+    val lifetime = remember { DialogLifetime() }
+    DisposableEffect(lifetime) { onDispose { lifetime.active = false } }
+    val requestDismiss: (DismissReason) -> Unit = { reason ->
+        if (lifetime.active && dismissNow.allows(reason)) onDismissNow(reason)
+    }
     Dialog(
-        onDismissRequest = { if (dismiss.allows(DismissReason.Outside)) onDismissNow(DismissReason.Outside) },
+        onDismissRequest = { requestDismiss(DismissReason.Outside) },
         properties = DialogProperties(
             dismissOnBackPress = false,
             dismissOnClickOutside = kind == DialogKind.Dialog && dismiss.allows(DismissReason.Outside),
             usePlatformDefaultWidth = kind == DialogKind.Dialog,
         ),
     ) {
+        DialogBackHandler { requestDismiss(DismissReason.Escape) }
         val vink = LocalVink.current
+        val opacity by rememberOverlayEntrance(spatial = false)
+        val position by rememberOverlayEntrance(spatial = true)
+        val distance = with(LocalDensity.current) { VinkDimens.Space4.toPx() }
         val keys = Modifier.onPreviewKeyEvent {
-            if (it.type == KeyEventType.KeyDown && (it.key == Key.Escape || it.key == Key.Back)) {
-                if (dismiss.allows(DismissReason.Escape)) onDismissNow(DismissReason.Escape)
+            if (it.type == KeyEventType.KeyDown && it.key == Key.Escape) {
+                requestDismiss(DismissReason.Escape)
                 true
             } else {
                 false
@@ -507,27 +532,34 @@ fun VinkDialog(
             RoundedCornerShape(VinkDimens.RadiusXl)
         }
         val panel: @Composable (Modifier) -> Unit = { m ->
-            Column(
-                m.background(vink.colors[ColorRole.SurfaceContainerHigh], shape)
-                    .semantics { paneTitle = title }
-                    .padding(VinkDimens.Space6),
-                verticalArrangement = Arrangement.spacedBy(VinkDimens.Space4),
+            Surface(
+                modifier = m.graphicsLayer {
+                    alpha = opacity.coerceIn(0f, 1f)
+                    translationY = if (kind == DialogKind.Sheet) distance * (1f - position) else 0f
+                }.semantics { paneTitle = title },
+                shape = shape,
+                color = vink.colors[ColorRole.SurfaceContainerHigh],
             ) {
-                CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides vink.colors[ColorRole.OnSurface]) {
-                    Text(
-                        title,
-                        Modifier.semantics { heading() },
-                        style = vink.text(VinkTextRoles.Title),
-                        color = vink.colors[ColorRole.OnSurface],
-                    )
-                    context?.let { VinkText(it, tone = TextTone.Muted) }
-                    content()
-                    FlowRow(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2, Alignment.End),
-                        verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2),
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2), verticalAlignment = Alignment.CenterVertically, content = actions)
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()).padding(VinkDimens.Space6),
+                    verticalArrangement = Arrangement.spacedBy(VinkDimens.Space4),
+                ) {
+                    CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides vink.colors[ColorRole.OnSurface]) {
+                        Text(
+                            title,
+                            Modifier.semantics { heading() },
+                            style = vink.text(VinkTextRoles.Title),
+                            color = vink.colors[ColorRole.OnSurface],
+                        )
+                        context?.let { VinkText(it, tone = TextTone.Muted) }
+                        content()
+                        FlowRow(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2, Alignment.End),
+                            verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2),
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2), verticalAlignment = Alignment.CenterVertically, content = actions)
+                        }
                     }
                 }
             }
@@ -536,17 +568,35 @@ fun VinkDialog(
             val outside = remember { MutableInteractionSource() }
             Box(
                 keys.fillMaxSize().background(vink.colors[ColorRole.Scrim])
-                    .clickable(outside, indication = null, enabled = dismiss.allows(DismissReason.Outside)) { onDismissNow(DismissReason.Outside) },
+                    .safeDrawingPadding().imePadding(),
                 contentAlignment = Alignment.BottomCenter,
             ) {
-                panel(modifier.widthIn(max = 640.dp).fillMaxWidth().clickable(remember { MutableInteractionSource() }, indication = null) {})
+                if (dismiss.allows(DismissReason.Outside)) {
+                    Box(Modifier.matchParentSize()
+                        .clickable(outside, indication = null) { requestDismiss(DismissReason.Outside) }
+                        .semantics { contentDescription = "Đóng $title" })
+                }
+                panel(modifier.widthIn(max = 640.dp).fillMaxWidth())
             }
         } else {
             panel(keys.then(modifier).widthIn(max = 560.dp))
         }
-        LaunchedEffect(Unit) { runCatching { initialFocus?.requestFocus() } }
+        val dialogWindowFocused = LocalWindowInfo.current.isWindowFocused
+        var initialRequested by remember { mutableStateOf(false) }
+        LaunchedEffect(dialogWindowFocused) {
+            if (dialogWindowFocused && !initialRequested) {
+                initialRequested = true
+                runCatching { initialFocus?.requestFocus() }
+            }
+        }
     }
 }
+
+private class DialogLifetime { var active = true }
+
+/** The Android dialog window owns Back dispatch; desktop Escape stays local to the panel. */
+@Composable
+internal expect fun DialogBackHandler(onBack: () -> Unit)
 
 /** The visible/slow facts of a [LoadingGate] at the composition's clock. */
 @Immutable
