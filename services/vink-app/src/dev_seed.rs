@@ -103,8 +103,9 @@ pub async fn apply(pool: &PgPool) -> Result<(), sqlx::Error> {
             "INSERT INTO work_publications (work_id, audience, lifecycle, generation,
                                             intent_revision_id, intent_generation,
                                             pointer_revision_id, pointer_intent_generation,
+                                            ever_public, public_epoch,
                                             policy_version, updated_at)
-             VALUES ($1, 'public', 'active', 2, $2, 2, $2, 2, 1, now())
+             VALUES ($1, 'public', 'active', 2, $2, 2, $2, 2, ARRAY[$2], 1, 1, now())
              ON CONFLICT (work_id) DO NOTHING",
         )
         .bind(SAMPLE_WORK)

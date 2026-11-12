@@ -23,8 +23,8 @@ use crate::public_list::work_anchor;
 use crate::public_reads;
 use crate::ui::{adapters, patterns::ReaderHeader};
 use vink_ui::{
-    HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
-    RecoveryAction, RecoveryIntent, StatePanel, Tone,
+    Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
+    RecoveryAction, RecoveryIntent, StatePanel, Text, TextTone, Tone, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -55,6 +55,16 @@ impl ResponseStatus {
             options.insert_header(http::header::LOCATION, location);
         }
     }
+
+    fn set_no_store(&self) {
+        #[cfg(feature = "ssr")]
+        if let Some(options) = &self.0 {
+            options.insert_header(
+                http::header::CACHE_CONTROL,
+                http::HeaderValue::from_static("no-store"),
+            );
+        }
+    }
 }
 
 #[component]
@@ -63,15 +73,34 @@ pub fn Reader() -> impl IntoView {
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
     let context = discovery::reader_context();
     let return_href = Memo::new(move |_| context.get().href(Some(&work_id.get())));
-    let publication = api::publication_resource(work_id);
+    let reader = api::reader_resource(work_id);
     let status = ResponseStatus::capture();
     view! {
         <Suspense fallback=|| view! { <p class="vk-muted" role="status">"Đang mở tác phẩm…"</p> }>
             {move || {
                 let status = status.clone();
                 Suspend::new(async move {
-                    match publication.await {
-                        Ok(publication) => view! { <PublicationView publication /> }.into_any(),
+                    match reader.await {
+                        Ok(crate::contract::ReaderResponse::Published(publication)) => {
+                            let wid = publication.work_id.clone();
+                            view! { <PublicationView publication reader_work_id=wid /> }.into_any()
+                        }
+                        Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
+                            work_id,
+                            author_name,
+                        }) => {
+                            status.set(200);
+                            status.set_no_store();
+                            crate::public_reads::invalidate_withdrawn(&work_id);
+                            view! {
+                                <ReviewWithdrawnView
+                                    work_id=work_id
+                                    author_name=author_name
+                                    return_href=return_href.get_untracked()
+                                />
+                            }
+                            .into_any()
+                        }
                         Err(LoadError::NotFound) => {
                             status.set(404);
                             view! { <NotFoundContent return_href=return_href.get_untracked() /> }.into_any()
@@ -93,7 +122,7 @@ pub fn Reader() -> impl IntoView {
 /// READ-02: the reader never swaps text under the reader's eyes. A changed snapshot is offered
 /// ("Xem bản mới") and applied on request; an authoritative 404 removes the text at once.
 #[component]
-fn PublicationView(publication: Publication) -> impl IntoView {
+fn PublicationView(publication: Publication, reader_work_id: String) -> impl IntoView {
     let live = public_reads::follow_publication(publication.clone());
     let latest = live.data;
     let removed = live.removed;
@@ -105,13 +134,69 @@ fn PublicationView(publication: Publication) -> impl IntoView {
             .get_untracked()
             .href(Some(&shown.with_untracked(|p| p.work_id.clone())))
     };
+    let withdrawn_state = RwSignal::new(None::<(String, String)>);
+    #[cfg(feature = "hydrate")]
+    {
+        let id = reader_work_id.clone();
+        Effect::new(move |_| {
+            if removed.get() {
+                let id = id.clone();
+                leptos::task::spawn_local(async move {
+                    if let Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
+                        work_id,
+                        author_name,
+                    }) = crate::api::fetch_reader(&id).await
+                    {
+                        crate::public_reads::invalidate_withdrawn(&work_id);
+                        withdrawn_state.set(Some((work_id, author_name)));
+                    }
+                });
+            }
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = reader_work_id;
     move || {
-        if removed.get() {
+        if let Some((work_id, author_name)) = withdrawn_state.get() {
+            view! {
+                <ReviewWithdrawnView
+                    work_id=work_id
+                    author_name=author_name
+                    return_href=not_found_href()
+                />
+            }
+            .into_any()
+        } else if removed.get() {
             view! { <NotFoundContent return_href=not_found_href() /> }.into_any()
         } else {
             let live = live.clone();
             view! { <PublicationContent publication=shown.get() live update shown /> }.into_any()
         }
+    }
+}
+
+/// O-17@r2: the old URL after a moderator or admin rejected the public revision. Only the
+/// author's display name, the fixed line and the eligible discussion; never body, title, tags,
+/// description or canonical metadata of the removed revision.
+#[component]
+fn ReviewWithdrawnView(work_id: String, author_name: String, return_href: String) -> impl IntoView {
+    view! {
+        <Title text="Bản này đã bị gỡ sau khi kiểm duyệt. — Vink" />
+        <Meta name="robots" content="noindex" />
+        <div id="reader" class="vk-reader-page" data-state="review-withdrawn">
+            <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
+                <Icon name=IconName::ArrowBack /> "Khám phá"
+            </vink_ui::Link>
+            <article id="reader-paper" class="vk-reader" data-testid="reader-review-withdrawn">
+                <header id="reader-header" class="vk-reader__header">
+                    <Text role=TypeRole::Caption tone=TextTone::Muted>{author_name}</Text>
+                    <Heading level=HeadingLevel::H1 role=TypeRole::Title>
+                        "Bản này đã bị gỡ sau khi kiểm duyệt."
+                    </Heading>
+                </header>
+            </article>
+            <discussion::Discussion work_id=work_id />
+        </div>
     }
 }
 

@@ -20,6 +20,12 @@ pub trait PublicReads: Send + Sync + 'static {
     ) -> PortFuture<Result<WorkList, LoadError>>;
     fn catalog(&self) -> PortFuture<Result<crate::contract::TagList, LoadError>>;
     fn publication(&self, work_id: String) -> PortFuture<Result<Publication, LoadError>>;
+    fn reader(
+        &self,
+        _work_id: String,
+    ) -> PortFuture<Result<crate::contract::ReaderResponse, LoadError>> {
+        Box::pin(std::future::ready(Err(LoadError::Unavailable)))
+    }
     /// Always anonymous: viewer-private comments never enter public HTML/hydration payloads.
     fn discussion(&self, _work_id: String) -> PortFuture<Result<PublicDiscussionPage, LoadError>> {
         Box::pin(std::future::ready(Err(LoadError::Unavailable)))

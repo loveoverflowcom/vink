@@ -8,6 +8,7 @@ pub mod application;
 pub mod config;
 pub mod dev_seed;
 pub mod domain;
+pub mod evaluation_worker;
 pub mod http;
 pub mod identity;
 pub mod outbox_worker;

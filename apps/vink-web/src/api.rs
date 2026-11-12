@@ -500,6 +500,34 @@ pub fn publication_resource(work_id: Memo<String>) -> Resource<Result<Publicatio
     }
 }
 
+pub fn reader_resource(
+    work_id: Memo<String>,
+) -> Resource<Result<crate::contract::ReaderResponse, LoadError>> {
+    #[cfg(feature = "ssr")]
+    {
+        let port = use_context::<crate::server::SharedPublicReads>();
+        Resource::new(
+            move || work_id.get(),
+            move |id| {
+                let port = port.clone();
+                async move {
+                    match port {
+                        Some(port) => port.reader(id).await,
+                        None => Err(LoadError::Unavailable),
+                    }
+                }
+            },
+        )
+    }
+    #[cfg(not(feature = "ssr"))]
+    {
+        Resource::new(
+            move || work_id.get(),
+            |id| browser(public_get(format!("/api/v1/works/{id}/reader"))),
+        )
+    }
+}
+
 /// Wraps a browser-only (`!Send`) future for `Resource`, which requires `Send` futures.
 #[cfg(not(feature = "ssr"))]
 fn browser<F: std::future::Future + 'static>(
@@ -533,6 +561,13 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
         let _ = path;
         Err(LoadError::Unavailable)
     }
+}
+
+#[cfg(not(feature = "ssr"))]
+pub(crate) async fn fetch_reader(
+    work_id: &str,
+) -> Result<crate::contract::ReaderResponse, LoadError> {
+    public_get(format!("/api/v1/works/{work_id}/reader")).await
 }
 
 /// Browser public reads go through the tab's READ-02 owner (cache-first, single-flight).

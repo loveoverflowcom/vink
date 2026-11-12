@@ -543,3 +543,63 @@ fn restore_validates_deletion_provenance_and_fails_closed_on_corruption() {
         Err(PublicationError::InvalidFacts)
     );
 }
+
+#[test]
+fn rejecting_currently_public_revision_sets_review_withdrawn_access_plan() {
+    let saved = save(&Publication::new(work(1), owner()), 1);
+    let requested = request(&saved, 1);
+    let public = review(&requested.next, 1, ReviewOutcome::Approved).next;
+
+    assert!(public.readable_revision().is_some());
+    assert_eq!(public.facts().review_withdrawn, None);
+
+    // Rejecting currently public revision r1
+    let rejected = review(&public, 1, ReviewOutcome::Rejected);
+    let withdrawn_state = rejected.next;
+
+    assert_eq!(withdrawn_state.readable_revision(), None);
+    assert_eq!(rejected.effects.pointer, PointerEffect::Clear);
+    assert_eq!(
+        withdrawn_state.facts().review_withdrawn,
+        Some(PublicPointer {
+            revision: revision(1),
+            intent_generation: generation(2),
+        })
+    );
+
+    // Access plan classification
+    let plan = withdrawn_state.access_plan();
+    assert_eq!(
+        plan,
+        WorkAccessPlan::ReviewWithdrawn {
+            last_pointer: PublicPointer {
+                revision: revision(1),
+                intent_generation: generation(2),
+            }
+        }
+    );
+    assert_eq!(plan.page_kind(), "review_withdrawn");
+    assert!(!plan.is_listed());
+    assert!(!plan.allows_snippet());
+    assert!(plan.thread_accessible());
+    assert!(!plan.accepts_new_writes());
+
+    // Restore validates review_withdrawn correctly
+    assert_eq!(
+        Publication::restore(withdrawn_state.facts().clone()),
+        Ok(withdrawn_state.clone())
+    );
+
+    // Making work private clears review_withdrawn
+    let private = withdrawn_state
+        .decide_author(
+            owner(),
+            AuthorCommand::SetPrivate {
+                expected: withdrawn_state.facts().generation,
+            },
+        )
+        .unwrap()
+        .next;
+    assert_eq!(private.facts().review_withdrawn, None);
+    assert_eq!(private.access_plan(), WorkAccessPlan::Unavailable);
+}

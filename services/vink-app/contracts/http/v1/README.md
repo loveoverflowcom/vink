@@ -48,6 +48,7 @@ consumer yet and no native consumer exists.
 | --- | --- | --- | --- |
 | `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` | `200` one page of current publications, newest first (default and home page: the first 12); `304` on a matching `If-None-Match` | `422` (`q`, `tag`, `limit`, `cursor`, `query`), `503` | [default](fixtures/works.list.json), [search](fixtures/works.search.json), [unmatched filters](fixtures/works.search.unmatched.json) |
 | `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) with its public `tags`; `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
+| `GET /api/v1/works/{work_id}/reader` | `200` `{"status":"published", …publication}` (conditional like `/publication`) or, after a moderator/admin rejected the public revision (`O-17@r2`), `{"status":"review_withdrawn","work_id","author_name"}` with `no-store` and no validator | `404` (never public, private, deleted or removed), `503` | — |
 | `GET /api/v1/drafts` | `200` the actor's drafts | `401`, `503` | [drafts.list.json](fixtures/drafts.list.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
@@ -109,7 +110,7 @@ draft. Clients disable the button while a request is pending.
 
 ### Conditional public reads (READ-01)
 
-Only the two public reads above are conditional; `HEAD` answers like `GET` without content.
+Only the public reads above are conditional (the reader's `review_withdrawn` answer is not); `HEAD` answers like `GET` without content.
 Rationale, evidence and rollback: [public conditional reads](../../../../../docs/development/public-conditional-reads.md).
 
 - **Validator.** `ETag` is a **strong** tag: `"` + the first 128 bits of SHA-256 of the exact
@@ -232,6 +233,28 @@ cache may keep a body (or a `404`/`503`) past a removal, revocation or recovery.
   on a public work.
 - **Not provided:** editing (blocked by D-08), reports, appeals, reactions, ranking,
   notifications or rate limits.
+
+## Work moderation (#159)
+
+Authority is server data: admin seats (`vink-app admin add|remove|list`, audited), admin-issued
+grants (`works`/`comments`, a principal or a group, all of Vink or one work, optional expiry) and
+groups. Every command runs in one transaction behind the standing fence and is audited; every
+response is `no-store`. A reviewer never reads or takes a case on their own work (`403` code
+`recused`). Details and lock order: [moderation runtime](../../../../../docs/development/moderation-runtime.md).
+
+| Method and path | Who | Success | Errors |
+| --- | --- | --- | --- |
+| `GET /api/v1/moderation/works/queue` | grant `works` or admin | `200` open cases the caller may review | `401`, `403` |
+| `GET /api/v1/moderation/works/cases/{case_id}` | same | `200` case, notes and the exact submitted snapshot (`content_digest`, `title`, `document`) | `401`, `403` (`recused`, `not_authorized`), `404` |
+| `POST /api/v1/moderation/works/{work_id}/revisions/{revision_id}/cases` | authority on the work | `201` `{case_id, version: 1}` intervention case at the current decision version (MOD-13) | `401`, `403`, `404`, `409` `case_already_open` |
+| `POST …/cases/{case_id}/claim` · `release` · `escalate` `{expected_version}` | claimant rules of `ReviewCase` | `200` `{status, version}` | `401`, `403` (`not_claimant`, `escalated_to_admin`, authority codes), `404`, `409` (`case_version_stale`, `already_claimed`, `case_closed`) |
+| `POST …/cases/{case_id}/note` `{expected_version, note}` | claimant or admin | `200`; the note is stored only with the version change | same |
+| `POST …/cases/{case_id}/takeover` `{expected_version, reason}` | admin | `200` | same, `422` |
+| `POST …/cases/{case_id}/conclude` `{expected_version, verdict: approved\|rejected, reason}` | claimant | `200` `{status, verdict}`; decision, history, pointer and jobs in one commit | same, `409` `stale_decision`; a claimant who lost every basis gets `403` and the case returns to the queue |
+| `GET /api/v1/moderation/grants` · `POST` `{grantee_kind, grantee_id, capability, scope_kind, scope_work_id?, expires_at?}` | admin | `200` list · `201` `{grant_id}` | `401`, `403`, `409`, `422` |
+| `POST /api/v1/moderation/grants/{grant_id}/revoke` | admin | `204`; claims resting on it are revalidated in the same commit | `401`, `403`, `404`, `409` |
+| `POST /api/v1/moderation/groups` `{name}` · `POST …/groups/{group_id}/members` `{principal_id}` · `DELETE …/members/{principal_id}` | admin | `201` `{group_id}` · `204` · `204` (removed member's claims revalidated) | `401`, `403`, `404`, `409`, `422` |
+| `GET /api/v1/moderation/automation` · `POST …/automation/mode` `{expected_version, mode: enabled\|paused, reason}` | admin | `200` `{mode, version}`; a pause reroutes open jobs to people in the same commit | `401`, `403`, `409` `automation_version_stale`, `422` |
 
 ## Comment moderation (D2T-02c)
 

@@ -160,6 +160,9 @@ pub struct PublicationFacts {
     /// PUB-07: the readable pointer withdrawn when the author made the public work private.
     /// Cleared when a pointer is readable again or an admin removes the work.
     pub hidden: Option<PublicPointer>,
+    /// O-17: the readable pointer withdrawn when moderator or admin rejected the currently public revision.
+    /// Cleared when a pointer is readable again or author makes work private / deletes.
+    pub review_withdrawn: Option<PublicPointer>,
     /// MOD-15: revisions that were readable by others at some point, in first-read order.
     pub ever_public: Vec<RevisionId>,
     pub public_epoch: PublicEpoch,
@@ -296,6 +299,9 @@ pub enum WorkAccessPlan<'a> {
     /// PUB-07: the author made a public work private. The old URL shows only “Nội dung đã được
     /// ẩn” and the eligible comments; body/metadata/snippets/listings are gone.
     AuthorHidden { last_pointer: PublicPointer },
+    /// O-17: moderator or admin rejected the currently public revision. The old URL shows
+    /// the author name, “Bản này đã bị gỡ sau khi kiểm duyệt.” and eligible comments.
+    ReviewWithdrawn { last_pointer: PublicPointer },
     /// Never public, removed by an admin, or not readable for another reason.
     /// Nothing is readable on old links or discovery listings.
     Unavailable,
@@ -313,7 +319,10 @@ impl<'a> WorkAccessPlan<'a> {
     pub const fn thread_accessible(&self) -> bool {
         matches!(
             self,
-            Self::PublicBody(_) | Self::AuthorTombstone { .. } | Self::AuthorHidden { .. }
+            Self::PublicBody(_)
+                | Self::AuthorTombstone { .. }
+                | Self::AuthorHidden { .. }
+                | Self::ReviewWithdrawn { .. }
         )
     }
 
@@ -327,6 +336,7 @@ impl<'a> WorkAccessPlan<'a> {
             Self::PublicBody(_) => "body",
             Self::AuthorTombstone { .. } => "tombstone",
             Self::AuthorHidden { .. } => "hidden",
+            Self::ReviewWithdrawn { .. } => "review_withdrawn",
             Self::Unavailable => "not_found",
         }
     }
@@ -371,6 +381,7 @@ impl Publication {
             intent: None,
             pointer: None,
             hidden: None,
+            review_withdrawn: None,
             ever_public: vec![],
             public_epoch: PublicEpoch::NEVER,
             revisions: vec![],
@@ -456,6 +467,17 @@ impl Publication {
         {
             return Err(PublicationError::InvalidFacts);
         }
+        if let Some(withdrawn) = state.0.review_withdrawn
+            && (state.0.lifecycle != Lifecycle::Active
+                || state.0.audience != Audience::Public
+                || state.0.pointer.is_some()
+                || state.0.hidden.is_some()
+                || withdrawn.intent_generation <= IntentGeneration::FIRST
+                || withdrawn.intent_generation > state.0.generation
+                || !state.0.ever_public.contains(&withdrawn.revision))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
         if let Some(pointer) = state.0.pointer
             && (state.0.lifecycle != Lifecycle::Active
                 || !state.0.ever_public.contains(&pointer.revision)
@@ -525,6 +547,12 @@ impl Publication {
             WorkAccessPlan::AuthorTombstone { last_pointer }
         } else if let Some(last_pointer) = self.0.hidden.filter(|_| self.0.lifecycle.is_active()) {
             WorkAccessPlan::AuthorHidden { last_pointer }
+        } else if let Some(last_pointer) = self
+            .0
+            .review_withdrawn
+            .filter(|_| self.0.lifecycle.is_active())
+        {
+            WorkAccessPlan::ReviewWithdrawn { last_pointer }
         } else {
             WorkAccessPlan::Unavailable
         }
@@ -583,6 +611,7 @@ impl Publication {
         next.0.lifecycle = Lifecycle::Removed;
         next.0.intent = None;
         next.0.hidden = None;
+        next.0.review_withdrawn = None;
         let mut effects = Effects::NONE;
         if next.0.pointer.is_some() {
             next.0.pointer = None;
@@ -606,6 +635,7 @@ impl Publication {
             }
             self.0.pointer = Some(pointer);
             self.0.hidden = None;
+            self.0.review_withdrawn = None;
             effects.pointer = PointerEffect::Set(pointer);
         }
     }
@@ -686,6 +716,7 @@ impl Publication {
                 {
                     next.0.hidden = Some(pointer);
                 }
+                next.0.review_withdrawn = None;
                 next.0.pointer = None;
                 effects.pointer = PointerEffect::Clear;
                 if self.0.audience == Audience::Public {
@@ -714,6 +745,7 @@ impl Publication {
                 };
                 next.0.lifecycle = Lifecycle::AuthorDeleted(provenance);
                 next.0.hidden = None;
+                next.0.review_withdrawn = None;
                 next.0.generation = self.0.generation.next()?;
                 next.0.audience = Audience::Private;
                 next.0.intent = None;
@@ -762,13 +794,18 @@ impl Publication {
             ReviewOutcome::NeedsAdmin => Moderation::NeedsAdmin,
         };
         // A revised decision on the currently public revision closes its pointer. A rejection
-        // of r2 must never close r1. No authority/override decision is inferred here.
+        // of r2 must never close r1. No authority/override decision is inferred here. Only a
+        // rejection leaves the review-withdrawn page at the old URL (O-17@r2); an escalation
+        // closes the pointer without claiming the work was removed.
         if review.outcome != ReviewOutcome::Approved
             && next
                 .0
                 .pointer
                 .is_some_and(|p| p.revision == review.revision)
         {
+            if review.outcome == ReviewOutcome::Rejected {
+                next.0.review_withdrawn = next.0.pointer;
+            }
             next.0.pointer = None;
             effects.pointer = PointerEffect::Clear;
         }

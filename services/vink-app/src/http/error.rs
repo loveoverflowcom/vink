@@ -7,6 +7,7 @@ use crate::application::catalog::{CatalogQueryInput, CatalogReadError};
 use crate::application::discovery::{DiscoveryError, DiscoveryInput};
 use crate::application::discussion::{DiscussionError, DiscussionInput};
 use crate::application::endorsement::{EndorsementError, EndorsementInput};
+use crate::application::moderation::ModerationActionError;
 use crate::application::publication::AuthorPublicationError;
 use crate::application::taxonomy::{TagError, TagInput, TagRejection};
 use crate::application::{DraftError, InvalidInput, ReadError};
@@ -114,6 +115,8 @@ pub enum ApiError {
     },
     DependencyUnavailable,
     Internal,
+    CaseConflict(&'static str),
+    CaseForbidden(&'static str),
 }
 
 impl ApiError {
@@ -126,6 +129,7 @@ impl ApiError {
             | Self::NotModerator
             | Self::ModeratorRecused
             | Self::SelfEndorsement
+            | Self::CaseForbidden(_)
             | Self::EndorsementNotPermitted => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::VersionConflict { .. }
@@ -141,6 +145,7 @@ impl ApiError {
             | Self::EndorsementConflict { .. }
             | Self::AlreadyEnrolled
             | Self::AlreadySignedIn
+            | Self::CaseConflict(_)
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
             Self::KeyReused | Self::EndorsementKeyReused | Self::PublicationKeyReused => {
                 StatusCode::UNPROCESSABLE_ENTITY
@@ -427,6 +432,8 @@ impl ApiError {
                 None,
                 None,
             ),
+            Self::CaseConflict(code) => (*code, code.to_string(), None, None),
+            Self::CaseForbidden(code) => (*code, code.to_string(), None, None),
             Self::Internal => ("internal", "internal error".to_string(), None, None),
         };
         ErrorEnvelope {
@@ -512,6 +519,17 @@ impl From<ReadError> for ApiError {
             ReadError::NotFound => Self::NotFound,
             ReadError::Unavailable => Self::DependencyUnavailable,
             ReadError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<crate::application::ports::StoreError> for ApiError {
+    fn from(error: crate::application::ports::StoreError) -> Self {
+        match error {
+            crate::application::ports::StoreError::Unavailable(_) => Self::DependencyUnavailable,
+            crate::application::ports::StoreError::UnknownPrincipal => Self::Unauthenticated,
+            crate::application::ports::StoreError::PrincipalSuspended => Self::PrincipalSuspended,
+            crate::application::ports::StoreError::Integrity(_) => Self::Internal,
         }
     }
 }
@@ -682,6 +700,24 @@ impl From<AuthorPublicationError> for ApiError {
             },
             AuthorPublicationError::Unavailable => Self::DependencyUnavailable,
             AuthorPublicationError::Internal => Self::Internal,
+        }
+    }
+}
+
+impl From<ModerationActionError> for ApiError {
+    fn from(error: ModerationActionError) -> Self {
+        match error {
+            ModerationActionError::NotFound => Self::NotFound,
+            ModerationActionError::Forbidden(code) => Self::CaseForbidden(code),
+            ModerationActionError::Conflict(code) => Self::CaseConflict(code),
+            ModerationActionError::ValidationFailed(field) => Self::Validation {
+                field: "body",
+                message: field.to_string(),
+            },
+            ModerationActionError::Unauthenticated => Self::Unauthenticated,
+            ModerationActionError::Suspended => Self::PrincipalSuspended,
+            ModerationActionError::Unavailable => Self::DependencyUnavailable,
+            ModerationActionError::Internal => Self::Internal,
         }
     }
 }

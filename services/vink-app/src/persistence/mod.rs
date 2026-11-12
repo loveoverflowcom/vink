@@ -8,11 +8,14 @@ mod abuse;
 mod discovery;
 mod discussion;
 mod endorsement;
+pub mod evaluation;
+pub mod moderation;
+pub(crate) mod moderation_write;
 pub mod outbox;
 pub mod post_review;
-mod postgres;
+pub(crate) mod postgres;
 mod principal;
-mod publication;
+pub(crate) mod publication;
 mod taxonomy;
 
 use sqlx::migrate::Migrator;

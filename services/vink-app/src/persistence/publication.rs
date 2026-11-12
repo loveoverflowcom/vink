@@ -8,10 +8,15 @@ use sqlx::{PgConnection, query, query_as, query_scalar};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::moderation_write::{
+    DecisionSource, locked_automation_mode, open_work_case, write_decision,
+};
 use super::postgres::{PgStore, classify, integrity};
 use super::principal::locked_standing;
 use super::taxonomy::{SnapshotCapture, capture_metadata_snapshot};
-use crate::application::moderation::{ModerationPlanError, plan_author_publication};
+use crate::application::moderation::{
+    ModerationPlanError, plan_author_publication, plan_author_publication_under,
+};
 use crate::application::ports::{
     AuthorPrivateOutcome, AuthorPublicRequestOutcome, AuthorPublicationStateFacts,
     AuthorPublicationStore, AuthorSnapshotCapture, BoundPrincipal, CaptureSnapshotOutcome,
@@ -19,7 +24,10 @@ use crate::application::ports::{
 };
 use crate::domain::document::{Document, DocumentData, Title};
 use crate::domain::draft::DraftVersion;
-use crate::domain::ids::{EvaluationId, PrincipalId, RevisionId, WorkId};
+use crate::domain::ids::{EvaluationId, GrantId, PrincipalId, RevisionId, WorkId};
+use crate::domain::moderation::ReviewRequest;
+use crate::domain::moderation::automation::AutomationMode;
+use crate::domain::moderation::case::CaseOrigin;
 use crate::domain::moderation::{
     AdminVerdict, DecisionProvenance, DecisionReason, DecisionVersion, EvaluationJobFacts,
     EvaluationTarget, JobState, ModerationError, NeedsAdminCause, PolicyReasonCode, PolicyVersion,
@@ -56,7 +64,7 @@ fn receipt_generation(raw: Option<i64>) -> Result<IntentGeneration, StoreError> 
         .ok_or_else(|| integrity("receipt generation", raw.unwrap_or_default()))
 }
 
-pub(super) async fn load_paired_state(
+pub(crate) async fn load_paired_state(
     conn: &mut PgConnection,
     actor: PrincipalId,
     work_id: WorkId,
@@ -80,6 +88,12 @@ pub(super) async fn load_paired_state(
         intent_generation: Option<i64>,
         pointer_revision_id: Option<Uuid>,
         pointer_intent_generation: Option<i64>,
+        hidden_revision_id: Option<Uuid>,
+        hidden_intent_generation: Option<i64>,
+        review_withdrawn_revision_id: Option<Uuid>,
+        review_withdrawn_intent_generation: Option<i64>,
+        ever_public: Vec<Uuid>,
+        public_epoch: i64,
         policy_version: i64,
     }
 
@@ -87,7 +101,10 @@ pub(super) async fn load_paired_state(
         "SELECT audience, lifecycle, deletion_provenance,
                 tombstone_revision_id, tombstone_intent_generation,
                 generation, intent_revision_id, intent_generation,
-                pointer_revision_id, pointer_intent_generation, policy_version
+                pointer_revision_id, pointer_intent_generation,
+                hidden_revision_id, hidden_intent_generation,
+                review_withdrawn_revision_id, review_withdrawn_intent_generation,
+                ever_public, public_epoch, policy_version
            FROM work_publications
           WHERE work_id = $1",
     )
@@ -107,6 +124,12 @@ pub(super) async fn load_paired_state(
         intent_generation: None,
         pointer_revision_id: None,
         pointer_intent_generation: None,
+        hidden_revision_id: None,
+        hidden_intent_generation: None,
+        review_withdrawn_revision_id: None,
+        review_withdrawn_intent_generation: None,
+        ever_public: vec![],
+        public_epoch: 0,
         policy_version: 1,
     });
 
@@ -136,18 +159,20 @@ pub(super) async fn load_paired_state(
         revision_id: Uuid,
         decision_version: i64,
         moderation: String,
+        policy_version: i64,
         provenance_kind: Option<String>,
         policy_reason_code: Option<String>,
         needs_admin_cause: Option<String>,
         admin_actor: Option<Uuid>,
         admin_verdict: Option<String>,
         admin_reason: Option<String>,
+        moderator_grant_id: Option<Uuid>,
     }
 
     let mod_rows: Vec<ModRow> = query_as(
-        "SELECT revision_id, decision_version, moderation,
+        "SELECT revision_id, decision_version, moderation, policy_version,
                 provenance_kind, policy_reason_code, needs_admin_cause,
-                admin_actor, admin_verdict, admin_reason
+                admin_actor, admin_verdict, admin_reason, moderator_grant_id
            FROM work_revision_moderation
           WHERE work_id = $1",
     )
@@ -251,6 +276,36 @@ pub(super) async fn load_paired_state(
                             reason,
                         })
                     }
+                    Some("moderator") => {
+                        let actor = PrincipalId::from_uuid(
+                            m.admin_actor
+                                .ok_or_else(|| integrity("moderator actor missing", rev.id))?,
+                        );
+                        let grant = GrantId::from_uuid(
+                            m.moderator_grant_id
+                                .ok_or_else(|| integrity("moderator grant missing", rev.id))?,
+                        );
+                        let verdict = match m.admin_verdict.as_deref() {
+                            Some("approve") => AdminVerdict::Approve,
+                            Some("reject") => AdminVerdict::Reject,
+                            other => {
+                                return Err(integrity(
+                                    "moderator verdict unknown",
+                                    other.unwrap_or("none"),
+                                ));
+                            }
+                        };
+                        let reason =
+                            DecisionReason::parse(m.admin_reason.as_deref().unwrap_or_default())
+                                .map_err(|e| integrity("moderator reason invalid", e))?;
+                        Some(DecisionProvenance::Moderator {
+                            actor,
+                            grant,
+                            verdict,
+                            reason,
+                        })
+                    }
+                    Some("policy_rereview") => Some(DecisionProvenance::PolicyRereview),
                     Some("legacy_bootstrap") => Some(DecisionProvenance::LegacyBootstrap),
                     Some(other) => return Err(integrity("unknown provenance kind", other)),
                 };
@@ -264,11 +319,8 @@ pub(super) async fn load_paired_state(
                         revision: rev_id,
                         digest: content.hash().clone(),
                         version: dec_version,
-                        // ADMIN-MODERATION-20261111 runtime gap: no column records the policy of
-                        // a decision yet. No command bumps the stored policy either, so every
-                        // stored decision belongs to the work's current policy version.
-                        policy: PolicyVersion::new(pub_row.policy_version).ok_or_else(|| {
-                            integrity("moderation policy version invalid", pub_row.policy_version)
+                        policy: PolicyVersion::new(m.policy_version).ok_or_else(|| {
+                            integrity("moderation policy version invalid", m.policy_version)
                         })?,
                         provenance,
                     }),
@@ -300,9 +352,11 @@ pub(super) async fn load_paired_state(
         let pol = PolicyVersion::new(job.policy_version)
             .ok_or_else(|| integrity("job policy version invalid", job.policy_version))?;
         let state = match job.state.as_str() {
-            "open" => JobState::Open,
+            "open" | "leased" => JobState::Open,
             "applied" => JobState::Applied,
             "failed" => JobState::Failed,
+            "withdrawn" => JobState::Withdrawn,
+            "rerouted" => JobState::Rerouted,
             other => return Err(integrity("unknown job state", other)),
         };
 
@@ -377,23 +431,36 @@ pub(super) async fn load_paired_state(
         _ => None,
     };
 
-    // ADMIN-MODERATION-20261111 runtime gap: no column stores the hidden-page pointer, the
-    // once-public revisions or the public epoch yet (PUB-07, MOD-15, COM-11). Reconstruct the
-    // conservative subset the current rows prove: the readable or tombstone pointer was public.
-    // A work made private through #158 therefore still answers not_found until a migration lands.
-    let ever_public: Vec<RevisionId> = pointer
-        .map(|p| p.revision)
-        .or(match lifecycle {
-            Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(p)) => Some(p.revision),
-            _ => None,
-        })
-        .into_iter()
-        .collect();
-    let public_epoch = if ever_public.is_empty() {
-        PublicEpoch::NEVER
-    } else {
-        PublicEpoch::new(1).ok_or_else(|| integrity("public epoch invalid", 1))?
+    let hidden = match (pub_row.hidden_revision_id, pub_row.hidden_intent_generation) {
+        (Some(rev), Some(g)) => Some(PublicPointer {
+            revision: RevisionId::from_uuid(rev),
+            intent_generation: IntentGeneration::new(g)
+                .ok_or_else(|| integrity("hidden intent generation invalid", g))?,
+        }),
+        _ => None,
     };
+
+    let review_withdrawn = match (
+        pub_row.review_withdrawn_revision_id,
+        pub_row.review_withdrawn_intent_generation,
+    ) {
+        (Some(rev), Some(g)) => Some(PublicPointer {
+            revision: RevisionId::from_uuid(rev),
+            intent_generation: IntentGeneration::new(g)
+                .ok_or_else(|| integrity("review_withdrawn intent generation invalid", g))?,
+        }),
+        _ => None,
+    };
+
+    let ever_public: Vec<RevisionId> = pub_row
+        .ever_public
+        .into_iter()
+        .map(RevisionId::from_uuid)
+        .collect();
+
+    let public_epoch = PublicEpoch::new(pub_row.public_epoch)
+        .ok_or_else(|| integrity("public epoch invalid", pub_row.public_epoch))?;
+
     let publication_facts = PublicationFacts {
         work: work_id,
         owner: actor,
@@ -402,7 +469,8 @@ pub(super) async fn load_paired_state(
         generation,
         intent,
         pointer,
-        hidden: None,
+        hidden,
+        review_withdrawn,
         ever_public,
         public_epoch,
         revisions: pub_revisions,
@@ -787,8 +855,11 @@ impl AuthorPublicationStore for PgStore {
                 return Ok(RequestPublicOutcome::UnknownRevision);
             }
 
+            // MOD-14: the mode is read under a share lock in this commit, after the actor's
+            // standing fence (lock order in `moderation_write`).
+            let automation = locked_automation_mode(&mut tx).await?;
             let new_eval_id = EvaluationId::generate();
-            let transition = match plan_author_publication(
+            let transition = match plan_author_publication_under(
                 Some(BoundPrincipal {
                     principal: actor,
                     standing,
@@ -800,6 +871,7 @@ impl AuthorPublicationStore for PgStore {
                     expected: expected_generation,
                 },
                 Some(new_eval_id),
+                automation,
             ) {
                 Ok(t) => t,
                 Err(ModerationPlanError::Rejected(ModerationError::Publication(
@@ -840,6 +912,8 @@ impl AuthorPublicationStore for PgStore {
             let next_pub = transition.publication.facts();
             let pointer_rev = next_pub.pointer.map(|p| p.revision.as_uuid());
             let pointer_gen = next_pub.pointer.map(|p| p.intent_generation.get());
+            let ever_public_uuids: Vec<Uuid> =
+                next_pub.ever_public.iter().map(|r| r.as_uuid()).collect();
 
             // 4. Update work_publications
             query(
@@ -847,9 +921,12 @@ impl AuthorPublicationStore for PgStore {
                      work_id, audience, lifecycle, generation,
                      intent_revision_id, intent_generation,
                      pointer_revision_id, pointer_intent_generation,
+                     hidden_revision_id, hidden_intent_generation,
+                     review_withdrawn_revision_id, review_withdrawn_intent_generation,
+                     ever_public, public_epoch,
                      policy_version, updated_at
                  )
-                 VALUES ($1, 'public', 'active', $2, $3, $2, $4, $5, $6, now())
+                 VALUES ($1, 'public', 'active', $2, $3, $2, $4, $5, $9, $10, $11, $12, $6, $7, $8, now())
                  ON CONFLICT (work_id) DO UPDATE SET
                      audience = 'public',
                      generation = EXCLUDED.generation,
@@ -857,6 +934,12 @@ impl AuthorPublicationStore for PgStore {
                      intent_generation = EXCLUDED.intent_generation,
                      pointer_revision_id = EXCLUDED.pointer_revision_id,
                      pointer_intent_generation = EXCLUDED.pointer_intent_generation,
+                     hidden_revision_id = EXCLUDED.hidden_revision_id,
+                     hidden_intent_generation = EXCLUDED.hidden_intent_generation,
+                     review_withdrawn_revision_id = EXCLUDED.review_withdrawn_revision_id,
+                     review_withdrawn_intent_generation = EXCLUDED.review_withdrawn_intent_generation,
+                     ever_public = EXCLUDED.ever_public,
+                     public_epoch = EXCLUDED.public_epoch,
                      updated_at = now()",
             )
             .bind(work_id.as_uuid())
@@ -864,7 +947,15 @@ impl AuthorPublicationStore for PgStore {
             .bind(revision_id.as_uuid())
             .bind(pointer_rev)
             .bind(pointer_gen)
+            .bind(&ever_public_uuids)
+            .bind(next_pub.public_epoch.get())
             .bind(mod_state.facts().policy.get())
+            // O-17: the review-withdrawn page (and a hidden pointer) stays until the core clears
+            // it, i.e. until a revision is readable again; a pending resubmission keeps it.
+            .bind(next_pub.hidden.map(|p| p.revision.as_uuid()))
+            .bind(next_pub.hidden.map(|p| p.intent_generation.get()))
+            .bind(next_pub.review_withdrawn.map(|p| p.revision.as_uuid()))
+            .bind(next_pub.review_withdrawn.map(|p| p.intent_generation.get()))
             .execute(&mut *tx)
             .await
             .map_err(classify)?;
@@ -908,30 +999,39 @@ impl AuthorPublicationStore for PgStore {
                 PointerEffect::Unchanged => {}
             }
 
-            // 6. If ticket produced, write work_revision_moderation and work_evaluation_jobs
-            if let Some(ticket) = &transition.ticket {
-                // The domain opens a ticket only for an unsubmitted revision, which has no row:
-                // a conflict here is a desync to refuse, never a decision to reset.
-                query(
-                    "INSERT INTO work_revision_moderation (work_id, revision_id, decision_version, moderation, created_at, updated_at)
-                     VALUES ($1, $2, 1, 'pending', now(), now())",
+            // 6. Decision, history, evaluator job and human case exactly as the core routed the
+            // review: a resubmission keeps the revision's decision version; a paused mode or a
+            // human re-review goes to the queue instead of the evaluator.
+            if transition.ticket.is_some()
+                || transition.human_review.is_some()
+                || transition.review != ReviewRequest::None
+            {
+                write_decision(
+                    &mut tx,
+                    next_pub,
+                    transition.moderation.facts(),
+                    revision_id,
+                    DecisionSource {
+                        evaluation: transition.ticket.as_ref().map(|t| t.id),
+                        case: None,
+                    },
                 )
-                .bind(work_id.as_uuid())
-                .bind(revision_id.as_uuid())
-                .execute(&mut *tx)
-                .await
-                .map_err(classify)?;
-
+                .await?;
+            }
+            if let Some(ticket) = &transition.ticket {
                 let EvaluationTarget::WorkRevision { digest, .. } = &ticket.target else {
                     return Err(integrity(
                         "ticket target must be work revision",
                         work_id.as_uuid(),
                     ));
                 };
-
+                // The scripted verdict (local/test only) is bound by the worker on first claim.
                 query(
-                    "INSERT INTO work_evaluation_jobs (id, work_id, revision_id, content_digest, policy_version, state, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, $5, 'open', now(), now())",
+                    "INSERT INTO work_evaluation_jobs (
+                         id, work_id, revision_id, content_digest, policy_version, state,
+                         claim_generation, attempts, max_attempts, created_at, updated_at
+                     )
+                     VALUES ($1, $2, $3, $4, $5, 'open', 0, 0, 3, now(), now())",
                 )
                 .bind(ticket.id.as_uuid())
                 .bind(work_id.as_uuid())
@@ -941,6 +1041,25 @@ impl AuthorPublicationStore for PgStore {
                 .execute(&mut *tx)
                 .await
                 .map_err(classify)?;
+            }
+            if let Some(human) = transition.human_review {
+                let origin = match transition.review {
+                    ReviewRequest::PolicyRereview => CaseOrigin::PolicyRereview,
+                    ReviewRequest::Fresh | ReviewRequest::Resubmitted
+                        if automation == AutomationMode::Paused =>
+                    {
+                        CaseOrigin::AutomationPaused
+                    }
+                    _ => CaseOrigin::EvaluatorUncertain,
+                };
+                open_work_case(
+                    &mut tx,
+                    transition.moderation.facts(),
+                    PrincipalId::from_uuid(owner),
+                    human,
+                    origin,
+                )
+                .await?;
             }
 
             // 7. Write receipt
@@ -1108,14 +1227,22 @@ impl AuthorPublicationStore for PgStore {
             let next_pub = transition.publication.facts();
 
             // 4. Update work_publications to private
+            let hidden_rev = next_pub.hidden.map(|p| p.revision.as_uuid());
+            let hidden_gen = next_pub.hidden.map(|p| p.intent_generation.get());
+            let ever_public_uuids: Vec<Uuid> =
+                next_pub.ever_public.iter().map(|r| r.as_uuid()).collect();
+
             query(
                 "INSERT INTO work_publications (
                      work_id, audience, lifecycle, generation,
                      intent_revision_id, intent_generation,
                      pointer_revision_id, pointer_intent_generation,
+                     hidden_revision_id, hidden_intent_generation,
+                     review_withdrawn_revision_id, review_withdrawn_intent_generation,
+                     ever_public, public_epoch,
                      policy_version, updated_at
                  )
-                 VALUES ($1, 'private', 'active', $2, NULL, NULL, NULL, NULL, $3, now())
+                 VALUES ($1, 'private', 'active', $2, NULL, NULL, NULL, NULL, $3, $4, NULL, NULL, $5, $6, $7, now())
                  ON CONFLICT (work_id) DO UPDATE SET
                      audience = 'private',
                      generation = EXCLUDED.generation,
@@ -1123,10 +1250,20 @@ impl AuthorPublicationStore for PgStore {
                      intent_generation = NULL,
                      pointer_revision_id = NULL,
                      pointer_intent_generation = NULL,
+                     hidden_revision_id = EXCLUDED.hidden_revision_id,
+                     hidden_intent_generation = EXCLUDED.hidden_intent_generation,
+                     review_withdrawn_revision_id = NULL,
+                     review_withdrawn_intent_generation = NULL,
+                     ever_public = EXCLUDED.ever_public,
+                     public_epoch = EXCLUDED.public_epoch,
                      updated_at = now()",
             )
             .bind(work_id.as_uuid())
             .bind(next_pub.generation.get())
+            .bind(hidden_rev)
+            .bind(hidden_gen)
+            .bind(&ever_public_uuids)
+            .bind(next_pub.public_epoch.get())
             .bind(mod_state.facts().policy.get())
             .execute(&mut *tx)
             .await
@@ -1138,6 +1275,32 @@ impl AuthorPublicationStore for PgStore {
                 .execute(&mut *tx)
                 .await
                 .map_err(classify)?;
+
+            // 5b. Withdraw every open, leased or rerouted job (PUB-06): a late finisher of a
+            // leased job fails its claim fence.
+            query(
+                "UPDATE work_evaluation_jobs
+                    SET state = 'withdrawn', lease_expires_at = NULL, updated_at = now()
+                  WHERE work_id = $1 AND state IN ('open', 'leased', 'rerouted')",
+            )
+            .bind(work_id.as_uuid())
+            .execute(&mut *tx)
+            .await
+            .map_err(classify)?;
+
+            // 5c. Close open review cases with reason withdrawn (PUB-06); a close advances the
+            // case version so a reviewer's stale command is refused.
+            query(
+                "UPDATE moderation_cases
+                    SET state = 'closed', close_reason = 'withdrawn', version = version + 1,
+                        claimed_by = NULL, claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
+                        updated_at = now()
+                  WHERE work_id = $1 AND state IN ('queued', 'claimed', 'escalated')",
+            )
+            .bind(work_id.as_uuid())
+            .execute(&mut *tx)
+            .await
+            .map_err(classify)?;
 
             // 6. Write receipt
             query(

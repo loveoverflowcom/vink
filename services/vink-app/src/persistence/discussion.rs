@@ -449,8 +449,10 @@ async fn readable_thread(
     work_id: WorkId,
 ) -> Result<Option<(PrincipalId, Option<ThreadRow>)>, StoreError> {
     let work: Option<(Uuid, bool)> = sqlx::query_as(
-        "SELECT w.owner_id, p.work_id IS NOT NULL
-           FROM works w LEFT JOIN publications p ON p.work_id = w.id
+        "SELECT w.owner_id, (p.work_id IS NOT NULL OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))
+           FROM works w
+           LEFT JOIN publications p ON p.work_id = w.id
+           LEFT JOIN work_publications wp ON wp.work_id = w.id
           WHERE w.id = $1",
     )
     .bind(work_id.as_uuid())
@@ -711,10 +713,12 @@ impl DiscussionStore for PgStore {
     ) -> Result<Guarded<Transition, LifecycleError>, StoreError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
         let row: Option<(Uuid, String, Option<String>, i64, bool)> = sqlx::query_as(
-            "SELECT c.author_id, c.review, c.removal, c.moderation_version, p.work_id IS NOT NULL
+            "SELECT c.author_id, c.review, c.removal, c.moderation_version,
+                    (p.work_id IS NOT NULL OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id
                LEFT JOIN publications p ON p.work_id = t.work_id
+               LEFT JOIN work_publications wp ON wp.work_id = t.work_id
               WHERE c.id = $1 AND t.work_id = $2
               FOR UPDATE OF c",
         )
@@ -930,7 +934,8 @@ impl DiscussionStore for PgStore {
                JOIN works w ON w.id = t.work_id
                JOIN principals a ON a.id = c.author_id
                LEFT JOIN publications p ON p.work_id = w.id
-               LEFT JOIN revisions rv ON rv.id = p.revision_id
+               LEFT JOIN work_publications wp ON wp.work_id = w.id
+               LEFT JOIN revisions rv ON rv.id = COALESCE(p.revision_id, wp.review_withdrawn_revision_id)
               WHERE c.review = 'pending' AND c.removal IS NULL
                 AND ($1::timestamptz IS NULL OR (c.created_at, c.id) > ($1, $2))
               ORDER BY c.created_at, c.id

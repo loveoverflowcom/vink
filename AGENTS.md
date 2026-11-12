@@ -67,21 +67,26 @@ those registries rather than duplicating long status narratives across skills.
     [publication-core](docs/development/publication-core.md)) and pure evaluator/admin moderation
     core + `ScriptedEvaluator` (`#151`, [moderation-core](docs/development/moderation-core.md)).
   - Admin moderation governance (`ADMIN-MODERATION-20261111`, DecisionDelta §7: MOD-09..15,
-    PUB-06/07, COM-11) is **pure core only**: `domain::moderation::{authority, case, appeal,
-    automation, investigation}`, moderator decisions, withdrawn/rerouted jobs, the hidden page
-    (`WorkAccessPlan::AuthorHidden`) and comment hide/restore. `verify discussion` replays 64/64 M1,
-    41/41 M3, 105/105 M4 governance (`governance.qnt`, replaced `target/appeal.qnt`) and 24
-    `evaluator-vectors.json` steps. No migration, store, CLI/API, worker or UI; the #158 loader still
-    builds `hidden = None`, so `set-private` answers not found.
+    PUB-06/07, COM-11): pure core `domain::moderation::{authority, case, appeal, automation,
+    investigation}`; `verify discussion` replays 64/64 M1, 41/41 M3, 105/105 M4 governance and 24
+    `evaluator-vectors.json` steps. Since `#159`
+    ([moderation-runtime](docs/development/moderation-runtime.md)) work revisions have
+    persistence-api + worker: admin seats (`vink-app admin`), work grants and groups, review cases
+    and pause/enable under `/api/v1/moderation/*`, decision history, and a `vink-worker`
+    evaluation consumer (off by default; only a local/test scripted evaluator, never production;
+    without a verdict every job goes to people). `O-17@r2` (`PRODUCT_CONFIRMED`) adds the
+    review-withdrawn page at the old URL (`GET /api/v1/works/{id}/reader`, Web reader). Appeals,
+    investigations, comment cases, the hidden page (`set-private` still answers not found) and any
+    admin UI remain unimplemented.
   - Author publication persistence + HTTP API (`#158`,
     [publication-runtime](docs/development/publication-runtime.md)) implements snapshot capture,
     `request-public` (writes an `open` ticket not yet consumed), `set-private` and owner state read,
     with pre-#158 pointers backfilled as `legacy_bootstrap`.
   - Remaining target models (`collections`, `comment_edit`, `discovery` in
     `services/vink-app/behavior/target`) are **model evidence only**; no UI consumer, delete/remove
-    route, evaluator worker, real AI provider, admin grant store, appeal store, collection, hashtag,
-    ranking or comment edit exists in runtime. Items marked `DESIGN_PROPOSED` or `OPEN` (`O-01..O-19`)
-    are not owner product decisions, even when a safe baseline is coded in pure core.
+    route, real AI provider, appeal store, collection, hashtag, ranking or comment edit exists in
+    runtime. Items marked `DESIGN_PROPOSED` or `OPEN` (`O-01..O-19`, except the registry's current
+    `O-17@r2`) are not owner product decisions, even when a safe baseline is coded in pure core.
 - **Authentication and principal standing (D-05 Provisional, not Accepted;
   [ADR](docs/architecture/auth-authority.md), [runbook](docs/development/auth-operations.md),
   [Auth Web](docs/development/auth-web.md)):** `services/vink-identity` and `services/vink-app`
@@ -115,7 +120,7 @@ Keep these **four status dimensions** separate in docs, reviews and handoffs:
    make a proposal `Accepted`.
 3. **Implementation level:** `NOT_IMPLEMENTED`, `core`, `persistence-api`, `worker-provider`,
    `web`, or `cmp` (recorded in `docs/development/*` registries). A pure core baseline for an `OPEN`
-   item (such as `O-04` or `O-17`) does not settle the product rule.
+   item (such as `O-04` or `O-18`) does not settle the product rule.
 4. **Verification evidence:** exact command/lane, pinned SHA and boundary (`model`, `unit/kani`,
    `postgres`, `web`, `cmp`).
 

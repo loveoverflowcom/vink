@@ -1,0 +1,9 @@
+version = 1
+id = "O-17"
+revision = 2
+sha256 = "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa"
+status = "PRODUCT_CONFIRMED"
+decided_on = "2026-11-12"
+source = """
+Chủ sản phẩm yêu cầu trong phiên hoàn thiện #159 ngày 12/11/2026: “Áp dụng trang giữ bình luận cho cả admin và moderator khi bác một revision đang đăng. Ghi lựa chọn về trang và quyền bình luận vào đề xuất O-17@r2 với căn cứ từ cuộc trao đổi này. Đưa revision vào hiệu lực trong registry sau signoff đúng revision.”
+"""

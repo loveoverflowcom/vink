@@ -12,7 +12,7 @@ use super::catalog::TagResolution;
 use super::discovery::{AppliedFilter, DiscoverWorks, DiscoveryError, DiscoveryInput, WorkPage};
 use super::ports::{
     DiscoveryFacts, DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore,
-    SlugFacts, StoreError,
+    ReaderWorkFacts, SlugFacts, StoreError,
 };
 use super::*;
 use crate::domain::discovery::{
@@ -187,6 +187,10 @@ impl PublicationStore for Scripted {
     async fn publication(&self, _: WorkId) -> Result<Option<PublicationFacts>, StoreError> {
         panic!("discovery must not read a single publication")
     }
+
+    async fn reader_work(&self, _: WorkId) -> Result<Option<ReaderWorkFacts>, StoreError> {
+        panic!("discovery must not read a single reader work")
+    }
 }
 
 struct NoStore;
@@ -197,6 +201,10 @@ impl PublicationStore for NoStore {
     }
 
     async fn publication(&self, _: WorkId) -> Result<Option<PublicationFacts>, StoreError> {
+        panic!("invalid input must not reach the store")
+    }
+
+    async fn reader_work(&self, _: WorkId) -> Result<Option<ReaderWorkFacts>, StoreError> {
         panic!("invalid input must not reach the store")
     }
 }

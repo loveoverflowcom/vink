@@ -415,6 +415,25 @@ impl ModerationDirectory {
         })
     }
 
+    /// Whether this actor has at least one active grant for this capability, or is an admin.
+    pub fn has_any_capability(
+        &self,
+        actor: PrincipalId,
+        capability: ReviewCapability,
+        now: OffsetDateTime,
+    ) -> bool {
+        if self.suspended(actor) {
+            return false;
+        }
+        if self.0.admins.contains(&actor) {
+            return true;
+        }
+        self.0
+            .grants
+            .iter()
+            .any(|g| g.live(now) && g.capability == capability && self.holds(actor, g.grantee))
+    }
+
     fn audit(seat: AdminSeat, change: DirectoryChange) -> DirectoryAudit {
         DirectoryAudit {
             admin: seat.actor,

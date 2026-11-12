@@ -87,9 +87,10 @@ work's `WorkAccessPlan` (`PublicBody`, `AuthorTombstone`, `AuthorHidden`, `Unava
   In pure core, `PublicationFacts::hidden` serves `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn”)
   and keeps eligible comments readable (`HiddenReadOnly` under `O-03@r2`, blocking new comments/replies);
   subsequent deletion from this hidden page leaves `DeletionProvenance::PublicTombstone` with comments
-  intact (`O-05@r2` `PRODUCT_CONFIRMED`). In the current `#158` persistence runtime, `load_paired_state`
-  still builds `hidden = None`, so after `POST .../set-private` deletes the public pointer the old URL answers not found (`404`)
-  until the hidden-page storage/loader migration lands.
+  intact (`O-05@r2` `PRODUCT_CONFIRMED`). Since `#159` the hidden pointer is stored and loaded, but no
+  route or SSR serves the hidden page yet, so after `POST .../set-private` the old URL still answers not found (`404`).
+  The review-withdrawn page of `O-17@r2` (moderator/admin rejected the public revision) is served by
+  `GET /api/v1/works/{id}/reader` and the Web reader ([moderation-runtime](../../../docs/development/moderation-runtime.md)).
 - **Case C (Admin/moderation removal) and Case D (Never public, then deleted):**
   project `WorkAccessPlan::Unavailable` (`404`); neither the work nor its discussion thread is
   publicly readable (`PUB-05`). Comments are never cascade-deleted when a work changes state.

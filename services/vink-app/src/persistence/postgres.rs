@@ -26,7 +26,7 @@ impl PgStore {
 
 /// Connection-level failures are retryable unavailability; anything else is an integrity error.
 /// sqlx error text carries no bound parameters, so manuscript text never reaches the log.
-pub(super) fn classify(error: sqlx::Error) -> StoreError {
+pub(crate) fn classify(error: sqlx::Error) -> StoreError {
     let classified = classify_inner(error);
     match &classified {
         StoreError::Unavailable(detail) => tracing::warn!(%detail, "postgres unavailable"),

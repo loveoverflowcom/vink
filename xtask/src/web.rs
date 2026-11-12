@@ -847,6 +847,12 @@ fn run_web_checks(
         report.fail("scratch database: moderator grant", &e);
         return false;
     }
+    // O-17@r2 (#159): the same second principal holds an admin seat for the review phase.
+    let mut seat = reader.command(root, &["admin", "add", OTHER_PRINCIPAL, "verify web O-17"]);
+    if let Err(e) = crate::process::run(&mut seat, "vink-app admin add (scratch)") {
+        report.fail("scratch database: admin seat", &e);
+        return false;
+    }
     let mut author = match server.start(root) {
         Ok(guard) => guard,
         Err(e) => {
@@ -874,6 +880,19 @@ fn run_web_checks(
             )
         },
     );
+    let ok = ok
+        && report.step(
+            "review-withdrawn page (O-17@r2): paused queue, admin approve, intervention reject, SSR noindex/no-store, cache purge, comments",
+            || {
+                smoke(
+                    root,
+                    &["--phase", "review-withdrawn", "--author-base", origin],
+                    chrome,
+                    &reader_origin,
+                    state,
+                )
+            },
+        );
     let _ = endorsing.terminate(Duration::from_secs(15));
     let _ = author.terminate(Duration::from_secs(15));
     ok

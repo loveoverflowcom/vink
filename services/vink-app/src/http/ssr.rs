@@ -129,6 +129,16 @@ impl PublicReads for PublicReadsAdapter {
             to_web(&Publication::from(&work))
         })
     }
+
+    fn reader(&self, work_id: String) -> PortFuture<Result<web::ReaderResponse, LoadError>> {
+        let vink = self.vink.clone();
+        Box::pin(async move {
+            let id = WorkId::parse(&work_id).ok_or(LoadError::NotFound)?;
+            let reader_work = vink.reader_work(id).await.map_err(load_error)?;
+            let resp = super::contract::ReaderResponse::from(reader_work);
+            to_web(&resp)
+        })
+    }
 }
 
 pub fn routes(state: &AppState) -> Router<AppState> {
