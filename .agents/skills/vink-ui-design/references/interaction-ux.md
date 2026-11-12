@@ -147,9 +147,12 @@ Fallback & Bounds: [Cách thao tác bằng phím/a11y; hành vi khi reduced moti
      chủ động của người dùng (ví dụ: mở Dialog, chuyển qua màn hình mới); không tự động nhảy focus
      khi người dùng đang đọc ở lưng chừng trang.
 3. **Bảo toàn IME tiếng Việt và Controlled TextField:**
-   - Các trường nhập liệu văn bản phải nhận và trả `TextFieldValue` (Compose) hoặc snapshot CodeMirror
-     (Web). Tuyệt đối không dùng chuỗi thô (raw String round-trip) làm mất vị trí con trỏ (selection)
-     và bộ đệm gõ dấu tiếng Việt (Telex, VNI, dấu tổ hợp Unicode NFC/NFD).
+   - Với Compose, giữ `TextFieldValue` cùng selection/composition. Trên Web, `TextField`,
+     `SearchField` và `TextArea` dùng DOM input/textarea với `Signal<String>` và `TextInput`:
+     giữ node, selection và xử lý composition hiện có; không ghi đè giá trị đang gõ hoặc submit
+     giữa composition. Chỉ editor CodeMirror giữ `EditorView` và state/selection/composition của nó;
+     không đổi input thường sang CodeMirror để sửa focus/IME. Không dùng vòng chuyển đổi chuỗi làm
+     mất caret hoặc bộ đệm gõ dấu tiếng Việt (Telex, VNI, dấu tổ hợp Unicode NFC/NFD).
    - Không remount hoặc thay thế node input trong cây giao diện chỉ để làm hiệu ứng transition hoặc
      đổi theme, vì sẽ làm bàn phím ảo bị đóng/mở lại và mất kết nối IME.
 4. **Quy tắc phục hồi Focus (Focus Restoration):**
