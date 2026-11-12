@@ -259,3 +259,21 @@ readback vẫn `Tiếng Việt [Mẫu]Vink`; hai UI dump được giữ cùng �
 - Drag-dismiss/nested drag arbitration không được thêm; chỉ cuộn nội dung sheet. ModalBottomSheet
   đã được đánh giá nhưng default drag/hide lifecycle chưa phải contract được chốt. Không có
   proposal/signoff mới và không tuyên bố hiệu năng mượt hơn khi chưa đo.
+
+## Pilot chất lượng UI/UX 12/11/2026 (#174)
+
+Lượt chạy lại trên `develop@e54db0d6f3e1b1caae901cbff31027cb3d49d757` cho pilot dialog/sheet; chi
+tiết, ảnh đã mở, findings và đối chứng âm nằm ở
+[báo cáo #174](../design/ui-ux-quality-174.md#5-pilot-w5). Nguồn UI không đổi trong lúc chạy; cây
+làm việc chỉ có sửa đổi tài liệu.
+
+| Lệnh / target | Kết quả và phạm vi |
+| --- | --- |
+| `VINK_UI_FOCUS_CAPTURE=1 cargo xtask ui-preview leptos verify` (Linux, Chrome headless 157.0.8103.78, `VINK_CHROME` là wrapper `--no-sandbox` cho sandbox của công cụ) | PASS: 4/4 test clip, 658 assertion, 1.233 PNG, focus 36/36. 16 phút 40 giây cho một lượt. |
+| `cargo xtask ui-preview cmp verify` (Temurin 17.0.20.1) | PASS: `:ui` 43, `:diagnostics` 6, `:preview` 48 test, không skip; 668 PNG off-screen. 7 phút 32 giây cho một lượt. |
+| Android/iOS diagnostic, OS IME, TalkBack/VoiceOver | NOT_RUN trong lát này; các kết quả native phía trên không được chạy lại. |
+
+Pilot ghi nhận hai giới hạn của bằng chứng hiện có, thuộc phạm vi runner của #24: preview Leptos
+chưa chụp lớp phủ đang mở ở viewport thật hay ở chữ 200%, và sidecar CMP chưa có bounds theo anchor
+hay vị trí con trỏ. PASS của hai lane không bao phủ finding F-01 (dialog Web ở chữ 200% mở ra với
+tiêu đề ngoài vùng nhìn), vốn mới được đo bằng thăm dò thủ công.

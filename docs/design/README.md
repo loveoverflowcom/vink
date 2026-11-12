@@ -21,6 +21,11 @@ geometry/typography, kiểm editor, evidence và giới hạn; đây là review-
 Phần đối chiếu cập nhật của báo cáo ghi lại trạng thái trước khi ba PR R1/R2
 (#74, #76, #77) được triển khai và merge vào `develop`.
 
+Bổ sung [#174 — Chất lượng UI/UX: tài liệu, skills và pilot](ui-ux-quality-174.md): inventory
+owner, rubric, phân loại mốc thị giác, số đo anchor, vòng sửa có điểm dừng và pilot dialog/sheet
+trên Web và CMP Desktop. [Sổ mốc thị giác](visual-anchors.md) ghi mốc nào đã được duyệt để
+review; hiện chưa có mốc `approved`.
+
 Bổ sung [brief hành vi gửi bình luận #120](discussion-submission-brief.md): anatomy, trạng thái
 logic và quy tắc thử lại để chủ sản phẩm design sau; chưa có visual hay code UI.
 
