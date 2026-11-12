@@ -2620,6 +2620,10 @@ async function editorChrome(page) {
       parseFloat(style.outlineWidth) === 2 &&
       style.outlineOffset === '-2px';
   })()`), 'editor Tab reaches the text box with a borderless tonal surface and one flush 2px focus perimeter');
+  await page.click('#editor-review-status');
+  await page.waitFor(`document.querySelector('#leave-editor')?.open`, 'review status navigation keeps the unsaved-text guard');
+  await page.click('#leave-stay');
+  check((await page.body()) === dirtyText, 'staying after review status navigation preserves the manuscript');
   const gate = new SaveGate(page);
   await gate.enable();
   await page.click('#save');

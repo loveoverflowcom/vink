@@ -885,7 +885,6 @@ fn Editor(draft: Draft) -> impl IntoView {
                         </Button>
                     </PlainTooltip>
             </crate::ui::patterns::EditorToolbar>
-            <vink_ui::Link href=format!("/ban-viet/{}/kiem-duyet",work_id.get_value())>"Trạng thái kiểm duyệt và phản đối"</vink_ui::Link>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
                 <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
                     // The toolbar is the sole polite announcement owner for this state.
@@ -962,6 +961,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
                     on_save=Callback::new(move |()| save()) />
             </div>
+            <vink_ui::Link attr:id="editor-review-status" href=format!("/ban-viet/{}/kiem-duyet",work_id.get_value())>"Trạng thái kiểm duyệt và phản đối"</vink_ui::Link>
         </form>
         <vink_ui::Dialog id="leave-editor" open=leave_open
             title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ chữ chưa lưu và rời trang?" } else { "Rời trang khi còn chữ chưa lưu?" }.to_string())
