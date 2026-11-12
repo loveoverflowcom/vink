@@ -4,11 +4,15 @@
 · **Nhánh:** `codex/ui-ux-quality-docs-skills` · **Issue:**
 [#174](https://github.com/loveoverflowcom/vink/issues/174) (EPIC, vẫn mở sau lát này).
 
-Lát này cập nhật tài liệu và skills UI hiện hữu (W1–W4) và chạy một pilot hẹp trên dialog/sheet
+Lát tài liệu ban đầu cập nhật skills UI hiện hữu (W1–W4) và chạy một pilot hẹp trên dialog/sheet
 ở preview Leptos và CMP Desktop (W5). Nó **không** đổi giao diện sản phẩm, không thêm runner,
 không duyệt mốc thị giác và không nghiệm thu native. Bốn chiều trạng thái giữ tách nhau:
 quyết định sản phẩm (không đổi), quyết định kiến trúc (không đổi), mức triển khai (tài liệu và
 skills) và bằng chứng (các lượt chạy ghi ở §5).
+
+**Cập nhật tiếp theo:** [vòng sửa 1](#10-vòng-sửa-1-f-01-và-các-gap-bằng-chứng) trên
+`5221871923ca2935988a225d827e1c4ed9c234c0` sửa F-01 và mở rộng nhỏ hai runner hiện hữu.
+§1–9 giữ lịch sử của pilot đầu; trạng thái hiện tại và phần còn mở nằm ở §10.
 
 ## 1. Vì sao và làm thế nào, qua một tác vụ cụ thể
 
@@ -257,3 +261,108 @@ Web, store hay nghiệp vụ.
 - Owner `:ui`/`vink-ui`: F-01 và F-03, qua một vòng sửa có ngân sách để thử chính sách dừng bằng
   dữ liệu thật (phần còn thiếu của AC-05).
 - Native: toàn bộ bảng năm chiều trên Android/iOS cho dialog/sheet ở cỡ chữ lớn.
+
+## 10. Vòng sửa 1: F-01 và các gap bằng chứng
+
+Ngày 12/11/2026, theo yêu cầu sửa F-01 và phần dang dở rồi tạo commit mới. Base
+`5221871923ca2935988a225d827e1c4ed9c234c0`, cùng nhánh `codex/ui-ux-quality-docs-skills`.
+Quyết định sản phẩm/kiến trúc không đổi; implementation thêm **web** ở `vink-ui::Dialog` và
+capture/test ở preview Web + CMP Desktop. Không tạo app native hay tự duyệt anchor/gate.
+
+### Tiêu chí cố định và thay đổi
+
+LayoutSpec rút gọn đã trình bày trước patch: giữ `#panel → #title → #content → #actions`,
+INV-1…4 của §4, fixture/copy/tokens hiện hữu, 320×700 và 390×844, chữ 100/200%, light/dark.
+Dialog vừa khung vẫn focus hành động an toàn; khi nội dung cần cuộn thì focus heading có
+`tabindex=-1`, mở ở đầu nội dung. `[autofocus]` rõ ràng của caller vẫn được ưu tiên. Escape,
+outside-dismiss, thứ tự Tab và trả focus giữ hợp đồng hiện có. Cách chọn heading cho nội dung
+dài phù hợp [WAI dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/#keyboardinteraction).
+Spec sửa này chỉ đổi focus khởi đầu của Web; CMP giữ `initialFocus` và nút đóng cuộn theo nội dung.
+
+- **F-01:** `focus_initial` ở `feedback.rs` đưa scroll về 0 (cả khi mở lại), chọn heading khi
+  `scrollHeight > clientHeight`, gọi focus với `preventScroll`. Native `showModal()` đã chạy
+  bước focus trước adapter nên chỉ đổi `focus()` sang `preventScroll` là chưa đủ.
+- **F-05:** `overlay-capture.mjs` là module của smoke hiện hữu, chạy mặc định trong
+  `ui-preview leptos verify`: 16 tổ hợp, ảnh viewport thật trước mọi corrective scroll,
+  ảnh tại actions, DOM rect/font/scroll/focus, INV-1/2/4 lúc mở, INV-3 bằng Tab tới từng nút,
+  Escape/trả focus, mở lại và bấm ngoài. Ảnh raw gallery cũ và `focus-manifest` giữ nguyên.
+- **F-03 và F-04 phần capture:** `InteractionCaptureTest` đưa con trỏ ra ngoài trước chụp,
+  giữ ảnh vừa mở, chụp từ đầu tới cuối scrollport bằng tile có overlap và kiểm không bỏ khoảng
+  giữa. Sidecar giữ các trường cũ, thêm bounds/visible bounds, scroll range, pointer, hash,
+  nguồn và ảnh overlay. `field-label` là node field tìm bằng accessible label trong semantics,
+  không phải bounds của dòng nhãn được vẽ hay glyph.
+  Không cần đổi elevation của `VinkButton` để có ảnh sạch.
+- **Overlay:** vẽ bounds trên bản sao PNG sạch cùng lượt; Web dùng canvas tách khỏi DOM,
+  CMP dùng `BufferedImage`. Check xác nhận capture không đổi geometry/scroll/focus.
+  Ảnh sạch giữ nguyên byte và là evidence chính.
+
+### Đối chứng trước/sau
+
+Cùng Chrome headless, DPR 1, font pin, text scale bằng root font-size; khác với probe mobile
+DPR 2 của §5 nên **không** dùng số của probe cũ làm baseline pixel. Before được chạy trên
+UI chưa sửa; after là vòng sửa 1. SHA và fingerprint nguồn ở sidecar từng lượt trong
+[evidence vòng sửa](evidence/ui-ux-quality-174/repair-1/README.md).
+
+| Scenario light, chữ 200% | Trước: `scrollTop`, title y | Sau: `scrollTop`, title y | Kết luận |
+| --- | --- | --- | --- |
+| Dialog 320×700 | 658, −578 | 0, 80 | INV-1 được sửa |
+| Dialog 390×844 | 201, −121 | 0, 80 | INV-1 được sửa |
+| Sheet 320×700 | 108, 45 (panel y=105) | 0, 153 | Cùng nguyên nhân, được sửa |
+| Sheet 390×844 | 0, 334,06 | 0, 334,06 | Không hồi quy |
+
+Before: **6/16** ca FAIL (ba ca trên × hai theme), cả tám ca chữ 100% đạt. After:
+**16/16** đạt các invariant và kiểm bàn phím/cancel/mở lại. Đây là đối chứng âm chạy trên
+implementation thật, không chỉ mock DOM. Unit test geometry còn từ chối title bị cắt một
+phần, bounds NaN/rỗng/thiếu, viewport bị cắt và overflow ngang.
+
+### Findings sau vòng 1
+
+Review: `self-review`, `fidelity: NO_APPROVED_REFERENCE`; tiêu chí và mốc không đổi giữa lượt.
+
+| Finding | Delta | Kết luận / phần còn lại |
+| --- | --- | --- |
+| F-01 | **fixed** | Tiêu đề thấy trọn khi mở/mở lại, focus trong vùng nhìn; Tab tới được mọi nút ở 16 tổ hợp |
+| F-02 | **still** | Lề/padding theo rem vẫn làm chữ 200% gãy nhiều dòng; lựa chọn spacing còn cần thiết kế, không đổi thành PASS nhờ geometry |
+| F-03 | **fixed — capture** | Ảnh trung tính hết nền hover trên nút text sau pointer exit. Chưa kết luận chất lượng style hover trong tương tác thật |
+| F-04 | **fixed — capture; still — UX choice** | Có ảnh vừa mở và tile phủ toàn vùng cuộn, thấy heading/field/nút đóng; lựa chọn ghim nút hoặc giữ cuộn vẫn mở |
+| F-05 | **fixed** | Runner chụp/đo viewport thật, có dialog và sheet chữ 200% ở cả hai theme |
+| F-06 | **still — đề xuất** | Không đổi màu tonal khi chưa có mốc được duyệt |
+| Mới / hồi quy | Không thấy trong phạm vi đã kiểm | Không suy thành nghiệm thu toàn UI hay native |
+
+Đã dùng **1/2 vòng sửa UI**; dừng vì các lỗi kỹ thuật được chọn đã đạt và phần còn lại cần
+quyết định thiết kế. Không chạy thêm vòng chỉ để đổi thẩm mỹ. Đối chứng dao động dùng
+`openingInvariants` chạy trên chuỗi artifact **before → after → before**: số ca lỗi
+**6 → 0 → 6**, delta `fixed → regressed`; áp policy dừng và giữ nguồn after của vòng 1,
+không đổi mốc hay đánh dấu đạt khi hết budget. Kết quả ở `bounded_review_replay` trong
+[review.json](evidence/ui-ux-quality-174/repair-1/review.json). Đây là replay artifact mô phỏng
+vòng kế tiếp, không phải sửa/render UI lần hai hay một hồi quy thật của source cuối.
+
+### Kết quả theo năm chiều
+
+| Chiều | Web preview, 16 tổ hợp | CMP Desktop, 8 tổ hợp | Giới hạn |
+| --- | --- | --- | --- |
+| Functional | PASS: mở, hủy, mở lại; không gọi dịch vụ | PASS: mở, đóng, trả focus | Specimen mẫu |
+| Geometry | PASS INV-1…4; số đo lúc mở tách khỏi vị trí actions | PASS panel/title trong khung 8/8, tile đủ 8/8; overflow ngoài anchors: NOT_RUN | Node bounds không phải glyph/paint; không suy touch hit-test |
+| Visual | PASS 100%; 200% hết mất tiêu đề nhưng FAIL về nhịp/spacing F-02 | PASS trên các ảnh đã mở: ảnh sạch, đầu/cuối sheet đọc được | `self-review`; không có anchor được duyệt |
+| Accessibility/Responsive | PASS phần heading thấy được, reflow, keyboard của F-01; spacing F-02 còn | Đủ ảnh 100/200% cho heading/content/actions | Contrast mới, screen reader, OS text scale: NOT_RUN |
+| Interaction | PASS Tab, Escape, outside policy, trả focus, mở lại | PASS close/return focus và cuộn bằng test semantics | Android/iOS, OS IME, TalkBack/VoiceOver: NOT_RUN |
+
+### Kiểm chứng và acceptance còn lại
+
+Lệnh, kết quả cuối, hash và danh sách ảnh đã mở được ghi tại
+[evidence vòng sửa](evidence/ui-ux-quality-174/repair-1/README.md). `--overlays-only 1` là
+chọn phạm vi của script smoke hiện hữu để tái hiện nhanh; lane đầy đủ vẫn chạy cùng ma trận.
+`verify quick` đạt đủ 9 bước; `ui-preview cmp verify` đạt. Toàn bộ browser smoke Web chạy lại
+trên bundle đã build đạt 660 assertion, 846 capture records và 1.297 PNG; lượt lane đầu bị
+SIGTERM trong gallery được giữ riêng trong báo cáo, không gộp thành lane PASS.
+
+| AC #174 | Delta của vòng sửa 1 |
+| --- | --- |
+| AC-04 | Đã có clean image + metrics + overlay cùng lượt ở Web và CMP; contract format 1 không đổi; glyph metric vẫn `unavailable` |
+| AC-05 | Đã chạy một vòng sửa thực có baseline FAIL, after PASS và bảng `fixed/still/new/regressed`; điểm dừng/dao động không tự biến thành đạt |
+| AC-08 | Web 200% và sheet đã lặp lại bằng runner; CMP có tile đủ vùng và metadata. Bằng chứng chỉ cho Web + CMP Desktop, không nghiệm thu native |
+| AC-09/10 | Cập nhật owner commands/feature map/contract evidence, giữ lịch sử và ghi phần mở; không tick/đóng issue hoặc cập nhật #24 |
+
+Còn cần chủ sản phẩm: `ANCHOR-CAND-01`, mức bắt buộc sau pilot, hướng spacing F-02 và UX của
+F-04. Ranh giới thiết bị vẫn cần lượt Android/iOS/OS IME/screen reader riêng; việc sửa source
+và test Desktop không thay những bằng chứng đó.

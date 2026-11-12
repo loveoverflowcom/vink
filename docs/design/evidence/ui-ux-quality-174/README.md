@@ -4,6 +4,9 @@ Kèm theo [báo cáo #174](../../ui-ux-quality-174.md). Nguồn: `develop@e54db0
 ngày 12/11/2026, dữ liệu mẫu tổng hợp. Đây là bằng chứng của một lượt pilot, **không** phải
 regression baseline hay style anchor đã duyệt ([sổ mốc](../../visual-anchors.md)).
 
+[Vòng sửa 1](repair-1/README.md) giữ baseline riêng trước/sau F-01, overlay và capture
+Web/CMP bổ sung. Nội dung bên dưới giữ nguyên bằng chứng của pilot ban đầu.
+
 ## `cmp/` — Compose Desktop off-screen (runner)
 
 Từ `cargo xtask ui-preview cmp verify`, test `InteractionCaptureTest`; giữ nguyên tên file của

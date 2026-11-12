@@ -140,6 +140,16 @@ thiếu về geometry/completeness của CMP thuộc
 [#24](https://github.com/loveoverflowcom/vink/issues/24): tham chiếu và bàn giao cho owner đó,
 không mở implementation song song.
 
+Delta của [vòng sửa #174](../../../../docs/design/ui-ux-quality-174.md#10-vòng-sửa-1-f-01-và-các-gap-bằng-chứng):
+smoke Leptos hiện hữu có `overlay-contexts.json` cho dialog/sheet tại viewport thật (DOM rect,
+font, scroll/focus, clean PNG + overlay cùng lượt). `InteractionCaptureTest` CMP bổ sung
+`anchors` với `window-px`, bounds/visible bounds từ `LayoutCoordinates`, scroll range/viewport,
+pointer exit và tile phủ vùng cuộn; `interaction-run.json` pin SHA/fingerprint nguồn. Các
+sidecar này là output hẹp của runner, **không phải** bundle format 1 hoàn chỉnh. Metadata cũ
+vẫn hợp lệ; ảnh vừa mở và tile sau khi cuộn là các state khác nhau. `inspected=false` của
+runner chỉ đổi khi có review thực; không suy từ capture thành công. Phép đo CMP vẫn không có
+glyph metrics, OS insets hay screen-reader evidence.
+
 ## Báo cáo và graph
 
 `reports/REPORT.md` là bàn giao của một run, không phải index trung tâm thứ hai:
