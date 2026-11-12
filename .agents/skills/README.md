@@ -77,6 +77,37 @@ Triggers: gesture/swipe, motion/transition, focus, IME/keyboard, overlay, scroll
 7. **Chỉ thiếu thiết bị thật (Android/iOS device):**
    Tiếp tục hoàn tất phần độc lập trên `commonMain` và Desktop preview; ghi nhận `NOT_RUN` riêng cho boundary native host.
 
+## UI quality loop: từ ý định tới UX có kiểm chứng
+
+Một đường, mỗi bước một owner; tiêu chí, loại mốc thị giác, ngân sách vòng sửa và bảng kết quả
+năm chiều nằm ở [UX quality](vink-ui-design/references/ux-quality.md). Không có skill “visual
+critic” riêng: `vink-ui-inspector` là reviewer.
+
+| Bước | Skill | Giao cho bước sau |
+| --- | --- | --- |
+| Ý định, phân cấp, mốc và invariant | `vink-ui-design` → `vink-layout-spec` (quy tắc sản phẩm chưa rõ: `vink-shape`/`vink-specify`) | LayoutSpec có `Intent`/`References`/`Invariants` khi cần |
+| Triển khai | `vink-leptos-web` hoặc `vink-cmp-mobile` | Source đúng owner, scenario tái hiện được |
+| Bằng chứng | `vink-ui-capture` | Ảnh sạch, metadata, số đo anchor khi spec cần |
+| Review | `vink-ui-inspector` | Findings có evidence, owner/giả thuyết và phép kiểm lại; bảng năm chiều |
+| Sửa có giới hạn | `vink-ui-fix` → renderer | `fixed/still/new/regressed`, điểm dừng |
+| Bàn giao, bảo trì | `vink-prompt` (`UX_CRITERIA`), `vink-maintain-verification` | Tiêu chí quyết định và gap đi cùng prompt |
+
+Chọn mức theo việc, không chạy cả vòng cho mọi thay đổi:
+
+1. **Sửa nhỏ (padding, câu chữ, một control):** `vink-ui-fix` với LayoutSpec rút gọn, một vòng,
+   mở ảnh đúng state bị ảnh hưởng ở 100% và ở 200% nếu chữ dài ra. Không cần mốc, không cần số đo.
+2. **Lỗi focus/IME đã rõ:** `vink-ui-fix` → renderer. Chiều Interaction cần thao tác hoặc test
+   trên đúng host; ảnh chỉ trả lời Visual. Không mở redesign.
+3. **Thiếu mốc được duyệt:** vẫn thiết kế và review theo LayoutSpec + rubric; ghi
+   `fidelity: NO_APPROVED_REFERENCE`. Muốn có mốc thì đề xuất ứng viên vào
+   [sổ mốc thị giác](../../docs/design/visual-anchors.md) cho chủ sản phẩm duyệt; không tự
+   phong screenshot hay concept.
+4. **Không có native runtime:** hoàn tất `commonMain`, Desktop và Web; các ô native của bảng
+   năm chiều là `NOT_RUN` kèm prerequisite. Desktop/JVM không thay Android/iOS, OS IME hay
+   TalkBack/VoiceOver.
+5. **Vòng sửa không hội tụ:** dừng theo ngân sách, giữ phiên bản tốt nhất đã kiểm và báo
+   `NEEDS_HUMAN_DESIGN_DECISION` hoặc `BLOCKED`; hết vòng không thành PASS.
+
 ## Resolve a decision
 
 For a task that depends on a decision, start with

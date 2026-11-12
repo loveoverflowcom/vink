@@ -48,6 +48,10 @@ Skill này không gọi ngược lại các workflow để thực hiện cùng b
    và lý do trước khi sửa tiếp, không âm thầm làm lệch đặc tả.
 5. Đối chiếu đầu ra với spec theo cùng vùng/state/viewport/theme. Tách concept,
    source đã viết, render đã mở và tương tác đã kiểm; ghi gap đúng lớp bằng chứng.
+6. Khi tác vụ có mốc tham chiếu hoặc điều phải đo, ghi `References`/`Invariants` theo
+   [template](references/layout-spec.md): loại mốc và trạng thái duyệt, phần phải giống và
+   phần được đổi, invariant có đơn vị và dung sai. Thiếu mốc được duyệt thì ghi đúng như vậy;
+   không tự nâng screenshot hay concept thành chuẩn nghiệm thu.
 
 ## Điều kiện hoàn tất
 

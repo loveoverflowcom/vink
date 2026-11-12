@@ -98,11 +98,12 @@ Fallback & Bounds: [Cách thao tác bằng phím/a11y; hành vi khi reduced moti
      Tại trạng thái dừng, thành phần phải hiển thị nhãn trạng thái rõ ràng bằng chữ hoặc icon tĩnh.
 5. **Phân biệt Motion Timing với các mốc thời gian khác:**
    - Motion duration (160ms/320ms): dành cho mắt người theo dõi chuyển động.
-   - Debounce gõ phím (300ms - 500ms): trì hoãn phát tín hiệu tìm kiếm/lưu.
-   - Loading Gate (300ms delay tránh nhấp nháy, 500ms min-visible tránh chớp tắt): chính sách UX
-     phản hồi tải nội dung.
-   - Network timeout (10s - 30s) và thời hạn nghiệp vụ (SLA): thuộc tầng transport/domain. Không
-     dùng chung các hằng số này.
+   - Debounce gõ phím: trì hoãn phát tín hiệu tìm kiếm/lưu; giá trị do owner tác vụ chọn và đo
+     (khoảng 300–500ms chỉ là ví dụ thường gặp, không phải token hay luật).
+   - Loading Gate (`duration.loading-delay` 300ms tránh nhấp nháy, `duration.loading-min-visible`
+     500ms tránh chớp tắt, theo `tokens.json`): chính sách UX phản hồi tải nội dung.
+   - Network timeout và thời hạn nghiệp vụ (SLA): thuộc tầng transport/domain, lấy từ owner
+     của tầng đó. Không dùng chung các hằng số này.
 
 ### B. Cử chỉ (Gesture)
 

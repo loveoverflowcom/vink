@@ -36,7 +36,11 @@ quyết định bố cục; không bịa trạng thái hoặc tính năng chỉ 
 ```text
 LayoutSpec: [tên hướng, revision của spec; selected/proposed và người chọn]
 Context: [vai trò, tác vụ, surface/route, state; nội dung thật được phép hoặc mẫu]
+Intent: [archetype (đọc/viết, dialog/sheet, form/search, danh sách, điều hướng, trạng thái);
+  điểm tập trung chính và điều người dùng phải làm được]
 Sources: [branch/SHA, dirty inputs, file đã đọc; giả định và gap]
+References: [mốc dùng: concept | style anchor | regression baseline, ID/revision và trạng thái
+  approved/candidate/unknown; phải giống: …; được đổi: …; hoặc `không có mốc được duyệt`]
 
 Screen #screen — [mục tiêu]
   Column #page — [thứ tự đọc chính]
@@ -54,8 +58,32 @@ Themes: [light/dark dùng chung cấu trúc; surface/text/action/selected/focus/
 States: [loading/empty/error/pending/success/conflict có liên quan; cách khôi phục]
 Interaction: [khi có tương tác/cử chỉ: trigger → phản hồi tức thời → commit/cancel; modality (touch/key/a11y); focus restore; insets/keyboard; reduced motion fallback]
 Accessibility: [heading/landmark, names, keyboard, reflow/tăng chữ, thứ tự focus]
-Compare: [vùng/state/viewport/theme và bằng chứng cần để đối chiếu kết quả]
+Invariants: [chỉ điều cần giữ và kiểm được: vùng/anchor, phát biểu, đơn vị, dung sai và lý do,
+  ngoại lệ có chủ ý; ghi `không có` nếu spec không cần số đo]
+Compare: [vùng/state/viewport/theme và bằng chứng cần để đối chiếu kết quả; mục tiêu 100% và
+  200% ghi riêng]
 ```
+
+`Intent`, `References` và `Invariants` chỉ điền khi có nội dung thật; không bịa mốc hay số đo
+để đủ mẫu. Phân loại mốc, quy tắc duyệt và hai mục tiêu 100%/200% do
+[Chất lượng UX](../../vink-ui-design/references/ux-quality.md) định nghĩa; quy ước này chỉ giữ
+chỗ ghi.
+
+## Mốc tham chiếu và invariant
+
+- **Mốc:** ghi đúng loại và trạng thái duyệt. Concept định hướng, không là cam kết từng pixel.
+  Style anchor của màn khác chỉ ràng buộc phần ghi ở “phải giống” (nhịp, phân cấp, tầng nền),
+  không là mục tiêu so pixel. Regression baseline chỉ dùng cho đúng scenario, renderer và môi
+  trường đã duyệt. Thiếu mốc được duyệt thì ghi `không có mốc được duyệt`: spec vẫn dùng được
+  để review, kết luận fidelity ghi rõ giới hạn.
+- **Invariant:** là điều spec cam kết và có cách kiểm, ví dụ “`#actions` nằm trọn trong
+  `#panel` hoặc tới được bằng cuộn của `#panel`”, “`#title` nằm trong vùng nhìn của `#panel`
+  ngay khi mở”, “`#title` không bị cắt dấu”, “không cuộn ngang ở 320 CSS px, chữ 200%”. Ghi không gian tọa độ và đơn vị (CSS px, dp), dung sai kèm lý
+  do (làm tròn sub-pixel, căn quang học) và ngoại lệ có chủ ý (badge chồng mép, vùng chạm lớn
+  hơn hình vẽ, vùng cuộn riêng). Không chép số từ một ví dụ thành luật: tỷ lệ khoảng trắng,
+  line-height hay “x bằng tuyệt đối” chỉ là invariant khi tác vụ này cần và nêu được lý do.
+- Phần cần máy kiểm đặt ở assertion của runner/test owner hiện có và dẫn ID vùng của spec;
+  spec vẫn là Markdown đọc được. Không thêm parser hay nguồn token thứ hai.
 
 Ưu tiên độ rộng linh hoạt và giới hạn nội dung có lý do. Ghi nguồn của kích thước,
 breakpoint và token; đánh dấu đề xuất khi chưa có. Không dùng tên như `--vk-sidebar`
@@ -79,6 +107,7 @@ Region #editor-bar — trạng thái lưu và thao tác hiện có
   Region #save-status — giữ thông tin cần xử lý
   Region #save-action — nút Lưu bản nháp
 Before → After: [vấn đề đã quan sát hoặc giả thuyết có nhãn → sửa đúng vùng]
+Reference/invariant (khi có): [mốc và trạng thái duyệt; điều phải giữ kèm đơn vị/dung sai]
 Narrow/theme/state: [wrap/spacing/reflow; token và nghĩa hành động liên quan]
 Interaction (khi có): [trigger → immediate feedback → commit/cancel; focus/IME/reduced-motion nếu bị tác động]
 Check: [source/render/interaction cần kiểm, chưa chạy thì ghi rõ]
@@ -109,5 +138,7 @@ minh tương tác. Không cài renderer chỉ để kiểm một thay đổi ski
 
 So theo ID vùng: hiện diện, cha–con, thứ tự, CTA, responsive, theme và trạng thái
 có liên quan. Ghi khớp/lệch có chủ ý/lệch cần sửa/chưa đủ bằng chứng; dùng đúng
-revision và nêu lý do thay đổi. Audit thiếu spec ghi cây quan sát cùng nguồn,
+revision và nêu lý do thay đổi. Invariant báo theo số đo hoặc assertion thật
+(`PASS`/`FAIL`/chưa đo); invariant đạt không thay cho đối chiếu `Hierarchy`, và mục tiêu
+100% với 200% báo riêng. Audit thiếu spec ghi cây quan sát cùng nguồn,
 không tự gọi đó là bố cục đã duyệt hoặc bắt tạo spec hồi tố để được review.

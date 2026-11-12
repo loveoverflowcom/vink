@@ -49,6 +49,36 @@ lane cần runtime/PostgreSQL/browser; nếu thiếu thì hoàn tất patch đ�
 kiện tái kiểm. Build riêng `ssr` và `hydrate`; không mặc định `--all-features`.
 Không copy toolchain pin, Trunk hoặc command Cantos.
 
+## Vòng sửa có điểm dừng
+
+Áp dụng khi sửa theo findings của review hoặc khi một lỗi thị giác cần hơn một lần thử. Quy
+tắc ngân sách và tên trạng thái do
+[Chất lượng UX](../../vink-ui-design/references/ux-quality.md#3-vòng-xử-lý-có-ngân-sách-và-điểm-dừng)
+định nghĩa; phần này là cách người sửa thực hiện.
+
+1. **Trước vòng 1:** ghi tiêu chí của lượt (spec/revision, dòng rubric, scenario/target, mốc
+   và trạng thái duyệt) và danh sách finding nhận vào. Ghi commit/SHA của điểm xuất phát.
+2. **Mỗi vòng:** chọn nhóm finding cùng nguyên nhân đã xác minh, sửa ở owner nhỏ nhất, render
+   lại **đúng** scenario cũ (fixture, state, viewport, theme, text scale, chuỗi thao tác), mở
+   ảnh mới và ghi từng finding là `fixed`, `still`, `new` hoặc `regressed`.
+3. **Giữ điểm tốt đã kiểm:** sau mỗi vòng có kết quả tốt hơn, ghi lại commit/SHA cùng bằng
+   chứng. Vòng sau tệ hơn thì quay về điểm đó bằng thay đổi có chủ đích của chính mình; không
+   reset công việc của người khác và không xóa lịch sử findings.
+4. **Dừng** khi hết ngân sách của lượt (pilot: hai vòng sửa có tái render), khi finding đã
+   `fixed` quay lại, khi sửa A làm hỏng B rồi ngược lại, hoặc khi finding mức Cao trở lên
+   không giảm. Không đổi tiêu chí, mốc, fixture hay baseline giữa lượt để kết quả đạt.
+5. **Bàn giao điểm dừng:** phần chưa đạt giữ `FAIL` hoặc gap. Ghi `NEEDS_HUMAN_DESIGN_DECISION`
+   khi còn lại là lựa chọn thiết kế (kèm các phương án đã thử và ảnh của chúng), `BLOCKED` khi
+   là thiếu runtime/công cụ hoặc lỗi thuộc owner khác (kèm prerequisite và lệnh tiếp tục).
+
+Ví dụ dao động: vòng 1 tăng khoảng cách giữa hai nút để sửa F-01 thì ở chữ 200% nút thứ hai
+rơi khỏi panel (F-03 mới); vòng 2 giảm lại khoảng cách thì F-01 quay lại. Dừng ở đây, giữ
+phiên bản có ít finding mức Cao hơn, báo F-01/F-03 phụ thuộc nhau và hỏi đúng câu: xếp dọc
+nút ở 200% hay cho panel cuộn. Không chạy vòng 3 với một con số khác.
+
+Sửa nhỏ một control (padding, câu chữ, focus đã rõ nguyên nhân) chỉ cần một vòng với check
+nhỏ; không lập log vòng cho thay đổi một dòng.
+
 ## Mẫu bàn giao
 
 Dùng phần cần thiết và giữ văn phong theo user. Nếu chỉ cần một chỉnh nhỏ, rút gọn
@@ -79,6 +109,9 @@ DECISIONS:
 LAYOUT_SPEC: [spec đã chọn hoặc nội dung/đường dẫn + revision truy cập được; nếu chưa có,
   agent nhận việc xuất spec đầy đủ/rút gọn trước patch UI/script/preview, rồi tiếp tục
   trong phạm vi đã giao; chỉ chờ chọn/duyệt khi user yêu cầu]
+REFERENCES: [mốc dùng và loại (concept/style anchor/regression baseline), revision, trạng thái
+  duyệt; hoặc `không có mốc được duyệt`. Không ghi candidate thành approved]
+FINDINGS: [ID, scenario/target, quan sát, evidence đã mở; giả thuyết giữ nhãn giả thuyết]
 ACCEPTANCE:
   - [layout/copy/hành vi quan sát được và state dễ lỗi]
   - [mobile/theme/text scale có liên quan]
@@ -87,6 +120,7 @@ VERIFY:
   - [check đúng boundary, lệnh từ docs/development, evidence cần giữ]
   - [same-scenario trước/sau nếu có baseline; ảnh mở và tương tác báo riêng]
   - [đối chiếu vùng/CTA/responsive/state theo đúng spec; giải thích lệch có chủ ý]
+  - [kết quả theo năm chiều, 100% và 200% báo riêng; ngân sách vòng sửa và điểm dừng]
 BLOCKERS:
   if a runtime dependency is unavailable:
     complete independent work; retain the writer's data and honest UI states

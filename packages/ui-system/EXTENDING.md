@@ -62,6 +62,9 @@ và API typed nhận immutable facts + callback; không nhận DTO, token hay se
 5. Thêm test phản ví dụ: click đôi/pending, phản hồi cũ, thiếu tên, Unicode, lỗi ảnh, giữ input,
    focus/keyboard, hidden/background/disposed, giảm motion. Mở ảnh kịch bản khó hẹp/rộng,
    hai theme/chữ lớn. Với motion, giữ timed frames và assertion; một PNG không chứng minh chuyển động.
+   Review ảnh theo [rubric và bảng năm chiều](../../.agents/skills/vink-ui-design/references/ux-quality.md):
+   100% là mục tiêu bố cục, 200% là mục tiêu reflow nhưng vẫn phải rõ phân cấp; checklist ở đây
+   không lặp lại rubric đó.
 6. Chạy các command trên, `verify web` nếu consumer Web đổi. Native common/build/UI runtime
    có lệnh/kết quả riêng. Ghi readiness theo target vào evidence, không suy parity từ compile.
 
