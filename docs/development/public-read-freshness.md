@@ -56,6 +56,11 @@ sau này): **không** parse JSON rỗng; gửi đúng **một** request `cache: 
 
 ## Chính sách v1 (đề xuất, có thể đo/chỉnh)
 
+<!-- vdr: active READ-02-CHOICE-01@r1 -->
+<!-- vdr: active READ-02-CHOICE-02@r1 -->
+<!-- vdr: active READ-02-CHOICE-03@r1 -->
+<!-- vdr: active READ-02-CHOICE-04@r1 -->
+
 Hằng số ở `freshness::Policy::V1`. Mọi mốc thời gian dùng `performance.now()` (monotonic theo tab).
 
 | Tham số / sự kiện | Hành vi |

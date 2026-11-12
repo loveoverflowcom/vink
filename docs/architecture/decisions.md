@@ -81,8 +81,8 @@ nằm ở owner trong cột cuối. Disposition từng hàng ở
 | D-11 | `USER-01@r1` (`historical_alias`) | `DEFERRED` | Mốc M2 ở §7 ghi giả định đã gỡ |
 | D-12 | `D-12@r1` (thu hồi đọc, cache/excerpt); bốn trường hợp xóa ở `USER-07@r1`; trang ẩn ở `ADM-07@r1`, `ADM-08@r1` | `DESIGN_PROPOSED` (“Cần chốt policy + spike”) | Retention/purge còn `OPEN` ở `O-08`; mặc định thu hồi ở §5; [đặc tả đích](publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone) |
 | D-13 | `D-13@r1` | `PRODUCT_CONFIRMED` (“Đã chốt 03/11/2026”) | [ADR §4](discussion-ownership.md#4-quyền-của-tác-giả-tác-phẩm) |
-| D-14 | `D-14@r1`; lựa chọn `LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*`, `LVE-WP-04-CHOICE-10` | `DESIGN_PROPOSED` (“Lựa chọn pure slice LVE-PR-01”) | Đầu vào xếp hạng ở `USER-12`, `USER-13`, `O-06`, `O-07`. Runtime và bằng chứng: [endorsement-core](../development/endorsement-core.md), [runtime](../development/literary-endorsement-runtime.md) |
-| D-15 | `D-15@r1`; lựa chọn `TAG-PR-01-CHOICE-01..03` | `DESIGN_PROPOSED` (“Lựa chọn pure slice TAG-PR-01 ngày 08/11/2026, chưa Accepted”) | Hashtag tách khỏi catalog ở `USER-11@r1`. Lựa chọn của #96–#99 ở registry phát triển ([storage](../development/taxonomy-postgres.md), [API](../development/taxonomy-api.md), [discovery](../development/discovery-api.md), [editor](../development/taxonomy-editor.md)) |
+| D-14 | `D-14@r1`; lựa chọn `LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*`, `LVE-WP-04-CHOICE-07/10` | `DESIGN_PROPOSED` (“Lựa chọn pure slice LVE-PR-01”) | Đầu vào xếp hạng ở `USER-12`, `USER-13`, `O-06`, `O-07`. Runtime và bằng chứng: [endorsement-core](../development/endorsement-core.md), [runtime](../development/literary-endorsement-runtime.md) |
+| D-15 | `D-15@r1`; lựa chọn `TAG-PR-01-CHOICE-01..03`, `TAG-PR-02-CHOICE-01/02`, `TAG-PR-03-CHOICE-01..03`, `TAG-PR-04-CHOICE-01..03`, `TAG-PR-05-CHOICE-01/02` | `DESIGN_PROPOSED` (“Lựa chọn pure slice TAG-PR-01 ngày 08/11/2026, chưa Accepted”) | Hashtag tách khỏi catalog ở `USER-11@r1`. Lựa chọn của #96–#99 đã chuyển registry TOML ([storage](../development/taxonomy-postgres.md), [API](../development/taxonomy-api.md), [discovery](../development/discovery-api.md), [editor](../development/taxonomy-editor.md)) |
 | D-16 | `USER-09@r1` (`historical_alias`); `O-01`, `O-02` | `PRODUCT_CONFIRMED`; O-01/02 `OPEN` | [Đặc tả đích](collections.md) |
 | D-17 | `USER-11@r1` (`historical_alias`); `PRODUCT-DECISIONS-20261110-CHOICE-04` | `PRODUCT_CONFIRMED`; CHOICE-04 `DESIGN_PROPOSED` | [Đặc tả đích](hashtags.md) |
 | D-18 | `USER-12@r1`, `USER-13@r1` (`historical_alias`); `PRODUCT-DECISIONS-20261110-CHOICE-02/03`; công thức ở `O-14` | `PRODUCT_CONFIRMED`; CHOICE-02/03 `DESIGN_PROPOSED`; O-14 `OPEN` | [Đặc tả đích](discovery-ranking.md) |
@@ -96,10 +96,12 @@ Lựa chọn theo issue có ID đầy đủ. Tra bằng `cargo xtask decision qu
   ([outbox](discussion-outbox.md)). DISC-04 đánh số theo prompt riêng. `DISC-04-CHOICE-02` là lựa chọn
   cho CHOICE-05 của epic. Ownership D2T-01/D2T-02 là `D-02-DISCUSSION` và `D-13`.
 - **Literary endorsement #73.** `LVE-PR-01-CHOICE-01/02/03/08/09/11`, `LVE-PR-02-03-CHOICE-03/04/05/12/13`
-  (lát #81) và `LVE-WP-04-CHOICE-10` ([decision owner](literary-endorsement.md)). CHOICE-06 và
-  CHOICE-07 còn mở hoặc cần rà.
-- **Phân loại #94/#95.** `TAG-PR-01-CHOICE-01..03` ([decision owner](work-taxonomy.md)). Thẻ không cấp
-  quyền, không xuất bản hay tuyển chọn.
+  (lát #81) và `LVE-WP-04-CHOICE-07/10` ([decision owner](literary-endorsement.md),
+  [Pen Flight R2](../design/pen-flight-r2.md)). CHOICE-06 (ranking) chưa chọn, hướng đích thuộc USER-12/O-07.
+- **Phân loại #94/#95.** `TAG-PR-01-CHOICE-01..03` ([decision owner](work-taxonomy.md)),
+  `TAG-PR-02-CHOICE-01/02` ([storage](../development/taxonomy-postgres.md)), `TAG-PR-03-CHOICE-01..03`
+  ([API](../development/taxonomy-api.md)), `TAG-PR-04-CHOICE-01..03` ([discovery](../development/discovery-api.md)),
+  `TAG-PR-05-CHOICE-01/02` ([editor](../development/taxonomy-editor.md)). Thẻ không cấp quyền, không xuất bản hay tuyển chọn.
 
 Hiện trạng và bằng chứng theo lát nằm ở registry phát triển:
 [discussion-core](../development/discussion-core.md), [auth-operations](../development/auth-operations.md),

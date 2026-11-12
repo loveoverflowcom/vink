@@ -20,7 +20,7 @@ supported by this repository read the same canonical instructions:
 
 | Task | Skill |
 | --- | --- |
-| Clarify feature scope, detect open product rules (`O-01..O-16`), classify product vs technical choices and ask the owner | [vink-shape](vink-shape/SKILL.md) |
+| Clarify feature scope, detect open product rules in `O-01..O-19`, classify product vs technical choices and ask the owner | [vink-shape](vink-shape/SKILL.md) |
 | Turn confirmed decisions into domain/UX/data specs, update owning docs (`prd/`, `docs/architecture/`, `docs/development/`) and reconcile doc/code drift | [vink-specify](vink-specify/SKILL.md) |
 | Implement a feature, issue, bug fix or continuation | [vink-work-item](vink-work-item/SKILL.md) |
 | Write or execute a self-contained Vink prompt for another coding chat | [vink-prompt](vink-prompt/SKILL.md) |

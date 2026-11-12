@@ -19,37 +19,40 @@ còn mở.
   - Đúng hai audience: **Chỉ mình tôi** và **Công khai** (`AUD-01`).
   - Audience tách khỏi trạng thái kiểm duyệt; `Approved` không tự công khai bài đang “Chỉ mình tôi”;
     ý định công khai gắn đúng revision/generation (`AUD-02`, `PUB-01/02`, `INV-01/02`).
-  - Bốn trường hợp tách biệt (`PUB-04/05`): **A** tác giả xóa bài từng công khai (hiện trang thay thế
-    “Nội dung đã được tác giả xoá” + giữ bình luận đã duyệt); **B** tác giả chuyển riêng tư (`404`,
-    ẩn cả thảo luận cho tới khi công khai lại); **C** admin/kiểm duyệt gỡ (`404`); **D** chưa từng
-    công khai rồi xóa (`404`).
+  - Bốn trường hợp xuất bản/tombstone (`PUB-04/05`, `ADM-07/08`):
+    - **A** tác giả xóa bài từng công khai: hiện trang thay thế “Nội dung đã được tác giả xoá” + giữ bình luận đủ điều kiện; chặn bình luận/đánh giá mới, cho phép tự gỡ bình luận cũ (`O-03@r2`).
+    - **B** tác giả chuyển riêng tư: dùng trang “Nội dung đã được ẩn” (`AuthorHidden`), giữ bình luận đủ điều kiện; chặn ghi mới; xóa sau khi ẩn vẫn giữ bình luận qua URL cũ (`O-05@r2`). *(Lưu ý khoảng cách runtime: loader `#158` hiện vẫn dựng `hidden = None` nên sau `set-private` URL cũ trả không tìm thấy (`404`) cho tới khi có migration và loader trang ẩn).*
+    - **C** admin/kiểm duyệt gỡ: trả `404` (`PUB-05`, `PUB-07`, `WorkAccessPlan::Unavailable`).
+    - **D** chưa từng công khai rồi xóa: trả `404`.
 - **Điểm còn `OPEN` cần hỏi khi chạm tới:**
-  - `O-03`: Quyền ghi trên trang tombstone (bình luận/phản hồi mới, “Hữu ích” mới, tự gỡ bình luận).
-    *Lưu ý:* `domain::publication` (`#157`) đã cài baseline kỹ thuật (chặn bình luận mới, cho phép
-    người viết tự gỡ), nhưng chủ sản phẩm chưa chốt `O-03` khi mở API/UI tombstone.
   - `O-04`: Bình luận đang chờ duyệt lúc tác giả xóa bài công khai có tiếp tục được duyệt để hiện
     trên tombstone hay đóng băng?
-  - `O-05`: Bài từng công khai, chuyển sang “Chỉ mình tôi” rồi mới xóa có để lại tombstone không?
-    (Baseline hiện tại: không — `DeletionProvenance::Hidden`).
   - `O-08`, `O-09`, `O-10`: Purge vật lý, thông tin hiển thị trên tombstone ngoài câu thông báo, và
     khả năng khôi phục bài đã xóa/gỡ.
+  - `O-17`: Trang ở URL cũ sau khi moderator bác bản đang đăng của bài vẫn “Công khai” (baseline
+    đề xuất: không tìm thấy cho tới khi có bản được duyệt mới).
 
-## 2. Kiểm duyệt AI, quản trị viên và phản đối (`MOD-01..10`)
+## 2. Kiểm duyệt AI, quản trị viên và phản đối (`MOD-01..15`, `ADM-01..10`)
 
 - **Nguồn sở hữu:** [PRD §14.2](../../../../prd/requirements.md#142-kiểm-duyệt-bằng-trợ-lý-ai-quản-trị-viên-và-phản-đối-mod-0710),
   [publication-moderation.md](../../../../docs/architecture/publication-moderation.md),
   [moderation-core](../../../../docs/development/moderation-core.md),
+  [decision-log-20261111](../../../../decisions/decision-log-20261111.toml),
   [discussion-post-review](../../../../docs/development/discussion-post-review.md).
-- **Đã chốt (`PRODUCT_CONFIRMED`):**
+- **Đã chốt (`PRODUCT_CONFIRMED` / core governance):**
   - Trợ lý AI là luồng kiểm duyệt mặc định cho cả bài viết và bình luận; quản trị viên đứng trên AI
     và quyết định override trên phiên bản đang xét thắng callback AI đến muộn (`MOD-07..09`, `INV-03`).
   - Lưu nháp riêng không bao giờ gửi dữ liệu sang AI (`MOD-05`, `INV-08`).
   - Timeout, lỗi provider hoặc output sai định dạng không bao giờ tự duyệt (`MOD-08`); không tự cam
     kết SLA 24/48 giờ và không báo “đã gửi cho quản trị viên” khi kênh thông báo chưa kết nối (`MOD-10`).
-- **Điểm cần làm rõ khi mở runtime/UI/provider:**
+  - Quản trị viên can thiệp (`ADM-01..10`): override AI, ẩn/khôi phục bình luận (`COM-11`), gỡ bài vi phạm (`PUB-05`),
+    quản lý ca điều tra và khiếu nại (đã cài đặt ở pure core `domain::moderation`, chưa có store/worker/UI).
+- **Điểm cần làm rõ khi mở runtime/UI/provider (`OPEN`):**
   - Dữ liệu nào được gửi tới AI provider (chỉ snapshot gửi duyệt, loại bỏ thông tin định danh nào,
     chính sách lưu/xóa bên ngoài).
-  - Trần retry, xử lý hàng đợi `NeedsAdmin`, và `O-15` (quyết định của admin trong luồng phản đối).
+  - Trần retry, xử lý hàng đợi `NeedsAdmin`, phần còn mở của `O-15@r2` (cấp xét lại thứ hai trên
+    kết luận admin; quyết định của moderator đã phản đối được), `O-18` (thời hạn mặc định của grant
+    và hồ sơ điều tra) và `O-19` (danh mục sự kiện thông báo cho tác giả).
 
 ## 3. Thảo luận hai tầng, sửa bình luận và ghi nhận văn học (`COM`, `LVE`)
 
@@ -75,14 +78,18 @@ còn mở.
 - **Nguồn sở hữu:** [PRD §14.6](../../../../prd/requirements.md#146-tài-khoản-acc-03),
   [ADR D-05 §12](../../../../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính),
   [auth-web](../../../../docs/development/auth-web.md),
-  [`services/vink-identity/src/password.rs`](../../../../services/vink-identity/src/password.rs).
-- **Đã chốt (`PRODUCT_CONFIRMED`):**
+  [`services/vink-identity/src/password.rs`](../../../../services/vink-identity/src/password.rs),
+  [`services/vink-app/contracts/http/v1/README.md`](../../../../services/vink-app/contracts/http/v1/README.md).
+- **Đã chốt (`PRODUCT_CONFIRMED` / backend runtime):**
   - Username + mật khẩu là phương thức đăng nhập chính; username khác bút danh công khai (`ACC-03`).
   - `O-12@r2` (11/11/2026): mật khẩu chuẩn hóa NFKC, 10–128 ký tự, mỗi code point một ký tự;
     `Password::parse` đã theo. Copy lỗi trên UI phải nói “ký tự”, không nói byte.
-- **Điểm cần làm rõ khi làm UI/policy:**
-  - `O-11`: Luồng khôi phục tài khoản qua email đã xác minh (tùy chọn) và cách chuyển tiếp tài khoản
-    chỉ-email trong môi trường thử nghiệm.
+  - Sau `#168`, tài khoản mã email đã xác minh có thể bổ sung username/mật khẩu trên cùng `(authority, subject)`
+    qua endpoint backend (`POST /api/v1/auth/password/enroll/challenges`, `POST /api/v1/auth/password/enroll`,
+    `GET /api/v1/auth/password/enroll`) với challenge proof tươi, giữ nguyên principal/bút danh/quyền hiện hữu.
+- **Điểm cần làm rõ khi làm UI/policy (`OPEN` / Gaps):**
+  - `O-11`: Luồng khôi phục tài khoản qua email đã xác minh (tùy chọn) vẫn còn `OPEN` và độc lập với enrollment đã có.
+  - UI Web/CMP cho đăng nhập/đăng ký/enroll mật khẩu chưa có; production sign-in unlock (`VINK_AUTH_SIGN_IN` mặc định disabled) vẫn là khoảng cách runtime.
 
 ## 5. Bộ sưu tập, phân loại, hashtag và khám phá (`COL`, `TAG`, `HTG`, `RANK`, `TOP`)
 

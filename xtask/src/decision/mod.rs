@@ -1,6 +1,7 @@
 //! Repository decision queries and proposals. Read-only queries work in a shallow checkout.
 
 mod decision_log;
+mod dev_choices;
 mod legacy;
 mod record;
 mod refs;
@@ -35,7 +36,8 @@ const HELP: &str = "usage: cargo xtask decision <command>
   refs                               report declared Markdown reference freshness
   migrate --dry-run [GROUP]          render a pinned import to stdout (default: DecisionDelta)
   migrate [GROUP]                    install a pinned import once, without overwriting
-                                     GROUP: PRODUCT-DECISIONS-20261110 or DECISION-LOG-20261111
+                                     GROUP: PRODUCT-DECISIONS-20261110, DECISION-LOG-20261111
+                                     or DECISION-DEV-20261112
 
 See decisions/README.md for format, coverage and the approval boundary.";
 
@@ -142,7 +144,7 @@ fn lookup(registry: &Registry, id: &str) -> Value {
         return json!({ "lookup": lookup, "id": id, "current": null, "head": head, "head_record": describe(registry, key, entry) });
     }
     // An import group lists every revision it contained, superseded ones included.
-    if legacy::GROUPS.contains(&id) || id == decision_log::GROUP_ID {
+    if legacy::GROUPS.contains(&id) || id == decision_log::GROUP_ID || id == dev_choices::GROUP_ID {
         let revisions: Vec<_> = registry
             .entries
             .iter()
@@ -185,6 +187,13 @@ fn describe(registry: &Registry, key: &Key, entry: &Entry) -> Value {
         )
     };
     value["source"] = match &entry.origin {
+        Origin::Legacy(source) if source.group == dev_choices::GROUP_ID => json!({
+            "kind": "legacy_import",
+            "group": source.group,
+            "path": source.source_path,
+            "commit": dev_choices::COMMIT,
+            "line": source.source_line,
+        }),
         Origin::Legacy(source) if source.group == decision_log::GROUP_ID => json!({
             "kind": "legacy_import",
             "group": source.group,
@@ -392,11 +401,17 @@ fn migrate(root: &Path, dry_run: bool, group: &str, out: &mut impl Write) -> Res
             decision_log::verify_import,
             decision_log::FILE,
         ),
+        dev_choices::GROUP_ID => (
+            dev_choices::render(root)?,
+            dev_choices::verify_import,
+            dev_choices::FILE,
+        ),
         _ => {
             return Err(format!(
-                "unknown import group {group:?}; expected {} or {}",
+                "unknown import group {group:?}; expected {}, {} or {}",
                 legacy::GROUP_ID,
-                decision_log::GROUP_ID
+                decision_log::GROUP_ID,
+                dev_choices::GROUP_ID
             ));
         }
     };

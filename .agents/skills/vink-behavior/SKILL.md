@@ -18,14 +18,14 @@ do not cover auth authority, locking or I/O; the D2T-INV registry and gaps are i
 `verify kani` checks single discussion/taxonomy/endorsement decisions over whole input domains; it
 is no sequence or race proof. There is no generic behavior lane.
 `services/vink-app/behavior/target` holds target specifications for the owner's decisions of
-10/11/2026 (`collections`, `comment_edit`, `discovery`, `appeal`): they run as a step of `verify discussion`, have generated vectors and negative controls,
-and have **no Rust replay**, so they are model evidence only. `#150`, `#151` and `#157` moved
-canonical M1 (`publication.qnt`, 51/51 steps) and M3 (`tombstone.qnt`, 30/30 steps) to
-`behavior/publication` with full pure-core replay plus the 21-step `evaluator-vectors.json` script
+10/11/2026 (`collections`, `comment_edit`, `discovery`): they run as a step of `verify discussion`, have generated vectors and negative controls,
+and have **no Rust replay**, so they are model evidence only. Canonical M1 (64/64 steps),
+M3 (41/41 steps) and M4 governance (`governance.qnt`, 105/105 steps, replacing `target/appeal.qnt`) live in
+`behavior/publication` with full pure-core replay plus the 24-step `evaluator-vectors.json` script
 ([publication-core](../../../docs/development/publication-core.md),
 [moderation-core](../../../docs/development/moderation-core.md)). When code implements one of the remaining target models, move the model to its owner directory
 with a replay instead of keeping a second model of the same policy. When modeling or replay exposes an
-unresolved product rule (`O-01..O-16`) or a conflict between PRD and code, route the question through
+unresolved product rule (`O-01..O-19`, resolved via the TOML registry) or a conflict between PRD and code, route the question through
 [vink-shape](../vink-shape/SKILL.md) and record confirmed updates via
 [vink-specify](../vink-specify/SKILL.md).
 Other stateful code keeps its own boundary tests:

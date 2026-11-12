@@ -24,6 +24,8 @@ của slice, không phải product Accepted; mỗi mục có điều kiện xem 
 
 ### CHOICE-01 — Biểu diễn vật lý: **A, catalog và assignment chuẩn hóa**
 
+<!-- vdr: active TAG-PR-02-CHOICE-01@r1 -->
+
 | Phương án | Đánh giá |
 | --- | --- |
 | **A. Catalog chuẩn hóa + một hàng cho mỗi slot** (chọn) | `work_draft_tags` và `work_metadata_snapshot_tags` có `slot` 0 (dạng bài) hoặc 1..3 (chủ đề), khóa `(owner, slot)`, `UNIQUE (owner, tag_id)` và FK ghép `(tag_id, facet) → tags (id, facet)`. Sai facet, thẻ dangling, trùng thẻ và chủ đề thứ tư **không biểu diễn được**, không cần CHECK đếm hàng giả vờ thấy hàng khác. Discovery (#98) truy vấn được `tag_id` trực tiếp |
@@ -41,6 +43,8 @@ so với golden vector Python của #95.
 pilot cần nhiều chủ đề hơn hoặc nhiều dạng bài (khi đó slot dạng bài cũng phải đổi).
 
 ### CHOICE-02 — Version của metadata nháp: **B, version riêng + chụp cặp tường minh**
+
+<!-- vdr: active TAG-PR-02-CHOICE-02@r1 -->
 
 | Phương án | Đánh giá |
 | --- | --- |

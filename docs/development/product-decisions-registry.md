@@ -8,7 +8,7 @@ Registry này nối **yêu cầu → model/invariant/scenario → gap implementa
 chạy. Giữ tách bạch **bốn chiều trạng thái**: (1) quyết định sản phẩm (`PRODUCT_CONFIRMED` / `DEFERRED` / `OPEN`),
 (2) quyết định kiến trúc (`DESIGN_PROPOSED` / `Provisional` / `Accepted`), (3) mức triển khai
 (`core` / `persistence-api` / `worker-provider` / `web` / `cmp` / `NOT_IMPLEMENTED`), và (4) bằng chứng
-đã chạy gắn SHA/boundary. Một baseline kỹ thuật trong pure core (như `O-03`) không biến điểm `OPEN`
+đã chạy gắn SHA/boundary. Một baseline kỹ thuật trong pure core (như `O-04`) không biến điểm `OPEN`
 thành `PRODUCT_CONFIRMED`.
 
 - **Pure core + replay (`#150`, `#151`, `#157`):** hiện thực lõi publication, moderation evaluator/admin
@@ -53,7 +53,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | --- | --- | --- | --- |
 | PUB-04 | `bodyOnlyWhilePublic`, `tombstoneOnlyAfterAuthorDeletesPublicWork`, `tombstoneKeepsApprovedComments`, `othersSeeOnlyApproved` | `author_deleted_public_work` (8: khách thấy trang thay thế + bình luận 1; người viết thấy thêm bình luận của mình) | **Pure core #157:** `Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(pointer))`, `WorkAccessPlan::AuthorTombstone { last_pointer }` cho phép đọc thread cũ; `plan_comment_view` và `check_comment_submission` kiểm barrier. Chưa có persistence/API/UI cho lệnh xóa tác giả và trang tombstone |
 | PUB-05, PUB-07, COM-11 | `noExceptionForUnavailableWork`, `noNoticeFromHiddenPeriod`, `deletionIsTerminal` | `hidden_then_public_then_deleted`, `never_public`, `moderation_removed`. NC `mutatedRemovedStep`, `mutatedNoticeStep` | **Pure core #157 + `ADMIN-MODERATION-20261111`:** bài đang công khai chuyển riêng tư → `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn” + bình luận, `HiddenReadOnly`); chưa từng công khai hoặc admin gỡ → `Unavailable`; xóa từ trang ẩn để lại tombstone (đóng O-05); `should_notify_author`. Replay 41/41 bước + 2 NC. **Gap:** loader #158 dựng `hidden = None` nên `set-private` vẫn trả không tìm thấy; chưa SSR trang ẩn |
-| PUB-05 (không xóa bình luận theo bài; `O-03` còn `OPEN`) | `workChangesKeepComments`, `noNewTextOffPublic` | (9) `tombstone_read_only`; (12) người viết gỡ bình luận của mình | **Pure core #157 (baseline kỹ thuật cho `O-03`, chưa phải `PRODUCT_CONFIRMED`):** `check_comment_submission` từ chối `TombstoneReadOnly`, `check_own_comment_removal` cho phép người viết tự gỡ trên `AuthorTombstone`. Hàng bình luận không bị xóa. Runtime route/HTTP cho tombstone chưa có |
+| PUB-05 (không xóa bình luận theo bài; `O-03@r2` `PRODUCT_CONFIRMED`) | `workChangesKeepComments`, `noNewTextOffPublic` | (9) `tombstone_read_only`; (12) người viết gỡ bình luận của mình | **Pure core #157 + #165 (`O-03@r2` đã `PRODUCT_CONFIRMED` ở mức sản phẩm):** `check_comment_submission` từ chối `TombstoneReadOnly`, `check_own_comment_removal` cho phép người viết tự gỡ trên `AuthorTombstone`. Hàng bình luận không bị xóa. Runtime route/HTTP cho tombstone chưa có |
 
 ### 1.3. Bộ sưu tập (M2)
 

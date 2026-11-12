@@ -32,7 +32,7 @@ prior handoff, select `vink-how`, `vink-why` or `vink-recall` from the
    branch, use `codex/<outcome>` by default. If the user requests a commit directly on develop,
    keep that workflow. Preserve existing edits; do not reset, stash or sweep unrelated files.
 4. Continue with reasonable reversible choices. If an unresolved product/security decision
-   (`OPEN` items `O-01..O-16`, or a change to authority, public visibility, lifecycle or data
+   (`OPEN` items resolved in `O-01..O-19`, or a change to authority, public visibility, lifecycle or data
    meaning) affects correctness, complete independent work and use
    [vink-shape](../vink-shape/SKILL.md) to classify and ask only the blocking product questions.
    A small bug fix or clear technical slice proceeds directly without shaping. A prototype
@@ -46,7 +46,7 @@ while the corresponding D decision is open.
 
 | Work | Guidance |
 | --- | --- |
-| Clarify product scope, open rules (`O-01..O-16`), owner questions | [vink-shape](../vink-shape/SKILL.md) (only when rules are unclear/open) |
+| Clarify product scope, open rules in `O-01..O-19`, owner questions | [vink-shape](../vink-shape/SKILL.md) (only when rules are unclear/open) |
 | Write or reconcile specs, PRD, decision records, registries | [vink-specify](../vink-specify/SKILL.md) |
 | Domain, API, PostgreSQL, worker, integration | [vink-engineering](../vink-engineering/SKILL.md) |
 | Revisions, audiences, moderation, publish/tombstone | [vink-publication](../vink-publication/SKILL.md) |

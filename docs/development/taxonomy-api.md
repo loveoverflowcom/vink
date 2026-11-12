@@ -42,6 +42,8 @@ phải product Accepted; mỗi mục có điều kiện xem lại.
 
 ### CHOICE-01 — Transport metadata tác giả: **B, resource riêng có version riêng**
 
+<!-- vdr: active TAG-PR-03-CHOICE-01@r1 -->
+
 | Phương án | Đánh giá |
 | --- | --- |
 | A. Mở rộng `PUT /drafts/{id}` (văn bản + thẻ một lệnh) | Một lệnh nguyên tử, nhưng #96 đã chọn version metadata **riêng** (CHOICE-02 B); gộp vào lưu văn bản buộc autosave dày đặc mang theo thẻ, và client cũ bỏ trường sẽ mơ hồ giữa “không đổi” và “xóa” |
@@ -56,6 +58,8 @@ lệnh gửi duyệt phải mang cả hai version.
 
 ### CHOICE-02 — Entrypoint quản trị catalog: **A, lệnh operator**
 
+<!-- vdr: active TAG-PR-03-CHOICE-02@r1 -->
+
 | Phương án | Đánh giá |
 | --- | --- |
 | **A. CLI operator gọi cùng application/core/store** (chọn) | Không có authority production (D-05 Provisional) nên một route admin HTTP sẽ không dùng được ở production nhưng vẫn mở thêm bề mặt; CLI dùng đúng mẫu `vink-app moderator`, gọi `Vink::change_catalog` → `CatalogStore` → `decide_catalog_change`, không có SQL đi tắt |
@@ -69,6 +73,8 @@ nghiệm thu và nhu cầu UI curator: khi đó thêm một biến thể authori
 chính transaction `change_catalog`, như kiểm duyệt bình luận.
 
 ### CHOICE-03 — Đối soát khi không biết lệnh đã lưu chưa: **A, desired state có version + đọc lại**
+
+<!-- vdr: active TAG-PR-03-CHOICE-03@r1 -->
 
 | Phương án | Đánh giá |
 | --- | --- |

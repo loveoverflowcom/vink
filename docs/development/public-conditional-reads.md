@@ -28,6 +28,11 @@ Draft và discussion giữ `no-store`, không có validator. `PUT` draft vẫn d
 
 ## Quyết định: phương án A — hash representation
 
+<!-- vdr: active READ-01-CHOICE-01@r1 -->
+<!-- vdr: active READ-01-CHOICE-02@r1 -->
+<!-- vdr: active READ-01-CHOICE-03@r1 -->
+<!-- vdr: active READ-01-CHOICE-04@r1 -->
+
 | Lựa chọn | Lý do |
 | --- | --- |
 | **A, ETag = SHA-256 của byte JSON sau query** | Bao phủ mọi trường thật sự gửi đi (title, byline, document, revision, `published_at`, thứ tự, membership) mà không cần danh sách phụ thuộc. Đổi tên tác giả không đổi `revision_id` nhưng đổi tag. Không thêm cột, không thêm migration. |

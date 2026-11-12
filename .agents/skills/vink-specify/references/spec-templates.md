@@ -68,11 +68,11 @@ Chỉ dùng các mục có liên quan tới phạm vi thay đổi; giữ ngắn 
 
 ## 3. Sáu kịch bản chuẩn để kiểm bộ đôi `vink-shape` + `vink-specify`
 
-1. **Làm rõ hành vi trên trang thay thế sau khi tác giả xóa bài (`O-03`):**
-   - `vink-shape` nhận diện `PUB-04/05` đã chốt 4 trường hợp A/B/C/D, còn `O-03` (quyền ghi trên
-     tombstone) có baseline kỹ thuật trong `domain::publication` (`#157`: chặn bình luận mới, cho
-     người viết tự gỡ bình luận cũ) nhưng vẫn `OPEN` ở mức sản phẩm. Khi làm route/UI tombstone,
-     agent nêu rõ baseline hiện tại và hỏi chủ sản phẩm trước khi khóa hợp đồng công khai.
+1. **Làm rõ xử lý bình luận đang chờ duyệt lúc tác giả xóa bài công khai (`O-04`):**
+   - `vink-shape` nhận diện `PUB-04/05`, `O-03@r2` (quyền ghi trên tombstone: chặn bình luận mới, cho tự gỡ)
+     và `ADM-07/08` đã chốt; nhưng `O-04` (bình luận đang chờ AI duyệt lúc bài bị xóa sẽ tiếp tục duyệt
+     để hiện trên tombstone hay đóng băng) vẫn còn `OPEN` ở mức sản phẩm. Khi làm luồng xóa/tombstone,
+     agent nêu rõ hiện trạng và hỏi chủ sản phẩm để chốt quy tắc trước khi chốt hợp đồng API/worker.
 2. **Làm rõ quan hệ giữa sửa bình luận và “Hữu ích” (`COM-10`, `LVE-FR-04`, `O-06`):**
    - `vink-shape` đặt tình huống bình luận có 20 lượt “Hữu ích” rồi được sửa và duyệt, so sánh hai
      phương án (giữ nguyên tổng số theo `CommentId` vs neo theo revision bình luận và bắt đầu lại số

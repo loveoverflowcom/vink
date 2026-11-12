@@ -247,6 +247,8 @@ vận hành: [runbook](../development/auth-operations.md).
 
 ### C1. SMTP hay API transactional email — **chọn SMTP (Resend)**
 
+<!-- vdr: active D-05-C1@r1 -->
+
 | | SMTP submission (`lettre`, rustls) | API HTTP của nhà cung cấp |
 | --- | --- | --- |
 | Phụ thuộc | Một crate, chuẩn RFC 5321; đổi nhà cung cấp = đổi host/credential | SDK hoặc client HTTP riêng cho từng hãng |
@@ -266,6 +268,8 @@ cần webhook của nhà cung cấp — chưa làm.
 
 ### C2. Outbox PostgreSQL hay worker hiện có — **outbox của Identity, worker trong `serve`**
 
+<!-- vdr: active D-05-C2@r1 -->
+
 `vink-worker` là tiến trình App, không được đọc DB Identity (mã là secret của Identity). **HOW:**
 bảng `mail_deliveries` trong `vink_identity`; challenge và ý định gửi commit cùng transaction; worker
 claim `FOR UPDATE SKIP LOCKED` + lease 45 s (nhiều instance an toàn), gửi ngoài transaction, ghi kết
@@ -275,6 +279,8 @@ instance khác/retry. **TRADEOFF:** at-least-once, không exactly-once; thông l
 Identity (đủ cho pilot; tách `deliver` thành lệnh riêng nếu cần).
 
 ### C3. Rate limit trong DB hay ở edge tin cậy — **DB làm authority, edge là phòng thủ thêm**
+
+<!-- vdr: active D-05-C3@r1 -->
 
 **WHY:** App là tiến trình duy nhất thấy mạng nguồn; nhiều process App cần một bộ đếm chung; không
 có hạ tầng edge nào được xác nhận. **HOW:** App: bảng `auth_rate_limits` (upsert nguyên tử, cửa sổ
@@ -287,6 +293,8 @@ cửa sổ; không chống DDoS thể tích (việc của edge).
 
 ### C4. Fence chung hay guard theo owner — **một primitive chung, gọi bởi từng owner**
 
+<!-- vdr: active D-05-C4@r1 -->
+
 **HOW:** `principal::require_active` khóa hàng principal `FOR UPDATE` (xung đột với khóa `FOR KEY
 SHARE` mà insert đình chỉ lấy qua FK) rồi đọc đình chỉ ở câu lệnh riêng; trả
 `StoreError::PrincipalSuspended` → `403 principal_suspended`. Mỗi adapter gọi nó **tại commit**,
@@ -298,6 +306,8 @@ thường không đáng kể); disable ở Identity không thể nguyên tử v�
 xuyên DB, runbook yêu cầu đình chỉ ở App trước.
 
 ### C5. Retention, dọn dẹp, phục hồi
+
+<!-- vdr: active D-05-C5@r1 -->
 
 Challenge (kèm thư) xóa 7 ngày sau hết hạn; phiên 30 ngày sau khi đóng; bộ đếm 1 ngày sau cửa sổ.
 Prune chạy mỗi giờ (Identity `serve`, `vink-worker`) và bằng lệnh vận hành; idempotent, an toàn khi

@@ -132,7 +132,7 @@ planning kết hợp với `domain::discussion::visibility`.
 | `plan_work_access` | Application entry point trả về `WorkAccessPlan` |
 | `plan_comment_view` | Nếu thread không accessible (`Unavailable`), trả về `CommentView::Unavailable`; nếu là tombstone hoặc public body, chuyển tiếp sang `visibility::view` |
 | `check_comment_submission` | Barrier chống gửi bình luận: `PublicBody` cho phép gửi; `AuthorTombstone` trả lỗi `TombstoneReadOnly`; `Unavailable` trả lỗi `WorkUnavailable` |
-| `check_own_comment_removal` | Cổng mức tác phẩm cho người viết tự gỡ bình luận: cho phép trên `PublicBody` và `AuthorTombstone` (baseline O-03, vẫn OPEN); `Unavailable` trả `WorkUnavailable`. Lifecycle của bình luận vẫn do `CommentState` quyết định |
+| `check_own_comment_removal` | Cổng mức tác phẩm cho người viết tự gỡ bình luận: cho phép trên `PublicBody` và `AuthorTombstone` (baseline được xác nhận ở `O-03@r2`, `PRODUCT_CONFIRMED`); `Unavailable` trả `WorkUnavailable`. Lifecycle của bình luận vẫn do `CommentState` quyết định |
 
 ### Chuyển canonical M3 và hoàn tất 51/51 replay M1
 

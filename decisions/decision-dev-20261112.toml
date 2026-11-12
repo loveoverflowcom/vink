@@ -1,0 +1,839 @@
+version = 1
+source_commit = "630e80a9a1b2790eb4f3c663afb7ad627163d3cb"
+
+[[records]]
+id = "D-05-C1"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C1 gửi thư xác thực qua SMTP submission (lettre, rustls)"
+resolution = """
+### C1. SMTP hay API transactional email — **chọn SMTP (Resend)**
+**Seam đổi nhà cung cấp:** worker chỉ giữ `Arc<dyn MailSender>`; `VINK_IDENTITY_SMTP_PROVIDER=resend` là một preset cấu hình; nhà cung cấp SMTP khác chỉ đổi cấu hình, nhà cung cấp chỉ có API HTTP là một `MailSender` mới — outbox, retry, nội dung thư không đổi.
+**HOW:** TLS bắt buộc (465 implicit hoặc 587 STARTTLS), plaintext chỉ cho relay loopback; mật khẩu (API key) chỉ qua file `0600`, đọc lại mỗi lần gửi (xoay không restart); lỗi rút gọn thành loại + mã số, không giữ văn bản relay (có thể chứa địa chỉ)."""
+rationale = """
+**WHY:** trung lập nhà cung cấp, kiểm được bằng giao thức thật, cùng hướng Cantos đã vận hành (Resend qua SMTP, `lettre`).
+**TRADEOFF:** không có idempotency key → trùng thư có thể xảy ra (cùng mã, cùng `Message-ID`, vô hại); bounce/complaint cần webhook của nhà cung cấp — chưa làm."""
+requires = ["D-05@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "PROVISIONAL"
+historical = false
+source_line = 248
+source_path = "docs/architecture/auth-authority.md"
+related_ids = ["D-05"]
+
+[records.legacy.context]
+canonical_references = "docs/development/auth-production-evidence.md, docs/development/auth-operations.md"
+alternative = "API HTTP của nhà cung cấp"
+source_status = "**Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted."
+
+[[records]]
+id = "D-05-C2"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C2 outbox thư trong PostgreSQL của Identity và worker trong serve"
+resolution = """
+### C2. Outbox PostgreSQL hay worker hiện có — **outbox của Identity, worker trong `serve`**
+**HOW:** bảng `mail_deliveries` trong `vink_identity`; challenge và ý định gửi commit cùng transaction; worker claim `FOR UPDATE SKIP LOCKED` + lease 45 s (nhiều instance an toàn), gửi ngoài transaction, ghi kết quả chỉ khi còn giữ `lease_token`; 5 lần, backoff 5→60 s + jitter; `5xx` dừng ngay; mã đã dùng/hết hạn bị hủy; trạng thái cuối xóa mã; worker thức ngay sau commit (Notify) và poll 2 s cho việc của instance khác/retry."""
+rationale = """
+`vink-worker` là tiến trình App, không được đọc DB Identity (mã là secret của Identity).
+**TRADEOFF:** at-least-once, không exactly-once; thông lượng gắn với số instance Identity (đủ cho pilot; tách `deliver` thành lệnh riêng nếu cần)."""
+requires = ["D-05@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "PROVISIONAL"
+historical = false
+source_line = 267
+source_path = "docs/architecture/auth-authority.md"
+related_ids = ["D-05"]
+
+[records.legacy.context]
+canonical_references = "docs/development/auth-production-evidence.md, docs/development/auth-operations.md"
+source_status = "**Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted."
+
+[[records]]
+id = "D-05-C3"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C3 giới hạn lạm dụng lấy PostgreSQL làm authority, edge là phòng thủ thêm"
+resolution = """
+### C3. Rate limit trong DB hay ở edge tin cậy — **DB làm authority, edge là phòng thủ thêm**
+**HOW:** App: bảng `auth_rate_limits` (upsert nguyên tử, cửa sổ cố định theo đồng hồ DB, khóa = SHA-256 của bucket + IPv4 hoặc IPv6 /64); `X-Forwarded-For` chỉ đọc khi peer thuộc `VINK_TRUSTED_PROXIES`, lấy hop không tin cậy ngoài cùng bên phải; không đếm được = `503`.
+Identity: trần theo địa chỉ (chính xác, khóa advisory), theo tài khoản (chính xác, khóa hàng tài khoản), toàn cục (mềm: đồng thời có thể vượt tối đa bằng số request đồng thời)."""
+rationale = """
+**WHY:** App là tiến trình duy nhất thấy mạng nguồn; nhiều process App cần một bộ đếm chung; không có hạ tầng edge nào được xác nhận.
+cửa sổ cố định cho phép tối đa 2× ở ranh giới cửa sổ; không chống DDoS thể tích (việc của edge)."""
+requires = ["D-05@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "PROVISIONAL"
+historical = false
+source_line = 277
+source_path = "docs/architecture/auth-authority.md"
+related_ids = ["D-05"]
+
+[records.legacy.context]
+canonical_references = "docs/development/auth-production-evidence.md, docs/development/auth-operations.md"
+source_status = "**Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted."
+
+[[records]]
+id = "D-05-C4"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C4 fence đình chỉ principal dùng chung tại commit"
+resolution = """
+### C4. Fence chung hay guard theo owner — **một primitive chung, gọi bởi từng owner**
+**HOW:** `principal::require_active` khóa hàng principal `FOR UPDATE` (xung đột với khóa `FOR KEY SHARE` mà insert đình chỉ lấy qua FK) rồi đọc đình chỉ ở câu lệnh riêng; trả `StoreError::PrincipalSuspended` → `403 principal_suspended`.
+Mỗi adapter gọi nó **tại commit**, đúng thứ tự khóa của mình: nháp tạo/lưu (đầu tiên — không khóa gì khác), xóa bình luận (sau hàng comment), đổi chế độ (sau hàng thread), kiểm duyệt (sau grant + hàng comment), ghi nhận (sau các khóa share, trước khóa khóa-lệnh)."""
+rationale = """
+Không dùng middleware (chỉ là kiểm lúc request) hay trigger (ẩn thứ tự khóa).
+**TRADEOFF:** mọi lệnh ghi của một principal tuần tự hóa trên hàng principal (bình thường không đáng kể); disable ở Identity không thể nguyên tử với ghi ở App — không giả lập giao dịch xuyên DB, runbook yêu cầu đình chỉ ở App trước."""
+requires = ["D-05@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "PROVISIONAL"
+historical = false
+source_line = 288
+source_path = "docs/architecture/auth-authority.md"
+related_ids = ["D-05"]
+
+[records.legacy.context]
+canonical_references = "docs/development/auth-production-evidence.md, docs/development/auth-operations.md"
+source_status = "**Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted."
+
+[[records]]
+id = "D-05-C5"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "account"
+title = "D-05 §11 C5 retention, dọn dẹp định kỳ và phục hồi dữ liệu tạm auth"
+resolution = """
+Challenge (kèm thư) xóa 7 ngày sau hết hạn; phiên 30 ngày sau khi đóng; bộ đếm 1 ngày sau cửa sổ.
+Prune chạy mỗi giờ (Identity `serve`, `vink-worker`) và bằng lệnh vận hành; idempotent, an toàn khi nhiều tiến trình.
+Phục hồi: lease hết hạn → thư được gửi lại; relay phục hồi → backoff gửi tiếp."""
+rationale = "chỉ mất dữ liệu tạm (thư chờ, bộ đếm), không mất tài khoản, phiên hay principal."
+requires = ["D-05@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "PROVISIONAL"
+historical = false
+source_line = 300
+source_path = "docs/architecture/auth-authority.md"
+related_ids = ["D-05"]
+
+[records.legacy.context]
+canonical_references = "docs/development/auth-production-evidence.md, docs/development/auth-operations.md"
+source_status = "**Trạng thái:** **Đề xuất cho pilot (Recommended / Provisional)**, chưa Accepted."
+
+[[records]]
+id = "DISC-WEB-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "DISC-WEB CHOICE-01 vùng riêng gọn cho nhận xét của bạn"
+resolution = "“Nhận xét của bạn” ngay sau composer gốc. Giữ timeline công khai có nghĩa công khai; own list tới được pending/rejected ngoài trang hoặc dưới root không được liệt kê."
+rationale = "Loại B (ghép theo chronology) vì cần thêm vị trí/cursor/context cho hàng riêng dưới root chưa tải và dễ làm sai `public_replies`."
+requires = ["DISC-02-03-CHOICE-02@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 9
+source_path = "docs/development/discussion-web-reads.md"
+related_ids = [
+    "D-08",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md"
+alternative = "B (ghép theo chronology)"
+source_status = "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+
+[[records]]
+id = "DISC-WEB-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "DISC-WEB CHOICE-02 composed capability seam có giới hạn"
+resolution = """
+sau hydration gọi composed v1 với `limit=1`, chỉ decode `work_id`, `viewer_is_work_author`; bỏ toàn bộ roots ngay tại decoder. Public SSR/browser dùng DTO/endpoint public riêng, không chờ hoặc phụ thuộc seam này.
+Lookup own của các ID công khai cấp `can_remove`, không suy từ tên hoặc login."""
+rationale = "Loại A (API capability mới) vì provider hiện có đã cấp đủ fact; không cần thêm API/SQL."
+requires = ["DISC-02-03-CHOICE-02@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 13
+source_path = "docs/development/discussion-web-reads.md"
+related_ids = [
+    "D-08",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md"
+alternative = "A (API capability mới)"
+source_status = "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+
+[[records]]
+id = "DISC-WEB-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "discussion"
+title = "DISC-WEB CHOICE-03 generation ở owner hiện có và đối soát lô"
+resolution = """
+`ViewState` giữ epoch public/mutation; `OwnState` giữ scope + read generation. Đổi scope dọn private facts và release busy ngay, không xếp hàng sau request cũ. Mỗi own/capability read có một child Owner hủy fetch và deadline khi read kế tiếp thay thế nó.
+Write vẫn ở feature Owner: hủy transport không chứng minh server rollback."""
+rationale = "Không thêm store toàn cục hoặc framework state."
+requires = ["DISC-02-03-CHOICE-02@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 18
+source_path = "docs/development/discussion-web-reads.md"
+related_ids = [
+    "D-08",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/discussion-web-reads.md, docs/architecture/discussion-reads.md"
+source_status = "Lát `DISC-WEB-PUBLIC-OWN-READS`, tiếp nối #144 và #146, nền `develop@4891c77`"
+
+[[records]]
+id = "LVE-WP-04-CHOICE-07"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "endorsement"
+title = "#73 CHOICE-07 biểu tượng Pen Flight R2 (A · Mềm), lát Web adapter WP-04"
+resolution = """
+Giữ viewBox 24×24 và path SVG nguyên văn, không raster hay icon font. Một path đơn sắc, currentColor, hiển thị 20px trang trí (`aria-hidden`, không thêm tên truy cập). Ngòi bút hướng lên, lỗ thở tròn; không tim. Vector không đổi theo phase.
+Owner: `shared/icons.json` lưu source URL, revision, Vink ownership và SHA-256 SVG gốc; `xtask/src/ui_tokens.rs` kiểm provenance/hash rồi sinh Rust/CMP. Không gán license của Material cho glyph Vink. `EndorsementAction` Leptos/CMP nhận glyph qua slot có sẵn."""
+rationale = """
+Thiết kế chốt 09/11/2026, không mở lại policy LVE.
+Không thêm animation, backend, ranking, auth hoặc native product consumer."""
+requires = ["D-14@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 1
+source_path = "docs/design/pen-flight-r2.md"
+related_ids = ["D-14"]
+
+[records.legacy.context]
+canonical_references = "docs/design/pen-flight-r2.md, docs/development/pen-flight-r2-evidence.md, docs/architecture/literary-endorsement.md"
+source_status = "Thiết kế chốt 09/11/2026, không mở lại policy LVE."
+
+[[records]]
+id = "READ-01-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-01 CHOICE-01 nguồn định danh và độ mạnh ETag cho đọc công khai"
+resolution = """
+Bao phủ mọi trường thật sự gửi đi (title, byline, document, revision, `published_at`, thứ tự, membership) mà không cần danh sách phụ thuộc. Đổi tên tác giả không đổi `revision_id` nhưng đổi tag. Không thêm cột, không thêm migration.
+Tag là digest của đúng byte gửi đi; không có content coding (`CompressionLayer` không tồn tại), nên byte hash = byte trên dây. Thêm nén thì phải đổi tag theo coding hoặc chuyển weak trước.
+Đủ chống trùng cho số representation của một URL; header ngắn. Tag là opaque: client không được suy diễn cấu trúc."""
+rationale = """
+Phải chứng minh đủ phụ thuộc (byline nằm ở `principals`, thứ tự/membership của list) và tách query metadata/body sẽ tạo race. Chưa có benchmark nào cho thấy A là nút thắt.
+Xem [Rút lại](#rút-lại-theo-endpoint)."""
+requires = [
+    "D-03@r1",
+    "DISC-02-03-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 33
+source_path = "docs/development/public-conditional-reads.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-conditional-reads.md"
+alternative = "Không chọn B (validator từ revision/generation)"
+source_status = "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+
+[[records]]
+id = "READ-01-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-01 CHOICE-02 chính sách Cache-Control cho đọc công khai"
+resolution = """
+Trình duyệt được lưu nhưng phải hỏi lại server trước mỗi lần dùng; không shared cache (chưa có CDN và nội dung rút bài không được nằm ở cache trung gian). Không đặt TTL, nên không có hai TTL chồng nhau với READ-02.
+`404`/`503`/`500` không bị lưu, nên không giữ một 404 qua lúc phục hồi.
+Không header nào chọn representation (không nén, không locale/filter)."""
+rationale = "chưa có CDN và nội dung rút bài không được nằm ở cache trung gian"
+requires = [
+    "D-03@r1",
+    "DISC-02-03-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 38
+source_path = "docs/development/public-conditional-reads.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-conditional-reads.md"
+source_status = "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+
+[[records]]
+id = "READ-01-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-01 CHOICE-03 đường dẫn 304 ở tầng lưu trữ từ một snapshot DB"
+resolution = """
+Body và tag đến từ **một** lần serialize của **một** câu SQL (PostgreSQL READ COMMITTED cho mỗi câu một snapshot), nên không thể gắn tag của bản A lên body B. Không giữ transaction qua request.
+1. Use case trả lỗi trước (`404` cho thiếu/chưa công khai/ID sai, `503` khi PostgreSQL không trả lời, `500` khi dữ liệu lưu sai). Không bao giờ đoán “not modified” khi chưa đọc được.
+2. Chỉ representation đang tồn tại mới được so với `If-None-Match`."""
+rationale = "tài nguyên đã được xác nhận công khai ở bước 1."
+requires = [
+    "D-03@r1",
+    "DISC-02-03-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 42
+source_path = "docs/development/public-conditional-reads.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-conditional-reads.md"
+source_status = "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+
+[[records]]
+id = "READ-01-CHOICE-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-01 CHOICE-04 hợp đồng bộ nhớ đệm HTTP ở adapter Web"
+resolution = "SSR vẫn đọc in-process qua `SharedPublicReads`; HTML reader/Khám phá không mang ETag của API. Draft và discussion giữ `no-store`, không có validator. `PUT` draft vẫn dùng `expected_version`/`409`, không đổi sang `If-Match`."
+rationale = "HTML reader/Khám phá không mang ETag của API. Draft và discussion giữ `no-store`, không có validator."
+requires = [
+    "D-03@r1",
+    "DISC-02-03-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 25
+source_path = "docs/development/public-conditional-reads.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-conditional-reads.md"
+source_status = "pilot đã triển khai cho hai endpoint; đã kiểm bằng unit, PostgreSQL thật và Chrome headless cục bộ. Chưa đo trên môi trường production."
+
+[[records]]
+id = "READ-02-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-02 CHOICE-01 phạm vi lưu trữ trong tab và cửa sổ tươi phía client"
+resolution = """
+Trình duyệt giữ byte + ETag và tự gửi `If-None-Match`; app không đọc/giữ ETag. Request dùng `cache: "no-cache"`: nếu sau này server đổi header sang có `max-age`, trình duyệt vẫn phải hỏi lại origin trước khi dùng byte đã lưu, nên app không bao giờ ghi `validated_at` cho một bản trình duyệt tự trả từ cache. Không gắn timestamp lên URL; refresh thủ công cũng gửi validator.
+Ngưỡng kiểm tra lại, **không phải TTL**: không xóa gì. `validated_at` là thời điểm **bắt đầu** request được origin xác nhận (cận dưới, an toàn); đọc cache không gia hạn nó"""
+rationale = "Không chọn: phải tự parse 304, đồng bộ data + tag, và tạo owner thứ hai cạnh HTTP cache. Chỉ mở khi A thiếu semantics."
+requires = [
+    "READ-01-CHOICE-01@r1",
+    "READ-01-CHOICE-02@r1",
+    "READ-01-CHOICE-04@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 49
+source_path = "docs/development/public-read-freshness.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-read-freshness.md"
+alternative = "B — App tự quản validator"
+source_status = "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+
+[[records]]
+id = "READ-02-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-02 CHOICE-02 điều phối làm mới theo vòng đời trang và single-flight"
+resolution = """
+Một timer cho cả tab, hẹn đến mốc sớm nhất của các key đang được view quan sát: `validated_at + 120 s + spread`, spread ngẫu nhiên `0–15 s` chọn lại sau mỗi lần xác nhận. Không timer theo card
+Kiểm tra nếu đã quá 120 s (không cộng spread). Gộp với request đang chạy (single-flight); bốn tín hiệu đồng thời → một request. `online` chỉ là gợi ý: lỗi vẫn backoff
+Hủy timer, bỏ qua mọi tín hiệu trừ thao tác thủ công; hiện lại thì kiểm tra nếu stale"""
+rationale = "view mount khi chưa có snapshot hiển thị được sẽ chờ request đang chạy (waiter), không tạo request thứ hai."
+requires = [
+    "READ-01-CHOICE-01@r1",
+    "READ-01-CHOICE-02@r1",
+    "READ-01-CHOICE-04@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 64
+source_path = "docs/development/public-read-freshness.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-read-freshness.md"
+source_status = "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+
+[[records]]
+id = "READ-02-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-02 CHOICE-03 xử lý ngoại tuyến/lỗi tạm thời và xóa ngay khi 404"
+resolution = """
+Giữ last-success trên màn hình với thông báo riêng; backoff 5 → 10 → 20 → 40 → 80 → 120 s (trần), jitter 80–100 %, tôn trọng `Retry-After` dạng giây (trần 120 s). Không retry mutation
+Xóa entry ngay, reader thay chữ bằng trang “Không tìm thấy”; card của tác phẩm đó bị bỏ khỏi snapshot danh sách cho tới khi list được origin xác nhận lại. Không dùng stale-if-error cho trường hợp này
+Snapshot xác nhận quá 15 phút không được render ngay ở **lần mount mới** (sẽ tải với loading thật). Nội dung đang trên màn hình không bị rút vì lỗi tạm"""
+rationale = "1. **Hiển thị dữ liệu cũ:** v1 chọn hướng 1 của issue — giữ snapshot công khai đã xem trong phiên tab, có trạng thái “chưa làm mới được”, revalidate khi online/hiện lại, và `max_display_age` 15 phút cho lần mount mới. Giá trị 15 phút là giả định cần chủ sản phẩm chốt."
+requires = [
+    "READ-01-CHOICE-01@r1",
+    "READ-01-CHOICE-02@r1",
+    "READ-01-CHOICE-04@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 68
+source_path = "docs/development/public-read-freshness.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-read-freshness.md"
+review_when = "Giá trị 15 phút là giả định cần chủ sản phẩm chốt."
+source_status = "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+
+[[records]]
+id = "READ-02-CHOICE-04"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "platform"
+title = "READ-02 CHOICE-04 cập nhật bài viết khi đang đọc dở (trình đọc bình tĩnh)"
+resolution = "Khám phá cập nhật tại chỗ (key ổn định: giữ row, focus, scroll). Reader **không** thay chữ đang đọc: hiện “Tác phẩm vừa có bản cập nhật” + “Xem bản mới”; áp dụng thì về đầu nội dung và focus `#noi-dung`"
+rationale = "Reader **không** thay chữ đang đọc: hiện “Tác phẩm vừa có bản cập nhật” + “Xem bản mới”; áp dụng thì về đầu nội dung và focus `#noi-dung`"
+requires = [
+    "READ-01-CHOICE-01@r1",
+    "READ-01-CHOICE-02@r1",
+    "READ-01-CHOICE-04@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 70
+source_path = "docs/development/public-read-freshness.md"
+related_ids = [
+    "D-03",
+    "DISC-02-03-CHOICE-02",
+]
+
+[records.legacy.context]
+canonical_references = "docs/development/public-read-freshness.md"
+source_status = "Chính sách hiển thị dữ liệu cũ dưới đây là **đề xuất v1**, chưa phải quyết định sản phẩm đã chốt."
+
+[[records]]
+id = "TAG-PR-02-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#96 CHOICE-01 biểu diễn vật lý: A, catalog và assignment chuẩn hóa, lát TAG-PR-02"
+resolution = """
+A. Catalog chuẩn hóa + một hàng cho mỗi slot
+`work_draft_tags` và `work_metadata_snapshot_tags` có `slot` 0 (dạng bài) hoặc 1..3 (chủ đề), khóa `(owner, slot)`, `UNIQUE (owner, tag_id)` và FK ghép `(tag_id, facet) → tags (id, facet)`.
+Snapshot là nhiều hàng nên cần chặn “thêm slot vào snapshot cũ”: trigger từ chối `UPDATE`/`DELETE`/ `TRUNCATE`, và một **constraint trigger hoãn tới commit** tính lại digest bằng hàm SQL `work_metadata_digest` (cùng byte layout với `MetadataDigest::of`) rồi so với `digest` đã lưu."""
+rationale = """
+Sai facet, thẻ dangling, trùng thẻ và chủ đề thứ tư **không biểu diễn được**, không cần CHECK đếm hàng giả vờ thấy hàng khác. Discovery (#98) truy vấn được `tag_id` trực tiếp
+Không có FK cho từng phần tử; cần một writer duy nhất kiểm tham chiếu và một chiến lược truy vấn JSON. Đọc một snapshot rẻ hơn chút, nhưng không đáng ở quy mô ≤ 4 thẻ/tác phẩm"""
+requires = [
+    "TAG-PR-01-CHOICE-01@r1",
+    "TAG-PR-01-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 25
+source_path = "docs/development/taxonomy-postgres.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-postgres.md"
+alternative = "B. Catalog + payload snapshot JSON/array"
+review_when = "Xem lại nếu pilot cần nhiều chủ đề hơn hoặc nhiều dạng bài (khi đó slot dạng bài cũng phải đổi)."
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-02-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#96 CHOICE-02 version của metadata nháp: B, version riêng + chụp cặp tường minh, lát TAG-PR-02"
+resolution = """
+B. `work_draft_metadata.version` riêng
+Lưu văn bản và lưu thẻ độc lập (`text_and_tag_saves_of_one_work_do_not_conflict`). Cặp công khai được chụp tường minh: seam `capture_metadata_snapshot` khóa hàng metadata `FOR SHARE` và chỉ chụp đúng version tác giả xác nhận, nên lưu thẻ đồng thời không thể tạo snapshot lệch (`capture_and_tag_saves_cannot_publish_a_mismatched_snapshot`)"""
+rationale = "Một lần lưu sở hữu cả hai, nhưng autosave văn bản dày đặc sẽ làm mọi lần sửa thẻ ở tab khác xung đột (và ngược lại)"
+requires = ["TAG-PR-01-CHOICE-02@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 43
+source_path = "docs/development/taxonomy-postgres.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-postgres.md"
+alternative = "A. Chung version với văn bản nháp"
+review_when = "Xem lại khi owner publication quyết định một lệnh gửi duyệt phải mang cả version văn bản và version metadata"
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-03-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#97 CHOICE-01 transport metadata tác giả: B, resource riêng có version riêng, lát TAG-PR-03"
+resolution = """
+B. `/drafts/{id}/tags` với `expected_version` riêng
+Khớp storage #96; hợp đồng lưu văn bản **không đổi** (vẫn `deny_unknown_fields`), nên mọi client cũ tiếp tục đúng mà không cần presence semantics. Trong resource thẻ, body là **toàn bộ** trạng thái mong muốn và mọi field bắt buộc: thiếu field là `422`, chỉ `null`/`[]` mới xóa"""
+rationale = "Một lệnh nguyên tử, nhưng #96 đã chọn version metadata **riêng** (CHOICE-02 B); gộp vào lưu văn bản buộc autosave dày đặc mang theo thẻ, và client cũ bỏ trường sẽ mơ hồ giữa “không đổi” và “xóa”"
+requires = [
+    "TAG-PR-01-CHOICE-02@r1",
+    "TAG-PR-02-CHOICE-02@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 43
+source_path = "docs/development/taxonomy-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-api.md"
+alternative = "A. Mở rộng `PUT /drafts/{id}` (văn bản + thẻ một lệnh)"
+review_when = "Xem lại nếu owner publication quyết định lệnh gửi duyệt phải mang cả hai version."
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-03-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#97 CHOICE-02 entrypoint quản trị catalog: A, lệnh operator, lát TAG-PR-03"
+resolution = """
+A. CLI operator gọi cùng application/core/store
+Không có authority production (D-05 Provisional) nên một route admin HTTP sẽ không dùng được ở production nhưng vẫn mở thêm bề mặt; CLI dùng đúng mẫu `vink-app moderator`, gọi `Vink::change_catalog` → `CatalogStore` → `decide_catalog_change`, không có SQL đi tắt
+Authority là giá trị `CuratorAuthority` mà chỉ lệnh operator tạo (`CuratorAuthority::operator()`); store quyết định `can_curate` từ nó trong transaction thay đổi."""
+rationale = "Cần vòng đời grant (cấp/thu hồi/kiểm tại commit), chống lạm dụng và test giả actor/sai vai trò/grant bị thu hồi — trên một authority chưa được nghiệm thu"
+requires = [
+    "TAG-PR-01-CHOICE-03@r1",
+    "TAG-PR-02-CHOICE-01@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 57
+source_path = "docs/development/taxonomy-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-api.md"
+alternative = "B. HTTP hạn chế với grant taxonomy"
+review_when = "Xem lại khi có admin auth đã nghiệm thu và nhu cầu UI curator"
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-03-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#97 CHOICE-03 đối soát khi không biết lệnh đã lưu chưa: A, desired state có version + đọc lại, lát TAG-PR-03"
+resolution = """
+A. Desired state + `expected_version`; `409` kèm thẻ đang lưu; GET để đối soát
+Mọi lần lưu được chấp nhận tăng version (fence #95), body là toàn bộ lựa chọn, nên gửi lại sau timeout không thể âm thầm ghi đè lựa chọn mới hơn. `409` mang `tags` (ID đang lưu) để client so với mong muốn. Không cần bảng receipt hay retention"""
+rationale = """
+Biết chính xác lệnh nào đã commit, nhưng tác giả cần trạng thái hiện tại, không cần lịch sử tab nào thắng; thêm bảng, retention, kiểm payload khác
+`409` có `tags` bằng mong muốn chỉ chứng minh **trạng thái** đang đúng, không chứng minh lệnh nào đã commit."""
+requires = [
+    "TAG-PR-02-CHOICE-02@r1",
+    "TAG-PR-03-CHOICE-01@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 71
+source_path = "docs/development/taxonomy-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-api.md"
+alternative = "B. Command key theo actor/resource + receipt chính xác (mẫu LVE)"
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-04-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#98 CHOICE-01 hình dạng API: A, mở rộng GET /api/v1/works, lát TAG-PR-04"
+resolution = """
+A. Một resource, tham số validate
+Trang chủ đúng là trang đầu của tìm kiếm không lọc: một SQL, một luật hiển thị, một validator, một port SSR. Request mặc định giữ URL, thứ tự và 12 bài; body chỉ **thêm** field (`tags`, `filters`, `next_cursor`) nên consumer cũ không vỡ (consumer web cập nhật DTO cùng PR, fixture hai phía đều chạy)"""
+rationale = """
+Hai bề mặt phải giữ cùng luật hiển thị/thứ tự/thẻ; trang chủ và trang tìm có thể lệch nhau trên cùng dữ liệu
+Đánh đổi: ETag của trang chủ đổi một lần (body có thêm field)."""
+requires = [
+    "TAG-PR-01-CHOICE-01@r1",
+    "TAG-PR-02-CHOICE-01@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 41
+source_path = "docs/development/discovery-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/discovery-api.md"
+alternative = "B. Endpoint discovery riêng"
+review_when = "Xem lại nếu trang chủ cần nội dung biên tập không phải “mới nhất” (curation)"
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-04-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#98 CHOICE-02 chiến lược PostgreSQL: join trực tiếp có index + khóa gập dấu lưu sẵn do PostgreSQL duy trì, lát TAG-PR-04"
+resolution = """
+A + cột generated
+Join trực tiếp qua `publications` (không authority thứ hai), cộng: hàm SQL `vink_search_key` (IMMUTABLE, ICU tường minh) và cột `GENERATED ALWAYS … STORED` trên `revisions.title` và `principals.display_name`, do PostgreSQL tính trong chính câu lệnh ghi chữ — không writer nào quên được, không job sửa, khóa không thể thuộc chữ khác.
+Hai cài đặt của một khóa: `vink_search_key` (SQL) gương `SearchKey::of` (Rust). **Cả hai vế** của phép so (chữ lưu và truy vấn) đi qua hàm SQL. Rust kiểm tra độ dài, ký tự NUL và yêu cầu có chữ hoặc số."""
+rationale = """
+Đo trên 20 000 tác phẩm (mục 6): gập 20 000 tiêu đề mỗi lần tìm ~0,2–0,5 s; lọc thẻ bằng `<@ ARRAY(subquery)` làm planner ước lượng sai và chạy ~20 s
+Thêm writer, repair, đồng bộ khi rút/tái bản/đổi tên; không có writer publication production để gắn vào"""
+requires = ["TAG-PR-01-CHOICE-01@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 51
+source_path = "docs/development/discovery-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/discovery-api.md"
+alternative = """
+A thuần: join trực tiếp, gập dấu lúc đọc
+B thuần: bảng projection tìm kiếm"""
+review_when = "Xem lại khi thư viện công khai tới khoảng 10^5 tác phẩm hoặc đo được độ trễ đáng kể"
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-04-CHOICE-03"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#98 CHOICE-03 nhiều thẻ: A, phải có đủ mọi thẻ đã chọn (AND), lát TAG-PR-04"
+resolution = """
+A. AND
+Người đọc thu hẹp dần một tập (“Tản văn” + “Ký ức”); truth table nhỏ, rõ (mục 5); một tác phẩm có ≤ 1 dạng bài + ≤ 3 chủ đề nên tối đa 4 thẻ có nghĩa
+hai dạng bài cùng lúc luôn rỗng (đúng luật một dạng bài, không phải lỗi). UI #100 phải ghi đúng “có tất cả các thẻ”."""
+rationale = "Rộng hơn nhưng UI phải giải thích hợp; hai dạng bài OR là hợp lý nhưng AND chủ đề lại mất"
+requires = ["TAG-PR-04-CHOICE-01@r1"]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 75
+source_path = "docs/development/discovery-api.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/discovery-api.md"
+alternative = "B. OR"
+review_when = "Xem lại khi pilot cho thấy người đọc thường muốn hợp."
+source_status = "Đây là lựa chọn triển khai của slice, không phải product Accepted; mỗi mục có điều kiện xem lại."
+
+[[records]]
+id = "TAG-PR-05-CHOICE-01"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#99 CHOICE-01 bố cục: A, mục “Thông tin tác phẩm” inline sau trang viết, không lớp phủ, lát TAG-PR-05"
+resolution = """
+**A**: mục “Thông tin tác phẩm” inline sau trang viết, không lớp phủ
+Một nút **Lưu** (và Ctrl/Cmd+S) gửi phần đã đổi: thẻ nếu thẻ đổi, chữ nếu chữ đổi; không đổi gì thì lưu chữ như trước"""
+rationale = """
+Danh mục cần nhóm/mô tả dài/nhiều facet: panel/sheet bằng `OverlayLayer` hiện có
+Có autosave: autosave chỉ chữ, thẻ vẫn lưu theo ý định rõ"""
+requires = [
+    "TAG-PR-01-CHOICE-02@r1",
+    "TAG-PR-03-CHOICE-01@r1",
+    "TAG-PR-03-CHOICE-03@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 31
+source_path = "docs/development/taxonomy-editor.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-editor.md"
+source_status = "Hai câu OPEN của issue được chọn bằng bằng chứng cục bộ; chi tiết và phương án bị loại ở [LayoutSpec](../design/tag-selector.md). Đây là lựa chọn của lát, chưa có usability test."
+
+[[records]]
+id = "TAG-PR-05-CHOICE-02"
+revision = 1
+
+[records.content]
+kind = "architecture"
+domain = "taxonomy"
+title = "#99 CHOICE-02 ranh giới: A, composition TagSelector/TagChip trong vink-patterns, lát TAG-PR-05"
+resolution = """
+**A**: composition `TagSelector`/`TagChip` trong `vink-patterns`, ghép primitive có sẵn; không primitive/token mới
+Chặn thêm chủ đề thứ 4 và thẻ trùng như projection; server vẫn là authority (`too_many_themes` vẫn được xử lý)"""
+rationale = "Combobox `aria-activedescendant` hoặc chọn nhiều nơi khác cần cùng ngữ nghĩa bàn phím: admit primitive vào `ui-system` với vectors"
+requires = [
+    "TAG-PR-01-CHOICE-01@r1",
+    "TAG-PR-03-CHOICE-01@r1",
+]
+
+[records.legacy]
+group = "DECISION-DEV-20261112"
+status = "DESIGN_PROPOSED"
+historical = false
+source_line = 32
+source_path = "docs/development/taxonomy-editor.md"
+related_ids = ["D-15"]
+
+[records.legacy.context]
+canonical_references = "docs/development/taxonomy-editor.md"
+source_status = "Hai câu OPEN của issue được chọn bằng bằng chứng cục bộ; chi tiết và phương án bị loại ở [LayoutSpec](../design/tag-selector.md). Đây là lựa chọn của lát, chưa có usability test."

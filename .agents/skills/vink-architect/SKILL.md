@@ -25,8 +25,8 @@ Do not publish invented endpoints as an implemented contract.
 Identify the few decisions this task actually needs: content ownership, commit boundary,
 browser/server separation, identity source, recovery, or operational cost. Record assumptions
 that remain provisional. Routine reversible implementation choices do not need a new approval;
-an unresolved product choice such as auth authority, tombstone write policy (`O-03`) or automatic
-moderation cannot be silently settled by a prototype. When an architectural tradeoff hinges on an
+an unresolved product choice such as auth authority, account recovery (`O-11`) or tombstone
+purge policy (`O-08`) cannot be silently settled by a prototype. When an architectural tradeoff hinges on an
 undecided product rule, use [vink-shape](../vink-shape/SKILL.md) to separate owner product
 decisions from engineering choices; when recording a confirmed decision or updating specs/registries,
 use [vink-specify](../vink-specify/SKILL.md). Continue independent work while a necessary choice is clarified.

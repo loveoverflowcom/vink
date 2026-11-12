@@ -44,37 +44,37 @@ const DISC_10: &str = "**Ngày:** 10/11/2026.";
 /// table row. `Quote` must occur verbatim in one of the blocks (soft line breaks read as spaces).
 /// `Label` names a record and is accepted only as a title.
 #[derive(Clone, Copy)]
-enum Part {
+pub(super) enum Part {
     Cell(usize),
     Quote(&'static str),
     Label(&'static str),
 }
 
-use Part::{Cell, Label, Quote};
+pub(super) use Part::{Cell, Label, Quote};
 
 #[derive(Clone, Copy)]
-struct Spec {
-    id: &'static str,
-    kind: Kind,
-    domain: &'static str,
-    status: Status,
-    source: &'static str,
+pub(super) struct Spec {
+    pub id: &'static str,
+    pub kind: Kind,
+    pub domain: &'static str,
+    pub status: Status,
+    pub source: &'static str,
     /// Line prefixes, each matching exactly one line: a table row, a heading (until the next
     /// heading of the same or a higher level) or a paragraph (until the next blank line).
-    blocks: &'static [&'static str],
-    title: Part,
-    source_status: Part,
-    resolution: &'static [Part],
-    rationale: &'static [Part],
-    alternative: &'static [Part],
-    review_when: &'static [Part],
-    requires: &'static [&'static str],
-    related_ids: &'static [&'static str],
+    pub blocks: &'static [&'static str],
+    pub title: Part,
+    pub source_status: Part,
+    pub resolution: &'static [Part],
+    pub rationale: &'static [Part],
+    pub alternative: &'static [Part],
+    pub review_when: &'static [Part],
+    pub requires: &'static [&'static str],
+    pub related_ids: &'static [&'static str],
     /// Owner documents that keep the split-off spec, runtime snapshot and evidence.
-    references: &'static str,
+    pub references: &'static str,
 }
 
-const D_ROW: Spec = Spec {
+pub(super) const D_ROW: Spec = Spec {
     id: "",
     kind: Kind::Architecture,
     domain: "platform",
@@ -94,7 +94,7 @@ const D_ROW: Spec = Spec {
 
 /// An issue-local choice row: ID | choice | reason, recorded by one slice as an implementation
 /// choice that has not been accepted.
-const fn choice(
+pub(super) const fn choice(
     id: &'static str,
     domain: &'static str,
     source: &'static str,
@@ -556,13 +556,13 @@ fn heading_level(line: &str) -> Option<usize> {
     (level > 0 && line[level..].starts_with(' ')).then_some(level)
 }
 
-fn block(source: &str, lines: &[&str], anchor: &str) -> Result<Block, String> {
+fn block(commit: &str, source: &str, lines: &[&str], anchor: &str) -> Result<Block, String> {
     let found: Vec<_> = (0..lines.len())
         .filter(|&i| lines[i].starts_with(anchor))
         .collect();
     let [start] = found[..] else {
         return Err(format!(
-            "{source}@{COMMIT}: anchor {anchor:?} matches {} lines, expected one",
+            "{source}@{commit}: anchor {anchor:?} matches {} lines, expected one",
             found.len()
         ));
     };
@@ -606,8 +606,14 @@ fn block(source: &str, lines: &[&str], anchor: &str) -> Result<Block, String> {
 }
 
 impl Spec {
-    fn excerpt(&self, blocks: &[Block], part: Part, title: bool) -> Result<String, String> {
-        let error = |message: String| format!("{}@{COMMIT}: {}: {message}", self.source, self.id);
+    fn excerpt(
+        &self,
+        commit: &str,
+        blocks: &[Block],
+        part: Part,
+        title: bool,
+    ) -> Result<String, String> {
+        let error = |message: String| format!("{}@{commit}: {}: {message}", self.source, self.id);
         match part {
             Cell(index) => blocks[0]
                 .cells
@@ -624,18 +630,23 @@ impl Spec {
         }
     }
 
-    fn join(&self, blocks: &[Block], parts: &[Part]) -> Result<Option<String>, String> {
+    fn join(
+        &self,
+        commit: &str,
+        blocks: &[Block],
+        parts: &[Part],
+    ) -> Result<Option<String>, String> {
         if parts.is_empty() {
             return Ok(None);
         }
         let excerpts = parts
             .iter()
-            .map(|part| self.excerpt(blocks, *part, false))
+            .map(|part| self.excerpt(commit, blocks, *part, false))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(Some(excerpts.join("\n")))
     }
 
-    fn row(&self, text: &str) -> Result<Row, String> {
+    pub(super) fn row(&self, commit: &str, group_id: &str, text: &str) -> Result<Row, String> {
         if !legacy::status_matches_kind(self.status, self.kind) || self.status == Status::Accepted {
             return Err(format!(
                 "{}: {:?} is not importable for a {:?} decision; an import never promotes",
@@ -646,7 +657,7 @@ impl Spec {
         let blocks = self
             .blocks
             .iter()
-            .map(|anchor| block(self.source, &lines, anchor))
+            .map(|anchor| block(commit, self.source, &lines, anchor))
             .collect::<Result<Vec<_>, _>>()?;
         if blocks.is_empty() {
             return Err(format!("{}: no source block", self.id));
@@ -661,17 +672,17 @@ impl Spec {
             content: Content {
                 kind: self.kind,
                 domain: self.domain.into(),
-                title: self.excerpt(&blocks, self.title, true)?,
+                title: self.excerpt(commit, &blocks, self.title, true)?,
                 resolution: self
-                    .join(&blocks, self.resolution)?
+                    .join(commit, &blocks, self.resolution)?
                     .ok_or_else(|| format!("{}: missing resolution", self.id))?,
-                rationale: self.join(&blocks, self.rationale)?,
+                rationale: self.join(commit, &blocks, self.rationale)?,
                 requires,
                 related_ids: vec![],
                 work_audiences: vec![],
             },
             legacy: Provenance {
-                group: GROUP_ID.into(),
+                group: group_id.into(),
                 status: self.status,
                 historical: false,
                 source_line: blocks[0].line,
@@ -680,9 +691,14 @@ impl Spec {
                 context: Context {
                     canonical_references: (!self.references.is_empty())
                         .then(|| self.references.into()),
-                    alternative: self.join(&blocks, self.alternative)?,
-                    review_when: self.join(&blocks, self.review_when)?,
-                    source_status: Some(self.excerpt(&blocks, self.source_status, false)?),
+                    alternative: self.join(commit, &blocks, self.alternative)?,
+                    review_when: self.join(commit, &blocks, self.review_when)?,
+                    source_status: Some(self.excerpt(
+                        commit,
+                        &blocks,
+                        self.source_status,
+                        false,
+                    )?),
                     ..Context::default()
                 },
             },
@@ -690,37 +706,53 @@ impl Spec {
     }
 }
 
-pub(super) fn verify_import(text: &str) -> Result<(), String> {
+pub(super) fn verify_bundle(
+    file: &str,
+    commit: &str,
+    group_id: &str,
+    import_sha256: &str,
+    text: &str,
+) -> Result<(), String> {
     let normalized = text.replace("\r\n", "\n");
-    if sha256_hex(normalized.as_bytes()) != IMPORT_SHA256 {
+    if sha256_hex(normalized.as_bytes()) != import_sha256 {
         return Err(format!(
-            "{FILE}: differs from the reviewed {COMMIT} import; use decision migrate --dry-run {GROUP_ID} to compare"
+            "{file}: differs from the reviewed {commit} import; use decision migrate --dry-run {group_id} to compare"
         ));
     }
     Ok(())
 }
 
-pub(super) fn load(root: &Path) -> Result<BTreeMap<Key, Entry>, String> {
-    let path = root.join(FILE);
+pub(super) fn verify_import(text: &str) -> Result<(), String> {
+    verify_bundle(FILE, COMMIT, GROUP_ID, IMPORT_SHA256, text)
+}
+
+pub(super) fn load_bundle(
+    root: &Path,
+    file: &str,
+    commit: &str,
+    group_id: &str,
+    import_sha256: &str,
+) -> Result<BTreeMap<Key, Entry>, String> {
+    let path = root.join(file);
     let text = record::read_file(&path)?;
     let import: Import = record::decode(&path, &text)?;
     if import.version != VERSION {
         return Err(format!(
-            "{FILE}: version: unsupported format {}",
+            "{file}: version: unsupported format {}",
             import.version
         ));
     }
-    verify_import(&text)?;
+    verify_bundle(file, commit, group_id, import_sha256, &text)?;
     let mut entries = BTreeMap::new();
     for mut row in import.records {
-        if row.legacy.group != GROUP_ID || row.legacy.source_path.is_none() || row.revision != 1 {
-            return Err(format!("{FILE}: {}: unexpected import provenance", row.id));
+        if row.legacy.group != group_id || row.legacy.source_path.is_none() || row.revision != 1 {
+            return Err(format!("{file}: {}: unexpected import provenance", row.id));
         }
         if !legacy::status_matches_kind(row.legacy.status, row.content.kind)
             || row.legacy.status == Status::Accepted
         {
             return Err(format!(
-                "{FILE}: {}: status outside the import contract",
+                "{file}: {}: status outside the import contract",
                 row.id
             ));
         }
@@ -735,18 +767,22 @@ pub(super) fn load(root: &Path) -> Result<BTreeMap<Key, Entry>, String> {
             signoff: None,
         };
         if entries.insert(key.clone(), entry).is_some() {
-            return Err(format!("{FILE}: duplicate revision {key}"));
+            return Err(format!("{file}: duplicate revision {key}"));
         }
     }
     Ok(entries)
 }
 
-fn show(root: &Path, source: &str) -> Result<String, String> {
+pub(super) fn load(root: &Path) -> Result<BTreeMap<Key, Entry>, String> {
+    load_bundle(root, FILE, COMMIT, GROUP_ID, IMPORT_SHA256)
+}
+
+fn show(root: &Path, commit: &str, source: &str) -> Result<String, String> {
     let result = Command::new("git")
         .args([
             "--no-replace-objects",
             "show",
-            &format!("{COMMIT}:{source}"),
+            &format!("{commit}:{source}"),
         ])
         .current_dir(root)
         .env("GIT_NO_LAZY_FETCH", "1")
@@ -754,20 +790,25 @@ fn show(root: &Path, source: &str) -> Result<String, String> {
         .map_err(|e| format!("read migration source with git: {e}"))?;
     if !result.status.success() {
         return Err(format!(
-            "migration source {COMMIT}:{source} unavailable; use a checkout with that Git object"
+            "migration source {commit}:{source} unavailable; use a checkout with that Git object"
         ));
     }
     String::from_utf8(result.stdout).map_err(|e| format!("migration source must be UTF-8: {e}"))
 }
 
-pub(super) fn render(root: &Path) -> Result<String, String> {
+pub(super) fn render_bundle(
+    root: &Path,
+    commit: &str,
+    group_id: &str,
+    specs: &[Spec],
+) -> Result<String, String> {
     let mut sources = BTreeMap::new();
     let mut records = Vec::new();
-    for spec in SPECS {
+    for spec in specs {
         if !sources.contains_key(spec.source) {
-            sources.insert(spec.source, show(root, spec.source)?);
+            sources.insert(spec.source, show(root, commit, spec.source)?);
         }
-        records.push(spec.row(&sources[spec.source])?);
+        records.push(spec.row(commit, group_id, &sources[spec.source])?);
     }
     records.sort_by(|a, b| a.id.cmp(&b.id));
     if let Some(pair) = records.windows(2).find(|pair| pair[0].id == pair[1].id) {
@@ -775,9 +816,13 @@ pub(super) fn render(root: &Path) -> Result<String, String> {
     }
     record::encode(&Import {
         version: VERSION,
-        source_commit: COMMIT.into(),
+        source_commit: commit.into(),
         records,
     })
+}
+
+pub(super) fn render(root: &Path) -> Result<String, String> {
+    render_bundle(root, COMMIT, GROUP_ID, SPECS)
 }
 
 #[cfg(test)]
@@ -794,7 +839,7 @@ mod tests {
 
     #[test]
     fn excerpts_must_be_verbatim_in_their_blocks() {
-        let row = BASE.row(SOURCE).unwrap();
+        let row = BASE.row(COMMIT, GROUP_ID, SOURCE).unwrap();
         assert_eq!(row.content.title, "Nội dung");
         assert_eq!(row.legacy.context.source_status.as_deref(), Some("Đề xuất"));
         assert_eq!(row.legacy.source_line, 3);
@@ -803,7 +848,7 @@ mod tests {
             resolution: &[Quote("Đoạn một nối dòng.")],
             ..BASE
         };
-        assert!(joined.row(SOURCE).is_ok());
+        assert!(joined.row(COMMIT, GROUP_ID, SOURCE).is_ok());
         for (spec, error) in [
             (
                 Spec {
@@ -855,7 +900,7 @@ mod tests {
                 "never promotes",
             ),
         ] {
-            let message = spec.row(SOURCE).err().unwrap();
+            let message = spec.row(COMMIT, GROUP_ID, SOURCE).err().unwrap();
             assert!(message.contains(error), "{message}");
         }
     }
