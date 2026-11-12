@@ -4,7 +4,11 @@
 của DecisionDelta: §2–4 của lượt 10/11/2026 (`PRODUCT-DECISIONS-20261110`) và §7 quản trị kiểm duyệt
 của lượt 11/11/2026 (`ADMIN-MODERATION-20261111`). [Bundle nhập sổ D/ADR](decision-log-20261111.toml)
 (`DECISION-LOG-20261111`) lưu phần quyết định của D-02..D-15 và các `CHOICE` theo issue trong ADR
-thảo luận, literary endorsement và phân loại. Mỗi revision sau đó gồm một proposal trong
+thảo luận, literary endorsement và phân loại. [Bundle nhập lựa chọn phát triển](decision-dev-20261112.toml)
+(`DECISION-DEV-20261112`) lưu 27 lựa chọn thiết kế từ các lát phân loại/khám phá (#96–#99, `TAG-PR-02..05`),
+đường production Auth (§11, `D-05-C1..C5`), biểu tượng Pen Flight R2 (`LVE-WP-04-CHOICE-07`), đọc công khai
+có điều kiện (`READ-01-CHOICE-01..04`, `READ-02-CHOICE-01..04`) và đọc thảo luận trên Web
+(`DISC-WEB-CHOICE-01..03`). Mỗi revision sau đó gồm một proposal trong
 `proposals/`, và chỉ có hiệu lực khi có signoff của chủ sản phẩm trong `signoffs/`.
 [Bảng kiểm kê và bàn giao](../docs/development/decision-registry-rollout.md) ghi phạm vi đã chuyển,
 nguồn còn dùng và các điểm còn mở. PRD vẫn sở hữu yêu cầu và tiêu chí nghiệm thu. ADR giữ thiết kế,
@@ -23,6 +27,7 @@ cargo xtask decision query D-07
 cargo xtask decision query LVE-PR-01-CHOICE-02
 cargo xtask decision query ADMIN-MODERATION-20261111
 cargo xtask decision query DECISION-LOG-20261111
+cargo xtask decision query DECISION-DEV-20261112
 cargo xtask decision diff O-12@r1 O-12@r2
 cargo xtask decision refs
 cargo xtask decision validate
@@ -46,9 +51,10 @@ cargo xtask decision validate
 - Khi bàn giao, lưu Git SHA, `snapshot_sha256`, `ID@rN` và `source` từ kết quả. `query` không
   đối số xuất toàn bộ revision dưới dạng JSON. Dữ liệu xuất được dựng lại mỗi lần từ TOML.
 - Khi CLI lỗi hoặc không chạy được, nêu nguồn và SHA của dữ liệu đã đọc cùng phần chưa xác minh.
-  [DecisionDelta tại commit nhập](https://github.com/loveoverflowcom/vink/blob/af3c34bd624be18d404bd5789620759cae0b0ddb/docs/architecture/product-decisions-20261110.md)
-  và [sổ D-ID tại commit nhập](https://github.com/loveoverflowcom/vink/blob/73ab92f0064674833ec31bc7533b210149b26b79/docs/architecture/decisions.md)
-  là bản đối chiếu lịch sử. Record nhập từ sổ D/ADR ghi `source.path` và dòng nguồn tại commit
+  [DecisionDelta tại commit nhập](https://github.com/loveoverflowcom/vink/blob/af3c34bd624be18d404bd5789620759cae0b0ddb/docs/architecture/product-decisions-20261110.md),
+  [sổ D-ID tại commit nhập](https://github.com/loveoverflowcom/vink/blob/73ab92f0064674833ec31bc7533b210149b26b79/docs/architecture/decisions.md)
+  và các lát phát triển tại commit nhập `630e80a9a1b2790eb4f3c663afb7ad627163d3cb`
+  là bản đối chiếu lịch sử. Record nhập từ sổ D/ADR/lát phát triển ghi `source.path` và dòng nguồn tại commit
   nhập. Khi phạm vi hiện hành chưa xác định được, ghi `UNKNOWN` và tra owner của miền. Query và validate chạy được ở checkout nông. Lệnh migrate cần Git object của nguồn.
 
 ## Đề xuất một revision

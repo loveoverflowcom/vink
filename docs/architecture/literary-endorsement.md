@@ -15,9 +15,9 @@ phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/
 > (O-06, [đặc tả](comment-editing.md)). Không lựa chọn nào của lát LVE bị đổi; chưa có code xếp hạng.
 
 **Record (11/11/2026):** phạm vi D-14 tra tại `D-14@r1`. Lựa chọn của #73 tra theo lát:
-`LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*` (#81) và `LVE-WP-04-CHOICE-10`, đều `DESIGN_PROPOSED`.
-Các bảng dưới giữ lý do và lịch sử lúc chọn. CHOICE-06 (ranking) chưa chọn. CHOICE-07 (icon) cần
-rà vì registry runtime ghi đã gắn glyph Pen Flight R2 A.
+`LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*` (#81) và `LVE-WP-04-CHOICE-07/10`, đều `DESIGN_PROPOSED`.
+Các bảng dưới giữ lý do và lịch sử lúc chọn. CHOICE-06 (ranking) chưa chọn (hướng đích thuộc
+USER-12/O-07). CHOICE-07 (icon) tra tại `LVE-WP-04-CHOICE-07@r1` (Pen Flight R2 A · Mềm đã chốt).
 
 <!-- vdr: active D-14@r1 -->
 <!-- vdr: active LVE-PR-01-CHOICE-01@r1 -->
@@ -31,6 +31,7 @@ rà vì registry runtime ghi đã gắn glyph Pen Flight R2 A.
 <!-- vdr: active LVE-PR-02-03-CHOICE-05@r1 -->
 <!-- vdr: active LVE-PR-02-03-CHOICE-12@r1 -->
 <!-- vdr: active LVE-PR-02-03-CHOICE-13@r1 -->
+<!-- vdr: active LVE-WP-04-CHOICE-07@r1 -->
 <!-- vdr: active LVE-WP-04-CHOICE-10@r1 -->
 
 ## Hợp nhất sau #78/#79
@@ -72,7 +73,7 @@ của các lựa chọn dưới đây là contract để PR2/PR3 review/consume,
 
 **Còn OPEN (tại PR1):** CHOICE-04 storage/FK; 05 aggregate/read strategy; 06 ranking; 07 icon;
 10 client confirmation; 12 voter visibility/consent. Sau đó 04/05/12 chốt A ở [#81](#lát-api--postgresql-81),
-10 chốt A ở [lát Web adapter](#lát-web-adapter-wp-04-06112026); 06 và 07 vẫn OPEN. Core chỉ trả count và trạng thái riêng của actor,
+10 chốt A ở [lát Web adapter](#lát-web-adapter-wp-04-06112026); 06 vẫn OPEN (hướng đích thuộc USER-12/O-07), 07 chốt A · Mềm tại WP-04 ([Pen Flight R2](../design/pen-flight-r2.md)). Core chỉ trả count và trạng thái riêng của actor,
 không có voter list; không được suy quyền công khai danh tính. Facets, chapter target, sửa comment,
 account ban/removal/quarantine/retention, rate limit và auth authority chưa được triển khai.
 D-05/08/12 giữ trạng thái hiện hành. Ranking/optimistic UI không nằm trong PR1.

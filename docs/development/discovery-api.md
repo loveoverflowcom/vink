@@ -40,6 +40,8 @@ product Accepted; mỗi mục có điều kiện xem lại.
 
 ### CHOICE-01 — Hình dạng API: **A, mở rộng `GET /api/v1/works`**
 
+<!-- vdr: active TAG-PR-04-CHOICE-01@r1 -->
+
 | Phương án | Đánh giá |
 | --- | --- |
 | **A. Một resource, tham số validate** (chọn) | Trang chủ đúng là trang đầu của tìm kiếm không lọc: một SQL, một luật hiển thị, một validator, một port SSR. Request mặc định giữ URL, thứ tự và 12 bài; body chỉ **thêm** field (`tags`, `filters`, `next_cursor`) nên consumer cũ không vỡ (consumer web cập nhật DTO cùng PR, fixture hai phía đều chạy) |
@@ -49,6 +51,8 @@ product Accepted; mỗi mục có điều kiện xem lại.
 tập không phải “mới nhất” (curation): khi đó trang chủ thành resource riêng, discovery giữ route này.
 
 ### CHOICE-02 — Chiến lược PostgreSQL: **join trực tiếp có index + khóa gập dấu lưu sẵn do PostgreSQL duy trì**
+
+<!-- vdr: active TAG-PR-04-CHOICE-02@r1 -->
 
 | Phương án | Đánh giá |
 | --- | --- |
@@ -73,6 +77,8 @@ migration thất bại thay vì gập khác đi. Truy vấn chữ không có k�
 đáng kể: index trigram (`pg_trgm`) trên hai cột khóa, hoặc projection.
 
 ### CHOICE-03 — Nhiều thẻ: **A, phải có đủ mọi thẻ đã chọn (AND)**
+
+<!-- vdr: active TAG-PR-04-CHOICE-03@r1 -->
 
 | Phương án | Đánh giá |
 | --- | --- |

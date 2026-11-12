@@ -6,6 +6,10 @@ Không đổi lifecycle, schema, admission hoặc policy; D-05 vẫn Provisional
 
 ## Quyết định
 
+<!-- vdr: active DISC-WEB-CHOICE-01@r1 -->
+<!-- vdr: active DISC-WEB-CHOICE-02@r1 -->
+<!-- vdr: active DISC-WEB-CHOICE-03@r1 -->
+
 - **01 A — vùng riêng gọn** “Nhận xét của bạn” ngay sau composer gốc. Giữ timeline
   công khai có nghĩa công khai; own list tới được pending/rejected ngoài trang hoặc dưới root
   không được liệt kê. Loại B (ghép theo chronology) vì cần thêm vị trí/cursor/context cho

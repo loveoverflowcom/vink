@@ -11,7 +11,7 @@ Read the [vision](../../../prd/vision.md), UX/WR/AUD/PUB/COL/HTG/RANK/TOP requir
 design/component owners. Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
 [vink-cmp-mobile](../vink-cmp-mobile/SKILL.md) for renderer implementation and
 [vink-publication](../vink-publication/SKILL.md) for the meaning of publication states.
-When a screen or flow hits an unresolved product rule (`OPEN` items `O-01..O-16` or new authority/state
+When a screen or flow hits an unresolved product rule (`OPEN` items in `O-01..O-19` or new authority/state
 questions), clarify it with [vink-shape](../vink-shape/SKILL.md); when a design settles or updates
 a documented UX/state contract, record it with [vink-specify](../vink-specify/SKILL.md).
 For an audit-only request, inspect and report; fixing requires scope already granted by the user.

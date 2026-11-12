@@ -17,13 +17,13 @@ COM-01–COM-04 and COM-09/10 (`ED-02` magazine curation and `WR-04` multi-chapt
 Use [vink-engineering](../vink-engineering/SKILL.md) for boundaries and verification.
 
 When a task introduces or changes rules for audience, moderation, deletion/tombstone, restoration
-or actor authority that are still `OPEN` (`O-03..O-10`, `O-15`), route through
+or actor authority that are still `OPEN` (`O-04`, `O-08..O-10`, `O-17..O-19`, or direct-admin appeal in `O-15`), route through
 [vink-shape](../vink-shape/SKILL.md) first; when a decision or implementation changes current
 contracts or registries, update the owning files via [vink-specify](../vink-specify/SKILL.md).
 Keep the four status dimensions distinct: product decision (`PRODUCT_CONFIRMED` / `DEFERRED` /
 `OPEN`), architecture status, implementation level (`core` / `persistence-api` / `worker-provider`
-/ `web` / `cmp`), and verification evidence. A safe baseline in pure core (such as `O-03` on
-tombstones) does not turn an `OPEN` rule into `PRODUCT_CONFIRMED`.
+/ `web` / `cmp`), and verification evidence. A safe baseline in pure core (such as `O-04` on
+pending comments at deletion or `O-17` on previous URLs) does not turn an `OPEN` rule into `PRODUCT_CONFIRMED`.
 
 ## Keep independent facts independent
 
@@ -71,22 +71,28 @@ untrusted data validated against a strict schema. Timeout, provider error or inv
 the job as retryable or `NeedsAdmin` without publishing (`MOD-08`). Do not promise an SLA, staffed
 queue or connected notification channel while appeals (`MOD-10`) and real providers are unimplemented.
 
-## Discussion access and deletion lifecycle (PUB-04, PUB-05)
+## Discussion access and deletion lifecycle (PUB-04, PUB-05, ADM-07, ADM-08)
 
 Vink owns two-tier discussion in PostgreSQL ([ADR](../../../docs/architecture/discussion-ownership.md));
 there is no Discourse integration or remote topic sync. Discussion visibility composes with the
-work's `WorkAccessPlan` (`PublicBody`, `AuthorTombstone`, `Unavailable`):
+work's `WorkAccessPlan` (`PublicBody`, `AuthorTombstone`, `AuthorHidden`, `Unavailable`):
 
 - **Case A — Author deletes a work that was public (`PUB-04`):** `DeletionProvenance::PublicTombstone`
   removes the work from discovery/search/hashtags/rankings and hides title/body/metadata, while the
   old URL serves the replacement notice (“Nội dung đã được tác giả xoá”) and keeps previously
-  approved comments readable. Under the current `O-03` technical baseline (`OPEN`), new comments and
-  replies are blocked (`TombstoneReadOnly`) while comment writers may still remove their own
-  comments.
-- **Case B (Author sets “Chỉ mình tôi”), Case C (Admin/moderation removal), Case D (Never public,
-  then deleted):** project `WorkAccessPlan::Unavailable` (`404`); neither the work nor its
-  discussion thread is publicly readable (`PUB-05`). Moving to private hides discussion until the
-  work is republished; comments are never cascade-deleted when a work changes state.
+  approved comments readable. Under `O-03@r2` (`PRODUCT_CONFIRMED`), new comments and replies are
+  blocked (`TombstoneReadOnly`), pending moderation runs its course, while comment writers may still
+  remove their own comments.
+- **Case B — Author switches a previously public work to “Chỉ mình tôi” (`ADM-07`, `ADM-08`, `PUB-07`, `COM-11`):**
+  In pure core, `PublicationFacts::hidden` serves `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn”)
+  and keeps eligible comments readable (`HiddenReadOnly` under `O-03@r2`, blocking new comments/replies);
+  subsequent deletion from this hidden page leaves `DeletionProvenance::PublicTombstone` with comments
+  intact (`O-05@r2` `PRODUCT_CONFIRMED`). In the current `#158` persistence runtime, `load_paired_state`
+  still builds `hidden = None`, so `POST .../set-private` deletes the pointer and returns `404` until the
+  hidden-page storage/loader migration lands.
+- **Case C (Admin/moderation removal) and Case D (Never public, then deleted):**
+  project `WorkAccessPlan::Unavailable` (`404`); neither the work nor its discussion thread is
+  publicly readable (`PUB-05`). Comments are never cascade-deleted when a work changes state.
 
 ## Focused acceptance
 

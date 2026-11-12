@@ -7,10 +7,11 @@ The user's current instructions take precedence over repository conventions.
 ## Repository reality and decisions
 
 For DecisionDelta entries (10/11 USER, scoped CHOICE and O IDs; 11/11 ADM and O-17..19), D-IDs,
-issue-scoped choices (`LVE-PR-01-CHOICE-02`, `TAG-PR-01-CHOICE-01`, `DISC-04-CHOICE-02`) and
+issue-scoped choices (`LVE-PR-01-CHOICE-02`, `TAG-PR-01-CHOICE-01`, `DISC-04-CHOICE-02`), development
+choices (`TAG-PR-02..05`, `D-05-C1..C5`, `READ-01/02`, `DISC-WEB`) and
 `VDR-*` records, resolve the relevant decision through [the TOML registry](decisions/README.md)
 at the task checkout. Read the PRD and domain owner for detailed rules and acceptance. The
-original DecisionDelta tables and the D-log at its import commit preserve historical context. Use `vink-specify` to write
+original DecisionDelta tables, the D-log and the development docs at their import commits preserve historical context. Use `vink-specify` to write
 proposals; a proposal stays `PENDING` until a signoff quotes the owner's own words about that
 exact revision (`VDR-DECISION-SIGNOFF@r1`). The
 [rollout inventory](docs/development/decision-registry-rollout.md) identifies other owners and
@@ -114,7 +115,7 @@ Keep these **four status dimensions** separate in docs, reviews and handoffs:
    make a proposal `Accepted`.
 3. **Implementation level:** `NOT_IMPLEMENTED`, `core`, `persistence-api`, `worker-provider`,
    `web`, or `cmp` (recorded in `docs/development/*` registries). A pure core baseline for an `OPEN`
-   item (such as `O-03`) does not settle the product rule.
+   item (such as `O-04` or `O-17`) does not settle the product rule.
 4. **Verification evidence:** exact command/lane, pinned SHA and boundary (`model`, `unit/kani`,
    `postgres`, `web`, `cmp`).
 

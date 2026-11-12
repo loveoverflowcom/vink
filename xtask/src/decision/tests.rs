@@ -11,7 +11,7 @@ use std::{
 use serde_json::Value;
 
 use super::{
-    decision_log, legacy, publish,
+    decision_log, dev_choices, legacy, publish,
     record::{PROPOSALS, SIGNOFFS},
     run,
 };
@@ -44,7 +44,7 @@ impl Sandbox {
             }
         };
         let sandbox = Self(path);
-        for file in [legacy::FILE, decision_log::FILE] {
+        for file in [legacy::FILE, decision_log::FILE, dev_choices::FILE] {
             sandbox.write(file, &fs::read_to_string(crate::root().join(file)).unwrap());
         }
         sandbox
@@ -194,7 +194,7 @@ fn imported_status_history_and_related_ids_resolve_without_git() {
             .as_array()
             .unwrap()
             .len(),
-        52 + 32
+        52 + 32 + 27
     );
 }
 
@@ -316,6 +316,77 @@ fn decision_log_import_keeps_source_status_and_one_authority_per_d_id() {
 }
 
 #[test]
+fn dev_choices_import_keeps_source_status_and_reproducible_provenance() {
+    let sandbox = Sandbox::new();
+    let group = sandbox.json(&["query", dev_choices::GROUP_ID]);
+    let revisions = group["result"]["revisions"].as_array().unwrap();
+    assert_eq!(revisions.len(), 27);
+    for record in revisions {
+        assert_ne!(record["status"], "ACCEPTED");
+        assert!(record["context"]["source_status"].as_str().is_some());
+        assert_eq!(record["source"]["commit"], dev_choices::COMMIT);
+    }
+    for (id, status, kind, domain) in [
+        ("D-05-C1", "PROVISIONAL", "architecture", "account"),
+        ("D-05-C4", "PROVISIONAL", "architecture", "account"),
+        (
+            "DISC-WEB-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "discussion",
+        ),
+        (
+            "LVE-WP-04-CHOICE-07",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "endorsement",
+        ),
+        (
+            "READ-01-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "platform",
+        ),
+        (
+            "READ-02-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "platform",
+        ),
+        (
+            "TAG-PR-02-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "taxonomy",
+        ),
+        (
+            "TAG-PR-03-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "taxonomy",
+        ),
+        (
+            "TAG-PR-04-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "taxonomy",
+        ),
+        (
+            "TAG-PR-05-CHOICE-01",
+            "DESIGN_PROPOSED",
+            "architecture",
+            "taxonomy",
+        ),
+    ] {
+        let result = &sandbox.json(&["query", id])["result"];
+        assert_eq!(result["lookup"], "current", "{id}");
+        assert_eq!(result["record"]["status"], status, "{id}");
+        assert_eq!(result["record"]["content"]["kind"], kind, "{id}");
+        assert_eq!(result["record"]["content"]["domain"], domain, "{id}");
+    }
+}
+
+#[test]
 fn pinned_imports_render_byte_identical_when_their_sources_are_available() {
     // CI uses a shallow checkout without the pinned objects; render needs them.
     for (render, file) in [
@@ -324,6 +395,7 @@ fn pinned_imports_render_byte_identical_when_their_sources_are_available() {
             legacy::FILE,
         ),
         (decision_log::render, decision_log::FILE),
+        (dev_choices::render, dev_choices::FILE),
     ] {
         match render(&crate::root()) {
             Ok(text) => assert_eq!(
@@ -506,6 +578,23 @@ fn altered_import_and_proposal_schema_are_rejected() {
     fs::remove_file(&path).unwrap();
     assert!(sandbox.command(&["validate"]).is_err());
     fs::write(&path, imported).unwrap();
+
+    let path = sandbox.0.join(dev_choices::FILE);
+    let dev = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        dev.replacen("status = \"PROVISIONAL\"", "status = \"ACCEPTED\"", 1),
+    )
+    .unwrap();
+    assert!(
+        sandbox
+            .command(&["query", "D-05-C1"])
+            .unwrap_err()
+            .contains("differs from the reviewed")
+    );
+    fs::remove_file(&path).unwrap();
+    assert!(sandbox.command(&["validate"]).is_err());
+    fs::write(&path, dev).unwrap();
 
     let input = sandbox.write("draft.toml", DRAFT);
     sandbox.propose("VDR-TEST", "new", &input).unwrap();

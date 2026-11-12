@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use super::{
-    decision_log,
+    decision_log, dev_choices,
     legacy::{self, Status},
 };
 use crate::checks::sha256_hex;
@@ -437,6 +437,12 @@ impl Registry {
             }
             entries.insert(key, entry);
         }
+        for (key, entry) in dev_choices::load(root)? {
+            if entries.contains_key(&key) {
+                return Err(format!("{}: {key} is already imported", dev_choices::FILE));
+            }
+            entries.insert(key, entry);
+        }
         let mut registry = Self {
             entries,
             snapshot: String::new(),
@@ -489,9 +495,10 @@ impl Registry {
         }
         registry.check_dependencies()?;
         let mut snapshot = format!(
-            "v{VERSION}:{}:{}",
+            "v{VERSION}:{}:{}:{}",
             legacy::IMPORT_SHA256,
-            decision_log::IMPORT_SHA256
+            decision_log::IMPORT_SHA256,
+            dev_choices::IMPORT_SHA256
         );
         snapshot.extend(registry.entries.values().map(|entry| entry.hash.as_str()));
         snapshot.push_str(":signoffs:");

@@ -26,6 +26,9 @@ thật chưa dùng được. Bố cục và lựa chọn thiết kế: [LayoutSp
 Hai câu OPEN của issue được chọn bằng bằng chứng cục bộ; chi tiết và phương án bị loại ở
 [LayoutSpec](../design/tag-selector.md). Đây là lựa chọn của lát, chưa có usability test.
 
+<!-- vdr: active TAG-PR-05-CHOICE-01@r1 -->
+<!-- vdr: active TAG-PR-05-CHOICE-02@r1 -->
+
 | Lựa chọn | Chọn | Xem lại khi |
 | --- | --- | --- |
 | CHOICE-01 bố cục | **A**: mục “Thông tin tác phẩm” inline sau trang viết, không lớp phủ | Danh mục cần nhóm/mô tả dài/nhiều facet: panel/sheet bằng `OverlayLayer` hiện có |

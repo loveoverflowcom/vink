@@ -3,6 +3,8 @@
 10/11/2026 · lát UI riêng của [#73](https://github.com/loveoverflowcom/vink/issues/73),
 nền `develop@1329642` sau #139. Thiết kế chốt 09/11/2026, không mở lại policy LVE.
 
+<!-- vdr: active LVE-WP-04-CHOICE-07@r1 -->
+
 Nguồn: [SVG R2](https://drive.google.com/file/d/1KeBVl1G0HwP8T91z2L38ELpgngLaiGKI/view),
 [LayoutSpec R2](https://drive.google.com/file/d/1shsfRkf3dN_qcNYQTO5eef-PTbR_d36H/view),
 [desktop R1.3](https://drive.google.com/file/d/1G18GyQHrmYdxplNd9kdsn05hKRjl5AW8/view),

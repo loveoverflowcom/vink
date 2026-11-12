@@ -32,7 +32,7 @@ Stack đề xuất:
 | Job Vink | PostgreSQL jobs + transactional outbox/inbox | Khởi điểm ít thành phần, có thể gắn việc gửi job vào giao dịch nghiệp vụ |
 | Thảo luận | Module `discussion` trong `vink-app`: Rust core thuần + PostgreSQL của App | Một owner ghi/kiểm duyệt; bình luận gốc + một danh sách phản hồi phẳng; tác giả bật/tắt bình luận theo tác phẩm |
 | AI | Adapter provider + worker giới hạn quyền | Đổi model mà không đổi luật xuất bản |
-| Xác thực | Vink principal/session độc lập; D-05 đề xuất authority native mã email + phiên opaque (Provisional, [ADR](auth-authority.md)); 10/11/2026: hướng chính là username + mật khẩu trên cùng authority native, code hiện vẫn chỉ có mã email | Tránh ghép session/password với Cantos |
+| Xác thực | Vink principal/session độc lập; D-05 đề xuất authority native mã email + phiên opaque (Provisional, [ADR](auth-authority.md)); 10/11/2026: hướng chính là username + mật khẩu trên cùng authority native (backend Identity + App đã có đăng ký/đăng nhập mật khẩu #152 và enrollment #168; Web UI /toi hiện vẫn dùng mã email, UI mật khẩu và recovery O-11 còn là gap) | Tránh ghép session/password với Cantos |
 | Xác minh | Rust/integration tests + contract fixtures + cargo xtask nhỏ + Quint có chọn lọc | Kiểm cả quy tắc và hành vi tại ranh giới thực tế |
 
 Đây là đề xuất kiến trúc. Khả năng cụ thể của Leptos SSR/Axum, SQLx và editor có nguồn chính thức [T1], [T4], [T5]; việc chúng đáp ứng trải nghiệm Vink phải được thử nghiệm.
