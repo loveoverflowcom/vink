@@ -7,14 +7,21 @@ description: Build, fix or review Vink Kotlin Compose Multiplatform UI for Andro
 
 Use this beside [vink-ui-design](../vink-ui-design/SKILL.md) for visual criteria,
 [vink-ui-fix](../vink-ui-fix/SKILL.md) for a bounded repair and
-[vink-code-review](../vink-code-review/SKILL.md) for review-only work. Before changing
-UI, show the selected [LayoutSpec](../vink-layout-spec/SKILL.md), including the
-affected narrow/large-text state. Continue work already authorized by the user.
+[vink-code-review](../vink-code-review/SKILL.md) for review-only work.
+For interaction UX tasks (cử chỉ vuốt/kéo, chuyển động, focus, bàn phím/IME tiếng Việt, dialog/sheet overlay,
+scroll restoration, reduced motion và hiệu năng cảm nhận), tuân thủ tiêu chuẩn tại
+[Interaction UX](../vink-ui-design/references/interaction-ux.md).
+Khi cần đánh giá, so sánh hoặc thêm thư viện ngoài cho CMP, bắt buộc áp dụng quy trình ba tầng và checklist tại
+[dependency evaluation](references/dependency-evaluation.md).
+Before changing UI, show the selected [LayoutSpec](../vink-layout-spec/SKILL.md), including the
+affected narrow/large-text state and interaction fields when applicable. Continue work already authorized by the user.
 
 ## Choose the actual owner
 
-Read [owners and evidence](references/owners-and-evidence.md) for source-set paths
-and target-specific checks, then inspect the current manifests and call sites.
+Read [owners and evidence](references/owners-and-evidence.md) for source-set paths,
+target-specific checks and interaction verification boundaries; read
+[dependency evaluation](references/dependency-evaluation.md) before considering any
+Compose library. Inspect the current manifests and call sites.
 The [development guide](../../../docs/development/README.md) owns commands;
 [target readiness](../../../docs/development/ui-system-qualification-evidence.md)
 owns recorded results and gaps.
@@ -58,10 +65,14 @@ Scope coroutines/listeners to their actual owner, dispose observers, preserve
 cancellation and ignore stale completions after owner/session changes. Recomposition
 is not permission to issue requests. Keep a stable composition call site and keys
 through theme, size and navigation changes; do not recreate state just to redraw.
+Do not steal focus across recomposition or refresh; manage `FocusRequester` explicitly
+and restore focus on dialog/sheet dismiss according to close reason and target existence.
 
 Fields remain controlled `TextFieldValue` values. Preserve selection, composition,
 undo where supported, Vietnamese NFC/NFD, paragraphs and poem stanzas. Do not send
-partial IME composition or replace current input with a late acknowledgment. A
+partial IME composition, replace current input with a late acknowledgment, or remount
+an input node just to run a visual transition. Window insets and IME padding belong to
+their defined host layer; do not double-pad inner components. A
 native product editor, autosave or durable recovery requires its own explicit scope
 and owner; the current text-field sample does not implement them.
 

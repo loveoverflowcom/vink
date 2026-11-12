@@ -12,7 +12,8 @@ nhân. Với redesign toàn màn chưa có hướng chọn, dùng
 
 Đọc [repair và bàn giao](references/repair-and-handoff.md),
 [ngữ cảnh Vink](../vink-ui-design/references/product-context.md),
-[tiêu chí UI](../vink-ui-design/references/design-system.md) và
+[tiêu chí UI](../vink-ui-design/references/design-system.md),
+[tiêu chuẩn interaction UX](../vink-ui-design/references/interaction-ux.md) và
 [quy trình Chat](../vink-ui-design/references/chat-workflow.md) theo phần liên quan.
 Đọc các reference tương ứng trong checkout hiện hành.
 
@@ -61,8 +62,12 @@ thì tiếp tục, không thêm bước chờ duyệt mô tả.
 
 Giữ component hiện có, semantic tokens, chữ tiếng Việt, states và accessibility.
 Không thêm renderer/native stack, dependency hoặc rewrite toàn màn để sửa một
-spacing. Không biến “gọn hơn” thành giấu blocker, lỗi hoặc chưa lưu trong tooltip.
-Giữ dữ liệu nhập khi lỗi/xung đột, focus/selection và IME composition.
+spacing hay focus (ví dụ: sửa focus SearchField không kéo theo redesign thanh điều hướng).
+Không dùng animation hay spinner để che đậy tìm kiếm giật lag (phải tìm root cause: debounce, I/O, render nặng).
+Khi sửa sheet/dialog: kiểm tra contract hủy, nested scroll, dismiss outside và host insets;
+nếu dialog đóng do điều hướng (navigate) thì không trả focus về trang cũ đã rời đi.
+Không biến “gọn hơn” thành giấu blocker, lỗi hoặc chưa lưu trong tooltip.
+Giữ dữ liệu nhập khi lỗi/xung đột, focus/selection và IME composition tiếng Việt.
 
 Với phương án user đã chọn, chuyển đúng layout/hành vi/states sang owner Vink;
 không tự chuyển concept thành tính năng backend đã tồn tại. Với shared token,

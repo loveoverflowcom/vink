@@ -30,7 +30,7 @@ toàn bộ” khi chỉ xem được hình của một state.
 | Copy / icon | Nhãn ngắn nhưng đủ nghĩa? Icon có mô tả khi cần? Thông tin thiết yếu có bị giấu? |
 | State | Loading khác empty/error? Lưu và public revision có bị lẫn? |
 | Accessibility | Có bằng chứng riêng cho names, keyboard, focus, semantics hay chỉ có ảnh? |
-| Interaction | Đã thao tác hay mới dự đoán? Có input, dismiss, back, retry cần kiểm? |
+| Interaction | Đã thao tác hay mới dự đoán? Có input/dismiss/back/retry? Focus có bị cướp khi refresh? IME tiếng Việt có giữ composition? Cử chỉ có đường hủy và phương án thay thế? Motion có tiết chế và dừng khi reduced motion? |
 | Consistency | Có source/component baseline thật để so hay chỉ là preference? |
 
 Sau khi kiểm từng thành phần, kiểm quan hệ: overlay với anchor, focus với drawer,
@@ -65,6 +65,21 @@ phải giống từng pixel ở hai viewport khác nhau.
 | Feedback intent | Hiển thị đúng tín hiệu và khả năng phản hồi theo quyền | Intent không miễn trừ policy; gửi comment cần phạm vi được giao |
 | r1 public, r2 pending | Source hoặc fixture state + UI render | Không coi demo là luồng publication hiện có |
 | Curation cần xác nhận lại | Source/spec + UI theo snapshot và lý do | Không tự chốt policy đang Proposed |
+
+Các tình huống interaction dưới đây kiểm routing theo phạm vi; áp dụng contract tại
+[Interaction UX](../../vink-ui-design/references/interaction-ux.md), không mở thêm quy trình
+thiết kế đầy đủ cho một lỗi control đã rõ.
+
+| Kịch bản | Routing phù hợp | Evidence phù hợp | Không được suy diễn |
+| --- | --- | --- | --- |
+| Focus SearchField | `vink-ui-fix` → renderer sở hữu control | Spec rút gọn; thao tác click/tab vào field; kiểm caret, composition và bàn phím | Sửa focus control không tự ý redesign thanh navigation hoặc đổi input Web sang CodeMirror |
+| Tìm kiếm bị giật/lag | `vink-ui-fix` → renderer sở hữu tác vụ chậm | Profiling render/recomposition, kiểm debounce/I/O nền | Không thêm spinner/animation để che giấu giật main thread; ảnh tĩnh không chứng minh độ mượt |
+| Sheet kéo vuốt | `vink-ui-design` → `vink-layout-spec` → renderer; bug đã rõ đi thẳng `vink-ui-fix` | Contract kéo/hủy/dismiss/Back; thả tay trước/sau ngưỡng, nested scroll và insets trên host | Không tự chốt cử chỉ phá hủy hoặc cộng insets hai lần |
+| Shared transition Reader | `vink-ui-design` → `vink-layout-spec` → renderer; kiểm dependency ở `vink-cmp-mobile` nếu cần | Trace consumer/router thật; kiểm chuyển đi/về, ngắt/đảo chiều, focus/scroll và reduced motion trên host được giao | Không tự dựng app/router mới hoặc thêm navigation library khi chưa có consumer phù hợp |
+| Bật Reduced Motion | Audit: `vink-ui-inspector`; sửa lỗi: `vink-ui-fix` → renderer | Bật flag reduced giữa animation; assertion dừng loop và quan sát timed frames, trạng thái cuối/nhãn | Ảnh tĩnh hoặc duration 0ms không chứng minh vòng lặp đã dừng; không làm mất trạng thái |
+| Đóng dialog do navigate | `vink-ui-fix` → host/router sở hữu focus | Kích hoạt action điều hướng trong dialog; kiểm close reason và focus trang mới | Không trả focus về trigger ở trang cũ đã rời đi |
+| Chỉ có JVM Desktop | `vink-cmp-mobile`; tiếp tục phần độc lập | Unit test và render capture offscreen; ghi `NOT_RUN` cho host native chưa chạy | Không báo PASS cho gesture cảm ứng Android/iOS, IME hệ điều hành hoặc TalkBack/VoiceOver |
+| Yêu cầu “làm đẹp hơn” | `vink-ui-design`; chỉ qua `vink-shape` khi đề xuất đổi hành vi sản phẩm chưa chốt | LayoutSpec và đối chiếu hierarchy, spacing, tokens, theme/state ở cùng viewport; giữ nghĩa thao tác hiện có | Không coi yêu cầu thẩm mỹ là quyền thêm vuốt xóa, bỏ nháp hoặc đổi tab toàn màn |
 
 Chọn lượng quan sát đủ để trả lời câu hỏi. Nếu phạm vi quá lớn, báo phần đã kiểm
 và phần chưa kiểm; không dùng ngân sách tùy ý để âm thầm bỏ yêu cầu user.

@@ -10,7 +10,8 @@ quan hệ → đối chiếu được yêu cầu → kết luận**. Màn hình 
 nghĩa là đơn vị kiểm tra. Chỉ cần dùng bảng đầy đủ khi phạm vi đủ lớn.
 
 Đọc [ngữ cảnh Vink](../vink-ui-design/references/product-context.md),
-[hệ thiết kế](../vink-ui-design/references/design-system.md) và
+[hệ thiết kế](../vink-ui-design/references/design-system.md),
+[tiêu chuẩn interaction UX](../vink-ui-design/references/interaction-ux.md) và
 [cách kiểm từng thành phần](references/component-audit.md). Dùng
 [quy trình Chat](../vink-ui-design/references/chat-workflow.md) cho công cụ và mức bằng chứng.
 Đọc các reference tương ứng trong checkout hiện hành.
@@ -62,13 +63,16 @@ có giá trị nhất và nêu phần chưa quan sát; không khai “đầy đ�
 Mỗi ảnh được dẫn phải đã mở. Nếu công cụ không mở được, giữ phân tích nguồn hữu ích
 và ghi phần hình chưa kiểm tra. Screenshot không chứng minh interaction, persist,
 DOM semantics, IME, screen reader, motion hoặc màu resolve đạt contrast.
+Không suy diễn độ mượt (60fps/120fps) từ ảnh tĩnh hoặc bản build debug JVM.
 
 ## 3. Kiểm nghĩa sản phẩm Vink
 
 Ưu tiên phát hiện: trạng thái lưu sai/không rõ, mất bản thảo, lộ dữ liệu riêng,
-đồng nhất approved/published/curated, AI gửi tự động khi chỉ lưu, đọc thơ mất khổ,
-title/dấu bị cắt, bảng điểm chiếm trải nghiệm, homepage rỗng khi ít bài, blocker
-chỉ có hover tooltip, focus/bàn phím che thao tác. Những lỗi về authority/durability
+đồng nhất approved/published/curated, AI gửi tự động khi chỉ lưu, cướp focus khi refresh/recomposition,
+mất bộ đệm IME tiếng Việt, animation che giấu lỗi decode/I/O, vòng lặp motion không dừng khi bật reduced motion,
+cử chỉ thiếu đường hủy hoặc xung đột với cuộn/Back,
+đọc thơ mất khổ, title/dấu bị cắt, bảng điểm chiếm trải nghiệm, homepage rỗng khi ít bài,
+blocker chỉ có hover tooltip, focus/bàn phím che thao tác. Những lỗi về authority/durability/interaction
 cần source hoặc runtime chứng minh; ảnh chỉ cho thấy biểu hiện nghi vấn.
 
 Áp dụng [kịch bản và state map](../vink-ui-design/references/surfaces-and-states.md),

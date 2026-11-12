@@ -45,8 +45,11 @@ where they make execution clearer; plain structured instructions are also accept
 For UI work, include the selected [LayoutSpec](../vink-layout-spec/SKILL.md) or an
 accessible source/revision and the user's choice. If absent, require the receiving
 agent to complete and present a scope-appropriate spec before UI code/scripts/previews.
-Preserve sketch-only or wait-for-selection scope; otherwise this adds no approval gate.
-Carry responsive/state/theme acceptance and compare the implementation to that spec.
+For interaction UX tasks (gestures, focus, motion, IME, reduced motion, overlays), carry
+the interaction contract (modality, trigger → feedback → commit/cancel, focus restoration,
+reduced motion fallback) from [Interaction UX](../vink-ui-design/references/interaction-ux.md)
+into ACCEPTANCE and VERIFY. Preserve sketch-only or wait-for-selection scope; otherwise this adds
+no approval gate. Carry responsive/state/theme/interaction acceptance and compare the implementation to that spec.
 
 For split work, preserve the user's number of prompts/PRs/chats. Assign one owner for each
 shared file/contract, explicit dependencies and integration order. Make each prompt self-contained.

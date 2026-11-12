@@ -51,6 +51,12 @@ về bình luận chờ duyệt khi xóa bài, hay `O-03` trên tombstone trư�
 **không** có nghĩa chủ sản phẩm đã chốt; khi làm tới tính năng phụ thuộc trực tiếp vào nó, phải nêu
 rõ và hỏi chủ sản phẩm.
 
+Trong tương tác UI: chọn đường cong animation (`ease`), thời lượng transition hay thứ tự focus là
+lựa chọn kỹ thuật của agent; nhưng việc thêm cử chỉ phá hủy (vuốt để xóa bài, vuốt bỏ bản nháp,
+hoặc vuốt toàn màn hình để đổi tab) có rủi ro mất dữ liệu hoặc đổi điều hướng là quyết định sản phẩm
+(`open_product`) cần ý kiến chủ sản phẩm. Tuyệt đối không đưa tính năng đang hoãn (`DEFERRED` như
+nhiều chương `WR-04`) vào làm use case bắt buộc để biện hộ cho một dependency kéo-sắp-xếp.
+
 Giữ nguyên các quyết định nền tảng đã chốt trừ khi chủ sản phẩm yêu cầu xem lại: hai mức riêng tư
 (“Chỉ mình tôi” / “Công khai”), quản trị viên đứng trên kết quả của trợ lý AI (`MOD-09`), nháp riêng
 không gửi sang AI chỉ vì vừa lưu (`MOD-05`, `INV-08`), và nhóm tuổi / nhiều chương / Tạp Chí đang

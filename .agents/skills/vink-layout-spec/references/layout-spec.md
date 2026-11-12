@@ -52,6 +52,7 @@ Scroll: [cuộn chính, cuộn riêng, sticky/fixed và lý do; bàn phím có c
 Overlays: [anchor/trigger, dismiss, focus vào/giữ/trả; bàn phím xuất hiện]
 Themes: [light/dark dùng chung cấu trúc; surface/text/action/selected/focus/disabled]
 States: [loading/empty/error/pending/success/conflict có liên quan; cách khôi phục]
+Interaction: [khi có tương tác/cử chỉ: trigger → phản hồi tức thời → commit/cancel; modality (touch/key/a11y); focus restore; insets/keyboard; reduced motion fallback]
 Accessibility: [heading/landmark, names, keyboard, reflow/tăng chữ, thứ tự focus]
 Compare: [vùng/state/viewport/theme và bằng chứng cần để đối chiếu kết quả]
 ```
@@ -79,8 +80,13 @@ Region #editor-bar — trạng thái lưu và thao tác hiện có
   Region #save-action — nút Lưu bản nháp
 Before → After: [vấn đề đã quan sát hoặc giả thuyết có nhãn → sửa đúng vùng]
 Narrow/theme/state: [wrap/spacing/reflow; token và nghĩa hành động liên quan]
+Interaction (khi có): [trigger → immediate feedback → commit/cancel; focus/IME/reduced-motion nếu bị tác động]
 Check: [source/render/interaction cần kiểm, chưa chạy thì ghi rõ]
 ```
+
+Quy ước chi tiết cho các trường tương tác (motion, gesture, focus, IME, perceived performance)
+xem tại [Interaction UX](../../vink-ui-design/references/interaction-ux.md). Không bắt mọi thay đổi
+nhỏ phải chạy toàn bộ quy trình thiết kế tương tác; dùng bản rút gọn trên cho sửa một control đơn lẻ.
 
 Handoff UI truyền bản spec đã chọn (nội dung hoặc đường dẫn/revision truy cập
 được), lý do chọn, acceptance và gap. Nếu chưa có spec, ghi việc hoàn thành và

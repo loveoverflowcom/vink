@@ -40,8 +40,12 @@ surface và [contract bàn giao](references/evidence-contract.md) trước khi g
    viewport; thêm full-page khi phần cuộn có ý nghĩa, giữ hai loại riêng.
 4. Tái hiện click-path và ghi trạng thái navigation trước/sau: route, selected
    destination, rail/bar, overlay stack, Back/Escape/close và guard đang áp dụng.
+   Khi chụp trạng thái tương tác (pressed, focused, dragging, sheet open, loading-gate phase,
+   reduced motion): ghi nhận rõ ràng vào metadata của capture.
    Cạnh thấy qua tương tác là `observed`; cạnh chỉ đọc source là `source-only`.
    Không suy ra lưu dữ liệu, accessibility hay IME thành công từ một ảnh.
+   Không biến việc thu thập bằng chứng (capture) thành audit hay kết luận PASS/FAIL;
+   ảnh chụp màn hình tĩnh không chứng minh độ mượt 60fps hay cử chỉ cảm ứng hoạt động đúng.
 5. Với component/preview, giữ catalog ID + scenario của repo, renderer và source
    owner; liên kết nơi dùng trong màn app khi xác minh được. Recipe minh họa vẫn
    mang nhãn mẫu. Với tokens, lưu snapshot nguồn/version/hash và giá trị hiệu lực

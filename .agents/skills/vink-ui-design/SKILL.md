@@ -14,6 +14,9 @@ design/component owners. Use [vink-leptos-web](../vink-leptos-web/SKILL.md) or
 When a screen or flow hits an unresolved product rule (`OPEN` items in `O-01..O-19` or new authority/state
 questions), clarify it with [vink-shape](../vink-shape/SKILL.md); when a design settles or updates
 a documented UX/state contract, record it with [vink-specify](../vink-specify/SKILL.md).
+For interaction UX tasks (cử chỉ vuốt/kéo, chuyển động transition/motion, vòng đời focus, bàn phím/IME,
+overlay/dialog/sheet, phục hồi vị trí cuộn, reduced motion, hoặc hiệu năng cảm nhận), áp dụng chuẩn mực tại
+[interaction UX](references/interaction-ux.md) và tích hợp vào [vink-layout-spec](../vink-layout-spec/SKILL.md).
 For an audit-only request, inspect and report; fixing requires scope already granted by the user.
 
 ## Design for the literary task
@@ -111,6 +114,7 @@ Use the [layout template](../vink-layout-spec/references/layout-spec.md) and
 owns design choices, and a preview or handoff reuses the existing spec instead of keeping a second
 tree. Read the applicable references:
 [product context](references/product-context.md), [design system](references/design-system.md),
+[interaction UX](references/interaction-ux.md),
 [surfaces and states](references/surfaces-and-states.md), [workflow and evidence](references/chat-workflow.md),
 and [source map](references/source-map.md). The bundled context is a dated snapshot; current
 repository files and explicit decisions take precedence.
