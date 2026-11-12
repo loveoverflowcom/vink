@@ -190,3 +190,72 @@ gồm cả harness/renderer đang chạy và các ca trước đó.
 | AC-06, AC-07 | Test render/fallback theo từng host và kiểm ảnh mở. Thiết bị vật lý và screen reader `NOT_RUN`. Suite iOS đầy đủ còn lỗi Sharing nêu trên. |
 | AC-08 | Decode/count/kích thước/config và bộ nhớ theo workload trên. Ảnh bìa native qua mạng `NOT_IMPLEMENTED`. |
 | AC-09 | Kiểm generated fixtures, lệnh và hồ sơ theo owner. |
+
+## Interaction foundation 12/11/2026
+
+Base `origin/develop@7459b91b21ed37e9142f6ffb8b91bd62733884a5` (đã có PR skills #172).
+Source/runtime/tests được chốt tại `695cc86c911e634ec10f980289c6afb4ddc3eed9`; commit hồ sơ
+sau đó chỉ bổ sung tài liệu. [Findings I-01–I-07, LayoutSpec, contract và dependency](../design/ui-interaction-foundation.md).
+Phạm vi là UI System CMP và hosts chẩn đoán. Không có native product app, không đổi quyết định
+sản phẩm/kiến trúc. Bằng chứng dưới đây ở boundary renderer/platform, không là model/backend proof.
+
+### Lệnh và ranh giới
+
+Máy macOS arm64; JDK Microsoft 17.0.19; Kotlin 2.2.20, Compose 1.9.0, Material3 1.8.2,
+Gradle 8.14.3. Các lệnh chạy từ root; Gradle dùng `JAVA_HOME` JDK 17 và native dùng
+`ANDROID_HOME` SDK đã cài. Logs, ảnh và hash cục bộ:
+`target/ui-evidence/interaction-foundation-20261112/manifest.json` (không đưa binary vào Git).
+
+| Lệnh / target | Kết quả và phạm vi |
+| --- | --- |
+| `cargo xtask ui-tokens` hai lần; `cargo xtask ui-tokens --check` | PASS, lượt hai không đổi output; tokens giữ 0.5.0, catalog 0.8.0, admission map 0.4.0. |
+| `git diff --check`; `cargo xtask verify quick` | PASS. Kiểm source/metadata/contract và các lane quick hiện hữu; không thay thế runtime native. |
+| `cargo xtask ui-preview cmp verify` | PASS toàn lane. `:ui` 43, `:diagnostics` 6, `:preview` 48 tests, không skip; có common policy chạy JVM, Compose Desktop và capture thực. Không suy iOS common test từ JVM. |
+| `VINK_CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' cargo xtask ui-preview leptos verify` | PASS build, hydration fixture, keyboard/focus/reduced-motion assertions và 806 captures trong Chrome 157.0.8103.79; không suy mọi ảnh đã mở. |
+| `ANDROID_SERIAL=emulator-5554 cargo xtask ui-preview android verify` | PASS 7/7 instrumentation tests trên Pixel_7, Android 17/API 37.1. Có Next → Search, clear/focus, sheet, Back ở dialog window và Explicit từ chối Back. |
+| `VINK_UI_IOS_DEVICE=4B214753-8C0E-44D7-90A1-0AD5B0960A9F cargo xtask ui-preview ios verify` | PASS 5/5 XCTest, Xcode 26.6 (17F113), iPhone 17 Simulator iOS 26.0. Có nhập chữ, đổi theme, mở bàn phím, cuộn sheet, đóng và đọc lại chữ. |
+| `cargo xtask verify web` / PostgreSQL / các lane model | NOT_RUN cục bộ trong lát này: không đổi app Web, nghiệp vụ hay DB. Leptos preview chạy browser riêng; CI có các lane rộng hơn. |
+| Recipe `composition.interaction` trên Leptos | UNSUPPORTED theo thiết kế: IME/FocusRequester/Android Back là native API. Preview hiển thị lý do; không dùng trạng thái này để che test chưa chạy. |
+
+`InteractionTest.searchClearReturnsFocusToTheEditableTargetAndDispatchesOnce` FAIL trước sửa
+và PASS sau sửa; phép kiểm wrapper FocusRequester đã PASS trước sửa nên không gọi wrapper là lỗi.
+`InteractionLifecycleTest` kiểm press kéo ra ngoài/cancel, pending activation, IME composition,
+retarget, reduced giữa chừng, inactive ancestor, disposal, close reason Navigate, caller từ chối
+dismiss và callback cũ sau reopen. Clock do Compose test điều khiển; ảnh tĩnh không chứng minh timing.
+
+### Ảnh đã mở và thao tác native
+
+Tám ảnh `desktop/interaction--{default,sheet}--{light,dark}--360--text{100,200}.png` đã mở kiểm.
+Context: Desktop offscreen 360×800dp, density 1, Be Vietnam Pro/Literata TTF pinned, OS font scale 1,
+preview multiplier 1/2, reduced motion, không có OS keyboard/insets. Sheet được cuộn tới action;
+ở chữ 200% title có thể ở ngoài viewport nhưng close vẫn tới được qua cuộn. Không yêu cầu sticky
+actions hoặc tự thay RowScope API.
+
+Hai ảnh native với keyboard đã mở: `native/android-sheet-dark-keyboard.png` (1080×2400,
+420dpi/2.625×, khoảng 411dp rộng) và `native/ios-sheet-light-keyboard.png` (1206×2622,
+3×, 402×874pt). Native dùng system font fallback, OS font scale và preview multiplier đều 1,
+reduced motion trong recipe. Nút đóng hiện trọn phía trên IME; field và text vẫn giữ khi cuộn.
+Android manual: nhập thêm `Vink`, Back lần đầu ẩn IME và giữ sheet, lần hai đóng sheet,
+readback vẫn `Tiếng Việt [Mẫu]Vink`; hai UI dump được giữ cùng ảnh.
+
+### Lỗi gặp và giới hạn
+
+- Giữ logs trước sửa: clear mất focus; test Android ban đầu dùng touch mode để đòi keyboard
+  focus trên Button. Test cuối chuyển keyboard input mode bằng Tab, gọi platform Back thật;
+  không thay focusability của Button để chiều test.
+- Lượt iOS đầu FAIL vì swipe trên vùng keyboard và test Sharing cũ trái contract D2T-03
+  đã có ở base (Sharing là intent, chỉ commentsClosed khóa gửi). Test Sharing nay kiểm composer,
+  explicit submit và local intent; không đổi production FeedbackComposer hoặc bỏ test.
+- Lượt iOS tiếp FAIL vì XCTest app-idle không chờ Compose scroll deceleration: frame action
+  còn dịch chuyển khi tap. Test cuối swipe trong panel phía trên IME và đợi các snapshot frame
+  ổn định trước tap; vẫn đòi đóng và giữ chữ, không retry activation. XCResult PASS:
+  `Test-VinkUIDiagnostic-2026.11.12_18-03-07-+0700.xcresult`.
+- Leptos lượt đầu build đạt nhưng browser prerequisite FAIL vì runner không tự tìm Chrome ở
+  macOS. Lượt cuối chỉ rõ `VINK_CHROME`; log lần đầu được giữ.
+- NOT_RUN: thiết bị vật lý, TalkBack/VoiceOver walkthrough, OS Vietnamese IME composition,
+  native OS font scale 200%, platform predictive Back, release trace/performance. Prerequisite:
+  thiết bị/assistive technology và IME tương ứng, cùng recipe; release benchmark cần workload
+  và trace riêng. Desktop composition tests không thay thế walkthrough IME thực.
+- Drag-dismiss/nested drag arbitration không được thêm; chỉ cuộn nội dung sheet. ModalBottomSheet
+  đã được đánh giá nhưng default drag/hide lifecycle chưa phải contract được chốt. Không có
+  proposal/signoff mới và không tuyên bố hiệu năng mượt hơn khi chưa đo.

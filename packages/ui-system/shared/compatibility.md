@@ -1,6 +1,6 @@
 # Compatibility và nguồn authoring
 
-Token source hiện hành 0.5.0, catalog 0.7.0, API admission map 0.3.0. Package nội bộ chưa phát
+Token source hiện hành 0.5.0, catalog 0.8.0, API admission map 0.4.0. Package nội bộ chưa phát
 hành registry.
 
 TAG-PR-05 (#99) thêm entry `composition.tag-selector` (catalog 0.7.0, 9 kịch bản giống nhau ở hai
@@ -59,3 +59,9 @@ Pen Flight R2 (#73, 10/11/2026) thêm `IconName::PenFlight`/`IconName.PenFlight`
 `icons.json`, provenance Vink-owned tách khỏi Material Apache-2.0; generator kiểm hash SVG R2
 nguyên bản. EndorsementAction dùng slot icon hiện có ở hai renderer; không đổi props,
 token values, toggle-contract-v1, state/counter/authority.
+
+Interaction foundation (12/11/2026): CMP thêm optional inputModifier, IME action/callback và
+Dialog closeReason/mainFocus; giữ default Next/Default/Search, DismissPolicy và TextFieldValue.
+Callsite dùng named options/trailing actions giữ nguyên; không publish binary ABI. VinkMotion
+thêm effects/spatial dùng token cũ, không đổi token version. Catalog native recipe và giới hạn
+Web/native ở [contract/evidence](../../../docs/design/ui-interaction-foundation.md).

@@ -16,6 +16,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardActionScope
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
@@ -39,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -136,6 +139,9 @@ private fun TextControlField(
     minLines: Int,
     onSubmit: ((String) -> Unit)?,
     variant: FieldVariant,
+    inputModifier: Modifier,
+    imeAction: ImeAction,
+    onImeAction: ((ImeAction) -> Unit)?,
 ) {
     val vink = LocalVink.current
     val c = vink.colors
@@ -143,6 +149,16 @@ private fun TextControlField(
     val name = accessibleName(label, required)
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val inputFocus = remember { FocusRequester() }
+    val dispatch: KeyboardActionScope.(ImeAction) -> Unit = { action ->
+        if (mode == FieldMode.Editable && value.composition == null) {
+            when {
+                onImeAction != null -> onImeAction(action)
+                action == ImeAction.Search && onSubmit != null -> onSubmit(value.text)
+                else -> defaultKeyboardAction(action)
+            }
+        }
+    }
     val floating = variant == FieldVariant.FloatingTonal && control != TextControl.Area
     val description = help ?: if (mode == FieldMode.Disabled) "Tính năng chưa khả dụng." else null
     Column(modifier, verticalArrangement = Arrangement.spacedBy(VinkDimens.Space1)) {
@@ -150,7 +166,7 @@ private fun TextControlField(
         TextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
+            modifier = inputModifier.focusRequester(inputFocus).fillMaxWidth().heightIn(min = maxOf(48.dp, VinkDimens.DensityControlHeight))
                 .tonalPerimeter(focused, shown != null, mode != FieldMode.Disabled)
                 .semantics {
                     if (!floating) text = AnnotatedString(name)
@@ -168,20 +184,23 @@ private fun TextControlField(
                 null
             },
             trailingIcon = if (control == TextControl.Search && value.text.isNotEmpty() && mode == FieldMode.Editable) {
-                { VinkIconButton(IconName.Close, "Xóa chữ tìm", onPress = { onValueChange(TextFieldValue("")) }) }
+                { VinkIconButton(IconName.Close, "Xóa chữ tìm", onPress = {
+                    onValueChange(TextFieldValue(""))
+                    inputFocus.requestFocus()
+                }) }
             } else {
                 null
             },
             isError = shown != null,
             keyboardOptions = KeyboardOptions(
                 keyboardType = kind.keyboard,
-                imeAction = when (control) {
-                    TextControl.Search -> ImeAction.Search
-                    TextControl.Area -> ImeAction.Default
-                    TextControl.Field -> ImeAction.Next
-                },
+                imeAction = imeAction,
             ),
-            keyboardActions = KeyboardActions(onSearch = { if (value.composition == null) onSubmit?.invoke(value.text) }),
+            keyboardActions = KeyboardActions(
+                onNext = { dispatch(ImeAction.Next) }, onPrevious = { dispatch(ImeAction.Previous) },
+                onDone = { dispatch(ImeAction.Done) }, onSearch = { dispatch(ImeAction.Search) },
+                onGo = { dispatch(ImeAction.Go) }, onSend = { dispatch(ImeAction.Send) },
+            ),
             singleLine = control != TextControl.Area,
             minLines = minLines,
             shape = RoundedCornerShape(VinkDimens.RadiusMd),
@@ -204,7 +223,10 @@ fun VinkTextField(
     kind: TextKind = TextKind.Text,
     placeholder: String? = null,
     variant: FieldVariant = FieldVariant.ExternalLabel,
-) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null, variant)
+    inputModifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Next,
+    onImeAction: ((ImeAction) -> Unit)? = null,
+) = TextControlField(TextControl.Field, label, value, onValueChange, modifier, help, error, required, mode, kind, placeholder, 1, null, variant, inputModifier, imeAction, onImeAction)
 
 /** Multi-line text; newlines, blank lines and leading spaces are kept verbatim. */
 @Composable
@@ -219,7 +241,10 @@ fun VinkTextArea(
     mode: FieldMode = FieldMode.Editable,
     rows: Int = 4,
     placeholder: String? = null,
-) = TextControlField(TextControl.Area, label, value, onValueChange, modifier, help, error, required, mode, TextKind.Text, placeholder, rows, null, FieldVariant.ExternalLabel)
+    inputModifier: Modifier = Modifier,
+    imeAction: ImeAction = ImeAction.Default,
+    onImeAction: ((ImeAction) -> Unit)? = null,
+) = TextControlField(TextControl.Area, label, value, onValueChange, modifier, help, error, required, mode, TextKind.Text, placeholder, rows, null, FieldVariant.ExternalLabel, inputModifier, imeAction, onImeAction)
 
 /** Search input with a clear button while it has text; the IME Search action calls [onSubmit]. */
 @Composable
@@ -232,7 +257,8 @@ fun VinkSearchField(
     help: String? = null,
     mode: FieldMode = FieldMode.Editable,
     placeholder: String? = null,
-) = TextControlField(TextControl.Search, label, value, onValueChange, modifier, help, null, false, mode, TextKind.Text, placeholder, 1, onSubmit, FieldVariant.FloatingTonal)
+    inputModifier: Modifier = Modifier,
+) = TextControlField(TextControl.Search, label, value, onValueChange, modifier, help, null, false, mode, TextKind.Text, placeholder, 1, onSubmit, FieldVariant.FloatingTonal, inputModifier, ImeAction.Search, null)
 
 @Composable
 private fun Toggle(

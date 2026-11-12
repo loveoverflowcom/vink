@@ -5,7 +5,7 @@
 
 use crate::values::{CatalogEntry, Scenario};
 
-pub const CATALOG_VERSION: &str = "0.7.0";
+pub const CATALOG_VERSION: &str = "0.8.0";
 pub const STATUSES: &[&str] = &["implemented-unverified", "unsupported", "verified"];
 pub const FAMILIES: &[(&str, &str)] = &[("foundation", "Nền tảng"), ("text", "Chữ"), ("layout", "Bố cục"), ("action", "Hành động"), ("field", "Nhập và chọn"), ("identity", "Danh tính và hình ảnh"), ("state", "Trạng thái và phản hồi"), ("navigation", "Điều hướng và khung"), ("composition", "Kết hợp"), ("screen", "Màn Vink — Mẫu")];
 
@@ -1336,6 +1336,28 @@ pub const ENTRIES: &[CatalogEntry] = &[
             },
         ],
         leptos: "implemented-unverified",
+        cmp: "implemented-unverified",
+    },
+    CatalogEntry {
+        id: "composition.interaction",
+        family: "composition",
+        label: "Tương tác native [Mẫu]",
+        summary: "IME Next/Search/Done, clear-focus, motion chip và dialog/sheet controlled; không kết nối dịch vụ.",
+        scenarios: &[
+            Scenario {
+                id: "default",
+                label: "Form và dialog",
+            },
+            Scenario {
+                id: "sheet",
+                label: "Sheet cuộn, không kéo để đóng",
+            },
+            Scenario {
+                id: "explicit",
+                label: "Chỉ đóng bằng thao tác tường minh",
+            },
+        ],
+        leptos: "unsupported",
         cmp: "implemented-unverified",
     },
 ];

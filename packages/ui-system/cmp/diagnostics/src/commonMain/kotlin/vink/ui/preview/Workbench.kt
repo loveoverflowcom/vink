@@ -97,7 +97,7 @@ val REGISTERED = listOf("foundation.color-roles", "foundation.typography", "foun
     "navigation.rail", "navigation.bottom-bar", "navigation.top-bar", "navigation.scaffold", "navigation.overlay", "navigation.adapter",
     "composition.nested",
     "screen.explore", "screen.reader", "screen.desk", "screen.editor", "screen.me", "composition.feedback",
-    "composition.endorsement", "composition.tag-selector",
+    "composition.endorsement", "composition.tag-selector", "composition.interaction",
 )
 
 enum class Frame(val label: String, val width: Dp?) {

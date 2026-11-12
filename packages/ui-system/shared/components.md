@@ -292,3 +292,13 @@ VinkButton("Lưu", onPress = ::save, variant = ButtonVariant.Filled)
   PR, chạy `verify web`; không trộn hai bản của cùng control trên một màn.
 
 Native HTML forms: Checkbox nhận name/value tùy chọn; HiddenField chỉ serialize context do app validate, không hiển thị/focus và không có counterpart CMP. Preview field.form + native_get_fields_preserve_names_values_and_selected_state kiểm phần này.
+
+## CMP interaction foundation (12/11/2026)
+
+Ba text control thêm `inputModifier` gắn vào input thật; `modifier` cũ vẫn ở wrapper.
+TextField/TextArea thêm `imeAction` và `onImeAction`; default vẫn Next/Default. Khi editable và
+không còn composition, callback của caller nhận action một lần; thiếu callback dùng hành vi
+IME chuẩn. Search giữ Search/onSubmit, clear phát empty một lần rồi focus input. Không trim,
+normalize hay round-trip TextFieldValue. FilterChip đổi màu bằng effects token, semantics selected
+và callback cập nhật ngay; reduced/inactive snap, không scale vùng chạm.
+[LayoutSpec, target-specific API và evidence](../../../docs/design/ui-interaction-foundation.md).
