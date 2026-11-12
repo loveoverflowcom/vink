@@ -32,6 +32,11 @@ Lệnh native, replay, SDK/simulator prerequisites và output:
 [development](../../../docs/development/README.md#diagnostic-ui-native-uis-06).
 Readiness theo target: [UIS-06](../../../docs/development/ui-system-qualification-evidence.md).
 
+Interaction foundation (motion chip/overlay, field IME/focus, dialog Back/lifetime):
+[contract và findings](../../../docs/design/ui-interaction-foundation.md),
+[bằng chứng theo target](../../../docs/development/ui-system-qualification-evidence.md#interaction-foundation-12112026).
+Recipe `composition.interaction` dùng component xuất ra thật; vẫn chỉ là diagnostic, không phải app native.
+
 `commonMain` không import `java.*`, `javax.*`, `android.*`, `platform.*` (kiểm trong `verify quick`);
 API nền tảng (NFC) đi qua `expect`/`actual`. Text field nhận/trả `TextFieldValue`; ảnh là `ImageState`
 đã giải mã do host cấp (preview giải mã bằng Skia, lỗi → `Failed`). Contract: [components.md](../shared/components.md).
