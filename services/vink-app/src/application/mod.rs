@@ -34,6 +34,16 @@ pub struct PublicWork {
     pub tags: Vec<CatalogTag>,
 }
 
+/// Read model of the reader route: either a published work or a review_withdrawn notice (O-17@r2, #159).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReaderWork {
+    Published(PublicWork),
+    ReviewWithdrawn {
+        work_id: WorkId,
+        author_display_name: String,
+    },
+}
+
 /// One work of a public list (home page or search, TAG-PR-04).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PublicWorkSummary {

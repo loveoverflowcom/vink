@@ -171,6 +171,21 @@ pub trait PublicationStore: Send + Sync {
         &self,
         work_id: WorkId,
     ) -> impl Future<Output = Result<Option<PublicationFacts>, StoreError>> + Send;
+
+    /// Current reader snapshot of a work: either published or review_withdrawn (O-17@r2, #159).
+    fn reader_work(
+        &self,
+        work_id: WorkId,
+    ) -> impl Future<Output = Result<Option<ReaderWorkFacts>, StoreError>> + Send;
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReaderWorkFacts {
+    Published(PublicationFacts),
+    ReviewWithdrawn {
+        work_id: WorkId,
+        author_display_name: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

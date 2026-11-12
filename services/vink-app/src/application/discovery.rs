@@ -11,9 +11,10 @@
 use super::Vink;
 use super::catalog::{TagResolution, resolution};
 use super::ports::{
-    DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore, SlugFacts, StoreError,
+    DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore, ReaderWorkFacts,
+    SlugFacts, StoreError,
 };
-use super::{PublicWork, PublicWorkSummary, ReadError};
+use super::{PublicWork, PublicWorkSummary, ReadError, ReaderWork};
 use crate::domain::discovery::{
     CursorError, DiscoveryCursor, FilterError, PagePosition, PageSize, PageSizeError, SearchScope,
     TagFilter, WorkQuery, WorkQueryError, cut_page, filter_tags,
@@ -117,7 +118,7 @@ fn page_size(raw: Option<&str>) -> Result<PageSize, DiscoveryInput> {
 
 /// Public tags of a bound snapshot: active ones in snapshot order with current labels. Missing or
 /// wrong-facet catalog rows are corruption, never an empty list.
-fn shown_tags(
+pub(crate) fn shown_tags(
     snapshot: Option<&MetadataSnapshot>,
     catalog: &[CatalogTag],
 ) -> Result<Vec<CatalogTag>, StoreError> {
@@ -263,5 +264,45 @@ where
             document,
             tags,
         })
+    }
+
+    /// The reader endpoint read model (O-17@r2, #159): returns either the published work or review_withdrawn notice.
+    pub async fn reader_work(&self, work_id: WorkId) -> Result<ReaderWork, ReadError> {
+        match self
+            .store
+            .reader_work(work_id)
+            .await?
+            .ok_or(ReadError::NotFound)?
+        {
+            ReaderWorkFacts::Published(facts) => {
+                let PublicationFacts {
+                    work_id,
+                    revision_id,
+                    title,
+                    author_display_name,
+                    published_at,
+                    document,
+                    snapshot,
+                    catalog,
+                } = facts;
+                let tags = shown_tags(snapshot.as_ref(), &catalog)?;
+                Ok(ReaderWork::Published(PublicWork {
+                    work_id,
+                    revision_id,
+                    title,
+                    author_display_name,
+                    published_at,
+                    document,
+                    tags,
+                }))
+            }
+            ReaderWorkFacts::ReviewWithdrawn {
+                work_id,
+                author_display_name,
+            } => Ok(ReaderWork::ReviewWithdrawn {
+                work_id,
+                author_display_name,
+            }),
+        }
     }
 }

@@ -46,6 +46,16 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    let evaluation =
+        match vink_app::evaluation_worker::EvaluationSettings::from_lookup(config.profile, |key| {
+            std::env::var(key).ok()
+        }) {
+            Ok(settings) => settings,
+            Err(error) => {
+                eprintln!("vink-worker: invalid configuration: {error}");
+                return ExitCode::from(2);
+            }
+        };
     runtime::init_tracing(config.log_format);
     let tokio = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -57,7 +67,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    tokio.block_on(run(config, outbox))
+    tokio.block_on(run(config, outbox, evaluation))
 }
 
 /// What the startup probe found. `ready` is logged only when the queue tables answered.
@@ -84,7 +94,11 @@ async fn outbox_status(
     }
 }
 
-async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
+async fn run(
+    config: Config,
+    settings: OutboxSettings,
+    eval_settings: vink_app::evaluation_worker::EvaluationSettings,
+) -> ExitCode {
     // Listen for SIGINT/SIGTERM before any probe, so a signal during startup is a clean stop.
     let (stop, mut stopped) = watch::channel(false);
     let signals = tokio::spawn(async move {
@@ -108,13 +122,13 @@ async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
         database,
         outbox = status,
         outbox_concurrency = settings.concurrency,
+        evaluation = eval_settings.enabled,
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),
-        jobs = "discussion_outbox,rate_limit_prune,outbox_retention",
+        jobs = "discussion_outbox,rate_limit_prune,outbox_retention,work_evaluation",
         post_review = "operator_rereview.v1",
         admission_post_review = "no_producer",
-        ai_moderation = "not_implemented",
         "vink-worker started"
     );
     if status == "refused_privileged_role" {
@@ -129,6 +143,11 @@ async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
     let mut outbox = settings.enabled.then(|| {
         let worker = OutboxWorker::production(pool.clone(), settings)
             .require_restricted_role(config.profile == Profile::Production);
+        tokio::spawn(worker.run(stopped.clone()))
+    });
+    let mut evaluation = eval_settings.enabled.then(|| {
+        let worker =
+            vink_app::evaluation_worker::EvaluationWorker::new(pool.clone(), eval_settings);
         tokio::spawn(worker.run(stopped.clone()))
     });
     let vink = Vink::new(PgStore::new(pool.clone()));
@@ -146,6 +165,13 @@ async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
                 outbox = None;
                 code = ExitCode::FAILURE;
                 break;
+            }
+            joined = async { evaluation.as_mut().expect("guarded").await }, if evaluation.is_some() => {
+                match joined {
+                    Ok(()) => tracing::info!("evaluation worker loop finished"),
+                    Err(error) => tracing::error!(panicked = error.is_panic(), "evaluation worker loop failed"),
+                }
+                evaluation = None;
             }
             _ = prune.tick() => {
                 match vink.prune_rate_limits().await {
@@ -166,6 +192,15 @@ async fn run(config: Config, settings: OutboxSettings) -> ExitCode {
         tracing::error!(
             panicked = error.is_panic(),
             "outbox loop failed during drain"
+        );
+        code = ExitCode::FAILURE;
+    }
+    if let Some(task) = evaluation
+        && let Err(error) = task.await
+    {
+        tracing::error!(
+            panicked = error.is_panic(),
+            "evaluation loop failed during drain"
         );
         code = ExitCode::FAILURE;
     }

@@ -685,10 +685,16 @@ async fn test_schema_upgrade_and_legacy_compatibility(pool: PgPool) {
 }
 
 const PUBLICATION_MIGRATION: i64 = 20_261_116_000_000;
+const MODERATION_MIGRATION: i64 = 20_261_117_000_000;
 
 fn down_script() -> String {
-    include_str!("../../migrations-rollback/20261116000000_work_publication_persistence.down.sql")
-        .to_owned()
+    format!(
+        "{}\n{}",
+        include_str!("../../migrations-rollback/20261117000000_work_moderation_runtime.down.sql"),
+        include_str!(
+            "../../migrations-rollback/20261116000000_work_publication_persistence.down.sql"
+        ),
+    )
 }
 
 async fn run_down(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -734,7 +740,10 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
         .unwrap();
 
     let report = migrate(&pool).await.unwrap();
-    assert_eq!(report.applied, vec![PUBLICATION_MIGRATION]);
+    assert_eq!(
+        report.applied,
+        vec![PUBLICATION_MIGRATION, MODERATION_MIGRATION]
+    );
 
     let row: (String, i64, Option<Uuid>, Option<Uuid>) = sqlx::query_as(
         "SELECT audience, generation, intent_revision_id, pointer_revision_id

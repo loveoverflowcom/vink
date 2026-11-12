@@ -37,7 +37,44 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+
+#[derive(Debug, PartialEq, Eq)]
+enum AdminCommand {
+    Add(PrincipalId, Option<String>),
+    Remove(PrincipalId, Option<String>),
+    List,
+}
+
+fn parse_admin(args: &[String]) -> Result<AdminCommand, String> {
+    let principal = |raw: Option<&String>| {
+        raw.and_then(|raw| PrincipalId::parse(raw))
+            .ok_or_else(|| "expected a principal UUID".to_string())
+    };
+    match args.first().map(String::as_str) {
+        Some("add") if args.len() >= 2 => {
+            let reason = if args.len() > 2 {
+                Some(args[2..].join(" "))
+            } else {
+                None
+            };
+            Ok(AdminCommand::Add(principal(args.get(1))?, reason))
+        }
+        Some("remove") if args.len() >= 2 => {
+            let reason = if args.len() > 2 {
+                Some(args[2..].join(" "))
+            } else {
+                None
+            };
+            Ok(AdminCommand::Remove(principal(args.get(1))?, reason))
+        }
+        Some("list") if args.len() == 1 => Ok(AdminCommand::List),
+        _ => Err(
+            "expected `add <principal> [<reason>]`, `remove <principal> [<reason>]` or `list`"
+                .into(),
+        ),
+    }
+}
 
 /// Operator command on the discussion outbox, parsed before any configuration is read.
 #[derive(Debug, PartialEq, Eq)]
@@ -249,6 +286,7 @@ fn main() -> ExitCode {
         "serve"
             | "migrate"
             | "dev-seed"
+            | "admin"
             | "moderator"
             | "principal"
             | "tag"
@@ -259,6 +297,18 @@ fn main() -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     }
+    let admin_command = if command == "admin" {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        match parse_admin(&args) {
+            Ok(parsed) => Some(parsed),
+            Err(error) => {
+                eprintln!("vink-app admin: {error}\n{USAGE}");
+                return ExitCode::from(2);
+            }
+        }
+    } else {
+        None
+    };
     let moderator_command = if command == "moderator" {
         let args: Vec<String> = std::env::args().skip(2).collect();
         match parse_moderator(&args) {
@@ -353,6 +403,9 @@ fn main() -> ExitCode {
             Loaded::Migrate(config) => migrate(&config).await,
             Loaded::App(config) if command == "dev-seed" => seed(&config).await,
             Loaded::App(config) if command == "maintenance" => maintenance(&config).await,
+            Loaded::App(config) if let Some(operation) = admin_command => {
+                admin(&config, operation).await
+            }
             Loaded::App(config) if let Some(operation) = moderator_command => {
                 moderator(&config, operation).await
             }
@@ -420,6 +473,52 @@ async fn seed(config: &Config) -> Result<(), Failure> {
         author = %dev_seed::SAMPLE_AUTHOR,
         "development fixture present"
     );
+    Ok(())
+}
+
+async fn admin(config: &Config, command: AdminCommand) -> Result<(), Failure> {
+    let pool = connect(&config.database_url, "vink-app admin").await?;
+    let operator = std::env::var("USER").unwrap_or_else(|_| "operator".to_string());
+    let mut conn = pool
+        .acquire()
+        .await
+        .map_err(|e| Failure::Runtime(e.to_string()))?;
+    match command {
+        AdminCommand::Add(principal, reason) => {
+            persistence::moderation::add_admin_seat(
+                &mut conn,
+                &operator,
+                principal,
+                reason.as_deref(),
+            )
+            .await
+            .map_err(|e| Failure::Runtime(format!("admin add failed: {e}")))?;
+            println!("added admin seat for {principal}");
+        }
+        AdminCommand::Remove(principal, reason) => {
+            persistence::moderation::remove_admin_seat(
+                &mut conn,
+                &operator,
+                principal,
+                reason.as_deref(),
+            )
+            .await
+            .map_err(|e| Failure::Runtime(format!("admin remove failed: {e}")))?;
+            println!("removed admin seat for {principal}");
+        }
+        AdminCommand::List => {
+            let seats = persistence::moderation::list_admin_seats(&mut conn)
+                .await
+                .map_err(|e| Failure::Runtime(format!("admin list failed: {e}")))?;
+            for seat in seats {
+                println!(
+                    "{}\t{}\t{}",
+                    seat.principal_id, seat.display_name, seat.created_at
+                );
+            }
+        }
+    }
+    pool.close().await;
     Ok(())
 }
 

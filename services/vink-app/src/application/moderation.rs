@@ -6,8 +6,9 @@
 //! decision version inside the apply transaction before committing (`MOD-07`, `MOD-08`).
 //! Note: [`crate::persistence::outbox::OutboxEvent`] currently carries only `comment_id`.
 
-use super::ports::BoundPrincipal;
+use super::ports::{BoundPrincipal, StoreError};
 use crate::domain::ids::{EvaluationId, RevisionId, WorkId};
+use crate::domain::moderation::case::CaseRefusal;
 use crate::domain::moderation::{
     AdminAuthority, AdminDecision, AdminRemovalTransition, AdminTransition,
     AuthorModerationTransition, EvaluationTicket, EvaluationTransition, EvaluatorCapability,
@@ -99,6 +100,52 @@ pub fn plan_work_admin_removal(
     }
     let authority = granted_work.map(|work| AdminAuthority::scoped(actor.principal, work));
     Ok(moderation.apply_admin_remove(publication, authority)?)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum ModerationActionError {
+    #[error("not found")]
+    NotFound,
+    #[error("forbidden: {0}")]
+    Forbidden(&'static str),
+    #[error("conflict: {0}")]
+    Conflict(&'static str),
+    #[error("validation failed: {0}")]
+    ValidationFailed(&'static str),
+    #[error("storage unavailable")]
+    Unavailable,
+    #[error("internal error")]
+    Internal,
+}
+
+impl From<StoreError> for ModerationActionError {
+    fn from(error: StoreError) -> Self {
+        match error {
+            StoreError::Unavailable(_) => Self::Unavailable,
+            StoreError::UnknownPrincipal | StoreError::PrincipalSuspended => {
+                Self::Forbidden("principal_suspended")
+            }
+            StoreError::Integrity(_) => Self::Internal,
+        }
+    }
+}
+
+pub fn case_refusal_to_action_error(e: CaseRefusal) -> ModerationActionError {
+    match e {
+        CaseRefusal::StaleCase => ModerationActionError::Conflict("case_version_stale"),
+        CaseRefusal::StaleDecision => ModerationActionError::Conflict("stale_decision"),
+        CaseRefusal::CaseClosed => ModerationActionError::Conflict("case_closed"),
+        CaseRefusal::NotClaimant => ModerationActionError::Forbidden("not_claimant"),
+        CaseRefusal::AlreadyClaimed => ModerationActionError::Conflict("already_claimed"),
+        CaseRefusal::Escalated => ModerationActionError::Forbidden("escalated_to_admin"),
+        CaseRefusal::AppealOpen => ModerationActionError::Forbidden("appeal_open"),
+        CaseRefusal::ReasonRequired => ModerationActionError::ValidationFailed("reason_required"),
+        CaseRefusal::NoteRequired => ModerationActionError::ValidationFailed("note_required"),
+        CaseRefusal::WrongSubject => ModerationActionError::ValidationFailed("wrong_subject"),
+        CaseRefusal::VersionExhausted => ModerationActionError::Internal,
+        CaseRefusal::InvalidFacts => ModerationActionError::Internal,
+        CaseRefusal::Authority(a) => ModerationActionError::Forbidden(a.as_str()),
+    }
 }
 
 #[cfg(test)]

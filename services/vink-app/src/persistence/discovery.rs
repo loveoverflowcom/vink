@@ -33,7 +33,7 @@ use super::postgres::{classify, document, title};
 use super::taxonomy::{SlotRow, catalog_rows, slug_kind, tags_from_slots};
 use crate::application::ports::{
     DiscoveryFacts, DiscoveryRequest, PublicCardFacts, PublicationFacts, PublicationStore,
-    SlugFacts, StoreError,
+    ReaderWorkFacts, SlugFacts, StoreError,
 };
 use crate::domain::discovery::filter_tags;
 use crate::domain::document::DocumentData;
@@ -353,5 +353,52 @@ impl PublicationStore for PgStore {
             snapshot: id.and_then(|id| snapshots.remove(&id)),
             catalog,
         }))
+    }
+
+    fn reader_work(
+        &self,
+        work_id: WorkId,
+    ) -> impl Future<Output = Result<Option<ReaderWorkFacts>, StoreError>> + Send {
+        PgStore::reader_work(self, work_id)
+    }
+}
+
+impl PgStore {
+    pub async fn reader_work(
+        &self,
+        work_id: WorkId,
+    ) -> Result<Option<ReaderWorkFacts>, StoreError> {
+        if let Some(pub_facts) = self.publication(work_id).await? {
+            return Ok(Some(ReaderWorkFacts::Published(pub_facts)));
+        }
+
+        #[derive(sqlx::FromRow)]
+        struct WithdrawnRow {
+            display_name: String,
+        }
+
+        let row: Option<WithdrawnRow> = sqlx::query_as(
+            "SELECT a.display_name
+               FROM work_publications wp
+               JOIN works w ON w.id = wp.work_id
+               JOIN principals a ON a.id = w.owner_id
+              WHERE wp.work_id = $1
+                AND wp.audience = 'public'
+                AND wp.lifecycle = 'active'
+                AND wp.review_withdrawn_revision_id IS NOT NULL",
+        )
+        .bind(work_id.as_uuid())
+        .fetch_optional(self.pool())
+        .await
+        .map_err(classify)?;
+
+        if let Some(r) = row {
+            return Ok(Some(ReaderWorkFacts::ReviewWithdrawn {
+                work_id,
+                author_display_name: r.display_name,
+            }));
+        }
+
+        Ok(None)
     }
 }

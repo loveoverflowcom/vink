@@ -52,6 +52,8 @@ mod publication;
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]
 mod taxonomy_api;
+#[path = "postgres/work_moderation.rs"]
+mod work_moderation;
 
 fn principal(id: Uuid) -> Option<PrincipalId> {
     Some(PrincipalId::from_uuid(id))

@@ -29,6 +29,9 @@ pub enum TombstoneWriteError {
     /// COM-11: the hidden page of a work made private keeps its thread readable, not writable.
     #[error("the hidden page is read-only")]
     HiddenReadOnly,
+    /// O-17: the review-withdrawn page keeps its thread readable, not writable.
+    #[error("the review-withdrawn page is read-only")]
+    ReviewWithdrawnReadOnly,
 }
 
 impl TombstoneWriteError {
@@ -37,6 +40,7 @@ impl TombstoneWriteError {
             Self::WorkUnavailable => "work_unavailable",
             Self::TombstoneReadOnly => "tombstone_read_only",
             Self::HiddenReadOnly => "hidden_read_only",
+            Self::ReviewWithdrawnReadOnly => "review_withdrawn_read_only",
         }
     }
 }
@@ -141,6 +145,7 @@ pub fn check_comment_submission(publication: &Publication) -> Result<(), Tombsto
         WorkAccessPlan::PublicBody(_) => Ok(()),
         WorkAccessPlan::AuthorTombstone { .. } => Err(TombstoneWriteError::TombstoneReadOnly),
         WorkAccessPlan::AuthorHidden { .. } => Err(TombstoneWriteError::HiddenReadOnly),
+        WorkAccessPlan::ReviewWithdrawn { .. } => Err(TombstoneWriteError::ReviewWithdrawnReadOnly),
         WorkAccessPlan::Unavailable => Err(TombstoneWriteError::WorkUnavailable),
     }
 }

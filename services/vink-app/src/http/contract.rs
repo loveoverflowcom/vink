@@ -90,6 +90,16 @@ pub struct Publication {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum ReaderResponse {
+    Published(Publication),
+    ReviewWithdrawn {
+        work_id: String,
+        author_name: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DraftList {
     pub drafts: Vec<DraftCard>,
 }
@@ -730,6 +740,126 @@ pub struct OpenTicketView {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CaseSummaryDto {
+    pub id: String,
+    pub subject_kind: String,
+    pub work_id: String,
+    pub revision_id: Option<String>,
+    pub decision_version: i64,
+    pub origin: String,
+    pub version: i64,
+    pub state: String,
+    pub claimed_by: Option<String>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct NoteRecordDto {
+    pub id: String,
+    pub author_id: String,
+    pub note: String,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CaseDetailDto {
+    pub id: String,
+    pub subject_kind: String,
+    pub work_id: String,
+    pub revision_id: Option<String>,
+    pub title: Option<String>,
+    pub author_id: String,
+    pub author_name: String,
+    pub decision_version: i64,
+    pub origin: String,
+    pub version: i64,
+    pub state: String,
+    pub claimed_by: Option<String>,
+    pub notes: Vec<NoteRecordDto>,
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CaseExpectedVersionReq {
+    pub expected_version: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct AddNoteReq {
+    pub expected_version: i64,
+    pub note: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct TakeoverReq {
+    pub expected_version: i64,
+    pub reason: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct ConcludeReq {
+    pub expected_version: i64,
+    pub verdict: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CaseStatusDto {
+    pub status: &'static str,
+    pub version: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ConcludeOutcomeDto {
+    pub status: &'static str,
+    pub verdict: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CreateGrantReq {
+    pub grantee_kind: String,
+    pub grantee_id: String,
+    pub capability: String,
+    pub scope_kind: String,
+    pub scope_work_id: Option<String>,
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CreateGrantRes {
+    pub grant_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct GrantFactsDto {
+    pub id: String,
+    pub grantee_kind: String,
+    pub grantee_id: String,
+    pub capability: String,
+    pub scope_kind: String,
+    pub scope_work_id: Option<String>,
+    pub expires_at: Option<String>,
+    pub revoked: bool,
+    pub origin: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct AutomationStateDto {
+    pub mode: &'static str,
+    pub version: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct SetAutomationModeReq {
+    pub expected_version: i64,
+    pub mode: String,
+    pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ErrorEnvelope {
     pub error: ErrorBody,
 }
@@ -822,6 +952,40 @@ impl From<&PublicWork> for Publication {
             published_at: work.published_at,
             document: work.document.to_data(),
             tags: work.tags.iter().map(PublicTag::from).collect(),
+        }
+    }
+}
+
+impl From<crate::application::ReaderWork> for ReaderResponse {
+    fn from(work: crate::application::ReaderWork) -> Self {
+        match work {
+            crate::application::ReaderWork::Published(public) => {
+                Self::Published(Publication::from(&public))
+            }
+            crate::application::ReaderWork::ReviewWithdrawn {
+                work_id,
+                author_display_name,
+            } => Self::ReviewWithdrawn {
+                work_id: work_id.to_string(),
+                author_name: author_display_name,
+            },
+        }
+    }
+}
+
+impl From<&crate::application::ReaderWork> for ReaderResponse {
+    fn from(work: &crate::application::ReaderWork) -> Self {
+        match work {
+            crate::application::ReaderWork::Published(public) => {
+                Self::Published(Publication::from(public))
+            }
+            crate::application::ReaderWork::ReviewWithdrawn {
+                work_id,
+                author_display_name,
+            } => Self::ReviewWithdrawn {
+                work_id: work_id.to_string(),
+                author_name: author_display_name.clone(),
+            },
         }
     }
 }

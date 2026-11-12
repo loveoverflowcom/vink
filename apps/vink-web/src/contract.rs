@@ -91,6 +91,16 @@ pub struct Publication {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum ReaderResponse {
+    Published(Publication),
+    ReviewWithdrawn {
+        work_id: String,
+        author_name: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DraftList {
     pub drafts: Vec<DraftCard>,
 }

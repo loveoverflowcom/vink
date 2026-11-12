@@ -80,6 +80,14 @@ pub fn follow_publication(initial: Publication) -> Live<Publication> {
     })
 }
 
+/// When a work is known to be review-withdrawn, purge cached publication and remove its explore cards.
+pub fn invalidate_withdrawn(work_id: &str) {
+    #[cfg(feature = "hydrate")]
+    browser::invalidate_withdrawn(work_id);
+    #[cfg(not(feature = "hydrate"))]
+    let _ = work_id;
+}
+
 fn follow<T>(
     key: PublicKey,
     initial: T,
@@ -256,6 +264,23 @@ mod browser {
             changed();
         }
         reschedule();
+    }
+
+    pub fn invalidate_withdrawn(work_id: &str) {
+        with(|owner| {
+            let key = PublicKey::Publication(work_id.to_string());
+            owner
+                .store
+                .invalidate_where(|k| k == &key || matches!(k, PublicKey::Works(_)));
+            owner.store.edit_all(|key, snapshot| {
+                if matches!(key, PublicKey::Works(_))
+                    && let Snapshot::Works(list) = snapshot
+                {
+                    list.works.retain(|card| card.work_id != work_id);
+                }
+            });
+        });
+        changed();
     }
 
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {

@@ -1,0 +1,35 @@
+version = 1
+id = "O-17"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "db7aafafa58b94a7d2c1b1de5b46e9f7464e13f233be3ba9a3ca9d595d53795f"
+
+[content]
+kind = "product"
+domain = "publication"
+title = "Trang ở URL cũ sau khi moderator hoặc admin bác bản đang đăng"
+resolution = """
+Khi moderator hoặc admin kết luận bác một revision đang đăng công khai của tác phẩm:
+1. Public pointer của tác phẩm bị rút khỏi `publications` (`GET /api/v1/works/{id}/publication` trả `404`). Khám phá và tìm kiếm đọc từ public pointer nên tác phẩm biến mất khỏi các danh sách công khai.
+2. Tại URL đọc công khai cũ (`GET /api/v1/works/{id}/reader`), hệ thống trả trạng thái `review_withdrawn` kèm `work_id` và tên hiển thị tác giả (`author_name`), không trả nội dung thân bài hay metadata tác phẩm.
+3. Trang web hiển thị HTTP 200, `<meta name="robots" content="noindex">`, header `Cache-Control: no-store`, tên tác giả, thông báo “Bản này đã bị gỡ sau khi kiểm duyệt.” và luồng thảo luận hai tầng bên dưới.
+4. Quyền bình luận trên trang bị gỡ:
+   - Khách xem bình luận đã được duyệt (đủ điều kiện hiển thị).
+   - Người viết bình luận vẫn xem được bình luận chờ duyệt hoặc bị từ chối của chính mình, và có quyền tự gỡ bình luận của mình.
+   - Các ca bình luận đã gửi trước đó vẫn được xử lý tiếp theo snapshot bình luận.
+   - Chặn toàn bộ hành động tạo bình luận mới, gửi phản hồi mới, chỉnh sửa bình luận và tương tác mới tại server.
+5. Khi tác giả chuyển tác phẩm sang “Chỉ mình tôi” (`set-private`), trang bị gỡ bị đóng hoàn toàn và rút cả tên tác giả khỏi URL cũ. Khi một revision mới được duyệt đúng ý định công khai, bản được duyệt sẽ thay thế trang thông báo.
+"""
+rationale = """
+Bảo toàn tính toàn vẹn của cuộc thảo luận văn học và tôn trọng đóng góp của độc giả theo nguyên tắc tôn vinh thảo luận hai tầng (PRD §14, PUB-05, MOD-13). Thân bài bị bác do vi phạm kiểm duyệt phải bị thu hồi ngay lập tức để bảo vệ độc giả và nền tảng, nhưng các thảo luận đã diễn ra không tự động bị xóa trừ khi chính bình luận đó vi phạm. Việc chặn thêm bình luận mới ngăn chặn leo thang tranh cãi trên một tác phẩm không còn tồn tại trên không gian công khai. Quyền tự gỡ bình luận của tác giả bình luận được bảo toàn.
+"""
+related_ids = [
+    "MOD-13",
+    "PUB-05",
+]
+work_audiences = [
+    "private",
+    "public",
+]
