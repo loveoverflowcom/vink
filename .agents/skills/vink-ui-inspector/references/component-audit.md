@@ -30,7 +30,7 @@ toàn bộ” khi chỉ xem được hình của một state.
 | Copy / icon | Nhãn ngắn nhưng đủ nghĩa? Icon có mô tả khi cần? Thông tin thiết yếu có bị giấu? |
 | State | Loading khác empty/error? Lưu và public revision có bị lẫn? |
 | Accessibility | Có bằng chứng riêng cho names, keyboard, focus, semantics hay chỉ có ảnh? |
-| Interaction | Đã thao tác hay mới dự đoán? Có input, dismiss, back, retry cần kiểm? |
+| Interaction | Đã thao tác hay mới dự đoán? Có input/dismiss/back/retry? Focus có bị cướp khi refresh? IME tiếng Việt có giữ composition? Cử chỉ có đường hủy và phương án thay thế? Motion có tiết chế và dừng khi reduced motion? |
 | Consistency | Có source/component baseline thật để so hay chỉ là preference? |
 
 Sau khi kiểm từng thành phần, kiểm quan hệ: overlay với anchor, focus với drawer,
@@ -65,6 +65,12 @@ phải giống từng pixel ở hai viewport khác nhau.
 | Feedback intent | Hiển thị đúng tín hiệu và khả năng phản hồi theo quyền | Intent không miễn trừ policy; gửi comment cần phạm vi được giao |
 | r1 public, r2 pending | Source hoặc fixture state + UI render | Không coi demo là luồng publication hiện có |
 | Curation cần xác nhận lại | Source/spec + UI theo snapshot và lý do | Không tự chốt policy đang Proposed |
+| Focus SearchField | Thao tác click/tab vào field; kiểm caret và bàn phím | Sửa focus control không tự ý redesign thanh navigation |
+| Tìm kiếm bị giật/lag | Profiling render/recomposition, kiểm debounce/I/O nền | Không thêm spinner/animation để che giấu giật main thread |
+| Sheet kéo vuốt | Kéo trực tiếp, thả tay trước/sau ngưỡng, nested scroll | Phải kiểm contract hủy, back và insets host |
+| Bật Reduced Motion | Bật flag reduced giữa animation; quan sát dừng lặp | Vòng lặp phải dừng đúng cách; nhãn trạng thái phải giữ nguyên |
+| Đóng dialog do navigate | Kích hoạt action điều hướng trong dialog; kiểm focus mới | Không trả focus về trang cũ đã rời đi |
+| Chỉ có JVM Desktop | Chạy unit test và render capture offscreen | Không được báo PASS cho gesture cảm ứng Android/iOS hay screen reader |
 
 Chọn lượng quan sát đủ để trả lời câu hỏi. Nếu phạm vi quá lớn, báo phần đã kiểm
 và phần chưa kiểm; không dùng ngân sách tùy ý để âm thầm bỏ yêu cầu user.

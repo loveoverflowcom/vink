@@ -6,8 +6,11 @@ description: Mô tả bố cục Vink bằng cây vùng, phân cấp, responsive
 # Vink Layout Spec
 
 Sở hữu **cách mô tả và đối chiếu bố cục**, không sở hữu quyết định nghiệp vụ,
-renderer hay quyền thực hiện. Đọc nguồn gần tác vụ, branch/SHA, component và token
-thực trước khi khẳng định chúng tồn tại. Dùng
+renderer hay quyền thực hiện. Khi vùng liên quan đến tương tác (chuyển động, cử chỉ, focus,
+bàn phím/IME, overlay), cấu trúc mô tả bao gồm trường `Interaction` theo
+[quy ước và template](references/layout-spec.md) và chuẩn mực
+[Interaction UX](../vink-ui-design/references/interaction-ux.md). Đọc nguồn gần tác vụ,
+branch/SHA, component và token thực trước khi khẳng định chúng tồn tại. Dùng
 [quy ước và template](references/layout-spec.md); chỉ đọc
 [ví dụ](references/examples.md) khi cần minh họa hoặc kiểm lại workflow.
 

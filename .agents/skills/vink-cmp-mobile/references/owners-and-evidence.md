@@ -33,6 +33,8 @@ Manifests win when these change.
 | --- | --- | --- |
 | Pure region/overlay/identity policy | Existing `commonTest` vectors, through CMP verify | No OS or rendering claim |
 | Shared Compose layout, input, semantics, callbacks | CMP verify: common + Desktop tests; open relevant `preview/build/captures` PNGs and actual context sidecar | JVM/off-screen, no OS window, native IME or screen reader |
+| Interaction gesture, nested scroll, focus flow | Desktop JVM tests for pointer/state logic; native host for gesture tracking | JVM proves logic, not finger feel or 60/120fps; static tree is not TalkBack/VoiceOver |
+| Reduced motion & loop termination | JVM unit test verifies `loopsRun == false`; Desktop/native verify visual stop | Static PNG proves frame, not loop termination; verify `loopsRun` and timed frames |
 | Web counterpart or shared-token change | Token drift/quick + Leptos preview; Web verify when app consumer changes | Leptos pixels are browser evidence |
 | Android compilation | Native-enabled build with actual SDK | No installed host or interaction claim |
 | Android runtime/insets/recreation/Back | Android diagnostic verify/run on a named emulator/device | Instrumentation output in `androidDiagnostic/build/outputs/androidTest-results`; screenshots from that same serial |

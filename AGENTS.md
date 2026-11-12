@@ -136,8 +136,11 @@ decision without settling it; record its assumptions and the evidence still need
 When a request introduces or hits an unclear product/domain rule, use
 [`vink-shape`](.agents/skills/vink-shape/SKILL.md) to classify and elicit only the needed owner
 decisions; when recording decisions or reconciling drift between code and docs, use
-[`vink-specify`](.agents/skills/vink-specify/SKILL.md). [Archived input](docs/archive/initial/README.md)
-is historical context only.
+[`vink-specify`](.agents/skills/vink-specify/SKILL.md). For UI and interaction UX tasks
+(gestures, motion, focus, IME, CMP libraries), follow the conditional routing in the
+[skill index](.agents/skills/README.md) and
+[Interaction UX](.agents/skills/vink-ui-design/references/interaction-ux.md).
+[Archived input](docs/archive/initial/README.md) is historical context only.
 
 ## Engineering boundaries
 

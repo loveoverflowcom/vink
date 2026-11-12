@@ -32,13 +32,13 @@ supported by this repository read the same canonical instructions:
 | Domain, Axum API, PostgreSQL, discussion module, worker and verification | [vink-engineering](vink-engineering/SKILL.md) |
 | Revisions, audiences, moderation, publish intent, pointers and tombstone deletion | [vink-publication](vink-publication/SKILL.md) |
 | Leptos SSR/hydration, routes, browser state and JS editor | [vink-leptos-web](vink-leptos-web/SKILL.md) |
-| Kotlin Compose Multiplatform `:ui`/`:patterns`, Android/iOS diagnostic hosts and Desktop previews | [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) |
-| Expressive M3 reading/writing/discovery/collection UX, tokens, Vietnamese typography and accessibility | [vink-ui-design](vink-ui-design/SKILL.md) |
-| Describe and compare UI layout structure before generating or editing UI | [vink-layout-spec](vink-layout-spec/SKILL.md) |
+| Kotlin Compose Multiplatform `:ui`/`:patterns`, gestures, insets, focus, CMP dependency evaluation, Android/iOS diagnostic hosts and Desktop previews | [vink-cmp-mobile](vink-cmp-mobile/SKILL.md) |
+| Expressive M3 UX, interaction design (gesture/motion/focus/IME/reduced-motion), tokens, Vietnamese typography and accessibility | [vink-ui-design](vink-ui-design/SKILL.md) |
+| Describe and compare UI layout and interaction structure before generating or editing UI | [vink-layout-spec](vink-layout-spec/SKILL.md) |
 | Capture a reproducible UI/UX implementation snapshot and coverage report from a checkout | [vink-ui-capture](vink-ui-capture/SKILL.md) |
 | Upload a captured UI evidence bundle to Google Drive and update the review index | [vink-ui-evidence-drive](vink-ui-evidence-drive/SKILL.md) |
-| Component-by-component UI/UX audit from screenshots, source or a permitted live page | [vink-ui-inspector](vink-ui-inspector/SKILL.md) |
-| Repair a scoped UI defect or prepare an implementation handoff from findings/designs | [vink-ui-fix](vink-ui-fix/SKILL.md) |
+| Component-by-component UI/UX and interaction audit from screenshots, source or a permitted live page | [vink-ui-inspector](vink-ui-inspector/SKILL.md) |
+| Repair a scoped UI or interaction defect, or prepare an implementation handoff from findings/designs | [vink-ui-fix](vink-ui-fix/SKILL.md) |
 | State-transition/race impact and focused Quint models | [vink-behavior](vink-behavior/SKILL.md) |
 | Refresh the feature map or verification workflow | [vink-maintain-verification](vink-maintain-verification/SKILL.md) |
 | Review a PR, commit range, patch or local diff | [vink-code-review](vink-code-review/SKILL.md) |
@@ -57,6 +57,25 @@ task actually touches:
 3. **Clear bug fix, small UI repair, or bounded slice with settled rules:**
    Go directly to `vink-work-item` or `vink-ui-fix` (skip `vink-shape`). If implementation changes
    runtime status or exposes doc/code drift, run `vink-specify` before finishing.
+
+## Conditional routing for UI and Interaction UX
+
+Triggers: gesture/swipe, motion/transition, focus, IME/keyboard, overlay, scroll restoration, reduced motion, interaction performance.
+
+1. **Bug rõ, luật đã chốt (ví dụ: focus SearchField, thiếu nhãn trạng thái khi dừng loop, insets bị double-pad):**
+   Đi thẳng tới `vink-ui-fix` (hoặc `vink-cmp-mobile` / `vink-leptos-web` theo renderer). Không mở rộng scope sang redesign hay shaping.
+2. **Thiết kế tương tác mới hoặc cử chỉ phức tạp (gesture/swipe, motion/transition, overlay/sheet, scroll restoration):**
+   `vink-ui-design` (đặc tả interaction theo `references/interaction-ux.md`) → `vink-layout-spec` (trình bày spec kèm trường `Interaction`) → triển khai ở renderer tương ứng.
+3. **Cử chỉ phá hủy hoặc đổi điều hướng cốt lõi (vuốt để xóa bài, vuốt bỏ nháp, vuốt đổi tab toàn màn):**
+   `vink-shape` (phân loại `open_product` và hỏi chủ sản phẩm) → `vink-specify` nếu có quyết định → `vink-ui-design`.
+4. **Câu hỏi tương thích thư viện / dependency CMP:**
+   `vink-cmp-mobile` (áp dụng quy trình ba tầng và checklist tại `references/dependency-evaluation.md`) → `vink-prototype` nếu cần thử nghiệm độc lập.
+5. **Kiểm tra / Audit tương tác (focus stealing, jank masking, reduced motion compliance):**
+   `vink-ui-inspector` (quan sát và ghi nhận finding khách quan, phân biệt rõ bằng chứng thực với giả thuyết "mượt").
+6. **Thu thập bằng chứng (Capture):**
+   `vink-ui-capture` (ghi snapshot, metadata interaction và navigation graph; không tự đưa ra kết luận audit pass/fail).
+7. **Chỉ thiếu thiết bị thật (Android/iOS device):**
+   Tiếp tục hoàn tất phần độc lập trên `commonMain` và Desktop preview; ghi nhận `NOT_RUN` riêng cho boundary native host.
 
 ## Resolve a decision
 

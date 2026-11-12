@@ -50,6 +50,14 @@ owners and tokens. Explain structural/CTA changes in the spec before implementat
 then compare the result against it. Pure transport/state changes with no UI change
 do not need a layout exercise. Continue within existing implementation authorization.
 
+Apply the interaction UX standards from [Interaction UX](../vink-ui-design/references/interaction-ux.md):
+preserve keyboard reachability, visible focus rings, dialog focus containment and restoration; never
+steal focus when hydration completes, when an async resource resolves or when an action finishes.
+Respect `prefers-reduced-motion` via generated `tokens.css` (instant transitions, stopped loops).
+Preserve Vietnamese IME composition (Telex/VNI) and selection in text inputs and the CodeMirror 6
+editor (`editor/`); do not remount input nodes across state updates. Keep scroll positions stable
+across re-renders.
+
 Keep presentation separate from application and transport: components render typed states
 and dispatch intents; resources/actions coordinate requests; adapters own URLs, DTOs and
 error classification. SSR can call application services directly through the composition root.

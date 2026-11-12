@@ -11,6 +11,7 @@ biến thành sự thật khi được chép sang prompt.
 
 - Token/component/CSS: sửa presentation owner.
 - Copy/a11y name/focus: sửa nơi render/điều phối tương ứng.
+- Interaction/focus/IME: sửa đúng controller/owner (`FocusRequester`, `TextFieldValue`, modifier), không sửa bằng cách remount node hoặc đổi router; không dùng spinner/animation để che giấu lag I/O hoặc giật main thread; dialog đóng do navigate không trả focus về trang cũ.
 - API trả trạng thái sai hoặc save race: chuyển đúng application/domain/state owner,
   không “fix” bằng cách đổi nhãn thành thành công.
 - Chưa có feature: đó là khoảng trống implementation, không một lỗi spacing.
@@ -38,6 +39,7 @@ Vink tại snapshot có các lane sau; đọc lại command owner trước khi t
 | --- | --- | --- |
 | Skill/spec | JSON/YAML, links, scope/owner/nguồn | UI runtime đã chạy |
 | Layout, chữ, theme | Source + render liên quan đã mở; keyboard nếu bị ảnh hưởng | Screen reader/IME/motion từ một screenshot |
+| Interaction, gesture, focus, IME | Target-specific tests (Desktop JVM cho logic event/focus; Android/iOS host cho gesture/insets) | Test JVM Desktop không chứng minh gesture cảm ứng native hay screen reader (VoiceOver/TalkBack); screenshot không chứng minh 60fps mượt |
 | Pure save-state/API mapping | Unit/contract check tập trung, `cargo xtask verify quick` khi áp dụng | Persistence PostgreSQL hoặc browser flow |
 | Quyền/transaction/durability | Lane `cargo xtask verify postgres` cùng regression thật | Production auth/moderation chưa tồn tại |
 | Hydration, save/reload, conflict | Lane `cargo xtask verify web` và scenario ảnh hưởng | OS IME thật/mobile thật/screen reader |

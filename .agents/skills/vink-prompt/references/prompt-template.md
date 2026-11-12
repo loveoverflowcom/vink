@@ -27,12 +27,14 @@ DECISIONS:
   assumptions:
     - [reversible assumption or technical baseline used to proceed + condition to revisit]
 LAYOUT_SPEC: [UI only: selected spec/content or accessible path + revision; if missing,
-  present the full/short vink-layout-spec before UI code/scripts/previews; retain the
-  user's chosen direction and any explicit request to wait; no default approval gate]
+  present the full/short vink-layout-spec (including Interaction field when applicable)
+  before UI code/scripts/previews; retain the user's chosen direction and any explicit request to wait; no default approval gate]
 ACCEPTANCE:
   - [observable result, failure case and its authoritative requirement]
+  - [UI/Interaction: modalities (touch/key/a11y), trigger → feedback → commit/cancel, focus retention/restoration, reduced-motion behavior, Vietnamese IME preservation]
 VERIFY:
   - [cargo xtask verify quick|postgres|web (docs/development), exact claim and boundary]
+  - [UI boundary: JVM unit/offscreen for logic; native host/browser for touch gesture feel, 60fps, insets, screen reader]
 BLOCKERS:
   if a runtime dependency is unavailable:
     complete independent work; preserve explicit unavailable/pending runtime behavior
