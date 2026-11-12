@@ -94,6 +94,7 @@ is informational and every value means "no authenticated subject".
 - `password/enroll/challenges` mails a six-digit code to the verified address of the account named
   by the session. Its purpose, account and issuing session are bound in the database. It uses the
   same 10-minute expiry, five failed attempts and address/account/global ceilings as email codes.
+  Identity checks the session expiry after acquiring its row lock, before committing the delivery.
 - `password/enroll` checks account and session standing again under lock. It consumes the proof
   and inserts one `account_passwords` row in the same transaction. Both methods then issue opaque
   sessions for the same subject. Enrollment leaves the presenting session and verified address intact.

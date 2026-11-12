@@ -852,6 +852,66 @@ async fn an_unknown_or_expired_session_starts_nothing_and_sends_no_mail(pool: Pg
     );
 }
 
+#[sqlx::test(migrator = "vink_identity::persistence::MIGRATOR")]
+async fn a_session_expiring_at_the_issuance_fence_queues_no_enrollment_mail(pool: PgPool) {
+    let h = harness(&pool);
+    let session = h.email_sign_in(MAIL).await;
+    let id = session.session_id;
+    sqlx::query(
+        "UPDATE sessions SET expires_at = clock_timestamp() + interval '2 seconds' WHERE id = $1",
+    )
+    .bind(id)
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // Allow the challenge foreign key to take KEY SHARE, but hold the session lock needed
+    // by the final standing check. Do not update the session row after the wait starts.
+    let mut held = pool.begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM sessions WHERE id = $1 FOR NO KEY UPDATE")
+        .bind(id)
+        .execute(&mut *held)
+        .await
+        .unwrap();
+    let issuing = tokio::spawn(async move {
+        h.store
+            .start_password_enrollment(&session.credential.encode())
+            .await
+            .unwrap()
+    });
+    wait_until_blocked(&pool).await;
+    sqlx::query(
+        "SELECT pg_sleep(GREATEST(0, EXTRACT(EPOCH FROM expires_at - clock_timestamp())))
+           FROM sessions WHERE id = $1",
+    )
+    .bind(id)
+    .execute(&mut *held)
+    .await
+    .unwrap();
+    held.commit().await.unwrap();
+
+    assert!(matches!(
+        issuing.await.unwrap(),
+        EnrollmentStart::CredentialRejected
+    ));
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM email_challenges WHERE purpose = 'enroll_password'"
+        )
+        .await,
+        0
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM mail_deliveries WHERE purpose = 'enroll_password'"
+        )
+        .await,
+        0
+    );
+}
+
 fn native(pool: &PgPool, h: &Harness) -> Router {
     router(IdentityState::new(
         pool.clone(),

@@ -383,8 +383,10 @@ Mức triển khai là `persistence-api`. Một tài khoản dùng cả mã emai
   đóng các proof đã phát. Luồng giả định hộp thư xác minh do người dùng kiểm soát và chỉ tiến
   trình App được ủy quyền gọi Unix socket. Đổi email qua API riêng của Identity vẫn nằm ngoài
   giao diện công khai.
-- Hash Argon2id chạy trước transaction. Identity khóa account → session → challenge và kiểm lại
-  thời hạn sau khi chờ UNIQUE username. Ghi credential và tiêu thụ mã là một transaction.
+- Identity chạy tối đa bốn phép băm hoặc kiểm hash Argon2id đồng thời trong mỗi tiến trình. Các
+  phép này chạy ngoài transaction và dùng chung giới hạn cho đăng ký, đăng nhập và thêm mật khẩu.
+- Identity khóa account → session → challenge, kiểm hạn phiên sau khi lấy khóa và kiểm lại hạn
+  phiên/mã sau khi chờ UNIQUE username. Ghi credential và tiêu thụ mã là một transaction.
   Username trùng hoặc lỗi trước commit làm rollback credential và proof. Logout/disable thắng trước
   khóa thì enrollment bị từ chối. Credential mới không cấp lại phiên hay quyền đã bị thu hồi.
 - Đọc lại `GET /api/v1/auth/password/enroll` sau khi mất phản hồi. API chỉ trả boolean của phiên

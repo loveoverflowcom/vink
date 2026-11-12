@@ -25,8 +25,10 @@ pub const CALL_TIMEOUT: Duration = Duration::from_millis(1500);
 pub const WRITE_TIMEOUT: Duration = Duration::from_millis(4500);
 /// Longest credential the contract accepts, in bytes.
 pub const MAX_CREDENTIAL_BYTES: usize = 4096;
-/// Raw password field limit of the Identity RPC contract.
+// Byte limits of the Identity RPC fields, before policy validation.
+const MAX_USERNAME_FIELD_BYTES: usize = 64;
 const MAX_PASSWORD_FIELD_BYTES: usize = 4096;
+const MAX_CHALLENGE_FIELD_BYTES: usize = 256;
 const MAX_RESPONSE_BYTES: usize = 16 * 1024;
 
 /// What the Identity service decided about a presented credential.
@@ -453,7 +455,10 @@ impl IdentityClient {
         username: &str,
         password: &str,
     ) -> Result<PasswordRegisterOutcome, PasswordRegisterError> {
-        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+        if !fits_wire_field(username, MAX_USERNAME_FIELD_BYTES) {
+            return Err(PasswordRegisterError::InvalidUsername);
+        }
+        if !fits_wire_field(password, MAX_PASSWORD_FIELD_BYTES) {
             return Err(PasswordRegisterError::InvalidPassword);
         }
         let body = serde_json::to_vec(&serde_json::json!({
@@ -493,13 +498,6 @@ impl IdentityClient {
             }
             (422, "invalid_username") => Err(PasswordRegisterError::InvalidUsername),
             (422, "invalid_password") => Err(PasswordRegisterError::InvalidPassword),
-            (400 | 413, "malformed_request" | "payload_too_large") => {
-                Err(if exceeds_username_bound(username) {
-                    PasswordRegisterError::InvalidUsername
-                } else {
-                    PasswordRegisterError::InvalidPassword
-                })
-            }
             (409, "username_taken") => Ok(PasswordRegisterOutcome::UsernameTaken),
             (429, "rate_limited") => Err(PasswordRegisterError::RateLimited),
             _ => Err(PasswordRegisterError::Call(error_for(status, &bytes))),
@@ -512,7 +510,10 @@ impl IdentityClient {
         username: &str,
         password: &str,
     ) -> Result<PasswordLoginOutcome, PasswordLoginError> {
-        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+        if !fits_wire_field(username, MAX_USERNAME_FIELD_BYTES) {
+            return Err(PasswordLoginError::InvalidUsername);
+        }
+        if !fits_wire_field(password, MAX_PASSWORD_FIELD_BYTES) {
             return Err(PasswordLoginError::InvalidPassword);
         }
         let body = serde_json::to_vec(&serde_json::json!({
@@ -551,13 +552,6 @@ impl IdentityClient {
             }
             (422, "invalid_username") => Err(PasswordLoginError::InvalidUsername),
             (422, "invalid_password") => Err(PasswordLoginError::InvalidPassword),
-            (400 | 413, "malformed_request" | "payload_too_large") => {
-                Err(if exceeds_username_bound(username) {
-                    PasswordLoginError::InvalidUsername
-                } else {
-                    PasswordLoginError::InvalidPassword
-                })
-            }
             (429, "rate_limited") => Err(PasswordLoginError::RateLimited),
             _ => Err(PasswordLoginError::Call(error_for(status, &bytes))),
         }
@@ -608,7 +602,13 @@ impl IdentityClient {
         username: &str,
         password: &str,
     ) -> Result<EnrollOutcome, EnrollError> {
-        if password.len() > MAX_PASSWORD_FIELD_BYTES {
+        if !fits_wire_field(handle, MAX_CHALLENGE_FIELD_BYTES) {
+            return Ok(EnrollOutcome::Refused(EnrollRefusal::ChallengeClosed));
+        }
+        if !fits_wire_field(username, MAX_USERNAME_FIELD_BYTES) {
+            return Err(EnrollError::InvalidUsername);
+        }
+        if !fits_wire_field(password, MAX_PASSWORD_FIELD_BYTES) {
             return Err(EnrollError::InvalidPassword);
         }
         let body = serde_json::to_vec(&serde_json::json!({
@@ -650,13 +650,6 @@ impl IdentityClient {
             (403, "account_disabled") => Ok(EnrollOutcome::Refused(EnrollRefusal::AccountDisabled)),
             (422, "invalid_username") => Err(EnrollError::InvalidUsername),
             (422, "invalid_password") => Err(EnrollError::InvalidPassword),
-            (400 | 413, "malformed_request" | "payload_too_large") => {
-                Err(if exceeds_username_bound(username) {
-                    EnrollError::InvalidUsername
-                } else {
-                    EnrollError::InvalidPassword
-                })
-            }
             _ => Err(EnrollError::Call(error_for(status, &bytes))),
         }
     }
@@ -787,13 +780,9 @@ impl IdentityClient {
     }
 }
 
-/// Identity bounds the wire fields (`username` 64 bytes, `password` 4096 bytes, the body 8 KiB)
-/// before it applies the O-12 policy, and answers a field beyond a bound with `400`/`413`. The App
-/// builds those bodies itself, so such an answer means exactly one of the two fields was too
-/// long: a rejected input, not an outage. This decides only which one; the policy stays in
-/// Identity.
-fn exceeds_username_bound(username: &str) -> bool {
-    username.len() > 64
+/// Matches Identity's non-empty, byte-bounded wire fields. Identity applies the credential policy.
+fn fits_wire_field(value: &str, max_bytes: usize) -> bool {
+    (1..=max_bytes).contains(&value.len())
 }
 
 fn error_code(bytes: &[u8]) -> String {

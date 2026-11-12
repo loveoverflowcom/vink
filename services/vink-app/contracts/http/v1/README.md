@@ -435,8 +435,9 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
 - Enrollment accepts `needs_principal` and active accounts with a verified email. App suspension
   yields `403 principal_suspended`. Identity accepts the mailed code only on the session that
   requested it and keeps the session cookie and principal binding intact. `code_rejected` and
-  `username_taken` keep the proof cookie for another attempt. `challenge_closed` and
-  `already_enrolled` clear it. On a lost response, use the GET readback. It reports the
+  `username_taken` keep the proof cookie for another attempt. A missing or invalid proof cookie
+  returns `challenge_closed`. `challenge_closed` and `already_enrolled` clear the proof cookie.
+  On a lost response, use the GET readback. It reports the
   signed-in account's state at the time of the read.
 - Enrollment counts five challenge requests and 15 completion requests per client network per
   15 minutes. Identity applies its own mail ceilings and attempt limits. Auth request bodies are

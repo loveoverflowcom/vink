@@ -3,7 +3,7 @@
 //! provision an account, issue a session; change an address and revoke the other sessions;
 //! disable an account and revoke all its sessions) runs in one transaction with the rows locked.
 //!
-//! Time comparisons use the database clock (`now()`), so the server and the stored rows agree.
+//! Time comparisons use the database clock, including wall-clock checks after lock waits.
 //!
 //! Issuing a challenge writes its delivery intent in the same transaction
 //! ([`crate::delivery::enqueue`]); no mail is sent while a transaction is open.
@@ -192,8 +192,9 @@ impl AccountStore {
         username: &Username,
         password: &Password,
     ) -> Result<Result<NewSession, PasswordRegistrationError>, StoreError> {
-        let password_hash =
-            crate::password::hash_password(password).map_err(|_| StoreError::Unavailable)?;
+        let password_hash = crate::password::hash_credential(password.clone())
+            .await
+            .map_err(|_| StoreError::Unavailable)?;
         let mut tx = self.pool.begin().await?;
         let account_id = Uuid::now_v7();
         sqlx::query("INSERT INTO accounts (id) VALUES ($1)")
@@ -922,10 +923,14 @@ async fn lock_session(
         Some(true) => return Ok(Err(CredentialRejection::AccountDisabled)),
         Some(false) => {}
     }
+    // A time predicate inside the locking query can be evaluated before waiting for the row.
     let expires_at = sqlx::query_scalar(
-        "SELECT expires_at FROM sessions
-          WHERE id = $1 AND account_id = $2 AND revoked_at IS NULL
-            AND expires_at > clock_timestamp() FOR NO KEY UPDATE",
+        "WITH locked_session AS MATERIALIZED (
+            SELECT expires_at FROM sessions
+             WHERE id = $1 AND account_id = $2 AND revoked_at IS NULL
+             FOR NO KEY UPDATE
+        )
+        SELECT expires_at FROM locked_session WHERE expires_at > clock_timestamp()",
     )
     .bind(session.session_id)
     .bind(session.account_id)

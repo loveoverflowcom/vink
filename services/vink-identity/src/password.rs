@@ -18,6 +18,7 @@ use std::fmt;
 use argon2::Argon2;
 use argon2::password_hash::phc::PasswordHash;
 use argon2::password_hash::{PasswordHasher, PasswordVerifier};
+use tokio::sync::Semaphore;
 use unicode_normalization::UnicodeNormalization;
 
 pub const MIN_USERNAME_LEN: usize = 3;
@@ -111,6 +112,26 @@ impl fmt::Debug for Password {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HashError;
 
+// Each Argon2 operation uses about 19 MiB. Bound concurrent work across all password RPCs.
+static PASSWORD_WORK: Semaphore = Semaphore::const_new(4);
+
+async fn run_password_work<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> Result<T, HashError> {
+    let permit = PASSWORD_WORK.acquire().await.map_err(|_| HashError)?;
+    tokio::task::spawn_blocking(move || {
+        // A request may time out while its blocking task is still running.
+        let _permit = permit;
+        work()
+    })
+    .await
+    .map_err(|_| HashError)
+}
+
+pub(crate) async fn hash_credential(password: Password) -> Result<String, HashError> {
+    run_password_work(move || hash_password(&password)).await?
+}
+
 /// Hashes a password using Argon2id with a fresh random salt.
 pub fn hash_password(password: &Password) -> Result<String, HashError> {
     let argon2 = Argon2::default();
@@ -148,7 +169,7 @@ pub(crate) async fn verify_sign_in(hash: Option<String>, raw: &str) -> Result<bo
     } else {
         String::new()
     };
-    tokio::task::spawn_blocking(move || {
+    run_password_work(move || {
         let normalized = Password::parse(&raw).ok();
         let legacy = (MIN_PASSWORD_LEN..=MAX_PASSWORD_LEN).contains(&raw.len())
             && normalized
@@ -165,7 +186,6 @@ pub(crate) async fn verify_sign_in(hash: Option<String>, raw: &str) -> Result<bo
         hash.is_some() && (normalized_match || legacy_match)
     })
     .await
-    .map_err(|_| HashError)
 }
 
 #[cfg(test)]

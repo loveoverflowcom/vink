@@ -200,6 +200,13 @@ impl Flow<'_> {
         let comment_id = field(&comment, "comment_id")?;
 
         // Existing guest registration still creates an independent password-only account.
+        self.call(
+            "POST",
+            "/api/v1/auth/register",
+            None,
+            Some(r#"{"username":" ","password":"valid-passphrase"}"#),
+        )?
+        .expect("blank registration username", 422, r#""field":"username""#)?;
         let other = register(self, "/api/v1/auth/password/register", None)?;
         other.expect("guest registration", 200, "needs_principal")?;
         let other = Client {
@@ -254,11 +261,28 @@ impl Flow<'_> {
             409,
             "username_taken",
         )?;
+        complete(self, &code, " ", &password)?.expect(
+            "blank enrollment username",
+            422,
+            r#""field":"username""#,
+        )?;
         complete(self, &code, username, &"a".repeat(4097))?.expect(
             "raw input bound",
             422,
             r#""field":"password""#,
         )?;
+        let stale_cookie = format!("{session}; {PROOF_COOKIE}={}", "x".repeat(257));
+        let completion = json!({"code": code, "username": username, "password": password});
+        let refused = self.call(
+            "POST",
+            ENROLL,
+            Some(&stale_cookie),
+            Some(&completion.to_string()),
+        )?;
+        no_store(&refused)?.expect("proof outside its wire bound", 409, "challenge_closed")?;
+        if refused.cookie(PROOF_COOKIE) != Some("") || refused.cookie(SESSION_COOKIE).is_some() {
+            return Err("a closed proof should clear only the proof cookie".into());
+        }
         let marker = "enroll-request-private-marker";
         let malformed = json!({
             "code": code, "username": username, "password": password, (marker): true

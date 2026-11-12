@@ -590,9 +590,8 @@ async fn enroll_password(
         Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
     let password =
         Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
-    let hash = tokio::task::spawn_blocking(move || crate::password::hash_password(&password))
+    let hash = crate::password::hash_credential(password)
         .await
-        .map_err(|_| ContractError::DependencyUnavailable)?
         .map_err(|_| ContractError::DependencyUnavailable)?;
     let outcome = store
         .enroll_password(
