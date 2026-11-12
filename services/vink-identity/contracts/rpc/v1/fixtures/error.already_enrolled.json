@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "already_enrolled",
+    "message": "the account already has a username and password"
+  }
+}

@@ -22,11 +22,14 @@ use super::smtp_sink::Sink;
 use super::{Run, expect, request, sql};
 use crate::web;
 
+mod password_enrollment;
+
 /// One HTTP/1.1 exchange over loopback TCP: status, `Set-Cookie` pairs and body.
 struct Reply {
     status: u16,
     cookies: Vec<(String, String)>,
     retry_after: Option<String>,
+    head: String,
     body: String,
 }
 
@@ -122,6 +125,7 @@ fn exchange(
         status,
         cookies,
         retry_after,
+        head: head.to_string(),
         body,
     })
 }

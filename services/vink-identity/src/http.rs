@@ -19,17 +19,19 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use crate::accounts::{
-    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, PasswordRegistrationError,
-    PasswordSignInRejection, SignInOutcome,
+    ChallengeOutcome, EmailChangeOutcome, EmailChangeStart, EnrollmentOutcome, EnrollmentRejection,
+    EnrollmentStart, PasswordRegistrationError, PasswordSignInRejection, SignInOutcome,
 };
 use crate::authority::{self, Authority, AuthorityError};
 use crate::contract::{
     CONTRACT, Capabilities, ChallengeIssued, ChallengeRejection, ContractError,
-    EmailChangeChallengeRequest, EmailChangeCompleteRequest, EmailChangeResponse, IssuedSession,
-    MAX_BODY_BYTES, Operations, RegisterPasswordRejection, RegisterPasswordRequest,
-    RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse, SignInChallengeRequest,
-    SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest, SignInPasswordResponse,
-    SignInResponse, VerifyCredentialRequest,
+    CredentialRejection, EmailChangeChallengeRequest, EmailChangeCompleteRequest,
+    EmailChangeResponse, EnrollPasswordRejection, EnrollPasswordRequest, EnrollPasswordResponse,
+    IssuedSession, MAX_BODY_BYTES, MAX_PASSWORD_BODY_BYTES, Operations,
+    PasswordEnrollmentSessionRequest, PasswordEnrollmentStatus, RegisterPasswordRejection,
+    RegisterPasswordRequest, RegisterPasswordResponse, RevokeSessionRequest, RevokeSessionResponse,
+    SignInChallengeRequest, SignInCompleteRequest, SignInPasswordRejection, SignInPasswordRequest,
+    SignInPasswordResponse, SignInResponse, VerifyCredentialRequest,
 };
 use crate::delivery;
 use crate::email_code::{ChallengeHandle, Code, EmailAddress};
@@ -44,6 +46,9 @@ pub const DEADLINE: Duration = Duration::from_secs(2);
 pub const WRITE_DEADLINE: Duration = Duration::from_secs(5);
 
 fn writes(path: &str) -> bool {
+    if path == "/identity/v1/password/enroll/status" {
+        return false;
+    }
     [
         "/identity/v1/sign-in/",
         "/identity/v1/sessions/",
@@ -129,7 +134,10 @@ impl IntoResponse for ContractError {
             }
             Self::RateLimited => StatusCode::TOO_MANY_REQUESTS,
             Self::CredentialRejected => StatusCode::FORBIDDEN,
-            Self::AddressUnavailable | Self::UsernameTaken => StatusCode::CONFLICT,
+            Self::AddressUnavailable | Self::UsernameTaken | Self::AlreadyEnrolled => {
+                StatusCode::CONFLICT
+            }
+            Self::AccountDisabled => StatusCode::FORBIDDEN,
         };
         (status, Json(self.envelope())).into_response()
     }
@@ -152,6 +160,15 @@ pub fn router(state: IdentityState) -> Router {
         )
         .route("/identity/v1/password/register", post(register_password))
         .route("/identity/v1/password/sign-in", post(sign_in_password))
+        .route(
+            "/identity/v1/password/enroll/challenges",
+            post(enroll_password_challenge),
+        )
+        .route("/identity/v1/password/enroll", post(enroll_password))
+        .route(
+            "/identity/v1/password/enroll/status",
+            post(password_enrollment_status),
+        )
         .route("/identity/{version}", any(unknown_operation))
         .route("/identity/{version}/{*rest}", any(unknown_operation))
         .method_not_allowed_fallback(method_not_allowed)
@@ -227,6 +244,7 @@ async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> 
             email_change: email_code,
             register_password: password,
             sign_in_password: password,
+            enroll_password: state.inner.authority.enrollment_availability(),
         },
     })
 }
@@ -234,7 +252,14 @@ async fn capabilities(State(state): State<IdentityState>) -> Json<Capabilities> 
 /// Reads and decodes a bounded JSON body. The parse error is not logged or returned: it may quote
 /// a credential, a code or an address.
 async fn read_json<T: serde::de::DeserializeOwned>(body: Body) -> Result<T, ContractError> {
-    let bytes = match axum::body::to_bytes(body, MAX_BODY_BYTES).await {
+    read_json_with_limit(body, MAX_BODY_BYTES).await
+}
+
+async fn read_json_with_limit<T: serde::de::DeserializeOwned>(
+    body: Body,
+    limit: usize,
+) -> Result<T, ContractError> {
+    let bytes = match axum::body::to_bytes(body, limit).await {
         Ok(bytes) => bytes,
         Err(error) => {
             let too_large = std::error::Error::source(&error)
@@ -406,7 +431,8 @@ async fn register_password(
     State(state): State<IdentityState>,
     body: Body,
 ) -> Result<Response, ContractError> {
-    let request: RegisterPasswordRequest = read_json(body).await?;
+    let request: RegisterPasswordRequest =
+        read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
     let store = state.inner.authority.password()?;
     let username =
         Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
@@ -444,34 +470,25 @@ async fn sign_in_password(
     State(state): State<IdentityState>,
     body: Body,
 ) -> Result<Response, ContractError> {
-    let request: SignInPasswordRequest = read_json(body).await?;
+    let request: SignInPasswordRequest =
+        read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
     let store = state.inner.authority.password()?;
     let username = match Username::parse(request.username.expose()) {
         Ok(u) => u,
         Err(_) => {
-            if let Ok(pass) = Password::parse(request.password.expose()) {
-                crate::password::dummy_verify(&pass);
-            }
+            crate::password::verify_sign_in(None, request.password.expose())
+                .await
+                .map_err(|_| ContractError::DependencyUnavailable)?;
             return Ok(Json(SignInPasswordResponse::Rejected {
                 reason: SignInPasswordRejection::InvalidCredentials,
             })
             .into_response());
         }
     };
-    let password = match Password::parse(request.password.expose()) {
-        Ok(p) => p,
-        Err(_) => {
-            if let Ok(dummy_pass) = Password::parse("dummy_pass_123") {
-                crate::password::dummy_verify(&dummy_pass);
-            }
-            return Ok(Json(SignInPasswordResponse::Rejected {
-                reason: SignInPasswordRejection::InvalidCredentials,
-            })
-            .into_response());
-        }
-    };
-
-    match store.sign_in_password(&username, &password).await? {
+    match store
+        .sign_in_password(&username, request.password.expose())
+        .await?
+    {
         Ok(session) => {
             tracing::info!(
                 session = %session.session_id,
@@ -506,6 +523,101 @@ async fn sign_in_password(
             Err(ContractError::RateLimited)
         }
     }
+}
+
+/// Issues the code that proves control of the session account's own verified address before a
+/// username/password is added. The account is the session's; no address or account is accepted.
+async fn enroll_password_challenge(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Response, ContractError> {
+    let request: PasswordEnrollmentSessionRequest = read_json(body).await?;
+    let store = state.inner.authority.enrollment()?;
+    match store
+        .start_password_enrollment(request.credential.expose())
+        .await?
+    {
+        EnrollmentStart::Issued(ChallengeOutcome::Issued { handle, expires_at }) => {
+            Ok(issued(&handle, expires_at))
+        }
+        EnrollmentStart::Issued(ChallengeOutcome::RateLimited(throttle)) => {
+            tracing::warn!(
+                throttle = throttle.label(),
+                "enrollment code refused: throttle"
+            );
+            Err(ContractError::RateLimited)
+        }
+        EnrollmentStart::AlreadyEnrolled => Err(ContractError::AlreadyEnrolled),
+        EnrollmentStart::NoVerifiedAddress => Err(ContractError::AddressUnavailable),
+        EnrollmentStart::AccountDisabled => Err(ContractError::AccountDisabled),
+        EnrollmentStart::CredentialRejected => Err(ContractError::CredentialRejected),
+    }
+}
+
+async fn password_enrollment_status(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<PasswordEnrollmentStatus>, ContractError> {
+    let request: PasswordEnrollmentSessionRequest = read_json(body).await?;
+    let store = state.inner.authority.enrollment()?;
+    match store
+        .password_enrollment_status(request.credential.expose())
+        .await?
+    {
+        Ok(enrolled) => Ok(Json(PasswordEnrollmentStatus { enrolled })),
+        Err(CredentialRejection::AccountDisabled) => Err(ContractError::AccountDisabled),
+        Err(_) => Err(ContractError::CredentialRejected),
+    }
+}
+
+/// Adds a username/password to the session's account. The request is parsed and the password
+/// hashed before the store is called, so no transaction waits on Argon2. Nothing about the
+/// account, session or subject appears in the answer.
+async fn enroll_password(
+    State(state): State<IdentityState>,
+    body: Body,
+) -> Result<Json<EnrollPasswordResponse>, ContractError> {
+    let request: EnrollPasswordRequest =
+        read_json_with_limit(body, MAX_PASSWORD_BODY_BYTES).await?;
+    let store = state.inner.authority.enrollment()?;
+    let code = Code::parse(request.code.expose()).ok_or(ContractError::MalformedRequest)?;
+    let Some(handle) = ChallengeHandle::parse(request.challenge.expose()) else {
+        return Ok(Json(EnrollPasswordResponse::Rejected {
+            reason: EnrollPasswordRejection::ChallengeClosed,
+        }));
+    };
+    let username =
+        Username::parse(request.username.expose()).map_err(|_| ContractError::InvalidUsername)?;
+    let password =
+        Password::parse(request.password.expose()).map_err(|_| ContractError::InvalidPassword)?;
+    let hash = crate::password::hash_credential(password)
+        .await
+        .map_err(|_| ContractError::DependencyUnavailable)?;
+    let outcome = store
+        .enroll_password(
+            request.credential.expose(),
+            &handle,
+            &code,
+            &username,
+            &hash,
+        )
+        .await?;
+    Ok(Json(match outcome {
+        EnrollmentOutcome::Enrolled => {
+            tracing::info!("password credential enrolled on an existing account");
+            EnrollPasswordResponse::Enrolled
+        }
+        EnrollmentOutcome::Rejected(reason) => EnrollPasswordResponse::Rejected {
+            reason: match reason {
+                EnrollmentRejection::InvalidCode => EnrollPasswordRejection::InvalidCode,
+                EnrollmentRejection::ChallengeClosed => EnrollPasswordRejection::ChallengeClosed,
+                EnrollmentRejection::UsernameTaken => EnrollPasswordRejection::UsernameTaken,
+                EnrollmentRejection::AlreadyEnrolled => EnrollPasswordRejection::AlreadyEnrolled,
+                EnrollmentRejection::AccountDisabled => EnrollPasswordRejection::AccountDisabled,
+            },
+        },
+        EnrollmentOutcome::CredentialRejected => return Err(ContractError::CredentialRejected),
+    }))
 }
 
 /// Any other path under `/identity/`: a known version without such an operation, or an
@@ -865,6 +977,8 @@ mod tests {
             ContractError::InvalidUsername,
             ContractError::InvalidPassword,
             ContractError::UsernameTaken,
+            ContractError::AlreadyEnrolled,
+            ContractError::AccountDisabled,
         ] {
             let name = format!("error.{}.json", error.code());
             let envelope: ErrorEnvelope = serde_json::from_value(fixture(&name)).unwrap();
@@ -957,6 +1071,14 @@ mod tests {
                 (
                     "/identity/v1/password/sign-in",
                     r#"{"username":"test_user","password":"valid_pass_123"}"#,
+                ),
+                (
+                    "/identity/v1/password/enroll/challenges",
+                    r#"{"credential":"x"}"#,
+                ),
+                (
+                    "/identity/v1/password/enroll",
+                    r#"{"credential":"x","challenge":"x","code":"123456","username":"test_user","password":"valid_pass_123"}"#,
                 ),
             ] {
                 let (status, answer) = send(&router, post(path, body)).await;
@@ -1251,6 +1373,7 @@ mod tests {
                         email_change: Availability::NotConfigured,
                         register_password: Availability::Available,
                         sign_in_password: Availability::Available,
+                        enroll_password: Availability::NotConfigured,
                     },
                 })
                 .unwrap(),
@@ -1269,5 +1392,101 @@ mod tests {
             serde_json::from_value(fixture("password.sign_in.request.json")).unwrap();
         assert_eq!(sign_in_req.username.expose(), "author_01");
         assert!(!format!("{sign_in_req:?}").contains("valid_password_123"));
+    }
+
+    #[test]
+    fn enrollment_shapes_match_their_fixtures() {
+        use crate::contract::*;
+        let shapes = [
+            (
+                "password.enroll.enrolled.json",
+                serde_json::to_value(EnrollPasswordResponse::Enrolled).unwrap(),
+            ),
+            (
+                "password.enroll.status.enrolled.json",
+                serde_json::to_value(PasswordEnrollmentStatus { enrolled: true }).unwrap(),
+            ),
+            (
+                "password.enroll.status.unenrolled.json",
+                serde_json::to_value(PasswordEnrollmentStatus { enrolled: false }).unwrap(),
+            ),
+            (
+                "password.enroll.rejected.username_taken.json",
+                serde_json::to_value(EnrollPasswordResponse::Rejected {
+                    reason: EnrollPasswordRejection::UsernameTaken,
+                })
+                .unwrap(),
+            ),
+            (
+                "password.enroll.rejected.invalid_code.json",
+                serde_json::to_value(EnrollPasswordResponse::Rejected {
+                    reason: EnrollPasswordRejection::InvalidCode,
+                })
+                .unwrap(),
+            ),
+            (
+                "capabilities.native.json",
+                serde_json::to_value(Capabilities {
+                    contract: CONTRACT.into(),
+                    authority: Availability::Available,
+                    operations: Operations {
+                        verify_credential: Availability::Available,
+                        sign_in: Availability::Available,
+                        revoke_session: Availability::Available,
+                        email_change: Availability::Available,
+                        register_password: Availability::Available,
+                        sign_in_password: Availability::Available,
+                        enroll_password: Availability::Available,
+                    },
+                })
+                .unwrap(),
+            ),
+        ];
+        for (name, value) in shapes {
+            assert_eq!(value, fixture(name), "{name}");
+        }
+
+        let challenge: PasswordEnrollmentSessionRequest =
+            serde_json::from_value(fixture("password.enroll.challenge.request.json")).unwrap();
+        let request: EnrollPasswordRequest =
+            serde_json::from_value(fixture("password.enroll.request.json")).unwrap();
+        assert_eq!(request.username.expose(), "author_01");
+        for debug in [format!("{challenge:?}"), format!("{request:?}")] {
+            assert!(!debug.contains("FIXTURE"), "{debug}");
+            assert!(!debug.contains("123456"), "{debug}");
+            assert!(!debug.contains("mật khẩu"), "{debug}");
+            assert!(!debug.contains("author_01"), "{debug}");
+        }
+        // A caller cannot name the account, the subject or a verified flag.
+        for field in ["account_id", "subject", "verified", "email"] {
+            let mut raw = fixture("password.enroll.request.json");
+            raw[field] = serde_json::Value::from("x");
+            assert!(
+                serde_json::from_value::<EnrollPasswordRequest>(raw).is_err(),
+                "{field}"
+            );
+            let mut raw = fixture("password.enroll.challenge.request.json");
+            raw[field] = serde_json::Value::from("x");
+            assert!(
+                serde_json::from_value::<PasswordEnrollmentSessionRequest>(raw).is_err(),
+                "{field}"
+            );
+        }
+    }
+
+    #[test]
+    fn password_fields_accept_the_whole_o12_input_bound() {
+        use crate::contract::*;
+        // 4096 bytes is what Password::parse accepts before NFKC; the transport must not refuse
+        // a field the policy still decides on, and must refuse one byte more.
+        let at_bound = serde_json::json!({"username": "author_01", "password": "a".repeat(4096)});
+        assert!(serde_json::from_value::<RegisterPasswordRequest>(at_bound.clone()).is_ok());
+        assert!(serde_json::from_value::<SignInPasswordRequest>(at_bound).is_ok());
+        let over = serde_json::json!({"username": "author_01", "password": "a".repeat(4097)});
+        assert!(serde_json::from_value::<RegisterPasswordRequest>(over.clone()).is_err());
+        assert!(serde_json::from_value::<SignInPasswordRequest>(over).is_err());
+        // Vietnamese letters: 128 precomposed ones are 384 bytes, far above the old 256.
+        let vietnamese = serde_json::json!({"username": "author_01", "password": "ệ".repeat(128)});
+        assert!(serde_json::from_value::<RegisterPasswordRequest>(vietnamese).is_ok());
     }
 }

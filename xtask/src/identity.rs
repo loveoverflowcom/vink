@@ -80,6 +80,9 @@ pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
     ) && report.step(
         "D-05 email-code authority, two real binaries: activation lock, sign-in through the outbox worker, network limit behind a trusted proxy, binding, isolation, logout, email change, suspension, disable, outage, SMTP delivery with password rotation and relay recovery",
         || run.email_code_end_to_end(),
+    ) && report.step(
+        "ACC-03 password enrollment, two real binaries: proof, guards, readback and ownership across both login methods",
+        || run.password_enrollment_end_to_end(),
     ) && report.step("identity: logs contain no credential or password", || {
         run.no_secrets_in_logs()
     })
@@ -400,7 +403,7 @@ impl Run<'_> {
         let (code, stderr) = self.migrate("first", &s.identity_migrator)?;
         if code != Some(0)
             || !stderr.contains(
-                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000]",
+                "applied=[20261102000000, 20261107000000, 20261112000000, 20261113000000, 20261114000000]",
             )
         {
             return Err(format!("first Identity migrate: {code:?}: {stderr}"));

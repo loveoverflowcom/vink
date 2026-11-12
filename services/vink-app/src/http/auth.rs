@@ -19,7 +19,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 
 use axum::extract::rejection::JsonRejection;
-use axum::extract::{ConnectInfo, FromRequest, State};
+use axum::extract::{ConnectInfo, DefaultBodyLimit, FromRequest, State};
 use axum::http::request::Parts;
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -34,19 +34,29 @@ use crate::application::Vink;
 use crate::application::account::AccountError;
 use crate::application::ports::{RateLimitStore, StoreError};
 use crate::domain::abuse::{
-    Admission, Network, PASSWORD_LOGIN, PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE,
-    SIGN_IN_COMPLETE, client_address,
+    Admission, Network, PASSWORD_ENROLL, PASSWORD_ENROLL_CHALLENGE, PASSWORD_LOGIN,
+    PASSWORD_REGISTER, RateLimit, SIGN_IN_CHALLENGE, SIGN_IN_COMPLETE, client_address,
 };
 use crate::domain::principal::{Standing, SubjectKey};
 use crate::identity::client::{
-    CallError, ChallengeRefusal, IssuedSession, PasswordLoginError, PasswordLoginOutcome,
-    PasswordRegisterError, PasswordRegisterOutcome, SignIn, StartError,
+    CallError, ChallengeRefusal, EnrollError, EnrollOutcome, EnrollRefusal, EnrollStartError,
+    EnrollStatusError, IssuedSession, MAX_CREDENTIAL_BYTES, PasswordLoginError,
+    PasswordLoginOutcome, PasswordRegisterError, PasswordRegisterOutcome, SignIn, StartError,
+    Verification,
 };
 use crate::identity::{IdentityClient, Resolution, SESSION_COOKIE, bind, presented_credential};
 
 /// Holds the challenge handle between "send me a code" and "here is the code". `Strict`: the
 /// completion is a same-origin request, so no cross-site navigation ever carries it.
 pub const CHALLENGE_COOKIE: &str = "__Host-vink_sign_in";
+
+/// Holds the challenge handle between "mail me a code" and "here is the code and the new
+/// username/password" of credential enrollment. A separate cookie from [`CHALLENGE_COOKIE`]: an
+/// enrollment proof can never be presented as a sign-in, nor the reverse.
+pub const ENROLL_COOKIE: &str = "__Host-vink_enroll";
+
+// Allows a 4096-byte password even when JSON uses six bytes per byte of input.
+const AUTH_BODY_LIMIT: usize = 32 * 1024;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
@@ -56,9 +66,18 @@ pub fn routes() -> Router<AppState> {
         .route("/auth/password/register", post(register))
         .route("/auth/login", post(login))
         .route("/auth/password/login", post(login))
+        .route(
+            "/auth/password/enroll/challenges",
+            post(start_password_enrollment),
+        )
+        .route(
+            "/auth/password/enroll",
+            get(password_enrollment_status).post(enroll_password),
+        )
         .route("/auth/session", get(session_state).delete(sign_out))
         .route("/auth/session/account", get(current_account))
         .route("/auth/principal", post(provision_principal))
+        .layer(DefaultBodyLimit::max(AUTH_BODY_LIMIT))
         .layer(SetResponseHeaderLayer::overriding(
             header::CACHE_CONTROL,
             HeaderValue::from_static("no-store"),
@@ -93,7 +112,7 @@ pub struct RegisterRequest {
 impl std::fmt::Debug for RegisterRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RegisterRequest")
-            .field("username", &self.username)
+            .field("username", &"<redacted>")
             .field("password", &"<redacted>")
             .finish()
     }
@@ -109,10 +128,36 @@ pub struct LoginRequest {
 impl std::fmt::Debug for LoginRequest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LoginRequest")
-            .field("username", &self.username)
+            .field("username", &"<redacted>")
             .field("password", &"<redacted>")
             .finish()
     }
+}
+
+/// Body of `POST /auth/password/enroll`. The account is the signed-in session's, never a field;
+/// the proof handle travels in [`ENROLL_COOKIE`].
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EnrollPasswordRequest {
+    pub code: String,
+    pub username: String,
+    pub password: String,
+}
+
+impl std::fmt::Debug for EnrollPasswordRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EnrollPasswordRequest")
+            .field("code", &"<redacted>")
+            .field("username", &"<redacted>")
+            .field("password", &"<redacted>")
+            .finish()
+    }
+}
+
+/// The presence of a password credential on the authenticated account.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PasswordEnrollmentStatus {
+    pub enrolled: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -250,28 +295,26 @@ fn seconds_until(at: OffsetDateTime) -> i64 {
 
 /// Exactly one cookie named `name`; zero or several is none.
 fn single_cookie<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
-    let mut found = None;
-    for value in headers.get_all(header::COOKIE) {
-        let Ok(text) = value.to_str() else { continue };
-        for pair in text.split(';') {
-            if let Some((key, value)) = pair.trim().split_once('=')
-                && key == name
-            {
-                if found.is_some() {
-                    return None;
-                }
-                found = Some(value);
-            }
-        }
-    }
-    found.filter(|value| !value.is_empty())
+    let mut values = cookie_values(headers, name);
+    let value = values.next()?;
+    (values.next().is_none() && !value.is_empty()).then_some(value)
+}
+
+fn cookie_values<'a>(headers: &'a HeaderMap, name: &str) -> impl Iterator<Item = &'a str> {
+    headers
+        .get_all(header::COOKIE)
+        .into_iter()
+        .filter_map(|header| header.to_str().ok())
+        .flat_map(|value| value.split(';'))
+        .filter_map(|pair| pair.trim().split_once('='))
+        .filter_map(move |(key, value)| (key == name).then_some(value))
 }
 
 fn json_body<T>(body: Result<Json<T>, JsonRejection>) -> Result<T, ApiError> {
     body.map(|Json(body)| body)
-        .map_err(|rejection| ApiError::Validation {
+        .map_err(|_| ApiError::Validation {
             field: "body",
-            message: rejection.body_text(),
+            message: "invalid or oversized JSON request body".into(),
         })
 }
 
@@ -379,7 +422,7 @@ async fn register(
     let client = sign_in_client(&state)?;
     let (parts, body) = request.into_parts();
     admit(&state, &parts, &PASSWORD_REGISTER).await?;
-    let previous = single_cookie(&parts.headers, SESSION_COOKIE).map(str::to_string);
+    require_registration_guest(client, &parts).await?;
     let request: RegisterRequest = json(parts, body).await?;
     let session = match client
         .register_password(request.username.trim(), &request.password)
@@ -408,7 +451,35 @@ async fn register(
         }
         Err(PasswordRegisterError::Call(error)) => return Err(unavailable(error)),
     };
-    establish_session(&state, client, session, previous, false).await
+    establish_session(&state, client, session, None, false).await
+}
+
+/// A Bearer header may take precedence for reads, but cannot make registration ignore a valid
+/// browser session it would replace. A valid session needs no principal to stop registration.
+async fn require_registration_guest(
+    client: &IdentityClient,
+    parts: &Parts,
+) -> Result<(), ApiError> {
+    let mut cookies = cookie_values(&parts.headers, SESSION_COOKIE);
+    let browser = cookies.next();
+    if cookies.next().is_some() || parts.headers.get_all(header::AUTHORIZATION).iter().count() > 1 {
+        return Err(ApiError::Validation {
+            field: "session",
+            message: "ambiguous session credential".into(),
+        });
+    }
+    let presented = presented_credential(parts);
+    let browser = browser.filter(|value| {
+        Some(*value) != presented && !value.is_empty() && value.len() <= MAX_CREDENTIAL_BYTES
+    });
+    for credential in [presented, browser].into_iter().flatten() {
+        match client.verify(credential).await {
+            Ok(Verification::Authenticated { .. }) => return Err(ApiError::AlreadySignedIn),
+            Ok(Verification::Rejected) => {}
+            Err(error) => return Err(unavailable(error)),
+        }
+    }
+    Ok(())
 }
 
 /// `POST /auth/login` (and `/auth/password/login`): native username/password sign-in.
@@ -439,6 +510,164 @@ async fn login(
         Err(PasswordLoginError::Call(error)) => return Err(unavailable(error)),
     };
     establish_session(&state, client, session, previous, false).await
+}
+
+/// Who may add a credential: any account Identity authenticates now, with or without a Vink
+/// principal (the credential is Identity's; it grants no Vink permission). A suspended principal
+/// is refused. Returns the presented session credential for Identity to name the account.
+async fn enrolling_credential(state: &AppState, parts: &Parts) -> Result<String, ApiError> {
+    match resolve(state, parts).await {
+        Resolution::Principal(_) | Resolution::Unbound(_) => {}
+        Resolution::Suspended(_) => return Err(ApiError::PrincipalSuspended),
+        Resolution::Anonymous => return Err(ApiError::Unauthenticated),
+        Resolution::Unavailable => return Err(ApiError::DependencyUnavailable),
+    }
+    presented_credential(parts)
+        .map(str::to_string)
+        .ok_or(ApiError::Unauthenticated)
+}
+
+fn with_cleared_enrollment(mut response: Response) -> Response {
+    response.headers_mut().append(
+        header::SET_COOKIE,
+        cookie(ENROLL_COOKIE, "", "Strict", 0).expect("static cookie"),
+    );
+    response
+}
+
+/// `POST /auth/password/enroll/challenges`: Identity mails a code to the signed-in account's own
+/// verified address; the handle goes into a `Strict` cookie. No body; the account is the session's.
+async fn start_password_enrollment(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Response, ApiError> {
+    let client = sign_in_client(&state)?;
+    let (parts, body) = request.into_parts();
+    let credential = enrolling_credential(&state, &parts).await?;
+    admit(&state, &parts, &PASSWORD_ENROLL_CHALLENGE).await?;
+    if axum::body::to_bytes(body, 0).await.is_err() {
+        return Err(ApiError::Validation {
+            field: "body",
+            message: "the enrollment challenge takes no request body".into(),
+        });
+    }
+    let challenge = match client.start_password_enrollment(&credential).await {
+        Ok(challenge) => challenge,
+        Err(EnrollStartError::CredentialRejected) => return Err(ApiError::Unauthenticated),
+        Err(EnrollStartError::AlreadyEnrolled) => return Err(ApiError::AlreadyEnrolled),
+        Err(EnrollStartError::AccountDisabled) => return Err(ApiError::AccountDisabled),
+        // Accounts without a verified address cannot prove control by mail; nothing else can
+        // prove it yet (account recovery, O-11, is not designed here).
+        Err(EnrollStartError::NoVerifiedAddress) => return Err(ApiError::Forbidden),
+        Err(EnrollStartError::RateLimited) => {
+            return Err(ApiError::RateLimited {
+                retry_after_seconds: None,
+            });
+        }
+        Err(EnrollStartError::Call(error)) => return Err(unavailable(error)),
+    };
+    let set = cookie(
+        ENROLL_COOKIE,
+        &challenge.handle,
+        "Strict",
+        seconds_until(challenge.expires_at),
+    )
+    .ok_or(ApiError::DependencyUnavailable)?;
+    Ok((
+        StatusCode::ACCEPTED,
+        [(header::SET_COOKIE, set)],
+        Json(ChallengeSent {
+            expires_at: challenge.expires_at,
+        }),
+    )
+        .into_response())
+}
+
+/// Read back the authenticated account's status after an interrupted or lost response.
+async fn password_enrollment_status(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Json<PasswordEnrollmentStatus>, ApiError> {
+    let client = sign_in_client(&state)?;
+    let (parts, _) = request.into_parts();
+    let credential = enrolling_credential(&state, &parts).await?;
+    match client.password_enrollment_status(&credential).await {
+        Ok(enrolled) => Ok(Json(PasswordEnrollmentStatus { enrolled })),
+        Err(EnrollStatusError::CredentialRejected) => Err(ApiError::Unauthenticated),
+        Err(EnrollStatusError::AccountDisabled) => Err(ApiError::AccountDisabled),
+        Err(EnrollStatusError::Call(error)) => Err(unavailable(error)),
+    }
+}
+
+/// `POST /auth/password/enroll`: adds a username/password to the signed-in account after the code
+/// of its enrollment challenge. It rotates no session, sets no session cookie and creates no
+/// account or principal. After a lost answer, read the account's status with GET.
+async fn enroll_password(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+) -> Result<Response, ApiError> {
+    let client = sign_in_client(&state)?;
+    let (parts, body) = request.into_parts();
+    let credential = enrolling_credential(&state, &parts).await?;
+    admit(&state, &parts, &PASSWORD_ENROLL).await?;
+    let headers = parts.headers.clone();
+    let request: EnrollPasswordRequest = json(parts, body).await?;
+    let code: String = request
+        .code
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect();
+    if code.len() != 6 || !code.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(ApiError::Validation {
+            field: "code",
+            message: "code must be the six digits from the email".into(),
+        });
+    }
+    let Some(handle) = single_cookie(&headers, ENROLL_COOKIE) else {
+        return Ok(with_cleared_enrollment(
+            ApiError::ChallengeClosed.into_response(),
+        ));
+    };
+    match client
+        .enroll_password(
+            &credential,
+            handle,
+            &code,
+            request.username.trim(),
+            &request.password,
+        )
+        .await
+    {
+        Ok(EnrollOutcome::Enrolled) => {
+            tracing::info!("password credential enrolled on the signed-in account");
+            Ok(with_cleared_enrollment(
+                Json(PasswordEnrollmentStatus { enrolled: true }).into_response(),
+            ))
+        }
+        Ok(EnrollOutcome::Refused(EnrollRefusal::InvalidCode)) => Err(ApiError::CodeRejected),
+        Ok(EnrollOutcome::Refused(EnrollRefusal::ChallengeClosed)) => Ok(with_cleared_enrollment(
+            ApiError::ChallengeClosed.into_response(),
+        )),
+        // The code is not spent: the cookie stays so the person can pick another username.
+        Ok(EnrollOutcome::Refused(EnrollRefusal::UsernameTaken)) => Err(ApiError::UsernameTaken),
+        Ok(EnrollOutcome::Refused(EnrollRefusal::AlreadyEnrolled)) => Ok(with_cleared_enrollment(
+            ApiError::AlreadyEnrolled.into_response(),
+        )),
+        Ok(EnrollOutcome::Refused(EnrollRefusal::AccountDisabled)) => Ok(with_cleared_enrollment(
+            ApiError::AccountDisabled.into_response(),
+        )),
+        Err(EnrollError::InvalidUsername) => Err(ApiError::Validation {
+            field: "username",
+            message: "username must be 3-30 characters of lowercase letters, digits, '_' or '.'"
+                .into(),
+        }),
+        Err(EnrollError::InvalidPassword) => Err(ApiError::Validation {
+            field: "password",
+            message: "password must be between 10 and 128 characters".into(),
+        }),
+        Err(EnrollError::CredentialRejected) => Err(ApiError::Unauthenticated),
+        Err(EnrollError::Call(error)) => Err(unavailable(error)),
+    }
 }
 
 async fn establish_session(
@@ -698,9 +927,32 @@ mod tests {
                 })
                 .unwrap(),
             ),
+            (
+                "auth.enroll.response.json",
+                serde_json::to_value(PasswordEnrollmentStatus { enrolled: true }).unwrap(),
+            ),
+            (
+                "auth.enroll.status.unenrolled.json",
+                serde_json::to_value(PasswordEnrollmentStatus { enrolled: false }).unwrap(),
+            ),
         ];
         for (name, value) in shapes {
             assert_eq!(value, fixture(name), "{name}");
+        }
+        let enroll: EnrollPasswordRequest =
+            serde_json::from_value(fixture("auth.enroll.request.json")).unwrap();
+        let debug = format!("{enroll:?}");
+        for secret in [&enroll.code, &enroll.username, &enroll.password] {
+            assert!(!debug.contains(secret), "{debug}");
+        }
+        // The account is the session's: no field can name a subject, principal or account.
+        for field in ["subject", "principal_id", "account_id", "email", "role"] {
+            let mut raw = fixture("auth.enroll.request.json");
+            raw[field] = Value::from("x");
+            assert!(
+                serde_json::from_value::<EnrollPasswordRequest>(raw).is_err(),
+                "enroll accepted {field}"
+            );
         }
         let _: StartSignInRequest =
             serde_json::from_value(fixture("auth.challenge.request.json")).unwrap();
@@ -767,6 +1019,16 @@ mod tests {
                 "error.principal_suspended.json",
                 ApiError::PrincipalSuspended,
                 403,
+            ),
+            (
+                "error.already_enrolled.json",
+                ApiError::AlreadyEnrolled,
+                409,
+            ),
+            (
+                "error.already_signed_in.json",
+                ApiError::AlreadySignedIn,
+                409,
             ),
         ] {
             assert_eq!(error.status().as_u16(), status, "{name}");

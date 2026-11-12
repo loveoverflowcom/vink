@@ -8,10 +8,17 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 pub const CONTRACT: &str = "vink.identity.v1";
-/// Largest request body accepted, in bytes.
+/// Largest request body accepted by RPCs without a password field.
 pub const MAX_BODY_BYTES: usize = 8 * 1024;
 /// Longest credential accepted, in bytes.
 pub const MAX_CREDENTIAL_BYTES: usize = 4096;
+/// Longest raw password field accepted, in bytes: the O-12@r2 input bound
+/// ([`crate::password::MAX_PASSWORD_INPUT_BYTES`]). Policy (NFKC, 10-128 characters) is decided
+/// by `Password::parse`, never by this transport bound.
+pub const MAX_PASSWORD_FIELD_BYTES: usize = crate::password::MAX_PASSWORD_INPUT_BYTES;
+/// Allow six JSON bytes per raw password byte (e.g. a control character), plus credential,
+/// challenge and envelope. Keep the smaller existing body limit on the other RPCs.
+pub const MAX_PASSWORD_BODY_BYTES: usize = 32 * 1024;
 
 /// Body of `POST /identity/v1/verify-credential`. Unknown fields, such as a caller-chosen
 /// `subject`, are rejected rather than ignored.
@@ -121,6 +128,8 @@ pub struct Operations {
     /// Added within v1 (password authority).
     pub register_password: Availability,
     pub sign_in_password: Availability,
+    /// Added within v1 (challenge, completion and status): needs both native methods.
+    pub enroll_password: Availability,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -151,6 +160,9 @@ pub enum ContractError {
     InvalidUsername,
     InvalidPassword,
     UsernameTaken,
+    /// Added within v1 for credential enrollment.
+    AlreadyEnrolled,
+    AccountDisabled,
 }
 
 impl ContractError {
@@ -172,6 +184,8 @@ impl ContractError {
             Self::InvalidUsername => "invalid_username",
             Self::InvalidPassword => "invalid_password",
             Self::UsernameTaken => "username_taken",
+            Self::AlreadyEnrolled => "already_enrolled",
+            Self::AccountDisabled => "account_disabled",
         }
     }
 
@@ -199,6 +213,8 @@ impl ContractError {
             Self::InvalidUsername => "the username must be 3-30 ASCII characters (a-z, 0-9, _, .)",
             Self::InvalidPassword => "the password must be at least 10 characters",
             Self::UsernameTaken => "the username is already taken",
+            Self::AlreadyEnrolled => "the account already has a username and password",
+            Self::AccountDisabled => "the account is disabled; nothing was changed",
         }
     }
 
@@ -344,7 +360,7 @@ pub enum EmailChangeResponse {
 #[serde(deny_unknown_fields)]
 pub struct RegisterPasswordRequest {
     pub username: Bounded<64>,
-    pub password: Bounded<256>,
+    pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -372,7 +388,7 @@ pub enum RegisterPasswordRejection {
 #[serde(deny_unknown_fields)]
 pub struct SignInPasswordRequest {
     pub username: Bounded<64>,
-    pub password: Bounded<256>,
+    pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -393,6 +409,58 @@ pub enum SignInPasswordResponse {
 #[serde(rename_all = "snake_case")]
 pub enum SignInPasswordRejection {
     InvalidCredentials,
+    AccountDisabled,
+}
+
+// --- Credential enrollment (added within v1; ACC-03, O-12@r2). ---
+
+/// Body of `POST /identity/v1/password/enroll/{challenges,status}`. The account is the
+/// presenting session's, never a field of the request.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PasswordEnrollmentSessionRequest {
+    pub credential: Credential,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PasswordEnrollmentStatus {
+    pub enrolled: bool,
+}
+
+/// Body of `POST /identity/v1/password/enroll`. Adds a username/password to the account the
+/// session names, after the code mailed to that account's verified address. It issues no session
+/// and creates no account.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EnrollPasswordRequest {
+    pub credential: Credential,
+    pub challenge: Bounded<256>,
+    pub code: Bounded<16>,
+    pub username: Bounded<64>,
+    pub password: Bounded<MAX_PASSWORD_FIELD_BYTES>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "outcome", rename_all = "snake_case")]
+pub enum EnrollPasswordResponse {
+    /// The credential belongs to the session's account now. The subject did not change.
+    Enrolled,
+    Rejected {
+        reason: EnrollPasswordRejection,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnrollPasswordRejection {
+    /// Wrong code; the challenge still accepts another attempt.
+    InvalidCode,
+    /// Expired, used, out of attempts or not this account's: request a new code.
+    ChallengeClosed,
+    /// Another account has the username. The code is not spent.
+    UsernameTaken,
+    /// The account already has a username/password; nothing was changed.
+    AlreadyEnrolled,
     AccountDisabled,
 }
 

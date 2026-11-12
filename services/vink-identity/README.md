@@ -1,9 +1,9 @@
 # Vink Identity
 
 Tiến trình riêng sở hữu **authentication facts** và trạng thái credential/bảo mật. Mặc định chưa
-có authority (`authority_not_configured`). Authority native **mã email một lần**
-([ADR D-05, Provisional](../../docs/architecture/auth-authority.md)) giữ tài khoản, địa chỉ đã xác
-minh, challenge, phiên opaque và **outbox thư** trong `vink_identity`. Mã được gửi bởi worker của
+có authority (`authority_not_configured`). Authority native hỗ trợ mã email và username/mật khẩu
+qua cùng tài khoản và phiên opaque ([ADR D-05, Provisional](../../docs/architecture/auth-authority.md)).
+Identity lưu địa chỉ đã xác minh, challenge, hash mật khẩu và outbox trong `vink_identity`. Mã được gửi bởi worker của
 `serve` qua SMTP (nhà cung cấp mặc định đề xuất: Resend) hoặc outbox cục bộ khi phát triển. Đường
 mail production đã có code và bằng chứng giao thức, nhưng D-05 vẫn **Provisional** (readiness báo
 `production_authentication: not_accepted` với SMTP, `not_implemented` với outbox cục bộ); vận hành
@@ -25,14 +25,15 @@ session hay cookie với Cantos/VOT.
 | [src/config.rs](src/config.rs) | Cấu hình, kiểm hợp lệ, che URL |
 | [src/http.rs](src/http.rs) | Health, contract v1, xác thực caller theo peer uid, deadline |
 | [src/contract.rs](src/contract.rs) | Kiểu wire canonical; lỗi có message cố định |
-| [src/authority.rs](src/authority.rs) | `Authority::NotConfigured` hoặc `EmailCode`; fixture dương chỉ có trong unit test |
+| [src/authority.rs](src/authority.rs) | Authority native và khả năng theo từng phương thức |
 | [src/email_code.rs](src/email_code.rs) | Chính sách thuần: chuẩn hóa địa chỉ, mã 6 số, handle, credential phiên, hash, quyết định một lần thử |
-| [src/accounts.rs](src/accounts.rs) | SQL: challenge + ý định gửi trong cùng transaction, trần theo địa chỉ/tài khoản/toàn cục, tạo tài khoản đồng thời, phiên, logout, đổi email, disable/enable, retention |
+| [src/accounts.rs](src/accounts.rs) | Challenge và outbox nguyên tử, giới hạn gửi, tài khoản, phiên, đổi email, thêm credential, disable/enable và retention |
+| [src/password.rs](src/password.rs) | Chuẩn hóa O-12@r2, Argon2id và tương thích hash cũ khi đăng nhập |
 | [src/delivery.rs](src/delivery.rs) | Outbox `mail_deliveries`: chính sách retry thuần, claim `SKIP LOCKED` + lease, worker at-least-once |
 | [src/mail.rs](src/mail.rs) | Transport: SMTP (`lettre`, TLS bắt buộc ngoài loopback, mật khẩu đọc từ file mỗi lần gửi) và outbox cục bộ (file `0600`, chỉ dev) |
 | [src/persistence.rs](src/persistence.rs) | `MIGRATOR` riêng, pool/lifecycle từ `vink-store-postgres` |
-| [migrations/](migrations/) | Baseline + `accounts`, `account_emails`, `email_challenges`, `sessions`; `mail_deliveries` và index retention |
-| [migrations-rollback/](migrations-rollback/) | Script rollback có kiểm thử cho migration mới (chỉ mất dữ liệu outbox tạm thời) |
+| [migrations/](migrations/) | Schema Identity, gồm `account_passwords` và binding phiên cho challenge enrollment |
+| [migrations-rollback/](migrations-rollback/) | Script rollback theo phiên bản. Rollback enrollment giữ mật khẩu đã thêm và dọn mã enrollment cùng delivery |
 | [contracts/rpc/v1](contracts/rpc/v1/README.md) | Contract riêng tư (draft) và fixtures do provider sở hữu |
 
 ## Topology và caller
@@ -63,7 +64,7 @@ chạy bằng uid đã cấu hình. Chế độ mạng (ví dụ mTLS) chưa đ�
 | `VINK_IDENTITY_MIGRATE_DATABASE_URL` | `migrate` | Role migrator `vink_identity_migrator`; không fallback sang URL runtime |
 | `VINK_IDENTITY_SOCKET` | `serve` | Đường dẫn socket, tối đa 100 byte |
 | `VINK_IDENTITY_CALLER_UID` | `serve` | UID duy nhất được gọi contract; không đặt = đóng |
-| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt = không authority; `email-code` = authority mã email (cần transport) |
+| `VINK_IDENTITY_AUTHORITY` | `serve` | Không đặt thì chưa có authority. `email-code` và `password` bật từng phương thức. `native` bật cả hai và cho phép enrollment. `email-code` và `native` cần mail transport |
 | `VINK_IDENTITY_MAIL_TRANSPORT` | `serve` | `smtp` hoặc `local-outbox` (dev). Bỏ trống mà có `VINK_IDENTITY_LOCAL_OUTBOX` = outbox cục bộ |
 | `VINK_IDENTITY_LOCAL_OUTBOX` | `serve` | Thư mục `0700` nhận thư chứa mã (chỉ cục bộ) |
 | `VINK_IDENTITY_SMTP_PROVIDER` | `serve`, `smtp` | Preset nhà cung cấp (`resend` = `smtp.resend.com`, `tls`/465, user `resend`); biến tường minh vẫn thắng |

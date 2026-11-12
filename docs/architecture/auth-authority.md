@@ -350,8 +350,7 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
    username; đổi mật khẩu thu hồi phiên khác.
 3. Khôi phục tài khoản (O-11): nếu không có email, quên mật khẩu là mất tài khoản. Đề xuất email đã
    xác minh là kênh khôi phục **tùy chọn**, tái dùng challenge/outbox hiện có.
-4. Tài khoản chỉ-email đã tồn tại: đăng nhập production đang khóa nên chưa có người dùng thật; dữ
-   liệu thử cần đường “đặt username + mật khẩu sau khi xác minh email” hoặc được tạo lại.
+4. Tài khoản mã email hiện có có thể thêm username và mật khẩu qua luồng triển khai bên dưới.
 5. Danh sách blocker §9 đổi trọng tâm: deliverability không còn chặn đăng nhập; thêm review lưu trữ
    mật khẩu, chống credential stuffing, và (sau) kiểm mật khẩu đã lộ.
 6. Số phận code mã email (giữ làm phụ/khôi phục hay gỡ bằng migration có chủ đích) do PR auth quyết
@@ -361,10 +360,45 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
 khai trên Identity (`vink-identity`) và App (`vink-app`):
 - Hash Argon2id với salt ngẫu nhiên (`argon2` crate, PHC string), pure policy `services/vink-identity/src/password.rs` (O-12: username chuẩn hóa chữ thường `a-z 0-9 _ .` từ 3–30 ký tự; mật khẩu 10–128 byte theo #152, đổi ngày 11/11/2026 theo `O-12@r2` thành 10–128 ký tự sau NFKC; cả hai ẩn trong `Debug`).
 - Bảng `account_passwords` (FK `accounts`, username UNIQUE, password_hash, version) và `password_login_attempts` (throttling 10 lần sai / 15 phút).
-- So khớp thời gian hằng số với `dummy_verify` khi username không tồn tại hoặc format sai.
+- Đăng nhập kiểm Argon2id với hash giả khi username không tồn tại. Với cùng đầu vào, cả hai nhánh
+  thử cùng các dạng mật khẩu. Nhánh tương thích 10–128 byte cho phép dùng chính mật khẩu của hash
+  cũ trước NFKC. Đăng ký và thêm mật khẩu luôn áp dụng `O-12@r2`.
 - Identity contract v1: `POST /identity/v1/password/register` và `POST /identity/v1/password/sign-in`.
 - App HTTP v1 edge: `POST /api/v1/auth/register` và `POST /api/v1/auth/login`, rate limit theo mạng nguồn (`PASSWORD_REGISTER` 5/giờ, `PASSWORD_LOGIN` 15/15 phút) trong PostgreSQL, phát cookie `__Host-vink_session`, thu hồi phiên cũ.
-- `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. Web UI form và luồng quên/khôi phục mật khẩu (O-11) thuộc scope tiếp theo.
+- `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. Form Web/CMP và khôi phục
+  mật khẩu (`O-11`, `OPEN`) là phần việc còn lại.
+
+### Thêm mật khẩu vào tài khoản mã email
+
+Mức triển khai là `persistence-api`. Một tài khoản dùng cả mã email và mật khẩu qua cùng
+`(authority, subject)`. Cả hai phát phiên opaque thuộc tài khoản đó. Binding, bút danh và quyền
+đối với tác phẩm, nháp và bình luận tiếp tục do App quyết định theo principal đã có.
+
+- App cho phép phiên hợp lệ ở trạng thái `active` hoặc `needs_principal`. App đọc đình chỉ trước
+  khi gọi Identity và các quyền nghiệp vụ tiếp tục chịu kiểm tra đình chỉ của App. Identity kiểm
+  tài khoản và phiên tại điểm ghi. Hai owner dùng database riêng. App không khóa transaction
+  xuyên RPC.
+- Identity gửi mã tới địa chỉ đã xác minh của tài khoản. Mã chỉ dành cho enrollment, gắn với
+  tài khoản và phiên đã yêu cầu, hết hạn sau 10 phút và đóng sau năm lần sai. Thay địa chỉ làm
+  đóng các proof đã phát. Luồng giả định hộp thư xác minh do người dùng kiểm soát và chỉ tiến
+  trình App được ủy quyền gọi Unix socket. Đổi email qua API riêng của Identity vẫn nằm ngoài
+  giao diện công khai.
+- Identity chạy tối đa bốn phép băm hoặc kiểm hash Argon2id đồng thời trong mỗi tiến trình. Các
+  phép này chạy ngoài transaction và dùng chung giới hạn cho đăng ký, đăng nhập và thêm mật khẩu.
+- Identity khóa account → session → challenge, kiểm hạn phiên sau khi lấy khóa và kiểm lại hạn
+  phiên/mã sau khi chờ UNIQUE username. Ghi credential và tiêu thụ mã là một transaction.
+  Username trùng hoặc lỗi trước commit làm rollback credential và proof. Logout/disable thắng trước
+  khóa thì enrollment bị từ chối. Credential mới không cấp lại phiên hay quyền đã bị thu hồi.
+- Đọc lại `GET /api/v1/auth/password/enroll` sau khi mất phản hồi. API chỉ trả boolean của phiên
+  hiện tại. Đăng ký mới trả `409 already_signed_in` nếu đã có phiên, kể cả khi tài khoản chưa
+  có principal.
+- Migration Identity `20261114000000` mở thêm mục đích của challenge/outbox và gắn khóa ngoại tới
+  phiên. Rollback schema được kiểm trong PostgreSQL, xóa challenge enrollment và delivery đi
+  kèm, giữ username và hash đã thêm. Nếu quay về binary tại `develop@0ac1133`, RPC mật khẩu của
+  binary đó vẫn giới hạn đầu vào 256 byte. Đăng nhập bằng mã email vẫn dùng cùng tài khoản.
+  Chi tiết hợp đồng nằm trong
+  [Identity RPC](../../services/vink-identity/contracts/rpc/v1/README.md#password-enrollment) và
+  [App HTTP](../../services/vink-app/contracts/http/v1/README.md#sign-in-d-05).
 
 ## Nguồn (truy cập 07/11/2026)
 

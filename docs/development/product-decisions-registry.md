@@ -22,8 +22,9 @@ thành `PRODUCT_CONFIRMED`.
 - **Persistence + API tác giả (`#158`):** hiện thực migration `20261116000000_work_publication_persistence`,
   `persistence::publication` và HTTP API v1 cho chụp snapshot, `request-public` (ghi job `open`),
   `set-private` và đọc trạng thái của tác giả ([publication-runtime](publication-runtime.md)).
-- **Auth backend (`#152`):** hiện thực credential username/mật khẩu native trong Identity + App
-  ([ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)).
+- **Auth backend (`persistence-api`):** đăng ký/đăng nhập username và mật khẩu từ PR #156 (#152).
+  Tài khoản mã email có thể thêm credential qua proof mới và đọc lại trạng thái trên chính tài
+  khoản. [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)
 
 Bằng chứng “model” nghĩa là typecheck + simulation có biên + scenario + negative
 control của Quint, không phải code, PostgreSQL, API hay trình duyệt. Registry của code đang chạy vẫn ở
@@ -102,7 +103,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | Yêu cầu | Vì sao không model | Đặc tả | Implementation và gap |
 | --- | --- | --- | --- |
 | HTG-01..06 | Quyền của hashtag là hệ quả của “chỉ index bài đủ điều kiện” (đã có trong M1/M5); phần còn lại là hàm thuần trên chuỗi, hợp unit test hơn | [hashtag](../architecture/hashtags.md) | **Chưa có** grammar, projection, tham số lọc, UI |
-| ACC-03 | Auth là ranh giới I/O và mật mã; model không thay kiểm chứng PostgreSQL/binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | **Đã có backend** username/mật khẩu native trong Identity + App (#152); Web UI / recovery chưa có |
+| ACC-03 | Auth được kiểm qua PostgreSQL và hai binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | `persistence-api` cho đăng ký, đăng nhập và thêm mật khẩu. `O-12@r2` đã áp dụng, `O-11` vẫn `OPEN`. Web/CMP cho mật khẩu và production còn thiếu |
 | WR-04, ED-02, D-11 | `DEFERRED` | — | Không triển khai |
 
 ## 2. Acceptance của lượt tài liệu/model
@@ -176,12 +177,12 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 - **Persistence & HTTP API:** `#158` ([publication-runtime](publication-runtime.md)) đã có PostgreSQL
   và HTTP API v1 cho lệnh tác giả (`snapshots`, `request-public`, `set-private`, `state`) kèm 9 test
   PostgreSQL thật cho khóa/race tác giả; `#152` đã có backend native username/mật khẩu trong Identity +
-  App. **Chưa có** persistence/API cho: worker tiêu thụ `work_evaluation_jobs`, kết quả evaluator/admin
+  App, gồm thêm mật khẩu trên cùng tài khoản email-code. **Chưa có** persistence/API cho: worker tiêu thụ `work_evaluation_jobs`, kết quả evaluator/admin
   override, xóa bài/tombstone (`PUB-04/05`), sửa bình luận (`COM-10`), bộ sưu tập (`COL`), hashtag
   (`HTG`), xếp hạng (`RANK/TOP`), quản trị kiểm duyệt (grant, ca, phản đối, dừng tự động, điều tra:
   `MOD-10..15`) và trang ẩn (`hidden`/`ever_public`/`public_epoch`, PUB-07).
 - **UI & trình duyệt:** Chưa có Web/CMP UI cho chọn audience/xuất bản, trang tombstone, sửa bình luận,
-  bộ sưu tập, hashtag, Đề xuất/Top 100, phản đối hay form đăng nhập username/mật khẩu (policy
+  bộ sưu tập, hashtag, Đề xuất/Top 100, phản đối hay form đăng nhập và thêm username/mật khẩu (policy
   mật khẩu theo `O-12@r2` đã có ở backend: 10–128 ký tự sau NFKC).
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
   kênh thông báo quản trị viên.

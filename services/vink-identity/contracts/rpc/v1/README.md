@@ -1,18 +1,17 @@
 # Vink Identity private contract v1 (draft)
 
 **Owner:** `vink-identity` ([src/contract.rs](../../../src/contract.rs), [src/http.rs](../../../src/http.rs)).
-**Status:** draft, introduced with commit 2 of `codex/identity-postgres-boundaries` and extended
-additively (email-code operations) by `codex/identity-s03-spike`. Every path,
-field and code below is a **new design**, not an existing API. The only consumer is the App's
+**Status:** implemented private contract, subject to the configured native methods and the D-05
+production gate in the App. The only consumer is the App's
 client ([services/vink-app/src/identity/client.rs](../../../../vink-app/src/identity/client.rs)), which keeps its own
 representation, decodes these fixtures in its tests and does not import this crate. It also
 checks that the socket is served by `VINK_IDENTITY_SERVER_UID` before sending anything.
 
 Without configuration the provider has no authority and answers every verification with
 `authority_not_configured`. The D-05/S-03 spike ([ADR](../../../../../docs/architecture/auth-authority.md))
-adds the native **email-code** authority (`VINK_IDENTITY_AUTHORITY=email-code`): accounts proven by
-a one-time code mailed to the address, and opaque server-side sessions. Its only mail transport is
-a local outbox directory, so **production authentication remains NOT_IMPLEMENTED**. The
+introduced native accounts proven by a one-time email code and opaque server-side sessions.
+The native authority now supports `email-code`, `password` or `native` (both methods). Mail delivery
+uses SMTP or a local outbox. D-05 remains Provisional. The
 `verify.authenticated.json`/`verify.rejected.json` fixtures come from a labelled unit-test authority
 (`authority: "test-fixture"`) that is not compiled into the binary; the email-code fixtures below are
 produced by the real types with fixed values.
@@ -29,7 +28,7 @@ never reaches this socket and nothing it sends can name a caller or a subject.
 
 | Request | Success | Errors |
 | --- | --- | --- |
-| `GET /identity/v1/capabilities` | `200` [not configured](fixtures/capabilities.not_configured.json), [email-code](fixtures/capabilities.email_code.json), or [password](fixtures/capabilities.password.json) | `401` |
+| `GET /identity/v1/capabilities` | `200` [not configured](fixtures/capabilities.not_configured.json), [email-code](fixtures/capabilities.email_code.json), [password](fixtures/capabilities.password.json) or [both](fixtures/capabilities.native.json) | `401` |
 | `POST /identity/v1/verify-credential` with [verify.request.json](fixtures/verify.request.json) | `200` [authenticated](fixtures/verify.authenticated.json) or [rejected](fixtures/verify.rejected.json); email-code adds [session facts](fixtures/verify.authenticated.session.json) or a [reason](fixtures/verify.rejected.revoked.json) | `401`, `400`, `413`, `501`, `503` |
 | `POST /identity/v1/sign-in/challenges` with [request](fixtures/sign_in.challenge.request.json) | `202` [challenge.issued.json](fixtures/challenge.issued.json) | `401`, `400`, `413`, `422 invalid_email`, `429 rate_limited`, `501`, `503` |
 | `POST /identity/v1/sign-in/complete` with [request](fixtures/sign_in.complete.request.json) | `200` [authenticated](fixtures/sign_in.authenticated.json) or [rejected](fixtures/sign_in.rejected.json) | `401`, `400`, `413`, `501`, `503` |
@@ -38,8 +37,12 @@ never reaches this socket and nothing it sends can name a caller or a subject.
 | `POST /identity/v1/email-change/complete` with [request](fixtures/email_change.complete.request.json) | `200` [changed](fixtures/email_change.changed.json) or [rejected](fixtures/email_change.rejected.json) | `401`, `400`, `413`, `403 credential_rejected`, `501`, `503` |
 | `POST /identity/v1/password/register` with [request](fixtures/password.register.request.json) | `200` [authenticated](fixtures/password.register.authenticated.json) or [rejected](fixtures/password.register.rejected.username_taken.json) | `401`, `400`, `413`, `422 invalid_username`, `422 invalid_password`, `429 rate_limited`, `501`, `503` |
 | `POST /identity/v1/password/sign-in` with [request](fixtures/password.sign_in.request.json) | `200` [authenticated](fixtures/password.sign_in.authenticated.json) or [rejected](fixtures/password.sign_in.rejected.invalid_credentials.json) | `401`, `400`, `413`, `429 rate_limited`, `501`, `503` |
+| `POST /identity/v1/password/enroll/challenges` with [session request](fixtures/password.enroll.challenge.request.json) | `202` [challenge issued](fixtures/challenge.issued.json) | `401`, `400`, `413`, `403 credential_rejected` or `account_disabled`, `409 already_enrolled` or `address_unavailable`, `429`, `501`, `503` |
+| `POST /identity/v1/password/enroll` with [request](fixtures/password.enroll.request.json) | `200` [enrolled](fixtures/password.enroll.enrolled.json) or rejected with a reason | `401`, `400`, `413`, `403 credential_rejected`, `422 invalid_username` or `invalid_password`, `501`, `503` |
+| `POST /identity/v1/password/enroll/status` with [session request](fixtures/password.enroll.challenge.request.json) | `200` [enrolled](fixtures/password.enroll.status.enrolled.json) or [unenrolled](fixtures/password.enroll.status.unenrolled.json) | `401`, `400`, `413`, `403 credential_rejected` or `account_disabled`, `501`, `503` |
 
-The four email-code operations answer `501 authority_not_configured` unless email-code is enabled; the two password operations answer `501 authority_not_configured` unless password is enabled.
+The email-code operations require email-code. Registration and password sign-in require password.
+All three enrollment operations require both methods. A missing method returns `501 authority_not_configured`.
 
 `credential` is an opaque string (1–4096 bytes) that an end user presented to the caller, for
 example a token issued by the future authority. Unknown request fields are rejected: a caller cannot
@@ -75,8 +78,9 @@ is informational and every value means "no authenticated subject".
   committed together; the code is mailed afterwards by the provider's worker (at least once,
   bounded retries; a used or expired code is never sent). `202` is not proof of delivery, and the
   answer is the same whether the relay is up or down.
-- **Email change.** Requires a valid session; the code goes to the *new* address; on success the
-  account keeps its subject and every *other* session of the account is revoked. The account's
+- **Email change.** Requires a valid session and mails the code to the *new* address. On success the
+  account keeps its subject, every *other* session is revoked, and outstanding password enrollment
+  challenges for the account are closed. The account's
   *own* current address is `409`. An address *another* account has verified answers `202` like a
   free one but no code is mailed (so the operation cannot probe who is registered); completing it
   would be `rejected.address_unavailable`, as when an address is taken meanwhile. An account may
@@ -84,6 +88,26 @@ is informational and every value means "no authenticated subject".
 - **Disable.** Only the operator command `vink-identity account disable|enable <subject>` changes it
   (no contract operation). Disabling revokes every session in the same transaction; re-enabling
   never restores them.
+
+### Password enrollment
+
+- `password/enroll/challenges` mails a six-digit code to the verified address of the account named
+  by the session. Its purpose, account and issuing session are bound in the database. It uses the
+  same 10-minute expiry, five failed attempts and address/account/global ceilings as email codes.
+  Identity checks the session expiry after acquiring its row lock, before committing the delivery.
+- `password/enroll` checks account and session standing again under lock. It consumes the proof
+  and inserts one `account_passwords` row in the same transaction. Both methods then issue opaque
+  sessions for the same subject. Enrollment leaves the presenting session and verified address intact.
+- A `rejected.reason` of `invalid_code` allows another attempt. `challenge_closed` means a new
+  proof is needed. A [username collision](fixtures/password.enroll.rejected.username_taken.json)
+  leaves the proof usable. `already_enrolled` means a password is present and no credential was
+  replaced. `account_disabled` means the account is disabled.
+- If the completion response is lost, use `password/enroll/status` with the original session. It
+  reads one boolean for that account and performs no mutation. A false read is a snapshot and an
+  outstanding completion may still commit.
+- New passwords follow O-12@r2. The raw UTF-8 field is at most 4096 bytes and NFKC normalization
+  precedes the 10–128 code point check and Argon2id hash. Sign-in also verifies the original
+  10–128 byte form for existing hashes written before normalization was introduced.
 
 ## Errors
 
@@ -94,26 +118,28 @@ strings and never quote request content. Consumers branch on `code`.
 | --- | --- | --- |
 | 401 | `caller_unauthenticated` | This process is not the configured caller (or none is configured); fix deployment |
 | 400 | `malformed_request` | Body is not valid JSON for the operation, a field is missing/empty/too long or unknown |
-| 413 | `payload_too_large` | Body over 8192 bytes |
+| 413 | `payload_too_large` | Body over the operation's byte limit |
 | 404 | `unsupported_version` | Path names a contract version other than `v1` (shown only to the caller) |
 | 404 | `not_found` | No such v1 operation |
 | 405 | `method_not_allowed` | Wrong method for the operation |
 | 501 | `authority_not_configured` | No authority exists; nothing was verified. Treat as "no authenticated user", not as an outage |
 | 503 | `dependency_unavailable` | The authority or its storage could not answer; nothing was decided. Treat as unavailable, never as rejected |
-| 503 | `deadline_exceeded` | The call (body upload included) did not finish within its deadline (2 s; 5 s for committing email-code operations); nothing was decided |
+| 503 | `deadline_exceeded` | The call, including body upload, exceeded its deadline. A write may have committed |
 | 422 | `invalid_email` | Email-code only: not a mailbox address (`local@domain.tld`, ≤ 254 bytes) |
-| 429 | `rate_limited` | Email-code only: a code ceiling (per address 3/15 min, per account 3 changes/h, or the global volume ceiling); the same answer for every address |
-| 403 | `credential_rejected` | Email change only: the session credential is not active; nothing changed |
-| 409 | `address_unavailable` | Email change only: the address is already this account's |
+| 429 | `rate_limited` | A challenge ceiling or password sign-in throttle refused this attempt |
+| 403 | `credential_rejected` | Email change or enrollment. The presenting session is inactive |
+| 403 | `account_disabled` | Enrollment challenge or status. The Identity account is disabled |
+| 409 | `address_unavailable` | Email change to the account's own address or enrollment with no current verified address |
+| 409 | `already_enrolled` | Enrollment challenge request for an account with an existing password |
 
 Verification has no durable effect, so a consumer may retry `503` answers with its own deadline;
 it must never turn a `503` or `501` into an authenticated principal.
 
 ## Limits and compatibility
 
-- Request head within 2 s of connecting (the connection is closed otherwise); body ≤ 8192 bytes;
-  credential ≤ 4096 bytes; server deadline 2 s per call, body upload included, except the
-  committing email-code operations (`sign-in/*`, `sessions/revoke`, `email-change/*`): 5 s. A
+- The request head is due within 2 s of connecting. The body limit is 8 KiB, or 32 KiB for
+  requests carrying a password so the 4096-byte field fits after JSON escaping. The credential
+  limit is 4096 bytes. Server deadlines include upload time and are 2 s for reads and 5 s for writes. A
   consumer should use a shorter client timeout (the App: 1.5 s and 4.5 s) and map its own timeout
   like `503`. A timeout after the provider committed is an uncertain outcome: a session issued but
   never delivered cannot be presented by anyone and expires; the consumed code needs a new one.
@@ -133,6 +159,7 @@ it must never turn a `503` or `501` into an authenticated principal.
 
 ## Redaction
 
-The credential, codes, challenge handles and addresses are never logged, echoed or printed (their
-`Debug` is redacted, parse errors are discarded). Logs record refusals with the peer uid only, and
+Session credentials, codes, challenge handles, addresses, usernames and passwords are redacted
+from `Debug` and logs. Responses carry the session credential only at issuance and the challenge
+handle only at challenge issuance. Parse errors are discarded. Logs record refusals and
 issued sessions by session id and subject. Database URLs never appear in configuration errors.

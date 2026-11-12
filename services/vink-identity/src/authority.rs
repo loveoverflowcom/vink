@@ -100,6 +100,16 @@ impl Authority {
         }
     }
 
+    /// Availability of credential enrollment: a mailbox proof (email-code) for a username/password.
+    pub fn enrollment_availability(&self) -> Availability {
+        match self {
+            Authority::Native { methods, .. } if methods.email_code && methods.password => {
+                Availability::Available
+            }
+            _ => Availability::NotConfigured,
+        }
+    }
+
     /// The account store for session operations (verify, revoke).
     pub fn store(&self) -> Result<&AccountStore, AuthorityError> {
         match self {
@@ -120,6 +130,16 @@ impl Authority {
     pub fn password(&self) -> Result<&AccountStore, AuthorityError> {
         match self {
             Authority::Native { store, methods } if methods.password => Ok(store),
+            _ => Err(AuthorityError::NotConfigured),
+        }
+    }
+
+    /// The account store, for credential enrollment (both methods must be configured).
+    pub fn enrollment(&self) -> Result<&AccountStore, AuthorityError> {
+        match self {
+            Authority::Native { store, methods } if methods.email_code && methods.password => {
+                Ok(store)
+            }
             _ => Err(AuthorityError::NotConfigured),
         }
     }

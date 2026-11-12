@@ -72,6 +72,11 @@ pub enum ApiError {
     InvalidCredentials,
     /// Username already registered on native password sign-in.
     UsernameTaken,
+    /// The account already has a username/password; credential enrollment adds nothing.
+    AlreadyEnrolled,
+    /// Registration was attempted with a session that is still valid. It would create a second
+    /// account beside the signed-in one; credential enrollment is the operation for that.
+    AlreadySignedIn,
     /// The principal is suspended by Vink.
     PrincipalSuspended,
     /// The draft tags moved past `expected_version`; `observed` is what is stored now.
@@ -134,6 +139,8 @@ impl ApiError {
             | Self::CommentRemoved
             | Self::ModerationConflict { .. }
             | Self::EndorsementConflict { .. }
+            | Self::AlreadyEnrolled
+            | Self::AlreadySignedIn
             | Self::RevisionChanged { .. } => StatusCode::CONFLICT,
             Self::KeyReused | Self::EndorsementKeyReused | Self::PublicationKeyReused => {
                 StatusCode::UNPROCESSABLE_ENTITY
@@ -300,6 +307,18 @@ impl ApiError {
                 "username is already taken".to_string(),
                 None,
                 Some("username"),
+            ),
+            Self::AlreadyEnrolled => (
+                "already_enrolled",
+                "this account already has a username and password".to_string(),
+                None,
+                None,
+            ),
+            Self::AlreadySignedIn => (
+                "already_signed_in",
+                "this browser is already signed in; add a password to the signed-in account instead of registering".to_string(),
+                None,
+                None,
             ),
             Self::ChallengeClosed => (
                 "challenge_closed",

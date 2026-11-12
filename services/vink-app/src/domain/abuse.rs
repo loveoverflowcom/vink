@@ -199,6 +199,23 @@ pub const PASSWORD_REGISTER: RateLimit = RateLimit {
     window_seconds: 60 * 60,
 };
 
+/// Asking for the code that proves control of one's own mailbox before adding a username and
+/// password. Authenticated, so a network is a household or office, not a spray source; Identity
+/// separately caps codes per address (3/15 min) and per account.
+pub const PASSWORD_ENROLL_CHALLENGE: RateLimit = RateLimit {
+    bucket: "password.enroll.challenge",
+    limit: 5,
+    window_seconds: 15 * 60,
+};
+
+/// Answering that code with a username and password: each challenge allows 5 attempts and each
+/// attempt costs one Argon2 hash, so this also caps CPU spent for one network.
+pub const PASSWORD_ENROLL: RateLimit = RateLimit {
+    bucket: "password.enroll",
+    limit: 15,
+    window_seconds: 15 * 60,
+};
+
 /// Decision for one request, given the window's count INCLUDING this request.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Admission {

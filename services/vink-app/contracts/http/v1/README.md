@@ -6,8 +6,8 @@ skeleton; not a stable public API. Consumers keep their own types: the web app's
 the provider serializes its responses and compares them field-for-field; the consumer decodes
 every fixture and must keep every field.
 
-Only the endpoints below exist. Publish/withdraw and account/profile endpoints do not; the
-D-05/S-03 spike adds [Sign-in](#sign-in-d-05) only. Discussion
+The endpoints below include author publication, [authentication and account
+session](#sign-in-d-05). Profile editing has no endpoint. Discussion
 (comments) is Vink-owned (owner decision 03/11/2026; no Discourse) and has the endpoints in
 [Discussion](#discussion-d2t-02b) and [Comment moderation](#comment-moderation-d2t-02c). Literary
 endorsement has the endpoints in [Literary endorsement](#literary-endorsement-lve-73); no web or
@@ -386,12 +386,13 @@ three tags). Every response of these routes, success or error, carries `Cache-Co
 
 ## Sign-in (D-05)
 
-The browser-facing side of the native email-code authority ([ADR](../../../../../docs/architecture/auth-authority.md)).
-D-05 is Provisional: in the production profile the two code routes answer `501
-authority_not_configured` until `VINK_AUTH_SIGN_IN=enabled` (local profile: enabled); session
-reads and logout never depend on that switch. Identity mails codes asynchronously (outbox + SMTP or
-a local outbox), so `202` means "code issued", not "delivered". No web or native consumer uses
-these routes yet. Every answer is `Cache-Control: no-store`; unsafe methods
+The App facade for native email-code and password authentication is governed by
+[D-05](../../../../../docs/architecture/auth-authority.md), which is Provisional. In the production
+profile, sign-in, registration and password enrollment answer `501 authority_not_configured`
+until `VINK_AUTH_SIGN_IN=enabled`. The local profile defaults to enabled. Session reads and
+logout work independently of that switch. Identity queues codes on `202` and delivers them
+asynchronously. Web `/toi` uses email-code. Password routes are backend only.
+Every answer is `Cache-Control: no-store`. Unsafe methods
 need the same-origin `Origin` like every other route. Bodies never contain the challenge handle or
 the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; HttpOnly`).
 
@@ -399,8 +400,11 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
 | --- | --- | --- | --- |
 | `POST /api/v1/auth/sign-in/challenges` `{email}` | `202 {expires_at}` + `Set-Cookie: __Host-vink_sign_in=…; SameSite=Strict` | `403`, `422` (`field: email`), `429 rate_limited` (+ `Retry-After` when the App's network window refused), `501 authority_not_configured`, `503` | [request](fixtures/auth.challenge.request.json), [response](fixtures/auth.challenge.response.json) |
 | `POST /api/v1/auth/sign-in/complete` `{code}` + challenge cookie | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax`, challenge cookie cleared | `403`, `422 validation_failed` (`field: code`), `422 code_rejected`, `409 challenge_closed`, `403 account_disabled`, `403 principal_suspended`, `429 rate_limited` + `Retry-After`, `501`, `503` | [request](fixtures/auth.complete.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
-| `POST /api/v1/auth/register` `{username, password}` | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax` | `403`, `422` (`field: username` or `password`), `409 username_taken`, `403 principal_suspended`, `429 rate_limited` + `Retry-After`, `501`, `503` | [request](fixtures/auth.register.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
-| `POST /api/v1/auth/login` `{username, password}` | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax` | `403`, `401 invalid_credentials`, `403 account_disabled`, `403 principal_suspended`, `429 rate_limited` + `Retry-After`, `501`, `503` | [request](fixtures/auth.login.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
+| `POST /api/v1/auth/register` or `/api/v1/auth/password/register` `{username, password}` | `200 {state: "needs_principal"}` + session cookie | `403`, `422 validation_failed`, `409 username_taken` or `already_signed_in`, `429 rate_limited`, `501`, `503` | [request](fixtures/auth.register.request.json), [response](fixtures/auth.session.needs_principal.json), [already signed in](fixtures/error.already_signed_in.json) |
+| `POST /api/v1/auth/login` or `/api/v1/auth/password/login` `{username, password}` | `200 {state}` (`needs_principal` or `active` + `principal_id`) + `Set-Cookie: __Host-vink_session=…; SameSite=Lax` | `401 invalid_credentials`, `403`, `422 validation_failed`, `429 rate_limited`, `501`, `503` | [request](fixtures/auth.login.request.json), [needs principal](fixtures/auth.session.needs_principal.json), [active](fixtures/auth.session.active.json) |
+| `POST /api/v1/auth/password/enroll/challenges` with a session and empty body | `202 {expires_at}` + `Set-Cookie: __Host-vink_enroll=…; SameSite=Strict` | `401`, `403`, `409 already_enrolled`, `422`, `429`, `501`, `503` | [response](fixtures/auth.challenge.response.json), [already enrolled](fixtures/error.already_enrolled.json) |
+| `POST /api/v1/auth/password/enroll` with the same session, proof cookie and `{code, username, password}` | `200 {enrolled: true}`, proof cookie cleared | `401`, `403`, `409 challenge_closed`, `username_taken` or `already_enrolled`, `422 code_rejected` or `validation_failed`, `429`, `501`, `503` | [request](fixtures/auth.enroll.request.json), [response](fixtures/auth.enroll.response.json) |
+| `GET /api/v1/auth/password/enroll` with a session | `200 {enrolled}` | `401`, `403 principal_suspended` or `account_disabled`, `501`, `503` | [present](fixtures/auth.enroll.response.json), [absent](fixtures/auth.enroll.status.unenrolled.json) |
 | `GET /api/v1/auth/session` | `200 {state, principal_id?}`: `anonymous`, `needs_principal`, `suspended` or `active` | `503` | same shapes |
 | `GET /api/v1/auth/session/account` | `200 {principal_id, display_name}` for the current active Vink principal, `Cache-Control: no-store` | `401` without an active principal, `503` if the account cannot be read | [account](fixtures/auth.session.account.json) |
 | `POST /api/v1/auth/principal` `{pen_name}` | `201 {principal_id, created: true}`; `200 … created: false` when already bound (pen name unchanged) | `401`, `403`, `403 principal_suspended`, `422` (`field: pen_name`), `503` | [request](fixtures/auth.principal.request.json), [response](fixtures/auth.principal.response.json) |
@@ -410,7 +414,7 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
   challenge cookie (`code_rejected`); a closed challenge, a disabled account or a suspended
   principal clears it.
 - Completing a challenge is **authentication only**. A subject without a principal gets a session
-  but no authority (`needs_principal`; every private route answers `401`) until `POST
+  but no literary permissions (`needs_principal`) until `POST
   /auth/principal` creates exactly one principal for it — concurrent or repeated calls return the
   same principal. A suspended principal, or a binding lookup that cannot be decided, revokes the
   fresh session in Identity and sets no cookie.
@@ -426,6 +430,18 @@ the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; 
   `429`, without `Retry-After`. Every limit answers the same for existing and new addresses.
 - A successful completion revokes the session the browser presented before (if any), so signing in
   again never leaves an orphaned session behind.
+- Registration is for guests. An active session supplied as a cookie or Bearer receives
+  `409 already_signed_in`. The refusal creates no account and sends no `Set-Cookie`.
+- Enrollment accepts `needs_principal` and active accounts with a verified email. App suspension
+  yields `403 principal_suspended`. Identity accepts the mailed code only on the session that
+  requested it and keeps the session cookie and principal binding intact. `code_rejected` and
+  `username_taken` keep the proof cookie for another attempt. A missing or invalid proof cookie
+  returns `challenge_closed`. `challenge_closed` and `already_enrolled` clear the proof cookie.
+  On a lost response, use the GET readback. It reports the
+  signed-in account's state at the time of the read.
+- Enrollment counts five challenge requests and 15 completion requests per client network per
+  15 minutes. Identity applies its own mail ceilings and attempt limits. Auth request bodies are
+  bounded at 32 KiB. Password fields may contain at most 4096 bytes before NFKC normalization.
 - Email change for end users and profile/pen-name editing have no route yet (Identity's contract
   has email change).
 

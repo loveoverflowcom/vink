@@ -558,17 +558,24 @@ async fn the_rollback_script_drops_only_the_outbox(pool: PgPool) {
     else {
         panic!("sign-in")
     };
-    let script = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("migrations-rollback/20261112000000_mail_outbox.down.sql"),
-    )
-    .unwrap();
-    let mut tx = pool.begin().await.unwrap();
-    sqlx::raw_sql(sqlx::AssertSqlSafe(script))
-        .execute(&mut *tx)
-        .await
+    // Newest first: the enrollment purpose depends on the outbox table.
+    for name in [
+        "20261114000000_password_enrollment.down.sql",
+        "20261112000000_mail_outbox.down.sql",
+    ] {
+        let script = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("migrations-rollback")
+                .join(name),
+        )
         .unwrap();
-    tx.commit().await.unwrap();
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::raw_sql(sqlx::AssertSqlSafe(script))
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+    }
     let versions: Vec<i64> =
         sqlx::query_scalar("SELECT version FROM _sqlx_migrations ORDER BY version")
             .fetch_all(&pool)
