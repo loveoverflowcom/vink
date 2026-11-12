@@ -92,6 +92,64 @@ raw ↔ focus, bounds/PNG/hash và coverage captured/inspected/blocked. Import v
 bundle theo bảng trên, giữ nguyên tên raw và provenance. Source SHA khi dirty chỉ
 định danh base; source fingerprint và build context mới xác định đầu vào đã chụp.
 
+## Số đo anchor optional
+
+Bổ sung optional cho format 1; bundle không có số đo vẫn hợp lệ và record cũ không đổi nghĩa.
+Số đo tồn tại để trả lời một invariant của
+[LayoutSpec](../../vink-layout-spec/references/layout-spec.md) hoặc một finding cụ thể. Không
+dump toàn bộ cây layout và không xây framework đo mọi node.
+
+**Ảnh sạch là bằng chứng chính.** Số đo và overlay lấy từ **cùng lượt render** với ảnh sạch và
+trỏ về `capture_id`/`artifact_id` của nó. Ghi trong record capture (`measurements`) hoặc
+sidecar là artifact riêng có ID/hash; không tạo manifest thứ hai.
+
+| Trường | Nội dung |
+| --- | --- |
+| `anchors[]` | `anchor_id` (ID vùng của spec hoặc locator ổn định đã có: testid, semantics tag, selector), `locator`, `coordinate_space` (`document-css`, `viewport-css`, `root-dp`, `window-px`…), `unit`, `bounds` {x,y,width,height}; `visible_bounds`/`clip` và `scroll_offset` khi đo được; `font` {family đã resolve, size, line_height} khi API thật cung cấp |
+| `provenance` | Mỗi giá trị là `measured` (đọc từ renderer trong lượt này), `derived` (tính từ số đo, ghi công thức) hoặc `unavailable` (kèm lý do). Số suy từ source không ghi là `measured` |
+| `frames` | Tách `host`/canvas, `requested_frame`, `measured_specimen` và `content_bounds`; ghi từng gutter. Requested frame không thay số đo |
+| `invariants[]` | `id`, phát biểu, anchors, `tolerance` có đơn vị và lý do, ngoại lệ có chủ ý, `result` (`PASS`/`FAIL`/`NOT_EVALUATED`), revision của spec nguồn |
+| `overlay` | Ảnh phái sinh vẽ bounds/ID lên bản sao; `derived_from` là artifact ảnh sạch cùng lượt. Không ghi đè, không thay ảnh sạch |
+
+Giới hạn phải giữ khi đọc số đo:
+
+- DOM rect, `SemanticsNode` hay accessibility tree là số đo của node đó, **không** là toàn bộ
+  layout: semantics có thể đã merge, bounds chạm khác bounds vẽ, không có glyph/paint. Trường
+  API không cung cấp ghi `unavailable`; không điền bằng phỏng đoán.
+- Geometry `PASS` không chứng minh tương phản, hit testing, glyph/dấu tiếng Việt, luồng
+  accessibility hay phân cấp thị giác. Chênh lệch quang học trên overlay chưa là lỗi hình học.
+- Invariant `FAIL` chặn kết luận đạt của vùng đó nhưng ảnh vẫn phải được mở để chẩn đoán.
+- Check clipping/overlap/alignment/touch target chỉ áp dụng invariant có ngữ cảnh trong spec:
+  overlap chủ ý, vùng cuộn riêng, căn quang học và làm tròn sub-pixel là ngoại lệ được ghi,
+  không phải lỗi mặc định.
+- Instrumentation không được đổi layout, state, focus hay semantics production để có bằng chứng
+  thuận lợi. Đo xong phải xác nhận viewport/scroll/focus và bounds không đổi (cách
+  `captureTransaction` của preview Leptos đang làm), nếu không thì bỏ lượt đo.
+- Thao tác kích hoạt bằng script (`element.click()`, gán state) không tương đương thao tác của
+  người dùng: không dùng lượt đo đó để kết luận về trả focus, hover hay thứ tự bàn phím. Con
+  trỏ giả lập để lại hover; ghi vị trí của nó hoặc đưa ra ngoài vùng chụp.
+- Chỉ dùng fixture an toàn. Không thu token, cookie, header xác thực hay bản thảo riêng vào số
+  đo, overlay hoặc log.
+
+Khả năng tại `develop@e54db0d` (12/11/2026), kiểm lại trước khi dùng: preview Leptos ghi
+`bounds_css`, `document_css`, `viewport_css`, `clip_css`, `scroll_css` và kết quả tải font cho
+vùng `#specimen` trong `focus-manifest.json`; probe theo control như `select-geometry.mjs` nằm
+trong smoke. Sidecar CMP (`screen-contexts.json`, `interaction-contexts.json`) ghi host, density,
+font scale, padding và state nhưng **chưa có bounds theo anchor** (`unavailable`). Phần còn
+thiếu về geometry/completeness của CMP thuộc
+[#24](https://github.com/loveoverflowcom/vink/issues/24): tham chiếu và bàn giao cho owner đó,
+không mở implementation song song.
+
+Delta của [vòng sửa #174](../../../../docs/design/ui-ux-quality-174.md#10-vòng-sửa-1-f-01-và-các-gap-bằng-chứng):
+smoke Leptos hiện hữu có `overlay-contexts.json` cho dialog/sheet tại viewport thật (DOM rect,
+font, scroll/focus, clean PNG + overlay cùng lượt). `InteractionCaptureTest` CMP bổ sung
+`anchors` với `window-px`, bounds/visible bounds từ `LayoutCoordinates`, scroll range/viewport,
+pointer exit và tile phủ vùng cuộn; `interaction-run.json` pin SHA/fingerprint nguồn. Các
+sidecar này là output hẹp của runner, **không phải** bundle format 1 hoàn chỉnh. Metadata cũ
+vẫn hợp lệ; ảnh vừa mở và tile sau khi cuộn là các state khác nhau. `inspected=false` của
+runner chỉ đổi khi có review thực; không suy từ capture thành công. Phép đo CMP vẫn không có
+glyph metrics, OS insets hay screen-reader evidence.
+
 ## Báo cáo và graph
 
 `reports/REPORT.md` là bàn giao của một run, không phải index trung tâm thứ hai:

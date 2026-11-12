@@ -45,6 +45,10 @@ where they make execution clearer; plain structured instructions are also accept
 For UI work, include the selected [LayoutSpec](../vink-layout-spec/SKILL.md) or an
 accessible source/revision and the user's choice. If absent, require the receiving
 agent to complete and present a scope-appropriate spec before UI code/scripts/previews.
+For visual/UX quality work, pass the decisive rubric rows, reference class with approval status,
+spec invariants and the fix-round budget from
+[UX quality](../vink-ui-design/references/ux-quality.md) in the template's `UX_CRITERIA` rather
+than telling the receiver to load every UI reference.
 For interaction UX tasks (gestures, focus, motion, IME, reduced motion, overlays), carry
 the interaction contract (modality, trigger → feedback → commit/cancel, focus restoration,
 reduced motion fallback) from [Interaction UX](../vink-ui-design/references/interaction-ux.md)

@@ -29,12 +29,17 @@ DECISIONS:
 LAYOUT_SPEC: [UI only: selected spec/content or accessible path + revision; if missing,
   present the full/short vink-layout-spec (including Interaction field when applicable)
   before UI code/scripts/previews; retain the user's chosen direction and any explicit request to wait; no default approval gate]
+UX_CRITERIA: [UI only: the few rubric rows that decide this task, the visual reference class
+  (concept / style anchor / regression baseline) with revision and approved|candidate|unknown,
+  spec invariants with unit and tolerance; `no approved reference` when none exists]
 ACCEPTANCE:
   - [observable result, failure case and its authoritative requirement]
   - [UI/Interaction: modalities (touch/key/a11y), trigger → feedback → commit/cancel, focus retention/restoration, reduced-motion behavior, Vietnamese IME preservation]
+  - [UI: separate goals at 100% and at 200% text; 200% stays legible with hierarchy, not merely non-crashing]
 VERIFY:
   - [cargo xtask verify quick|postgres|web (docs/development), exact claim and boundary]
   - [UI boundary: JVM unit/offscreen for logic; native host/browser for touch gesture feel, 60fps, insets, screen reader]
+  - [UI result table: Functional, Geometry, Visual, Accessibility/Responsive, Interaction, each with scenario/target and PASS/FAIL/NOT_RUN/UNSUPPORTED; opened images named; fix-round budget and stop condition]
 BLOCKERS:
   if a runtime dependency is unavailable:
     complete independent work; preserve explicit unavailable/pending runtime behavior
@@ -56,5 +61,9 @@ order inside each prompt. For continuation, include completed work and valid evi
 concrete next step; do not label deferred integration as PASS.
 
 For UI, use the [shared layout convention](../../vink-layout-spec/references/layout-spec.md)
-and include comparison against the chosen spec in ACCEPTANCE/VERIFY. Omit LAYOUT_SPEC for
+and include comparison against the chosen spec in ACCEPTANCE/VERIFY. Pass only the decisive
+criteria from [UX quality](../../vink-ui-design/references/ux-quality.md) in `UX_CRITERIA`
+instead of asking the receiving agent to load every UI reference; omit the field for a copy or
+one-property fix whose check is obvious. Never write a candidate reference as approved, and do
+not let a round budget or a missing device turn into PASS. Omit LAYOUT_SPEC for
 tasks that do not change UI; do not invent a layout stage for a backend or documentation edit.

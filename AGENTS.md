@@ -140,7 +140,9 @@ decisions; when recording decisions or reconciling drift between code and docs, 
 [`vink-specify`](.agents/skills/vink-specify/SKILL.md). For UI and interaction UX tasks
 (gestures, motion, focus, IME, CMP libraries), follow the conditional routing in the
 [skill index](.agents/skills/README.md) and
-[Interaction UX](.agents/skills/vink-ui-design/references/interaction-ux.md).
+[Interaction UX](.agents/skills/vink-ui-design/references/interaction-ux.md); review and report
+UI changes with the rubric, reference classes, bounded fix rounds and five-dimension result table
+in [UX quality](.agents/skills/vink-ui-design/references/ux-quality.md).
 [Archived input](docs/archive/initial/README.md) is historical context only.
 
 ## Engineering boundaries

@@ -172,7 +172,11 @@ Tên dùng chung; Leptos không tiền tố (`StatePanel`), CMP tiền tố `Vin
 | `Dialog` | `open`, `title`, `context?`, `role: DialogRole` (Dialog/AlertDialog), `kind: DialogKind` (Dialog/Sheet), `dismiss: DismissPolicy` (Explicit/EscapeOnly/EscapeAndOutside), content + `actions` slot; Web `id` | `on_dismiss(DismissReason)` | Mở/đóng (controlled), coordinator (UIS-04). Web: `<dialog>` + `showModal()` (inert ngoài, Escape → `cancel`), lưu/trả focus; CMP: `Dialog` window + `DialogProperties`, `FocusRequester` |
 
 Nút phá hủy trong `AlertDialog`: focus ban đầu vào lựa chọn an toàn (`initial_focus` = an toàn, mặc
-định phần tử đầu của actions). `DismissPolicy::Explicit` chặn Escape và bấm ngoài (dialog cần
+định phần tử đầu của actions). Trên Web, khi nội dung dài hơn scrollport, mặc định focus tiêu đề
+(`tabindex=-1`) và mở ở đầu nội dung để câu hỏi không bị cuộn khỏi vùng nhìn; Tab vẫn tới hành động
+an toàn trước hành động phá hủy. `[autofocus]` do caller chỉ định (gồm `focus_title`) được ưu tiên;
+caller chịu trách nhiệm đặt nó ở vùng mở đầu. Không thay chính sách `initialFocus` của CMP.
+`DismissPolicy::Explicit` chặn Escape và bấm ngoài (dialog cần
 quyết định); `EscapeOnly` mặc định; `EscapeAndOutside` cho thông tin.
 
 ## Kịch bản preview (playground)

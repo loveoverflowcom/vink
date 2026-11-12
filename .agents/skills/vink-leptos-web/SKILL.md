@@ -119,5 +119,10 @@ mobile text scaling. Distinguish simulated input from a real named OS IME run.
 
 For visual changes, drive and open captures of relevant states with viewport/theme/locale;
 inspect focus and keyboard separately. A string render or screenshot does not prove editor
-interaction. Report rendering/build mode, actual commands, browser/backend used, covered async
+interaction. Take the criteria, the 100% versus 200% goals and the five-dimension result table
+from [UX quality](../vink-ui-design/references/ux-quality.md). Browser measurements (DOM rects,
+computed styles, `document.fonts`) answer only the spec invariants they were taken for and are
+recorded per the capture [evidence contract](../vink-ui-capture/references/evidence-contract.md);
+the preview's 200% is a root font-size multiplier, not browser zoom, and a full-page capture that
+resizes the viewport does not show how a viewport-anchored dialog or sheet sits on a real screen. Report rendering/build mode, actual commands, browser/backend used, covered async
 races and unrun acceptance. A skill-only edit needs no application run.

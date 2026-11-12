@@ -1,0 +1,414 @@
+{
+  "archive_png_count": 38,
+  "all_archived_png_integrity": "PASS",
+  "cmp_initial_panel_title_containment": "8/8 PASS",
+  "cmp_complete_tile_groups": "8/8 PASS",
+  "negative_controls": {
+    "remove_middle_cmp_tile": "DETECTED: 35px uncovered interval",
+    "wrong_cmp_height": "DETECTED: PNG dimensions mismatch",
+    "wrong_theme": "DETECTED: requested/effective mismatch",
+    "wrong_sha256": "DETECTED: hash mismatch",
+    "actual_F01_before": "DETECTED: 6/16 INV-1 FAIL",
+    "actual_F01_after": "16/16 all checks PASS",
+    "geometry_pass_visual_unresolved": "Web after INV-1..4 PASS; F-02 still open after image review"
+  },
+  "inspected_artifacts": {
+    "web-before/state.dialog--default--open--light--320x700--text200.png": {
+      "sha256": "4dfb4de99d810f3691d57209490fba58166396368854553bf02b4e039c27a3fc",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-before/state.dialog--sheet--open--light--320x700--text200.png": {
+      "sha256": "51306edf1ccc7b872e3e574c7f27059faf7b2b1aa7396c9569e983844ba93aa8",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-before/state.dialog--default--open--light--390x844--text200.png": {
+      "sha256": "d624169f3f88d742b0ab7f5f6ae5b3b3bea83f479bc5ee54e7ef1b7560d8255d",
+      "image_pixels": [
+        390,
+        844
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--320x700--text100.png": {
+      "sha256": "e0f776c1bf355e6c46743939238f29260740aaa2874f59714a24cd0812fcd42c",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--light--320x700--text100.png": {
+      "sha256": "0f8b1d98d41c017715f18d6e7c218393206de57cdfa0c2dc6268a318e821c36f",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--390x844--text100.png": {
+      "sha256": "ff3579b4944a82d0694a7691655c71a325cb170c8c1184d9fc3457eaf2c58a6a",
+      "image_pixels": [
+        390,
+        844
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--320x700--text200.png": {
+      "sha256": "eed01a488d3c7e1c542e53cb823fd9dca003b42fcbc3a7e7696710a41fdef0eb",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--320x700--text200--overlay.png": {
+      "sha256": "282d8d147181816dbd0402bf21e7c7b517295210a19501b6012f31525aa64a92",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--320x700--text200--actions.png": {
+      "sha256": "01927591e04930438981ae3ec690cd53f02964fa31d7f41133e96413c18f2f88",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--light--320x700--text200.png": {
+      "sha256": "3147a7334f21bdff2f89cc35304c46b0e60b119e762b1410c3d3332d8e17776f",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--light--320x700--text200--overlay.png": {
+      "sha256": "a002c958861c5b69f48ba90beeb29cb5120a841dfed5c831731be4b5823f3bed",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--light--320x700--text200--actions.png": {
+      "sha256": "51306edf1ccc7b872e3e574c7f27059faf7b2b1aa7396c9569e983844ba93aa8",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--light--390x844--text200.png": {
+      "sha256": "0e288a996295858ebde4c78c003f5d4e39821996d631d4f75aa5eb92c7ca344e",
+      "image_pixels": [
+        390,
+        844
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--dark--320x700--text100.png": {
+      "sha256": "246a9c6a01dfc864f5be130515f3c05f0b6e587fe3ce44695b1b27f4ae7dd0c8",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--dark--320x700--text100.png": {
+      "sha256": "03c12ae4e6dc02c1bf5dcf2f3dbc08ce3a643da91120db39864bcaaec63337af",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--dark--390x844--text100.png": {
+      "sha256": "509469509ab3da1f435fac878691fe8a9be1aa4d9488e9e0ce0306ff3707644a",
+      "image_pixels": [
+        390,
+        844
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--dark--320x700--text200.png": {
+      "sha256": "103ffa4943b081238f5e2f10bb16a8335ed9f19be0cc8f298eb004865b94ba26",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--dark--320x700--text200--actions.png": {
+      "sha256": "73351ba47a75a6828b5124e16a154680d9fef5f2023c04985d00c91b89742f7f",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--dark--320x700--text200.png": {
+      "sha256": "f63394c60f30150984e327ed0e35cb49d0a93508f439edd932b4a2541acce2ad",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--sheet--open--dark--320x700--text200--actions.png": {
+      "sha256": "b1879ec277ed1563b5049e22c71edd0863e2cc01de827db278fdd9680f7f26ee",
+      "image_pixels": [
+        320,
+        700
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "web-after/state.dialog--default--open--dark--390x844--text200.png": {
+      "sha256": "5214d8af767d432c250a59b62d5cc6b47f596ecc3ceae3ebd02592eb1d9219c4",
+      "image_pixels": [
+        390,
+        844
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--default--light--360--text100.png": {
+      "sha256": "2d392154655ed26de37c742bd6cc8bd7a17cf59d68c1c8de12bdf0448452cb7a",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text100.png": {
+      "sha256": "464d7e8ca7bd0235b906a45395f4697214ec09aefc6c2ba809c5edf48ab912b5",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--default--light--360--text200.png": {
+      "sha256": "0b785127e46d8e6008c84c2aa6dd0ca57741bc5337590d8421b233fe037d88d5",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200--initial.png": {
+      "sha256": "1ab379ece6700676c94bdf161c610034e64598f81cbfeddf923d91d08785094c",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200--part1.png": {
+      "sha256": "1ab379ece6700676c94bdf161c610034e64598f81cbfeddf923d91d08785094c",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200--part1--overlay.png": {
+      "sha256": "d2ce2e0e4b4a6bed996eff702b2278d6eaa7756cc2e1de59288d020d92705993",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200--part2.png": {
+      "sha256": "9ebb3e6923afbdf19a8c55878f9992d723e45ccebb79845994b23bf9fabe5f23",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200--part3.png": {
+      "sha256": "af8c951fc0d3c6cefa19c30014a0f4b801f2bc744f0463826baef1c671447513",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--light--360--text200.png": {
+      "sha256": "af8c951fc0d3c6cefa19c30014a0f4b801f2bc744f0463826baef1c671447513",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--default--dark--360--text100.png": {
+      "sha256": "3b4c537e486fc508c8acdfe26396d7d438c54c02a4f13b249a459cf7a33fc487",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text100.png": {
+      "sha256": "8d4fbb4d339a041d6d76d619fba6298f60b9389949109bb6c25fd2089668b171",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--default--dark--360--text200.png": {
+      "sha256": "fd0d0ddf4037f4253103bc419d9f391b0ae6eb7b2c7694ff0f0a77f570e18ea0",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text200--initial.png": {
+      "sha256": "dd72de46c8cd40281884bb0240c6e59f23a3a6d9464d1b3cc5ff023e7cdc351f",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text200--part1.png": {
+      "sha256": "dd72de46c8cd40281884bb0240c6e59f23a3a6d9464d1b3cc5ff023e7cdc351f",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text200--part2.png": {
+      "sha256": "7482df3684d3c575c77cf4a48089eb78bc1fdf96f85dc0472bb9cef2a707b1b4",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text200--part3.png": {
+      "sha256": "412264236a1190711fb5c27ddf6c94ebf1bf383880ac5ce217c53465e87158ed",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    },
+    "cmp/interaction--sheet--dark--360--text200.png": {
+      "sha256": "412264236a1190711fb5c27ddf6c94ebf1bf383880ac5ce217c53465e87158ed",
+      "image_pixels": [
+        360,
+        800
+      ],
+      "inspected": true,
+      "review": "self-review"
+    }
+  },
+  "source_binding": {
+    "base_sha": "5221871923ca2935988a225d827e1c4ed9c234c0",
+    "web_before_matches_base_component": true,
+    "web_after_inputs_match_current_files": true,
+    "cmp_inputs_match_current_files": true,
+    "web_source_delta": [
+      "packages/ui-system/leptos/preview/e2e/overlay-capture.mjs",
+      "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs",
+      "packages/ui-system/leptos/src/feedback.rs",
+      "packages/ui-system/shared/states.md"
+    ],
+    "final_capture_sources_match": true
+  },
+  "runtime_bundle": {
+    "command": "cargo xtask ui-preview leptos build; media hydration fixture built by ui-preview leptos verify",
+    "served_by": "xtask loopback preview on 127.0.0.1:3019",
+    "files": {
+      "pkg/vink_ui_preview.js": "f2d8047eb265562e35e969ff31a745b29fc326b4c549e0e938a1780f54e576d7",
+      "pkg/vink_ui_preview_bg.wasm": "bded38d3d27639b3deebd741125a2e81b82f100967ace1ccd960b79eb3860952",
+      "vink-ui.css": "513d086474937cc52951194af6e4e56fda2ad4015b6bbffe5543af8c6ec823ee",
+      "tokens.css": "78479427b6c472a29d303dcb80bdaf0e5d534f77c3569497740002ad3269139d",
+      "pkg/media_hydration.js": "406f9962be7834b28c268e6c4d93e95e89c24e9f07ae8b815d0638bd7e3df96e",
+      "pkg/media_hydration_bg.wasm": "05f92857c15c4d307a8bcba9b094c7d09d3c77f52b4faac31bdadd2b2ae18e07"
+    }
+  },
+  "bounded_review_replay": {
+    "kind": "artifact replay; no second UI edit or render",
+    "criterion": "INV-1, same sixteen cases",
+    "failure_counts": [
+      6,
+      0,
+      6
+    ],
+    "delta": [
+      "baseline",
+      "fixed",
+      "regressed (simulated next round from before artifacts)"
+    ],
+    "stop": "regressed finding: stop and retain verified round 1, not PASS",
+    "retained_source_fingerprint": "809277f0e75ad65c0315f69d330e5287c17d6804e6d580e20746e2939d36f8a9",
+    "actual_ui_rounds_used": 1,
+    "budget": 2
+  },
+  "full_web_smoke": {
+    "result": "PASS",
+    "exit_code": 0,
+    "command": "VINK_CHROME_NO_SANDBOX=1 node packages/ui-system/leptos/preview/e2e/preview-smoke.mjs --base http://127.0.0.1:3019/ --chrome /usr/bin/google-chrome --out target/ui-preview/174-full-rerun --catalog packages/ui-system/shared/preview-catalog.json --focus 1",
+    "assertions": 660,
+    "capture_records": 846,
+    "png_files": 1297,
+    "focused_capture_cases_passed": 36,
+    "log_sha256": "1a908d90f3c35afa6bd37c9c1a61097b8e546b640d7a07b39227f5818e913753",
+    "overlay_sidecar_matches_archived": true,
+    "boundary": "full browser suite on compiled preview/media fixture; initial combined xtask lane interrupted in gallery"
+  }
+}

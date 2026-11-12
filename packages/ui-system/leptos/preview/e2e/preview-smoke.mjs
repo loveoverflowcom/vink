@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { checkSelectGeometry, selectCharacter } from './select-geometry.mjs';
 import { captureTransaction, captureSpecimen, sourceIdentity } from './focus-capture.mjs';
+import { overlayCaptures } from './overlay-capture.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((pairs, value, i, all) => {
@@ -1653,26 +1654,31 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
-  await mediaHydration(page);
+  if (args['overlays-only'] !== '1') await mediaHydration(page);
   await page.send('Page.navigate', { url: args.base });
-  await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted');
-  await structure(page);
-  await meSelection(page);
-  await themes(page);
-  await forcedColors(page);
-  await densityAndMotion(page);
-  await components(page);
-  await selectChevron(page);
-  await toggles(page);
-  await states(page, cdp);
-  await navigation(page);
-  await navigationFit(page);
-  await compactVietnameseWords(page);
-  await search(page);
-  await screenPatterns(page);
-  await reflow(page);
-  await captures(page);
-  if (args.focus === '1') await focusedCaptures(page, version);
+  // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own
+  // bounded wait; interaction assertions retain the shorter default timeout.
+  await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted', 60000);
+  await overlayCaptures(page, {out:args.out, version, check});
+  if (args['overlays-only'] !== '1') {
+    await structure(page);
+    await meSelection(page);
+    await themes(page);
+    await forcedColors(page);
+    await densityAndMotion(page);
+    await components(page);
+    await selectChevron(page);
+    await toggles(page);
+    await states(page, cdp);
+    await navigation(page);
+    await navigationFit(page);
+    await compactVietnameseWords(page);
+    await search(page);
+    await screenPatterns(page);
+    await reflow(page);
+    await captures(page);
+    if (args.focus === '1') await focusedCaptures(page, version);
+  }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
   console.log(`preview-smoke: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);

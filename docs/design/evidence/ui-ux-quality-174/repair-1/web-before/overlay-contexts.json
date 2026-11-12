@@ -1,0 +1,3666 @@
+{
+  "run": {
+    "git_sha": "5221871923ca2935988a225d827e1c4ed9c234c0",
+    "dirty": true,
+    "source_fingerprint": "593610e0721bfdf7fce0828b23379ca3640816a2ba56427746f4cf082cd756cc",
+    "source_files": {
+      "packages/ui-system/leptos/Cargo.toml": "e17d9d2738b954ff63ba3316920fe01a2b3aeda0b24c23b640efad84887fa6df",
+      "packages/ui-system/leptos/README.md": "088b285f8eb0a3f5da04a2bc2c9d4c04c6bc547419739ed7fc62d082129bb5cf",
+      "packages/ui-system/leptos/preview/Cargo.toml": "252167e314214941b97b38df9f57b7218ce8f5c6075af1406d9e1bdcc4383ee7",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.mjs": "c991ca355a59db697e56a60d42fa9bca0eb34a1c379e9ee4b5d1794f612e891f",
+      "packages/ui-system/leptos/preview/e2e/focus-capture.test.mjs": "c52d2c2a7b6acef731be3214279ef01c8303a2bd8467231149cd27aed1921bb7",
+      "packages/ui-system/leptos/preview/e2e/overlay-capture.mjs": "33734b9dac7444d955f98e06d43d8eeff441ab70159d8a681ce93ad14b71dca4",
+      "packages/ui-system/leptos/preview/e2e/overlay-capture.test.mjs": "138941a9e26e75d9ba9d82949ebb0edbc56f1d357562962694f7069476990c0c",
+      "packages/ui-system/leptos/preview/e2e/preview-smoke.mjs": "c0101acad92dbc1c5bbe9796be5110bd3e0ce62577f6bb353e4111110753ffcc",
+      "packages/ui-system/leptos/preview/e2e/select-geometry.mjs": "c28e8accaede32c1b7e509afeb8eea9d6dc229e6944ac2b639cb5221e411e07c",
+      "packages/ui-system/leptos/preview/examples/media_hydration.rs": "b0e4891f2ff69dabf32b8bf7f80523255dc8e94d5a4d408f89e43b6f76a561f7",
+      "packages/ui-system/leptos/preview/index.html": "197ba26ba19cebd2663332f1d7b4b2a39ddb4d76ebc3b691968badad60da2097",
+      "packages/ui-system/leptos/preview/src/components.rs": "592ebcfa19a923d8ab32b69fb1a73d07e64aec324e26bcb1297e475c228b8280",
+      "packages/ui-system/leptos/preview/src/endorsement.rs": "d530cce7a9c15d1a5da038eecdde44a675f4539d84b396f58ec8dbfadbdcb95f",
+      "packages/ui-system/leptos/preview/src/lib.rs": "ef9ea136327b4d790431dc98b7f1436ded6d44f0ecd677058411a73efc903749",
+      "packages/ui-system/leptos/preview/src/navigation.rs": "0851cb83b5326bdbc19a6a17400dfa3384d895d79ad494c3aee7e3f2d02d2994",
+      "packages/ui-system/leptos/preview/src/screens.rs": "ea944f4c0799f52394f12aa6ccc27251bc7010946b66ad4d97b7d21770344d1e",
+      "packages/ui-system/leptos/preview/src/states.rs": "50e70834fedf5530eabbfcb954f6f87019fecc13ed4b4c827923f728f844df8e",
+      "packages/ui-system/leptos/preview/src/tags.rs": "8041e69fece5f9c8a322644dd9a59e10d556224c71edfed899abf0052f8cbd52",
+      "packages/ui-system/leptos/preview/style/preview.css": "c7974f658d0a0638f1fb321b0f03e0f7b797723bb81da8f07df20733412ba4a9",
+      "packages/ui-system/leptos/src/action.rs": "07c6bf7d972721d56ba56810bf4800c1f18c2524bb9aa15690489e89ce3e2732",
+      "packages/ui-system/leptos/src/catalog.rs": "b5da0ffb536df20b1f4e6d1878c1fc99c79b02151cc135d97eca103a6ad57f59",
+      "packages/ui-system/leptos/src/feedback.rs": "2c9c8345a8464cad6e75a062591e4a31c73c3952894ac9180d2b5e0546952608",
+      "packages/ui-system/leptos/src/field.rs": "6210c0394bc345ce00fc0801da75e7855ffd6363212d8911f1a604d891715232",
+      "packages/ui-system/leptos/src/icons.rs": "121db865429b2c9d7b077e7fbb1a6cd3e6172b0c688e923e366d99b4e924d68b",
+      "packages/ui-system/leptos/src/identity.rs": "f1a3118fc7d1f98342503324c7fbcfe406f16048a9f3c1aec57f04f2f79e9f22",
+      "packages/ui-system/leptos/src/identity_vectors.rs": "2f0ea37b12e6e63eca4e495f8c64a4499712da29bdae78e2068b097d9d8eba3b",
+      "packages/ui-system/leptos/src/layout.rs": "06d9d5966102b80a6e0e86abe95a24cfbeb5c222d4c82e2ce990b8ff13bc7f22",
+      "packages/ui-system/leptos/src/lib.rs": "93b1819a4d966b6425f6eef4dda9019ed98dbfad3642416e13c9ed67487118fe",
+      "packages/ui-system/leptos/src/media.rs": "56b9fd5ce3330e72fe66fdf61aae483c6b0e5659e53aeb6c4d54e52a42fa3464",
+      "packages/ui-system/leptos/src/navigation.rs": "61d6acf4d8f47a01edf649551484ab635ce77f370f31cdd3dab5dc58b5c9b82f",
+      "packages/ui-system/leptos/src/navigation_vectors.rs": "3fccf7aeadf4f136c2bd491d20710dbf060402401e230af2ff1090216010a0a4",
+      "packages/ui-system/leptos/src/root.rs": "0e0d29496fbcb12170d6d43b7b008ab5476546922cfcb23f2fd2e8000646fdbd",
+      "packages/ui-system/leptos/src/state.rs": "b631d401698fb29b345404d9b0cf4275abf799679db83636dd3311d06c8e8f52",
+      "packages/ui-system/leptos/src/state_vectors.rs": "815c231e9f083c04280a11e3a34cfb995b92dad1cbe30b46fa143921510f7063",
+      "packages/ui-system/leptos/src/support.rs": "9590d5038513c5051b46c9ea7e6ca4f3473fcd7c943cfd44198bbf7d9d6cbeed",
+      "packages/ui-system/leptos/src/text.rs": "cfb273d09317767fb5bf248a2e9f9bd4ede849842302b1bc04248beeda256333",
+      "packages/ui-system/leptos/src/theme.rs": "3d6058703e3ba1126bda3f3d4fecbf104fda5f1bdc30079f62ab304f29dc5886",
+      "packages/ui-system/leptos/src/toggle.rs": "e0357efbb8514772c9b6126e54550eb5449a754dcf24975d87a0cf27f2495835",
+      "packages/ui-system/leptos/src/toggle_vectors.rs": "be4d3ec5bc9f0e5f4ef22e05d5d229927583492308d73f384a9d6312722a2df4",
+      "packages/ui-system/leptos/src/tokens.rs": "179de1bdd53231bc380a6a908a20470af546dfdc07b0989d6ddfc83691dad984",
+      "packages/ui-system/leptos/src/values.rs": "f7c1817e0637d4165e04f48c46ab6ff07a900a2a126aeb856bf959ac1f5f8109",
+      "packages/ui-system/leptos/style/tokens.css": "78479427b6c472a29d303dcb80bdaf0e5d534f77c3569497740002ad3269139d",
+      "packages/ui-system/leptos/style/vink-ui.css": "513d086474937cc52951194af6e4e56fda2ad4015b6bbffe5543af8c6ec823ee",
+      "packages/ui-system/shared/README.md": "ba139c9f19e1c8d090c73d2d111a6a420d27ad37c6825497c575f664f7701ca6",
+      "packages/ui-system/shared/api-coverage.json": "fbb6aa4118f7a84e6297719ba534b3cc8b8c5124fc8a873b75cfc38ff1b45b21",
+      "packages/ui-system/shared/compatibility.md": "70fbe2e328e55796c30c899669e42dcf59bd1931a762e1ba67d50501016a3e5c",
+      "packages/ui-system/shared/components.md": "fd9763f7a55f20a07e4acd6f7f7dad4646c82dcf013cbb0ce596e9d76b511fa4",
+      "packages/ui-system/shared/content-images.md": "780386de4dde8ad2394c8fae0347cd8917a216dc99aaf3bdaa6ffedd31a20138",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/README.md": "51a33d1ea53ffb293f05ba0ec70620a9554293c463dac0ddb5e18b8aee052a74",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-error-focus.png": "2bf02c5fb8ddaffd38073ff63229dd6a7502b57a22bb6f266a049e960f39e4a6",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-field-after.png": "ce981f867ea5a4c21ee7198be3bea8c6432c6c8e85ba34f563b9d8eb310c53c7",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-field-before.png": "ced503ebecb90b6870142530aaec3b32a08fbc31d1ca1153dbf3a1d88eba7ca7",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/cmp-text200.png": "cd966002136e36be41c1c4599cca49711c230578fc7f9386ce9379a9dc3af29c",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/manifest.json": "1eb2de683408c7323654fb257fda2fbb0f0d6e3c8bbf29c2830bfe1f0ab8840e",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/verification.txt": "6b612435f37d15c3001a195ddd6e64b9705ca8fdb4c7a14a5f3343f50fef46f6",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/web-field-after.png": "5ea24288811f12a309a101abac08484aad3dc9cbeaa7f107aeab8e66115bc491",
+      "packages/ui-system/shared/evidence/quiet-lavender-pr01/web-field-before.png": "42b1fef74891bc67ba714a77f851662f3b9fb632f4847acae4622c1bf621aff7",
+      "packages/ui-system/shared/fixtures/foundation.json": "daa14c030d52e41f4c774e23a68696d0a9228f73a3cfe5c346df9da17f7b9979",
+      "packages/ui-system/shared/fixtures/identity.json": "c3cd261b1a9ef2e1d6a4c5d75f6862233ce006693a74b2c7b44658fbf422acf4",
+      "packages/ui-system/shared/fixtures/navigation.json": "400f0457e583797f84e0e7783fd4ac0a35bab64dc3f6a1aa085b7c00ed573831",
+      "packages/ui-system/shared/fixtures/states.json": "b3ea2f0bb58e743a9dd102fd82f701fbd48d8cfe110ec37945010c7022d9612f",
+      "packages/ui-system/shared/fixtures/toggle.json": "f92691480e1080b451cf6ca38d876e3a5c407103688977650496b2430dbb673d",
+      "packages/ui-system/shared/icons.json": "3e4b63714362de014d4e36be8f6ea0a7fd53ace7f979cd260994a1be7fc28096",
+      "packages/ui-system/shared/icons/LICENSE-material-design-icons.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "packages/ui-system/shared/navigation.md": "967c96a9b5aae3223ae559244a09d74c4d34e457326b7909a21911ab1d9564b1",
+      "packages/ui-system/shared/preview-catalog.json": "63c186fbb676c30d99083070aa8399b9ca0af7b26a02f522894270f7cb88c9d0",
+      "packages/ui-system/shared/states.md": "40f39bdbc39b6c460e642a162044934982c564a642373abbfdc8fc009e31cd44",
+      "packages/ui-system/shared/tokens.json": "6f01a6e206ffd4c5c62a8b3aedba91fee8ca40f5b51cd34a461fdf0ab4acd9a9",
+      "packages/ui-system/shared/tokens.schema.json": "73b4f3c15aa81bed65174e2f84083bb515f447e4e9ec07b5b2c4358ef4680a9b",
+      "packages/vink-patterns/leptos/Cargo.toml": "51f054baf7684c0eb110433023f21a7f6cbc322b09ba4fefcbbfa6e178a7dc10",
+      "packages/vink-patterns/leptos/patterns.css": "a22a72d53ac06cd0670061e44a3dbd5a7786b0ac7b8883f50803d46e3c36f772",
+      "packages/vink-patterns/leptos/src/lib.rs": "f834fbbca8e521d7440de93b702d817b5f0402e1067e18e9db1635b89644ec89",
+      "packages/vink-patterns/leptos/src/tags.rs": "be52ede29fe913024aac55cea3d000b536a4317c507f7d039a000f2e0c65be0d"
+    },
+    "browser": "Chrome/157.0.8103.78",
+    "host": "headless-chrome",
+    "renderer": "leptos-web",
+    "data_mode": "synthetic",
+    "locale": "vi-VN",
+    "text_scale_method": "root font size; not browser zoom"
+  },
+  "cases": [
+    {
+      "name": "state.dialog--default--open--light--320x700--text100",
+      "theme": "light",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:03:55.386Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 215.015625,
+              "width": 225,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 372.984375,
+              "width": 225,
+              "height": 112
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 318,
+            "clientHeight": 318,
+            "scrollWidth": 273,
+            "clientWidth": 273,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--320x700--text100.png",
+            "sha256": "e0f776c1bf355e6c46743939238f29260740aaa2874f59714a24cd0812fcd42c",
+            "byte_size": 55909,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--320x700--text100--overlay.png",
+            "sha256": "8196db246977eb440bc7cddcce16e6e4d74e20ee866a3502b7d18905b1363691",
+            "byte_size": 77557,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--light--320x700--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:03:55.721Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 215.015625,
+              "width": 225,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 372.984375,
+              "width": 225,
+              "height": 112
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 318,
+            "clientHeight": 318,
+            "scrollWidth": 273,
+            "clientWidth": 273,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--320x700--text100--actions.png",
+            "sha256": "5371f5148b08b54efaefd9a47a333901a8d571ebc7647183a6ab1e6c5802a633",
+            "byte_size": 55905,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--320x700--text100--actions--overlay.png",
+            "sha256": "dcd6bedb948753405f282864707de860f5d46d6874f6e23ee66b665929a3e107",
+            "byte_size": 77553,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--light--320x700--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--light--320x700--text100",
+      "theme": "light",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:03:56.312Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 463.40625,
+              "width": 257,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 620,
+              "width": 257,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--320x700--text100.png",
+            "sha256": "0f8b1d98d41c017715f18d6e7c218393206de57cdfa0c2dc6268a318e821c36f",
+            "byte_size": 41480,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--320x700--text100--overlay.png",
+            "sha256": "98c893f473203316446efa47a3290b5c9e1d5a4f9ed7d921bc61a7f861ded7f8",
+            "byte_size": 59548,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--light--320x700--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:03:56.693Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 463.40625,
+              "width": 257,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 620,
+              "width": 257,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--320x700--text100--actions.png",
+            "sha256": "0f8b1d98d41c017715f18d6e7c218393206de57cdfa0c2dc6268a318e821c36f",
+            "byte_size": 41480,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--320x700--text100--actions--overlay.png",
+            "sha256": "98c893f473203316446efa47a3290b5c9e1d5a4f9ed7d921bc61a7f861ded7f8",
+            "byte_size": 59548,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--light--320x700--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--light--390x844--text100",
+      "theme": "light",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:03:57.238Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 315.015625,
+              "width": 295,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 472.984375,
+              "width": 295,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 262,
+            "clientHeight": 262,
+            "scrollWidth": 343,
+            "clientWidth": 343,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 3902
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--390x844--text100.png",
+            "sha256": "ff3579b4944a82d0694a7691655c71a325cb170c8c1184d9fc3457eaf2c58a6a",
+            "byte_size": 71391,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--390x844--text100--overlay.png",
+            "sha256": "477341b998429006ea31af9189d07a23abca5f0b5b7718d117db5116162bb1d1",
+            "byte_size": 101040,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--light--390x844--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:03:57.572Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 315.015625,
+              "width": 295,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 472.984375,
+              "width": 295,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 262,
+            "clientHeight": 262,
+            "scrollWidth": 343,
+            "clientWidth": 343,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 3902
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--390x844--text100--actions.png",
+            "sha256": "a1e01722e8ec311b67df2064c621281aa0fb80171d4a0959bcb54b362eecdbb7",
+            "byte_size": 71390,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--390x844--text100--actions--overlay.png",
+            "sha256": "679ca94066288c3064672a52fb8374e87c35d785d4b95ed2ff6af7ec4193994c",
+            "byte_size": 101039,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--light--390x844--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--light--390x844--text100",
+      "theme": "light",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:03:58.105Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 607.40625,
+              "width": 327,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 764,
+              "width": 327,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 4300
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--390x844--text100.png",
+            "sha256": "8240630b383f76dd15a6e0ebfc4129d3c58fddfcd3490cd22eeea673460582e8",
+            "byte_size": 58492,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--390x844--text100--overlay.png",
+            "sha256": "7399d03e128c7c97fe523b8d469cc376d1e8d9c18717c35a9562ee7bfef534b9",
+            "byte_size": 84294,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--light--390x844--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:03:58.490Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 607.40625,
+              "width": 327,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 764,
+              "width": 327,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 4300
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--390x844--text100--actions.png",
+            "sha256": "8240630b383f76dd15a6e0ebfc4129d3c58fddfcd3490cd22eeea673460582e8",
+            "byte_size": 58492,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--390x844--text100--actions--overlay.png",
+            "sha256": "7399d03e128c7c97fe523b8d469cc376d1e8d9c18717c35a9562ee7bfef534b9",
+            "byte_size": 84294,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--light--390x844--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--light--320x700--text200",
+      "theme": "light",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:03:59.216Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 241,
+              "height": 636
+            },
+            "title": {
+              "x": 80,
+              "y": -578,
+              "width": 172.703125,
+              "height": 400.3125
+            },
+            "content": {
+              "x": 32,
+              "y": -626,
+              "width": 226,
+              "height": 1293.75
+            },
+            "actions": {
+              "x": 80,
+              "y": 331,
+              "width": 172.703125,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 658,
+            "scrollHeight": 1294,
+            "clientHeight": 636,
+            "scrollWidth": 226,
+            "clientWidth": 226,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--320x700--text200.png",
+            "sha256": "4dfb4de99d810f3691d57209490fba58166396368854553bf02b4e039c27a3fc",
+            "byte_size": 38421,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--320x700--text200--overlay.png",
+            "sha256": "106d888bef0e194d8d34b4606af10577bb6e0b5e64b8bbb6616b1f4754c94ab5",
+            "byte_size": 55036,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--light--320x700--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:03:59.530Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 241,
+              "height": 636
+            },
+            "title": {
+              "x": 80,
+              "y": -425,
+              "width": 172.703125,
+              "height": 400.3125
+            },
+            "content": {
+              "x": 32,
+              "y": -473,
+              "width": 226,
+              "height": 1293.75
+            },
+            "actions": {
+              "x": 80,
+              "y": 484,
+              "width": 172.703125,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 505,
+            "scrollHeight": 1294,
+            "clientHeight": 636,
+            "scrollWidth": 226,
+            "clientWidth": 226,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Vink UI · preview Leptostokens.json 0.5.0 · catalog 0.8.0 · Leptos 0.8Không kết nối dịch vụ · dữ liệu [Mẫu] · đồng hồ cố định 2026-11-02T09:00:00+07:00Tìm họ, thành phần, kịch bảnVai trò màufoundation.color-rolesKiểu chữfoundation.typographyHình khối và khoảng cáchfoundation.shape-spacingChuyển độngfoundation.motionTexttext.textHeadingtext.headingSurfacelayout.surfaceContainerlayout.containerStacklayout.stackGridlayout.gridDividerlayout.dividerButtonaction.buttonIconButtonaction.icon-buttonLinkaction.linkFilterChipaction.filter-chipToggleActionaction.toggle-actionTextFieldfield.text-fieldTextAreafield.text-areaSearchFieldfield.search-fieldCheckboxfield.checkboxRadioGroupfield.radioSwitchfield.switchSelectfield.selectFormSummaryfield.formIconidentity.iconAvataridentity.avatarAvatarGroupidentity.avatar-groupAuthorBylineidentity.author-bylineImageFrameidentity.image-frameTải nội dungstate.loadingChỉ báo tiến trìnhstate.progressTrống và ít nội dungstate.emptyLỗi vùng và truy cậpstate.errorThông báostate.noticeTrạng thái tác vụstate.statusHộp thoại và sheetstate.dialogSân thử trạng tháistate.playgroundRail điều hướngnavigation.railThanh điều hướng dướinavigation.bottom-barThanh trênnavigation.top-barKhung thích ứngnavigation.scaffoldLớp phủ và trả focusnavigation.overlayAdapter điều hướng (chẩn đoán)navigation.adapterKết hợp lồng nhaucomposition.nestedKhám phá — Mẫuscreen.exploreReader — Mẫuscreen.readerBàn viết — Mẫuscreen.deskEditor chrome — Mẫuscreen.editorTôi — Mẫuscreen.meGóp ý có ngữ cảnh — Mẫucomposition.feedbackGhi nhận văn học — Mẫucomposition.endorsementBộ chọn thẻ — Mẫucomposition.tag-selectorTương tác native [Mẫu]composition.interactionGiao diệnSángTốiHệ thốngKhung mẫuTự do3203908341440Cỡ chữ100%200%Chuyển độngHệ thốngGiảmHộp thoại và sheetDialog controlled: focus ban đầu an toàn, Escape theo chính sách, trả focus.Xác nhận phá hủyHết phiên khi đang viếtSheetXác nhận phá hủy: focus ban đầu vào lựa chọn an toàn; Escape = giữ; đóng trả focus về nút mở.Xóa bản nháp…Xóa bản nháp “Gửi người ở lại [Mẫu]”?Bản nháp và lịch sử lưu của nó sẽ bị xóa khỏi Bàn viết. Không hoàn tác được.Giữ bản nhápXóaInspectorCatalog IDstate.dialog / defaultNguồnpackages/ui-system/shared/tokens.json @ 0.5.0Trạng tháiLeptos: implemented-unverified · CMP: implemented-unverifiedGiá trị hiệu lực trong specimenThuộc tínhGiá trị--vk-surface#fffaff--vk-on-surface#241d2d--vk-primary#6846a5--vk-action-primary-container#6846a5--vk-type-body-size1rem--vk-density-control-padding0.75rem--vk-duration-short160ms--vk-loop-iterationsinfinitecolor-schemelightNhật ký sự kiện2026-11-02T09:00:00+07:00 · #19 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #18 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #17 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #16 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #15 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #14 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #13 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #12 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #11 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #10 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #9 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #8 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #7 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #6 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #5 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #4 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #3 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #2 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #1 giao diện → Sáng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--320x700--text200--actions.png",
+            "sha256": "385f7bb565259bf7e83f8cdbd0e064a7025039b6509d9e834b645769004d7f34",
+            "byte_size": 38983,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--320x700--text200--actions--overlay.png",
+            "sha256": "69195f8300a0b961eef1ca7e82b6870b22447ad5181b051eda3b6a94ca249c44",
+            "byte_size": 56675,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--light--320x700--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--light--320x700--text200",
+      "theme": "light",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:00.024Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 105,
+              "width": 305,
+              "height": 595
+            },
+            "title": {
+              "x": 48,
+              "y": 45,
+              "width": 194,
+              "height": 228.75
+            },
+            "content": {
+              "x": 0,
+              "y": -3,
+              "width": 290,
+              "height": 750.6875
+            },
+            "actions": {
+              "x": 48,
+              "y": 594.5,
+              "width": 194,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 108,
+            "scrollHeight": 751,
+            "clientHeight": 595,
+            "scrollWidth": 290,
+            "clientWidth": 290,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--320x700--text200.png",
+            "sha256": "51306edf1ccc7b872e3e574c7f27059faf7b2b1aa7396c9569e983844ba93aa8",
+            "byte_size": 33122,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--320x700--text200--overlay.png",
+            "sha256": "cd7866123fd4568fcfb3272f39a69a3d56e5a9bcde941f031a98e5b2be8af6bb",
+            "byte_size": 47671,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--light--320x700--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:00.408Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 105,
+              "width": 305,
+              "height": 595
+            },
+            "title": {
+              "x": 48,
+              "y": 45,
+              "width": 194,
+              "height": 228.75
+            },
+            "content": {
+              "x": 0,
+              "y": -3,
+              "width": 290,
+              "height": 750.6875
+            },
+            "actions": {
+              "x": 48,
+              "y": 594.5,
+              "width": 194,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 108,
+            "scrollHeight": 751,
+            "clientHeight": 595,
+            "scrollWidth": 290,
+            "clientWidth": 290,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Mới nhất",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--320x700--text200--actions.png",
+            "sha256": "0abd893a98c4031768e3ddf7b424d6539411b202c4f85ba7e52151cc2c447e0f",
+            "byte_size": 32791,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--320x700--text200--actions--overlay.png",
+            "sha256": "445d2081c9029ac88aba79bfda63ab0d1d484aaf6e98b261e5ef07087cc34b56",
+            "byte_size": 47311,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--light--320x700--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--light--390x844--text200",
+      "theme": "light",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:00.946Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 311,
+              "height": 780
+            },
+            "title": {
+              "x": 80,
+              "y": -121,
+              "width": 200,
+              "height": 343.125
+            },
+            "content": {
+              "x": 32,
+              "y": -169,
+              "width": 296,
+              "height": 1134.1875
+            },
+            "actions": {
+              "x": 80,
+              "y": 628.4375,
+              "width": 200,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 201,
+            "scrollHeight": 1134,
+            "clientHeight": 780,
+            "scrollWidth": 296,
+            "clientWidth": 296,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11226
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--390x844--text200.png",
+            "sha256": "d624169f3f88d742b0ab7f5f6ae5b3b3bea83f479bc5ee54e7ef1b7560d8255d",
+            "byte_size": 56732,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--390x844--text200--overlay.png",
+            "sha256": "d600147641d49354767af4e3b663517e3ef0e3acd581193589ee1d5392aa895b",
+            "byte_size": 82368,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--light--390x844--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:01.276Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 311,
+              "height": 780
+            },
+            "title": {
+              "x": 80,
+              "y": -121,
+              "width": 200,
+              "height": 343.125
+            },
+            "content": {
+              "x": 32,
+              "y": -169,
+              "width": 296,
+              "height": 1134.1875
+            },
+            "actions": {
+              "x": 80,
+              "y": 628.4375,
+              "width": 200,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 201,
+            "scrollHeight": 1134,
+            "clientHeight": 780,
+            "scrollWidth": 296,
+            "clientWidth": 296,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11226
+            },
+            "active": "Vink UI · preview Leptostokens.json 0.5.0 · catalog 0.8.0 · Leptos 0.8Không kết nối dịch vụ · dữ liệu [Mẫu] · đồng hồ cố định 2026-11-02T09:00:00+07:00Tìm họ, thành phần, kịch bảnVai trò màufoundation.color-rolesKiểu chữfoundation.typographyHình khối và khoảng cáchfoundation.shape-spacingChuyển độngfoundation.motionTexttext.textHeadingtext.headingSurfacelayout.surfaceContainerlayout.containerStacklayout.stackGridlayout.gridDividerlayout.dividerButtonaction.buttonIconButtonaction.icon-buttonLinkaction.linkFilterChipaction.filter-chipToggleActionaction.toggle-actionTextFieldfield.text-fieldTextAreafield.text-areaSearchFieldfield.search-fieldCheckboxfield.checkboxRadioGroupfield.radioSwitchfield.switchSelectfield.selectFormSummaryfield.formIconidentity.iconAvataridentity.avatarAvatarGroupidentity.avatar-groupAuthorBylineidentity.author-bylineImageFrameidentity.image-frameTải nội dungstate.loadingChỉ báo tiến trìnhstate.progressTrống và ít nội dungstate.emptyLỗi vùng và truy cậpstate.errorThông báostate.noticeTrạng thái tác vụstate.statusHộp thoại và sheetstate.dialogSân thử trạng tháistate.playgroundRail điều hướngnavigation.railThanh điều hướng dướinavigation.bottom-barThanh trênnavigation.top-barKhung thích ứngnavigation.scaffoldLớp phủ và trả focusnavigation.overlayAdapter điều hướng (chẩn đoán)navigation.adapterKết hợp lồng nhaucomposition.nestedKhám phá — Mẫuscreen.exploreReader — Mẫuscreen.readerBàn viết — Mẫuscreen.deskEditor chrome — Mẫuscreen.editorTôi — Mẫuscreen.meGóp ý có ngữ cảnh — Mẫucomposition.feedbackGhi nhận văn học — Mẫucomposition.endorsementBộ chọn thẻ — Mẫucomposition.tag-selectorTương tác native [Mẫu]composition.interactionGiao diệnSángTốiHệ thốngKhung mẫuTự do3203908341440Cỡ chữ100%200%Chuyển độngHệ thốngGiảmHộp thoại và sheetDialog controlled: focus ban đầu an toàn, Escape theo chính sách, trả focus.Xác nhận phá hủyHết phiên khi đang viếtSheetXác nhận phá hủy: focus ban đầu vào lựa chọn an toàn; Escape = giữ; đóng trả focus về nút mở.Xóa bản nháp…Xóa bản nháp “Gửi người ở lại [Mẫu]”?Bản nháp và lịch sử lưu của nó sẽ bị xóa khỏi Bàn viết. Không hoàn tác được.Giữ bản nhápXóaInspectorCatalog IDstate.dialog / defaultNguồnpackages/ui-system/shared/tokens.json @ 0.5.0Trạng tháiLeptos: implemented-unverified · CMP: implemented-unverifiedGiá trị hiệu lực trong specimenThuộc tínhGiá trị--vk-surface#fffaff--vk-on-surface#241d2d--vk-primary#6846a5--vk-action-primary-container#6846a5--vk-type-body-size1rem--vk-density-control-padding0.75rem--vk-duration-short160ms--vk-loop-iterationsinfinitecolor-schemelightNhật ký sự kiện2026-11-02T09:00:00+07:00 · #27 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #26 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #25 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #24 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #23 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #22 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #21 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #20 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #19 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #18 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #17 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #16 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #15 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #14 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #13 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #12 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #11 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #10 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #9 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #8 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #7 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #6 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #5 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #4 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #3 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #2 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #1 giao diện → Sáng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--light--390x844--text200--actions.png",
+            "sha256": "66f34e61cf3202bf1d0ec6aa629d3690bdc67cccfb897ae165ba968455787910",
+            "byte_size": 52815,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--light--390x844--text200--actions--overlay.png",
+            "sha256": "d8398fd9781af54096eeface8c202c7421ef5c8c8df8b15f86ecbf8609b5c723",
+            "byte_size": 78030,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--light--390x844--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--light--390x844--text200",
+      "theme": "light",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:01.823Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "title": {
+              "x": 48,
+              "y": 334.0625,
+              "width": 279,
+              "height": 114.375
+            },
+            "content": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "actions": {
+              "x": 48,
+              "y": 690.8125,
+              "width": 279,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 558,
+            "clientHeight": 558,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11494
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--390x844--text200.png",
+            "sha256": "94fd5d1ba86ed946cc41077b16b624f0860b20921c1bfeec30e72f546608c263",
+            "byte_size": 51483,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--390x844--text200--overlay.png",
+            "sha256": "78d9f1623941055a624bf1a03d2db17f033ce51cf48735e2edf007f96485aac6",
+            "byte_size": 73555,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--light--390x844--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "light",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:02.220Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "title": {
+              "x": 48,
+              "y": 334.0625,
+              "width": 279,
+              "height": 114.375
+            },
+            "content": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "actions": {
+              "x": 48,
+              "y": 690.8125,
+              "width": 279,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 558,
+            "clientHeight": 558,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11494
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "light",
+            "surface": "#fffaff",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--light--390x844--text200--actions.png",
+            "sha256": "94fd5d1ba86ed946cc41077b16b624f0860b20921c1bfeec30e72f546608c263",
+            "byte_size": 51483,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--light--390x844--text200--actions--overlay.png",
+            "sha256": "78d9f1623941055a624bf1a03d2db17f033ce51cf48735e2edf007f96485aac6",
+            "byte_size": 73555,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--light--390x844--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--dark--320x700--text100",
+      "theme": "dark",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:02.770Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 215.015625,
+              "width": 225,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 372.984375,
+              "width": 225,
+              "height": 112
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 318,
+            "clientHeight": 318,
+            "scrollWidth": 273,
+            "clientWidth": 273,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--320x700--text100.png",
+            "sha256": "246a9c6a01dfc864f5be130515f3c05f0b6e587fe3ce44695b1b27f4ae7dd0c8",
+            "byte_size": 54617,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--320x700--text100--overlay.png",
+            "sha256": "648a44bfbbceb32615075310385efb220cac52ddc53350123c936e6fae37fab1",
+            "byte_size": 76049,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--dark--320x700--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:03.086Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 215.015625,
+              "width": 225,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 191.015625,
+              "width": 273,
+              "height": 317.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 372.984375,
+              "width": 225,
+              "height": 112
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 318,
+            "clientHeight": 318,
+            "scrollWidth": 273,
+            "clientWidth": 273,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--320x700--text100--actions.png",
+            "sha256": "5b323668ba781b5ad16dd0f704c76b75f8e75a750b6e574f3d4a6c72c2604520",
+            "byte_size": 54618,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--320x700--text100--actions--overlay.png",
+            "sha256": "14ca498250fe9ee0c6655eb91aeb647cfbed6bdd3c80b9260e9ba691e4943a8d",
+            "byte_size": 76057,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--dark--320x700--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--dark--320x700--text100",
+      "theme": "dark",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:03.611Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 463.40625,
+              "width": 257,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 620,
+              "width": 257,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--320x700--text100.png",
+            "sha256": "03c12ae4e6dc02c1bf5dcf2f3dbc08ce3a643da91120db39864bcaaec63337af",
+            "byte_size": 41035,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--320x700--text100--overlay.png",
+            "sha256": "cd70eaa894231b380a82abd89cb593bfeac58225a5d72947dc8d127ed033e647",
+            "byte_size": 59349,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--dark--320x700--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:04.009Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 463.40625,
+              "width": 257,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 439.40625,
+              "width": 305,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 620,
+              "width": 257,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 305,
+            "clientWidth": 305,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 4526
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--320x700--text100--actions.png",
+            "sha256": "03c12ae4e6dc02c1bf5dcf2f3dbc08ce3a643da91120db39864bcaaec63337af",
+            "byte_size": 41035,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--320x700--text100--actions--overlay.png",
+            "sha256": "cd70eaa894231b380a82abd89cb593bfeac58225a5d72947dc8d127ed033e647",
+            "byte_size": 59349,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--dark--320x700--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--dark--390x844--text100",
+      "theme": "dark",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:04.550Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 315.015625,
+              "width": 295,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 472.984375,
+              "width": 295,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 262,
+            "clientHeight": 262,
+            "scrollWidth": 343,
+            "clientWidth": 343,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 3902
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--390x844--text100.png",
+            "sha256": "509469509ab3da1f435fac878691fe8a9be1aa4d9488e9e0ce0306ff3707644a",
+            "byte_size": 69077,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--390x844--text100--overlay.png",
+            "sha256": "e18d07b710356db5daff5bfba6e4356527d69f680fd0cef1334f6372ec2f2536",
+            "byte_size": 98109,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--dark--390x844--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:04.893Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "title": {
+              "x": 40,
+              "y": 315.015625,
+              "width": 295,
+              "height": 57.1875
+            },
+            "content": {
+              "x": 16,
+              "y": 291.015625,
+              "width": 343,
+              "height": 261.96875
+            },
+            "actions": {
+              "x": 40,
+              "y": 472.984375,
+              "width": 295,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 262,
+            "clientHeight": 262,
+            "scrollWidth": 343,
+            "clientWidth": 343,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 3902
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--390x844--text100--actions.png",
+            "sha256": "438d48164ec4f7d017f71d91863c6f4bf745aefe181ffa1c47574cce3e79de13",
+            "byte_size": 69078,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--390x844--text100--actions--overlay.png",
+            "sha256": "d3c257738625699345652beb7bd9c2fcb3c0b5377937dc35ce4fe62f90647c66",
+            "byte_size": 98107,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--dark--390x844--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--dark--390x844--text100",
+      "theme": "dark",
+      "text_scale": 100,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:05.462Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 607.40625,
+              "width": 327,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 764,
+              "width": 327,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 4300
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--390x844--text100.png",
+            "sha256": "07d0617f1c77e436de9e4c3bf0148831417ce1d5caa3f322729d7e6906e3ae25",
+            "byte_size": 57368,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--390x844--text100--overlay.png",
+            "sha256": "a1e8b3a4a77aeeb046144378ccd9d43ee040a2564c534a8c3f8674d0ddbb2411",
+            "byte_size": 83818,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--dark--390x844--text100.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 100,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:05.859Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "title": {
+              "x": 24,
+              "y": 607.40625,
+              "width": 327,
+              "height": 28.59375
+            },
+            "content": {
+              "x": 0,
+              "y": 583.40625,
+              "width": 375,
+              "height": 260.59375
+            },
+            "actions": {
+              "x": 24,
+              "y": 764,
+              "width": 327,
+              "height": 56
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "22px",
+              "lineHeight": "28.6px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 261,
+            "clientHeight": 261,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 4300
+            },
+            "active": "Đóng",
+            "rootFontSize": "16px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--390x844--text100--actions.png",
+            "sha256": "22d490afcc65f2f7ef3ebe94377149e624df9035e35bc30a74ae26786066a29b",
+            "byte_size": 57367,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--390x844--text100--actions--overlay.png",
+            "sha256": "2ab487ce52faed9168ddd390a8ddc26e179520939385ae3a725bbe6510994857",
+            "byte_size": 83810,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--dark--390x844--text100--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--dark--320x700--text200",
+      "theme": "dark",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:06.397Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 241,
+              "height": 636
+            },
+            "title": {
+              "x": 80,
+              "y": -578,
+              "width": 172.703125,
+              "height": 400.3125
+            },
+            "content": {
+              "x": 32,
+              "y": -626,
+              "width": 226,
+              "height": 1293.75
+            },
+            "actions": {
+              "x": 80,
+              "y": 331,
+              "width": 172.703125,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 658,
+            "scrollHeight": 1294,
+            "clientHeight": 636,
+            "scrollWidth": 226,
+            "clientWidth": 226,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--320x700--text200.png",
+            "sha256": "0cada69320c9a3c5fb51de762b6b176cfc2ff3886d0197cddc9de8b35a31cf7a",
+            "byte_size": 37579,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--320x700--text200--overlay.png",
+            "sha256": "7b55edf8ed1a058a65413b23cb8dbcccb42010dd9c655626d8c60fdcf50e2287",
+            "byte_size": 53044,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--dark--320x700--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:06.747Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 241,
+              "height": 636
+            },
+            "title": {
+              "x": 80,
+              "y": -425,
+              "width": 172.703125,
+              "height": 400.3125
+            },
+            "content": {
+              "x": 32,
+              "y": -473,
+              "width": 226,
+              "height": 1293.75
+            },
+            "actions": {
+              "x": 80,
+              "y": 484,
+              "width": 172.703125,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 505,
+            "scrollHeight": 1294,
+            "clientHeight": 636,
+            "scrollWidth": 226,
+            "clientWidth": 226,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Vink UI · preview Leptostokens.json 0.5.0 · catalog 0.8.0 · Leptos 0.8Không kết nối dịch vụ · dữ liệu [Mẫu] · đồng hồ cố định 2026-11-02T09:00:00+07:00Tìm họ, thành phần, kịch bảnVai trò màufoundation.color-rolesKiểu chữfoundation.typographyHình khối và khoảng cáchfoundation.shape-spacingChuyển độngfoundation.motionTexttext.textHeadingtext.headingSurfacelayout.surfaceContainerlayout.containerStacklayout.stackGridlayout.gridDividerlayout.dividerButtonaction.buttonIconButtonaction.icon-buttonLinkaction.linkFilterChipaction.filter-chipToggleActionaction.toggle-actionTextFieldfield.text-fieldTextAreafield.text-areaSearchFieldfield.search-fieldCheckboxfield.checkboxRadioGroupfield.radioSwitchfield.switchSelectfield.selectFormSummaryfield.formIconidentity.iconAvataridentity.avatarAvatarGroupidentity.avatar-groupAuthorBylineidentity.author-bylineImageFrameidentity.image-frameTải nội dungstate.loadingChỉ báo tiến trìnhstate.progressTrống và ít nội dungstate.emptyLỗi vùng và truy cậpstate.errorThông báostate.noticeTrạng thái tác vụstate.statusHộp thoại và sheetstate.dialogSân thử trạng tháistate.playgroundRail điều hướngnavigation.railThanh điều hướng dướinavigation.bottom-barThanh trênnavigation.top-barKhung thích ứngnavigation.scaffoldLớp phủ và trả focusnavigation.overlayAdapter điều hướng (chẩn đoán)navigation.adapterKết hợp lồng nhaucomposition.nestedKhám phá — Mẫuscreen.exploreReader — Mẫuscreen.readerBàn viết — Mẫuscreen.deskEditor chrome — Mẫuscreen.editorTôi — Mẫuscreen.meGóp ý có ngữ cảnh — Mẫucomposition.feedbackGhi nhận văn học — Mẫucomposition.endorsementBộ chọn thẻ — Mẫucomposition.tag-selectorTương tác native [Mẫu]composition.interactionGiao diệnSángTốiHệ thốngKhung mẫuTự do3203908341440Cỡ chữ100%200%Chuyển độngHệ thốngGiảmHộp thoại và sheetDialog controlled: focus ban đầu an toàn, Escape theo chính sách, trả focus.Xác nhận phá hủyHết phiên khi đang viếtSheetXác nhận phá hủy: focus ban đầu vào lựa chọn an toàn; Escape = giữ; đóng trả focus về nút mở.Xóa bản nháp…Xóa bản nháp “Gửi người ở lại [Mẫu]”?Bản nháp và lịch sử lưu của nó sẽ bị xóa khỏi Bàn viết. Không hoàn tác được.Giữ bản nhápXóaInspectorCatalog IDstate.dialog / defaultNguồnpackages/ui-system/shared/tokens.json @ 0.5.0Trạng tháiLeptos: implemented-unverified · CMP: implemented-unverifiedGiá trị hiệu lực trong specimenThuộc tínhGiá trị--vk-surface#17121d--vk-on-surface#f0e7f8--vk-primary#d4bbff--vk-action-primary-container#d4bbff--vk-type-body-size1rem--vk-density-control-padding0.75rem--vk-duration-short160ms--vk-loop-iterationsinfinitecolor-schemedarkNhật ký sự kiện2026-11-02T09:00:00+07:00 · #54 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #53 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #52 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #51 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #50 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #49 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #48 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #47 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #46 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #45 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #44 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #43 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #42 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #41 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #40 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #39 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #38 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #37 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #36 cỡ chữ → 100%2026-11-02T09:00:00+07:00 · #35 giao diện → Tối2026-11-02T09:00:00+07:00 · #34 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #33 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #32 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #31 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #30 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #29 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #28 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #27 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #26 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #25 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #24 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #23 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #22 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #21 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #20 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #19 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #18 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #17 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #16 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #15 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #14 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #13 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #12 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #11 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #10 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #9 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #8 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #7 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #6 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #5 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #4 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #3 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #2 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #1 giao diện → Sáng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--320x700--text200--actions.png",
+            "sha256": "1b07e5ed2c3141981116c565e1e7596431fbbb5451ca13a2f59c795abcd7b16a",
+            "byte_size": 38529,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--320x700--text200--actions--overlay.png",
+            "sha256": "6c2e4508226e637f437006219a4e32784c9ae58d50754f15cc26e8c3194d7d9d",
+            "byte_size": 55455,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--default--open--dark--320x700--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--dark--320x700--text200",
+      "theme": "dark",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 320,
+        "height": 700
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:07.265Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 105,
+              "width": 305,
+              "height": 595
+            },
+            "title": {
+              "x": 48,
+              "y": 45,
+              "width": 194,
+              "height": 228.75
+            },
+            "content": {
+              "x": 0,
+              "y": -3,
+              "width": 290,
+              "height": 750.6875
+            },
+            "actions": {
+              "x": 48,
+              "y": 594.5,
+              "width": 194,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 108,
+            "scrollHeight": 751,
+            "clientHeight": 595,
+            "scrollWidth": 290,
+            "clientWidth": 290,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--320x700--text200.png",
+            "sha256": "b1879ec277ed1563b5049e22c71edd0863e2cc01de827db278fdd9680f7f26ee",
+            "byte_size": 33226,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--320x700--text200--overlay.png",
+            "sha256": "a1fafb4c95a2c32c5b2c5bdffb5376eb3c88cc4f111a2369de38c2925bee19e8",
+            "byte_size": 47701,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--dark--320x700--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:07.639Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 320,
+              "height": 700
+            },
+            "panel": {
+              "x": 0,
+              "y": 105,
+              "width": 305,
+              "height": 595
+            },
+            "title": {
+              "x": 48,
+              "y": 45,
+              "width": 194,
+              "height": 228.75
+            },
+            "content": {
+              "x": 0,
+              "y": -3,
+              "width": 290,
+              "height": 750.6875
+            },
+            "actions": {
+              "x": 48,
+              "y": 594.5,
+              "width": 194,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 108,
+            "scrollHeight": 751,
+            "clientHeight": 595,
+            "scrollWidth": 290,
+            "clientWidth": 290,
+            "documentWidth": 305,
+            "documentScroll": {
+              "x": 0,
+              "y": 13072
+            },
+            "active": "Mới nhất",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--320x700--text200--actions.png",
+            "sha256": "e94a1ad2ff6676d355d078a9b21e8bbbeb3151505eb09aa46a3daf56de3559fc",
+            "byte_size": 33005,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--320x700--text200--actions--overlay.png",
+            "sha256": "79d67a66c952a1096059d75136a86432c96390d74e5c11d8633e35c74e3ca294",
+            "byte_size": 47469,
+            "image_pixels": {
+              "width": 320,
+              "height": 700
+            },
+            "derived_from": "state.dialog--sheet--open--dark--320x700--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--default--open--dark--390x844--text200",
+      "theme": "dark",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "default",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": false,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": false,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": false,
+        "outside policy": true,
+        "safe action closes": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:08.140Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 311,
+              "height": 780
+            },
+            "title": {
+              "x": 80,
+              "y": -121,
+              "width": 200,
+              "height": 343.125
+            },
+            "content": {
+              "x": 32,
+              "y": -169,
+              "width": 296,
+              "height": 1134.1875
+            },
+            "actions": {
+              "x": 80,
+              "y": 628.4375,
+              "width": 200,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 201,
+            "scrollHeight": 1134,
+            "clientHeight": 780,
+            "scrollWidth": 296,
+            "clientWidth": 296,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11226
+            },
+            "active": "Giữ bản nháp",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--390x844--text200.png",
+            "sha256": "531d29ce2b2dec56b9cfe6e71ea6c8de66871492515bce65edbfb47eafcdf21f",
+            "byte_size": 54828,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--390x844--text200--overlay.png",
+            "sha256": "ace63fb70b88b95a12a48e54e2db5a491f1f48fd7326a5cae0c37f0541915811",
+            "byte_size": 78984,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--dark--390x844--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:08.458Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 32,
+              "y": 32,
+              "width": 311,
+              "height": 780
+            },
+            "title": {
+              "x": 80,
+              "y": -121,
+              "width": 200,
+              "height": 343.125
+            },
+            "content": {
+              "x": 32,
+              "y": -169,
+              "width": 296,
+              "height": 1134.1875
+            },
+            "actions": {
+              "x": 80,
+              "y": 628.4375,
+              "width": 200,
+              "height": 288.75
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 201,
+            "scrollHeight": 1134,
+            "clientHeight": 780,
+            "scrollWidth": 296,
+            "clientWidth": 296,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11226
+            },
+            "active": "Vink UI · preview Leptostokens.json 0.5.0 · catalog 0.8.0 · Leptos 0.8Không kết nối dịch vụ · dữ liệu [Mẫu] · đồng hồ cố định 2026-11-02T09:00:00+07:00Tìm họ, thành phần, kịch bảnVai trò màufoundation.color-rolesKiểu chữfoundation.typographyHình khối và khoảng cáchfoundation.shape-spacingChuyển độngfoundation.motionTexttext.textHeadingtext.headingSurfacelayout.surfaceContainerlayout.containerStacklayout.stackGridlayout.gridDividerlayout.dividerButtonaction.buttonIconButtonaction.icon-buttonLinkaction.linkFilterChipaction.filter-chipToggleActionaction.toggle-actionTextFieldfield.text-fieldTextAreafield.text-areaSearchFieldfield.search-fieldCheckboxfield.checkboxRadioGroupfield.radioSwitchfield.switchSelectfield.selectFormSummaryfield.formIconidentity.iconAvataridentity.avatarAvatarGroupidentity.avatar-groupAuthorBylineidentity.author-bylineImageFrameidentity.image-frameTải nội dungstate.loadingChỉ báo tiến trìnhstate.progressTrống và ít nội dungstate.emptyLỗi vùng và truy cậpstate.errorThông báostate.noticeTrạng thái tác vụstate.statusHộp thoại và sheetstate.dialogSân thử trạng tháistate.playgroundRail điều hướngnavigation.railThanh điều hướng dướinavigation.bottom-barThanh trênnavigation.top-barKhung thích ứngnavigation.scaffoldLớp phủ và trả focusnavigation.overlayAdapter điều hướng (chẩn đoán)navigation.adapterKết hợp lồng nhaucomposition.nestedKhám phá — Mẫuscreen.exploreReader — Mẫuscreen.readerBàn viết — Mẫuscreen.deskEditor chrome — Mẫuscreen.editorTôi — Mẫuscreen.meGóp ý có ngữ cảnh — Mẫucomposition.feedbackGhi nhận văn học — Mẫucomposition.endorsementBộ chọn thẻ — Mẫucomposition.tag-selectorTương tác native [Mẫu]composition.interactionGiao diệnSángTốiHệ thốngKhung mẫuTự do3203908341440Cỡ chữ100%200%Chuyển độngHệ thốngGiảmHộp thoại và sheetDialog controlled: focus ban đầu an toàn, Escape theo chính sách, trả focus.Xác nhận phá hủyHết phiên khi đang viếtSheetXác nhận phá hủy: focus ban đầu vào lựa chọn an toàn; Escape = giữ; đóng trả focus về nút mở.Xóa bản nháp…Xóa bản nháp “Gửi người ở lại [Mẫu]”?Bản nháp và lịch sử lưu của nó sẽ bị xóa khỏi Bàn viết. Không hoàn tác được.Giữ bản nhápXóaInspectorCatalog IDstate.dialog / defaultNguồnpackages/ui-system/shared/tokens.json @ 0.5.0Trạng tháiLeptos: implemented-unverified · CMP: implemented-unverifiedGiá trị hiệu lực trong specimenThuộc tínhGiá trị--vk-surface#17121d--vk-on-surface#f0e7f8--vk-primary#d4bbff--vk-action-primary-container#d4bbff--vk-type-body-size1rem--vk-density-control-padding0.75rem--vk-duration-short160ms--vk-loop-iterationsinfinitecolor-schemedarkNhật ký sự kiện2026-11-02T09:00:00+07:00 · #62 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #61 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #60 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #59 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #58 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #57 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #56 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #55 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #54 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #53 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #52 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #51 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #50 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #49 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #48 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #47 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #46 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #45 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #44 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #43 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #42 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #41 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #40 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #39 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #38 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #37 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #36 cỡ chữ → 100%2026-11-02T09:00:00+07:00 · #35 giao diện → Tối2026-11-02T09:00:00+07:00 · #34 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #33 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #32 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #31 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #30 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #29 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #28 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #27 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #26 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #25 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #24 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #23 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #22 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #21 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #20 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #19 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #18 cỡ chữ → 200%2026-11-02T09:00:00+07:00 · #17 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #16 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #15 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #14 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #13 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #12 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #11 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #10 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #9 state.dialog → đóng (bấm ngoài)2026-11-02T09:00:00+07:00 · #8 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #7 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #6 state.dialog → mở sheet2026-11-02T09:00:00+07:00 · #5 state.dialog → đóng (giữ)2026-11-02T09:00:00+07:00 · #4 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #3 state.dialog → đóng (Escape)2026-11-02T09:00:00+07:00 · #2 state.dialog → mở xác nhận2026-11-02T09:00:00+07:00 · #1 giao diện → Sáng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--default--open--dark--390x844--text200--actions.png",
+            "sha256": "acccd3362e5bbabd242a62e7bcf4515df6be95adb4df27d273eb387426db5423",
+            "byte_size": 51433,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--default--open--dark--390x844--text200--actions--overlay.png",
+            "sha256": "1f3e63d2335ee122aac374ef035b5ab4be0fef88e7a3eb44ebc4279372533a62",
+            "byte_size": 75453,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--default--open--dark--390x844--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    },
+    {
+      "name": "state.dialog--sheet--open--dark--390x844--text200",
+      "theme": "dark",
+      "text_scale": 200,
+      "catalog_id": "state.dialog",
+      "scenario_id": "sheet",
+      "expected_viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "checks": {
+        "INV-1": true,
+        "INV-2": true,
+        "INV-4": true,
+        "identity/fonts": true,
+        "initial focus": true,
+        "Tab containment": true,
+        "INV-3 actions reachable by keyboard": true,
+        "Escape + return focus": true,
+        "reopen starts at title": true,
+        "outside policy": true
+      },
+      "captures": [
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "just opened; no corrective scroll",
+          "captured_at": "2026-11-12T15:04:08.976Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "title": {
+              "x": 48,
+              "y": 334.0625,
+              "width": 279,
+              "height": 114.375
+            },
+            "content": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "actions": {
+              "x": 48,
+              "y": 690.8125,
+              "width": 279,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 558,
+            "clientHeight": 558,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11494
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--390x844--text200.png",
+            "sha256": "fbe6213f0a670a98057420907e2f1a4c5000a1cc320e524e566fe08fe31a768d",
+            "byte_size": 51432,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--390x844--text200--overlay.png",
+            "sha256": "7ea1dcbcd1e22928450b3b06482006e64077e3fe97be161622e7c08fbee8e509",
+            "byte_size": 73503,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--dark--390x844--text200.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        },
+        {
+          "theme": "dark",
+          "text_scale": 200,
+          "state": "actions reached; explicit scroll after initial capture",
+          "captured_at": "2026-11-12T15:04:09.373Z",
+          "capture_mode": "viewport",
+          "coordinate_space": "viewport-css",
+          "unit": "CSS px",
+          "provenance": "measured: DOMRect/computed style/scroll metrics",
+          "readiness": "fonts.ready + two animation frames",
+          "pointer": {
+            "x": 0,
+            "y": 0,
+            "source": "CDP mouseMoved, outside panel"
+          },
+          "inspected": false,
+          "measurements": {
+            "viewport": {
+              "x": 0,
+              "y": 0,
+              "width": 390,
+              "height": 844
+            },
+            "panel": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "title": {
+              "x": 48,
+              "y": 334.0625,
+              "width": 279,
+              "height": 114.375
+            },
+            "content": {
+              "x": 0,
+              "y": 286.0625,
+              "width": 375,
+              "height": 557.9375
+            },
+            "actions": {
+              "x": 48,
+              "y": 690.8125,
+              "width": 279,
+              "height": 105.1875
+            },
+            "font": {
+              "family": "Literata, \"Noto Serif\", \"Source Serif 4\", Georgia, \"Times New Roman\", serif",
+              "size": "44px",
+              "lineHeight": "57.2px"
+            },
+            "scrollTop": 0,
+            "scrollHeight": 558,
+            "clientHeight": 558,
+            "scrollWidth": 375,
+            "clientWidth": 375,
+            "documentWidth": 375,
+            "documentScroll": {
+              "x": 0,
+              "y": 11494
+            },
+            "active": "Đóng",
+            "rootFontSize": "32px",
+            "dpr": 1,
+            "theme": "dark",
+            "surface": "#17121d",
+            "fonts": [
+              [
+                "16px \"Be Vietnam Pro\"",
+                true
+              ],
+              [
+                "16px \"Literata\"",
+                true
+              ]
+            ]
+          },
+          "clean": {
+            "file": "state.dialog--sheet--open--dark--390x844--text200--actions.png",
+            "sha256": "fbe6213f0a670a98057420907e2f1a4c5000a1cc320e524e566fe08fe31a768d",
+            "byte_size": 51432,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            }
+          },
+          "overlay": {
+            "file": "state.dialog--sheet--open--dark--390x844--text200--actions--overlay.png",
+            "sha256": "7ea1dcbcd1e22928450b3b06482006e64077e3fe97be161622e7c08fbee8e509",
+            "byte_size": 73503,
+            "image_pixels": {
+              "width": 390,
+              "height": 844
+            },
+            "derived_from": "state.dialog--sheet--open--dark--390x844--text200--actions.png",
+            "provenance": "derived: bounds drawn on clean PNG"
+          }
+        }
+      ]
+    }
+  ]
+}

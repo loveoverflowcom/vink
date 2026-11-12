@@ -150,11 +150,17 @@ fn leptos_verify(report: &mut Report, root: &Path, env: &Env) -> bool {
         "Leptos preview: headless Chrome scenarios and captures",
         || {
             process::run(
-                Command::new("node").arg("--test").arg(
-                    root.join(LEPTOS_DIR)
-                        .join("preview/e2e/focus-capture.test.mjs"),
-                ),
-                "focused specimen clip regression",
+                Command::new("node")
+                    .arg("--test")
+                    .arg(
+                        root.join(LEPTOS_DIR)
+                            .join("preview/e2e/focus-capture.test.mjs"),
+                    )
+                    .arg(
+                        root.join(LEPTOS_DIR)
+                            .join("preview/e2e/overlay-capture.test.mjs"),
+                    ),
+                "focused specimen and overlay geometry regressions",
             )?;
             let listener = TcpListener::bind("127.0.0.1:0").map_err(|e| format!("bind: {e}"))?;
             let port = listener

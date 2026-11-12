@@ -213,6 +213,27 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 | `cargo xtask verify kani` | Kiểm `cargo-kani` đúng pin rồi chạy từng manifest Kani owner-local ([mục Kani](#kani)); đòi tổng kết khớp đúng số `#[kani::proof]` trong các file harness đã đăng ký của manifest | Thiếu/sai version verifier, harness lỗi hoặc số harness được kiểm khác số khai báo |
 | `cargo xtask verify all` | `quick`, `discussion`, `expressions`, `postgres`, `web` theo thứ tự (không gồm `kani`, cần verifier cài riêng) | Lane đầu tiên lỗi |
 
+Preview Leptos còn chạy ma trận dialog/sheet ở **viewport thật** 320×700/390×844 ×
+light/dark × chữ 100/200%: `overlay-contexts.json` ghi anchors, font, scroll/focus, invariant và
+PNG sạch + `--overlay.png`. Capture gallery cao tối đa 6000px vẫn giữ riêng. Khi tái hiện
+F-01, mở `cargo xtask ui-preview leptos run` để build/serve source hiện tại, rồi ở terminal khác:
+
+```sh
+node packages/ui-system/leptos/preview/e2e/preview-smoke.mjs \
+  --base http://127.0.0.1:3019/ --chrome /usr/bin/google-chrome \
+  --out target/ui-preview/overlay-check \
+  --catalog packages/ui-system/shared/preview-catalog.json --overlays-only 1
+```
+
+Đổi `--chrome` theo máy; chỉ dùng `VINK_CHROME_NO_SANDBOX=1` nếu môi trường chạy cần nó.
+Đây là filter của smoke, không thay lane đầy đủ. Web cho riêng bootstrap preview tối đa
+60 giây (debug WASM lớn); timeout assertion tương tác
+vẫn theo mặc định của smoke. CMP `InteractionCaptureTest` (trong lane
+`ui-preview cmp verify`) giữ ảnh actions cũ, thêm `--initial`, `--partN`, `--overlay` và bounds/
+scroll/pointer trong `interaction-contexts.json`; `interaction-run.json` ghi SHA/fingerprint
+nguồn. Chạy riêng test bằng `./gradlew :preview:desktopTest --tests vink.ui.preview.InteractionCaptureTest`
+từ `packages/ui-system/cmp`. [Bằng chứng và giới hạn](../design/ui-ux-quality-174.md#10-vòng-sửa-1-f-01-và-các-gap-bằng-chứng).
+
 Mỗi lane in bảng `PASS`/`FAIL`; bước sau bước lỗi là `NOT_RUN`. Thiếu dependency là `FAIL`,
 không bao giờ là `PASS`. `xtask` đọc `.env` cho các tiến trình nó chạy (biến môi trường thật được
 ưu tiên); bản thân binary chỉ đọc biến môi trường. `xtask` không cài toolchain, không bật

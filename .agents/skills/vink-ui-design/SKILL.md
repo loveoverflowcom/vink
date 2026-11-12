@@ -103,6 +103,12 @@ Check loading, empty, error, pending and success states only where they apply. I
 behavior, keyboard operation, a named screen reader and motion each require their own
 observation; an image cannot establish them.
 
+Design against the [UX quality](references/ux-quality.md) rubric: name the task and the single
+emphasis first, state which visual reference applies (concept, style anchor or regression
+baseline, with its approval status) and treat 100% as the layout goal and 200% as the
+accessibility/reflow goal that must still read clearly. A concept image is direction, not
+implementation evidence; with no approved reference, say so instead of promoting a screenshot.
+
 Report the changed flow/components, inspected artifacts and target conditions, concrete findings
 and material coverage gaps. For an audit, tie each finding to an observed problem and its user
 impact. A documentation/skill change alone needs link/metadata review, not screenshots.
@@ -114,7 +120,7 @@ Use the [layout template](../vink-layout-spec/references/layout-spec.md) and
 owns design choices, and a preview or handoff reuses the existing spec instead of keeping a second
 tree. Read the applicable references:
 [product context](references/product-context.md), [design system](references/design-system.md),
-[interaction UX](references/interaction-ux.md),
+[interaction UX](references/interaction-ux.md), [UX quality](references/ux-quality.md),
 [surfaces and states](references/surfaces-and-states.md), [workflow and evidence](references/chat-workflow.md),
 and [source map](references/source-map.md). The bundled context is a dated snapshot; current
 repository files and explicit decisions take precedence.

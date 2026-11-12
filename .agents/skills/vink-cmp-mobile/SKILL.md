@@ -108,7 +108,12 @@ For screenshots, use [vink-ui-capture](../vink-ui-capture/SKILL.md). Preserve ca
 scenario, source SHA/dirty fingerprint, fixture, renderer/host, requested/effective
 theme, logical dp versus image pixels, density, OS scale versus preview multiplier,
 insets, fonts and motion. Open cited images. Off-screen JVM, Android device/emulator
-and iOS simulator/device are distinct evidence. Compile proves no runtime; a static
+and iOS simulator/device are distinct evidence. Use
+[UX quality](../vink-ui-design/references/ux-quality.md) for the review criteria, the separate
+100%/200% goals and the five-dimension result table. Semantics bounds answer the invariant
+they were read for, not the whole layout (merged nodes, touch versus drawn bounds, no glyph
+metrics); a field the API does not expose is `unavailable`. Missing CMP capture geometry or
+completeness belongs to [#24](https://github.com/loveoverflowcom/vink/issues/24). Compile proves no runtime; a static
 semantics tree proves no TalkBack/VoiceOver walkthrough or OS IME behavior.
 
 Report actual PASS/FAIL/NOT_RUN/UNSUPPORTED by command and target, preserve failed

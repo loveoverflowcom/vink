@@ -41,7 +41,10 @@ surface và [contract bàn giao](references/evidence-contract.md) trước khi g
 4. Tái hiện click-path và ghi trạng thái navigation trước/sau: route, selected
    destination, rail/bar, overlay stack, Back/Escape/close và guard đang áp dụng.
    Khi chụp trạng thái tương tác (pressed, focused, dragging, sheet open, loading-gate phase,
-   reduced motion): ghi nhận rõ ràng vào metadata của capture.
+   reduced motion): ghi nhận rõ ràng vào metadata của capture, gồm cả vị trí con trỏ/hover còn
+   lại sau thao tác giả lập và vị trí cuộn của vùng cuộn riêng. Lớp phủ neo theo viewport
+   (dialog, sheet) chụp ở viewport thật; ảnh full-page đổi chiều cao viewport không cho biết
+   lớp phủ nằm thế nào trên màn hình. Nội dung dài hơn khung cần đủ tile hoặc ghi `partial`.
    Cạnh thấy qua tương tác là `observed`; cạnh chỉ đọc source là `source-only`.
    Không suy ra lưu dữ liệu, accessibility hay IME thành công từ một ảnh.
    Không biến việc thu thập bằng chứng (capture) thành audit hay kết luận PASS/FAIL;
@@ -50,7 +53,12 @@ surface và [contract bàn giao](references/evidence-contract.md) trước khi g
    owner; liên kết nơi dùng trong màn app khi xác minh được. Recipe minh họa vẫn
    mang nhãn mẫu. Với tokens, lưu snapshot nguồn/version/hash và giá trị hiệu lực
    đọc được từ renderer, override/scope/đơn vị. Không sửa token để khớp ảnh thiết kế.
-6. Mở từng ảnh dùng trong báo cáo; kiểm không trắng, sai màn, sai theme hoặc lẫn
+6. Khi LayoutSpec của tác vụ có invariant hoặc review cần số đo, ghi
+   [số đo anchor optional](references/evidence-contract.md#số-đo-anchor-optional) cho đúng các
+   vùng đó từ cùng lượt render: ID ổn định, không gian tọa độ/đơn vị, `measured`/`derived`/
+   `unavailable`. Dùng probe/runner đã có; overlay chỉ là bản phái sinh của ảnh sạch. Không
+   đo toàn app, không đổi layout/state/focus để đo.
+7. Mở từng ảnh dùng trong báo cáo; kiểm không trắng, sai màn, sai theme hoặc lẫn
    prototype. `CAPTURED` chỉ nói đã có ảnh; ghi riêng ảnh đã mở hay chưa.
    Ảnh lỗi thật giữ đúng state lỗi, không gắn nhãn default/success.
 

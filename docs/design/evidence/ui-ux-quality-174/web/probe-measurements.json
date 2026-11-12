@@ -1,0 +1,109 @@
+{
+  "note": "Exploratory probe for #174, not a runner output and not a format-1 bundle. Shape follows the optional anchor measurements of the capture evidence contract.",
+  "run": {
+    "date": "2026-11-12",
+    "git_sha": "e54db0d6f3e1b1caae901cbff31027cb3d49d757",
+    "ui_sources_dirty": false,
+    "server": "cargo xtask ui-preview leptos run (127.0.0.1:3019)",
+    "renderer": "leptos-web",
+    "host": "Claude desktop browser pane, emulated viewport",
+    "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Mobile Safari/537.36",
+    "dpr": 2,
+    "theme": "light (preview control Sáng)",
+    "text_scale_mechanism": "preview root font-size multiplier (16px → 32px); not browser zoom or OS text scale",
+    "fonts_loaded": { "Be Vietnam Pro": true, "Literata": true },
+    "data_mode": "synthetic",
+    "open_action": "scripted element.click() on the specimen trigger; focus return on close is therefore NOT evaluated here",
+    "coordinate_space": "viewport-css",
+    "unit": "CSS px",
+    "provenance": "measured: getBoundingClientRect / scrollTop / computed style read in the same page state as the screenshot; derived: line counts = height / line-height"
+  },
+  "invariants": [
+    { "id": "INV-1", "statement": "#title nằm trọn trong vùng nhìn của #panel ngay khi mở", "tolerance": "0 CSS px; tiêu đề nêu hậu quả phải đọc được trước khi chọn", "source": "LayoutSpec pilot dialog/sheet r1" },
+    { "id": "INV-2", "statement": "#panel nằm trọn trong viewport", "tolerance": "0 CSS px", "source": "LayoutSpec pilot dialog/sheet r1" },
+    { "id": "INV-3", "statement": "#actions nằm trong #panel hoặc tới được bằng cuộn của #panel", "tolerance": "0 CSS px", "source": "LayoutSpec pilot dialog/sheet r1" },
+    { "id": "INV-4", "statement": "Không cuộn ngang ở cấp trang", "tolerance": "0 CSS px", "source": "LayoutSpec pilot dialog/sheet r1" }
+  ],
+  "captures": [
+    {
+      "id": "web-dialog-default-320x700-text100",
+      "entry": "state.dialog", "scenario": "default", "viewport": { "width": 320, "height": 700 }, "root_font_size": "16px",
+      "anchors": {
+        "panel": { "x": 16, "y": 219, "width": 288, "height": 262, "scroll_top": 0, "scroll_height": 262, "client_height": 262 },
+        "title": { "x": 40, "y": 243, "width": 240, "height": 57.2, "lines_derived": 2 },
+        "actions": { "x": 40, "y": 401, "width": 240, "height": 56 },
+        "button.keep": { "x": 48.1, "y": 409, "width": 141.7, "height": 48 },
+        "button.delete": { "x": 201.8, "y": 409, "width": 78.2, "height": 48 }
+      },
+      "computed": { "dialog_margin": "16px", "panel_padding": "24px" },
+      "initial_focus": "Giữ bản nháp",
+      "results": { "INV-1": "PASS", "INV-2": "PASS", "INV-3": "PASS", "INV-4": "PASS" },
+      "screenshot": null
+    },
+    {
+      "id": "web-dialog-default-320x700-text200",
+      "entry": "state.dialog", "scenario": "default", "viewport": { "width": 320, "height": 700 }, "root_font_size": "32px",
+      "anchors": {
+        "panel": { "x": 32, "y": 32, "width": 256, "height": 636, "scroll_top": 658, "scroll_height": 1294, "client_height": 636 },
+        "title": { "x": 80, "y": -578, "width": 172.7, "height": 400.3, "lines_derived": 7, "font_size": "44px", "line_height": "57.2px" },
+        "context": { "x": 80, "y": -153.7, "width": 172.7, "height": 460.7, "font_size": "32px", "line_height": "51.2px" },
+        "actions": { "x": 80, "y": 331, "width": 172.7, "height": 288.8 },
+        "button.keep": { "x": 80, "y": 347, "width": 172.7, "height": 167.6 },
+        "button.delete": { "x": 98.3, "y": 530.6, "width": 154.5, "height": 89.2 }
+      },
+      "computed": { "dialog_margin": "32px", "panel_padding": "48px" },
+      "initial_focus": "Giữ bản nháp",
+      "results": { "INV-1": "FAIL", "INV-2": "PASS", "INV-3": "PASS", "INV-4": "PASS" },
+      "screenshot": "probe-dialog-default-light-320x700-text200.jpg"
+    },
+    {
+      "id": "web-dialog-default-390x844-text200",
+      "entry": "state.dialog", "scenario": "default", "viewport": { "width": 390, "height": 844 }, "root_font_size": "32px",
+      "anchors": {
+        "panel": { "x": 32, "y": 32, "width": 326, "height": 780, "scroll_top": 53, "scroll_height": 987, "client_height": 780 },
+        "title": { "x": 80, "y": 27, "width": 230, "height": 285.9, "lines_derived": 5 },
+        "actions": { "x": 80, "y": 668.1, "width": 230, "height": 249.6 },
+        "button.keep": { "x": 80, "y": 684.1, "width": 230, "height": 128.4 },
+        "button.delete": { "x": 155.5, "y": 828.4, "width": 154.5, "height": 89.2 }
+      },
+      "computed": { "dialog_margin": "32px", "panel_padding": "48px" },
+      "initial_focus": "Giữ bản nháp",
+      "results": { "INV-1": "FAIL", "INV-2": "PASS", "INV-3": "PASS", "INV-4": "PASS" },
+      "screenshot": "probe-dialog-default-light-390x844-text200.jpg"
+    },
+    {
+      "id": "web-sheet-320x700-text100",
+      "entry": "state.dialog", "scenario": "sheet", "viewport": { "width": 320, "height": 700 }, "root_font_size": "16px",
+      "anchors": {
+        "panel": { "x": 0, "y": 439.4, "width": 320, "height": 260.6, "scroll_top": 0, "scroll_height": 261, "client_height": 261 },
+        "title": { "x": 24, "y": 463.4, "width": 272, "height": 28.6, "lines_derived": 1 },
+        "actions": { "x": 24, "y": 620, "width": 272, "height": 56 },
+        "button.close": { "x": 220.5, "y": 628, "width": 75.5, "height": 48 }
+      },
+      "computed": { "dialog_margin": "0px", "panel_padding": "24px" },
+      "initial_focus": "Đóng",
+      "results": { "INV-1": "PASS", "INV-2": "PASS", "INV-3": "PASS", "INV-4": "PASS" },
+      "screenshot": "probe-sheet-light-320x700-text100.jpg"
+    },
+    {
+      "id": "web-sheet-320x700-text200",
+      "entry": "state.dialog", "scenario": "sheet", "viewport": { "width": 320, "height": 700 }, "root_font_size": "32px",
+      "anchors": {
+        "panel": { "x": 0, "y": 105, "width": 320, "height": 595, "scroll_top": 20, "scroll_height": 615, "client_height": 595 },
+        "title": { "x": 48, "y": 133, "width": 224, "height": 171.6, "lines_derived": 3 },
+        "actions": { "x": 48, "y": 546.9, "width": 224, "height": 105.2 },
+        "button.close": { "x": 123, "y": 562.9, "width": 149, "height": 89.2 }
+      },
+      "computed": { "dialog_margin": "0px", "panel_padding": "48px" },
+      "initial_focus": "Đóng",
+      "results": { "INV-1": "PASS", "INV-2": "PASS", "INV-3": "PASS", "INV-4": "PASS" },
+      "screenshot": "probe-sheet-light-320x700-text200.jpg"
+    }
+  ],
+  "unavailable": [
+    "glyph bounds and Vietnamese mark clipping (DOM rects do not expose them)",
+    "contrast of resolved colours (not measured in this probe)",
+    "dark theme at 200% (not probed)",
+    "focus return to the trigger (trigger was activated by script, not by a user gesture)"
+  ]
+}

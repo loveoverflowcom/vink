@@ -596,8 +596,9 @@ pub fn Snackbar(
 // Dialog -----------------------------------------------------------------------------------------
 
 /// A controlled modal dialog on the native `<dialog>` with `showModal()`: the rest of the page is
-/// inert and focus stays inside. Opening focuses an `[autofocus]` element or the first action
-/// (put the safe choice first for destructive confirmations); closing returns focus to the
+/// inert and focus stays inside. Opening focuses an `[autofocus]` element, the title when the
+/// content needs scrolling, or the first action (put the safe choice first for destructive
+/// confirmations). It starts at the top; closing returns focus to the
 /// element that had it. Escape and outside clicks report [`DismissReason`] only when the policy
 /// allows them; the caller closes by setting `open` to false. One dialog at a time: the
 /// app-wide overlay coordinator is UIS-04.
@@ -724,18 +725,31 @@ pub fn Dialog(
 #[cfg(target_arch = "wasm32")]
 fn focus_initial(el: &leptos::web_sys::HtmlDialogElement) {
     use leptos::wasm_bindgen::JsCast;
+    // showModal() already ran the browser's focusing steps and may have scrolled to an
+    // action below the fold. Long content starts at its heading, never at an unseen button.
+    // This also resets a retained scroll position when the same controlled dialog reopens.
+    el.set_scroll_top(0);
+    let title = el.query_selector(".vk-ui-dialog__title").ok().flatten();
     let target = el
         .query_selector("[autofocus]")
         .ok()
         .flatten()
         .or_else(|| {
+            (el.scroll_height() > el.client_height())
+                .then(|| title.clone())
+                .flatten()
+        })
+        .or_else(|| {
             el.query_selector(".vk-ui-dialog__actions button")
                 .ok()
                 .flatten()
         })
-        .or_else(|| el.query_selector("button").ok().flatten());
+        .or_else(|| el.query_selector("button").ok().flatten())
+        .or(title);
     if let Some(target) = target.and_then(|t| t.dyn_into::<leptos::web_sys::HtmlElement>().ok()) {
-        let _ = target.focus();
+        let options = leptos::web_sys::FocusOptions::new();
+        options.set_prevent_scroll(true);
+        let _ = target.focus_with_options(&options);
     }
 }
 

@@ -85,6 +85,12 @@ sequence giữa before/after; mở ảnh mới. Không dùng mockup tạo sinh t
 before/after. Giữ reference/comparison policy đã chọn cho các lần recheck.
 Đối chiếu đúng vùng/CTA/thứ tự đọc với spec; nêu lệch có chủ ý và gap chưa kiểm.
 
+Khi sửa theo findings của một review, làm theo
+[vòng có ngân sách](references/repair-and-handoff.md#vòng-sửa-có-điểm-dừng): chốt tiêu chí của
+lượt, sửa nhóm lỗi ưu tiên, chạy lại đúng scenario và đối chiếu từng finding. Dừng theo ngân
+sách hoặc khi kết quả dao động; hết ngân sách không thành PASS và không đổi baseline/mốc để
+kết quả đạt.
+
 Lệnh lấy từ `docs/development/README.md` hiện hành. Không bịa command hoặc áp gate
 Cantos; tài liệu chỉ cần metadata/link/diff hoặc repository checks trong
 `cargo xtask verify quick`, không cần chạy app. Ghi riêng PASS, FAIL, NOT_RUN, UNSUPPORTED theo
@@ -94,7 +100,10 @@ FAIL của runner, ghi blocker bằng lời thay vì đổi test đã fail thàn
 ## 5. Trả kết quả hoặc bàn giao
 
 Nêu lỗi, điều sửa, chủ nguồn, lý do và bằng chứng đã có; tách phần còn thiếu như
-mobile IME, screen reader hoặc runtime. Handoff phải tự đủ ngữ cảnh, có acceptance
+mobile IME, screen reader hoặc runtime. Kết quả ghi theo
+[năm chiều](../vink-ui-design/references/ux-quality.md#4-bảng-kết-quả-theo-chiều), mỗi chiều
+có scenario/target; tự kiểm bản sửa của mình là `self-review`.
+Handoff phải tự đủ ngữ cảnh, có acceptance
 và branch xử lý blocker; nếu user muốn SudoLang, dùng mẫu Vink đã được nguồn định
 nghĩa trong reference. Không tự post issue/comment, push, merge, deploy hay publish
 khi mới có yêu cầu spec/local edit. Giữ ủy quyền đã có, không hỏi lại một cách máy móc.
