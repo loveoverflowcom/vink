@@ -215,6 +215,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(drafts)
         .merge(publication_author)
         .merge(moderation_works)
+        .merge(super::appeals::routes())
         .merge(discussion)
         .merge(endorsement)
         .merge(catalog)
@@ -366,7 +367,7 @@ async fn get_reader(
     let resp = ReaderResponse::from(work);
     match &resp {
         ReaderResponse::Published(_) => conditional::respond(&headers, &resp),
-        ReaderResponse::ReviewWithdrawn { .. } => {
+        ReaderResponse::ReviewWithdrawn { .. } | ReaderResponse::Hidden { .. } => {
             let mut response = Json(resp).into_response();
             response
                 .headers_mut()
@@ -558,7 +559,34 @@ async fn get_author_publication_state(
             crate::domain::publication::Moderation::NeedsAdmin => "needs_admin",
         };
 
+        let can_appeal = pub_facts.audience == crate::domain::publication::Audience::Public
+            && pub_facts.lifecycle.is_active()
+            && rev.moderation == crate::domain::publication::Moderation::Rejected
+            && mod_decision
+                .and_then(|d| d.provenance.as_ref())
+                .is_some_and(|p| {
+                    matches!(
+                        p,
+                        crate::domain::moderation::DecisionProvenance::AiRejected(_)
+                            | crate::domain::moderation::DecisionProvenance::Moderator { .. }
+                    )
+                });
+        let decision_reason =
+            mod_decision
+                .and_then(|d| d.provenance.as_ref())
+                .and_then(|p| match p {
+                    crate::domain::moderation::DecisionProvenance::AiRejected(code) => {
+                        Some(code.as_str().to_owned())
+                    }
+                    crate::domain::moderation::DecisionProvenance::Moderator { reason, .. }
+                    | crate::domain::moderation::DecisionProvenance::Admin { reason, .. } => {
+                        Some(reason.as_str().to_owned())
+                    }
+                    _ => None,
+                });
         revisions.push(AuthorRevisionView {
+            can_appeal,
+            decision_reason,
             revision_id: rev.snapshot.revision.to_string(),
             title,
             content_hash: rev.snapshot.content.hash().to_string(),
@@ -1046,6 +1074,7 @@ async fn list_work_moderation_queue(
             .into_iter()
             .filter(|c| directory.resolve(actor, &c.target(), now).is_ok())
             .map(|c| CaseSummaryDto {
+                title: c.title,
                 id: c.id.to_string(),
                 subject_kind: c.subject_kind,
                 work_id: c.work_id.to_string(),
@@ -1081,6 +1110,7 @@ async fn get_work_moderation_case(
         .resolve(actor, &detail.target(), now)
         .map_err(|refusal| ApiError::CaseForbidden(refusal.as_str()))?;
     Ok(Json(CaseDetailDto {
+        viewer_is_admin: directory.require_admin(actor, now).is_ok(),
         id: detail.id.to_string(),
         subject_kind: detail.subject_kind,
         work_id: detail.work_id.to_string(),

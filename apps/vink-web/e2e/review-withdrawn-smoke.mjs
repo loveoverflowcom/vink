@@ -1,9 +1,9 @@
-// O-17@r2 (#159) browser checks against the real App and scratch PostgreSQL. Two loopback
-// fixture servers share the database: `--author-base` acts as the work's author, `--base` as a
+// O-17@r2 / MOD-10 / PUB-07 browser checks against the real App and scratch PostgreSQL.
+// Three loopback fixture servers share the database: `--author-base` acts as the work's author, `--base` as a
 // second principal holding an admin seat (`vink-app admin add`). Every state change goes through
 // the real HTTP API: the author publishes a new work while automation is paused, the admin
-// approves it from the human queue, opens an intervention case on the public revision and
-// rejects it. No response is fabricated or intercepted.
+// approves it from the human queue, a scoped moderator rejects it, the author appeals and
+// the admin reverses. No response is fabricated or intercepted.
 
 const TITLE = 'O-17 [Mẫu] Bài thơ sẽ bị gỡ';
 const LINE = 'Dòng thơ chỉ có trong bản sẽ bị gỡ.';
@@ -25,6 +25,8 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   console.log('O-17@r2 review-withdrawn page (author + admin fixtures, real API):');
   const author = { base: args['author-base'] };
   const admin = { base: args.base };
+  const reviewer = { base: args['reviewer-base'] };
+  if (!reviewer.base) throw new Error('missing --reviewer-base');
   if (!author.base) throw new Error('missing --author-base');
   const post = (actor, path, body) => api(actor, path, { method: 'POST', body: JSON.stringify(body ?? {}) });
 
@@ -54,9 +56,21 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   check(queued?.origin === 'automation_paused', 'a paused submission waits in the human queue');
   const detail = await api(admin, `/api/v1/moderation/works/cases/${queued.id}`);
   check(detail.status === 200 && detail.body.document.blocks[0].lines[0] === LINE, 'the reviewer reads the exact submitted snapshot');
-  let claimed = await post(admin, `/api/v1/moderation/works/cases/${queued.id}/claim`, { expected_version: queued.version });
-  let approved = await post(admin, `/api/v1/moderation/works/cases/${queued.id}/conclude`, { expected_version: claimed.body.version, verdict: 'approved', reason: 'Phù hợp' });
-  check(approved.status === 200, 'the admin approves the exact revision');
+  await page.goto(`${admin.base}/kiem-duyet/ca/${queued.id}`);
+  await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#case-claim')`, 'private case snapshot');
+  check(await page.eval(`document.querySelector('.vk-moderation__snapshot')?.textContent.includes(${JSON.stringify(LINE)})`), 'the case UI renders the submitted snapshot');
+  const staffResponse = await fetch(`${admin.base}/kiem-duyet/ca/${queued.id}`);
+  check(staffResponse.headers.get('cache-control') === 'no-store', 'private case HTML is no-store');
+  const staffHtml = await staffResponse.text();
+  check(!staffHtml.includes(LINE), 'staff snapshot is absent from SSR and hydration payload');
+  check(await page.eval(`!document.querySelector('#case-approve')`), 'an unclaimed case has no conclusion action');
+  await page.click('#case-claim');
+  await page.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Phiên bản ca 2')`, 'claim acknowledged');
+  await page.typeAtEnd('#case-reason', 'Phù hợp chính sách');
+  await page.capture('moderation-case-desktop');
+  await page.click('#case-approve');
+  await page.waitFor(`document.querySelector('#moderation-case')?.textContent.includes('Đã kết luận')`, 'approval acknowledged');
+  check((await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'case UI approves through the real API');
 
   // A comment from the author, approved by the admin (a comment moderator grant from the
   // endorsement phase), stays after the rejection.
@@ -74,12 +88,15 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   await page.goto(`${admin.base}${readerPath}`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true' && document.querySelector('#reader-paper')?.textContent.includes(${JSON.stringify(LINE)})`, 'the reader shows the body');
 
-  // 4. The admin opens an intervention case on the public revision and rejects it.
-  const opened = await post(admin, `/api/v1/moderation/works/${work}/revisions/${revision}/cases`);
-  check(opened.status === 201, 'the admin opens a case on the public revision (MOD-13)');
-  claimed = await post(admin, `/api/v1/moderation/works/cases/${opened.body.case_id}/claim`, { expected_version: 1 });
-  const rejected = await post(admin, `/api/v1/moderation/works/cases/${opened.body.case_id}/conclude`, { expected_version: claimed.body.version, verdict: 'rejected', reason: 'Vi phạm chính sách' });
-  check(rejected.status === 200, 'the admin rejects the public revision');
+  // The admin grants a third fixture principal Works authority. That moderator rejects;
+  // an admin verdict would be final and could not be appealed (MOD-10).
+  const grant = await post(admin, '/api/v1/moderation/grants', { grantee_kind: 'principal', grantee_id: '77777777-7777-4777-8777-777777777777', capability: 'works', scope_kind: 'work', scope_work_id: work, expires_at: null });
+  check(grant.status === 201, 'the admin grants scoped work moderation');
+  const opened = await post(reviewer, `/api/v1/moderation/works/${work}/revisions/${revision}/cases`);
+  check(opened.status === 201, 'the moderator opens a case on the public revision');
+  const claimed = await post(reviewer, `/api/v1/moderation/works/cases/${opened.body.case_id}/claim`, { expected_version: 1 });
+  const rejected = await post(reviewer, `/api/v1/moderation/works/cases/${opened.body.case_id}/conclude`, { expected_version: claimed.body.version, verdict: 'rejected', reason: 'Cần xem lại chính sách' });
+  check(rejected.status === 200, 'the moderator rejects the public revision');
 
   // 5. The public API: the old snapshot is gone, the reader read model is the notice.
   const publication = await api(admin, `/api/v1/works/${work}/publication`);
@@ -111,6 +128,44 @@ export async function reviewWithdrawnPage(page, { args, check }) {
   // 8. A new comment is refused by the server.
   const refused = await post(author, `/api/v1/works/${work}/discussion/comments`, { target_id: null, body: 'Bình luận mới.', command_key: crypto.randomUUID() });
   check(refused.status === 404, 'a new comment on the removed revision is refused at the server');
+
+  // The author files an appeal from their own status page; admin resolves the stored case.
+  await page.goto(`${author.base}/ban-viet/${work}/kiem-duyet`);
+  await page.waitFor(`document.querySelector('[id^="file-appeal"]')`, 'author appeal action');
+  await page.click('[id^="file-appeal"]');
+  await page.waitFor(`document.querySelector('#author-reviews')?.textContent.includes('Đã ghi nhận, chờ quản trị viên')`, 'appeal recorded');
+  check(await page.eval(`document.body.textContent.includes('Chưa có thông báo nào được gửi')`), 'author is told that no notification was sent');
+  const appealQueue = await api(admin, '/api/v1/moderation/appeals');
+  const appeal = appealQueue.body.find(a => a.work_id === work);
+  check(appeal?.state === 'open', 'admin queue contains the actual recorded appeal');
+  await page.goto(`${admin.base}/kiem-duyet/phan-doi/${appeal.id}`);
+  await page.waitFor(`document.querySelector('#appeal-reason')`, 'admin appeal snapshot');
+  await page.viewport(390, 844);
+  await page.typeAtEnd('#appeal-reason', 'Đã xem xét lại, bản này phù hợp');
+  check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), 'appeal page reflows at 390px');
+  await page.capture('moderation-appeal-mobile');
+  await page.click('#appeal-reverse');
+  await page.waitFor(`document.querySelector('#moderation-appeal')?.textContent.includes('Đã ghi nhận.')`, 'appeal conclusion acknowledged');
+  check((await api(admin, `/api/v1/works/${work}/publication`)).status === 200, 'appeal reversal republishes the exact current intent');
+
+  // PUB-07: hiding a public work serves only the notice and eligible discussion.
+  const beforeHide = await api(author, `/api/v1/works/${work}/publication/state`);
+  const hidden = await post(author, `/api/v1/works/${work}/publication/set-private`, { command_key: crypto.randomUUID(), expected_generation: beforeHide.body.generation });
+  check(hidden.status === 200, 'author makes the public work private');
+  const hiddenReader = await api(admin, `/api/v1/works/${work}/reader`);
+  check(JSON.stringify(Object.keys(hiddenReader.body).sort()) === JSON.stringify(['status','work_id']) && hiddenReader.body.status === 'hidden' && hiddenReader.cache === 'no-store', 'hidden reader exposes no author or manuscript metadata');
+  const hiddenResponse = await fetch(`${admin.base}${readerPath}`);
+  const hiddenHtml = await hiddenResponse.text();
+  check(hiddenResponse.status === 200 && hiddenResponse.headers.get('cache-control') === 'no-store' && /name="robots"[^>]+content="noindex"/.test(hiddenHtml), 'hidden SSR is 200, no-store and noindex');
+  check(hiddenHtml.includes('Nội dung đã được ẩn') && hiddenHtml.includes(COMMENT) && !hiddenHtml.includes(TITLE) && !hiddenHtml.includes(LINE), 'hidden SSR keeps the comment without title or body');
+  await page.goto(`${admin.base}${readerPath}`);
+  await page.waitFor(`document.querySelector('[data-testid=reader-hidden]') && document.documentElement.dataset.hydrated === 'true'`, 'hidden hydrated reader');
+  await page.capture('reader-hidden-mobile');
+  const blocked = await post(author, `/api/v1/works/${work}/discussion/comments`, { body: 'Không ghi mới', command_key: crypto.randomUUID() });
+  check(blocked.status === 409 && blocked.body.error.code === 'hidden_read_only', 'hidden page rejects new comments');
+  const reopen = await api(author, `/api/v1/works/${work}/publication/state`);
+  check((await post(author, `/api/v1/works/${work}/publication/request-public`, { command_key: crypto.randomUUID(), revision_id: revision, expected_generation: reopen.body.generation })).status === 200, 'author republishes the approved snapshot');
+  check((await api(admin, `/api/v1/works/${work}/reader`)).body.status === 'published', 'republication replaces the hidden notice');
 
   // Leave automation enabled for later phases.
   const now = await api(admin, '/api/v1/moderation/automation');

@@ -737,6 +737,8 @@ fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
         .execute(&mut connection)
         .await
         .map_err(|e| e.to_string())?;
+        sqlx::query("INSERT INTO principals (id, display_name) VALUES ('77777777-7777-4777-8777-777777777777', '[Mẫu] Người duyệt tác phẩm') ON CONFLICT (id) DO NOTHING")
+            .execute(&mut connection).await.map_err(|e| e.to_string())?;
         Ok(())
     })
 }
@@ -867,6 +869,22 @@ fn run_web_checks(
             return false;
         }
     };
+    let mut reviewer = match free_port() {
+        Ok(port) => server.with_principal("77777777-7777-4777-8777-777777777777", port),
+        Err(e) => {
+            report.fail("reviewer port", &e);
+            return false;
+        }
+    };
+    reviewer.log = reviewer.log.with_file_name("server-reviewer.log");
+    let mut reviewing = match reviewer.start(root) {
+        Ok(guard) => guard,
+        Err(e) => {
+            report.fail("reviewer fixture starts", &e);
+            return false;
+        }
+    };
+    let reviewer_origin = format!("http://127.0.0.1:{}", reviewer.port);
     let reader_origin = format!("http://127.0.0.1:{}", reader.port);
     let ok = report.step(
         "literary endorsement: real writes, double tap, lost ACK + replay, 409, keyboard, 401",
@@ -886,13 +904,14 @@ fn run_web_checks(
             || {
                 smoke(
                     root,
-                    &["--phase", "review-withdrawn", "--author-base", origin],
+                    &["--phase", "review-withdrawn", "--author-base", origin, "--reviewer-base", &reviewer_origin],
                     chrome,
                     &reader_origin,
                     state,
                 )
             },
         );
+    let _ = reviewing.terminate(Duration::from_secs(15));
     let _ = endorsing.terminate(Duration::from_secs(15));
     let _ = author.terminate(Duration::from_secs(15));
     ok

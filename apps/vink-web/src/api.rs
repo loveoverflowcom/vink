@@ -722,7 +722,10 @@ mod http {
 
     /// These calls end after 30 s. For writes, a lost answer is then uncertain.
     fn bounded(path: &str) -> bool {
-        path.contains("/discussion")
+        path.contains("/moderation/")
+            || path.contains("/appeals")
+            || path.contains("/publication/state")
+            || path.contains("/discussion")
             || path.contains("/endorsement")
             || path.contains("/tags")
             || is_auth(path)
@@ -963,5 +966,32 @@ mod separated_discussion_paths {
             super::own_comments_path("w", None, Some(&["a,b".into(), "c&cursor=x".into()])),
             "/api/v1/works/w/discussion/me?ids=a%2Cb,c%26cursor%3Dx"
         );
+    }
+}
+
+/// Private moderation transports. Called only by LocalResource or explicit intents; no SSR data.
+pub(crate) async fn moderation_get<T: serde::de::DeserializeOwned>(
+    _path: &str,
+) -> Result<T, crate::contract::ApiError> {
+    #[cfg(feature = "hydrate")]
+    {
+        http::get(_path).await
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        Err(crate::contract::ApiError::Unavailable)
+    }
+}
+pub(crate) async fn moderation_post(
+    _path: &str,
+    _body: &serde_json::Value,
+) -> Result<serde_json::Value, crate::contract::ApiError> {
+    #[cfg(feature = "hydrate")]
+    {
+        http::send("POST", _path, Some(_body)).await
+    }
+    #[cfg(not(feature = "hydrate"))]
+    {
+        Err(crate::contract::ApiError::Unavailable)
     }
 }

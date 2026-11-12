@@ -32,6 +32,7 @@ pub enum ApiError {
         current_version: i64,
     },
     CommentsClosed,
+    HiddenReadOnly,
     TargetUnavailable,
     KeyReused,
     NotCommentWriter,
@@ -138,6 +139,7 @@ impl ApiError {
             | Self::RevisionRejected
             | Self::WorkUnavailable
             | Self::SnapshotConflict { .. }
+            | Self::HiddenReadOnly
             | Self::CommentsClosed
             | Self::TargetUnavailable
             | Self::CommentRemoved
@@ -198,6 +200,7 @@ impl ApiError {
                 Some(*current_version),
                 None,
             ),
+            Self::HiddenReadOnly => ("hidden_read_only", "hidden work is read-only".to_string(), None, None),
             Self::CommentsClosed => (
                 "comments_closed",
                 "the work's author closed comments; nothing was written".to_string(),
@@ -550,6 +553,7 @@ impl From<DiscussionError> for ApiError {
             DiscussionError::Suspended => Self::PrincipalSuspended,
             DiscussionError::NotFound => Self::NotFound,
             DiscussionError::NotCommentWriter => Self::NotCommentWriter,
+            DiscussionError::HiddenReadOnly => Self::HiddenReadOnly,
             DiscussionError::CommentsClosed => Self::CommentsClosed,
             DiscussionError::TargetUnavailable => Self::TargetUnavailable,
             DiscussionError::KeyReused => Self::KeyReused,

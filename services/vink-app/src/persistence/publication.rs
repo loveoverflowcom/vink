@@ -968,7 +968,7 @@ impl AuthorPublicationStore for PgStore {
                     )
                     .bind(p.revision.as_uuid())
                     .bind(work_id.as_uuid())
-                    .fetch_optional(&mut *tx)
+                    .fetch_one(&mut *tx)
                     .await
                     .map_err(classify)?;
 
@@ -1012,6 +1012,7 @@ impl AuthorPublicationStore for PgStore {
                     transition.moderation.facts(),
                     revision_id,
                     DecisionSource {
+                        appeal: None,
                         evaluation: transition.ticket.as_ref().map(|t| t.id),
                         case: None,
                     },
@@ -1275,6 +1276,9 @@ impl AuthorPublicationStore for PgStore {
                 .execute(&mut *tx)
                 .await
                 .map_err(classify)?;
+
+            query("UPDATE work_appeals SET state = 'closed', close_reason = 'withdrawn', updated_at = now() WHERE work_id = $1 AND state = 'open'")
+                .bind(work_id.as_uuid()).execute(&mut *tx).await.map_err(classify)?;
 
             // 5b. Withdraw every open, leased or rerouted job (PUB-06): a late finisher of a
             // leased job fails its claim fence.

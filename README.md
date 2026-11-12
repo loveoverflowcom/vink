@@ -4,7 +4,7 @@
 
 Vink là không gian để viết, đọc, học hỏi, chia sẻ và góp ý tác phẩm. Sản phẩm hướng tới một cộng đồng hiện đại, trẻ trung và có chiều sâu, ưu tiên chất lượng nội dung hơn số lượng bài đăng hay tương tác ảo.
 
-**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.3 ghi các quyết định sản phẩm đã chốt và các đề xuất kỹ thuật cần review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Có API bình luận và UI đọc thảo luận hai tầng; kiểm thử gửi/gỡ/bật-tắt dùng định danh mẫu cục bộ. Đăng nhập mã email có UI và đã được kiểm cục bộ; production vẫn khóa đăng nhập mặc định. Chưa có UI kiểm duyệt/xuất bản; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
+**Trạng thái repository:** Đang xây nền tảng sản phẩm và kỹ thuật. Bộ tài liệu v0.3 ghi các quyết định sản phẩm đã chốt và các đề xuất kỹ thuật cần review. Đã có skeleton chạy được cục bộ: Leptos SSR + Axum, PostgreSQL, trang đọc tác phẩm công khai và Bàn viết lưu nháp riêng có kiểm phiên bản. Có API bình luận và UI đọc thảo luận hai tầng; kiểm thử gửi/gỡ/bật-tắt dùng định danh mẫu cục bộ. Đăng nhập mã email có UI và đã được kiểm cục bộ; production vẫn khóa đăng nhập mặc định. Có Web duyệt tác phẩm, phản đối và chế độ tự động; chưa có UI chọn audience/xuất bản; xem [hướng dẫn phát triển](docs/development/README.md) để chạy, kiểm chứng và biết giới hạn.
 
 ## Trải nghiệm hướng tới
 

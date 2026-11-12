@@ -14,11 +14,12 @@ thành `PRODUCT_CONFIRMED`.
 - **Pure core + replay (`#150`, `#151`, `#157`):** hiện thực lõi publication, moderation evaluator/admin
   và tombstone access thuần, `ScriptedEvaluator` ([publication-core](publication-core.md), [moderation-core](moderation-core.md)).
 - **Quản trị kiểm duyệt (`ADMIN-MODERATION-20261111`):** core thuần cho admin/grant/nhóm, ca, phản đối,
-  dừng tự động, điều tra riêng, trang ẩn và gửi duyệt theo phiên bản; replay đủ 64/64 bước M1, 41/41
+  dừng tự động, điều tra riêng, trang ẩn và gửi duyệt theo phiên bản; replay đủ 64/64 bước M1, 53/53
   bước M3, 105/105 bước M4 quản trị (`governance.qnt`, thay `appeal.qnt`) và 24 bước
   `evaluator-vectors.json` ([ADMIN-CORE-01](moderation-core.md#admin-moderation-core--admin-core-01),
-  [PUB-HIDDEN-01](publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01)). Chưa
-  migration/API/worker/UI.
+  [PUB-HIDDEN-01](publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01)).
+  [Runtime](moderation-runtime.md) đã có worker local/test, grant/ca tác phẩm, phản đối, chế độ tự
+  động và Web duyệt tác phẩm/reader thay thế; điều tra và ca bình luận vẫn chỉ ở core.
 - **Persistence + API tác giả (`#158`):** hiện thực migration `20261116000000_work_publication_persistence`,
   `persistence::publication` và HTTP API v1 cho chụp snapshot, `request-public` (ghi job `open`),
   `set-private` và đọc trạng thái của tác giả ([publication-runtime](publication-runtime.md)).
@@ -39,12 +40,12 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 
 | Yêu cầu | Invariant (`publication.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
-| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Pure core #150 + #151 + #157** (replay 64/64 bước M1); **PostgreSQL + HTTP API tác giả #158** (`work_publications`, `/snapshots`, `/publication/request-public`, `/publication/set-private`, `/publication/state`, backfill `legacy_bootstrap`). Chưa có worker tiêu thụ `work_evaluation_jobs` hay Web/CMP UI |
-| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Pure core #150 + #151** (`readable_revision` không đòi current intent = pointer; r1/r2 unit + replay) + **persistence/API #158** (r1 giữ công khai khi chụp/gửi r2, `set-private` xóa con trỏ và trả `404` cả với `If-None-Match` cũ). Chưa có worker/admin route ghi quyết định kiểm duyệt mới |
-| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Pure core #150 + #151** (`SaveSnapshot` trả `ticket = None`; `RawEvaluatorOutput` từ chối trường lạ và phân loại output sai thành `InvalidOutput` → `NeedsAdmin`) + **persistence/API #158** (`POST /snapshots` không tạo dòng `work_evaluation_jobs`). Chưa có evaluator worker hay đường gửi nội dung ra ngoài |
-| MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Pure core + mock #151:** `EvaluationTarget`, `EvaluationTicket`, `EvaluatorResult`, `validate_evaluation_result`, `ScriptedEvaluator` (đủ 9 lớp `ScriptKind`); replay 12 bước publication consumer + 9 bước comment contract. `#158` có bảng `work_evaluation_jobs` (chỉ tạo `open` ticket); chưa có bảng kết quả evaluator hay worker consumer |
-| MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Pure core #151:** `Timeout` / `ProviderError` đóng job sang `Failed` (`retryable`), giữ nguyên `Pending` và pointer; `reevaluate` đòi `EvaluationId` mới. Chưa có trần retry DB, watchdog hay UI |
-| MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Pure core #151:** `AdminAuthority` hẹp gắn `(actor, work)`, `DecisionVersion`, `DecisionReason`, `apply_admin_decision` + replay NC `mutatedOverrideStep`. **`ADMIN-MODERATION-20261111`:** moderator trong grant (`apply_human_decision`, `DecisionBy::Moderator`), M4 replay. Chưa có bảng grant/CLI/HTTP cấp quyền bền vững |
+| AUD-01, AUD-02, PUB-01, INV-01 | `publicNeedsEverything`, `pointerMovesLawfully`, `audienceFence` | `audience_moderation_override` (4–12 công khai sau kết quả hợp lệ; 33–35 được duyệt nhưng không công khai; 18, 28 tab cũ `stale`). NC `mutatedIntentStep` | **Pure core #150 + #151 + #157** (replay 64/64 bước M1); **PostgreSQL + HTTP API tác giả #158** (`work_publications`, `/snapshots`, `/publication/request-public`, `/publication/set-private`, `/publication/state`, backfill `legacy_bootstrap`). Worker và Web trạng thái/ca duyệt đã có ([runtime](moderation-runtime.md)); chưa có UI chọn audience/gửi duyệt hoặc CMP |
+| PUB-02, INV-02 | `failureNeverPublishes`, `decisionsAreVersionBound` | (13–16) r1 công khai khi r2 bị từ chối | **Pure core #150 + #151** (`readable_revision` không đòi current intent = pointer; r1/r2 unit + replay) + **persistence/API #158** (r1 giữ công khai khi chụp/gửi r2, `set-private` xóa con trỏ và trả `404` cả với `If-None-Match` cũ). Worker/người duyệt đã ghi quyết định mới; `/publication` vẫn `404` khi rút, còn `/reader` trả trang thay thế khi hợp lệ |
+| MOD-05, INV-08 | `privateSaveNeverEvaluated` | (1–2) lưu riêng không tạo evaluation | **Pure core #150 + #151** (`SaveSnapshot` trả `ticket = None`; `RawEvaluatorOutput` từ chối trường lạ và phân loại output sai thành `InvalidOutput` → `NeedsAdmin`) + **persistence/API #158** (`POST /snapshots` không tạo dòng `work_evaluation_jobs`). Có evaluator kịch bản trong worker local/test; chưa có provider ngoài |
+| MOD-02, MOD-07, INV-03 | `refusalWritesNothing`, `evaluatorOnlyDecidesPending`, `decisionsAreVersionBound` | (6–12, 21) timeout, trùng, sai revision, job lạ, sai policy; `evaluator-vectors.json` đủ chín loại | **Pure core + mock #151:** `EvaluationTarget`, `EvaluationTicket`, `EvaluatorResult`, `validate_evaluation_result`, `ScriptedEvaluator` (đủ 9 lớp `ScriptKind`); replay 15 bước publication consumer + 9 bước comment contract. Runtime có `work_evaluation_jobs`, lịch sử quyết định và worker consumer với fence claim/version/chế độ tự động |
+| MOD-03, MOD-08 | `failureNeverPublishes` | (6, 23) `retryable`, `needs_admin`; `moderation_removal` (3–5) | **Pure core #151:** `Timeout` / `ProviderError` đóng job sang `Failed` (`retryable`), giữ nguyên `Pending` và pointer; `reevaluate` đòi `EvaluationId` mới. Runtime retry tối đa 3 lượt, cấp EvaluationId mới, hết lượt vào ca người duyệt; Web có hàng ca |
+| MOD-09, INV-03 | `adminOverrideWins`, `evaluatorOnlyDecidesPending` | (24–26) admin duyệt, kết quả AI muộn `overridden`; (2) `not_submitted`. NC `mutatedOverrideStep` | **Pure core #151:** `AdminAuthority` hẹp gắn `(actor, work)`, `DecisionVersion`, `DecisionReason`, `apply_admin_decision` + replay NC `mutatedOverrideStep`. **`ADMIN-MODERATION-20261111`:** moderator trong grant (`apply_human_decision`, `DecisionBy::Moderator`), M4 replay. Runtime có bảng grant/người/nhóm, CLI ghế admin và HTTP cấp quyền bền vững |
 | PUB-03, INV-07 | `noResurrection` | (37–40) sau khi xóa: lệnh tác giả, admin và kết quả AI đều không hồi sinh; `moderation_removal` (8–11) | **Pure core #157:** `decide_author(Delete)` và `apply_admin_remove` là transition sản xuất thật, replay đủ 64/64 bước của M1. Chưa có persistence/CLI/route cho delete/remove hay tombstone query (ngoài scope #158) |
 
 ### 1.2. Xóa bài và tombstone (M3)
@@ -52,7 +53,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | Yêu cầu | Invariant (`tombstone.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
 | PUB-04 | `bodyOnlyWhilePublic`, `tombstoneOnlyAfterAuthorDeletesPublicWork`, `tombstoneKeepsApprovedComments`, `othersSeeOnlyApproved` | `author_deleted_public_work` (8: khách thấy trang thay thế + bình luận 1; người viết thấy thêm bình luận của mình) | **Pure core #157:** `Lifecycle::AuthorDeleted(DeletionProvenance::PublicTombstone(pointer))`, `WorkAccessPlan::AuthorTombstone { last_pointer }` cho phép đọc thread cũ; `plan_comment_view` và `check_comment_submission` kiểm barrier. Chưa có persistence/API/UI cho lệnh xóa tác giả và trang tombstone |
-| PUB-05, PUB-07, COM-11 | `noExceptionForUnavailableWork`, `noNoticeFromHiddenPeriod`, `deletionIsTerminal` | `hidden_then_public_then_deleted`, `never_public`, `moderation_removed`. NC `mutatedRemovedStep`, `mutatedNoticeStep` | **Pure core #157 + `ADMIN-MODERATION-20261111`:** bài đang công khai chuyển riêng tư → `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn” + bình luận, `HiddenReadOnly`); chưa từng công khai hoặc admin gỡ → `Unavailable`; xóa từ trang ẩn để lại tombstone (đóng O-05); `should_notify_author`. Replay 41/41 bước + 2 NC. **#159:** loader đọc và lưu `hidden`, `review_withdrawn`, `ever_public`, `public_epoch`; trang sau kiểm duyệt (`O-17@r2`) có ở API/SSR/Web ([moderation-runtime](moderation-runtime.md)). **Gap:** chưa có route/SSR cho trang ẩn nên `set-private` vẫn trả không tìm thấy |
+| PUB-05, PUB-07, COM-11 | `noExceptionForUnavailableWork`, `noNoticeFromHiddenPeriod`, `deletionIsTerminal` | `hidden_then_public_then_deleted`, `never_public`, `moderation_removed`. NC `mutatedRemovedStep`, `mutatedNoticeStep` | **Pure core #157 + `ADMIN-MODERATION-20261111`:** bài đang công khai chuyển riêng tư → `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn” + bình luận, `HiddenReadOnly`); chưa từng công khai hoặc admin gỡ → `Unavailable`; xóa từ trang ẩn để lại tombstone (đóng O-05); `should_notify_author`. Replay 53/53 bước + 3 NC (thêm `ReviewWithdrawn`). **#159:** loader đọc và lưu `hidden`, `review_withdrawn`, `ever_public`, `public_epoch`; trang sau kiểm duyệt (`O-17@r2`) có ở API/SSR/Web ([moderation-runtime](moderation-runtime.md)). **Sau #170:** reader hidden API/SSR/Web `200` + `noindex` + `no-store`, chặn ghi mới nhưng giữ đọc/tự gỡ; tombstone vẫn chưa có runtime |
 | PUB-05 (không xóa bình luận theo bài; `O-03@r2` `PRODUCT_CONFIRMED`) | `workChangesKeepComments`, `noNewTextOffPublic` | (9) `tombstone_read_only`; (12) người viết gỡ bình luận của mình | **Pure core #157 + #165 (`O-03@r2` đã `PRODUCT_CONFIRMED` ở mức sản phẩm):** `check_comment_submission` từ chối `TombstoneReadOnly`, `check_own_comment_removal` cho phép người viết tự gỡ trên `AuthorTombstone`. Hàng bình luận không bị xóa. Runtime route/HTTP cho tombstone chưa có |
 
 ### 1.3. Bộ sưu tập (M2)
@@ -90,13 +91,13 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 
 | Yêu cầu | Invariant (`governance.qnt`) | Scenario / negative control | Implementation và gap |
 | --- | --- | --- | --- |
-| MOD-09, MOD-11 | `conclusionNeedsLiveAuthority` | `grants_and_claims` (grant/thu hồi/nhóm/hạn/tự né). NC `mutatedAuthorityStep` | **Pure core:** `ModerationDirectory`, `VerifiedAuthority`, `AdminSeat`; replay + `governance_tests`. Chưa có bảng grant/nhóm, kế thừa `moderator_grants`, CLI/API |
-| MOD-12 | `claimNeverStolen` | `grants_and_claims` (tranh ca `stale_case`, `basis_changed`, `authority_lost`). NC `mutatedClaimStep` | **Pure core:** `ReviewCase` (fence `CaseVersion` + phiên bản quyết định). Chưa có bảng ca/ghi chú |
-| MOD-13 | (trong `governanceSafe`) | `intervene`; ẩn/khôi phục bình luận | **Pure core:** `apply_human_decision`, `discussion::hide`. Chưa có API |
-| MOD-10, O-15 | `oneAppealPerDecision` | `appeals` (`appeal_replayed`, `upheld`, `reversed`, `final_decision`, đóng khi riêng tư). NC `mutatedAppealStep` | **Pure core:** `AppealBook`, `apply_appeal_conclusion`; `Notice::NotSent`. Chưa có bảng hay kênh thông báo |
-| MOD-14 | `pausedAiWritesNothing` | `automation_and_late_results` (`paused`, `rerouted`, `automation_paused`). NC `mutatedPauseStep` | **Pure core:** `Automation`, `reroute_to_humans`, `JobState::Rerouted`. Runtime vẫn mặc định `Enabled` |
+| MOD-09, MOD-11 | `conclusionNeedsLiveAuthority` | `grants_and_claims` (grant/thu hồi/nhóm/hạn/tự né). NC `mutatedAuthorityStep` | **Pure core:** `ModerationDirectory`, `VerifiedAuthority`, `AdminSeat`; replay + `governance_tests`. Đã có bảng grant/nhóm, kế thừa grant comments cũ, CLI ghế admin + API; UI quản lý grant/nhóm chưa có |
+| MOD-12 | `claimNeverStolen` | `grants_and_claims` (tranh ca `stale_case`, `basis_changed`, `authority_lost`). NC `mutatedClaimStep` | **Pure core:** `ReviewCase` (fence `CaseVersion` + phiên bản quyết định). Đã có bảng ca/ghi chú, CAS HTTP và Web cho tác phẩm; ca bình luận chưa có |
+| MOD-13 | (trong `governanceSafe`) | `intervene`; ẩn/khôi phục bình luận | **Core:** `apply_human_decision`, `discussion::hide`. Tác phẩm có API mở ca can thiệp/kết luận; ẩn/khôi phục bình luận theo governance mới chưa nối runtime |
+| MOD-10, O-15 | `oneAppealPerDecision` | `appeals` (`appeal_replayed`, `upheld`, `reversed`, `final_decision`, đóng khi riêng tư). NC `mutatedAppealStep` | **Pure core:** `AppealBook`, `apply_appeal_conclusion`; `Notice::NotSent`. Đã có `work_appeals`, API và Web tác giả/admin; kênh thông báo chưa có |
+| MOD-14 | `pausedAiWritesNothing` | `automation_and_late_results` (`paused`, `rerouted`, `automation_paused`). NC `mutatedPauseStep` | **Pure core:** `Automation`, `reroute_to_humans`, `JobState::Rerouted`. Runtime đọc chế độ trong commit claim/apply/request-public; dừng chuyển việc sang người |
 | MOD-15 | `readsAreAuthorized` | `investigation` (`read_audited`, `never_public`, `expired`, `condition_lapsed`). NC `mutatedReadStep` | **Pure core:** `Investigation` (audit trước snapshot). Chưa có bảng hồ sơ/audit |
-| PUB-06 | (M1 `policy_rereview`) | `make_private` → `withdrawn`; công khai lại theo policy | **Pure core:** `decide_author_with`, `JobState::Withdrawn`, `DecisionBy::PolicyRereview`. SQL chưa ghi `withdrawn` |
+| PUB-06 | (M1 `policy_rereview`) | `make_private` → `withdrawn`; công khai lại theo policy | **Pure core:** `decide_author_with`, `JobState::Withdrawn`, `DecisionBy::PolicyRereview`. SQL ghi `withdrawn`; riêng tư đóng ca/phản đối |
 
 ### 1.7. Không có model
 
@@ -168,7 +169,7 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 
 ## 4. Gap kiểm thử và triển khai còn lại (hiện trạng nhánh `develop`)
 
-- **Model & Rust replay:** M1 (64/64 bước), M3 (41/41 bước) và M4 quản trị (105/105 bước) ở
+- **Model & Rust replay:** M1 (64/64 bước), M3 (53/53 bước) và M4 quản trị (105/105 bước) ở
   `behavior/publication` replay 100% qua pure core cùng 24 bước `evaluator-vectors.json` qua
   `ScriptedEvaluator` (`#150`, `#151`, `#157`, `ADMIN-MODERATION-20261111`; xem
   [publication-core](publication-core.md) và [moderation-core](moderation-core.md)). Ba model còn lại
@@ -177,12 +178,13 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 - **Persistence & HTTP API:** `#158` ([publication-runtime](publication-runtime.md)) đã có PostgreSQL
   và HTTP API v1 cho lệnh tác giả (`snapshots`, `request-public`, `set-private`, `state`) kèm 9 test
   PostgreSQL thật cho khóa/race tác giả; `#152` đã có backend native username/mật khẩu trong Identity +
-  App, gồm thêm mật khẩu trên cùng tài khoản email-code. **Chưa có** persistence/API cho: worker tiêu thụ `work_evaluation_jobs`, kết quả evaluator/admin
-  override, xóa bài/tombstone (`PUB-04/05`), sửa bình luận (`COM-10`), bộ sưu tập (`COL`), hashtag
-  (`HTG`), xếp hạng (`RANK/TOP`), quản trị kiểm duyệt (grant, ca, phản đối, dừng tự động, điều tra:
-  `MOD-10..15`) và trang ẩn (`hidden`/`ever_public`/`public_epoch`, PUB-07).
-- **UI & trình duyệt:** Chưa có Web/CMP UI cho chọn audience/xuất bản, trang tombstone, sửa bình luận,
-  bộ sưu tập, hashtag, Đề xuất/Top 100, phản đối hay form đăng nhập và thêm username/mật khẩu (policy
+  App, gồm thêm mật khẩu trên cùng tài khoản email-code. [Moderation runtime](moderation-runtime.md)
+  có worker, quyết định/lịch sử, grant/nhóm, ca tác phẩm, phản đối và trang ẩn. **Chưa có** runtime
+  xóa bài/tombstone (`PUB-04/05`), sửa bình luận (`COM-10`), bộ sưu tập (`COL`), hashtag (`HTG`),
+  xếp hạng (`RANK/TOP`), điều tra riêng và ca bình luận theo governance mới.
+- **UI & trình duyệt:** Web đã có ca tác phẩm, phản đối, chế độ tự động và trạng thái bản gửi.
+  Chưa có Web/CMP UI cho chọn audience/xuất bản, trang tombstone, sửa bình luận,
+  bộ sưu tập, hashtag, Đề xuất/Top 100 hay form đăng nhập và thêm username/mật khẩu (policy
   mật khẩu theo `O-12@r2` đã có ở backend: 10–128 ký tự sau NFKC).
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
   kênh thông báo quản trị viên.

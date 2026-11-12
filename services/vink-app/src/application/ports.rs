@@ -181,6 +181,9 @@ pub trait PublicationStore: Send + Sync {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReaderWorkFacts {
+    Hidden {
+        work_id: WorkId,
+    },
     Published(PublicationFacts),
     ReviewWithdrawn {
         work_id: WorkId,

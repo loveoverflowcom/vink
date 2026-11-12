@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use super::postgres::{classify, integrity};
 use crate::application::ports::StoreError;
-use crate::domain::ids::{CaseId, EvaluationId, PrincipalId, RevisionId, WorkId};
+use crate::domain::ids::{AppealId, CaseId, EvaluationId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::authority::{AuthorityBasis, ModerationDirectory};
 use crate::domain::moderation::automation::AutomationMode;
 use crate::domain::moderation::case::{CaseOrigin, CaseState, CaseVerdict, ReviewCase};
@@ -116,7 +116,7 @@ pub(crate) async fn apply_pointer_effect(
             )
             .bind(p.revision.as_uuid())
             .bind(work.as_uuid())
-            .fetch_optional(&mut *conn)
+            .fetch_one(&mut *conn)
             .await
             .map_err(classify)?;
             query(
@@ -175,6 +175,7 @@ const fn cause_str(cause: NeedsAdminCause) -> &'static str {
 /// Where a decision came from, for the history row.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct DecisionSource {
+    pub appeal: Option<AppealId>,
     pub evaluation: Option<EvaluationId>,
     pub case: Option<CaseId>,
 }
@@ -287,9 +288,9 @@ pub(crate) async fn write_decision(
         "INSERT INTO work_revision_decision_history (
              id, work_id, revision_id, decision_version, moderation, policy_version,
              provenance_kind, policy_reason_code, needs_admin_cause, actor_id,
-             moderator_grant_id, reason, evaluation_id, case_id, created_at
+             moderator_grant_id, reason, evaluation_id, case_id, appeal_id, created_at
          )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now())
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
          ON CONFLICT (work_id, revision_id, decision_version) DO NOTHING",
     )
     .bind(Uuid::now_v7())
@@ -306,6 +307,7 @@ pub(crate) async fn write_decision(
     .bind(reason.as_deref())
     .bind(source.evaluation.map(|e| e.as_uuid()))
     .bind(source.case.map(|c| c.as_uuid()))
+    .bind(source.appeal.map(|a| a.as_uuid()))
     .execute(&mut *conn)
     .await
     .map_err(classify)?;

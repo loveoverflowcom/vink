@@ -117,14 +117,12 @@ Tên kiểu, mã từ chối và baseline kỹ thuật là `DESIGN_PROPOSED`; lu
 | Replay | `domain::moderation::governance_replay` (2 test, trong `REPLAYS` của `verify discussion`): 105/105 bước qua production, chiếu lại toàn bộ state sau mỗi bước; 5 counterexample bị production từ chối |
 | Unit test | `domain::moderation::governance_tests`: restore lỗi (kể cả `InvalidInheritance`), phạm vi/hạn/thu hồi/nhóm/tạm khóa/tự né, `resolve_preferring`, audit và `Unchanged`/`UnknownGrant`/`UnknownGroup`/`DuplicateGrant`, `AdminSeat` cũ bị kiểm lại; `InternalNote` rỗng/dài/ký tự điều khiển, `ReviewCase::restore`, tranh ca, `take_over` không lý do, `revalidate` (giữ/đổi cơ sở/mất quyền), `conclude` (`WrongSubject`, `StaleDecision`, `AppealOpen`, thiếu lý do), `close` lặp; mọi từ chối của `AppealBook`; `Automation` (`Stale`, `Unchanged`, `ReasonRequired`, `VersionExhausted`); `Investigation` (`NeverPublic`, `Conflict`, `Expired`, `WrongRevision`, `WrongWork`, `NotInvestigator`, `ConditionLapsed` sau khi công khai lại, `close` lặp); `discussion::hide::tests` |
 
-### Còn `NOT_IMPLEMENTED`
+### Runtime hiện tại và phần còn thiếu
 
-- Migration/store: grant + nhóm (kế thừa `moderator_grants` thành grant `Comments` toàn Vink), ca + ghi
-  chú, hồ sơ phản đối, chế độ tự động có phiên bản, hồ sơ điều tra + audit đọc (commit trước khi trả
-  snapshot), bản ghi ẩn bình luận; provenance `moderator`/`policy_rereview` và trạng thái job
-  `withdrawn`/`rerouted` trong SQL.
-- Runtime: `EvaluatorCapability::evaluator()` và `decide_author` vẫn mặc định `Enabled`; worker chưa đọc
-  chế độ tự động từ store; chưa có CLI/API admin cho grant, ca, phản đối, dừng/bật, điều tra.
-- Comment evaluator consumer (`#154`): M4 dùng shared validator + lifecycle cho bình luận.
-- O-17 (URL cũ sau khi moderator bác bản đang đăng) chỉ là đề xuất tối thiểu; O-18, O-19 còn `OPEN`.
-- Design/UI, báo cáo độc giả, quản lý policy, khóa tài khoản: đợt sau.
+[Moderation runtime](moderation-runtime.md) sở hữu persistence/API cho grant, nhóm, ca tác phẩm,
+phản đối, chế độ tự động, lịch sử quyết định và consumer evaluation (tắt mặc định, chỉ kịch bản
+local/test), cùng Web duyệt tác phẩm/phản đối. `O-17@r2` đã `PRODUCT_CONFIRMED` và có reader.
+
+Còn `NOT_IMPLEMENTED`: điều tra riêng/audit đọc snapshot, ca/ẩn bình luận theo governance mới,
+comment evaluator consumer (`#154`), provider thật, UI grant/nhóm và kênh thông báo. O-18 (hạn
+grant mặc định), O-19 (danh sách sự kiện thông báo) vẫn `OPEN`; triển khai không tự chốt chúng.

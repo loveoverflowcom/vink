@@ -92,6 +92,9 @@ pub struct Publication {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ReaderResponse {
+    Hidden {
+        work_id: String,
+    },
     Published(Publication),
     ReviewWithdrawn {
         work_id: String,
@@ -720,6 +723,8 @@ pub struct PublicPointerView {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AuthorRevisionView {
+    pub can_appeal: bool,
+    pub decision_reason: Option<String>,
     pub revision_id: String,
     pub title: String,
     pub content_hash: String,
@@ -741,6 +746,7 @@ pub struct OpenTicketView {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CaseSummaryDto {
+    pub title: Option<String>,
     pub id: String,
     pub subject_kind: String,
     pub work_id: String,
@@ -765,6 +771,7 @@ pub struct NoteRecordDto {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CaseDetailDto {
+    pub viewer_is_admin: bool,
     pub id: String,
     pub subject_kind: String,
     pub work_id: String,
@@ -987,6 +994,9 @@ impl From<crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Published(public) => {
                 Self::Published(Publication::from(&public))
             }
+            crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
+                work_id: work_id.to_string(),
+            },
             crate::application::ReaderWork::ReviewWithdrawn {
                 work_id,
                 author_display_name,
@@ -1004,6 +1014,9 @@ impl From<&crate::application::ReaderWork> for ReaderResponse {
             crate::application::ReaderWork::Published(public) => {
                 Self::Published(Publication::from(public))
             }
+            crate::application::ReaderWork::Hidden { work_id } => Self::Hidden {
+                work_id: work_id.to_string(),
+            },
             crate::application::ReaderWork::ReviewWithdrawn {
                 work_id,
                 author_display_name,
@@ -1628,6 +1641,10 @@ mod tests {
             next: None,
         };
         assert_matches("works.list.json", &WorkList::from(&page));
+        let hidden = crate::application::ReaderWork::Hidden {
+            work_id: WorkId::parse("0192f400-0000-7000-8000-000000000010").unwrap(),
+        };
+        assert_matches("reader.hidden.json", &ReaderResponse::from(hidden));
     }
 
     #[test]

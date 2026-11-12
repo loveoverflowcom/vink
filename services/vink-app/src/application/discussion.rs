@@ -78,6 +78,7 @@ pub enum SubmitOutcome {
     },
     KeyReused,
     WorkNotFound,
+    HiddenReadOnly,
     CommentsClosed,
     TargetUnavailable,
 }
@@ -434,6 +435,8 @@ pub enum DiscussionError {
     Recused,
     #[error("comments are closed for this work")]
     CommentsClosed,
+    #[error("hidden work is read-only")]
+    HiddenReadOnly,
     #[error("reply target is not available")]
     TargetUnavailable,
     #[error("command key was already used for a different comment")]
@@ -607,6 +610,7 @@ where
                 replayed: true,
             }),
             SubmitOutcome::KeyReused => Err(DiscussionError::KeyReused),
+            SubmitOutcome::HiddenReadOnly => Err(DiscussionError::HiddenReadOnly),
             SubmitOutcome::WorkNotFound => Err(DiscussionError::NotFound),
             SubmitOutcome::CommentsClosed => Err(DiscussionError::CommentsClosed),
             SubmitOutcome::TargetUnavailable => Err(DiscussionError::TargetUnavailable),

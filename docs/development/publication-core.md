@@ -170,7 +170,7 @@ planning kết hợp với `domain::discussion::visibility`.
 **Phạm vi:** `ADMIN-MODERATION-20261111` cho PUB-05 (sửa), PUB-06, PUB-07, COM-11
 ([DecisionDelta §7](../architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt),
 [đặc tả §6](../architecture/publication-moderation.md#6-xóa-riêng-tư-gỡ-trang-ẩn-và-tombstone)). Chỉ có
-core thuần, application planning, model và replay; persistence mới dựng tập con bảo thủ (bên dưới).
+core thuần, application planning, model và replay ở tài liệu này; phạm vi runtime nằm bên dưới.
 
 ### Core
 
@@ -198,8 +198,8 @@ core thuần, application planning, model và replay; persistence mới dựng t
 
 ### Bằng chứng
 
-M1 64/64 bước (`policy_rereview` mới, NC `pointerMovesLawfully`) và M3 41/41 bước (4 scenario, NC
-`noExceptionForUnavailableWork` và `noNoticeFromHiddenPeriod`) replay qua production; xem
+M1 64/64 bước (`policy_rereview` mới, NC `pointerMovesLawfully`) và M3 53/53 bước (5 scenario, gồm `ReviewWithdrawn`; NC
+`noExceptionForUnavailableWork`, `noNoticeFromHiddenPeriod`, `bodyOnlyWhilePublic`) replay qua production; xem
 [behavior/publication](../../services/vink-app/behavior/publication/README.md). Unit test trong
 `domain::publication::tests` và `application::publication::tests`.
 
@@ -207,5 +207,7 @@ M1 64/64 bước (`policy_rereview` mới, NC `pointerMovesLawfully`) và M3 41/
 
 #159 ([moderation-runtime](moderation-runtime.md)) thêm migration cho `hidden_*`, `review_withdrawn_*`,
 `ever_public`, `public_epoch`, policy theo từng quyết định và trạng thái job `withdrawn`/`rerouted`;
-`load_paired_state` đọc đủ các fact này và `set-private` rút job/đóng ca trong cùng commit. Còn lại:
-route/SSR cho trang ẩn (`200` + `noindex`) và chặn ghi ở API, nên `set-private` vẫn trả không tìm thấy.
+`load_paired_state` đọc đủ các fact này. Phần hoàn thiện sau #170 phục vụ trang ẩn qua reader
+API/SSR/Web (`200`, `noindex`, `no-store`), chặn bình luận mới và giữ đọc/tự gỡ bình luận.
+`set-private` rút job, đóng ca và phản đối trong cùng commit. Xóa bài/tombstone và admin remove
+vẫn chưa có route/runtime; không suy rộng bằng chứng reader thay thế sang các đường này.

@@ -56,4 +56,6 @@ Lần chạy 11/11/2026 trên nhánh `codex/publication-persistence-api` (Postgr
 - `cargo xtask verify quick`, `cargo xtask verify discussion`, `cargo xtask verify postgres`, `cargo xtask verify kani` — kết quả ghi trong PR #161.
 - `services/vink-app/tests/postgres/publication.rs` (9 test): vòng đời snapshot, ticket, r1/r2, riêng tư/ETag `404`, khóa `publications` FOR SHARE, legacy seed, nâng cấp migration thật, backout, retry đồng thời cùng key (thất bại với adapter đọc receipt trước khóa).
 
-Chưa có: UI/browser/CMP consumer, worker evaluator/admin, xóa tác phẩm, replay của request-public trả lại `ticket_id` (đọc qua `GET …/publication/state`).
+[Moderation runtime](moderation-runtime.md) nối worker/người duyệt, Web trạng thái/phản đối và reader
+ẩn/bị gỡ. Còn thiếu: UI chọn audience/gửi duyệt, CMP, xóa tác phẩm; replay của request-public
+không trả lại `ticket_id` (đọc qua `GET …/publication/state`).

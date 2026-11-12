@@ -186,14 +186,18 @@ const models = [
       ['hidden_then_public_then_deleted', 'hiddenStep', 16],
       ['never_public', 'neverPublicStep', 4],
       ['moderation_removed', 'removedStep', 7],
+      ['review_withdrawn_then_resubmitted', 'withdrawnStep', 12],
     ],
     check(all) {
-      const [deleted, hidden, never, removed] = all;
+      const [deleted, hidden, never, removed, withdrawn] = all;
       reached(all.flat(), ['published', 'created', 'reviewed', 'deleted_with_tombstone', 'tombstone_read_only',
         'hidden_read_only', 'comment_unavailable', 'comment_removed', 'work_unavailable', 'made_private',
         'unchanged', 'deleted', 'removed_by_moderation', 'duplicate'], 'tombstone');
       // A: the old URL is a tombstone without body, preview or listing; the approved comment
       // stays, a rejected or pending one is only its writer's.
+      assert.deepEqual(at(withdrawn, 'review_withdrawn').state.views[0], { page: 'review_withdrawn', listed: false, snippet: false, comments: [1] });
+      assert.equal(at(withdrawn, 'waiting').state.views[0].page, 'review_withdrawn');
+      assert.equal(withdrawn.at(-1).state.views[0].page, 'not_found');
       const tomb = at(deleted, 'deleted_with_tombstone').state.views;
       assert.deepEqual(tomb[0], { page: 'tombstone', listed: false, snippet: false, comments: [1] });
       assert.deepEqual([tomb[2].comments, tomb[3].comments], [[1, 3], [1, 2]]);
@@ -217,6 +221,10 @@ const models = [
       }
     },
     mutants: [
+      ['tombstone-withdrawn-body-counterexample.json', 'mutatedWithdrawnStep', 4, 'bodyOnlyWhilePublic', steps => {
+        assert.equal(steps.at(-1).state.views[0].page, 'body');
+        assert.equal(steps.at(-1).state.status, 'review_withdrawn');
+      }],
       ['tombstone-removed-as-hidden-counterexample.json', 'mutatedRemovedStep', 4, 'noExceptionForUnavailableWork', steps => {
         // An admin removed the work, yet a guest reads its comment through the old link.
         const last = steps.at(-1);

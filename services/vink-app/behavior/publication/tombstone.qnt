@@ -27,6 +27,8 @@ module tombstone {
   pure val publish = cmd("publish", 1, 0, "none")
   pure val makePrivate = cmd("make_private", 1, 0, "none")
   pure val authorDelete = cmd("author_delete", 1, 0, "none")
+  pure val rejectPublic = cmd("reject_public", 9, 0, "none")
+  pure val submitRevision = cmd("submit_revision", 1, 0, "none")
   pure val moderationRemove = cmd("moderation_remove", 9, 0, "none")
   pure def submit(actor: int, id: int): Command = cmd("submit", actor, id, "none")
   pure def review(id: int, value: str): Command = cmd("review", 9, id, value)
@@ -47,8 +49,8 @@ module tombstone {
   var cursor: int
 
   // The read rule. `pages` is the mutation switch: the statuses whose old URL keeps a page and
-  // its comment thread, with the page kind. The lawful rule has exactly these two.
-  pure val lawfulPages = Map("author_deleted" -> "tombstone", "hidden" -> "hidden")
+  // its comment thread, with the page kind. The lawful rule has exactly these three.
+  pure val lawfulPages = Map("author_deleted" -> "tombstone", "hidden" -> "hidden", "review_withdrawn" -> "review_withdrawn")
   pure def project(st: str, cs: int -> Comment, pages: str -> str): int -> View =
     viewers.mapBy(v => {
       val thread = st == "public" or pages.keys().contains(st)
@@ -81,7 +83,7 @@ module tombstone {
     commitWith(c, result, st, cs, pages, notified)
 
   pure val terminal = Set("author_deleted", "deleted_hidden", "moderation_removed")
-  pure val readableThread = Set("public", "hidden", "author_deleted")
+  pure val readableThread = Set("public", "hidden", "author_deleted", "review_withdrawn")
 
   // `backfill` is the notification mutation switch: republishing tells the author about every
   // approved comment it has not told them about, including those approved while hidden.
@@ -89,23 +91,30 @@ module tombstone {
     val refuse = if (terminal.contains(status)) "work_unavailable" else "unchanged"
     val approvedNow = comments.keys().filter(id => comments.get(id).review == "approved")
     if (c.op == "publish")
-      if (status == "unpublished" or status == "hidden")
+      if (status == "unpublished" or status == "hidden" or status == "review_withdrawn")
         commitWith(c, "published", "public", comments, pages,
           if (backfill) notified.union(approvedNow) else notified)
+      else commit(c, refuse, status, comments, pages)
+    else if (c.op == "reject_public")
+      if (status == "public") commit(c, "review_withdrawn", "review_withdrawn", comments, pages)
+      else commit(c, refuse, status, comments, pages)
+    else if (c.op == "submit_revision")
+      if (status == "review_withdrawn") commit(c, "waiting", status, comments, pages)
       else commit(c, refuse, status, comments, pages)
     // Only a public work becomes the hidden page; a never-public work stays not found.
     else if (c.op == "make_private")
       if (status == "public") commit(c, "made_private", "hidden", comments, pages)
+      else if (status == "review_withdrawn") commit(c, "made_private", "unpublished", comments, pages)
       else commit(c, refuse, status, comments, pages)
     // Deleting a public or hidden work leaves the tombstone; deleting a never-public one leaves
     // nothing, so deletion never widens what a work shows.
     else if (c.op == "author_delete")
       if (status == "public" or status == "hidden")
         commit(c, "deleted_with_tombstone", "author_deleted", comments, pages)
-      else if (status == "unpublished") commit(c, "deleted", "deleted_hidden", comments, pages)
+      else if (status == "unpublished" or status == "review_withdrawn") commit(c, "deleted", "deleted_hidden", comments, pages)
       else commit(c, refuse, status, comments, pages)
     else if (c.op == "moderation_remove")
-      if (status == "public" or status == "hidden")
+      if (status == "public" or status == "hidden" or status == "review_withdrawn")
         commit(c, "removed_by_moderation", "moderation_removed", comments, pages)
       else commit(c, refuse, status, comments, pages)
     // New text needs a public work. The tombstone and the hidden page take no new comment.
@@ -113,6 +122,7 @@ module tombstone {
       if (comments.keys().contains(c.id)) commit(c, "duplicate", status, comments, pages)
       else if (status == "author_deleted") commit(c, "tombstone_read_only", status, comments, pages)
       else if (status == "hidden") commit(c, "hidden_read_only", status, comments, pages)
+      else if (status == "review_withdrawn") commit(c, "review_withdrawn_read_only", status, comments, pages)
       else if (status != "public") commit(c, "work_unavailable", status, comments, pages)
       else commit(c, "created", status,
         comments.put(c.id, { writer: c.actor, review: "pending", removed: false }), pages)
@@ -142,7 +152,7 @@ module tombstone {
     nondet id = ids.oneOf()
     nondet verdict = Set("approved", "rejected").oneOf()
     any {
-      dispatch(publish), dispatch(makePrivate), dispatch(authorDelete), dispatch(moderationRemove),
+      dispatch(publish), dispatch(rejectPublic), dispatch(submitRevision), dispatch(makePrivate), dispatch(authorDelete), dispatch(moderationRemove),
       dispatch(submit(actor, id)), dispatch(review(id, verdict)), dispatch(removeOwn(actor, id)),
     }
   }
@@ -202,6 +212,20 @@ module tombstone {
   )
   action removedStep = all { cursor < removedScenario.length(), dispatch(removedScenario.nth(cursor)) }
 
+  // O-17@r2: rejection keeps eligible discussion, resubmission keeps the notice,
+  // an admitted new revision restores the body; private closes the rejected URL entirely.
+  pure val withdrawnScenario = List(
+    publish, submit(2, 1), review(1, "approved"), submit(3, 2),
+    rejectPublic, submit(2, 3), review(2, "approved"), removeOwn(2, 1),
+    submitRevision, publish, rejectPublic, makePrivate,
+  )
+  action withdrawnStep = all { cursor < withdrawnScenario.length(), dispatch(withdrawnScenario.nth(cursor)) }
+  pure val withdrawnLeak = List(publish, submit(2, 1), review(1, "approved"), rejectPublic)
+  action mutatedWithdrawnStep = all {
+    cursor < withdrawnLeak.length(),
+    dispatchWith(withdrawnLeak.nth(cursor), lawfulPages.set("review_withdrawn", "body"), false),
+  }
+
   // Negative control 1: treating an admin removal like the hidden page lets an old link read the
   // comments of a removed work.
   pure val removedLeak = List(publish, submit(2, 1), review(1, "approved"), moderationRemove)
@@ -233,14 +257,14 @@ module tombstone {
   val noExceptionForUnavailableWork = not(unavailable.contains(status)) or viewers.forall(v =>
     views.get(v) == { page: "not_found", listed: false, snippet: false, comments: Set() })
   // The replacement pages keep exactly the comments that were lawful to read, not every comment.
-  val pagesKeepApprovedComments = not(Set("author_deleted", "hidden").contains(status)) or
+  val pagesKeepApprovedComments = not(Set("author_deleted", "hidden", "review_withdrawn").contains(status)) or
     viewers.forall(v => approvedPresent.subseteq(views.get(v).comments))
   val othersSeeOnlyApproved = viewers.forall(v => views.get(v).comments.forall(id =>
     not(comments.get(id).removed) and
     (comments.get(id).review == "approved" or comments.get(id).writer == v)))
   // Deleting, hiding or removing the work never deletes or edits anybody's comment.
   val workChangesKeepComments =
-    not(Set("publish", "make_private", "author_delete", "moderation_remove").contains(command.op)) or
+    not(Set("publish", "reject_public", "submit_revision", "make_private", "author_delete", "moderation_remove").contains(command.op)) or
     comments == previousComments
   val noNewTextOffPublic = comments.keys() == previousComments.keys() or previousStatus == "public"
   val deletionIsTerminal = not(terminal.contains(previousStatus)) or status == previousStatus
@@ -250,7 +274,9 @@ module tombstone {
     (command.op == "review" and previousStatus == "public" and command.value == "approved" and
       notified.exclude(previousNotified) == Set(command.id))
   val finiteDomain = comments.keys().subseteq(ids)
-  val tombstoneSafe = bodyOnlyWhilePublic and tombstoneOnlyAfterAuthorDeletesPublicWork and
+  val withdrawnPageOnlyAfterRejection = viewers.forall(v =>
+    (views.get(v).page == "review_withdrawn") == (status == "review_withdrawn"))
+  val tombstoneSafe = withdrawnPageOnlyAfterRejection and bodyOnlyWhilePublic and tombstoneOnlyAfterAuthorDeletesPublicWork and
     hiddenPageOnlyForAPublicWorkMadePrivate and noExceptionForUnavailableWork and
     pagesKeepApprovedComments and othersSeeOnlyApproved and workChangesKeepComments and
     noNewTextOffPublic and deletionIsTerminal and noNoticeFromHiddenPeriod and finiteDomain

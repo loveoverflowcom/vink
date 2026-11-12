@@ -1,5 +1,6 @@
 mod desk;
 mod discovery;
+pub(crate) mod moderation;
 pub use discovery::{Home, TagDetail};
 mod discussion;
 mod endorsement;
@@ -85,6 +86,12 @@ pub fn Reader() -> impl IntoView {
                             let wid = publication.work_id.clone();
                             view! { <PublicationView publication reader_work_id=wid /> }.into_any()
                         }
+                        Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
+                            status.set(200);
+                            status.set_no_store();
+                            crate::public_reads::invalidate_withdrawn(&work_id);
+                            view! { <ReplacementView work_id author_name=None return_href=return_href.get_untracked() /> }.into_any()
+                        }
                         Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
                             work_id,
                             author_name,
@@ -93,9 +100,9 @@ pub fn Reader() -> impl IntoView {
                             status.set_no_store();
                             crate::public_reads::invalidate_withdrawn(&work_id);
                             view! {
-                                <ReviewWithdrawnView
+                                <ReplacementView
                                     work_id=work_id
-                                    author_name=author_name
+                                    author_name=Some(author_name)
                                     return_href=return_href.get_untracked()
                                 />
                             }
@@ -134,7 +141,7 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
             .get_untracked()
             .href(Some(&shown.with_untracked(|p| p.work_id.clone())))
     };
-    let withdrawn_state = RwSignal::new(None::<(String, String)>);
+    let withdrawn_state = RwSignal::new(None::<(String, Option<String>)>);
     #[cfg(feature = "hydrate")]
     {
         let id = reader_work_id.clone();
@@ -142,13 +149,19 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
             if removed.get() {
                 let id = id.clone();
                 leptos::task::spawn_local(async move {
-                    if let Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
-                        work_id,
-                        author_name,
-                    }) = crate::api::fetch_reader(&id).await
-                    {
+                    let replacement = match crate::api::fetch_reader(&id).await {
+                        Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
+                            work_id,
+                            author_name,
+                        }) => Some((work_id, Some(author_name))),
+                        Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
+                            Some((work_id, None))
+                        }
+                        _ => None,
+                    };
+                    if let Some((work_id, author_name)) = replacement {
                         crate::public_reads::invalidate_withdrawn(&work_id);
-                        withdrawn_state.set(Some((work_id, author_name)));
+                        withdrawn_state.try_set(Some((work_id, author_name)));
                     }
                 });
             }
@@ -159,7 +172,7 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
     move || {
         if let Some((work_id, author_name)) = withdrawn_state.get() {
             view! {
-                <ReviewWithdrawnView
+                <ReplacementView
                     work_id=work_id
                     author_name=author_name
                     return_href=not_found_href()
@@ -179,19 +192,35 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
 /// author's display name, the fixed line and the eligible discussion; never body, title, tags,
 /// description or canonical metadata of the removed revision.
 #[component]
-fn ReviewWithdrawnView(work_id: String, author_name: String, return_href: String) -> impl IntoView {
+fn ReplacementView(
+    work_id: String,
+    author_name: Option<String>,
+    return_href: String,
+) -> impl IntoView {
+    let hidden = author_name.is_none();
+    let notice = if hidden {
+        "Nội dung đã được ẩn"
+    } else {
+        "Bản này đã bị gỡ sau khi kiểm duyệt."
+    };
+    let state = if hidden { "hidden" } else { "review-withdrawn" };
+    let test_id = if hidden {
+        "reader-hidden"
+    } else {
+        "reader-review-withdrawn"
+    };
     view! {
-        <Title text="Bản này đã bị gỡ sau khi kiểm duyệt. — Vink" />
+        <Title text=format!("{notice} — Vink") />
         <Meta name="robots" content="noindex" />
-        <div id="reader" class="vk-reader-page" data-state="review-withdrawn">
+        <div id="reader" class="vk-reader-page" data-state=state>
             <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
                 <Icon name=IconName::ArrowBack /> "Khám phá"
             </vink_ui::Link>
-            <article id="reader-paper" class="vk-reader" data-testid="reader-review-withdrawn">
+            <article id="reader-paper" class="vk-reader" data-testid=test_id>
                 <header id="reader-header" class="vk-reader__header">
-                    <Text role=TypeRole::Caption tone=TextTone::Muted>{author_name}</Text>
+                    {author_name.map(|name| view! { <Text role=TypeRole::Caption tone=TextTone::Muted>{name}</Text> })}
                     <Heading level=HeadingLevel::H1 role=TypeRole::Title>
-                        "Bản này đã bị gỡ sau khi kiểm duyệt."
+                        {notice}
                     </Heading>
                 </header>
             </article>

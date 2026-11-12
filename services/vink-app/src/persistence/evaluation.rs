@@ -320,6 +320,7 @@ pub async fn finish_job(
         next_mod,
         revision,
         DecisionSource {
+            appeal: None,
             evaluation: Some(evaluation),
             case: None,
         },

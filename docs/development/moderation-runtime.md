@@ -1,8 +1,8 @@
-# Work moderation runtime — MOD-RUNTIME-01 (#159)
+# Work moderation runtime — MOD-RUNTIME-01 (#159 và phần hoàn thiện sau #170)
 
 **Phạm vi:** lưu quyết định kiểm duyệt tác phẩm, consumer đánh giá trong `vink-worker`, ghế admin,
 grant và nhóm, ca duyệt, dừng/bật tự động và trang ở URL cũ sau khi bản đang đăng bị bác
-(`O-17@r2`). Nguồn luật: MOD-01..15, PUB-05/06, INV-08 trong [PRD](../../prd/requirements.md),
+(`O-17@r2`), trang ẩn, phản đối quyết định và Web duyệt tác phẩm. Nguồn luật: MOD-01..15, PUB-05/06, INV-08 trong [PRD](../../prd/requirements.md),
 [đặc tả](../architecture/publication-moderation.md), [DecisionDelta](../architecture/product-decisions-20261110.md)
 và [registry quyết định](../../decisions/README.md).
 
@@ -13,8 +13,8 @@ Bốn chiều trạng thái:
 2. **Architecture decision:** không có ADR mới. Thứ tự khóa, lease và hàng ca duyệt dưới đây là
    thiết kế triển khai, không phải quyết định `Accepted`.
 3. **Implementation level:** `persistence-api` + `worker-provider` (chỉ evaluator kịch bản cho
-   local/test) + `web` cho trang ở URL cũ. Chưa có AI provider thật, UI quản trị, appeal, điều tra
-   riêng, ca bình luận hay trang “Nội dung đã được ẩn”.
+   local/test) + `web`: reader thay thế, hàng ca tác phẩm, phản đối và dừng/bật tự động. Chưa có AI
+   provider thật, điều tra riêng, ca bình luận hay UI quản lý grant/nhóm.
 4. **Verification evidence:** xem mục 7.
 
 ## 1. Lưu trữ (`20261117000000_work_moderation_runtime.sql`)
@@ -23,7 +23,7 @@ Bốn chiều trạng thái:
 | --- | --- |
 | `work_publications` | Thêm `hidden_*`, `review_withdrawn_*`, `ever_public`, `public_epoch`; backfill theo con trỏ cũ. |
 | `work_revision_moderation` | Mỗi quyết định giữ `policy_version`, provenance `moderator` (kèm `moderator_grant_id`) và `policy_rereview`. Gửi lại sau khi chuyển riêng tư giữ nguyên `decision_version` của core. |
-| `work_revision_decision_history` | Mỗi `decision_version` một dòng chỉ thêm: trạng thái, provenance, người quyết, grant, lý do, `evaluation_id` hoặc `case_id`. |
+| `work_revision_decision_history` | Mỗi `decision_version` một dòng chỉ thêm: trạng thái, provenance, người quyết, grant, lý do, `evaluation_id`, `case_id` hoặc `appeal_id`. |
 | `work_evaluation_jobs` | Thêm `leased`, `withdrawn`, `rerouted`, `quarantined`, `claim_generation`, `claimed_by`, lease, `available_at`, `attempts` / `max_attempts` (3), `scenario`, `last_error`. |
 | `moderation_admin_seats` / `_audit` | Ghế admin do CLI cấp. Chỉ thay đổi thật mới ghi audit. |
 | `moderation_groups`, `moderation_group_members`, `moderation_grants` | Grant `works`/`comments` cho người hoặc nhóm, toàn Vink hoặc một `WorkId`, có thể có hạn. Grant bình luận cũ trong `discussion_moderator_grants` được đọc như grant kế thừa. |
@@ -94,8 +94,12 @@ Còn căn cứ khác thì người nhận giữ ca, và kết luận ghi căn c�
 ## 5. Trang ở URL cũ (`O-17@r2`)
 
 - `GET /api/v1/works/{id}/publication` trả `404` ngay khi con trỏ bị rút, trước khi xét ETag.
-- `GET /api/v1/works/{id}/reader` trả bản đang đăng hoặc
-  `{"status":"review_withdrawn","work_id","author_name"}` với `no-store`.
+- `GET /api/v1/works/{id}/reader` trả bản đang đăng hoặc hai dạng thay thế với `no-store`:
+  `review_withdrawn` có `work_id`, `author_name`; `hidden` chỉ có `work_id`.
+- Chuyển bài đang công khai sang riêng tư phục vụ “Nội dung đã được ẩn”, HTTP 200 + `noindex`.
+  Không có tên tác giả, tiêu đề, thân bài hay thẻ. Bình luận đủ điều kiện vẫn đọc được, người viết
+  vẫn tự gỡ được; bình luận mới bị `409 hidden_read_only`. Công khai lại theo quyết định còn hiệu
+  lực thay trang ẩn bằng bản đã duyệt. Bài chưa từng công khai vẫn trả không tìm thấy.
 - Web/SSR: HTTP 200, `noindex`, `no-store`, tên tác giả, tiêu đề “Bản này đã bị gỡ sau khi kiểm
   duyệt.” và thảo luận hai tầng. Không có thân bài, tiêu đề, thẻ hay metadata của bản bị gỡ. Client
   xóa cache tab và thẻ Khám phá của tác phẩm.
@@ -106,17 +110,62 @@ Còn căn cứ khác thì người nhận giữ ca, và kết luận ghi căn c�
 - Chỉ quyết định bác (`Rejected`) mới tạo trang. Một kết quả chuyển người duyệt trên bản đang
   đăng chỉ rút con trỏ.
 
-## 6. Rollout
+## 6. Phản đối quyết định tác phẩm (MOD-10)
+
+Migration mới `20261118000000_work_appeals.sql` không sửa migration đã merge. `work_appeals`
+ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử quyết định tham chiếu
+`appeal_id`. Rollback chỉ cho phép khi chưa có hồ sơ; không xóa lịch sử đã phát sinh.
+
+- Tác giả gửi phản đối bản bị evaluator/moderator bác qua
+  `POST /api/v1/works/{work}/revisions/{revision}/appeals`, kèm `expected_decision_version`.
+  Gửi lặp hoặc đồng thời trả cùng hồ sơ. Quyết định admin là cuối cùng.
+- Tác giả đọc lịch sử bằng `GET /api/v1/works/{work}/appeals`. Admin đọc hàng chờ, snapshot đã gửi
+  và kết luận bằng `GET /api/v1/moderation/appeals`, `GET .../{id}`, `POST .../{id}/conclude`.
+  Mọi response là `no-store`; snapshot không vào HTML SSR. Admin tự né tác phẩm của mình.
+- Adapter gọi `AppealBook` và `apply_appeal_conclusion`, khóa tác phẩm cùng thứ tự ở mục 2,
+  fence standing/ghế admin/phiên bản quyết định trong commit. `uphold`/`reverse` tạo quyết định
+  admin mới và lịch sử; chỉ khôi phục bản công khai khi ý định hiện hành vẫn trỏ đúng revision.
+- Ca duyệt thường có phản đối đang mở trả `409 appeal_open`; admin dùng đường kết luận phản đối.
+  Chuyển riêng tư đóng phản đối cùng giao dịch, chặn snapshot và mọi kết luận muộn.
+- Không có kênh thông báo: `notice = not_sent`. UI nói rõ đã ghi nhận hồ sơ, chưa gửi thông báo.
+
+## 7. Web kiểm duyệt
+
+[LayoutSpec](../design/moderation-workspace.md) dùng các primitive và token hiện có:
+
+| Đường dẫn | Người dùng và chức năng |
+| --- | --- |
+| `/kiem-duyet` | Hàng ca trong phạm vi của người duyệt; admin thêm hàng phản đối và chế độ tự động. |
+| `/kiem-duyet/ca/{id}` | Snapshot đã gửi, trạng thái/version, nhận/trả/chuyển admin, ghi chú và kết luận có lý do. |
+| `/kiem-duyet/phan-doi/{id}` | Admin đọc snapshot, giữ nguyên hoặc đảo quyết định có lý do. |
+| `/ban-viet/{id}/kiem-duyet` | Tác giả xem trạng thái bản gửi/lý do, gửi phản đối và xem lịch sử. |
+
+Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
+không được hiển thị. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
+lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
+Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận, sửa policy hoặc chọn audience/xuất bản.
+
+## 8. Rollout
 
 Dừng tiến trình ghi cũ trước khi migrate, rồi chạy App và worker cùng phiên bản. Bật consumer khi
 có người duyệt. Khi không có evaluator, mọi lần gửi vào hàng chờ người. Cần theo dõi tuổi backlog
-`work_evaluation_jobs`, lease quá hạn, ca `queued` và job `quarantined`.
+`work_evaluation_jobs`, lease quá hạn, ca `queued`, phản đối `open` và job `quarantined`.
+CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; không còn treo sau khi
+đã in kết quả (nguyên nhân lane Web của merge #170 bị hủy sau timeout).
 
-## 7. Bằng chứng
+## 9. Bằng chứng và giới hạn
 
-`cargo xtask verify postgres` chạy `tests/postgres/work_moderation.rs` (luồng chính, trang ở URL
-cũ khi gửi lại, claim cũ/dừng giữa claim và commit, gửi khi đang dừng, thử lại với
-`EvaluationId` mới, ghi chú cũ, mất quyền khi kết luận, grant nhóm, tự né, bớt thành viên). Các
-test này cùng với chuỗi rollback/upgrade của #158. Unit test cấu hình worker nằm trong
-`evaluation_worker.rs`. Model Quint **chưa** có trạng thái `ReviewWithdrawn`: replay M3 không phủ
-trang này. Lane `web` chưa có smoke riêng cho trang bị gỡ.
+- `cargo xtask verify postgres`: `tests/postgres/work_moderation.rs` phủ claim cũ/dừng giữa claim
+  và commit, gửi khi dừng, retry, ca/grant/nhóm/tự né; thêm CLI admin có timeout, reader hidden,
+  ghi bình luận bị chặn/tự gỡ/công khai lại, phản đối gửi đồng thời, admin final, kết luận đồng
+  thời, phiên bản cũ, riêng tư và ý định đã chuyển sang bản mới. Chuỗi upgrade/backout dùng
+  migration thật; không phải model evidence.
+- `cargo xtask verify discussion`: M3 có `ReviewWithdrawn`, 53/53 bước qua pure production và
+  counterexample `mutatedWithdrawnStep` (không được để lộ body). M1 64 và M4 105 giữ nguyên.
+  Simulation có biên; Apalache `NOT_RUN`. M3 không mô hình hóa HTML hay tên tác giả.
+- `cargo xtask verify web`: phase `review-withdrawn` đi qua ca duyệt bằng UI, moderator bác bằng
+  API, SSR/hydration/cache trang bị gỡ, tác giả gửi phản đối bằng UI, admin đảo bằng UI, ẩn bài và
+  công khai lại bằng API. Ảnh desktop/mobile ở output lane; snapshot riêng không nằm trong SSR.
+- Kết quả chạy, SHA và CI của phần hoàn thiện ở [PR #171](https://github.com/loveoverflowcom/vink/pull/171).
+  Danh sách trên là phạm vi suite; chỉ kết quả trên đúng SHA mới là bằng chứng PASS. CI merge #170
+  (`25dc464`) bị hủy ở Web sau CLI cấp ghế admin, không phải bằng chứng smoke reader đã qua.

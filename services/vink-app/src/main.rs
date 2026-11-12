@@ -518,6 +518,9 @@ async fn admin(config: &Config, command: AdminCommand) -> Result<(), Failure> {
             }
         }
     }
+    // Pool::close waits for every checked-out connection. Return this one first, otherwise
+    // all three admin commands print success and then wait forever (including verify web).
+    drop(conn);
     pool.close().await;
     Ok(())
 }
