@@ -769,7 +769,11 @@ pub struct CaseDetailDto {
     pub subject_kind: String,
     pub work_id: String,
     pub revision_id: Option<String>,
+    /// SHA-256 of the exact submitted snapshot the case decides on.
+    pub content_digest: Option<String>,
     pub title: Option<String>,
+    /// The submitted snapshot itself (immutable revision), for the reviewer only.
+    pub document: Option<DocumentData>,
     pub author_id: String,
     pub author_name: String,
     pub decision_version: i64,
@@ -844,6 +848,27 @@ pub struct GrantFactsDto {
     pub expires_at: Option<String>,
     pub revoked: bool,
     pub origin: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CaseOpenedDto {
+    pub case_id: String,
+    pub version: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct CreateGroupReq {
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CreateGroupRes {
+    pub group_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct GroupMemberReq {
+    pub principal_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

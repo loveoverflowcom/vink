@@ -8,6 +8,7 @@
 
 use super::ports::{BoundPrincipal, StoreError};
 use crate::domain::ids::{EvaluationId, RevisionId, WorkId};
+use crate::domain::moderation::automation::AutomationMode;
 use crate::domain::moderation::case::CaseRefusal;
 use crate::domain::moderation::{
     AdminAuthority, AdminDecision, AdminRemovalTransition, AdminTransition,
@@ -43,6 +44,29 @@ pub fn plan_author_publication(
         return Err(ModerationPlanError::Suspended);
     }
     Ok(moderation.decide_author(publication, actor.principal, command, new_evaluation_id)?)
+}
+
+/// [`plan_author_publication`] under the automation mode read in the same commit (MOD-14): a
+/// submission while automation is paused goes to the human queue instead of the evaluator.
+pub fn plan_author_publication_under(
+    actor: Option<BoundPrincipal>,
+    publication: &Publication,
+    moderation: &WorkModeration,
+    command: AuthorCommand,
+    new_evaluation_id: Option<EvaluationId>,
+    automation: AutomationMode,
+) -> Result<AuthorModerationTransition, ModerationPlanError> {
+    let actor = actor.ok_or(ModerationPlanError::Unauthenticated)?;
+    if actor.standing != Standing::Active {
+        return Err(ModerationPlanError::Suspended);
+    }
+    Ok(moderation.decide_author_with(
+        publication,
+        actor.principal,
+        command,
+        new_evaluation_id,
+        automation,
+    )?)
 }
 
 pub fn plan_work_reevaluation(
@@ -112,6 +136,10 @@ pub enum ModerationActionError {
     Conflict(&'static str),
     #[error("validation failed: {0}")]
     ValidationFailed(&'static str),
+    #[error("unauthenticated")]
+    Unauthenticated,
+    #[error("principal suspended")]
+    Suspended,
     #[error("storage unavailable")]
     Unavailable,
     #[error("internal error")]
@@ -122,9 +150,8 @@ impl From<StoreError> for ModerationActionError {
     fn from(error: StoreError) -> Self {
         match error {
             StoreError::Unavailable(_) => Self::Unavailable,
-            StoreError::UnknownPrincipal | StoreError::PrincipalSuspended => {
-                Self::Forbidden("principal_suspended")
-            }
+            StoreError::UnknownPrincipal => Self::Unauthenticated,
+            StoreError::PrincipalSuspended => Self::Suspended,
             StoreError::Integrity(_) => Self::Internal,
         }
     }

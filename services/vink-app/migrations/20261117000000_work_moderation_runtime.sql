@@ -96,7 +96,8 @@ ALTER TABLE work_revision_moderation
 ALTER TABLE work_revision_moderation
     DROP CONSTRAINT work_revision_moderation_provenance_kind_check,
     DROP CONSTRAINT work_revision_moderation_approved_check,
-    DROP CONSTRAINT work_revision_moderation_rejected_check;
+    DROP CONSTRAINT work_revision_moderation_rejected_check,
+    DROP CONSTRAINT work_revision_moderation_needs_admin_check;
 
 ALTER TABLE work_revision_moderation
     ADD CONSTRAINT work_revision_moderation_provenance_kind_check
@@ -128,7 +129,45 @@ ALTER TABLE work_revision_moderation
                 (provenance_kind = 'moderator' AND admin_verdict = 'reject' AND admin_actor IS NOT NULL AND admin_reason IS NOT NULL AND moderator_grant_id IS NOT NULL AND policy_reason_code IS NULL AND needs_admin_cause IS NULL)
             )
         )
+    ),
+    -- PUB-06: a human approval of an older policy goes back to the human queue as
+    -- `policy_rereview`; an evaluator escalation keeps its cause.
+    ADD CONSTRAINT work_revision_moderation_needs_admin_check CHECK (
+        moderation <> 'needs_admin' OR (
+            decision_version > 1
+            AND policy_reason_code IS NULL
+            AND admin_actor IS NULL
+            AND admin_verdict IS NULL
+            AND admin_reason IS NULL
+            AND moderator_grant_id IS NULL
+            AND (
+                (provenance_kind = 'ai_needs_admin' AND needs_admin_cause IS NOT NULL)
+                OR
+                (provenance_kind = 'policy_rereview' AND needs_admin_cause IS NULL)
+            )
+        )
     );
+
+-- Append-only decision history (MOD-08..13): one row per accepted decision version.
+CREATE TABLE work_revision_decision_history (
+    id uuid PRIMARY KEY,
+    work_id uuid NOT NULL,
+    revision_id uuid NOT NULL,
+    decision_version bigint NOT NULL CHECK (decision_version >= 1),
+    moderation text NOT NULL CHECK (moderation IN ('pending', 'approved', 'rejected', 'needs_admin')),
+    policy_version bigint NOT NULL CHECK (policy_version >= 1),
+    provenance_kind text CHECK (provenance_kind IN ('ai_approved', 'ai_rejected', 'ai_needs_admin', 'admin', 'moderator', 'policy_rereview', 'legacy_bootstrap')),
+    policy_reason_code text,
+    needs_admin_cause text,
+    actor_id uuid REFERENCES principals (id),
+    moderator_grant_id uuid REFERENCES moderation_grants (id),
+    reason text,
+    evaluation_id uuid,
+    case_id uuid,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    FOREIGN KEY (work_id, revision_id) REFERENCES work_revision_moderation (work_id, revision_id) ON DELETE CASCADE,
+    UNIQUE (work_id, revision_id, decision_version)
+);
 
 -- 7. Review cases and notes (MOD-12)
 CREATE TABLE moderation_cases (
@@ -161,6 +200,10 @@ CREATE UNIQUE INDEX moderation_cases_work_revision_open_unique
     ON moderation_cases (work_id, revision_id)
     WHERE (state IN ('queued', 'claimed', 'escalated') AND subject_kind = 'work_revision');
 
+CREATE INDEX moderation_cases_claim_basis_idx
+    ON moderation_cases (claimed_basis_grant_id)
+    WHERE state = 'claimed';
+
 CREATE TABLE moderation_case_notes (
     id uuid PRIMARY KEY,
     case_id uuid NOT NULL REFERENCES moderation_cases (id) ON DELETE CASCADE,
@@ -188,4 +231,20 @@ CREATE TABLE moderation_automation_audit (
     version bigint NOT NULL CHECK (version >= 1),
     reason text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 9. Directory audit (MOD-11): grants, revocations, groups and membership changes.
+CREATE TABLE moderation_directory_audit (
+    id uuid PRIMARY KEY,
+    admin_id uuid NOT NULL REFERENCES principals (id),
+    change text NOT NULL CHECK (change IN ('granted', 'revoked', 'group_created', 'joined', 'left')),
+    grant_id uuid REFERENCES moderation_grants (id),
+    group_id uuid REFERENCES moderation_groups (id),
+    member_id uuid REFERENCES principals (id),
+    created_at timestamptz NOT NULL,
+    CONSTRAINT moderation_directory_audit_shape CHECK (
+        (change IN ('granted', 'revoked') AND grant_id IS NOT NULL AND group_id IS NULL AND member_id IS NULL)
+        OR (change = 'group_created' AND group_id IS NOT NULL AND grant_id IS NULL AND member_id IS NULL)
+        OR (change IN ('joined', 'left') AND group_id IS NOT NULL AND member_id IS NOT NULL AND grant_id IS NULL)
+    )
 );

@@ -123,12 +123,14 @@ async fn run(
         outbox = status,
         outbox_concurrency = settings.concurrency,
         evaluation = eval_settings.enabled,
+        evaluation_mock = eval_settings.mock_scenario.as_deref().unwrap_or("none"),
         consumers = vink_app::domain::discussion::outbox::Consumer::ALL
             .map(|consumer| consumer.code())
             .join(","),
         jobs = "discussion_outbox,rate_limit_prune,outbox_retention,work_evaluation",
         post_review = "operator_rereview.v1",
         admission_post_review = "no_producer",
+        ai_moderation = "not_implemented",
         "vink-worker started"
     );
     if status == "refused_privileged_role" {

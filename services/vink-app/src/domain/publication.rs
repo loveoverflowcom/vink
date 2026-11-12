@@ -794,14 +794,18 @@ impl Publication {
             ReviewOutcome::NeedsAdmin => Moderation::NeedsAdmin,
         };
         // A revised decision on the currently public revision closes its pointer. A rejection
-        // of r2 must never close r1. No authority/override decision is inferred here.
+        // of r2 must never close r1. No authority/override decision is inferred here. Only a
+        // rejection leaves the review-withdrawn page at the old URL (O-17@r2); an escalation
+        // closes the pointer without claiming the work was removed.
         if review.outcome != ReviewOutcome::Approved
             && next
                 .0
                 .pointer
                 .is_some_and(|p| p.revision == review.revision)
         {
-            next.0.review_withdrawn = next.0.pointer;
+            if review.outcome == ReviewOutcome::Rejected {
+                next.0.review_withdrawn = next.0.pointer;
+            }
             next.0.pointer = None;
             effects.pointer = PointerEffect::Clear;
         }

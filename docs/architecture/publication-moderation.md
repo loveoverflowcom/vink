@@ -25,7 +25,7 @@ lõi quản trị ở [ADMIN-CORE-01](../development/moderation-core.md#admin-mo
 | Publication | Một hàng `publications(work_id, revision_id, generation, published_at, metadata_snapshot_id)`; “công khai” = có hàng | cùng migration, `20261108000000_work_taxonomy` |
 | Lệnh publish/rút/xóa | **Không có**. Chỉ `dev_seed`, `xtask provision` và fixture SQL ghi `publications`; test giả lập rút bằng `DELETE FROM publications` | `dev_seed.rs`, comment bảng: “Publish/withdraw commands … are not implemented” |
 | Audience | Lõi thuần #150; **chưa có** cột/lệnh runtime | `domain/publication.rs` |
-| Evaluator, quyết định cho tác phẩm, admin, appeal | Lõi thuần `domain::moderation` + `ScriptedEvaluator` test-only (#151); **chưa có** bảng SQL, worker consumer, CLI/HTTP hay appeal; `/health` và worker báo `ai_moderation: not_implemented` | `domain/moderation.rs`, `application/moderation.rs`, `http/health.rs` |
+| Evaluator, quyết định cho tác phẩm, admin, appeal | Lõi thuần `domain::moderation` (#151) + runtime #159: bảng quyết định/lịch sử, consumer `vink-worker` (chỉ evaluator kịch bản local/test), CLI ghế admin và HTTP `/api/v1/moderation/*` ([moderation-runtime](../development/moderation-runtime.md)); **chưa có** AI provider thật hay appeal; `/health` và worker báo `ai_moderation: not_implemented` | `domain/moderation.rs`, `application/moderation.rs`, `http/health.rs` |
 | Thảo luận khi không có publication | `readable_thread` trả `None` → `404` cho đọc; gửi bị `WorkNotPublic`; hàng bình luận không bị xóa | `persistence/discussion.rs`, `domain/discussion/submission.rs` |
 
 Mọi mục dưới đây mô tả hành vi **đích**; phạm vi lõi thuần đã có và phần chưa tích hợp được tách trong [publication-core](../development/publication-core.md).

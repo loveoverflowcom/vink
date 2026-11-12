@@ -11,18 +11,18 @@ use super::conditional::{self, PUBLIC_ERROR_CACHE_CONTROL};
 use super::contract::{
     AddNoteReq, AuthorPublicationState, AuthorRevisionView, AutomationStateDto,
     CaptureSnapshotRequest, CapturedSnapshotResponse, CaseDetailDto, CaseExpectedVersionReq,
-    CaseStatusDto, CaseSummaryDto, CommentEndorsementRequest, CommentsSettings,
+    CaseOpenedDto, CaseStatusDto, CaseSummaryDto, CommentEndorsementRequest, CommentsSettings,
     CommentsSettingsRequest, ConcludeOutcomeDto, ConcludeReq, CreateGrantReq, CreateGrantRes,
-    DiscussionPage, Draft, DraftCard, DraftList, DraftTags, EndorsementQuery,
-    EndorsementSummaryList, EndorsementWriteResponse, GrantFactsDto, ModerationDecisionRequest,
-    ModerationDecisionResponse, ModerationQueueResponse, NoteRecordDto, OpenTicketView,
-    OwnCommentList, OwnCommentsParams, OwnEndorsementList, PageQuery, PublicDiscussionPage,
-    PublicPointerView, PublicReplyList, Publication, PublishIntentView, ReaderResponse,
-    RemovedCommentResponse, ReplyList, RequestPublicRequest, RequestPublicResponse,
-    SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse, SavedDraftTagsResponse,
-    SetAutomationModeReq, SetPrivateRequest, SetPrivateResponse, SubmitCommentRequest,
-    SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView, TagSuggestionList,
-    TagSuggestionQuery, TakeoverReq, WorkEndorsementRequest, WorkList,
+    CreateGroupReq, CreateGroupRes, DiscussionPage, Draft, DraftCard, DraftList, DraftTags,
+    EndorsementQuery, EndorsementSummaryList, EndorsementWriteResponse, GrantFactsDto,
+    GroupMemberReq, ModerationDecisionRequest, ModerationDecisionResponse, ModerationQueueResponse,
+    NoteRecordDto, OpenTicketView, OwnCommentList, OwnCommentsParams, OwnEndorsementList,
+    PageQuery, PublicDiscussionPage, PublicPointerView, PublicReplyList, Publication,
+    PublishIntentView, ReaderResponse, RemovedCommentResponse, ReplyList, RequestPublicRequest,
+    RequestPublicResponse, SaveDraftRequest, SaveDraftTagsRequest, SavedDraftResponse,
+    SavedDraftTagsResponse, SetAutomationModeReq, SetPrivateRequest, SetPrivateResponse,
+    SubmitCommentRequest, SubmittedCommentResponse, TagList, TagListQuery, TagResolutionView,
+    TagSuggestionList, TagSuggestionQuery, TakeoverReq, WorkEndorsementRequest, WorkList,
 };
 use super::{Actor, ApiError, AppState};
 use crate::application::SaveDraft;
@@ -35,7 +35,7 @@ use crate::domain::discovery::MAX_FILTER_REFS;
 use crate::domain::discussion::settings::CommentsMode;
 use crate::domain::ids::{CaseId, CommentId, GrantId, GroupId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::DecisionReason;
-use crate::domain::moderation::authority::{GrantScope, Grantee, ReviewCapability};
+use crate::domain::moderation::authority::{GrantScope, GrantSpec, Grantee, ReviewCapability};
 use crate::domain::moderation::automation::{AutomationMode, AutomationVersion};
 use crate::domain::moderation::case::{CaseVerdict, CaseVersion, InternalNote};
 use time::OffsetDateTime;
@@ -162,6 +162,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
     let moderation_works = Router::new()
         .route("/moderation/works/queue", get(list_work_moderation_queue))
         .route(
+            "/moderation/works/{work_id}/revisions/{revision_id}/cases",
+            post(open_work_moderation_case),
+        )
+        .route(
             "/moderation/works/cases/{case_id}",
             get(get_work_moderation_case),
         )
@@ -191,6 +195,15 @@ pub fn routes(state: AppState) -> Router<AppState> {
         )
         .route("/moderation/grants", get(list_grants).post(create_grant))
         .route("/moderation/grants/{grant_id}/revoke", post(revoke_grant))
+        .route("/moderation/groups", post(create_group))
+        .route(
+            "/moderation/groups/{group_id}/members",
+            post(add_group_member),
+        )
+        .route(
+            "/moderation/groups/{group_id}/members/{principal_id}",
+            axum::routing::delete(remove_group_member),
+        )
         .route("/moderation/automation", get(get_automation_state))
         .route("/moderation/automation/mode", post(set_automation_mode))
         .layer(SetResponseHeaderLayer::overriding(
@@ -988,8 +1001,33 @@ async fn save_draft_tags(
 }
 
 // ---------------------------------------------------------------------------
-// Moderation: Work Cases, Grants and Automation (MOD-09..15, #159)
+// Moderation: Work Cases, Grants, Groups and Automation (MOD-09..15, #159)
 // ---------------------------------------------------------------------------
+//
+// Each command runs in one transaction inside the store (standing fence, directory, locked
+// case or work, audit). Reads check authority per case: a reviewer never sees the cases on
+// their own work (recusal), and a work-scoped grant shows only that work.
+
+use crate::persistence::moderation as moderation_store;
+
+fn expected_case_version(raw: i64) -> Result<CaseVersion, ApiError> {
+    CaseVersion::new(raw).ok_or(ApiError::Validation {
+        field: "expected_version",
+        message: "invalid case version".into(),
+    })
+}
+
+async fn read_conn(
+    state: &AppState,
+) -> Result<sqlx::pool::PoolConnection<sqlx::Postgres>, ApiError> {
+    state
+        .vink
+        .store()
+        .pool()
+        .acquire()
+        .await
+        .map_err(|_| ApiError::DependencyUnavailable)
+}
 
 async fn list_work_moderation_queue(
     State(state): State<AppState>,
@@ -997,25 +1035,16 @@ async fn list_work_moderation_queue(
 ) -> Result<Json<Vec<CaseSummaryDto>>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let directory = crate::persistence::moderation::load_moderation_directory(&mut conn, now)
-        .await
-        .map_err(ApiError::from)?;
+    let mut conn = read_conn(&state).await?;
+    let directory = moderation_store::load_moderation_directory(&mut conn, now).await?;
     if !directory.has_any_capability(actor, ReviewCapability::Works, now) {
         return Err(ApiError::Forbidden);
     }
-    let cases = crate::persistence::moderation::list_open_work_cases(&mut conn)
-        .await
-        .map_err(ApiError::from)?;
+    let cases = moderation_store::list_open_work_cases(&mut conn).await?;
     Ok(Json(
         cases
             .into_iter()
+            .filter(|c| directory.resolve(actor, &c.target(), now).is_ok())
             .map(|c| CaseSummaryDto {
                 id: c.id.to_string(),
                 subject_kind: c.subject_kind,
@@ -1040,29 +1069,25 @@ async fn get_work_moderation_case(
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let directory = crate::persistence::moderation::load_moderation_directory(&mut conn, now)
-        .await
-        .map_err(ApiError::from)?;
+    let mut conn = read_conn(&state).await?;
+    let directory = moderation_store::load_moderation_directory(&mut conn, now).await?;
     if !directory.has_any_capability(actor, ReviewCapability::Works, now) {
         return Err(ApiError::Forbidden);
     }
-    let detail = crate::persistence::moderation::get_case_detail(&mut conn, case_id)
-        .await
-        .map_err(ApiError::from)?
+    let detail = moderation_store::get_case_detail(&mut conn, case_id)
+        .await?
         .ok_or(ApiError::NotFound)?;
+    directory
+        .resolve(actor, &detail.target(), now)
+        .map_err(|refusal| ApiError::CaseForbidden(refusal.as_str()))?;
     Ok(Json(CaseDetailDto {
         id: detail.id.to_string(),
         subject_kind: detail.subject_kind,
         work_id: detail.work_id.to_string(),
         revision_id: detail.revision_id.map(|r| r.to_string()),
+        content_digest: detail.content_digest,
         title: detail.title,
+        document: detail.document,
         author_id: detail.author_id.to_string(),
         author_name: detail.author_name,
         decision_version: detail.decision_version,
@@ -1084,6 +1109,55 @@ async fn get_work_moderation_case(
     }))
 }
 
+async fn open_work_moderation_case(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path((raw_work, raw_revision)): Path<(String, String)>,
+) -> Result<(StatusCode, Json<CaseOpenedDto>), ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let work = work_id(&raw_work)?;
+    let revision = RevisionId::parse(&raw_revision).ok_or(ApiError::NotFound)?;
+    let case = moderation_store::open_intervention_case(
+        state.vink.store().pool(),
+        actor,
+        work,
+        revision,
+        OffsetDateTime::now_utc(),
+    )
+    .await?;
+    Ok((
+        StatusCode::CREATED,
+        Json(CaseOpenedDto {
+            case_id: case.to_string(),
+            version: 1,
+        }),
+    ))
+}
+
+async fn run_case_command(
+    state: &AppState,
+    actor: PrincipalId,
+    raw: &str,
+    expected_version: i64,
+    command: moderation_store::CaseCommand,
+) -> Result<Json<CaseStatusDto>, ApiError> {
+    let case_id = CaseId::parse(raw).ok_or(ApiError::NotFound)?;
+    let expected = expected_case_version(expected_version)?;
+    let next = moderation_store::case_command(
+        state.vink.store().pool(),
+        actor,
+        case_id,
+        expected,
+        command,
+        OffsetDateTime::now_utc(),
+    )
+    .await?;
+    Ok(Json(CaseStatusDto {
+        status: "ok",
+        version: next.facts().version.get(),
+    }))
+}
+
 async fn claim_work_moderation_case(
     State(state): State<AppState>,
     Actor(actor): Actor,
@@ -1091,32 +1165,15 @@ async fn claim_work_moderation_case(
     body: Result<Json<CaseExpectedVersionReq>, JsonRejection>,
 ) -> Result<Json<CaseStatusDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next_case = crate::persistence::moderation::claim_case(
-        &mut conn,
+    run_case_command(
+        &state,
         actor,
-        case_id,
-        expected_version,
-        now,
+        &raw,
+        body.expected_version,
+        moderation_store::CaseCommand::Claim,
     )
-    .await?;
-    Ok(Json(CaseStatusDto {
-        status: "ok",
-        version: next_case.facts().version.get(),
-    }))
+    .await
 }
 
 async fn release_work_moderation_case(
@@ -1126,26 +1183,15 @@ async fn release_work_moderation_case(
     body: Result<Json<CaseExpectedVersionReq>, JsonRejection>,
 ) -> Result<Json<CaseStatusDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next_case =
-        crate::persistence::moderation::release_case(&mut conn, actor, case_id, expected_version)
-            .await?;
-    Ok(Json(CaseStatusDto {
-        status: "ok",
-        version: next_case.facts().version.get(),
-    }))
+    run_case_command(
+        &state,
+        actor,
+        &raw,
+        body.expected_version,
+        moderation_store::CaseCommand::Release,
+    )
+    .await
 }
 
 async fn add_work_moderation_case_note(
@@ -1155,37 +1201,19 @@ async fn add_work_moderation_case_note(
     body: Result<Json<AddNoteReq>, JsonRejection>,
 ) -> Result<Json<CaseStatusDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
     let note = InternalNote::parse(&body.note).map_err(|_| ApiError::Validation {
         field: "note",
         message: "invalid internal note".into(),
     })?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next_case = crate::persistence::moderation::add_case_note(
-        &mut conn,
+    run_case_command(
+        &state,
         actor,
-        case_id,
-        expected_version,
-        note,
-        now,
+        &raw,
+        body.expected_version,
+        moderation_store::CaseCommand::Note(note),
     )
-    .await?;
-    Ok(Json(CaseStatusDto {
-        status: "ok",
-        version: next_case.facts().version.get(),
-    }))
+    .await
 }
 
 async fn escalate_work_moderation_case(
@@ -1195,26 +1223,15 @@ async fn escalate_work_moderation_case(
     body: Result<Json<CaseExpectedVersionReq>, JsonRejection>,
 ) -> Result<Json<CaseStatusDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next_case =
-        crate::persistence::moderation::escalate_case(&mut conn, actor, case_id, expected_version)
-            .await?;
-    Ok(Json(CaseStatusDto {
-        status: "ok",
-        version: next_case.facts().version.get(),
-    }))
+    run_case_command(
+        &state,
+        actor,
+        &raw,
+        body.expected_version,
+        moderation_store::CaseCommand::Escalate,
+    )
+    .await
 }
 
 async fn takeover_work_moderation_case(
@@ -1224,37 +1241,19 @@ async fn takeover_work_moderation_case(
     body: Result<Json<TakeoverReq>, JsonRejection>,
 ) -> Result<Json<CaseStatusDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
     let reason = DecisionReason::parse(&body.reason).map_err(|e| ApiError::Validation {
         field: "reason",
         message: e.to_string(),
     })?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next_case = crate::persistence::moderation::takeover_case(
-        &mut conn,
+    run_case_command(
+        &state,
         actor,
-        case_id,
-        expected_version,
-        reason,
-        now,
+        &raw,
+        body.expected_version,
+        moderation_store::CaseCommand::TakeOver(reason),
     )
-    .await?;
-    Ok(Json(CaseStatusDto {
-        status: "ok",
-        version: next_case.facts().version.get(),
-    }))
+    .await
 }
 
 async fn conclude_work_moderation_case(
@@ -1266,10 +1265,7 @@ async fn conclude_work_moderation_case(
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let case_id = CaseId::parse(&raw).ok_or(ApiError::NotFound)?;
     let body = json_body(body)?;
-    let expected_version = CaseVersion::new(body.expected_version).ok_or(ApiError::Validation {
-        field: "expected_version",
-        message: "invalid case version".into(),
-    })?;
+    let expected = expected_case_version(body.expected_version)?;
     let verdict = match body.verdict.as_str() {
         "approved" => CaseVerdict::Approve,
         "rejected" => CaseVerdict::Reject,
@@ -1289,15 +1285,14 @@ async fn conclude_work_moderation_case(
             field: "reason",
             message: e.to_string(),
         })?;
-    let now = OffsetDateTime::now_utc();
-    crate::persistence::moderation::conclude_case(
+    moderation_store::conclude_case(
         state.vink.store().pool(),
         actor,
         case_id,
-        expected_version,
+        expected,
         verdict,
         reason,
-        now,
+        OffsetDateTime::now_utc(),
     )
     .await?;
     Ok(Json(ConcludeOutcomeDto {
@@ -1312,22 +1307,12 @@ async fn list_grants(
 ) -> Result<Json<Vec<GrantFactsDto>>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let directory = crate::persistence::moderation::load_moderation_directory(&mut conn, now)
-        .await
-        .map_err(ApiError::from)?;
+    let mut conn = read_conn(&state).await?;
+    let directory = moderation_store::load_moderation_directory(&mut conn, now).await?;
     directory
         .require_admin(actor, now)
-        .map_err(|_| ApiError::Forbidden)?;
-    let grants = crate::persistence::moderation::list_moderation_grants(&mut conn)
-        .await
-        .map_err(ApiError::from)?;
+        .map_err(|refusal| ApiError::CaseForbidden(refusal.as_str()))?;
+    let grants = moderation_store::list_moderation_grants(&mut conn).await?;
     Ok(Json(
         grants
             .into_iter()
@@ -1374,20 +1359,18 @@ async fn create_grant(
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let body = json_body(body)?;
     let grantee = match body.grantee_kind.as_str() {
-        "principal" => {
-            let p = PrincipalId::parse(&body.grantee_id).ok_or(ApiError::Validation {
+        "principal" => Grantee::Principal(PrincipalId::parse(&body.grantee_id).ok_or(
+            ApiError::Validation {
                 field: "grantee_id",
                 message: "invalid principal id".into(),
-            })?;
-            Grantee::Principal(p)
-        }
-        "group" => {
-            let g = GroupId::parse(&body.grantee_id).ok_or(ApiError::Validation {
+            },
+        )?),
+        "group" => Grantee::Group(GroupId::parse(&body.grantee_id).ok_or(
+            ApiError::Validation {
                 field: "grantee_id",
                 message: "invalid group id".into(),
-            })?;
-            Grantee::Group(g)
-        }
+            },
+        )?),
         other => {
             return Err(ApiError::Validation {
                 field: "grantee_kind",
@@ -1408,15 +1391,14 @@ async fn create_grant(
     let scope = match body.scope_kind.as_str() {
         "global" => GrantScope::Global,
         "work" => {
-            let work_id_str = body.scope_work_id.as_deref().ok_or(ApiError::Validation {
+            let raw = body.scope_work_id.as_deref().ok_or(ApiError::Validation {
                 field: "scope_work_id",
                 message: "missing work id for scoped grant".into(),
             })?;
-            let w = WorkId::parse(work_id_str).ok_or(ApiError::Validation {
+            GrantScope::Work(WorkId::parse(raw).ok_or(ApiError::Validation {
                 field: "scope_work_id",
                 message: "invalid work id".into(),
-            })?;
-            GrantScope::Work(w)
+            })?)
         }
         other => {
             return Err(ApiError::Validation {
@@ -1425,28 +1407,25 @@ async fn create_grant(
             });
         }
     };
-    let expires_at = if let Some(exp) = body.expires_at {
-        Some(
-            OffsetDateTime::parse(&exp, &time::format_description::well_known::Rfc3339).map_err(
-                |_| ApiError::Validation {
-                    field: "expires_at",
-                    message: "invalid rfc3339 timestamp".into(),
-                },
-            )?,
-        )
-    } else {
-        None
-    };
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let grant_id = crate::persistence::moderation::create_moderation_grant(
-        &mut conn, actor, grantee, capability, scope, expires_at, now,
+    let expires_at = body
+        .expires_at
+        .as_deref()
+        .map(|raw| OffsetDateTime::parse(raw, &time::format_description::well_known::Rfc3339))
+        .transpose()
+        .map_err(|_| ApiError::Validation {
+            field: "expires_at",
+            message: "invalid rfc3339 timestamp".into(),
+        })?;
+    let grant_id = moderation_store::create_moderation_grant(
+        state.vink.store().pool(),
+        actor,
+        GrantSpec {
+            grantee,
+            capability,
+            scope,
+            expires_at,
+        },
+        OffsetDateTime::now_utc(),
     )
     .await?;
     Ok((
@@ -1464,17 +1443,79 @@ async fn revoke_grant(
 ) -> Result<StatusCode, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let grant_id = GrantId::parse(&raw).ok_or(ApiError::NotFound)?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    crate::persistence::moderation::revoke_moderation_grant(&mut conn, actor, grant_id, now)
-        .await?;
+    moderation_store::revoke_moderation_grant(
+        state.vink.store().pool(),
+        actor,
+        grant_id,
+        OffsetDateTime::now_utc(),
+    )
+    .await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn create_group(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    body: Result<Json<CreateGroupReq>, JsonRejection>,
+) -> Result<(StatusCode, Json<CreateGroupRes>), ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let body = json_body(body)?;
+    let group_id = moderation_store::create_moderation_group(
+        state.vink.store().pool(),
+        actor,
+        &body.name,
+        OffsetDateTime::now_utc(),
+    )
+    .await?;
+    Ok((
+        StatusCode::CREATED,
+        Json(CreateGroupRes {
+            group_id: group_id.to_string(),
+        }),
+    ))
+}
+
+async fn set_group_member(
+    state: &AppState,
+    actor: Option<PrincipalId>,
+    raw_group: &str,
+    raw_member: &str,
+    present: bool,
+) -> Result<StatusCode, ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let group = GroupId::parse(raw_group).ok_or(ApiError::NotFound)?;
+    let member = PrincipalId::parse(raw_member).ok_or(ApiError::Validation {
+        field: "principal_id",
+        message: "invalid principal id".into(),
+    })?;
+    moderation_store::set_group_membership(
+        state.vink.store().pool(),
+        actor,
+        group,
+        member,
+        present,
+        OffsetDateTime::now_utc(),
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn add_group_member(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path(raw): Path<String>,
+    body: Result<Json<GroupMemberReq>, JsonRejection>,
+) -> Result<StatusCode, ApiError> {
+    let body = json_body(body)?;
+    set_group_member(&state, actor, &raw, &body.principal_id, true).await
+}
+
+async fn remove_group_member(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    Path((raw_group, raw_member)): Path<(String, String)>,
+) -> Result<StatusCode, ApiError> {
+    set_group_member(&state, actor, &raw_group, &raw_member, false).await
 }
 
 async fn get_automation_state(
@@ -1483,22 +1524,12 @@ async fn get_automation_state(
 ) -> Result<Json<AutomationStateDto>, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
     let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let directory = crate::persistence::moderation::load_moderation_directory(&mut conn, now)
-        .await
-        .map_err(ApiError::from)?;
+    let mut conn = read_conn(&state).await?;
+    let directory = moderation_store::load_moderation_directory(&mut conn, now).await?;
     directory
         .require_admin(actor, now)
-        .map_err(|_| ApiError::Forbidden)?;
-    let automation = crate::persistence::moderation::load_automation(&mut conn)
-        .await
-        .map_err(ApiError::from)?;
+        .map_err(|refusal| ApiError::CaseForbidden(refusal.as_str()))?;
+    let automation = moderation_store::load_automation(&mut conn).await?;
     Ok(Json(AutomationStateDto {
         mode: automation.mode().as_str(),
         version: automation.version().get(),
@@ -1518,7 +1549,7 @@ async fn set_automation_mode(
             message: "invalid automation version".into(),
         })?;
     let mode = match body.mode.as_str() {
-        "enabled" | "live" => AutomationMode::Enabled,
+        "enabled" => AutomationMode::Enabled,
         "paused" => AutomationMode::Paused,
         other => {
             return Err(ApiError::Validation {
@@ -1536,21 +1567,13 @@ async fn set_automation_mode(
             field: "reason",
             message: e.to_string(),
         })?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = state
-        .vink
-        .store()
-        .pool()
-        .acquire()
-        .await
-        .map_err(|_| ApiError::Internal)?;
-    let next = crate::persistence::moderation::set_automation_mode(
-        &mut conn,
+    let next = moderation_store::set_automation_mode(
+        state.vink.store().pool(),
         actor,
         expected_version,
         mode,
         reason,
-        now,
+        OffsetDateTime::now_utc(),
     )
     .await?;
     Ok(Json(AutomationStateDto {

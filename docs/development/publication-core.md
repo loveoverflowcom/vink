@@ -205,8 +205,7 @@ M1 64/64 bước (`policy_rereview` mới, NC `pointerMovesLawfully`) và M3 41/
 
 ### Persistence gap (#158 → đợt tích hợp)
 
-`persistence::publication::load_paired_state` hiện dựng `hidden = None`, `ever_public` chỉ từ pointer
-đọc được hoặc tombstone, `public_epoch` 0/1 và `RevisionDecisionFacts.policy` = policy hiện tại của bài;
-`set-private` qua #158 vì vậy vẫn trả không tìm thấy (chưa có trang ẩn) và chưa ghi `withdrawn` cho
-job. Cần migration cho `hidden_*`, `ever_public`, `public_epoch`, policy theo quyết định, trạng thái
-job `withdrawn`/`rerouted`; sau đó reader SSR trang ẩn (`200` + `noindex`) và chặn ghi ở API.
+#159 ([moderation-runtime](moderation-runtime.md)) thêm migration cho `hidden_*`, `review_withdrawn_*`,
+`ever_public`, `public_epoch`, policy theo từng quyết định và trạng thái job `withdrawn`/`rerouted`;
+`load_paired_state` đọc đủ các fact này và `set-private` rút job/đóng ca trong cùng commit. Còn lại:
+route/SSR cho trang ẩn (`200` + `noindex`) và chặn ghi ở API, nên `set-private` vẫn trả không tìm thấy.

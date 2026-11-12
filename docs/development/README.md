@@ -508,8 +508,9 @@ production đỏ; model mutant tạo OFF→old ON resurrection. Harness và kế
 - Gửi duyệt, moderation người/AI, publish/withdraw, curation, Tạp Chí ở runtime
   (PUB-01–PUB-03, MOD-01–MOD-06, ED-02). #150 có [lõi publication intent thuần](publication-core.md)
   và application planning seam; #158 thêm [API tác giả](publication-runtime.md) (snapshot, yêu cầu
-  công khai tạo ticket `open` chưa ai xử lý, chuyển riêng tư xóa con trỏ). Chưa có UI, worker
-  evaluator hay quản trị viên, nên ngoài seed/legacy chưa revision mới nào được công khai.
+  công khai, chuyển riêng tư xóa con trỏ); #159 thêm [kiểm duyệt runtime](moderation-runtime.md)
+  (consumer `vink-worker` tắt mặc định, ca duyệt và quyền admin/moderator qua HTTP, trang sau kiểm
+  duyệt). Chưa có AI provider thật, UI tác giả/quản trị, appeal hay curation/Tạp Chí.
 - UI kiểm duyệt bình luận, báo cáo/khiếu nại, thông báo, inbox, hậu kiểm theo admission,
   reconciliation (D-08, S-02, S-04). Outbox có consumer shadow/audit riêng và hậu kiểm operator có authority, mặc định tắt request mới ([runbook](discussion-post-review.md)); chưa có producer admission đăng-trước.
   Discourse không còn trong phạm vi (Vink sở hữu bình luận).

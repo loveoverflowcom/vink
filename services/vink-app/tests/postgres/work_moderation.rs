@@ -646,3 +646,633 @@ async fn test_bug1_set_private_withdraws_jobs_and_bug2_request_public_on_conflic
     .unwrap();
     assert_eq!(open_count, 1);
 }
+
+// ---------------------------------------------------------------------------
+// Regressions of the #159 review (claim fence, pause, retries, page, authority, transactions).
+// ---------------------------------------------------------------------------
+
+async fn new_principal(pool: &PgPool, name: &str) -> Uuid {
+    let id = Uuid::now_v7();
+    sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
+        .bind(id)
+        .bind(name)
+        .execute(pool)
+        .await
+        .unwrap();
+    id
+}
+
+async fn seat_admin(pool: &PgPool, id: Uuid) {
+    let mut conn = pool.acquire().await.unwrap();
+    assert!(
+        add_admin_seat(&mut conn, "operator-test", PrincipalId::from_uuid(id), None)
+            .await
+            .unwrap()
+    );
+}
+
+async fn snapshot(app: &axum::Router, work: Uuid, key: &str, draft_version: i64) -> String {
+    let (status, _, body) = call(
+        app,
+        "POST",
+        &snapshots_path(work),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({
+            "command_key": key,
+            "expected_draft_version": draft_version,
+            "expected_metadata_version": 1,
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "snapshot failed: {body}");
+    json(&body)["revision_id"].as_str().unwrap().to_owned()
+}
+
+async fn request_public(
+    app: &axum::Router,
+    work: Uuid,
+    rev: &str,
+    generation: i64,
+    key: &str,
+) -> i64 {
+    let (status, _, body) = call(
+        app,
+        "POST",
+        &request_public_path(work),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({
+            "command_key": key,
+            "revision_id": rev,
+            "expected_generation": generation,
+        })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "request public failed: {body}");
+    json(&body)["generation"].as_i64().unwrap()
+}
+
+async fn set_scenario(pool: &PgPool, work: Uuid, scenario: &str) {
+    sqlx::query(
+        "UPDATE work_evaluation_jobs SET scenario = $2 WHERE work_id = $1 AND state = 'open'",
+    )
+    .bind(work)
+    .bind(scenario)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn scalar_i64(pool: &PgPool, sql: &'static str, work: Uuid) -> i64 {
+    sqlx::query_scalar(sql)
+        .bind(work)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn open_case(pool: &PgPool, work: Uuid) -> (Uuid, i64) {
+    sqlx::query_as(
+        "SELECT id, version FROM moderation_cases
+          WHERE work_id = $1 AND state IN ('queued', 'claimed', 'escalated')",
+    )
+    .bind(work)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+async fn case_state(pool: &PgPool, case: Uuid) -> (String, i64) {
+    sqlx::query_as("SELECT state, version FROM moderation_cases WHERE id = $1")
+        .bind(case)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+async fn post(
+    app: &axum::Router,
+    path: &str,
+    actor: Uuid,
+    body: serde_json::Value,
+) -> (StatusCode, String) {
+    let (status, _, body) = call(app, "POST", path, Some(actor), Some(ORIGIN), Some(body)).await;
+    (status, body)
+}
+
+async fn reader_status(app: &axum::Router, work: Uuid) -> (StatusCode, serde_json::Value) {
+    let (status, _, body) = call(app, "GET", &reader_read_path(work), None, None, None).await;
+    let value = if status == StatusCode::OK {
+        json(&body)
+    } else {
+        serde_json::Value::Null
+    };
+    (status, value)
+}
+
+/// O-17@r2: the page at the old URL keeps the discussion rules, survives a pending
+/// resubmission (the store used to clear it on request-public) and yields to the next approval.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn review_withdrawn_page_survives_a_pending_resubmission(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let reader = dev_seed::OTHER_PRINCIPAL;
+    let admin = new_principal(&pool, "Quản trị").await;
+    seat_admin(&pool, admin).await;
+
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    let generation = request_public(&app, work, &r2, 2, "publish-r2").await;
+    set_scenario(&pool, work, "approve").await;
+    assert!(EvaluationWorker::run_once(&pool, "w").await.unwrap());
+    assert_eq!(reader_status(&app, work).await.1["status"], "published");
+
+    // A reader's comment waits in premoderation when the revision is rejected.
+    let (status, body) = post(
+        &app,
+        &discussion_comments_path(work),
+        reader,
+        json!({ "command_key": "comment-1", "body": "Bài thơ đẹp quá." }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let comment = json(&body)["comment_id"].as_str().unwrap().to_owned();
+
+    // The evaluator approved r2; an admin opens an intervention case on it (MOD-13). The author
+    // holds no seat and could never review their own work.
+    let open_path = format!("/api/v1/moderation/works/{work}/revisions/{r2}/cases");
+    let (status, _) = post(&app, &open_path, dev_seed::SAMPLE_AUTHOR, json!({})).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    let (status, body) = post(&app, &open_path, admin, json!({})).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let case = json(&body)["case_id"].as_str().unwrap().to_owned();
+    let (status, body) = post(&app, &open_path, admin, json!({})).await;
+    assert_eq!(
+        status,
+        StatusCode::CONFLICT,
+        "one open case per revision: {body}"
+    );
+    let cases = format!("/api/v1/moderation/works/cases/{case}");
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/claim"),
+            admin,
+            json!({ "expected_version": 1 })
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (status, body) = post(
+        &app,
+        &format!("{cases}/conclude"),
+        admin,
+        json!({ "expected_version": 2, "verdict": "rejected", "reason": "Vi phạm chính sách" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        reader_status(&app, work).await.1["status"],
+        "review_withdrawn"
+    );
+
+    // The comment writer still sees and may remove their own comment; nothing new is accepted.
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &format!("/api/v1/works/{work}/discussion/me"),
+        Some(reader),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(
+        body.contains(&comment),
+        "own pending comment stays visible to its writer"
+    );
+    let (status, _, body) = call(
+        &app,
+        "DELETE",
+        &format!("/api/v1/works/{work}/discussion/comments/{comment}"),
+        Some(reader),
+        Some(ORIGIN),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "own removal stays allowed: {body}");
+    let (status, _) = post(
+        &app,
+        &discussion_comments_path(work),
+        reader,
+        json!({ "command_key": "comment-2", "body": "Bình luận mới." }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+
+    // A pending r3 keeps the page; its approval replaces it.
+    let vink = vink_app::application::Vink::new(vink_app::persistence::PgStore::new(pool.clone()));
+    vink.save_draft(
+        author(),
+        save(
+            WorkId::from_uuid(work),
+            1,
+            "Bản sửa",
+            doc(&[&["Một khổ mới,", "đã sửa."]]),
+        ),
+    )
+    .await
+    .unwrap();
+    let r3 = snapshot(&app, work, "snapshot-r3", 2).await;
+    let generation = request_public(&app, work, &r3, generation, "publish-r3").await;
+    assert!(generation > 0);
+    let (status, page) = reader_status(&app, work).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(
+        page["status"], "review_withdrawn",
+        "a pending resubmission keeps the page"
+    );
+    set_scenario(&pool, work, "approve").await;
+    assert!(EvaluationWorker::run_once(&pool, "w").await.unwrap());
+    let (_, page) = reader_status(&app, work).await;
+    assert_eq!(page["status"], "published");
+    assert_eq!(page["revision_id"], r3);
+
+    // r2's history: submitted (1), evaluator approval (2), admin rejection (3).
+    let history: Vec<(i64, String, Option<String>)> = sqlx::query_as(
+        "SELECT decision_version, moderation, provenance_kind FROM work_revision_decision_history
+          WHERE revision_id = $1 ORDER BY decision_version",
+    )
+    .bind(Uuid::parse_str(&r2).unwrap())
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        history,
+        vec![
+            (1, "pending".to_owned(), None),
+            (2, "approved".to_owned(), Some("ai_approved".to_owned())),
+            (3, "rejected".to_owned(), Some("admin".to_owned())),
+        ]
+    );
+}
+
+/// The finisher re-checks its claim at commit: a reclaim (new generation) or a pause committed
+/// between claim and finish leaves decisions and pointers untouched.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn stale_claim_or_pause_before_finish_changes_nothing(pool: PgPool) {
+    use vink_app::domain::moderation::EvaluatorOutcome;
+    use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
+
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = new_principal(&pool, "Quản trị").await;
+    seat_admin(&pool, admin).await;
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    request_public(&app, work, &r2, 2, "publish-r2").await;
+    let published = "SELECT count(*) FROM publications WHERE work_id = $1 AND revision_id <> '44444444-4444-4444-8444-444444444444'";
+
+    // Reclaimed by another worker after the lease: the first finisher is stale.
+    let first = claim_job(&pool, "w1", 30, None).await.unwrap().unwrap();
+    sqlx::query("UPDATE work_evaluation_jobs SET lease_expires_at = now() - interval '1 second' WHERE id = $1")
+        .bind(first.id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let second = claim_job(&pool, "w2", 30, None).await.unwrap().unwrap();
+    assert_eq!(second.id, first.id, "a reclaim keeps the evaluation id");
+    assert_eq!(second.claim_generation, first.claim_generation + 1);
+    let outcome = finish_job(&pool, "w1", &first, Some(EvaluatorOutcome::Approve), 0)
+        .await
+        .unwrap();
+    assert_eq!(outcome, JobOutcome::Stale);
+    assert_eq!(scalar_i64(&pool, published, work).await, 0);
+
+    // A pause commits between the second claim and its finish: rerouted, case opened, no effect.
+    let (status, body) = post(
+        &app,
+        "/api/v1/moderation/automation/mode",
+        admin,
+        json!({ "expected_version": 1, "mode": "paused", "reason": "Bảo trì" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let outcome = finish_job(&pool, "w2", &second, Some(EvaluatorOutcome::Approve), 0)
+        .await
+        .unwrap();
+    assert_eq!(outcome, JobOutcome::Stale);
+    assert_eq!(scalar_i64(&pool, published, work).await, 0);
+    let state: String = sqlx::query_scalar("SELECT state FROM work_evaluation_jobs WHERE id = $1")
+        .bind(first.id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(state, "rerouted");
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND origin = 'automation_paused' AND decision_version = 1", work).await,
+        1
+    );
+    assert!(
+        claim_job(&pool, "w3", 30, None).await.unwrap().is_none(),
+        "nothing is claimed while paused"
+    );
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM work_revision_moderation WHERE work_id = $1 AND moderation = 'pending' AND provenance_kind IS NULL", work).await,
+        1,
+        "the revision stays pending for people"
+    );
+}
+
+/// MOD-14: a submission while automation is paused goes straight to the human queue.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn paused_submission_goes_to_the_human_queue(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = new_principal(&pool, "Quản trị").await;
+    seat_admin(&pool, admin).await;
+    let (status, body) = post(
+        &app,
+        "/api/v1/moderation/automation/mode",
+        admin,
+        json!({ "expected_version": 1, "mode": "paused", "reason": "Bảo trì" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    request_public(&app, work, &r2, 2, "publish-r2").await;
+    assert_eq!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1",
+            work
+        )
+        .await,
+        0
+    );
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND origin = 'automation_paused' AND state = 'queued'", work).await,
+        1
+    );
+    assert_eq!(
+        scalar_i64(
+            &pool,
+            "SELECT count(*) FROM moderation_automation_audit WHERE mode = 'paused'",
+            work
+        )
+        .await,
+        1
+    );
+}
+
+/// MOD-08: a retryable failure opens a fresh evaluation id for the same submission; after three
+/// attempts the revision stays pending and goes to people.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn retryable_failures_use_fresh_evaluation_ids_then_go_to_people(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    request_public(&app, work, &r2, 2, "publish-r2").await;
+    set_scenario(&pool, work, "timeout").await;
+    for _ in 0..3 {
+        assert!(EvaluationWorker::run_once(&pool, "w").await.unwrap());
+    }
+    assert!(
+        !EvaluationWorker::run_once(&pool, "w").await.unwrap(),
+        "no fourth attempt"
+    );
+    let jobs: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, state, attempts FROM work_evaluation_jobs WHERE work_id = $1 ORDER BY attempts",
+    )
+    .bind(work)
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        jobs.len(),
+        3,
+        "each business retry has its own evaluation id"
+    );
+    assert!(jobs.iter().all(|(_, state, _)| state == "failed"));
+    assert_eq!(jobs.iter().map(|j| j.2).collect::<Vec<_>>(), vec![1, 2, 3]);
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM moderation_cases WHERE work_id = $1 AND origin = 'retries_exhausted' AND decision_version = 1", work).await,
+        1
+    );
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM work_revision_moderation WHERE work_id = $1 AND moderation = 'pending'", work).await,
+        1
+    );
+}
+
+/// A stale note is not stored; a claimant whose grant expired is refused at conclude and the
+/// case returns to the queue in that refusal; an admin then decides on the exact snapshot.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn stale_note_and_lost_authority_are_persisted_honestly(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let admin = new_principal(&pool, "Quản trị").await;
+    let moderator = new_principal(&pool, "Người duyệt").await;
+    seat_admin(&pool, admin).await;
+    let (status, body) = post(
+        &app,
+        "/api/v1/moderation/grants",
+        admin,
+        json!({ "grantee_kind": "principal", "grantee_id": moderator, "capability": "works", "scope_kind": "work", "scope_work_id": work }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let grant = json(&body)["grant_id"].as_str().unwrap().to_owned();
+
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    request_public(&app, work, &r2, 2, "publish-r2").await;
+    set_scenario(&pool, work, "needs_admin").await;
+    assert!(EvaluationWorker::run_once(&pool, "w").await.unwrap());
+    let (case, version) = open_case(&pool, work).await;
+    assert_eq!(version, 1);
+    let cases = format!("/api/v1/moderation/works/cases/{case}");
+
+    // The reviewer reads the exact submitted snapshot.
+    let (status, _, body) = call(&app, "GET", &cases, Some(moderator), None, None).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let detail = json(&body);
+    assert_eq!(detail["revision_id"], r2);
+    assert!(detail["document"]["blocks"].is_array());
+    assert_eq!(detail["decision_version"], 2);
+
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/claim"),
+            moderator,
+            json!({ "expected_version": 1 })
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (status, _) = post(
+        &app,
+        &format!("{cases}/note"),
+        moderator,
+        json!({ "expected_version": 1, "note": "cũ" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM moderation_case_notes n JOIN moderation_cases c ON c.id = n.case_id WHERE c.work_id = $1", work).await,
+        0,
+        "a refused note leaves no row"
+    );
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/note"),
+            moderator,
+            json!({ "expected_version": 2, "note": "Đã đọc" })
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+
+    sqlx::query(
+        "UPDATE moderation_grants SET expires_at = now() - interval '1 second' WHERE id = $1::uuid",
+    )
+    .bind(&grant)
+    .execute(&pool)
+    .await
+    .unwrap();
+    let (status, body) = post(
+        &app,
+        &format!("{cases}/conclude"),
+        moderator,
+        json!({ "expected_version": 3, "verdict": "approved", "reason": "Ổn" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(case_state(&pool, case).await, ("queued".to_owned(), 4));
+
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/claim"),
+            admin,
+            json!({ "expected_version": 4 })
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (status, body) = post(
+        &app,
+        &format!("{cases}/conclude"),
+        admin,
+        json!({ "expected_version": 5, "verdict": "approved", "reason": "Phù hợp" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (_, page) = reader_status(&app, work).await;
+    assert_eq!(page["revision_id"], r2);
+}
+
+/// Group grants work through the API; recusal hides one's own work; removing a member returns
+/// their claim to the queue in the same commit.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn group_grants_recusal_and_membership_removal(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let author_id = dev_seed::SAMPLE_AUTHOR;
+    let admin = new_principal(&pool, "Quản trị").await;
+    let moderator = new_principal(&pool, "Người duyệt").await;
+    seat_admin(&pool, admin).await;
+
+    let (status, body) = post(
+        &app,
+        "/api/v1/moderation/groups",
+        admin,
+        json!({ "name": "Ban biên tập" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let group = json(&body)["group_id"].as_str().unwrap().to_owned();
+    for member in [moderator, author_id] {
+        let (status, body) = post(
+            &app,
+            &format!("/api/v1/moderation/groups/{group}/members"),
+            admin,
+            json!({ "principal_id": member }),
+        )
+        .await;
+        assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
+    }
+    let (status, body) = post(
+        &app,
+        "/api/v1/moderation/grants",
+        admin,
+        json!({ "grantee_kind": "group", "grantee_id": group, "capability": "works", "scope_kind": "global" }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+
+    let r2 = snapshot(&app, work, "snapshot-r2", 1).await;
+    request_public(&app, work, &r2, 2, "publish-r2").await;
+    set_scenario(&pool, work, "needs_admin").await;
+    assert!(EvaluationWorker::run_once(&pool, "w").await.unwrap());
+    let (case, _) = open_case(&pool, work).await;
+    let cases = format!("/api/v1/moderation/works/cases/{case}");
+
+    // The author holds the group grant but never sees or takes a case on their own work.
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        "/api/v1/moderation/works/queue",
+        Some(author_id),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(!body.contains(&case.to_string()));
+    let (status, _, body) = call(&app, "GET", &cases, Some(author_id), None, None).await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(json(&body)["error"]["code"], "recused");
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/claim"),
+            author_id,
+            json!({ "expected_version": 1 })
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
+
+    assert_eq!(
+        post(
+            &app,
+            &format!("{cases}/claim"),
+            moderator,
+            json!({ "expected_version": 1 })
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let (status, _, body) = call(
+        &app,
+        "DELETE",
+        &format!("/api/v1/moderation/groups/{group}/members/{moderator}"),
+        Some(admin),
+        Some(ORIGIN),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT, "{body}");
+    assert_eq!(case_state(&pool, case).await, ("queued".to_owned(), 3));
+    assert_eq!(
+        scalar_i64(&pool, "SELECT count(*) FROM moderation_directory_audit WHERE change IN ('group_created', 'joined', 'left', 'granted') AND $1::uuid IS NOT NULL", work).await,
+        5
+    );
+}

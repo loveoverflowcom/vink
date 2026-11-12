@@ -1,38 +1,49 @@
-//! Moderation persistence: directory, grants, cases, automation and evaluation jobs (#159, MOD-09..15).
+//! Moderation persistence: directory, grants, groups, cases and automation (#159, MOD-09..15).
+//!
+//! Every command runs in one transaction that takes the shared lock order of
+//! [`super::moderation_write`], places the standing fence (`principal::require_active`) on the
+//! acting principal before it reads the directory, and writes its audit in the same commit.
 
-use sqlx::{PgConnection, PgPool, query, query_as, query_scalar};
+use sqlx::{
+    Connection, PgConnection, PgPool, Postgres, Transaction, query, query_as, query_scalar,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::moderation_write::{
+    DecisionSource, apply_pointer_effect, lock_work, reroute_open_jobs, revalidate_claims,
+    sync_job_states, write_case, write_decision, write_publication_pointers,
+};
 use super::postgres::{classify, integrity};
+use super::principal::require_active;
 use crate::application::moderation::{ModerationActionError, case_refusal_to_action_error};
 use crate::application::ports::StoreError;
+use crate::domain::document::DocumentData;
 use crate::domain::ids::{CaseId, GrantId, GroupId, PrincipalId, RevisionId, WorkId};
 use crate::domain::moderation::authority::{
-    AuthorityBasis, DirectoryError, DirectoryFacts, GrantFacts, GrantOrigin, GrantScope, GrantSpec,
-    Grantee, GroupFacts, ModerationDirectory, ReviewCapability, ReviewTarget,
+    AdminSeat, AuthorityBasis, DirectoryAudit, DirectoryChange, DirectoryError, DirectoryFacts,
+    GrantFacts, GrantOrigin, GrantScope, GrantSpec, Grantee, GroupFacts, ModerationDirectory,
+    ReviewCapability, ReviewTarget,
 };
 use crate::domain::moderation::automation::{
     Automation, AutomationError, AutomationMode, AutomationVersion,
 };
 use crate::domain::moderation::case::{
-    CaseFacts, CaseOrigin, CaseState, CaseVerdict, CaseVersion, CloseReason, InternalNote,
-    NoteFacts, ReviewCase, ReviewSubject,
+    CaseEvent, CaseFacts, CaseOrigin, CaseRefusal, CaseState, CaseTransition, CaseVerdict,
+    CaseVersion, CloseReason, InternalNote, NoteFacts, ReviewCase, ReviewSubject,
 };
 use crate::domain::moderation::{
-    AdminTransition, DecisionProvenance, DecisionReason, DecisionVersion, ModerationError,
+    AdminTransition, DecisionReason, DecisionVersion, ModerationError,
 };
-use crate::domain::publication::PointerEffect;
 
 // ---------------------------------------------------------------------------
-// 1. Directory and Admin Seats
+// 1. Directory and admin seats
 // ---------------------------------------------------------------------------
 
 pub async fn load_moderation_directory(
     conn: &mut PgConnection,
     _now: OffsetDateTime,
 ) -> Result<ModerationDirectory, StoreError> {
-    // 1. Admins
     // 1. Admins
     let admin_rows: Vec<Uuid> = query_scalar("SELECT principal_id FROM moderation_admin_seats")
         .fetch_all(&mut *conn)
@@ -172,62 +183,132 @@ pub async fn load_moderation_directory(
     .map_err(|e| integrity("moderation directory restore failed", format!("{e:?}")))
 }
 
-// Admin Seats CLI management
+/// The admin prefix of an admin-only command: standing fence, then directory and seat.
+async fn admin_seat(
+    tx: &mut Transaction<'_, Postgres>,
+    admin: PrincipalId,
+    now: OffsetDateTime,
+) -> Result<(ModerationDirectory, AdminSeat), ModerationActionError> {
+    require_active(tx, admin).await?;
+    let directory = load_moderation_directory(tx, now).await?;
+    let seat = directory
+        .require_admin(admin, now)
+        .map_err(|e| ModerationActionError::Forbidden(e.as_str()))?;
+    Ok((directory, seat))
+}
+
+async fn write_directory_audit(
+    conn: &mut PgConnection,
+    audit: DirectoryAudit,
+) -> Result<(), StoreError> {
+    let (change, grant, group, member) = match audit.change {
+        DirectoryChange::Granted(g) => ("granted", Some(g.as_uuid()), None, None),
+        DirectoryChange::Revoked(g) => ("revoked", Some(g.as_uuid()), None, None),
+        DirectoryChange::Joined { group, member } => (
+            "joined",
+            None,
+            Some(group.as_uuid()),
+            Some(member.as_uuid()),
+        ),
+        DirectoryChange::Left { group, member } => {
+            ("left", None, Some(group.as_uuid()), Some(member.as_uuid()))
+        }
+    };
+    query(
+        "INSERT INTO moderation_directory_audit (id, admin_id, change, grant_id, group_id, member_id, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(audit.admin.as_uuid())
+    .bind(change)
+    .bind(grant)
+    .bind(group)
+    .bind(member)
+    .bind(audit.at)
+    .execute(&mut *conn)
+    .await
+    .map_err(classify)?;
+    Ok(())
+}
+
+/// Operator CLI: add an admin seat. Returns whether the seat was new; only a change is audited.
 pub async fn add_admin_seat(
     conn: &mut PgConnection,
     operator: &str,
     principal: PrincipalId,
     reason: Option<&str>,
-) -> Result<(), StoreError> {
-    query(
+) -> Result<bool, StoreError> {
+    let mut tx = conn.begin().await.map_err(classify)?;
+    let known: Option<i32> = query_scalar("SELECT 1 FROM principals WHERE id = $1 FOR SHARE")
+        .bind(principal.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+    if known.is_none() {
+        return Err(StoreError::UnknownPrincipal);
+    }
+    let added: Option<Uuid> = query_scalar(
         "INSERT INTO moderation_admin_seats (principal_id, created_at)
          VALUES ($1, now())
-         ON CONFLICT (principal_id) DO NOTHING",
+         ON CONFLICT (principal_id) DO NOTHING
+         RETURNING principal_id",
     )
     .bind(principal.as_uuid())
-    .execute(&mut *conn)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(classify)?;
-
-    query(
-        "INSERT INTO moderation_admin_audit (id, operator, action, principal_id, reason, created_at)
-         VALUES ($1, $2, 'add', $3, $4, now())",
-    )
-    .bind(Uuid::now_v7())
-    .bind(operator)
-    .bind(principal.as_uuid())
-    .bind(reason)
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    Ok(())
+    if added.is_some() {
+        insert_admin_audit(&mut tx, operator, "add", principal, reason).await?;
+    }
+    tx.commit().await.map_err(classify)?;
+    Ok(added.is_some())
 }
 
+/// Operator CLI: remove an admin seat. A case the former admin held only as admin goes back to
+/// the queue in the same commit. Returns whether a seat was removed.
 pub async fn remove_admin_seat(
     conn: &mut PgConnection,
     operator: &str,
     principal: PrincipalId,
     reason: Option<&str>,
-) -> Result<(), StoreError> {
-    query("DELETE FROM moderation_admin_seats WHERE principal_id = $1")
-        .bind(principal.as_uuid())
-        .execute(&mut *conn)
-        .await
-        .map_err(classify)?;
+) -> Result<bool, StoreError> {
+    let mut tx = conn.begin().await.map_err(classify)?;
+    let removed: Option<Uuid> = query_scalar(
+        "DELETE FROM moderation_admin_seats WHERE principal_id = $1 RETURNING principal_id",
+    )
+    .bind(principal.as_uuid())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(classify)?;
+    if removed.is_some() {
+        insert_admin_audit(&mut tx, operator, "remove", principal, reason).await?;
+        let now = OffsetDateTime::now_utc();
+        let directory = load_moderation_directory(&mut tx, now).await?;
+        revalidate_claims(&mut tx, &directory, Some(principal), now).await?;
+    }
+    tx.commit().await.map_err(classify)?;
+    Ok(removed.is_some())
+}
 
+async fn insert_admin_audit(
+    conn: &mut PgConnection,
+    operator: &str,
+    action: &str,
+    principal: PrincipalId,
+    reason: Option<&str>,
+) -> Result<(), StoreError> {
     query(
         "INSERT INTO moderation_admin_audit (id, operator, action, principal_id, reason, created_at)
-         VALUES ($1, $2, 'remove', $3, $4, now())",
+         VALUES ($1, $2, $3, $4, $5, now())",
     )
     .bind(Uuid::now_v7())
     .bind(operator)
+    .bind(action)
     .bind(principal.as_uuid())
     .bind(reason)
     .execute(&mut *conn)
     .await
     .map_err(classify)?;
-
     Ok(())
 }
 
@@ -267,7 +348,7 @@ pub async fn list_admin_seats(conn: &mut PgConnection) -> Result<Vec<AdminSeatRe
 }
 
 // ---------------------------------------------------------------------------
-// 2. Automation Mode
+// 2. Automation mode (MOD-14)
 // ---------------------------------------------------------------------------
 
 pub async fn load_automation(conn: &mut PgConnection) -> Result<Automation, StoreError> {
@@ -293,16 +374,27 @@ pub async fn load_automation(conn: &mut PgConnection) -> Result<Automation, Stor
     Ok(Automation::restore(mode, version))
 }
 
+/// Pause or re-enable automatic moderation with version, actor and reason. A pause reroutes
+/// every open or leased job to the human queue in the same commit, so a result that arrives
+/// later is refused (`AutomationPaused`) and a restart has nothing left to finish. Re-enabling
+/// applies to submissions made afterwards.
 pub async fn set_automation_mode(
-    conn: &mut PgConnection,
+    pool: &PgPool,
     admin: PrincipalId,
     expected: AutomationVersion,
     mode: AutomationMode,
     reason: Option<DecisionReason>,
     now: OffsetDateTime,
 ) -> Result<Automation, ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let current = load_automation(conn).await?;
+    let mut tx = pool.begin().await.map_err(classify)?;
+    require_active(&mut tx, admin).await?;
+    let directory = load_moderation_directory(&mut tx, now).await?;
+    // Exclusive lock on the mode row: workers applying a result hold it in share mode.
+    let _: i32 = query_scalar("SELECT id FROM moderation_automation_state WHERE id = 1 FOR UPDATE")
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(classify)?;
+    let current = load_automation(&mut tx).await?;
 
     let (next, audit) = current
         .set(&directory, admin, expected, mode, reason, now)
@@ -316,24 +408,17 @@ pub async fn set_automation_mode(
             AutomationError::VersionExhausted => ModerationActionError::Internal,
         })?;
 
-    // Update state table
-    let updated = query(
+    query(
         "UPDATE moderation_automation_state
             SET mode = $1, version = $2, updated_at = now()
-          WHERE id = 1 AND version = $3",
+          WHERE id = 1",
     )
     .bind(mode.as_str())
     .bind(next.version().get())
-    .bind(expected.get())
-    .execute(&mut *conn)
+    .execute(&mut *tx)
     .await
     .map_err(classify)?;
 
-    if updated.rows_affected() == 0 {
-        return Err(ModerationActionError::Conflict("automation_version_stale"));
-    }
-
-    // Audit row
     query(
         "INSERT INTO moderation_automation_audit (id, admin_id, mode, version, reason, created_at)
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -344,65 +429,19 @@ pub async fn set_automation_mode(
     .bind(next.version().get())
     .bind(audit.reason.as_str())
     .bind(audit.at)
-    .execute(&mut *conn)
+    .execute(&mut *tx)
     .await
     .map_err(classify)?;
 
-    // When pausing: open evaluation jobs are rerouted and open human review cases created
     if mode == AutomationMode::Paused {
-        #[derive(sqlx::FromRow)]
-        struct RerouteRow {
-            work_id: Uuid,
-            revision_id: Uuid,
-            content_digest: String,
-        }
-
-        let rerouted: Vec<RerouteRow> = query_as(
-            "UPDATE work_evaluation_jobs
-                SET state = 'rerouted', updated_at = now()
-              WHERE state IN ('open', 'leased')
-              RETURNING work_id, revision_id, content_digest",
-        )
-        .fetch_all(&mut *conn)
-        .await
-        .map_err(classify)?;
-
-        for job in rerouted {
-            // Find owner of work
-            let owner: Option<Uuid> = query_scalar("SELECT owner_id FROM works WHERE id = $1")
-                .bind(job.work_id)
-                .fetch_optional(&mut *conn)
-                .await
-                .map_err(classify)?;
-
-            if let Some(owner_id) = owner {
-                query(
-                    "INSERT INTO moderation_cases (
-                         id, subject_kind, work_id, revision_id, content_digest, decision_version,
-                         target_content_owner, target_work_owner, origin, version, state,
-                         created_at, updated_at
-                     )
-                     VALUES ($1, 'work_revision', $2, $3, $4, 1, $5, $5, 'automation_paused', 1, 'queued', now(), now())
-                     ON CONFLICT (work_id, revision_id) WHERE (state IN ('queued', 'claimed', 'escalated') AND subject_kind = 'work_revision')
-                     DO NOTHING",
-                )
-                .bind(Uuid::now_v7())
-                .bind(job.work_id)
-                .bind(job.revision_id)
-                .bind(job.content_digest)
-                .bind(owner_id)
-                .execute(&mut *conn)
-                .await
-                .map_err(classify)?;
-            }
-        }
+        reroute_open_jobs(&mut tx).await?;
     }
-
+    tx.commit().await.map_err(classify)?;
     Ok(next)
 }
 
 // ---------------------------------------------------------------------------
-// 3. Review Cases
+// 3. Review case reads
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
@@ -416,7 +455,20 @@ pub struct CaseSummary {
     pub version: i64,
     pub state: String,
     pub claimed_by: Option<PrincipalId>,
+    pub content_owner: PrincipalId,
+    pub work_owner: PrincipalId,
     pub created_at: OffsetDateTime,
+}
+
+impl CaseSummary {
+    pub fn target(&self) -> ReviewTarget {
+        ReviewTarget {
+            capability: ReviewCapability::Works,
+            work: self.work_id,
+            content_owner: self.content_owner,
+            work_owner: self.work_owner,
+        }
+    }
 }
 
 pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSummary>, StoreError> {
@@ -431,14 +483,17 @@ pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSum
         version: i64,
         state: String,
         claimed_by: Option<Uuid>,
+        target_content_owner: Uuid,
+        target_work_owner: Uuid,
         created_at: OffsetDateTime,
     }
 
     let rows: Vec<Row> = query_as(
-        "SELECT id, subject_kind, work_id, revision_id, decision_version, origin, version, state, claimed_by, created_at
+        "SELECT id, subject_kind, work_id, revision_id, decision_version, origin, version, state,
+                claimed_by, target_content_owner, target_work_owner, created_at
            FROM moderation_cases
           WHERE state IN ('queued', 'claimed', 'escalated') AND subject_kind = 'work_revision'
-          ORDER BY created_at ASC",
+          ORDER BY created_at ASC, id ASC",
     )
     .fetch_all(&mut *conn)
     .await
@@ -456,6 +511,8 @@ pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSum
             version: r.version,
             state: r.state,
             claimed_by: r.claimed_by.map(PrincipalId::from_uuid),
+            content_owner: PrincipalId::from_uuid(r.target_content_owner),
+            work_owner: PrincipalId::from_uuid(r.target_work_owner),
             created_at: r.created_at,
         })
         .collect())
@@ -469,15 +526,19 @@ pub struct NoteRecord {
     pub created_at: OffsetDateTime,
 }
 
+/// A case with the exact submitted snapshot the reviewer decides on.
 #[derive(Debug, Clone)]
 pub struct CaseDetail {
     pub id: CaseId,
     pub subject_kind: String,
     pub work_id: WorkId,
     pub revision_id: Option<RevisionId>,
+    pub content_digest: Option<String>,
     pub title: Option<String>,
+    pub document: Option<DocumentData>,
     pub author_id: PrincipalId,
     pub author_name: String,
+    pub work_owner: PrincipalId,
     pub decision_version: i64,
     pub origin: String,
     pub version: i64,
@@ -485,6 +546,17 @@ pub struct CaseDetail {
     pub claimed_by: Option<PrincipalId>,
     pub notes: Vec<NoteRecord>,
     pub created_at: OffsetDateTime,
+}
+
+impl CaseDetail {
+    pub fn target(&self) -> ReviewTarget {
+        ReviewTarget {
+            capability: ReviewCapability::Works,
+            work: self.work_id,
+            content_owner: self.author_id,
+            work_owner: self.work_owner,
+        }
+    }
 }
 
 pub async fn get_case_detail(
@@ -497,6 +569,7 @@ pub async fn get_case_detail(
         subject_kind: String,
         work_id: Uuid,
         revision_id: Option<Uuid>,
+        content_digest: Option<String>,
         decision_version: i64,
         origin: String,
         version: i64,
@@ -504,14 +577,18 @@ pub async fn get_case_detail(
         claimed_by: Option<Uuid>,
         created_at: OffsetDateTime,
         target_content_owner: Uuid,
+        target_work_owner: Uuid,
         author_name: String,
         title: Option<String>,
+        document: Option<sqlx::types::Json<DocumentData>>,
+        revision_hash: Option<String>,
     }
 
     let row: Option<Row> = query_as(
-        "SELECT c.id, c.subject_kind, c.work_id, c.revision_id, c.decision_version,
-                c.origin, c.version, c.state, c.claimed_by, c.created_at,
-                c.target_content_owner, p.display_name AS author_name, r.title
+        "SELECT c.id, c.subject_kind, c.work_id, c.revision_id, c.content_digest,
+                c.decision_version, c.origin, c.version, c.state, c.claimed_by, c.created_at,
+                c.target_content_owner, c.target_work_owner, p.display_name AS author_name,
+                r.title, r.document, r.content_hash AS revision_hash
            FROM moderation_cases c
            JOIN principals p ON p.id = c.target_content_owner
            LEFT JOIN revisions r ON r.work_id = c.work_id AND r.id = c.revision_id
@@ -523,6 +600,10 @@ pub async fn get_case_detail(
     .map_err(classify)?;
 
     let Some(r) = row else { return Ok(None) };
+    // The revision is immutable; a digest that differs from the case binding is corruption.
+    if r.content_digest.is_some() && r.revision_hash != r.content_digest {
+        return Err(integrity("case digest does not match its revision", r.id));
+    }
 
     #[derive(sqlx::FromRow)]
     struct NoteRow {
@@ -536,7 +617,7 @@ pub async fn get_case_detail(
         "SELECT id, author_id, note, created_at
            FROM moderation_case_notes
           WHERE case_id = $1
-          ORDER BY created_at ASC",
+          ORDER BY created_at ASC, id ASC",
     )
     .bind(case_id.as_uuid())
     .fetch_all(&mut *conn)
@@ -558,9 +639,12 @@ pub async fn get_case_detail(
         subject_kind: r.subject_kind,
         work_id: WorkId::from_uuid(r.work_id),
         revision_id: r.revision_id.map(RevisionId::from_uuid),
+        content_digest: r.content_digest,
         title: r.title,
+        document: r.document.map(|d| d.0),
         author_id: PrincipalId::from_uuid(r.target_content_owner),
         author_name: r.author_name,
+        work_owner: PrincipalId::from_uuid(r.target_work_owner),
         decision_version: r.decision_version,
         origin: r.origin,
         version: r.version,
@@ -572,7 +656,7 @@ pub async fn get_case_detail(
 }
 
 // ---------------------------------------------------------------------------
-// 4. Case Mutations and Conclusions
+// 4. Case commands
 // ---------------------------------------------------------------------------
 
 pub async fn load_case_locked(
@@ -783,228 +867,160 @@ pub async fn load_case_locked(
     Ok(Some(case))
 }
 
-pub async fn claim_case(
-    conn: &mut PgConnection,
+/// A case command the core decides on the locked case (claim, release, note, escalate,
+/// takeover).
+pub enum CaseCommand {
+    Claim,
+    Release,
+    Note(InternalNote),
+    Escalate,
+    TakeOver(DecisionReason),
+}
+
+/// Run one case command in one commit: standing fence, directory, locked case, core decision,
+/// fenced write (and the note row only after the fenced write). When the core refuses because
+/// the claimant lost every basis, the case goes back to the queue in its own commit and the
+/// command still answers forbidden (MOD-11).
+pub async fn case_command(
+    pool: &PgPool,
     actor: PrincipalId,
     case_id: CaseId,
-    expected_version: CaseVersion,
+    expected: CaseVersion,
+    command: CaseCommand,
     now: OffsetDateTime,
 ) -> Result<ReviewCase, ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let case = load_case_locked(conn, case_id)
+    let mut tx = pool.begin().await.map_err(classify)?;
+    require_active(&mut tx, actor).await?;
+    let directory = load_moderation_directory(&mut tx, now).await?;
+    let case = load_case_locked(&mut tx, case_id)
         .await?
         .ok_or(ModerationActionError::NotFound)?;
-    let transition = case
-        .claim(&directory, actor, expected_version, now)
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-    let (basis_kind, grant_id) = match next_case.facts().state {
-        CaseState::Claimed { basis, .. } => match basis {
-            AuthorityBasis::Admin => ("admin", None),
-            AuthorityBasis::Grant(g) => ("grant", Some(g.as_uuid())),
-        },
-        _ => return Err(ModerationActionError::Internal),
+    let note = match &command {
+        CaseCommand::Note(note) => Some(note.clone()),
+        _ => None,
     };
-
-    let updated = query(
-        "UPDATE moderation_cases
-            SET version = $1, state = 'claimed', claimed_by = $2,
-                claimed_basis_kind = $3, claimed_basis_grant_id = $4,
-                updated_at = now()
-          WHERE id = $5 AND version = $6",
-    )
-    .bind(next_case.facts().version.get())
-    .bind(actor.as_uuid())
-    .bind(basis_kind)
-    .bind(grant_id)
-    .bind(case_id.as_uuid())
-    .bind(expected_version.get())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    if updated.rows_affected() == 0 {
-        return Err(ModerationActionError::Conflict("case_version_stale"));
-    }
-
-    Ok(next_case)
-}
-
-pub async fn release_case(
-    conn: &mut PgConnection,
-    actor: PrincipalId,
-    case_id: CaseId,
-    expected_version: CaseVersion,
-) -> Result<ReviewCase, ModerationActionError> {
-    let case = load_case_locked(conn, case_id)
-        .await?
-        .ok_or(ModerationActionError::NotFound)?;
-    let transition = case
-        .release(actor, expected_version)
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-
-    let updated = query(
-        "UPDATE moderation_cases
-            SET version = $1, state = 'queued', claimed_by = NULL,
-                claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
-                updated_at = now()
-          WHERE id = $2 AND version = $3",
-    )
-    .bind(next_case.facts().version.get())
-    .bind(case_id.as_uuid())
-    .bind(expected_version.get())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    if updated.rows_affected() == 0 {
-        return Err(ModerationActionError::Conflict("case_version_stale"));
-    }
-
-    Ok(next_case)
-}
-
-pub async fn add_case_note(
-    conn: &mut PgConnection,
-    actor: PrincipalId,
-    case_id: CaseId,
-    expected_version: CaseVersion,
-    note: InternalNote,
-    now: OffsetDateTime,
-) -> Result<ReviewCase, ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let case = load_case_locked(conn, case_id)
-        .await?
-        .ok_or(ModerationActionError::NotFound)?;
-    let transition = case
-        .note(&directory, actor, expected_version, note.clone(), now)
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-
-    query(
-        "INSERT INTO moderation_case_notes (id, case_id, author_id, note, created_at)
-         VALUES ($1, $2, $3, $4, now())",
-    )
-    .bind(Uuid::now_v7())
-    .bind(case_id.as_uuid())
-    .bind(actor.as_uuid())
-    .bind(note.as_str())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    let updated = query(
-        "UPDATE moderation_cases
-            SET version = $1, updated_at = now()
-          WHERE id = $2 AND version = $3",
-    )
-    .bind(next_case.facts().version.get())
-    .bind(case_id.as_uuid())
-    .bind(expected_version.get())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    if updated.rows_affected() == 0 {
-        return Err(ModerationActionError::Conflict("case_version_stale"));
-    }
-
-    Ok(next_case)
-}
-
-pub async fn escalate_case(
-    conn: &mut PgConnection,
-    actor: PrincipalId,
-    case_id: CaseId,
-    expected_version: CaseVersion,
-) -> Result<ReviewCase, ModerationActionError> {
-    let case = load_case_locked(conn, case_id)
-        .await?
-        .ok_or(ModerationActionError::NotFound)?;
-    let transition = case
-        .escalate(actor, expected_version)
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-
-    let updated = query(
-        "UPDATE moderation_cases
-            SET version = $1, state = 'escalated', claimed_by = NULL,
-                claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
-                updated_at = now()
-          WHERE id = $2 AND version = $3",
-    )
-    .bind(next_case.facts().version.get())
-    .bind(case_id.as_uuid())
-    .bind(expected_version.get())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    if updated.rows_affected() == 0 {
-        return Err(ModerationActionError::Conflict("case_version_stale"));
-    }
-
-    Ok(next_case)
-}
-
-pub async fn takeover_case(
-    conn: &mut PgConnection,
-    actor: PrincipalId,
-    case_id: CaseId,
-    expected_version: CaseVersion,
-    reason: DecisionReason,
-    now: OffsetDateTime,
-) -> Result<ReviewCase, ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let case = load_case_locked(conn, case_id)
-        .await?
-        .ok_or(ModerationActionError::NotFound)?;
-    let transition = case
-        .take_over(&directory, actor, expected_version, Some(&reason), now)
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-    let (basis_kind, grant_id) = match next_case.facts().state {
-        CaseState::Claimed { basis, .. } => match basis {
-            AuthorityBasis::Admin => ("admin", None),
-            AuthorityBasis::Grant(g) => ("grant", Some(g.as_uuid())),
-        },
-        _ => return Err(ModerationActionError::Internal),
+    let decided: Result<CaseTransition, CaseRefusal> = match command {
+        CaseCommand::Claim => case.claim(&directory, actor, expected, now),
+        CaseCommand::Release => case.release(actor, expected),
+        CaseCommand::Note(note) => case.note(&directory, actor, expected, note, now),
+        CaseCommand::Escalate => case.escalate(actor, expected),
+        CaseCommand::TakeOver(reason) => {
+            case.take_over(&directory, actor, expected, Some(&reason), now)
+        }
     };
-
-    let updated = query(
-        "UPDATE moderation_cases
-            SET version = $1, state = 'claimed', claimed_by = $2,
-                claimed_basis_kind = $3, claimed_basis_grant_id = $4,
-                updated_at = now()
-          WHERE id = $5 AND version = $6",
-    )
-    .bind(next_case.facts().version.get())
-    .bind(actor.as_uuid())
-    .bind(basis_kind)
-    .bind(grant_id)
-    .bind(case_id.as_uuid())
-    .bind(expected_version.get())
-    .execute(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    if updated.rows_affected() == 0 {
+    let transition = match decided {
+        Ok(transition) => transition,
+        Err(refusal) => {
+            requeue_if_authority_lost(tx, &case, &directory, actor, refusal, now).await?;
+            return Err(case_refusal_to_action_error(refusal));
+        }
+    };
+    if !write_case(&mut tx, &transition.next, expected.get()).await? {
         return Err(ModerationActionError::Conflict("case_version_stale"));
     }
-
-    Ok(next_case)
+    if let Some(note) = note {
+        query(
+            "INSERT INTO moderation_case_notes (id, case_id, author_id, note, created_at)
+             VALUES ($1, $2, $3, $4, now())",
+        )
+        .bind(Uuid::now_v7())
+        .bind(case_id.as_uuid())
+        .bind(actor.as_uuid())
+        .bind(note.as_str())
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
+    }
+    tx.commit().await.map_err(classify)?;
+    Ok(transition.next)
 }
 
-// ---------------------------------------------------------------------------
-// 6. Conclude Case (Single atomic transaction)
-// ---------------------------------------------------------------------------
+/// On an authority refusal against the actor's own claim, persist the core's revalidation:
+/// lost every basis -> queued. Any other refusal leaves the case unchanged (rolled back).
+async fn requeue_if_authority_lost(
+    mut tx: Transaction<'_, Postgres>,
+    case: &ReviewCase,
+    directory: &ModerationDirectory,
+    actor: PrincipalId,
+    refusal: CaseRefusal,
+    now: OffsetDateTime,
+) -> Result<(), StoreError> {
+    let claimed_by_actor = matches!(case.state(), CaseState::Claimed { by, .. } if by == actor);
+    if matches!(refusal, CaseRefusal::Authority(_))
+        && claimed_by_actor
+        && let Ok(revalidated) = case.revalidate(directory, now)
+        && revalidated.event == CaseEvent::AuthorityLost
+        && write_case(&mut tx, &revalidated.next, case.version().get()).await?
+    {
+        tx.commit().await.map_err(classify)?;
+        tracing::info!(case = %case.facts().id, "claim returned to the queue: authority lost");
+        return Ok(());
+    }
+    tx.rollback().await.map_err(classify)?;
+    Ok(())
+}
 
+/// MOD-13: a reviewer with authority on the work opens a case on one submitted revision (for
+/// example the currently public one) at its current decision version. One open case per
+/// revision; recusal and standing are checked in this commit.
+pub async fn open_intervention_case(
+    pool: &PgPool,
+    actor: PrincipalId,
+    work: WorkId,
+    revision: RevisionId,
+    now: OffsetDateTime,
+) -> Result<CaseId, ModerationActionError> {
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let owner = lock_work(&mut tx, work)
+        .await?
+        .ok_or(ModerationActionError::NotFound)?;
+    require_active(&mut tx, actor).await?;
+    let directory = load_moderation_directory(&mut tx, now).await?;
+    directory
+        .resolve(actor, &ReviewTarget::work(work, owner), now)
+        .map_err(|refusal| ModerationActionError::Forbidden(refusal.as_str()))?;
+    let (publication, moderation, _) =
+        super::publication::load_paired_state(&mut tx, owner, work).await?;
+    if !publication.facts().lifecycle.is_active() {
+        return Err(ModerationActionError::NotFound);
+    }
+    let decision = moderation
+        .facts()
+        .revisions
+        .iter()
+        .find(|r| r.revision == revision)
+        .ok_or(ModerationActionError::NotFound)?;
+    let id = CaseId::from_uuid(Uuid::now_v7());
+    let opened: Option<Uuid> = query_scalar(
+        "INSERT INTO moderation_cases (
+             id, subject_kind, work_id, revision_id, content_digest, decision_version,
+             target_content_owner, target_work_owner, origin, version, state,
+             created_at, updated_at
+         )
+         VALUES ($1, 'work_revision', $2, $3, $4, $5, $6, $6, 'reviewer_intervention', 1, 'queued', now(), now())
+         ON CONFLICT (work_id, revision_id) WHERE (state IN ('queued', 'claimed', 'escalated') AND subject_kind = 'work_revision')
+         DO NOTHING
+         RETURNING id",
+    )
+    .bind(id.as_uuid())
+    .bind(work.as_uuid())
+    .bind(revision.as_uuid())
+    .bind(decision.digest.as_str())
+    .bind(decision.version.get())
+    .bind(owner.as_uuid())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(classify)?;
+    if opened.is_none() {
+        return Err(ModerationActionError::Conflict("case_already_open"));
+    }
+    tx.commit().await.map_err(classify)?;
+    Ok(id)
+}
+
+/// Conclude a work-revision case in one commit (MOD-11..13): the work prefix of the lock order,
+/// the standing fence, the locked case, the core's conclusion against the decision read in this
+/// commit, then decision, history, pointers, job states and the case.
 pub async fn conclude_case(
     pool: &PgPool,
     actor: PrincipalId,
@@ -1016,51 +1032,47 @@ pub async fn conclude_case(
 ) -> Result<AdminTransition, ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
 
+    // The case's work, read unlocked only to know which work prefix to lock first.
+    let work: Option<Uuid> = query_scalar("SELECT work_id FROM moderation_cases WHERE id = $1")
+        .bind(case_id.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+    let work_id = WorkId::from_uuid(work.ok_or(ModerationActionError::NotFound)?);
+    let owner = lock_work(&mut tx, work_id)
+        .await?
+        .ok_or(ModerationActionError::NotFound)?;
+    require_active(&mut tx, actor).await?;
+
     let case = load_case_locked(&mut tx, case_id)
         .await?
         .ok_or(ModerationActionError::NotFound)?;
-
-    let (work_id, rev_id) = match &case.facts().subject {
-        ReviewSubject::WorkRevision { work, revision, .. } => (*work, *revision),
-        _ => {
+    let rev_id = match &case.facts().subject {
+        ReviewSubject::WorkRevision { work, revision, .. } if *work == work_id => *revision,
+        ReviewSubject::WorkRevision { .. } => {
+            return Err(integrity("case work changed", case_id).into());
+        }
+        ReviewSubject::Comment { .. } => {
             return Err(ModerationActionError::ValidationFailed(
                 "only_work_revision_cases_supported",
             ));
         }
     };
 
-    // Lock work_publications FOR UPDATE
-    let _: Option<Uuid> =
-        query_scalar("SELECT work_id FROM work_publications WHERE work_id = $1 FOR UPDATE")
-            .bind(work_id.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-    let owner_id: Uuid = query_scalar("SELECT owner_id FROM works WHERE id = $1 FOR SHARE")
-        .bind(work_id.as_uuid())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(classify)?;
-
     let (pub_state, mod_state, _) =
-        super::publication::load_paired_state(&mut tx, PrincipalId::from_uuid(owner_id), work_id)
-            .await?;
-
+        super::publication::load_paired_state(&mut tx, owner, work_id).await?;
     let rev_facts = pub_state
         .facts()
         .revisions
         .iter()
         .find(|r| r.snapshot.revision == rev_id)
         .ok_or(ModerationActionError::NotFound)?;
-
     let dec_facts = mod_state
         .facts()
         .revisions
         .iter()
         .find(|r| r.revision == rev_id)
         .ok_or(ModerationActionError::NotFound)?;
-
     let current = ReviewSubject::WorkRevision {
         work: work_id,
         revision: rev_id,
@@ -1069,22 +1081,22 @@ pub async fn conclude_case(
     };
 
     let directory = load_moderation_directory(&mut tx, now).await?;
-
-    let (transition, conclusion) = case
-        .conclude(
-            &directory,
-            actor,
-            expected_case_version,
-            &current,
-            verdict,
-            reason.clone(),
-            false,
-            now,
-        )
-        .map_err(case_refusal_to_action_error)?;
-
-    let next_case = transition.next;
-    let next_version = next_case.facts().version.get();
+    let (transition, conclusion) = match case.conclude(
+        &directory,
+        actor,
+        expected_case_version,
+        &current,
+        verdict,
+        reason,
+        false,
+        now,
+    ) {
+        Ok(concluded) => concluded,
+        Err(refusal) => {
+            requeue_if_authority_lost(tx, &case, &directory, actor, refusal, now).await?;
+            return Err(case_refusal_to_action_error(refusal));
+        }
+    };
 
     let admin_trans = mod_state
         .apply_case_conclusion(&pub_state, &conclusion)
@@ -1092,213 +1104,86 @@ pub async fn conclude_case(
             ModerationError::StaleDecision => ModerationActionError::Conflict("stale_decision"),
             ModerationError::WrongAuthority => ModerationActionError::Forbidden("wrong_authority"),
             ModerationError::NotAdmin => ModerationActionError::Forbidden("not_admin"),
+            ModerationError::Publication(_) => {
+                ModerationActionError::Conflict("publication_changed")
+            }
             _ => ModerationActionError::Internal,
         })?;
 
-    let (concluded_basis_kind, concluded_basis_grant_id) = match conclusion.authority.basis() {
-        AuthorityBasis::Admin => ("admin", None),
-        AuthorityBasis::Grant(g) => ("grant", Some(g.as_uuid())),
-    };
-
-    // Update case to concluded
-    let updated_case = query(
-        "UPDATE moderation_cases
-            SET version = $1, state = 'concluded', concluded_by = $2,
-                concluded_basis_kind = $3, concluded_basis_grant_id = $4,
-                concluded_verdict = $5, updated_at = now()
-          WHERE id = $6 AND version = $7",
-    )
-    .bind(next_version)
-    .bind(actor.as_uuid())
-    .bind(concluded_basis_kind)
-    .bind(concluded_basis_grant_id)
-    .bind(match verdict {
-        CaseVerdict::Approve => "approve",
-        CaseVerdict::Reject => "reject",
-    })
-    .bind(case_id.as_uuid())
-    .bind(expected_case_version.get())
-    .execute(&mut *tx)
-    .await
-    .map_err(classify)?;
-
-    if updated_case.rows_affected() == 0 {
-        tx.rollback().await.map_err(classify)?;
+    if !write_case(&mut tx, &transition.next, expected_case_version.get()).await? {
         return Err(ModerationActionError::Conflict("case_version_stale"));
     }
-
     let next_pub = admin_trans.publication.facts();
     let next_mod = admin_trans.moderation.facts();
-    let next_dec = next_mod
-        .revisions
-        .iter()
-        .find(|r| r.revision == rev_id)
-        .ok_or(ModerationActionError::Internal)?;
-
-    // Update work_revision_moderation
-    let (prov_kind, mod_grant_id) = match next_dec.provenance.as_ref() {
-        Some(DecisionProvenance::Admin { .. }) => ("admin", None),
-        Some(DecisionProvenance::Moderator { grant, .. }) => ("moderator", Some(grant.as_uuid())),
-        _ => return Err(ModerationActionError::Internal),
-    };
-
-    let mod_status = match verdict {
-        CaseVerdict::Approve => "approved",
-        CaseVerdict::Reject => "rejected",
-    };
-
-    let reason_str = reason
-        .as_ref()
-        .map(|r| r.as_str())
-        .unwrap_or("approved on review");
-
-    query(
-        "UPDATE work_revision_moderation
-            SET decision_version = $1, moderation = $2, provenance_kind = $3,
-                admin_actor = $4, admin_verdict = $5, admin_reason = $6,
-                moderator_grant_id = $7, policy_version = $8, updated_at = now()
-          WHERE work_id = $9 AND revision_id = $10",
+    write_decision(
+        &mut tx,
+        next_pub,
+        next_mod,
+        rev_id,
+        DecisionSource {
+            evaluation: None,
+            case: Some(case_id),
+        },
     )
-    .bind(next_dec.version.get())
-    .bind(mod_status)
-    .bind(prov_kind)
-    .bind(actor.as_uuid())
-    .bind(match verdict {
-        CaseVerdict::Approve => "approve",
-        CaseVerdict::Reject => "reject",
-    })
-    .bind(reason_str)
-    .bind(mod_grant_id)
-    .bind(next_dec.policy.get())
-    .bind(work_id.as_uuid())
-    .bind(rev_id.as_uuid())
-    .execute(&mut *tx)
-    .await
-    .map_err(classify)?;
-
-    // Update work_publications
-    let pointer_rev = next_pub.pointer.map(|p| p.revision.as_uuid());
-    let pointer_gen = next_pub.pointer.map(|p| p.intent_generation.get());
-    let withdrawn_rev = next_pub.review_withdrawn.map(|p| p.revision.as_uuid());
-    let withdrawn_gen = next_pub.review_withdrawn.map(|p| p.intent_generation.get());
-    let ever_public_uuids: Vec<Uuid> = next_pub.ever_public.iter().map(|r| r.as_uuid()).collect();
-
-    query(
-        "UPDATE work_publications
-            SET pointer_revision_id = $1,
-                pointer_intent_generation = $2,
-                review_withdrawn_revision_id = $3,
-                review_withdrawn_intent_generation = $4,
-                ever_public = $5,
-                public_epoch = $6,
-                updated_at = now()
-          WHERE work_id = $7",
-    )
-    .bind(pointer_rev)
-    .bind(pointer_gen)
-    .bind(withdrawn_rev)
-    .bind(withdrawn_gen)
-    .bind(&ever_public_uuids)
-    .bind(next_pub.public_epoch.get())
-    .bind(work_id.as_uuid())
-    .execute(&mut *tx)
-    .await
-    .map_err(classify)?;
-
-    // Pointer effect on publications table
-    match admin_trans.effects.pointer {
-        PointerEffect::Set(p) => {
-            let meta_id: Option<Uuid> = query_scalar(
-                "SELECT metadata_snapshot_id FROM revisions WHERE id = $1 AND work_id = $2",
-            )
-            .bind(p.revision.as_uuid())
-            .bind(work_id.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-
-            query(
-                "INSERT INTO publications (work_id, revision_id, generation, published_at, metadata_snapshot_id)
-                 VALUES ($1, $2, $3, now(), $4)
-                 ON CONFLICT (work_id) DO UPDATE SET
-                     revision_id = EXCLUDED.revision_id,
-                     generation = EXCLUDED.generation,
-                     published_at = EXCLUDED.published_at,
-                     metadata_snapshot_id = EXCLUDED.metadata_snapshot_id",
-            )
-            .bind(work_id.as_uuid())
-            .bind(p.revision.as_uuid())
-            .bind(p.intent_generation.get())
-            .bind(meta_id)
-            .execute(&mut *tx)
-            .await
-            .map_err(classify)?;
-        }
-        PointerEffect::Clear => {
-            query("DELETE FROM publications WHERE work_id = $1")
-                .bind(work_id.as_uuid())
-                .execute(&mut *tx)
-                .await
-                .map_err(classify)?;
-        }
-        PointerEffect::Unchanged => {}
-    }
-
-    // Mark any open evaluation jobs for this revision as applied
-    query(
-        "UPDATE work_evaluation_jobs
-            SET state = 'applied', updated_at = now()
-          WHERE work_id = $1 AND revision_id = $2 AND state IN ('open', 'leased', 'rerouted')",
-    )
-    .bind(work_id.as_uuid())
-    .bind(rev_id.as_uuid())
-    .execute(&mut *tx)
-    .await
-    .map_err(classify)?;
+    .await?;
+    write_publication_pointers(&mut tx, next_pub).await?;
+    apply_pointer_effect(&mut tx, work_id, admin_trans.effects.pointer).await?;
+    sync_job_states(&mut tx, next_mod).await?;
 
     tx.commit().await.map_err(classify)?;
-
     Ok(admin_trans)
 }
 
 // ---------------------------------------------------------------------------
-// 7. Grant Management
+// 5. Grants and groups (MOD-11)
 // ---------------------------------------------------------------------------
 
 pub async fn create_moderation_grant(
-    conn: &mut PgConnection,
+    pool: &PgPool,
     admin: PrincipalId,
-    grantee: Grantee,
-    capability: ReviewCapability,
-    scope: GrantScope,
-    expires_at: Option<OffsetDateTime>,
+    spec: GrantSpec,
     now: OffsetDateTime,
 ) -> Result<GrantId, ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let seat = directory
-        .require_admin(admin, now)
-        .map_err(|_| ModerationActionError::Forbidden("not_admin"))?;
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let (directory, seat) = admin_seat(&mut tx, admin, now).await?;
+    if spec.expires_at.is_some_and(|at| at <= now) {
+        return Err(ModerationActionError::ValidationFailed("expires_in_past"));
+    }
+    if let Grantee::Principal(p) = spec.grantee {
+        let known: Option<i32> = query_scalar("SELECT 1 FROM principals WHERE id = $1")
+            .bind(p.as_uuid())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+        if known.is_none() {
+            return Err(ModerationActionError::ValidationFailed("unknown_principal"));
+        }
+    }
+    if let GrantScope::Work(w) = spec.scope {
+        let known: Option<i32> = query_scalar("SELECT 1 FROM works WHERE id = $1")
+            .bind(w.as_uuid())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+        if known.is_none() {
+            return Err(ModerationActionError::ValidationFailed("unknown_work"));
+        }
+    }
     let id = GrantId::from_uuid(Uuid::now_v7());
-    let spec = GrantSpec {
-        grantee,
-        capability,
-        scope,
-        expires_at,
-    };
-    let (_, _audit) = directory.grant(seat, id, spec).map_err(|e| match e {
+    let (_, audit) = directory.grant(seat, id, spec).map_err(|e| match e {
         DirectoryError::UnknownGroup => ModerationActionError::ValidationFailed("unknown_group"),
         DirectoryError::DuplicateGrant => ModerationActionError::Conflict("duplicate_grant"),
+        DirectoryError::Refused(a) => ModerationActionError::Forbidden(a.as_str()),
         _ => ModerationActionError::Internal,
     })?;
-    let (grantee_kind, grantee_id) = match grantee {
+    let (grantee_kind, grantee_id) = match spec.grantee {
         Grantee::Principal(p) => ("principal", p.as_uuid()),
         Grantee::Group(g) => ("group", g.as_uuid()),
     };
-    let (scope_kind, scope_work) = match scope {
+    let (scope_kind, scope_work) = match spec.scope {
         GrantScope::Global => ("global", None),
         GrantScope::Work(w) => ("work", Some(w.as_uuid())),
     };
-
     query(
         "INSERT INTO moderation_grants (
              id, grantee_kind, grantee_id, capability, scope_kind, scope_work_id,
@@ -1309,53 +1194,167 @@ pub async fn create_moderation_grant(
     .bind(id.as_uuid())
     .bind(grantee_kind)
     .bind(grantee_id)
-    .bind(match capability {
-        ReviewCapability::Works => "works",
-        ReviewCapability::Comments => "comments",
-    })
+    .bind(spec.capability.as_str())
     .bind(scope_kind)
     .bind(scope_work)
-    .bind(expires_at)
+    .bind(spec.expires_at)
     .bind(admin.as_uuid())
-    .execute(&mut *conn)
+    .execute(&mut *tx)
     .await
     .map_err(classify)?;
-
+    write_directory_audit(&mut tx, audit).await?;
+    tx.commit().await.map_err(classify)?;
     Ok(id)
 }
 
+/// Revoke an admin-issued grant. Claims that rested on it are revalidated in the same commit:
+/// another live basis keeps the claimant, none returns the case to the queue.
 pub async fn revoke_moderation_grant(
-    conn: &mut PgConnection,
+    pool: &PgPool,
     admin: PrincipalId,
     grant_id: GrantId,
     now: OffsetDateTime,
 ) -> Result<(), ModerationActionError> {
-    let directory = load_moderation_directory(conn, now).await?;
-    let seat = directory
-        .require_admin(admin, now)
-        .map_err(|_| ModerationActionError::Forbidden("not_admin"))?;
-
-    let (_, _audit) = directory.revoke(seat, grant_id).map_err(|e| match e {
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
+    let row: Option<String> =
+        query_scalar("SELECT origin FROM moderation_grants WHERE id = $1 FOR UPDATE")
+            .bind(grant_id.as_uuid())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+    // Inherited comment grants are revoked through `vink-app moderator revoke`.
+    if row.as_deref() != Some("admin") {
+        return Err(ModerationActionError::NotFound);
+    }
+    let directory = load_moderation_directory(&mut tx, now).await?;
+    let (after, audit) = directory.revoke(seat, grant_id).map_err(|e| match e {
         DirectoryError::UnknownGrant => ModerationActionError::NotFound,
         DirectoryError::Unchanged => ModerationActionError::Conflict("already_revoked"),
+        DirectoryError::Refused(a) => ModerationActionError::Forbidden(a.as_str()),
         _ => ModerationActionError::Internal,
     })?;
-
-    let updated = query(
+    query(
         "UPDATE moderation_grants
             SET revoked = true, revoked_at = now(), revoked_by = $1
           WHERE id = $2 AND revoked = false",
     )
     .bind(admin.as_uuid())
     .bind(grant_id.as_uuid())
-    .execute(&mut *conn)
+    .execute(&mut *tx)
     .await
     .map_err(classify)?;
+    write_directory_audit(&mut tx, audit).await?;
+    revalidate_claims(&mut tx, &after, None, now).await?;
+    tx.commit().await.map_err(classify)?;
+    Ok(())
+}
 
-    if updated.rows_affected() == 0 {
+pub async fn create_moderation_group(
+    pool: &PgPool,
+    admin: PrincipalId,
+    name: &str,
+    now: OffsetDateTime,
+) -> Result<GroupId, ModerationActionError> {
+    let name = name.trim();
+    let length = name.chars().count();
+    if !(1..=80).contains(&length) || name.chars().any(char::is_control) {
+        return Err(ModerationActionError::ValidationFailed("group_name"));
+    }
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
+    let id = GroupId::from_uuid(Uuid::now_v7());
+    let created: Option<Uuid> = query_scalar(
+        "INSERT INTO moderation_groups (id, name, created_by, created_at)
+         VALUES ($1, $2, $3, now())
+         ON CONFLICT (name) DO NOTHING
+         RETURNING id",
+    )
+    .bind(id.as_uuid())
+    .bind(name)
+    .bind(admin.as_uuid())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(classify)?;
+    if created.is_none() {
+        return Err(ModerationActionError::Conflict("duplicate_group"));
+    }
+    query(
+        "INSERT INTO moderation_directory_audit (id, admin_id, change, group_id, created_at)
+         VALUES ($1, $2, 'group_created', $3, $4)",
+    )
+    .bind(Uuid::now_v7())
+    .bind(admin.as_uuid())
+    .bind(id.as_uuid())
+    .bind(seat.checked_at())
+    .execute(&mut *tx)
+    .await
+    .map_err(classify)?;
+    tx.commit().await.map_err(classify)?;
+    Ok(id)
+}
+
+/// Add or remove a group member. A removed member's claims are revalidated in the same commit.
+pub async fn set_group_membership(
+    pool: &PgPool,
+    admin: PrincipalId,
+    group: GroupId,
+    member: PrincipalId,
+    present: bool,
+    now: OffsetDateTime,
+) -> Result<(), ModerationActionError> {
+    let mut tx = pool.begin().await.map_err(classify)?;
+    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
+    let locked: Option<Uuid> =
+        query_scalar("SELECT id FROM moderation_groups WHERE id = $1 FOR UPDATE")
+            .bind(group.as_uuid())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+    if locked.is_none() {
         return Err(ModerationActionError::NotFound);
     }
-
+    let known: Option<i32> = query_scalar("SELECT 1 FROM principals WHERE id = $1")
+        .bind(member.as_uuid())
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(classify)?;
+    if known.is_none() {
+        return Err(ModerationActionError::ValidationFailed("unknown_principal"));
+    }
+    let directory = load_moderation_directory(&mut tx, now).await?;
+    let (after, audit) = directory
+        .set_membership(seat, group, member, present)
+        .map_err(|e| match e {
+            DirectoryError::UnknownGroup => ModerationActionError::NotFound,
+            DirectoryError::Unchanged => ModerationActionError::Conflict("membership_unchanged"),
+            DirectoryError::Refused(a) => ModerationActionError::Forbidden(a.as_str()),
+            _ => ModerationActionError::Internal,
+        })?;
+    if present {
+        query(
+            "INSERT INTO moderation_group_members (group_id, principal_id, added_by, created_at)
+             VALUES ($1, $2, $3, now())",
+        )
+        .bind(group.as_uuid())
+        .bind(member.as_uuid())
+        .bind(admin.as_uuid())
+        .execute(&mut *tx)
+        .await
+        .map_err(classify)?;
+    } else {
+        query("DELETE FROM moderation_group_members WHERE group_id = $1 AND principal_id = $2")
+            .bind(group.as_uuid())
+            .bind(member.as_uuid())
+            .execute(&mut *tx)
+            .await
+            .map_err(classify)?;
+    }
+    write_directory_audit(&mut tx, audit).await?;
+    if !present {
+        revalidate_claims(&mut tx, &after, Some(member), now).await?;
+    }
+    tx.commit().await.map_err(classify)?;
     Ok(())
 }
 

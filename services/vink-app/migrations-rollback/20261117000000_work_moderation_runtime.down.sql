@@ -1,8 +1,9 @@
 -- Pre-activation backout of #159 (work moderation runtime).
--- Refuses once any moderation case, grant, admin seat or automation audit exists,
--- or once any moderation record references a moderator grant.
+-- Refuses once any moderation case, grant, group, admin seat, automation or directory audit,
+-- decision history, human-only provenance, new job state or served review-withdrawn page exists.
 BEGIN;
-LOCK TABLE moderation_automation_state, moderation_automation_audit,
+LOCK TABLE moderation_directory_audit, work_revision_decision_history,
+    moderation_automation_state, moderation_automation_audit,
     moderation_case_notes, moderation_cases, moderation_grants,
     moderation_group_members, moderation_groups, moderation_admin_audit,
     moderation_admin_seats, work_revision_moderation, work_evaluation_jobs,
@@ -14,11 +15,25 @@ DO $$ BEGIN
        OR EXISTS (SELECT 1 FROM moderation_admin_seats)
        OR EXISTS (SELECT 1 FROM moderation_automation_audit)
        OR EXISTS (SELECT 1 FROM work_revision_moderation WHERE moderator_grant_id IS NOT NULL)
+       OR EXISTS (SELECT 1 FROM moderation_directory_audit)
+       OR EXISTS (SELECT 1 FROM moderation_groups)
+       OR EXISTS (SELECT 1 FROM work_revision_decision_history)
+       OR EXISTS (SELECT 1 FROM work_revision_moderation
+                   WHERE provenance_kind IN ('moderator', 'policy_rereview'))
+       OR EXISTS (SELECT 1 FROM work_evaluation_jobs
+                   WHERE state NOT IN ('open', 'applied', 'failed'))
+       -- A served review-withdrawn page cannot be expressed by the old schema. A hidden pointer
+       -- is not served yet; the old schema answers not found for it exactly as before.
+       OR EXISTS (SELECT 1 FROM work_publications
+                   WHERE review_withdrawn_revision_id IS NOT NULL)
        OR EXISTS (SELECT 1 FROM work_publication_command_receipts)
     THEN
         RAISE EXCEPTION 'work moderation runtime state exists; preserve it and roll forward';
     END IF;
 END $$;
+
+-- 9. Directory audit and decision history
+DROP TABLE moderation_directory_audit, work_revision_decision_history;
 
 -- 8. Automation mode
 DROP TABLE moderation_automation_audit, moderation_automation_state;
@@ -30,7 +45,8 @@ DROP TABLE moderation_case_notes, moderation_cases;
 ALTER TABLE work_revision_moderation
     DROP CONSTRAINT work_revision_moderation_provenance_kind_check,
     DROP CONSTRAINT work_revision_moderation_approved_check,
-    DROP CONSTRAINT work_revision_moderation_rejected_check;
+    DROP CONSTRAINT work_revision_moderation_rejected_check,
+    DROP CONSTRAINT work_revision_moderation_needs_admin_check;
 
 ALTER TABLE work_revision_moderation
     DROP COLUMN moderator_grant_id,
@@ -61,6 +77,17 @@ ALTER TABLE work_revision_moderation
                 OR
                 (provenance_kind = 'admin' AND admin_verdict = 'reject' AND admin_actor IS NOT NULL AND admin_reason IS NOT NULL AND policy_reason_code IS NULL AND needs_admin_cause IS NULL)
             )
+        )
+    ),
+    ADD CONSTRAINT work_revision_moderation_needs_admin_check CHECK (
+        moderation <> 'needs_admin' OR (
+            decision_version > 1
+            AND provenance_kind = 'ai_needs_admin'
+            AND needs_admin_cause IS NOT NULL
+            AND policy_reason_code IS NULL
+            AND admin_actor IS NULL
+            AND admin_verdict IS NULL
+            AND admin_reason IS NULL
         )
     );
 

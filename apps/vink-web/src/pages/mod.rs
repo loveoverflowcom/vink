@@ -23,8 +23,8 @@ use crate::public_list::work_anchor;
 use crate::public_reads;
 use crate::ui::{adapters, patterns::ReaderHeader};
 use vink_ui::{
-    HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
-    RecoveryAction, RecoveryIntent, StatePanel, Tone,
+    Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent, PanelKind, ProblemKind,
+    RecoveryAction, RecoveryIntent, StatePanel, Text, TextTone, Tone, TypeRole,
 };
 
 /// HTTP status for the server response; a no-op in the browser.
@@ -175,30 +175,27 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
     }
 }
 
+/// O-17@r2: the old URL after a moderator or admin rejected the public revision. Only the
+/// author's display name, the fixed line and the eligible discussion; never body, title, tags,
+/// description or canonical metadata of the removed revision.
 #[component]
 fn ReviewWithdrawnView(work_id: String, author_name: String, return_href: String) -> impl IntoView {
     view! {
         <Title text="Bản này đã bị gỡ sau khi kiểm duyệt. — Vink" />
         <Meta name="robots" content="noindex" />
-        <div id="reader" class="vk-reader-page">
+        <div id="reader" class="vk-reader-page" data-state="review-withdrawn">
             <vink_ui::Link attr:id="reader-return" variant=vink_ui::LinkVariant::Standalone href=return_href>
                 <Icon name=IconName::ArrowBack /> "Khám phá"
             </vink_ui::Link>
-            <main class="vk-reader-article vk-container" role="main">
-                <header class="vk-reader-header">
-                    <p class="vk-reader-byline">
-                        <span class="vk-author-name">{author_name}</span>
-                    </p>
-                    <div class="vk-banner vk-banner--notice" role="alert" style="margin-top: 1rem; padding: 1rem; background: var(--vk-color-surface-container, #f5f5f5); border-left: 4px solid var(--vk-color-error, #b00020); border-radius: 4px;">
-                        <p style="margin: 0; font-weight: 500;">
-                            "Bản này đã bị gỡ sau khi kiểm duyệt."
-                        </p>
-                    </div>
+            <article id="reader-paper" class="vk-reader" data-testid="reader-review-withdrawn">
+                <header id="reader-header" class="vk-reader__header">
+                    <Text role=TypeRole::Caption tone=TextTone::Muted>{author_name}</Text>
+                    <Heading level=HeadingLevel::H1 role=TypeRole::Title>
+                        "Bản này đã bị gỡ sau khi kiểm duyệt."
+                    </Heading>
                 </header>
-                <section class="vk-reader-discussion" aria-label="Thảo luận">
-                    <discussion::Discussion work_id=work_id />
-                </section>
-            </main>
+            </article>
+            <discussion::Discussion work_id=work_id />
         </div>
     }
 }

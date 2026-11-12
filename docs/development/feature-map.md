@@ -159,10 +159,10 @@ Bảng ghi các phần đã có điểm vào và các phần đang chờ. Nguồ
 
 | Hành vi đích | Yêu cầu | Hiện có trong app | Bằng chứng hiện có |
 | --- | --- | --- | --- |
-| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | Chỉ API tác giả #158 (chụp snapshot, yêu cầu công khai tạo ticket `open`, chuyển riêng tư xóa con trỏ, đọc trạng thái); không có UI, worker evaluator hay đường duyệt nên bản mới dừng ở `pending`; chỉ bản đã `approved` (gồm `legacy_bootstrap`) mới lên lại công khai | [Pure core/replay](publication-core.md); [runtime](publication-runtime.md) + mục PUB-RUNTIME-01 dưới đây |
-| Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Lõi thuần `domain::moderation` + `ScriptedEvaluator` test-only #151; runtime `/health` và worker vẫn `ai_moderation: not_implemented` | [Moderation core/replay](moderation-core.md); replay M1 + `evaluator-vectors.json` |
-| Quản trị kiểm duyệt: admin/grant/nhóm, nhận ca, phản đối (cả quyết định moderator), dừng tự động, điều tra riêng | MOD-09..15 | Không (chỉ lõi thuần `ADMIN-MODERATION-20261111`; không bảng, CLI/API, worker hay UI; worker vẫn coi tự động là bật) | [ADMIN-CORE-01](moderation-core.md#admin-moderation-core--admin-core-01); replay M4 `governance.qnt` + `governance_tests` |
-| Tác giả xóa bài, trang thay thế còn bình luận; trang “Nội dung đã được ẩn” khi bài đang công khai chuyển riêng tư | PUB-04/05/07, COM-11 | Không; `set-private` qua #158 vẫn trả `404` vì loader dựng `hidden = None` | Lõi thuần + replay M3 `tombstone.qnt` ([PUB-HIDDEN-01](publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01)) |
+| Chọn “Chỉ mình tôi”/“Công khai”, gửi để kiểm duyệt, đăng đúng bản | AUD-01/02, PUB-01/02 | API tác giả #158 (chụp snapshot, yêu cầu công khai, chuyển riêng tư, đọc trạng thái) + #159: consumer `vink-worker` (tắt mặc định, chỉ evaluator kịch bản local/test) hoặc người duyệt kết luận trên hàng chờ; không có evaluator thì bản mới chờ người duyệt. Chưa có UI tác giả | [Pure core/replay](publication-core.md); [runtime](publication-runtime.md) + mục PUB-RUNTIME-01 dưới đây |
+| Trợ lý AI duyệt, quản trị viên override | MOD-07..09 | Lõi thuần #151; #159 nối lease/claim, thử lại với `EvaluationId` mới và kết luận của admin/moderator ([moderation-runtime](moderation-runtime.md)). Chưa có AI provider thật: `/health` và worker báo `ai_moderation: not_implemented` | [Moderation core/replay](moderation-core.md); replay M1 + `evaluator-vectors.json` |
+| Quản trị kiểm duyệt: admin/grant/nhóm, nhận ca, phản đối (cả quyết định moderator), dừng tự động, điều tra riêng | MOD-09..15 | #159 persistence-api: ghế admin (CLI), grant người/nhóm, ca duyệt (nhận, nhả, ghi chú, chuyển admin, tiếp quản, kết luận, mở ca can thiệp), dừng/bật tự động có audit. Chưa có phản đối, điều tra riêng, ca bình luận hay UI quản trị | [ADMIN-CORE-01](moderation-core.md#admin-moderation-core--admin-core-01); replay M4 `governance.qnt` + `governance_tests` |
+| Tác giả xóa bài, trang thay thế còn bình luận; trang “Nội dung đã được ẩn” khi bài đang công khai chuyển riêng tư | PUB-04/05/07, COM-11 | Trang sau kiểm duyệt (`O-17@r2`) có ở API/SSR/Web (#159). Trang “Nội dung đã được ẩn” và tombstone chưa có: `set-private` vẫn trả `404` dù con trỏ ẩn đã được lưu | Lõi thuần + replay M3 `tombstone.qnt` ([PUB-HIDDEN-01](publication-core.md#trang-ẩn-và-gửi-duyệt-theo-phiên-bản--pub-hidden-01)) |
 | Sửa bình luận, dấu “Đã sửa” | COM-10 | Không; chỉ gỡ được bình luận của mình | Model `comment_edit.qnt` |
 | Bộ sưu tập cá nhân | COL-01..06 | Không | Model `collections.qnt` |
 | Hashtag | HTG-01..06 | Không; chỉ có thẻ catalog | Đặc tả văn bản |
@@ -497,3 +497,12 @@ Owner, DecisionMap, khóa, retry/deadline, kill switch, backout và giới hạn
 [discussion-post-review](discussion-post-review.md); assertions: `tests/postgres/post_review.rs`,
 `post_review::tests`, `post_review_replay`; model `behavior/discussion/post-review.qnt`.
 Đây là map coverage, không khẳng định lane đã PASS; admission activation vẫn chưa có.
+
+## MOD-RUNTIME-01 — kiểm duyệt tác phẩm và trang ở URL cũ (#159, 12/11/2026)
+
+| Hành vi | Bằng chứng | Giới hạn |
+| --- | --- | --- |
+| Worker áp kết quả dưới fence claim, chế độ tự động và `DecisionVersion` | `stale_claim_or_pause_before_finish_changes_nothing`, `retryable_failures_use_fresh_evaluation_ids_then_go_to_people` (`postgres`); unit cấu hình trong `evaluation_worker.rs` | Chỉ evaluator kịch bản; không đo hai worker song song thật |
+| Dừng tự động, gửi khi đang dừng, ca duyệt, mất quyền, nhóm, tự né | `paused_submission_goes_to_the_human_queue`, `stale_note_and_lost_authority_are_persisted_honestly`, `group_grants_recusal_and_membership_removal` (`postgres`) | Không có UI quản trị |
+| Trang “Bản này đã bị gỡ sau khi kiểm duyệt.” giữ bình luận, sống qua lần gửi lại, nhường bản duyệt kế tiếp | `review_withdrawn_page_survives_a_pending_resubmission` (`postgres`); phase `review-withdrawn` (`web`: SSR `noindex`/`no-store`, hydration, xóa cache tab và thẻ Khám phá, chặn bình luận mới) | Model Quint chưa có trạng thái này |
+

@@ -8,10 +8,15 @@ use sqlx::{PgConnection, query, query_as, query_scalar};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::moderation_write::{
+    DecisionSource, locked_automation_mode, open_work_case, write_decision,
+};
 use super::postgres::{PgStore, classify, integrity};
 use super::principal::locked_standing;
 use super::taxonomy::{SnapshotCapture, capture_metadata_snapshot};
-use crate::application::moderation::{ModerationPlanError, plan_author_publication};
+use crate::application::moderation::{
+    ModerationPlanError, plan_author_publication, plan_author_publication_under,
+};
 use crate::application::ports::{
     AuthorPrivateOutcome, AuthorPublicRequestOutcome, AuthorPublicationStateFacts,
     AuthorPublicationStore, AuthorSnapshotCapture, BoundPrincipal, CaptureSnapshotOutcome,
@@ -20,6 +25,9 @@ use crate::application::ports::{
 use crate::domain::document::{Document, DocumentData, Title};
 use crate::domain::draft::DraftVersion;
 use crate::domain::ids::{EvaluationId, GrantId, PrincipalId, RevisionId, WorkId};
+use crate::domain::moderation::ReviewRequest;
+use crate::domain::moderation::automation::AutomationMode;
+use crate::domain::moderation::case::CaseOrigin;
 use crate::domain::moderation::{
     AdminVerdict, DecisionProvenance, DecisionReason, DecisionVersion, EvaluationJobFacts,
     EvaluationTarget, JobState, ModerationError, NeedsAdminCause, PolicyReasonCode, PolicyVersion,
@@ -847,8 +855,11 @@ impl AuthorPublicationStore for PgStore {
                 return Ok(RequestPublicOutcome::UnknownRevision);
             }
 
+            // MOD-14: the mode is read under a share lock in this commit, after the actor's
+            // standing fence (lock order in `moderation_write`).
+            let automation = locked_automation_mode(&mut tx).await?;
             let new_eval_id = EvaluationId::generate();
-            let transition = match plan_author_publication(
+            let transition = match plan_author_publication_under(
                 Some(BoundPrincipal {
                     principal: actor,
                     standing,
@@ -860,6 +871,7 @@ impl AuthorPublicationStore for PgStore {
                     expected: expected_generation,
                 },
                 Some(new_eval_id),
+                automation,
             ) {
                 Ok(t) => t,
                 Err(ModerationPlanError::Rejected(ModerationError::Publication(
@@ -914,7 +926,7 @@ impl AuthorPublicationStore for PgStore {
                      ever_public, public_epoch,
                      policy_version, updated_at
                  )
-                 VALUES ($1, 'public', 'active', $2, $3, $2, $4, $5, NULL, NULL, NULL, NULL, $6, $7, $8, now())
+                 VALUES ($1, 'public', 'active', $2, $3, $2, $4, $5, $9, $10, $11, $12, $6, $7, $8, now())
                  ON CONFLICT (work_id) DO UPDATE SET
                      audience = 'public',
                      generation = EXCLUDED.generation,
@@ -922,10 +934,10 @@ impl AuthorPublicationStore for PgStore {
                      intent_generation = EXCLUDED.intent_generation,
                      pointer_revision_id = EXCLUDED.pointer_revision_id,
                      pointer_intent_generation = EXCLUDED.pointer_intent_generation,
-                     hidden_revision_id = NULL,
-                     hidden_intent_generation = NULL,
-                     review_withdrawn_revision_id = NULL,
-                     review_withdrawn_intent_generation = NULL,
+                     hidden_revision_id = EXCLUDED.hidden_revision_id,
+                     hidden_intent_generation = EXCLUDED.hidden_intent_generation,
+                     review_withdrawn_revision_id = EXCLUDED.review_withdrawn_revision_id,
+                     review_withdrawn_intent_generation = EXCLUDED.review_withdrawn_intent_generation,
                      ever_public = EXCLUDED.ever_public,
                      public_epoch = EXCLUDED.public_epoch,
                      updated_at = now()",
@@ -938,6 +950,12 @@ impl AuthorPublicationStore for PgStore {
             .bind(&ever_public_uuids)
             .bind(next_pub.public_epoch.get())
             .bind(mod_state.facts().policy.get())
+            // O-17: the review-withdrawn page (and a hidden pointer) stays until the core clears
+            // it, i.e. until a revision is readable again; a pending resubmission keeps it.
+            .bind(next_pub.hidden.map(|p| p.revision.as_uuid()))
+            .bind(next_pub.hidden.map(|p| p.intent_generation.get()))
+            .bind(next_pub.review_withdrawn.map(|p| p.revision.as_uuid()))
+            .bind(next_pub.review_withdrawn.map(|p| p.intent_generation.get()))
             .execute(&mut *tx)
             .await
             .map_err(classify)?;
@@ -981,58 +999,67 @@ impl AuthorPublicationStore for PgStore {
                 PointerEffect::Unchanged => {}
             }
 
-            // 6. If ticket produced, write work_revision_moderation and work_evaluation_jobs
-            if let Some(ticket) = &transition.ticket {
-                query(
-                    "INSERT INTO work_revision_moderation (
-                         work_id, revision_id, decision_version, moderation, policy_version, created_at, updated_at
-                     )
-                     VALUES ($1, $2, 1, 'pending', $3, now(), now())
-                     ON CONFLICT (work_id, revision_id) DO UPDATE SET
-                         decision_version = 1,
-                         moderation = 'pending',
-                         policy_version = EXCLUDED.policy_version,
-                         provenance_kind = NULL,
-                         policy_reason_code = NULL,
-                         needs_admin_cause = NULL,
-                         admin_actor = NULL,
-                         admin_verdict = NULL,
-                         admin_reason = NULL,
-                         moderator_grant_id = NULL,
-                         updated_at = now()",
+            // 6. Decision, history, evaluator job and human case exactly as the core routed the
+            // review: a resubmission keeps the revision's decision version; a paused mode or a
+            // human re-review goes to the queue instead of the evaluator.
+            if transition.ticket.is_some()
+                || transition.human_review.is_some()
+                || transition.review != ReviewRequest::None
+            {
+                write_decision(
+                    &mut tx,
+                    next_pub,
+                    transition.moderation.facts(),
+                    revision_id,
+                    DecisionSource {
+                        evaluation: transition.ticket.as_ref().map(|t| t.id),
+                        case: None,
+                    },
                 )
-                .bind(work_id.as_uuid())
-                .bind(revision_id.as_uuid())
-                .bind(ticket.policy.get())
-                .execute(&mut *tx)
-                .await
-                .map_err(classify)?;
-
+                .await?;
+            }
+            if let Some(ticket) = &transition.ticket {
                 let EvaluationTarget::WorkRevision { digest, .. } = &ticket.target else {
                     return Err(integrity(
                         "ticket target must be work revision",
                         work_id.as_uuid(),
                     ));
                 };
-
-                let scenario = std::env::var("VINK_MOCK_EVALUATION_SCENARIO").ok();
-
+                // The scripted verdict (local/test only) is bound by the worker on first claim.
                 query(
                     "INSERT INTO work_evaluation_jobs (
                          id, work_id, revision_id, content_digest, policy_version, state,
-                         claim_generation, attempts, max_attempts, scenario, created_at, updated_at
+                         claim_generation, attempts, max_attempts, created_at, updated_at
                      )
-                     VALUES ($1, $2, $3, $4, $5, 'open', 0, 0, 3, $6, now(), now())",
+                     VALUES ($1, $2, $3, $4, $5, 'open', 0, 0, 3, now(), now())",
                 )
                 .bind(ticket.id.as_uuid())
                 .bind(work_id.as_uuid())
                 .bind(revision_id.as_uuid())
                 .bind(digest.as_str())
                 .bind(ticket.policy.get())
-                .bind(scenario)
                 .execute(&mut *tx)
                 .await
                 .map_err(classify)?;
+            }
+            if let Some(human) = transition.human_review {
+                let origin = match transition.review {
+                    ReviewRequest::PolicyRereview => CaseOrigin::PolicyRereview,
+                    ReviewRequest::Fresh | ReviewRequest::Resubmitted
+                        if automation == AutomationMode::Paused =>
+                    {
+                        CaseOrigin::AutomationPaused
+                    }
+                    _ => CaseOrigin::EvaluatorUncertain,
+                };
+                open_work_case(
+                    &mut tx,
+                    transition.moderation.facts(),
+                    PrincipalId::from_uuid(owner),
+                    human,
+                    origin,
+                )
+                .await?;
             }
 
             // 7. Write receipt
@@ -1249,10 +1276,11 @@ impl AuthorPublicationStore for PgStore {
                 .await
                 .map_err(classify)?;
 
-            // 5b. Update work_evaluation_jobs to withdrawn for open/rerouted jobs (Fix Bug 1)
+            // 5b. Withdraw every open, leased or rerouted job (PUB-06): a late finisher of a
+            // leased job fails its claim fence.
             query(
                 "UPDATE work_evaluation_jobs
-                    SET state = 'withdrawn', updated_at = now()
+                    SET state = 'withdrawn', lease_expires_at = NULL, updated_at = now()
                   WHERE work_id = $1 AND state IN ('open', 'leased', 'rerouted')",
             )
             .bind(work_id.as_uuid())
@@ -1260,10 +1288,13 @@ impl AuthorPublicationStore for PgStore {
             .await
             .map_err(classify)?;
 
-            // 5c. Close open review cases with reason withdrawn
+            // 5c. Close open review cases with reason withdrawn (PUB-06); a close advances the
+            // case version so a reviewer's stale command is refused.
             query(
                 "UPDATE moderation_cases
-                    SET state = 'closed', close_reason = 'withdrawn', updated_at = now()
+                    SET state = 'closed', close_reason = 'withdrawn', version = version + 1,
+                        claimed_by = NULL, claimed_basis_kind = NULL, claimed_basis_grant_id = NULL,
+                        updated_at = now()
                   WHERE work_id = $1 AND state IN ('queued', 'claimed', 'escalated')",
             )
             .bind(work_id.as_uuid())

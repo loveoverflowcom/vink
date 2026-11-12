@@ -714,6 +714,8 @@ impl From<ModerationActionError> for ApiError {
                 field: "body",
                 message: field.to_string(),
             },
+            ModerationActionError::Unauthenticated => Self::Unauthenticated,
+            ModerationActionError::Suspended => Self::PrincipalSuspended,
             ModerationActionError::Unavailable => Self::DependencyUnavailable,
             ModerationActionError::Internal => Self::Internal,
         }
