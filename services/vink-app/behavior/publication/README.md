@@ -64,9 +64,13 @@ evaluator consumer (`#154`), và ai quyết định bình luận do harness theo
 từ fixture công khai r1 qua lệnh production. Lý do bắt buộc thiếu và các biên không model hóa được phủ
 bởi unit test riêng `domain::moderation::governance_tests`.
 
+Các bảng dưới mô tả ranh giới **pure replay**. Cột cuối là phần không được replay chứng minh,
+không phải danh sách runtime còn thiếu; hiện trạng SQL/worker/Web ở
+[moderation-runtime](../../../../docs/development/moderation-runtime.md).
+
 ## Coverage bảng action M1
 
-| Action trong M1 | Rust coverage (#150, #151, #157) | Còn thiếu |
+| Action trong M1 | Rust coverage (#150, #151, #157) | Ngoài bằng chứng replay |
 | --- | --- | --- |
 | `snapshot` | `WorkModeration::decide_author` → `Publication::decide_author(SaveSnapshot)`, không mở job | SQL snapshot/metadata binding |
 | `request_public`, `set_private` | `WorkModeration::decide_author_with`: owner, lifecycle, exact revision, generation, moderation, pointer guard; mở `EvaluationTicket` khi `Submitted` (hoặc đi thẳng hàng chờ người khi tự động đang dừng); `set_private` thu hồi job (`JobState::Withdrawn`) và báo `withdrawn_reviews` để đóng ca/phản đối; công khai lại dùng quyết định còn hiệu lực đúng snapshot + policy | SQL cho `withdrawn`, `hidden`, `ever_public`, `public_epoch`; HTTP/UI |
@@ -80,7 +84,7 @@ bởi unit test riêng `domain::moderation::governance_tests`.
 
 ## Coverage bảng action M3 (Tombstone)
 
-| Action trong M3 | Rust coverage (#157, ADMIN-MODERATION-20261111) | Còn thiếu |
+| Action trong M3 | Rust coverage (#157, ADMIN-MODERATION-20261111) | Ngoài bằng chứng replay |
 | --- | --- | --- |
 | `make_private` (bài đang công khai) | `Publication.hidden`, `WorkAccessPlan::AuthorHidden` (“Nội dung đã được ẩn” + bình luận đủ điều kiện), `HiddenReadOnly` | Đã tích hợp reader API/SSR/Web và chặn ghi; xem [runtime](../../../../docs/development/moderation-runtime.md) |
 | `author_delete` (từ public hoặc từ trang ẩn của bài từng công khai) | `DeletionProvenance::PublicTombstone(pointer)`, `WorkAccessPlan::AuthorTombstone`, thread accessible | Persistence tombstone/`ever_public` |
@@ -98,7 +102,7 @@ bởi unit test riêng `domain::moderation::governance_tests`.
 
 ## Coverage bảng action M4 (quản trị kiểm duyệt)
 
-| Action trong M4 | Rust coverage | Còn thiếu |
+| Action trong M4 | Rust coverage | Ngoài bằng chứng replay |
 | --- | --- | --- |
 | `grant`, `revoke`, `join`, `leave`, `tick` | `ModerationDirectory::{grant, revoke, set_membership, resolve}` (hạn, thu hồi, nhóm, tạm khóa, tự né) | Bảng grant/nhóm, kế thừa `moderator_grants`, CLI/API admin |
 | `claim`, `release`, `note`, `escalate`, `takeover`, `revalidate`, `conclude` | `ReviewCase` (fence `CaseVersion` + phiên bản quyết định, `InternalNote`, `CaseConclusion`) → `WorkModeration::apply_case_conclusion` / `CommentState` | Bảng ca + ghi chú, worker revalidate |

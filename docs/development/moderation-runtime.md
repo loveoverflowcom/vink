@@ -166,5 +166,6 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
 - `cargo xtask verify web`: phase `review-withdrawn` đi qua ca duyệt bằng UI, moderator bác bằng
   API, SSR/hydration/cache trang bị gỡ, tác giả gửi phản đối bằng UI, admin đảo bằng UI, ẩn bài và
   công khai lại bằng API. Ảnh desktop/mobile ở output lane; snapshot riêng không nằm trong SSR.
-- Bằng chứng chạy và SHA được ghi riêng sau khi các lane hoàn tất; danh sách trên là phạm vi suite,
-  không tự khẳng định một lượt chạy đã PASS.
+- Kết quả chạy, SHA và CI của phần hoàn thiện ở [PR #171](https://github.com/loveoverflowcom/vink/pull/171).
+  Danh sách trên là phạm vi suite; chỉ kết quả trên đúng SHA mới là bằng chứng PASS. CI merge #170
+  (`25dc464`) bị hủy ở Web sau CLI cấp ghế admin, không phải bằng chứng smoke reader đã qua.
