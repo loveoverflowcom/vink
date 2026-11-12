@@ -21,17 +21,18 @@ còn mở.
     ý định công khai gắn đúng revision/generation (`AUD-02`, `PUB-01/02`, `INV-01/02`).
   - Bốn trường hợp xuất bản/tombstone (`PUB-04/05`, `ADM-07/08`):
     - **A** tác giả xóa bài từng công khai: hiện trang thay thế “Nội dung đã được tác giả xoá” + giữ bình luận đủ điều kiện; chặn bình luận/đánh giá mới, cho phép tự gỡ bình luận cũ (`O-03@r2`).
-    - **B** tác giả chuyển riêng tư: dùng trang “Nội dung đã được ẩn” (`AuthorHidden`), giữ bình luận đủ điều kiện; chặn ghi mới; xóa sau khi ẩn vẫn giữ bình luận qua URL cũ (`O-05@r2`). *(Lưu ý khoảng cách runtime: loader `#158` hiện vẫn build `hidden = None` nên `set-private` trả not found/404 ở HTTP cho tới khi hoàn thiện loader).*
-    - **C** admin/kiểm duyệt gỡ: trả `404` (`PUB-06/07`, `WorkAccessPlan::ModerationRemoved`).
+    - **B** tác giả chuyển riêng tư: dùng trang “Nội dung đã được ẩn” (`AuthorHidden`), giữ bình luận đủ điều kiện; chặn ghi mới; xóa sau khi ẩn vẫn giữ bình luận qua URL cũ (`O-05@r2`). *(Lưu ý khoảng cách runtime: loader `#158` hiện vẫn dựng `hidden = None` nên sau `set-private` URL cũ trả không tìm thấy (`404`) cho tới khi có migration và loader trang ẩn).*
+    - **C** admin/kiểm duyệt gỡ: trả `404` (`PUB-05`, `PUB-07`, `WorkAccessPlan::Unavailable`).
     - **D** chưa từng công khai rồi xóa: trả `404`.
 - **Điểm còn `OPEN` cần hỏi khi chạm tới:**
   - `O-04`: Bình luận đang chờ duyệt lúc tác giả xóa bài công khai có tiếp tục được duyệt để hiện
     trên tombstone hay đóng băng?
   - `O-08`, `O-09`, `O-10`: Purge vật lý, thông tin hiển thị trên tombstone ngoài câu thông báo, và
     khả năng khôi phục bài đã xóa/gỡ.
-  - `O-17`: Chính sách khiếu nại hoặc xem lại đối với tác phẩm bị ẩn/gỡ do vi phạm.
+  - `O-17`: Trang ở URL cũ sau khi moderator bác bản đang đăng của bài vẫn “Công khai” (baseline
+    đề xuất: không tìm thấy cho tới khi có bản được duyệt mới).
 
-## 2. Kiểm duyệt AI, quản trị viên và phản đối (`MOD-01..15`, `ADM-01..15`)
+## 2. Kiểm duyệt AI, quản trị viên và phản đối (`MOD-01..15`, `ADM-01..10`)
 
 - **Nguồn sở hữu:** [PRD §14.2](../../../../prd/requirements.md#142-kiểm-duyệt-bằng-trợ-lý-ai-quản-trị-viên-và-phản-đối-mod-0710),
   [publication-moderation.md](../../../../docs/architecture/publication-moderation.md),
@@ -44,13 +45,14 @@ còn mở.
   - Lưu nháp riêng không bao giờ gửi dữ liệu sang AI (`MOD-05`, `INV-08`).
   - Timeout, lỗi provider hoặc output sai định dạng không bao giờ tự duyệt (`MOD-08`); không tự cam
     kết SLA 24/48 giờ và không báo “đã gửi cho quản trị viên” khi kênh thông báo chưa kết nối (`MOD-10`).
-  - Quản trị viên can thiệp (`ADM-01..15`): override AI, ẩn/khôi phục bình luận (`COM-11`), gỡ bài vi phạm (`PUB-06/07`),
+  - Quản trị viên can thiệp (`ADM-01..10`): override AI, ẩn/khôi phục bình luận (`COM-11`), gỡ bài vi phạm (`PUB-05`),
     quản lý ca điều tra và khiếu nại (đã cài đặt ở pure core `domain::moderation`, chưa có store/worker/UI).
 - **Điểm cần làm rõ khi mở runtime/UI/provider (`OPEN`):**
   - Dữ liệu nào được gửi tới AI provider (chỉ snapshot gửi duyệt, loại bỏ thông tin định danh nào,
     chính sách lưu/xóa bên ngoài).
-  - Trần retry, xử lý hàng đợi `NeedsAdmin`, `O-15@r2` (khiếu nại trực tiếp lên admin khi AI từ chối),
-    và `O-17..19` (quy trình điều tra, ẩn tác giả vi phạm nhiều lần, escalation).
+  - Trần retry, xử lý hàng đợi `NeedsAdmin`, phần còn mở của `O-15@r2` (cấp xét lại thứ hai trên
+    kết luận admin; quyết định của moderator đã phản đối được), `O-18` (thời hạn mặc định của grant
+    và hồ sơ điều tra) và `O-19` (danh mục sự kiện thông báo cho tác giả).
 
 ## 3. Thảo luận hai tầng, sửa bình luận và ghi nhận văn học (`COM`, `LVE`)
 

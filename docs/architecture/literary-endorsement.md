@@ -17,7 +17,8 @@ phần ngoài lát vẫn là đề xuất ở epic. Không đổi nghĩa các D/
 **Record (11/11/2026):** phạm vi D-14 tra tại `D-14@r1`. Lựa chọn của #73 tra theo lát:
 `LVE-PR-01-CHOICE-*`, `LVE-PR-02-03-CHOICE-*` (#81) và `LVE-WP-04-CHOICE-07/10`, đều `DESIGN_PROPOSED`.
 Các bảng dưới giữ lý do và lịch sử lúc chọn. CHOICE-06 (ranking) chưa chọn (hướng đích thuộc
-USER-12/O-07). CHOICE-07 (icon) tra tại `LVE-WP-04-CHOICE-07@r1` (Pen Flight R2 A · Mềm đã chốt).
+USER-12/O-07). CHOICE-07 (icon) tra tại `LVE-WP-04-CHOICE-07@r1` (thiết kế Pen Flight R2 A · Mềm đã chọn,
+record vẫn `DESIGN_PROPOSED`).
 
 <!-- vdr: active D-14@r1 -->
 <!-- vdr: active LVE-PR-01-CHOICE-01@r1 -->

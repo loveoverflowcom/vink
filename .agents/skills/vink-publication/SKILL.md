@@ -17,7 +17,7 @@ COM-01–COM-04 and COM-09/10 (`ED-02` magazine curation and `WR-04` multi-chapt
 Use [vink-engineering](../vink-engineering/SKILL.md) for boundaries and verification.
 
 When a task introduces or changes rules for audience, moderation, deletion/tombstone, restoration
-or actor authority that are still `OPEN` (`O-04`, `O-08..O-10`, `O-17..O-19`, or direct-admin appeal in `O-15`), route through
+or actor authority that are still `OPEN` (`O-04`, `O-08..O-10`, `O-17..O-19`, or a second review of an admin conclusion in `O-15`), route through
 [vink-shape](../vink-shape/SKILL.md) first; when a decision or implementation changes current
 contracts or registries, update the owning files via [vink-specify](../vink-specify/SKILL.md).
 Keep the four status dimensions distinct: product decision (`PRODUCT_CONFIRMED` / `DEFERRED` /
@@ -88,8 +88,8 @@ work's `WorkAccessPlan` (`PublicBody`, `AuthorTombstone`, `AuthorHidden`, `Unava
   and keeps eligible comments readable (`HiddenReadOnly` under `O-03@r2`, blocking new comments/replies);
   subsequent deletion from this hidden page leaves `DeletionProvenance::PublicTombstone` with comments
   intact (`O-05@r2` `PRODUCT_CONFIRMED`). In the current `#158` persistence runtime, `load_paired_state`
-  still builds `hidden = None`, so `POST .../set-private` deletes the pointer and returns `404` until the
-  hidden-page storage/loader migration lands.
+  still builds `hidden = None`, so after `POST .../set-private` deletes the public pointer the old URL answers not found (`404`)
+  until the hidden-page storage/loader migration lands.
 - **Case C (Admin/moderation removal) and Case D (Never public, then deleted):**
   project `WorkAccessPlan::Unavailable` (`404`); neither the work nor its discussion thread is
   publicly readable (`PUB-05`). Comments are never cascade-deleted when a work changes state.
