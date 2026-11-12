@@ -23,10 +23,10 @@ lõi quản trị ở [ADMIN-CORE-01](../development/moderation-core.md#admin-mo
 | Bản nháp | `working_drafts` riêng tư có version, CAS khi lưu | `persistence/postgres.rs` |
 | Revision | `revisions` bất biến (trigger chặn UPDATE) có `content_hash` | migration `20261030000000_literary_core` |
 | Publication | Một hàng `publications(work_id, revision_id, generation, published_at, metadata_snapshot_id)`; “công khai” = có hàng | cùng migration, `20261108000000_work_taxonomy` |
-| Lệnh publish/rút/xóa | **Không có**. Chỉ `dev_seed`, `xtask provision` và fixture SQL ghi `publications`; test giả lập rút bằng `DELETE FROM publications` | `dev_seed.rs`, comment bảng: “Publish/withdraw commands … are not implemented” |
-| Audience | Lõi thuần #150; **chưa có** cột/lệnh runtime | `domain/publication.rs` |
-| Evaluator, quyết định cho tác phẩm, admin, appeal | Lõi thuần `domain::moderation` (#151) + runtime #159: bảng quyết định/lịch sử, consumer `vink-worker` (chỉ evaluator kịch bản local/test), CLI ghế admin và HTTP `/api/v1/moderation/*` ([moderation-runtime](../development/moderation-runtime.md)); **chưa có** AI provider thật hay appeal; `/health` và worker báo `ai_moderation: not_implemented` | `domain/moderation.rs`, `application/moderation.rs`, `http/health.rs` |
-| Thảo luận khi không có publication | `readable_thread` trả `None` → `404` cho đọc; gửi bị `WorkNotPublic`; hàng bình luận không bị xóa | `persistence/discussion.rs`, `domain/discussion/submission.rs` |
+| Lệnh công khai/rút/xóa | API tác giả chụp snapshot, yêu cầu công khai và chuyển riêng tư; worker/người duyệt cập nhật con trỏ. Xóa bài/admin remove chưa nối runtime | [publication-runtime](../development/publication-runtime.md), [moderation-runtime](../development/moderation-runtime.md) |
+| Audience | Lõi thuần #150 + paired state trong PostgreSQL và API tác giả #158 | `domain/publication.rs`, `persistence/publication.rs` |
+| Evaluator, quyết định cho tác phẩm, admin, appeal | Lõi thuần `domain::moderation` (#151) + runtime #159: bảng quyết định/lịch sử, consumer `vink-worker` (chỉ evaluator kịch bản local/test), CLI ghế admin và HTTP `/api/v1/moderation/*` ([moderation-runtime](../development/moderation-runtime.md)); đã có phản đối tác phẩm và Web duyệt; **chưa có** AI provider thật; `/health` và worker báo `ai_moderation: not_implemented` | `domain/moderation.rs`, `application/moderation.rs`, `http/health.rs` |
+| Thảo luận khi không có publication | Reader hidden/review-withdrawn giữ bình luận đủ điều kiện, chặn ghi mới; các bài không có trang thay thế vẫn `404`; hàng bình luận không bị xóa | `persistence/discussion.rs`, `domain/discussion/submission.rs` |
 
 Mọi mục dưới đây mô tả hành vi **đích**; phạm vi lõi thuần đã có và phần chưa tích hợp được tách trong [publication-core](../development/publication-core.md).
 

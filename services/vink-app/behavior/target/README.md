@@ -4,8 +4,8 @@
 (`collections`, `comment_edit`, `discovery`) chưa có domain consumer hay Rust replay cho aggregate
 của chúng. M1 và M3 đã chuyển nguyên vẹn sang [`../publication`](../publication/README.md): sau
 `ADMIN-MODERATION-20261111`, production replay đủ 64/64 bước của M1 (author, evaluator, moderator/admin,
-policy re-review, delete, remove và cả hai negative control) và 41/41 bước của M3 (`tombstone.qnt`,
-4 scenario và hai negative control) qua lõi thuần `Publication` + `WorkModeration` và tầng
+policy re-review, delete, remove và cả hai negative control) và 53/53 bước của M3 (`tombstone.qnt`,
+5 scenario và ba negative control) qua lõi thuần `Publication` + `WorkModeration` và tầng
 `application::publication`, đồng thời replay `evaluator-vectors.json` qua `ScriptedEvaluator`
 (15 bước `publication.qnt` qua full consumer, 9 bước `comment_edit.qnt` chỉ kiểm hợp đồng/script).
 `appeal.qnt` (M6 cũ) đã bị thay bởi M4 [`../publication/governance.qnt`](../publication/governance.qnt)
@@ -73,7 +73,7 @@ Apalache/model checking: **NOT_RUN**. Không có khẳng định liveness nào.
 | Model | Scenario (số bước) | Negative control → invariant vi phạm |
 | --- | --- | --- |
 | `publication` | `audience_moderation_override` (44), `policy_rereview` (9), `moderation_removal` (11) | `mutatedOverrideStep` (bỏ guard admin override: kết quả AI muộn đảo quyết định admin) → `adminOverrideWins`; `mutatedIntentStep` (bỏ guard ý định: duyệt r1 công khai r1 dù ý định đã trỏ r2) → `pointerMovesLawfully` |
-| `tombstone` | `author_deleted_public_work` (14), `hidden_then_public_then_deleted` (16), `never_public` (4), `moderation_removed` (7) | `mutatedRemovedStep` (coi “admin gỡ” như “tác giả ẩn”: link cũ đọc được bình luận) → `noExceptionForUnavailableWork`; `mutatedNoticeStep` (công khai lại báo cả quyết định trong lúc ẩn) → `noNoticeFromHiddenPeriod` |
+| `tombstone` | `author_deleted_public_work` (14), `hidden_then_public_then_deleted` (16), `never_public` (4), `moderation_removed` (7), `review_withdrawn_then_resubmitted` (12) | `mutatedRemovedStep` (coi “admin gỡ” như “tác giả ẩn”: link cũ đọc được bình luận) → `noExceptionForUnavailableWork`; `mutatedNoticeStep` (công khai lại báo cả quyết định trong lúc ẩn) → `noNoticeFromHiddenPeriod`; `mutatedWithdrawnStep` (trả body từ trang bị gỡ) → `bodyOnlyWhilePublic` |
 | `governance` | `grants_and_claims` (39), `automation_and_late_results` (16), `appeals` (31), `investigation` (19) | `mutatedAuthorityStep` → `conclusionNeedsLiveAuthority`; `mutatedClaimStep` → `claimNeverStolen`; `mutatedAppealStep` → `oneAppealPerDecision`; `mutatedPauseStep` → `pausedAiWritesNothing`; `mutatedReadStep` → `readsAreAuthorized` |
 | `collections` | `permission_truth_table` (36) | `mutatedOrStep` (AND thành OR: khách thấy bài công khai trong bộ sưu tập riêng tư) → `closedCollectionLeaksNothing` |
 | `comment_edit` | `edit_review_override` (31), `removal_during_review` (9) | `mutatedOverwriteStep` (bản sửa ghi đè chữ công khai trước khi duyệt) → `pendingNeverPublic` |

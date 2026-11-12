@@ -30,11 +30,12 @@ const FILTERS: [&str; 14] = [
     "application::publication::",
 ];
 /// The tests that feed model inputs to production code. Their absence fails the lane.
-const REPLAYS: [&str; 20] = [
+const REPLAYS: [&str; 21] = [
     "domain::publication::replay::quint_publication_author_inputs_and_admitted_decision_effects_replay_through_production",
     "domain::publication::replay::the_moved_intent_counterexample_is_refused_by_the_production_publication_guard",
     "application::publication::replay::quint_tombstone_scenarios_replay_against_production_access_and_discussion",
     "application::publication::replay::the_removed_as_hidden_counterexample_is_refused_by_the_production_access_plan",
+    "application::publication::replay::review_withdrawn_counterexample_cannot_expose_a_public_body",
     "application::publication::replay::the_hidden_notice_counterexample_is_refused_by_the_production_notification_fence",
     "domain::moderation::governance_replay::quint_governance_scenarios_replay_through_production",
     "domain::moderation::governance_replay::the_governance_counterexamples_are_refused_by_production",

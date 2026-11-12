@@ -885,6 +885,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                         </Button>
                     </PlainTooltip>
             </crate::ui::patterns::EditorToolbar>
+            <vink_ui::Link href=format!("/ban-viet/{}/kiem-duyet",work_id.get_value())>"Trạng thái kiểm duyệt và phản đối"</vink_ui::Link>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
                 <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
                     // The toolbar is the sole polite announcement owner for this state.

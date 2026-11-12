@@ -375,17 +375,18 @@ impl PgStore {
         #[derive(sqlx::FromRow)]
         struct WithdrawnRow {
             display_name: String,
+            hidden: bool,
         }
 
         let row: Option<WithdrawnRow> = sqlx::query_as(
-            "SELECT a.display_name
+            "SELECT a.display_name, (wp.hidden_revision_id IS NOT NULL) AS hidden
                FROM work_publications wp
                JOIN works w ON w.id = wp.work_id
                JOIN principals a ON a.id = w.owner_id
               WHERE wp.work_id = $1
-                AND wp.audience = 'public'
                 AND wp.lifecycle = 'active'
-                AND wp.review_withdrawn_revision_id IS NOT NULL",
+                AND (wp.hidden_revision_id IS NOT NULL
+                     OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))",
         )
         .bind(work_id.as_uuid())
         .fetch_optional(self.pool())
@@ -393,6 +394,9 @@ impl PgStore {
         .map_err(classify)?;
 
         if let Some(r) = row {
+            if r.hidden {
+                return Ok(Some(ReaderWorkFacts::Hidden { work_id }));
+            }
             return Ok(Some(ReaderWorkFacts::ReviewWithdrawn {
                 work_id,
                 author_display_name: r.display_name,

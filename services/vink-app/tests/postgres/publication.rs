@@ -686,10 +686,12 @@ async fn test_schema_upgrade_and_legacy_compatibility(pool: PgPool) {
 
 const PUBLICATION_MIGRATION: i64 = 20_261_116_000_000;
 const MODERATION_MIGRATION: i64 = 20_261_117_000_000;
+const APPEALS_MIGRATION: i64 = 20_261_118_000_000;
 
 fn down_script() -> String {
     format!(
-        "{}\n{}",
+        "{}\n{}\n{}",
+        include_str!("../../migrations-rollback/20261118000000_work_appeals.down.sql"),
         include_str!("../../migrations-rollback/20261117000000_work_moderation_runtime.down.sql"),
         include_str!(
             "../../migrations-rollback/20261116000000_work_publication_persistence.down.sql"
@@ -699,9 +701,14 @@ fn down_script() -> String {
 
 async fn run_down(pool: &PgPool) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
-    sqlx::raw_sql(sqlx::AssertSqlSafe(down_script()))
-        .execute(&mut *tx)
-        .await?;
+    sqlx::raw_sql(sqlx::AssertSqlSafe(
+        // Compose standalone scripts in one transaction so any refusal preserves every slice.
+        down_script()
+            .replace("\nBEGIN;\n", "\n")
+            .replace("\nCOMMIT;\n", "\n"),
+    ))
+    .execute(&mut *tx)
+    .await?;
     tx.commit().await
 }
 
@@ -742,7 +749,11 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
     let report = migrate(&pool).await.unwrap();
     assert_eq!(
         report.applied,
-        vec![PUBLICATION_MIGRATION, MODERATION_MIGRATION]
+        vec![
+            PUBLICATION_MIGRATION,
+            MODERATION_MIGRATION,
+            APPEALS_MIGRATION
+        ]
     );
 
     let row: (String, i64, Option<Uuid>, Option<Uuid>) = sqlx::query_as(

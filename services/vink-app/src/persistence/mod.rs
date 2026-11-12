@@ -5,6 +5,7 @@
 //! the App's own migrations, so no other registry reaches the App database.
 
 mod abuse;
+pub mod appeals;
 mod discovery;
 mod discussion;
 mod endorsement;

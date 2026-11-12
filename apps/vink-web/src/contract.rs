@@ -6,6 +6,7 @@
 //! strings: the browser displays and echoes them, it does not interpret them.
 
 use serde::{Deserialize, Serialize};
+pub mod moderation;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocumentDto {
@@ -93,6 +94,9 @@ pub struct Publication {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ReaderResponse {
+    Hidden {
+        work_id: String,
+    },
     Published(Publication),
     ReviewWithdrawn {
         work_id: String,
@@ -825,6 +829,16 @@ mod tests {
         let value: T = serde_json::from_value(json.clone()).unwrap();
         assert_eq!(serde_json::to_value(&value).unwrap(), json, "{name}");
         value
+    }
+
+    #[test]
+    fn decodes_hidden_reader_and_appeal_without_staff_fields() {
+        assert!(matches!(
+            round_trip::<ReaderResponse>("reader.hidden.json"),
+            ReaderResponse::Hidden { .. }
+        ));
+        let appeal: moderation::Appeal = round_trip("appeal.open.json");
+        assert_eq!(appeal.notice, "not_sent");
     }
 
     #[test]

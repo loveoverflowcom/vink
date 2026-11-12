@@ -296,6 +296,7 @@ where
                     tags,
                 }))
             }
+            ReaderWorkFacts::Hidden { work_id } => Ok(ReaderWork::Hidden { work_id }),
             ReaderWorkFacts::ReviewWithdrawn {
                 work_id,
                 author_display_name,

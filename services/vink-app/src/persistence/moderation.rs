@@ -446,6 +446,7 @@ pub async fn set_automation_mode(
 
 #[derive(Debug, Clone)]
 pub struct CaseSummary {
+    pub title: Option<String>,
     pub id: CaseId,
     pub subject_kind: String,
     pub work_id: WorkId,
@@ -474,6 +475,7 @@ impl CaseSummary {
 pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSummary>, StoreError> {
     #[derive(sqlx::FromRow)]
     struct Row {
+        title: Option<String>,
         id: Uuid,
         subject_kind: String,
         work_id: Uuid,
@@ -489,11 +491,13 @@ pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSum
     }
 
     let rows: Vec<Row> = query_as(
-        "SELECT id, subject_kind, work_id, revision_id, decision_version, origin, version, state,
-                claimed_by, target_content_owner, target_work_owner, created_at
-           FROM moderation_cases
-          WHERE state IN ('queued', 'claimed', 'escalated') AND subject_kind = 'work_revision'
-          ORDER BY created_at ASC, id ASC",
+        "SELECT c.id, c.subject_kind, c.work_id, c.revision_id, c.decision_version, c.origin, c.version, c.state,
+                c.claimed_by, c.target_content_owner, c.target_work_owner, c.created_at, r.title
+           FROM moderation_cases c
+           JOIN work_publications wp ON wp.work_id = c.work_id AND wp.audience = 'public' AND wp.lifecycle = 'active'
+           LEFT JOIN revisions r ON r.work_id = c.work_id AND r.id = c.revision_id
+          WHERE c.state IN ('queued', 'claimed', 'escalated') AND c.subject_kind = 'work_revision'
+          ORDER BY c.created_at ASC, c.id ASC",
     )
     .fetch_all(&mut *conn)
     .await
@@ -502,6 +506,7 @@ pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSum
     Ok(rows
         .into_iter()
         .map(|r| CaseSummary {
+            title: r.title,
             id: CaseId::from_uuid(r.id),
             subject_kind: r.subject_kind,
             work_id: WorkId::from_uuid(r.work_id),
@@ -591,6 +596,7 @@ pub async fn get_case_detail(
                 r.title, r.document, r.content_hash AS revision_hash
            FROM moderation_cases c
            JOIN principals p ON p.id = c.target_content_owner
+           JOIN work_publications wp ON wp.work_id = c.work_id AND wp.audience = 'public' AND wp.lifecycle = 'active'
            LEFT JOIN revisions r ON r.work_id = c.work_id AND r.id = c.revision_id
           WHERE c.id = $1",
     )
@@ -981,7 +987,9 @@ pub async fn open_intervention_case(
         .map_err(|refusal| ModerationActionError::Forbidden(refusal.as_str()))?;
     let (publication, moderation, _) =
         super::publication::load_paired_state(&mut tx, owner, work).await?;
-    if !publication.facts().lifecycle.is_active() {
+    if !publication.facts().lifecycle.is_active()
+        || publication.facts().audience != crate::domain::publication::Audience::Public
+    {
         return Err(ModerationActionError::NotFound);
     }
     let decision = moderation
@@ -1080,6 +1088,11 @@ pub async fn conclude_case(
         decision: dec_facts.version,
     };
 
+    let appeal_open: bool = query_scalar("SELECT EXISTS (SELECT 1 FROM work_appeals WHERE work_id = $1 AND revision_id = $2 AND decision_version = $3 AND state = 'open')")
+        .bind(work_id.as_uuid()).bind(rev_id.as_uuid()).bind(dec_facts.version.get()).fetch_one(&mut *tx).await.map_err(classify)?;
+    if appeal_open {
+        return Err(ModerationActionError::Conflict("appeal_open"));
+    }
     let directory = load_moderation_directory(&mut tx, now).await?;
     let (transition, conclusion) = match case.conclude(
         &directory,
@@ -1121,6 +1134,7 @@ pub async fn conclude_case(
         next_mod,
         rev_id,
         DecisionSource {
+            appeal: None,
             evaluation: None,
             case: Some(case_id),
         },

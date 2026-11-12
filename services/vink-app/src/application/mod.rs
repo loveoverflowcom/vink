@@ -37,6 +37,9 @@ pub struct PublicWork {
 /// Read model of the reader route: either a published work or a review_withdrawn notice (O-17@r2, #159).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReaderWork {
+    Hidden {
+        work_id: WorkId,
+    },
     Published(PublicWork),
     ReviewWithdrawn {
         work_id: WorkId,

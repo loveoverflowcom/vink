@@ -449,7 +449,9 @@ async fn readable_thread(
     work_id: WorkId,
 ) -> Result<Option<(PrincipalId, Option<ThreadRow>)>, StoreError> {
     let work: Option<(Uuid, bool)> = sqlx::query_as(
-        "SELECT w.owner_id, (p.work_id IS NOT NULL OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))
+        "SELECT w.owner_id, (p.work_id IS NOT NULL OR (wp.lifecycle = 'active' AND
+                      (wp.hidden_revision_id IS NOT NULL OR
+                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))))
            FROM works w
            LEFT JOIN publications p ON p.work_id = w.id
            LEFT JOIN work_publications wp ON wp.work_id = w.id
@@ -521,6 +523,19 @@ impl DiscussionStore for PgStore {
         .await
         .map_err(classify)?
         .is_some();
+        let hidden = if work_public {
+            false
+        } else {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT lifecycle = 'active' AND hidden_revision_id IS NOT NULL
+                   FROM work_publications WHERE work_id = $1 FOR SHARE",
+            )
+            .bind(work)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?
+            .unwrap_or(false)
+        };
         if work_public {
             // COM-01: one thread per work, bound on first use; a concurrent first comment waits
             // on the unique key and then reuses the winner's thread.
@@ -652,7 +667,13 @@ impl DiscussionStore for PgStore {
             }
             // Dropping `tx` rolls back the claimed receipt and any thread binding.
             SubmissionDecision::KeyReused => return Ok(SubmitOutcome::KeyReused),
-            SubmissionDecision::WorkNotPublic => return Ok(SubmitOutcome::WorkNotFound),
+            SubmissionDecision::WorkNotPublic => {
+                return Ok(if hidden {
+                    SubmitOutcome::HiddenReadOnly
+                } else {
+                    SubmitOutcome::WorkNotFound
+                });
+            }
             SubmissionDecision::CommentsClosed => return Ok(SubmitOutcome::CommentsClosed),
             SubmissionDecision::TargetUnavailable => return Ok(SubmitOutcome::TargetUnavailable),
             SubmissionDecision::IdentityCollision => {
@@ -714,7 +735,9 @@ impl DiscussionStore for PgStore {
         let mut tx = self.pool().begin().await.map_err(classify)?;
         let row: Option<(Uuid, String, Option<String>, i64, bool)> = sqlx::query_as(
             "SELECT c.author_id, c.review, c.removal, c.moderation_version,
-                    (p.work_id IS NOT NULL OR (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))
+                    (p.work_id IS NOT NULL OR (wp.lifecycle = 'active' AND
+                      (wp.hidden_revision_id IS NOT NULL OR
+                       (wp.audience = 'public' AND wp.review_withdrawn_revision_id IS NOT NULL))))
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id
                LEFT JOIN publications p ON p.work_id = t.work_id
@@ -935,7 +958,7 @@ impl DiscussionStore for PgStore {
                JOIN principals a ON a.id = c.author_id
                LEFT JOIN publications p ON p.work_id = w.id
                LEFT JOIN work_publications wp ON wp.work_id = w.id
-               LEFT JOIN revisions rv ON rv.id = COALESCE(p.revision_id, wp.review_withdrawn_revision_id)
+               LEFT JOIN revisions rv ON rv.id = p.revision_id
               WHERE c.review = 'pending' AND c.removal IS NULL
                 AND ($1::timestamptz IS NULL OR (c.created_at, c.id) > ($1, $2))
               ORDER BY c.created_at, c.id

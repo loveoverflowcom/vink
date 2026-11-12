@@ -1,6 +1,7 @@
 //! HTTP adapter: API v1, health probes and the Leptos SSR host on one Axum router.
 
 mod api;
+mod appeals;
 mod auth;
 mod conditional;
 pub mod contract;

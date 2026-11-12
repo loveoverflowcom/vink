@@ -48,7 +48,7 @@ consumer yet and no native consumer exists.
 | --- | --- | --- | --- |
 | `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` | `200` one page of current publications, newest first (default and home page: the first 12); `304` on a matching `If-None-Match` | `422` (`q`, `tag`, `limit`, `cursor`, `query`), `503` | [default](fixtures/works.list.json), [search](fixtures/works.search.json), [unmatched filters](fixtures/works.search.unmatched.json) |
 | `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) with its public `tags`; `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
-| `GET /api/v1/works/{work_id}/reader` | `200` `{"status":"published", …publication}` (conditional like `/publication`) or, after a moderator/admin rejected the public revision (`O-17@r2`), `{"status":"review_withdrawn","work_id","author_name"}` with `no-store` and no validator | `404` (never public, private, deleted or removed), `503` | — |
+| `GET /api/v1/works/{work_id}/reader` | `200` `{"status":"published", …publication}` (conditional like `/publication`) or, after a moderator/admin rejected the public revision (`O-17@r2`), `{"status":"review_withdrawn","work_id","author_name"}` with `no-store` and no validator; a public work made private returns `{"status":"hidden","work_id"}` (PUB-07), also `no-store`, with no author, title, body or tags | `404` (never public, private without a hidden page, deleted or removed), `503` | — |
 | `GET /api/v1/drafts` | `200` the actor's drafts | `401`, `503` | [drafts.list.json](fixtures/drafts.list.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
@@ -110,7 +110,7 @@ draft. Clients disable the button while a request is pending.
 
 ### Conditional public reads (READ-01)
 
-Only the public reads above are conditional (the reader's `review_withdrawn` answer is not); `HEAD` answers like `GET` without content.
+Only the public reads above are conditional (the reader's `review_withdrawn` and `hidden` answers are not); `HEAD` answers like `GET` without content.
 Rationale, evidence and rollback: [public conditional reads](../../../../../docs/development/public-conditional-reads.md).
 
 - **Validator.** `ETag` is a **strong** tag: `"` + the first 128 bits of SHA-256 of the exact
@@ -245,7 +245,7 @@ response is `no-store`. A reviewer never reads or takes a case on their own work
 | Method and path | Who | Success | Errors |
 | --- | --- | --- | --- |
 | `GET /api/v1/moderation/works/queue` | grant `works` or admin | `200` open cases the caller may review | `401`, `403` |
-| `GET /api/v1/moderation/works/cases/{case_id}` | same | `200` case, notes and the exact submitted snapshot (`content_digest`, `title`, `document`) | `401`, `403` (`recused`, `not_authorized`), `404` |
+| `GET /api/v1/moderation/works/cases/{case_id}` | same | `200` case, notes and the exact submitted snapshot (`content_digest`, `title`, `document`) plus caller-scoped `viewer_is_admin` | `401`, `403` (`recused`, `not_authorized`), `404` |
 | `POST /api/v1/moderation/works/{work_id}/revisions/{revision_id}/cases` | authority on the work | `201` `{case_id, version: 1}` intervention case at the current decision version (MOD-13) | `401`, `403`, `404`, `409` `case_already_open` |
 | `POST …/cases/{case_id}/claim` · `release` · `escalate` `{expected_version}` | claimant rules of `ReviewCase` | `200` `{status, version}` | `401`, `403` (`not_claimant`, `escalated_to_admin`, authority codes), `404`, `409` (`case_version_stale`, `already_claimed`, `case_closed`) |
 | `POST …/cases/{case_id}/note` `{expected_version, note}` | claimant or admin | `200`; the note is stored only with the version change | same |
@@ -524,3 +524,24 @@ như intent mới. Gỡ đã gỡ vẫn idempotent. Operator hậu kiểm không
 trả comment về `pending`, own overlay/moderator queue và public/endorsement reads áp cùng quyền
 hiện có. Internal reason/digest/policy/audit không ra public DTO. Xem
 [runbook](../../../../../docs/development/discussion-post-review.md).
+
+### Phản đối quyết định tác phẩm (MOD-10, ADM-04)
+
+Mọi response `no-store`; Origin và principal do server xác thực như lệnh ca duyệt.
+
+| Method / path | Quyền và dữ liệu |
+| --- | --- |
+| `POST /works/{work_id}/revisions/{revision_id}/appeals` | Tác giả; `{"expected_decision_version": N}`. Trả hồ sơ `200` cùng `replayed`; một hồ sơ cho mỗi phiên bản quyết định, kể cả gửi lại không cùng key. |
+| `GET /works/{work_id}/appeals` | Tác giả xem lịch sử của mình, không có ghi chú nội bộ hoặc danh tính người nhận. |
+| `GET /moderation/appeals` | Admin; chỉ hồ sơ mở, tự né bài của mình. |
+| `GET /moderation/appeals/{id}` | Admin không xung đột; snapshot chỉ trả khi hồ sơ mở và tác phẩm chưa chuyển riêng tư. |
+| `POST /moderation/appeals/{id}/conclude` | Admin; `{"expected_decision_version": N, "verdict": "uphold" hoặc "reverse", "reason": "…"}`. Kết luận và quyết định mới cùng commit; đọc lại hồ sơ khi mất ACK. |
+
+Hồ sơ: `id`, `work_id`, `revision_id`, `decision_version`, `state` (`open`, `upheld`, `reversed`, `closed`),
+`notice: "not_sent"`, `resolution_reason`, `created_at`. Chưa gửi mail/thông báo. Một phản đối mở
+buộc người duyệt giải quyết qua luồng phản đối; lệnh kết luận ca thường trả `409 appeal_open`.
+`409 stale_decision`, `final_decision`, `nothing_to_appeal`, `withdrawn`, `already_resolved`;
+`403 recused`/`not_admin`; `422` khi thiếu lý do/phiên bản; `404` đối tượng không thuộc tác giả.
+Chuyển riêng tư đóng hồ sơ cùng ca/job. Kết luận bản cũ không đổi ý định công khai bản mới.
+
+Owner publication state includes `can_appeal` and `decision_reason` per revision. These are display facts; the appeal command rechecks owner, standing, audience, provenance and decision version at commit. Case queue rows include the submitted `title`; case detail includes `viewer_is_admin` for rendering controls.

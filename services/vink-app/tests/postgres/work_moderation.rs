@@ -1276,3 +1276,483 @@ async fn group_grants_recusal_and_membership_removal(pool: PgPool) {
         5
     );
 }
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn admin_cli_returns_connection_before_closing_pool(pool: PgPool) {
+    use sqlx::ConnectOptions;
+    use std::process::{Command, Stdio};
+    seeded(&pool).await;
+    for op in ["add", "list", "remove"] {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_vink-app"));
+        command.arg("admin").arg(op);
+        if op != "list" {
+            command.arg(dev_seed::OTHER_PRINCIPAL.to_string());
+        }
+        let mut child = command
+            .env("VINK_PROFILE", "local")
+            .env(
+                "DATABASE_URL",
+                pool.connect_options().to_url_lossy().as_str(),
+            )
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .unwrap();
+        let result = tokio::time::timeout(Duration::from_secs(5), async {
+            loop {
+                if let Some(status) = child.try_wait().unwrap() {
+                    break status;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+        })
+        .await;
+        if result.is_err() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+        assert!(
+            result
+                .expect("admin CLI must exit after reporting its result")
+                .success()
+        );
+    }
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn hidden_reader_retains_only_discussion_and_republication_restores_body(pool: PgPool) {
+    let app = app(&pool).await;
+    let work = dev_seed::SAMPLE_WORK;
+    let writer = dev_seed::OTHER_PRINCIPAL;
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &discussion_comments_path(work),
+        Some(writer),
+        Some(ORIGIN),
+        Some(json!({"body":"Lời riêng của độc giả", "command_key":"hidden-comment"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let comment = json(&body)["comment_id"].as_str().unwrap().to_owned();
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &set_private_path(work),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"command_key":"hide-public", "expected_generation":2})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, cache, body) = call(&app, "GET", &reader_read_path(work), None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    assert_eq!(json(&body), json!({"status":"hidden", "work_id":work}));
+    assert_eq!(
+        call(&app, "GET", &public_read_path(work), None, None, None)
+            .await
+            .0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        call(&app, "GET", &discussion_public_path(work), None, None, None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &discussion_comments_path(work),
+        Some(writer),
+        Some(ORIGIN),
+        Some(json!({"body":"Không ghi mới", "command_key":"hidden-new"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(json(&body)["error"]["code"], "hidden_read_only");
+    let (status, _, body) = call(
+        &app,
+        "DELETE",
+        &format!("/api/v1/works/{work}/discussion/comments/{comment}"),
+        Some(writer),
+        Some(ORIGIN),
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, _, body) = call(&app, "POST", &request_public_path(work), Some(dev_seed::SAMPLE_AUTHOR), Some(ORIGIN), Some(json!({"command_key":"restore-hidden", "revision_id":dev_seed::SAMPLE_REVISION, "expected_generation":3}))).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, _, body) = call(&app, "GET", &reader_read_path(work), None, None, None).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json(&body)["status"], "published");
+}
+
+async fn reject_for_appeal(pool: &PgPool, app: &Router) -> String {
+    let work = dev_seed::SAMPLE_WORK;
+    let author = dev_seed::SAMPLE_AUTHOR;
+    let (status, _, body) = call(app, "POST", &snapshots_path(work), Some(author), Some(ORIGIN), Some(json!({"command_key":"appeal-snapshot", "expected_draft_version":1,"expected_metadata_version":1}))).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let revision = json(&body)["revision_id"].as_str().unwrap().to_owned();
+    let (status, _, body) = call(
+        app,
+        "POST",
+        &request_public_path(work),
+        Some(author),
+        Some(ORIGIN),
+        Some(
+            json!({"command_key":"appeal-publish", "expected_generation":2,"revision_id":revision}),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    sqlx::query("UPDATE work_evaluation_jobs SET scenario = 'reject' WHERE work_id = $1")
+        .bind(work)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert!(
+        EvaluationWorker::run_once(pool, "appeal-worker")
+            .await
+            .unwrap()
+    );
+    revision
+}
+async fn file_appeal(app: &Router, revision: &str) -> Value {
+    let (status, cache, body) = call(
+        app,
+        "POST",
+        &format!(
+            "/api/v1/works/{}/revisions/{revision}/appeals",
+            dev_seed::SAMPLE_WORK
+        ),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"expected_decision_version":2})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(cache.as_deref(), Some("no-store"));
+    json(&body)
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: PgPool) {
+    let app = app(&pool).await;
+    let revision = reject_for_appeal(&pool, &app).await;
+    let (a, b) = tokio::join!(file_appeal(&app, &revision), file_appeal(&app, &revision));
+    assert_eq!(a["appeal"]["id"], b["appeal"]["id"]);
+    assert_ne!(a["replayed"], b["replayed"]);
+    assert_eq!(a["appeal"]["notice"], "not_sent");
+    let golden: Value = serde_json::from_str(include_str!(
+        "../../contracts/http/v1/fixtures/appeal.open.json"
+    ))
+    .unwrap();
+    let mut wire = a["appeal"].clone();
+    // Only generated identifiers/time differ; all public fields must match the consumer fixture.
+    for key in ["id", "work_id", "revision_id", "created_at"] {
+        wire[key] = golden[key].clone();
+    }
+    assert_eq!(wire, golden);
+    let id = a["appeal"]["id"].as_str().unwrap();
+    // Real pre-activation backout must refuse as soon as an appeal is owed.
+    let mut conn = pool.acquire().await.unwrap();
+    let refused = sqlx::raw_sql(include_str!(
+        "../../migrations-rollback/20261118000000_work_appeals.down.sql"
+    ))
+    .execute(&mut *conn)
+    .await
+    .unwrap_err();
+    assert!(refused.to_string().contains("roll forward"));
+    sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
+    drop(conn);
+    let path = format!("/api/v1/moderation/appeals/{id}/conclude");
+    let request = json!({"expected_decision_version":2,"verdict":"reverse","reason":"Bản thảo phù hợp chính sách"});
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &path,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(request.clone())
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
+    add_admin_seat(
+        &mut pool.acquire().await.unwrap(),
+        "test",
+        PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL),
+        None,
+    )
+    .await
+    .unwrap();
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &format!("/api/v1/moderation/appeals/{id}"),
+        Some(dev_seed::OTHER_PRINCIPAL),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(json(&body)["document"].is_object());
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &path,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        Some(request.clone()),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["state"], "reversed");
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &path,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(request)
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    let row:(i64,String,Option<Uuid>)=sqlx::query_as("SELECT decision_version,provenance_kind,appeal_id FROM work_revision_decision_history WHERE appeal_id=$1").bind(Uuid::parse_str(id).unwrap()).fetch_one(&pool).await.unwrap();
+    assert_eq!((row.0, row.1.as_str()), (3, "admin"));
+    assert!(row.2.is_some());
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &format!(
+            "/api/v1/works/{}/revisions/{revision}/appeals",
+            dev_seed::SAMPLE_WORK
+        ),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"expected_decision_version":3})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(json(&body)["error"]["code"], "final_decision");
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn private_closes_appeal_and_refuses_late_conclusion_and_snapshot_reads(pool: PgPool) {
+    let app = app(&pool).await;
+    let revision = reject_for_appeal(&pool, &app).await;
+    let a = file_appeal(&app, &revision).await;
+    let id = a["appeal"]["id"].as_str().unwrap();
+    add_admin_seat(
+        &mut pool.acquire().await.unwrap(),
+        "test",
+        PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL),
+        None,
+    )
+    .await
+    .unwrap();
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &set_private_path(dev_seed::SAMPLE_WORK),
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"command_key":"withdraw-appeal","expected_generation":3})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let path = format!("/api/v1/moderation/appeals/{id}");
+    assert_eq!(
+        call(
+            &app,
+            "GET",
+            &path,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            None,
+            None
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &(path + "/conclude"),
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(json!({"expected_decision_version":2,"verdict":"reverse","reason":"Quá muộn"}))
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    let row: (String, String) =
+        sqlx::query_as("SELECT state,close_reason FROM work_appeals WHERE id=$1")
+            .bind(Uuid::parse_str(id).unwrap())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(row, ("closed".into(), "withdrawn".into()));
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn appeal_reserves_decision_and_concurrent_conclusions_apply_once(pool: PgPool) {
+    let app = app(&pool).await;
+    let revision = reject_for_appeal(&pool, &app).await;
+    let path = format!(
+        "/api/v1/works/{}/revisions/{revision}/appeals",
+        dev_seed::SAMPLE_WORK
+    );
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &path,
+        Some(dev_seed::SAMPLE_AUTHOR),
+        Some(ORIGIN),
+        Some(json!({"expected_decision_version":1})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(json(&body)["error"]["code"], "stale_decision");
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &path,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(json!({"expected_decision_version":2}))
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    let filed = file_appeal(&app, &revision).await;
+    let id = filed["appeal"]["id"].as_str().unwrap();
+    add_admin_seat(
+        &mut pool.acquire().await.unwrap(),
+        "test",
+        PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL),
+        None,
+    )
+    .await
+    .unwrap();
+    let open = format!(
+        "/api/v1/moderation/works/{}/revisions/{revision}/cases",
+        dev_seed::SAMPLE_WORK
+    );
+    let (_, _, opened) = call(
+        &app,
+        "POST",
+        &open,
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        None,
+    )
+    .await;
+    let case = json(&opened)["case_id"].as_str().unwrap().to_owned();
+    let (_, _, claimed) = call(
+        &app,
+        "POST",
+        &format!("/api/v1/moderation/works/cases/{case}/claim"),
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        Some(json!({"expected_version":1})),
+    )
+    .await;
+    let (status,_,body)=call(&app,"POST",&format!("/api/v1/moderation/works/cases/{case}/conclude"),Some(dev_seed::OTHER_PRINCIPAL),Some(ORIGIN),Some(json!({"expected_version":json(&claimed)["version"],"verdict":"approved","reason":"Must use appeal"}))).await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    assert_eq!(json(&body)["error"]["code"], "appeal_open");
+    let conclude = format!("/api/v1/moderation/appeals/{id}/conclude");
+    let request = json!({"expected_decision_version":2,"verdict":"uphold","reason":"Giữ quyết định có căn cứ"});
+    let (a, b) = tokio::join!(
+        call(
+            &app,
+            "POST",
+            &conclude,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(request.clone())
+        ),
+        call(
+            &app,
+            "POST",
+            &conclude,
+            Some(dev_seed::OTHER_PRINCIPAL),
+            Some(ORIGIN),
+            Some(request)
+        )
+    );
+    assert!(
+        matches!(
+            (a.0, b.0),
+            (StatusCode::OK, StatusCode::CONFLICT) | (StatusCode::CONFLICT, StatusCode::OK)
+        ),
+        "{} {}",
+        a.2,
+        b.2
+    );
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM work_revision_decision_history WHERE appeal_id=$1",
+    )
+    .bind(Uuid::parse_str(id).unwrap())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn appeal_on_old_revision_never_overwrites_new_public_intent(pool: PgPool) {
+    let app = app(&pool).await;
+    let old = reject_for_appeal(&pool, &app).await;
+    let filed = file_appeal(&app, &old).await;
+    let id = filed["appeal"]["id"].as_str().unwrap();
+    let work = dev_seed::SAMPLE_WORK;
+    let (status,_,body)=call(&app,"PUT",&format!("/api/v1/drafts/{work}"),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"expected_version":1,"title":"Bản mới đang chờ", "document":{"schema_version":1,"blocks":[{"lines":["Nội dung mới"]}]}}))).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status,_,body)=call(&app,"POST",&snapshots_path(work),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"command_key":"appeal-new-snapshot","expected_draft_version":2,"expected_metadata_version":1}))).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let new_revision = json(&body)["revision_id"].as_str().unwrap().to_owned();
+    let (status,_,body)=call(&app,"POST",&request_public_path(work),Some(dev_seed::SAMPLE_AUTHOR),Some(ORIGIN),Some(json!({"command_key":"appeal-new-intent","expected_generation":3,"revision_id":new_revision}))).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    add_admin_seat(
+        &mut pool.acquire().await.unwrap(),
+        "test",
+        PrincipalId::from_uuid(dev_seed::OTHER_PRINCIPAL),
+        None,
+    )
+    .await
+    .unwrap();
+    let (status, _, body) = call(
+        &app,
+        "POST",
+        &format!("/api/v1/moderation/appeals/{id}/conclude"),
+        Some(dev_seed::OTHER_PRINCIPAL),
+        Some(ORIGIN),
+        Some(json!({"expected_decision_version":2,"verdict":"reverse","reason":"Bản cũ phù hợp"})),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (intent, pointer): (Uuid, Option<Uuid>) = sqlx::query_as(
+        "SELECT intent_revision_id,pointer_revision_id FROM work_publications WHERE work_id=$1",
+    )
+    .bind(work)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(intent.to_string(), new_revision);
+    assert_ne!(
+        pointer.map(|id| id.to_string()).as_deref(),
+        Some(old.as_str())
+    );
+}

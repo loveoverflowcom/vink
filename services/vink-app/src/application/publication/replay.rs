@@ -1,9 +1,9 @@
 //! Tombstone / hidden page scenario and negative control Quint trace replay (#157,
 //! ADMIN-MODERATION-20261111).
 //!
-//! Replays all 4 scenarios from `tombstone-vectors.json` (41 steps across
+//! Replays all 5 scenarios from `tombstone-vectors.json` (53 steps across
 //! `author_deleted_public_work`, `hidden_then_public_then_deleted`, `never_public`,
-//! `moderation_removed`) against production [`Publication`], [`WorkModeration`],
+//! `moderation_removed`, `review_withdrawn_then_resubmitted`) against production [`Publication`], [`WorkModeration`],
 //! [`plan_work_access`], discussion visibility planning, the comment review context and the
 //! author-notification fence. Also replays both negative controls: an admin removal is never
 //! the hidden page, and an approval made while hidden never notifies after republication.
@@ -15,9 +15,8 @@ use crate::domain::ids::PrincipalId;
 use crate::domain::moderation::{AdminAuthority, ModerationError, WorkModeration};
 use crate::domain::publication::tests::{owner, revision, save, snapshot, work};
 use crate::domain::publication::{
-    Audience, AuthorCommand, AuthorOutcome, DeletionProvenance, Lifecycle, Moderation,
-    NotificationStamp, Publication, PublicationError, ReviewOutcome, ReviewedRevision,
-    WorkAccessPlan,
+    AuthorCommand, AuthorOutcome, DeletionProvenance, Lifecycle, Moderation, NotificationStamp,
+    Publication, PublicationError, ReviewOutcome, ReviewedRevision, WorkAccessPlan,
 };
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -92,6 +91,7 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         pub_state = save(&pub_state, 1);
         let mut comments: BTreeMap<u128, (PrincipalId, CommentState)> = BTreeMap::new();
         let mut ever_public = false;
+        let mut publication_revision = 1;
         // Every approval with the stamp of the moment it happened, and those that notified.
         let mut approvals: Vec<(u128, NotificationStamp)> = Vec::new();
         let mut notified: Vec<u128> = Vec::new();
@@ -99,26 +99,33 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         for (index, step) in scenario.steps.iter().enumerate() {
             let c = &step.command;
             let outcome: &'static str = match c.op.as_str() {
-                // Model shell `publish` = author request + an admitted approval of revision 1
+                // Model shell `publish` = author request + an admitted approval of a snapshot
                 // (authority assumption: the evaluator/admin path is M1's, not M3's).
                 "publish" => {
+                    if pub_state.facts().review_withdrawn.is_some() && publication_revision == 1 {
+                        publication_revision = 2;
+                        pub_state = save(&pub_state, 2);
+                    }
                     let before = pub_state.clone();
                     match pub_state.decide_author(
                         owner(),
                         AuthorCommand::RequestPublic {
-                            revision: revision(1),
+                            revision: revision(publication_revision),
                             expected: pub_state.facts().generation,
                         },
                     ) {
                         Ok(t) => {
                             pub_state = match t.outcome {
                                 AuthorOutcome::Published => t.next,
-                                AuthorOutcome::Submitted => {
+                                AuthorOutcome::Submitted | AuthorOutcome::Waiting => {
                                     t.next
                                         .record_review(ReviewedRevision {
                                             work: work(1),
-                                            revision: revision(1),
-                                            hash: snapshot(1).content.hash().clone(),
+                                            revision: revision(publication_revision),
+                                            hash: snapshot(publication_revision)
+                                                .content
+                                                .hash()
+                                                .clone(),
                                             expected: Moderation::Pending,
                                             outcome: ReviewOutcome::Approved,
                                         })
@@ -136,6 +143,34 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                         }
                         Err(other) => panic!("unexpected publish refusal {other:?}"),
                     }
+                }
+                "reject_public" => {
+                    pub_state = pub_state
+                        .record_review(ReviewedRevision {
+                            work: work(1),
+                            revision: revision(publication_revision),
+                            hash: snapshot(publication_revision).content.hash().clone(),
+                            expected: Moderation::Approved,
+                            outcome: ReviewOutcome::Rejected,
+                        })
+                        .unwrap()
+                        .next;
+                    "review_withdrawn"
+                }
+                "submit_revision" => {
+                    publication_revision = 2;
+                    pub_state = save(&pub_state, publication_revision);
+                    pub_state = pub_state
+                        .decide_author(
+                            owner(),
+                            AuthorCommand::RequestPublic {
+                                revision: revision(publication_revision),
+                                expected: pub_state.facts().generation,
+                            },
+                        )
+                        .unwrap()
+                        .next;
+                    "waiting"
                 }
                 "make_private" => {
                     let before = pub_state.clone();
@@ -319,12 +354,13 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
                 Lifecycle::AuthorDeleted(DeletionProvenance::Hidden) => "deleted_hidden",
                 Lifecycle::Removed => "moderation_removed",
                 Lifecycle::Active => {
-                    if pub_state.facts().audience == Audience::Public {
+                    if pub_state.readable_revision().is_some() {
                         "public"
+                    } else if pub_state.facts().review_withdrawn.is_some() {
+                        "review_withdrawn"
                     } else if pub_state.facts().hidden.is_some() {
                         "hidden"
                     } else {
-                        assert!(!ever_public || pub_state.facts().ever_public.is_empty());
                         "unpublished"
                     }
                 }
@@ -405,7 +441,7 @@ fn quint_tombstone_scenarios_replay_against_production_access_and_discussion() {
         }
     }
 
-    assert_eq!(total_steps, 41);
+    assert_eq!(total_steps, 53);
 }
 
 fn trace_inputs(scenario: &TombstoneScenario) -> Vec<(&str, i64, u128, &str)> {
@@ -557,4 +593,30 @@ fn the_hidden_notice_counterexample_is_refused_by_the_production_notification_fe
     assert!(!again.should_notify_author(stamp));
     assert!(again.should_notify_author(again.notification_stamp()));
     assert!(again.facts().public_epoch > public.facts().public_epoch);
+}
+
+#[test]
+fn review_withdrawn_counterexample_cannot_expose_a_public_body() {
+    let fixture: TombstoneCounterexample = serde_json::from_str(include_str!(
+        "../../../behavior/publication/tombstone-withdrawn-body-counterexample.json"
+    ))
+    .unwrap();
+    let trace = &fixture.violation[0];
+    assert_eq!(trace.steps.last().unwrap().state.views[&0].page, "body");
+    let public = published(&save(&Publication::new(work(1), owner()), 1));
+    let rejected = public
+        .record_review(ReviewedRevision {
+            work: work(1),
+            revision: revision(1),
+            hash: snapshot(1).content.hash().clone(),
+            expected: Moderation::Approved,
+            outcome: ReviewOutcome::Rejected,
+        })
+        .unwrap()
+        .next;
+    assert!(matches!(
+        rejected.access_plan(),
+        WorkAccessPlan::ReviewWithdrawn { .. }
+    ));
+    assert!(rejected.readable_revision().is_none());
 }
