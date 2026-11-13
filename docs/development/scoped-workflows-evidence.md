@@ -2,9 +2,20 @@
 
 Ngày 13/11/2026, macOS Darwin arm64; checkout bắt đầu sạch tại
 `develop@7361ab0771240418bfa7eae46191460634c81960`, đã `git pull --ff-only origin develop` trước
-khi tạo `codex/scoped-local-workflows`. Commit implementation được ghi bổ sung dưới đây sau khi
-chốt source; thay đổi sau đó chỉ bổ sung thông tin evidence. Đây không phải nghiệm thu CI hay
-quyết định kiến trúc Accepted. [Hợp đồng và choices](scoped-workflows.md) sở hữu phạm vi lệnh.
+khi tạo `codex/scoped-local-workflows`.
+
+- Input của runtime smoke và `quick` trước rebase: implementation
+  `577a50d3ffcddcfb85834a98cba2cb1a1bc2173c`.
+- Đã fetch/rebase lên `origin/develop@4ff33bf4fdcfa431797c316534a1b2c4e90cf3d1`;
+  implementation sau rebase: `338fef0dd8eef814c1b8d8d843abc395291878b0`, không conflict.
+  Các file `xtask`, App `http/mod.rs` và `main.rs` giống hệt bản trước rebase.
+- Trên source sau rebase, chạy lại `cargo test --locked -p xtask`: 72 unit + 1 integration PASS
+  (1 PG test ignore mặc định); `cargo clippy --locked -p vink-app --lib --bin vink-app -- -D warnings`
+  PASS. Đây là kiểm App/Web dependencies ở chế độ server sau khi tích hợp #183, không phải browser
+  hay runtime smoke mới. Các kiểm runtime đầy đủ sau rebase vẫn NOT_RUN do dung lượng.
+- Commit tiếp theo chỉ cập nhật metadata bằng chứng này; không đổi implementation.
+
+Đây không phải nghiệm thu CI hay quyết định kiến trúc Accepted. [Hợp đồng và choices](scoped-workflows.md) sở hữu phạm vi lệnh.
 
 ## Môi trường và điều kiện
 
@@ -13,7 +24,7 @@ quyết định kiến trúc Accepted. [Hợp đồng và choices](scoped-workfl
 - Cwd: `/Users/manhblue/projects/loveoverflow/vink`. Không có `.env`; không tạo hoặc sửa `.env`.
 - PostgreSQL test riêng do lượt này tạo bằng `initdb -D /tmp/vink184-pg -U vink --auth=trust`,
   chỉ nghe loopback `127.0.0.1:55484`. Dùng provisioning hiện hữu để tạo App/Identity và hai role
-  mỗi owner. Không dùng container hoặc database dev có sẵn; dừng cluster sau lượt kiểm.
+  mỗi owner. Không dùng container hoặc database dev có sẵn; dừng và dọn cluster do lượt này tạo sau khi kiểm.
 - Các kiểm Cargo cuối dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`
   vì máy thiếu dung lượng. Không đổi profiles, test threads, Kani/Quint bounds trong repository.
 - Log/harness local được giữ ở `target/issue184-evidence/`; log dịch vụ ở `target/dev-runs/<run-id>/`.
@@ -58,7 +69,7 @@ Sau readiness, Ctrl-C gửi tới parent làm command trả nonzero và dọn ch
 sau trên cùng cổng thành công. Đăng nhập mật khẩu không cần gửi email; outbox chỉ local và không
 bật SMTP/provider thật. Chưa kiểm luồng email-code qua command mới bằng browser.
 
-Các smoke PASS trên cùng source được quan sát trước lượt `quick` (Identity/App PID 71160/71163 ở lượt auth; worker PID 71272). Lượt lặp smoke sau `quick` bị chặn
+Các smoke PASS trên source `577a50d` được quan sát trước lượt `quick` (Identity/App PID 71160/71163 ở lượt auth; worker PID 71272). Lượt lặp smoke sau `quick` bị chặn
 ngay khi relink App vì hết đĩa; lưu riêng ở `runtime-repeat-failed.log`, không phải một PASS mới.
 Log `auth-api.log`, `worker.log` và các thư mục `dev-runs` của lượt PASS còn được giữ. Không suy
 runtime PASS từ binary build thất bại của lượt lặp.
@@ -95,6 +106,6 @@ Các ca lỗi đã chạy:
 Tiếp tục trên máy có đủ đĩa: chạy focused App router test, một `verify web --scenario password`
 độc lập, rồi `verify web` đầy đủ, `verify preview`, Web manual và `verify postgres`; cuối cùng
 `verify quick` đủ lane. Không cần cài toolchain mới trên máy hiện tại; phải chuẩn bị lại
-`VINK_TEST_DATABASE_URL` nếu cluster tạm đã dừng và đặt `VINK_CHROME` trên macOS. App/Identity
+`VINK_TEST_DATABASE_URL` vì cluster tạm đã dọn và đặt `VINK_CHROME` trên macOS. App/Identity
 migrations và runtime roles vẫn là hai credential riêng. Full PASS không được suy từ các hàng
 smoke hoặc static checks ở trên.
