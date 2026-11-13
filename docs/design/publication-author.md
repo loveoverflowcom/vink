@@ -1,4 +1,4 @@
-# Vùng công khai của Bàn viết — LayoutSpec r1
+# Vùng công khai của Bàn viết — LayoutSpec r2
 
 Phạm vi: **PUB-AUTHOR-WEB-01**. Vùng nối Bàn viết với API publication có sẵn
 ([publication-runtime](../development/publication-runtime.md)) và trang kiểm duyệt của tác giả
@@ -6,6 +6,12 @@ Phạm vi: **PUB-AUTHOR-WEB-01**. Vùng nối Bàn viết với API publication 
 sản phẩm; không phải signoff. Spec này do agent triển khai viết **trước** khi có mã UI, ở trạng
 thái `proposed` (không có người duyệt riêng); phần “Kết quả đối chiếu” ghi những gì đã thực sự
 chạy sau khi triển khai.
+
+**r2 (13/11/2026, `codex/client-state-interaction-alignment`)** chỉ đổi ba điều, không đổi cấu trúc
+hay hành động chính: (1) ở vùng hẹp so với chữ, thẻ phục hồi lồng bỏ bớt padding, hành động xếp dọc
+và nút theo công thức container hẹp của `vk-state-panel`; (2) pha `acknowledged` (đã ghi nhận,
+chưa đọc lại được kết quả); (3) hợp đồng focus khi control vừa bấm biến mất. Chi tiết ở mục
+“Rà soát client-state” của [owner doc](../development/publication-author-web.md).
 
 ```text
 LayoutSpec: Vùng công khai tại chỗ, r1 — proposed (agent triển khai, cùng người giao PUB-AUTHOR-WEB-01)
@@ -74,7 +80,10 @@ Chọn radio **không gửi request**. Nút nói đúng việc sẽ làm; không
 Kế thừa `.vk-desk--editor` (chiều đọc `--vk-measure` + 2×`--vk-space-6`). Surface
 `--vk-surface-container-low`, bo `--vk-radius-lg`, padding `clamp(--vk-space-3, 3vw, --vk-space-6)`,
 khoảng cách `--vk-space-3`; vùng phục hồi dùng `.vk-editor-recovery` (error/warning container).
-Không viền trang trí, không card/pill lồng nhau. Tiêu đề bản dài (200 ký tự) và lý do từ chối dài
+Không viền trang trí, không card/pill lồng nhau. (r2) Thẻ phục hồi là phần tử lồng duy nhất; khi
+vùng hẹp so với chữ (container `vk-publication` ≤ 16rem, tính theo gốc rem nên chạm tới ở chữ 200% trên
+điện thoại, không ở 100%) nó còn `--vk-space-2` padding, hành động xếp dọc, và nút dùng công thức
+`vk-state-panel` (bớt padding ngang để vừa nguyên từ tiếng Việt). Nút phục hồi không có icon dẫn đầu. Tiêu đề bản dài (200 ký tự) và lý do từ chối dài
 xuống dòng (`overflow-wrap: anywhere`), không cắt. Hành động xuống hàng (`flex-wrap`), mục tiêu chạm
 `--vk-size-hit-target`.
 
@@ -116,6 +125,7 @@ Focus dùng viền của primitive. Không thêm token mới.
 | `uncertain(stage)` | thông báo cảnh báo: chưa rõ lệnh đã được ghi hay chưa; “Kiểm tra lại” |
 | `conflict` | nêu đúng loại: nháp / thông tin tác phẩm (thẻ) / trạng thái công khai; “Đã hiểu”; khi đã chụp bản và xung đột là của trạng thái công khai: thêm “Gửi lại bản đã chụp” |
 | `failed` | lý do ngắn (phiên hết, bị từ chối, bản đã bị từ chối, gõ thêm khi đang lưu…) + cách tiếp |
+| `acknowledged` (r2) | máy chủ đã ghi nhận lệnh nhưng lần đọc xác nhận chưa thành công: thông báo nói đúng điều đó + “Tải lại”; không còn “Đang gửi…”, chưa nói bản nào đang công khai; hành động chính khóa kèm lý do |
 | `reconciled` | một câu xác nhận lấy từ trạng thái đã đọc lại (`role=status`), tự gỡ ở lần thao tác sau |
 
 Bản đang công khai r1 và bản gửi r2: tóm tắt **luôn nói r1 vẫn đang được đọc** khi r2 chờ hoặc bị từ
@@ -142,8 +152,11 @@ duyệt” hay “bị từ chối”. Giá trị lạ → `unreadable`, không 
 - **Mất phản hồi:** “Kiểm tra lại” giữ nguyên key + payload; sau mất phản hồi của `request-public`/
   `set-private` trang đọc trạng thái trước, chỉ phát lại nếu thế hệ đã ghim vẫn còn hiệu lực.
 - **Rút bài:** không chờ editor, không lưu, không chụp; ngăn gửi tiếp của lần gửi đang chờ.
-- **Focus:** không tự chuyển focus khi làm mới. Gỡ thông báo (“Đã hiểu”) trả focus về hành động chính;
-  xác nhận thành công giữ focus tại nút vừa bấm (nút vẫn còn trong DOM, đổi nhãn/trạng thái).
+- **Focus:** không tự chuyển focus khi làm mới. Khi control vừa bấm biến mất sau khi vùng dựng lại
+  (“Đã hiểu”, “Kiểm tra lại”, “Gửi lại bản đã chụp”, hay hành động chính khi rút bài xong và không còn
+  gì để bấm) focus **không** rơi về `<body>`: về hành động chính nếu còn, nếu không về tiêu đề
+  `#publication-title` (`tabindex=-1`, không cuộn). Focus đang ở nơi khác không bị lấy. Khi nút còn
+  trong DOM (đổi nhãn/trạng thái) focus ở nguyên tại nút.
   Escape/Back thuộc editor/NavigationGuard; vùng này không có overlay.
 - **Reduced motion:** không có chuyển động mới; indicator pending của primitive dùng cơ chế sẵn có.
 
@@ -168,6 +181,10 @@ Kiểm bằng browser thật trong `verify web` (phase `publication-author`), t�
 4. Làm mới trạng thái không remount editor: nút `#save` và vùng soạn giữ nguyên node và
    `scrollY` (dung sai 0); focus không đổi.
 5. Chữ tổ hợp tiếng Việt và tiêu đề 200 ký tự hiển thị đủ dấu, xuống dòng không tràn.
+6. (r2) Nhãn hành động không xuống dòng thành từng từ một: tối đa `max(2, ⌈số từ / 2⌉)` dòng ở mọi
+   ô của ma trận (đo bằng `Range` rect của `.vk-ui-button__label`).
+7. (r2) Sau khi một lệnh ổn định, `document.activeElement` không là `<body>` và nằm trong
+   `#publication` hoặc ở nơi khác tác giả đã tự đặt.
 
 ## Compare
 

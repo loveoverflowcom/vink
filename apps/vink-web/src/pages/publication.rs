@@ -93,6 +93,9 @@ fn blocked_note(blocked: Blocked, phase: Phase) -> Option<&'static str> {
         Blocked::Busy if matches!(phase, Phase::Uncertain(_)) => {
             Some("Kiểm tra lại lệnh trước rồi mới gửi tiếp.")
         }
+        Blocked::Busy if matches!(phase, Phase::Acknowledged(_)) => {
+            Some("Tải lại trạng thái trước khi gửi tiếp.")
+        }
         Blocked::NotRead => Some("Đang đọc trạng thái công khai."),
         Blocked::Unreadable => Some("Chưa hiểu trạng thái máy chủ trả về."),
         Blocked::NotActive => Some("Tác phẩm không còn hoạt động."),
@@ -119,6 +122,7 @@ fn live_text(phase: Phase) -> &'static str {
             "Đã chuyển riêng tư. Trang công khai ngừng phục vụ nội dung này."
         }
         Phase::Ready
+        | Phase::Acknowledged(_)
         | Phase::Unavailable(_)
         | Phase::Unreadable
         | Phase::Uncertain(_)
@@ -140,6 +144,7 @@ fn phase_token(phase: Phase) -> &'static str {
         Phase::Uncertain(_) => "uncertain",
         Phase::Conflict(_) => "conflict",
         Phase::Failed(_) => "failed",
+        Phase::Acknowledged(_) => "acknowledged",
         Phase::Reconciled(_) => "reconciled",
     }
 }
@@ -226,6 +231,14 @@ fn notice_text(phase: Phase, captured: bool) -> Option<(Tone, String, String)> {
         Phase::Failed(Refusal::UnexpectedAnswer) => error(
             "Phản hồi không khớp với yêu cầu.",
             "Không gửi tiếp. Đã đọc lại trạng thái; hãy kiểm tra rồi thử lại.",
+        ),
+        Phase::Acknowledged(Done::Requested) => warn(
+            "Đã gửi yêu cầu, nhưng chưa đọc lại được kết quả.",
+            "Máy chủ đã ghi nhận lệnh. Trang chưa đọc lại được trạng thái nên chưa nói bản nào đang công khai. Hãy tải lại; chưa gửi thêm gì.",
+        ),
+        Phase::Acknowledged(Done::MadePrivate) => warn(
+            "Đã chuyển riêng tư, nhưng chưa đọc lại được kết quả.",
+            "Máy chủ đã ghi nhận lệnh. Hãy tải lại để thấy trạng thái hiện tại; chữ đang viết không bị ảnh hưởng.",
         ),
         Phase::Unreadable => error(
             "Chưa hiểu trạng thái máy chủ trả về.",
@@ -412,9 +425,31 @@ impl Runner {
     }
 }
 
-/// Moves focus to `id` after the next frame (the node may be re-rendered first).
-fn focus_after_frame(id: &'static str) {
-    super::focus_recovery(id);
+/// A control that held focus can be gone after the region re-rendered: the primary action once a
+/// withdrawal left nothing to press, "Đã hiểu" once it was dismissed. Focus then falls to the
+/// document body, which a keyboard user cannot tell from the page's start. Return it to the action
+/// when there still is one, else to the region's heading. Focus that is anywhere else is never
+/// taken, and the page does not scroll.
+fn restore_lost_focus() {
+    #[cfg(feature = "hydrate")]
+    request_animation_frame(move || {
+        use wasm_bindgen::JsCast;
+        let lost = document()
+            .active_element()
+            .is_none_or(|element| element.tag_name() == "BODY");
+        if !lost {
+            return;
+        }
+        let target = ["publication-primary", "publication-title"]
+            .into_iter()
+            .find_map(|id| document().get_element_by_id(id))
+            .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok());
+        if let Some(target) = target {
+            let options = web_sys::FocusOptions::new();
+            options.set_prevent_scroll(true);
+            let _ = target.focus_with_options(&options);
+        }
+    });
 }
 
 #[component]
@@ -565,10 +600,27 @@ pub fn PublicationPanel(
             },
         }
     });
+    // Set by a press: the pressed control may be gone when the command settles (nothing left to
+    // press after a withdrawal). Cleared once the settled region has been checked for lost focus.
+    let refocus = StoredValue::new(false);
+    Effect::new(move |_| {
+        let (_, phase) = (primary.get(), phase.get());
+        if !refocus.get_value() {
+            return;
+        }
+        restore_lost_focus();
+        if !matches!(
+            phase,
+            Phase::Saving | Phase::Capturing | Phase::RequestingPublic | Phase::MakingPrivate
+        ) {
+            refocus.set_value(false);
+        }
+    });
     let press_primary = Callback::new(move |()| {
         if is_composing.run(()) {
             return;
         }
+        refocus.set_value(true);
         let step = match primary.get_untracked() {
             Primary::Submit { .. } => {
                 let facts = editor.get_untracked();
@@ -583,20 +635,25 @@ pub fn PublicationPanel(
         }
     });
     let retry = Callback::new(move |()| {
+        refocus.set_value(true);
         if let Some(step) = controller.try_update(Controller::retry) {
             runner.run(step);
         }
     });
     let dismiss = Callback::new(move |()| {
         controller.update(Controller::dismiss);
-        focus_after_frame("publication-primary");
+        restore_lost_focus();
     });
     let resume = Callback::new(move |()| {
+        refocus.set_value(true);
         if let Some(Ok(step)) = controller.try_update(Controller::resume_captured) {
             runner.run(step);
         }
     });
-    let reload = Callback::new(move |()| runner.refresh());
+    let reload = Callback::new(move |()| {
+        refocus.set_value(true);
+        runner.refresh();
+    });
 
     let notice = move || {
         let phase = phase.get();
@@ -604,7 +661,10 @@ pub fn PublicationPanel(
         let (tone, title, message) = notice_text(phase, captured)?;
         let uncertain = matches!(phase, Phase::Uncertain(_));
         let conflict = matches!(phase, Phase::Conflict(_));
-        let reads = matches!(phase, Phase::Unreadable | Phase::Unavailable(_));
+        let reads = matches!(
+            phase,
+            Phase::Unreadable | Phase::Unavailable(_) | Phase::Acknowledged(_)
+        );
         let checking = controller.with(Controller::checking);
         let can_resume = controller.with(Controller::can_resume_captured);
         Some(view! {
@@ -613,7 +673,7 @@ pub fn PublicationPanel(
                 <InlineNotice tone announce=Announce::Polite title message />
                 <div class="vk-notice__actions">
                     {uncertain.then(|| view! {
-                        <Button variant=ButtonVariant::Text id="publication-retry" leading=IconName::Refresh
+                        <Button variant=ButtonVariant::Text id="publication-retry"
                             state=Signal::derive(move || if checking { ActionState::pending("Đang kiểm tra…") } else { ActionState::Enabled })
                             on_press=move |_| retry.run(())>"Kiểm tra lại"</Button>
                     })}
@@ -622,7 +682,7 @@ pub fn PublicationPanel(
                             on_press=move |_| resume.run(())>"Gửi lại bản đã chụp"</Button>
                     })}
                     {reads.then(|| view! {
-                        <Button variant=ButtonVariant::Text id="publication-reload" leading=IconName::Refresh
+                        <Button variant=ButtonVariant::Text id="publication-reload"
                             on_press=move |_| reload.run(())>"Tải lại"</Button>
                     })}
                     {(!uncertain && !reads).then(|| view! {
@@ -665,7 +725,7 @@ pub fn PublicationPanel(
         <section id="publication" class="vk-publication" aria-labelledby="publication-title"
             data-testid="publication" data-phase=move || phase_token(phase.get())>
             <div class="vk-publication__heading">
-                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="publication-title">"Công khai"</Heading>
+                <Heading level=HeadingLevel::H2 role=TypeRole::Title id="publication-title" attr:tabindex="-1">"Công khai"</Heading>
                 <TooltipIconButton icon=IconName::Refresh label="Tải lại trạng thái công khai" id="publication-refresh"
                     state=Signal::derive(move || if controller.with(Controller::reading) { ActionState::Disabled { reason: None } } else { ActionState::Enabled })
                     on_press=move |_| reload.run(()) />
@@ -919,6 +979,8 @@ mod tests {
             Phase::Failed(Refusal::KeyReused),
             Phase::Failed(Refusal::Invalid),
             Phase::Failed(Refusal::UnexpectedAnswer),
+            Phase::Acknowledged(Done::Requested),
+            Phase::Acknowledged(Done::MadePrivate),
             Phase::Unreadable,
             Phase::Unavailable(ReadFailure::SessionEnded),
             Phase::Unavailable(ReadFailure::Forbidden),
@@ -1003,5 +1065,6 @@ mod tests {
         assert!(
             blocked_note(Blocked::Busy, Phase::Uncertain(UncertainStage::Requesting)).is_some()
         );
+        assert!(blocked_note(Blocked::Busy, Phase::Acknowledged(Done::Requested)).is_some());
     }
 }

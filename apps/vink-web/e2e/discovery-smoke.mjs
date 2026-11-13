@@ -53,10 +53,19 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.click('#applied-filters .vk-applied-tag');
   await page.waitFor("!new URL(location.href).searchParams.has('tag') && document.querySelector('.vk-public-row')", 'remove filter');
 
-  // IME event simulation is distinct from a named OS IME session.
+  // IME composition is simulated through CDP (`Input.imeSetComposition`); it is not a named OS IME
+  // session. Keys are trusted (`Input.dispatchKeyEvent`): unlike a dispatched DOM event they do
+  // trigger the form's implicit submission, so a missing guard would navigate here.
   const old = await page.eval('location.href');
-  await page.eval("(() => { const i=document.querySelector('#public-query'); i.focus(); i.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true})); i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true,isComposing:true})); i.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true})); })()");
-  check(await page.eval('location.href') === old, 'composition Enter does not commit a partial search');
+  await page.eval("(() => { const i=document.querySelector('#public-query'); i.focus(); i.select(); })()");
+  await page.send('Input.imeSetComposition', { text: 'mư', selectionStart: 2, selectionEnd: 2 });
+  await page.key('Enter');
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  check(await page.eval('location.href') === old, 'a trusted Enter while composing does not commit a partial search');
+  await page.send('Input.insertText', { text: 'mưa' });
+  await page.key('Enter');
+  await page.waitFor("new URL(location.href).searchParams.get('q') === 'mưa'", 'the committed text applies with Enter');
+  check(true, 'after the commit the same Enter applies the search (the guard only holds composition)');
 
   await goto('/?q=mua');
   await page.waitFor("document.querySelector('.vk-public-row__link')", 'real title search');

@@ -281,6 +281,9 @@ pub enum Phase {
     Uncertain(UncertainStage),
     Conflict(Conflict),
     Failed(Refusal),
+    /// The server acknowledged the command, but the read that states its result has not
+    /// succeeded (yet). Nothing is waiting for an answer; the page only has to read again.
+    Acknowledged(Done),
     Reconciled(Done),
 }
 
@@ -576,7 +579,11 @@ impl Controller {
             _ => UncertainStage::Capturing,
         };
         match op.status {
-            Status::Running | Status::Settling(_) => in_flight,
+            Status::Running => in_flight,
+            // Acknowledged: only the confirming read is missing. While one is on its way the
+            // command is still being settled; after it failed there is nothing left to wait for.
+            Status::Settling(_) if self.reading.is_some() => in_flight,
+            Status::Settling(done) => Phase::Acknowledged(done),
             Status::Uncertain | Status::Reconciling => Phase::Uncertain(uncertain),
             Status::Conflict(conflict) => Phase::Conflict(conflict),
             Status::Stopped(refusal) => Phase::Failed(refusal),
@@ -593,11 +600,11 @@ impl Controller {
     }
 
     pub fn working(&self) -> bool {
-        self.op.as_ref().is_some_and(|op| {
-            matches!(
-                op.status,
-                Status::Running | Status::Reconciling | Status::Settling(_)
-            )
+        let reading = self.reading.is_some();
+        self.op.as_ref().is_some_and(|op| match op.status {
+            Status::Running | Status::Reconciling => true,
+            Status::Settling(_) => reading,
+            _ => false,
         })
     }
 
@@ -1884,6 +1891,64 @@ mod tests {
         let c = read(controller(), state(1, Audience::Private));
         assert_eq!(c.can_withdraw(), Err(Blocked::NotPublic));
         assert_eq!(controller().can_withdraw(), Err(Blocked::NotRead));
+    }
+
+    // ---- acknowledged, but the read that confirms it failed ------------------------------------
+
+    /// The server acknowledged the command; only the read that states the result is missing. The
+    /// page must not keep saying it is still sending, and must offer the read again.
+    #[test]
+    fn an_acknowledged_command_whose_confirming_read_failed_says_so_and_can_be_read_again() {
+        for request in [true, false] {
+            let mut c = read(controller(), public_state(4));
+            let after = if request {
+                let (t, _) = capture_of(c.start_submit(&clean()).unwrap());
+                let (t, _) = request_of(c.capture_finished(t, Ok(captured(7, 5))));
+                read_of(c.request_finished(t, Ok(receipt(false, true))))
+            } else {
+                let (t, _) = private_of(c.start_private().unwrap());
+                let Step::WithdrawalCommitted(Some(after)) = c.private_finished(
+                    t,
+                    Ok(SetPrivateReceipt {
+                        outcome: "made_private".into(),
+                        generation: 5,
+                        replayed: false,
+                    }),
+                ) else {
+                    panic!("a withdrawal reads");
+                };
+                after
+            };
+            let done = if request {
+                Done::Requested
+            } else {
+                Done::MadePrivate
+            };
+            // While the confirming read is on its way the command is still being settled.
+            assert!(c.working());
+            c.read_finished(after, Err(ApiError::Network));
+            // The command is acknowledged; nothing is pending any more, and it is not "done" either.
+            assert_eq!(c.phase(), Phase::Acknowledged(done));
+            assert!(!c.working(), "nothing is waiting for an answer");
+            assert_eq!(c.can_submit(&clean()), Err(Blocked::Busy));
+            assert_eq!(
+                c.facts().map(|f| f.generation),
+                Some(4),
+                "the old facts are not rewritten"
+            );
+            // Reading again settles it from the state.
+            let again = c.begin_read().expect("no read in flight");
+            let mut next = state(5, Audience::Private);
+            if request {
+                next = state(5, Audience::Public);
+                next.intent = Some(PublishIntent {
+                    revision_id: R2.into(),
+                    generation: 5,
+                });
+            }
+            c.read_finished(again, Ok(next));
+            assert_eq!(c.phase(), Phase::Reconciled(done));
+        }
     }
 
     // ---- reads, scope, unknown values ---------------------------------------------------------
