@@ -691,6 +691,11 @@ const SHOTS = [320, 390, 1024];
  * Each cell is measured (the invariants of the LayoutSpec) and captured; the PNGs are opened by a
  * person, they are not baselines. */
 async function matrix(page, name, check) {
+  // The two-tab conflict scenario leaves the other tab in front. Chrome may never deliver a
+  // screenshot for that hidden surface after a viewport resize. Select the actual capture
+  // target, without retrying or skipping any image or changing the expected product state.
+  const expectedPhase = await phase(page);
+  await page.send('Page.bringToFront');
   const failures = [];
   const smallest = new Set();
   for (const theme of ['light', 'dark']) {
@@ -715,6 +720,7 @@ async function matrix(page, name, check) {
   await page.eval(`document.documentElement.removeAttribute('data-theme'); document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
   check(failures.length === 0, `publication region [${name}] holds the layout invariants in 12 cells (320/390/1024 × light/dark × 100%/200%)${failures.length ? `: ${failures.slice(0, 6).join(' | ')}` : ''}`);
   if (smallest.size) console.log(`  ..  [${name}] targets under the hit-target size (measured, px): ${[...smallest].join(', ')}`);
+  check(await phase(page) === expectedPhase, `publication region [${name}] keeps its command state while capturing the visible tab`);
 }
 
 /** A refresh of the state updates the region in place: no remounted editor, no scroll, no focus. */
