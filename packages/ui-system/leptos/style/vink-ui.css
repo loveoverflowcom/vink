@@ -1398,11 +1398,21 @@
 
 /* Dialog and sheet ----------------------------------------------------------------------------- */
 
+/* Spacing follows the text (rem) until the overlay is narrow for it (#174 F-02, proposed rule).
+   At 200% text on a 320 CSS px phone the rem margin and padding left a 130 CSS px column, so the
+   longest word crossed the panel's own padding and every action label broke into three lines.
+   The margin is at most 5% of the viewport width and the gutter at most a tenth of the overlay's
+   width, each between the two named tokens; at 100% text on any phone from 320 CSS px both are the
+   token values they always were. The overlay is a size container so the gutter can read its own
+   width; CMP spacing is in dp and does not scale with text, so it has no counterpart. */
 .vk-ui-dialog {
+  --vk-overlay-margin: clamp(var(--vk-space-2), 5vw, var(--vk-space-4));
+  --vk-overlay-gutter: clamp(var(--vk-space-3), 10cqi, var(--vk-space-6));
+  container: vk-overlay / inline-size;
   box-sizing: border-box;
-  inline-size: min(32rem, calc(100% - 2 * var(--vk-space-4)));
+  inline-size: min(32rem, calc(100% - 2 * var(--vk-overlay-margin)));
   max-inline-size: none;
-  max-block-size: calc(100% - 2 * var(--vk-space-4));
+  max-block-size: calc(100% - 2 * var(--vk-overlay-margin));
   padding: 0;
   border: 0;
   border-radius: var(--vk-radius-xl);
@@ -1416,7 +1426,7 @@
 .vk-ui-dialog__panel {
   display: grid;
   gap: var(--vk-space-3);
-  padding: var(--vk-space-6);
+  padding: var(--vk-overlay-gutter);
 }
 
 .vk-ui-dialog__title {
@@ -1443,6 +1453,9 @@
   gap: var(--vk-space-2) var(--vk-space-3);
   padding-block-start: var(--vk-space-2);
 }
+
+/* Buttons here take the same gutter, so a label keeps room for whole Vietnamese words. */
+.vk-ui-dialog__actions .vk-ui-button { padding-inline: var(--vk-overlay-gutter); }
 
 @media (max-width: 759.98px) {
   .vk-ui-dialog--sheet {
