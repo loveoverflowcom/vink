@@ -13,9 +13,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use sqlx::{AssertSqlSafe, Connection, Executor, PgConnection};
 
+use crate::lifecycle;
 use crate::pgurl::PgUrl;
 use crate::process::Report;
-use crate::web;
 
 const FRESH: &str = "vink_verify_prov_fresh";
 const LEGACY: &str = "vink_verify_prov_legacy";
@@ -190,7 +190,7 @@ impl Run<'_> {
             || self.negative_control(),
         ) && report.step(
             "worker starts with the runtime role, reports a current schema, stops on SIGTERM",
-            || web::worker_lifecycle(self.root, &self.url(&self.fresh.runtime, FRESH), "current"),
+            || lifecycle::worker_lifecycle(self.root, &self.url(&self.fresh.runtime, FRESH), "current"),
         ) && crate::identity::verify(report, &self.identity_scratch())
             && report.step(
                 "backup/restore per owner: pg_dump of App and Identity restored elsewhere matches data and history; originals untouched",
@@ -245,7 +245,7 @@ impl Run<'_> {
     }
 
     fn app(&self, args: &[&str], env: &[(&str, String)]) -> Result<Output, String> {
-        Command::new(web::binary(self.root, "vink-app"))
+        Command::new(lifecycle::binary(self.root, "vink-app"))
             .args(args)
             .current_dir(self.root)
             .env_clear()
@@ -483,9 +483,7 @@ impl Run<'_> {
     }
 
     fn backup_restore(&self) -> Result<(), String> {
-        let dir = self.root.join("target/verify-backup");
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let dir = lifecycle::run_directory(self.root, "verify-backup")?;
         let app_before = self.snapshot(LEGACY)?;
         let identity_before = self.history(IDENTITY)?;
         if identity_before == "[]" {

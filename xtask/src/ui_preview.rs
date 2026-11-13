@@ -35,7 +35,7 @@ pub fn run(env: &Env, renderer: &str, action: &str) -> Result<(), String> {
                 TcpListener::bind(&bind).map_err(|e| format!("bind preview on {bind}: {e}"))?;
             println!("==> Vink UI preview (Leptos) on http://{bind}/  (Ctrl-C to stop)");
             serve(listener, root.join(OUT_DIR));
-            Ok(())
+            crate::lifecycle::check_cancelled()
         }
         ("cmp", "build") => gradle(&root, env, &cmp_build_tasks(env), "CMP build"),
         ("cmp", "run") => gradle(&root, env, &[":preview:run"], "CMP desktop preview"),
@@ -229,11 +229,22 @@ fn build_media_hydration(root: &Path) -> Result<(), String> {
 /// Serves files below `site` on loopback until the process ends. Only GET of existing files;
 /// paths are resolved component by component so `..` cannot leave the directory.
 fn serve(listener: TcpListener, site: PathBuf) {
-    for stream in listener.incoming().filter_map(Result::ok) {
-        let site = site.clone();
-        std::thread::spawn(move || {
-            let _ = respond(stream, &site);
-        });
+    if listener.set_nonblocking(true).is_err() {
+        return;
+    }
+    while !crate::lifecycle::cancelled() {
+        match listener.accept() {
+            Ok((stream, _)) => {
+                let site = site.clone();
+                std::thread::spawn(move || {
+                    let _ = respond(stream, &site);
+                });
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(std::time::Duration::from_millis(50))
+            }
+            Err(_) => break,
+        }
     }
 }
 

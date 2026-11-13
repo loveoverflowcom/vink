@@ -1,16 +1,15 @@
 //! Process-level checks: the web lane (real server + headless Chrome) and binary lifecycle.
 
-use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
-use std::sync::mpsc;
+use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use crate::doctor;
 use crate::env::Env;
+use crate::plan::{Plan, Scenario};
 use crate::process::Report;
 use crate::root;
+const APP_ROLE: &str = "vink_verify_web_runtime";
 
 /// Scratch database recreated by every `verify web` run; never a developer database.
 const SCRATCH_DATABASE: &str = "vink_verify_web";
@@ -31,167 +30,7 @@ const PASSWORD_AUTH_DATABASE: &str = "vink_verify_web_password_auth";
 const IDENTITY_DATABASE: &str = "vink_verify_web_identity";
 const IDENTITY_ROLE: &str = "vink_verify_web_identity_runtime";
 
-/// Child process that is terminated when dropped, so a failed check never leaks a server.
-pub struct Guard(pub Option<Child>);
-
-impl Guard {
-    fn pid(&self) -> u32 {
-        self.0.as_ref().map(Child::id).unwrap_or_default()
-    }
-
-    /// SIGTERM, then wait up to `timeout` for a clean exit.
-    pub fn terminate(&mut self, timeout: Duration) -> Result<ExitStatus, String> {
-        let Some(mut child) = self.0.take() else {
-            return Err("process already stopped".into());
-        };
-        let pid = child.id().to_string();
-        let _ = Command::new("kill").args(["-TERM", &pid]).status();
-        let deadline = Instant::now() + timeout;
-        loop {
-            if let Some(status) = child.try_wait().map_err(|e| e.to_string())? {
-                return Ok(status);
-            }
-            if Instant::now() > deadline {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(format!("did not exit within {timeout:?} after SIGTERM"));
-            }
-            std::thread::sleep(Duration::from_millis(50));
-        }
-    }
-}
-
-impl Drop for Guard {
-    fn drop(&mut self) {
-        if let Some(mut child) = self.0.take() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
-    }
-}
-
-pub fn binary(root: &Path, name: &str) -> PathBuf {
-    root.join("target/debug").join(name)
-}
-
-/// Without their credential the binaries exit 2 naming it: `serve` and the worker need
-/// DATABASE_URL; `migrate` needs VINK_MIGRATE_DATABASE_URL even when DATABASE_URL is set.
-pub fn config_rejection(root: &Path) -> Result<(), String> {
-    let cases = [
-        ("vink-app", None, "DATABASE_URL: missing"),
-        ("vink-worker", None, "DATABASE_URL: missing"),
-        (
-            "vink-app",
-            Some("migrate"),
-            "VINK_MIGRATE_DATABASE_URL: missing",
-        ),
-    ];
-    for (name, command, needle) in cases {
-        let mut process = Command::new(binary(root, name));
-        process
-            .args(command)
-            .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default());
-        if command.is_some() {
-            // The runtime credential must not stand in for the migration credential.
-            process.env("DATABASE_URL", "postgres://runtime:unused@127.0.0.1:1/vink");
-        }
-        let out = process.output().map_err(|e| format!("{name}: {e}"))?;
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        if out.status.code() != Some(2) || !stderr.contains(needle) || stderr.contains("unused@") {
-            return Err(format!(
-                "{name} {}: expected exit 2 naming `{needle}`, got {} / {stderr}",
-                command.unwrap_or_default(),
-                out.status
-            ));
-        }
-    }
-    println!("==> invalid configuration: serve, worker and migrate exit 2");
-    Ok(())
-}
-
-/// Starts the worker, waits for its start log line, checks it reports `schema` and, when the
-/// schema is current, a reachable discussion outbox (`outbox="ready"`, DISC-04) under this role;
-/// sends SIGTERM and expects exit code 0.
-pub fn worker_lifecycle(root: &Path, url: &str, schema: &str) -> Result<(), String> {
-    let mut command = Command::new(binary(root, "vink-worker"));
-    // Explicit local configuration, independent of any `.env` (CI has none).
-    command
-        .current_dir(root)
-        .env("DATABASE_URL", url)
-        .env("VINK_PROFILE", "local")
-        .env("VINK_LOG_FORMAT", "text")
-        // Lifecycle assertions consume INFO logs regardless of the invoking shell's filter.
-        .env("RUST_LOG", "info,sqlx=warn")
-        .env_remove("VINK_DEV_PRINCIPAL")
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-    let mut child = command
-        .spawn()
-        .map_err(|e| format!("spawn vink-worker: {e}"))?;
-    let stderr = child.stderr.take().expect("piped stderr");
-    let mut guard = Guard(Some(child));
-    let lines = stream_lines(stderr);
-    let ready = wait_for_line(&lines, "vink-worker started", Duration::from_secs(20))?;
-    println!("==> {}", ready.trim());
-    if !ready.contains(schema) {
-        return Err(format!("worker did not report `{schema}`: {ready}"));
-    }
-    if schema.contains("current") && !ready.contains("outbox=\"ready\"") {
-        return Err(format!("worker did not report a reachable outbox: {ready}"));
-    }
-    let status = guard.terminate(Duration::from_secs(10))?;
-    if !status.success() {
-        return Err(format!("worker exited with {status}"));
-    }
-    wait_for_line(&lines, "vink-worker stopped", Duration::from_secs(2))?;
-    Ok(())
-}
-
-fn stream_lines(stream: impl Read + Send + 'static) -> mpsc::Receiver<String> {
-    let (sender, receiver) = mpsc::channel();
-    std::thread::spawn(move || {
-        for line in BufReader::new(stream).lines().map_while(Result::ok) {
-            if sender.send(line).is_err() {
-                break;
-            }
-        }
-    });
-    receiver
-}
-
-fn wait_for_line(
-    lines: &mpsc::Receiver<String>,
-    needle: &str,
-    timeout: Duration,
-) -> Result<String, String> {
-    let deadline = Instant::now() + timeout;
-    loop {
-        let left = deadline.saturating_duration_since(Instant::now());
-        match lines.recv_timeout(left) {
-            Ok(line) if strip_ansi(&line).contains(needle) => return Ok(strip_ansi(&line)),
-            Ok(_) => {}
-            Err(_) => return Err(format!("no `{needle}` log line within {timeout:?}")),
-        }
-    }
-}
-
-pub fn strip_ansi(line: &str) -> String {
-    let mut out = String::with_capacity(line.len());
-    let mut chars = line.chars();
-    while let Some(c) = chars.next() {
-        if c == '\u{1b}' {
-            for c in chars.by_ref() {
-                if c.is_ascii_alphabetic() {
-                    break;
-                }
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
+use crate::lifecycle::{Guard, binary, free_port, http_status};
 
 /// Replaces the database name in a PostgreSQL URL.
 fn with_database(url: &str, database: &str) -> Result<String, String> {
@@ -278,27 +117,6 @@ fn bundle_secrets(dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
-pub fn free_port() -> Result<u16, String> {
-    TcpListener::bind("127.0.0.1:0")
-        .and_then(|l| l.local_addr())
-        .map(|a| a.port())
-        .map_err(|e| format!("no free port: {e}"))
-}
-
-/// Minimal HTTP/1.1 GET returning the status code; enough for readiness polling.
-fn http_status(port: u16, path: &str) -> Option<u16> {
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).ok()?;
-    stream.set_read_timeout(Some(Duration::from_secs(5))).ok()?;
-    write!(
-        stream,
-        "GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
-    )
-    .ok()?;
-    let mut head = [0u8; 16];
-    stream.read_exact(&mut head).ok()?;
-    std::str::from_utf8(&head[9..12]).ok()?.parse().ok()
-}
-
 struct Server {
     port: u16,
     env: Vec<(String, String)>,
@@ -357,26 +175,37 @@ impl Server {
     }
 
     /// The same server settings on another App database (its own rows, including rate limits).
-    fn with_database(&self, url: &str) -> Self {
+    fn with_database(&self, database: &str) -> Result<Self, String> {
         let mut env = self.env.clone();
         for (key, value) in &mut env {
             if key == "DATABASE_URL" || key == "VINK_MIGRATE_DATABASE_URL" {
-                *value = url.into();
+                *value = with_database(value, database)?;
             }
         }
-        Self {
+        Ok(Self {
             port: self.port,
             env,
             log: self.log.with_file_name("server-publication.log"),
-        }
+        })
     }
 
     fn command(&self, root: &Path, args: &[&str]) -> Command {
         let mut command = Command::new(binary(root, "vink-app"));
-        command
-            .current_dir(root)
-            .args(args)
-            .envs(self.env.iter().map(|(k, v)| (k, v)));
+        crate::env::clear_capabilities(&mut command);
+        command.current_dir(root).args(args);
+        let migrate = args.first() == Some(&"migrate");
+        command.envs(
+            self.env
+                .iter()
+                .filter(|(k, _)| {
+                    if migrate {
+                        k == "VINK_MIGRATE_DATABASE_URL" || k == "VINK_LOG_FORMAT"
+                    } else {
+                        k != "VINK_MIGRATE_DATABASE_URL"
+                    }
+                })
+                .map(|(k, v)| (k, v)),
+        );
         command
     }
 
@@ -395,6 +224,7 @@ impl Server {
         let mut guard = Guard(Some(child));
         let deadline = Instant::now() + Duration::from_secs(30);
         while Instant::now() < deadline {
+            crate::lifecycle::check_cancelled()?;
             if let Some(Ok(Some(status))) = guard.0.as_mut().map(Child::try_wait) {
                 return Err(format!(
                     "vink-app exited early with {status}; see {}",
@@ -436,13 +266,18 @@ fn smoke_with_env(
     envs: &[(String, String)],
 ) -> Result<(), String> {
     let mut command = Command::new("node");
+    crate::env::clear_capabilities(&mut command);
     command
         .current_dir(root)
         .arg(root.join("apps/vink-web/e2e/browser-smoke.mjs"))
         .args(["--base", base, "--chrome", chrome, "--state"])
         .arg(state)
         .args(node_args)
-        .envs(envs.iter().map(|(k, v)| (k, v)));
+        .envs(
+            envs.iter()
+                .filter(|(k, _)| k != "VINK_MIGRATE_DATABASE_URL")
+                .map(|(k, v)| (k, v)),
+        );
     crate::process::run(
         &mut command,
         &format!("browser smoke {}", node_args.join(" ")),
@@ -475,7 +310,8 @@ fn auth_web(
 ) -> Result<(), String> {
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     let dir = state.parent().ok_or("state file has no directory")?;
-    let (sock_dir, outbox) = (dir.join("sock"), dir.join("outbox"));
+    let socket_owner = crate::lifecycle::SocketDir::new()?;
+    let (sock_dir, outbox) = (socket_owner.0.clone(), dir.join("outbox"));
     for private in [&sock_dir, &outbox] {
         std::fs::create_dir_all(private).map_err(|e| format!("{}: {e}", private.display()))?;
         std::fs::set_permissions(private, std::fs::Permissions::from_mode(0o700))
@@ -501,6 +337,7 @@ fn auth_web(
     }
     let admin_identity = admin.with_database(IDENTITY_DATABASE);
     let mut migrate = Command::new(binary(root, "vink-identity"));
+    crate::env::clear_capabilities(&mut migrate);
     migrate
         .current_dir(root)
         .arg("migrate")
@@ -518,8 +355,14 @@ fn auth_web(
         crate::identity::sql(&admin_identity, &statement)
             .map_err(|e| format!("Identity runtime grants: {e}"))?;
     }
+    crate::identity::sql(
+        &admin_identity,
+        &format!("REVOKE INSERT, UPDATE, DELETE ON _sqlx_migrations FROM {IDENTITY_ROLE}"),
+    )?;
     let log = std::fs::File::create(dir.join("identity.log")).map_err(|e| e.to_string())?;
-    let child = Command::new(binary(root, "vink-identity"))
+    let mut identity_command = Command::new(binary(root, "vink-identity"));
+    crate::env::clear_capabilities(&mut identity_command);
+    let child = identity_command
         .current_dir(root)
         .arg("serve")
         .env(
@@ -535,6 +378,7 @@ fn auth_web(
                 _ => "email-code",
             },
         )
+        .env("VINK_IDENTITY_MAIL_TRANSPORT", "local-outbox")
         .env("VINK_IDENTITY_LOCAL_OUTBOX", &outbox)
         .env("VINK_LOG_FORMAT", "text")
         .stdout(Stdio::null())
@@ -544,6 +388,7 @@ fn auth_web(
     let mut identity = Guard(Some(child));
     let deadline = Instant::now() + Duration::from_secs(20);
     loop {
+        crate::lifecycle::check_cancelled()?;
         if let Some(Ok(Some(status))) = identity.0.as_mut().map(Child::try_wait) {
             return Err(format!(
                 "vink-identity exited early with {status}; see {}",
@@ -617,14 +462,8 @@ fn publication_author(
     )
     .map_err(|e| format!("publication scratch database: {e}"))?;
     let result = (|| {
-        let own = server.with_database(&with_database(admin_url, PUBLICATION_DATABASE)?);
-        for step in ["migrate", "dev-seed"] {
-            let mut command = own.command(root, &[step]);
-            crate::process::run(
-                &mut command,
-                &format!("vink-app {step} (publication scratch)"),
-            )?;
-        }
+        let own = server.with_database(PUBLICATION_DATABASE)?;
+        prepare_app(root, &own, true)?;
         seed_tag_catalog(root, &own)?;
         auth_web(
             root,
@@ -656,11 +495,8 @@ fn password_auth_web(
     )
     .map_err(|e| format!("password auth scratch database: {e}"))?;
     let result = (|| {
-        let app = server.with_database(&with_database(admin_url, PASSWORD_AUTH_DATABASE)?);
-        crate::process::run(
-            &mut app.command(root, &["migrate"]),
-            "vink-app migrate (password auth scratch)",
-        )?;
+        let app = server.with_database(PASSWORD_AUTH_DATABASE)?;
+        prepare_app(root, &app, false)?;
         auth_web(
             root,
             &app,
@@ -684,122 +520,172 @@ fn drop_identity_scratch(admin_url: &str) {
 }
 
 pub fn verify(report: &mut Report, env: &Env) -> bool {
-    let root = root();
-    let Some(url) = env.get(crate::TEST_DATABASE_URL) else {
-        report.fail("prerequisites", crate::TEST_DATABASE_URL_MISSING);
-        return false;
-    };
-    let chrome = doctor::chrome_binary(env);
-    if !report.step(
-        "prerequisites (PostgreSQL, wasm-bindgen, Node 22+, Chrome)",
-        || {
-            doctor::probe_database(&url)?;
-            doctor::require_wasm_bindgen(&root)?;
-            doctor::node_version()?;
-            chrome
-                .as_ref()
-                .map(|_| ())
-                .ok_or_else(|| "Chrome/Chromium not found; set VINK_CHROME".to_string())
-        },
-    ) {
-        return false;
-    }
-    let chrome = chrome.unwrap_or_default();
-    if !report.step("build server + browser bundle", || crate::build(env, false)) {
-        return false;
-    }
-    if !report.step(
-        "browser bundle carries no database URL, credential setting or local password",
-        || bundle_secrets(&root.join("target/site/pkg")),
-    ) {
-        return false;
-    }
+    let plan = crate::cli::parse(&["verify", "web"])
+        .expect("valid command")
+        .expect("scoped")
+        .plan;
+    println!("{}", plan.describe());
+    verify_selected(report, env, &plan)
+}
 
-    let out_dir = root.join("target/verify-web");
-    let _ = std::fs::remove_dir_all(&out_dir);
-    if let Err(e) = std::fs::create_dir_all(&out_dir) {
-        report.fail("prepare target/verify-web", &e.to_string());
+/// One catalog/plan for both full and selected verification. Setup belongs to the scenario,
+/// so choosing auth alone never relies on main having migrated/seeded a different run.
+pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
+    let root = root();
+    if !report.step("selected prerequisites", || doctor::scoped(plan, env)) {
         return false;
     }
-    let mut scratch_url = String::new();
-    if !report.step("scratch database: create, migrate, seed", || {
-        scratch_url = recreate_scratch_database(&url)?;
-        Ok(())
-    }) {
-        return false;
-    }
-    let port = match free_port() {
-        Ok(port) => port,
+    let url = env
+        .get(crate::TEST_DATABASE_URL)
+        .expect("preflight checked");
+    let chrome = doctor::chrome_binary(env).expect("preflight checked");
+    let _scratch_lock = match crate::lifecycle::ScratchLock::acquire(&url) {
+        Ok(lock) => lock,
         Err(e) => {
-            report.fail("free port", &e);
+            report.fail("scratch ownership", &e);
             return false;
         }
     };
-    let origin = format!("http://127.0.0.1:{port}");
-    let server = Server {
-        port,
-        env: vec![
-            // The test harness credential owns the scratch database; this lane checks web
-            // behavior, not role separation (`verify postgres` covers that).
-            ("DATABASE_URL".into(), scratch_url.clone()),
-            ("VINK_MIGRATE_DATABASE_URL".into(), scratch_url.clone()),
-            ("VINK_PROFILE".into(), "local".into()),
-            ("VINK_BIND".into(), format!("127.0.0.1:{port}")),
-            ("VINK_PUBLIC_ORIGIN".into(), origin.clone()),
-            (
-                "VINK_SITE_ROOT".into(),
-                root.join("target/site").display().to_string(),
-            ),
-            ("VINK_DEV_PRINCIPAL".into(), SAMPLE_AUTHOR.into()),
-            ("VINK_LOG_FORMAT".into(), "text".into()),
-        ],
-        log: out_dir.join("server.log"),
+    if !report.step("selected artifacts", || crate::workflow::artifacts(plan)) {
+        return false;
+    }
+    if !report.step("browser bundle contains no credentials", || {
+        bundle_secrets(&root.join("target/site/pkg"))
+    }) {
+        return false;
+    }
+    let out = match crate::lifecycle::run_directory(&root, "verify-web") {
+        Ok(out) => out,
+        Err(e) => {
+            report.fail("evidence directory", &e);
+            return false;
+        }
     };
-    let ok = run_web_checks(
-        report,
-        &root,
-        &server,
-        &chrome,
-        &origin,
-        &out_dir.join("smoke-state.json"),
-    ) && report.step(
-        "Auth Web: email code, pen name, draft, sign-out, account switch (real Identity, local outbox)",
-        || {
-            auth_web(
-                &root,
-                &server,
-                &url,
-                &chrome,
-                &out_dir.join("smoke-state.json"),
-                IdentityPhase::Auth,
-            )
-        },
-    ) && report.step(
-        "Auth Web password (AUTH-PASSWORD-WEB-01): registration, enrollment, lost ACK and cross-tab session (native Identity, local outbox)",
-        || {
-            password_auth_web(
-                &root,
-                &server,
-                &url,
-                &chrome,
-                &out_dir.join("smoke-state.json"),
-            )
-        },
-    ) && report.step(
-        "Publication author (PUB-AUTHOR-WEB-01): save → snapshot → request-public, moderator UI, lost ACKs, two tabs, withdrawal, session (real Identity, three principals)",
-        || {
-            publication_author(
-                &root,
-                &server,
-                &url,
-                &chrome,
-                &out_dir.join("smoke-state.json"),
-            )
-        },
-    );
+    let result = (|| -> Result<bool, String> {
+        let primary = plan
+            .scenarios
+            .iter()
+            .any(|s| !s.identity() || *s == Scenario::Auth);
+        let scratch_url = if primary {
+            recreate_scratch_database(&url)?
+        } else {
+            with_database(&url, SCRATCH_DATABASE)?
+        };
+        crate::identity::sql(&url, &format!("DROP ROLE IF EXISTS {APP_ROLE}"))?;
+        let password = format!(
+            "web-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| e.to_string())?
+                .as_nanos()
+        );
+        crate::identity::sql(
+            &url,
+            &format!("CREATE ROLE {APP_ROLE} LOGIN PASSWORD '{password}'"),
+        )?;
+        let runtime_url =
+            crate::pgurl::PgUrl::parse(&url)?.with(APP_ROLE, &password, SCRATCH_DATABASE);
+        let port = free_port()?;
+        let origin = format!("http://127.0.0.1:{port}");
+        let server = Server {
+            port,
+            env: vec![
+                ("DATABASE_URL".into(), runtime_url),
+                ("VINK_MIGRATE_DATABASE_URL".into(), scratch_url),
+                ("VINK_PROFILE".into(), "local".into()),
+                ("VINK_BIND".into(), format!("127.0.0.1:{port}")),
+                ("VINK_PUBLIC_ORIGIN".into(), origin.clone()),
+                (
+                    "VINK_SITE_ROOT".into(),
+                    root.join("target/site").display().to_string(),
+                ),
+                ("VINK_DEV_PRINCIPAL".into(), SAMPLE_AUTHOR.into()),
+                ("VINK_AUTH_SIGN_IN".into(), "disabled".into()),
+                ("VINK_LOG_FORMAT".into(), "text".into()),
+            ],
+            log: out.join("server.log"),
+        };
+        let state = out.join("smoke-state.json");
+        if primary {
+            prepare_app(&root, &server, true)?;
+        }
+        let fixture: Vec<_> = plan
+            .scenarios
+            .iter()
+            .copied()
+            .filter(|s| !s.identity())
+            .collect();
+        let mut ok = fixture.is_empty()
+            || run_web_checks(report, &root, &server, &chrome, &origin, &state, &fixture);
+        for scenario in plan.scenarios.iter().filter(|s| s.identity()) {
+            if !ok {
+                break;
+            }
+            ok = report.step(
+                &format!("scenario {} (real Identity/local outbox)", scenario.name()),
+                || match scenario {
+                    Scenario::Auth => {
+                        auth_web(&root, &server, &url, &chrome, &state, IdentityPhase::Auth)
+                    }
+                    Scenario::Password => password_auth_web(&root, &server, &url, &chrome, &state),
+                    Scenario::Publication => {
+                        publication_author(&root, &server, &url, &chrome, &state)
+                    }
+                    _ => unreachable!(),
+                },
+            );
+        }
+        Ok(ok)
+    })();
+    // Only fixed, reserved scratch names, while holding the shared DB lock. Never DATABASE_URL.
     drop_identity_scratch(&url);
+    for db in [PUBLICATION_DATABASE, PASSWORD_AUTH_DATABASE] {
+        let _ = crate::identity::sql(&url, &format!("DROP DATABASE IF EXISTS {db} WITH (FORCE)"));
+    }
     drop_scratch_database(&url);
-    ok
+    let _ = crate::identity::sql(&url, &format!("DROP ROLE IF EXISTS {APP_ROLE}"));
+    match result {
+        Ok(ok) => ok,
+        Err(e) => {
+            report.fail("scenario setup/execution", &e);
+            false
+        }
+    }
+}
+
+fn prepare_app(root: &Path, server: &Server, seed: bool) -> Result<(), String> {
+    crate::process::run(
+        &mut server.command(root, &["migrate"]),
+        "migrate App scratch",
+    )?;
+    let url = &server
+        .env
+        .iter()
+        .find(|(k, _)| k == "VINK_MIGRATE_DATABASE_URL")
+        .ok_or("missing scratch migration URL")?
+        .1;
+    for sql in [
+        "REVOKE CREATE ON SCHEMA public FROM PUBLIC".to_string(),
+        format!("GRANT USAGE ON SCHEMA public TO {APP_ROLE}"),
+        format!(
+            "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {APP_ROLE}"
+        ),
+        format!("GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {APP_ROLE}"),
+    ] {
+        crate::identity::sql(url, &sql)?;
+    }
+    crate::identity::sql(
+        url,
+        &format!("REVOKE INSERT, UPDATE, DELETE ON _sqlx_migrations FROM {APP_ROLE}"),
+    )?;
+    if seed {
+        crate::process::run(
+            &mut server.command(root, &["dev-seed"]),
+            "seed App scratch (runtime role)",
+        )?;
+    }
+    Ok(())
 }
 
 /// Tag IDs the browser phases need from the seeded catalog.
@@ -923,14 +809,8 @@ fn run_web_checks(
     chrome: &str,
     origin: &str,
     state: &Path,
+    selected: &[Scenario],
 ) -> bool {
-    for step in ["migrate", "dev-seed"] {
-        let mut command = server.command(root, &[step]);
-        if let Err(e) = crate::process::run(&mut command, &format!("vink-app {step} (scratch)")) {
-            report.fail("scratch database: migrate + seed", &e);
-            return false;
-        }
-    }
     let seed = match seed_tag_catalog(root, server) {
         Ok(seed) => seed,
         Err(e) => {
@@ -938,20 +818,24 @@ fn run_web_checks(
             return false;
         }
     };
-    let mut guard = match server.start(root) {
-        Ok(guard) => guard,
-        Err(e) => {
-            report.fail("server starts and reports ready", &e);
-            return false;
-        }
-    };
-    if !report.step(
+    if selected
+        .iter()
+        .any(|s| matches!(s, Scenario::Main | Scenario::Discovery | Scenario::Restart))
+    {
+        let mut guard = match server.start(root) {
+            Ok(guard) => guard,
+            Err(e) => {
+                report.fail("server starts and reports ready", &e);
+                return false;
+            }
+        };
+        if selected.contains(&Scenario::Main) && !report.step(
         "SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags",
         || smoke(root, &["--phase", "main"], chrome, origin, state),
     ) {
         return false;
     }
-    if !report.step(
+        if selected.contains(&Scenario::Discovery) && !report.step(
         "discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race",
         || {
             seed_discovery_fixture(server)?;
@@ -966,43 +850,52 @@ fn run_web_checks(
     ) {
         return false;
     }
-    if !report.step("server stops gracefully on SIGTERM", || {
-        let status = guard.terminate(Duration::from_secs(15))?;
-        status
-            .success()
-            .then_some(())
-            .ok_or(format!("exited with {status}"))
-    }) {
-        return false;
-    }
-    // The curator retires a tag the main phase saved on a draft; it must stay there.
-    if let Err(e) = tag_command(
-        root,
-        server,
-        &[
-            "retire",
-            &seed.version.to_string(),
-            &seed.city,
-            &seed.season,
-        ],
-    ) {
-        report.fail("scratch database: retire a tag through `vink-app tag`", &e);
-        return false;
-    }
-    let mut restarted = match server.start(root) {
-        Ok(guard) => guard,
-        Err(e) => {
-            report.fail("server restarts", &e);
+        if !report.step("server stops gracefully on SIGTERM", || {
+            let status = guard.terminate(Duration::from_secs(15))?;
+            status
+                .success()
+                .then_some(())
+                .ok_or(format!("exited with {status}"))
+        }) {
             return false;
         }
-    };
-    let ok = report.step(
+        if selected.contains(&Scenario::Restart) {
+            // The curator retires a tag the main phase saved on a draft; it must stay there.
+            if let Err(e) = tag_command(
+                root,
+                server,
+                &[
+                    "retire",
+                    &seed.version.to_string(),
+                    &seed.city,
+                    &seed.season,
+                ],
+            ) {
+                report.fail("scratch database: retire a tag through `vink-app tag`", &e);
+                return false;
+            }
+            let mut restarted = match server.start(root) {
+                Ok(guard) => guard,
+                Err(e) => {
+                    report.fail("server restarts", &e);
+                    return false;
+                }
+            };
+            let ok = report.step(
         "confirmed draft survives server restart (browser reload), retired tag kept, export",
         || smoke(root, &["--phase", "after-restart"], chrome, origin, state),
     );
-    let _ = restarted.terminate(Duration::from_secs(15));
-    if !ok {
-        return false;
+            let _ = restarted.terminate(Duration::from_secs(15));
+            if !ok {
+                return false;
+            }
+        }
+    }
+    if !selected
+        .iter()
+        .any(|s| matches!(s, Scenario::Endorsement | Scenario::Review))
+    {
+        return true;
     }
     // LVE #73: two servers on the same scratch database. The author's (this origin) writes the
     // comments; a second loopback fixture principal, with a moderator grant, approves them and
@@ -1023,10 +916,12 @@ fn run_web_checks(
         return false;
     }
     // O-17@r2 (#159): the same second principal holds an admin seat for the review phase.
-    let mut seat = reader.command(root, &["admin", "add", OTHER_PRINCIPAL, "verify web O-17"]);
-    if let Err(e) = crate::process::run(&mut seat, "vink-app admin add (scratch)") {
-        report.fail("scratch database: admin seat", &e);
-        return false;
+    if selected.contains(&Scenario::Review) {
+        let mut seat = reader.command(root, &["admin", "add", OTHER_PRINCIPAL, "verify web O-17"]);
+        if let Err(e) = crate::process::run(&mut seat, "vink-app admin add (scratch)") {
+            report.fail("scratch database: admin seat", &e);
+            return false;
+        }
     }
     let mut author = match server.start(root) {
         Ok(guard) => guard,
@@ -1050,29 +945,34 @@ fn run_web_checks(
         }
     };
     reviewer.log = reviewer.log.with_file_name("server-reviewer.log");
-    let mut reviewing = match reviewer.start(root) {
-        Ok(guard) => guard,
-        Err(e) => {
-            report.fail("reviewer fixture starts", &e);
-            return false;
-        }
+    let mut reviewing = if selected.contains(&Scenario::Review) {
+        Some(match reviewer.start(root) {
+            Ok(guard) => guard,
+            Err(e) => {
+                report.fail("reviewer fixture starts", &e);
+                return false;
+            }
+        })
+    } else {
+        None
     };
     let reviewer_origin = format!("http://127.0.0.1:{}", reviewer.port);
     let reader_origin = format!("http://127.0.0.1:{}", reader.port);
-    let ok = report.step(
-        "literary endorsement: real writes, double tap, lost ACK + replay, 409, keyboard, 401",
-        || {
-            smoke(
-                root,
-                &["--phase", "endorsement", "--author-base", origin],
-                chrome,
-                &reader_origin,
-                state,
-            )
-        },
-    );
+    let ok = !selected.contains(&Scenario::Endorsement)
+        || report.step(
+            "literary endorsement: real writes, double tap, lost ACK + replay, 409, keyboard, 401",
+            || {
+                smoke(
+                    root,
+                    &["--phase", "endorsement", "--author-base", origin],
+                    chrome,
+                    &reader_origin,
+                    state,
+                )
+            },
+        );
     let ok = ok
-        && report.step(
+        && (!selected.contains(&Scenario::Review) || report.step(
             "review-withdrawn page (O-17@r2): paused queue, admin approve, intervention reject, SSR noindex/no-store, cache purge, comments",
             || {
                 smoke(
@@ -1083,8 +983,10 @@ fn run_web_checks(
                     state,
                 )
             },
-        );
-    let _ = reviewing.terminate(Duration::from_secs(15));
+        ));
+    if let Some(ref mut reviewing) = reviewing {
+        let _ = reviewing.terminate(Duration::from_secs(15));
+    }
     let _ = endorsing.terminate(Duration::from_secs(15));
     let _ = author.terminate(Duration::from_secs(15));
     ok
@@ -1115,6 +1017,9 @@ mod tests {
 
     #[test]
     fn strips_terminal_colors() {
-        assert_eq!(strip_ansi("\u{1b}[32m INFO\u{1b}[0m ready"), " INFO ready");
+        assert_eq!(
+            crate::lifecycle::strip_ansi("\u{1b}[32m INFO\u{1b}[0m ready"),
+            " INFO ready"
+        );
     }
 }
