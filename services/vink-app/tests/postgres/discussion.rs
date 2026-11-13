@@ -1321,6 +1321,7 @@ async fn moderation_authority_is_a_revocable_grant_rechecked_at_commit(pool: PgP
 
     // A revocation in flight holds the grant row: the decision waits, then sees it revoked.
     let mut revoking = pool.begin().await.unwrap();
+    let revoker = backend_pid(&mut revoking).await;
     sqlx::query(
         "UPDATE discussion_moderator_grants SET revoked_at = now()
           WHERE principal_id = $1 AND revoked_at IS NULL",
@@ -1335,11 +1336,7 @@ async fn moderation_authority_is_a_revocable_grant_rechecked_at_commit(pool: PgP
             decide(&vink, moderator(), first, 1, ModerationAction::Approve).await
         })
     };
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    assert!(
-        !deciding.is_finished(),
-        "decision must wait for the revocation"
-    );
+    wait_blocked_by(&pool, revoker).await;
     revoking.rollback().await.unwrap();
     // Rolled back: the grant is still active, so the waiting decision now applies.
     assert_eq!(deciding.await.unwrap().unwrap().review(), Review::Approved);
@@ -1348,6 +1345,7 @@ async fn moderation_authority_is_a_revocable_grant_rechecked_at_commit(pool: PgP
     // makes the operator's revocation wait; the decision commits under the authority it had.
     let second = post(&vink, other(), None, "Chờ duyệt hai").await;
     let mut pauser = pool.begin().await.unwrap();
+    let blocker = backend_pid(&mut pauser).await;
     sqlx::query("SELECT 1 FROM comments WHERE id = $1 FOR UPDATE")
         .bind(second.as_uuid())
         .execute(&mut *pauser)
@@ -1359,19 +1357,14 @@ async fn moderation_authority_is_a_revocable_grant_rechecked_at_commit(pool: PgP
             decide(&vink, moderator(), second, 1, ModerationAction::Reject).await
         })
     };
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    assert!(!deciding.is_finished(), "decision is paused on its comment");
+    wait_blocked_by(&pool, blocker).await;
     let revoke = {
         let pool = pool.clone();
         tokio::spawn(
             async move { revoke_moderator(&pool, PrincipalId::from_uuid(MODERATOR)).await },
         )
     };
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    assert!(
-        !revoke.is_finished(),
-        "revocation must wait for the in-flight decision"
-    );
+    wait_blocked(&pool, 2).await;
     pauser.rollback().await.unwrap();
     assert_eq!(deciding.await.unwrap().unwrap().review(), Review::Rejected);
     assert!(revoke.await.unwrap().unwrap().is_some());
@@ -1455,9 +1448,11 @@ async fn moderators_recuse_from_their_own_comments_and_their_own_works(pool: PgP
         .iter()
         .map(|i| (i.comment_id, i.can_decide))
         .collect();
-    assert_eq!(flags, vec![(readers, true), (moderators_own, false)]);
+    assert_eq!(queue.pending_total, 1);
+    assert_eq!(flags, vec![(readers, true)]);
     let authors_view = vink.moderation_queue(author(), None, None).await.unwrap();
-    assert!(authors_view.items.iter().all(|item| !item.can_decide));
+    assert_eq!(authors_view.pending_total, 0);
+    assert!(authors_view.items.is_empty());
     assert_eq!(
         decide(&vink, moderator(), readers, 1, ModerationAction::Approve)
             .await
@@ -1525,7 +1520,7 @@ async fn rejection_reasons_reach_only_their_writer_and_are_required_in_sql(pool:
         (
             "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id)
              VALUES ($1, 9, 'approve', $2)",
-            "comment_moderation_decisions_grant_required",
+            "comment_moderation_decisions_provenance_required",
         ),
     ] {
         let error = sqlx::query(statement)
@@ -2211,3 +2206,6 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
 
 #[path = "discussion_reads.rs"]
 mod reads;
+
+#[path = "comment_moderation_governance.rs"]
+mod governance;

@@ -9,12 +9,16 @@ và [registry quyết định](../../decisions/README.md).
 Bốn chiều trạng thái:
 
 1. **Product decision:** MOD-07..15 theo DecisionDelta 10/11 và 11/11; `O-17@r2` là
-   `PRODUCT_CONFIRMED`. `O-18@r1` (thời hạn grant mặc định) vẫn `OPEN`: người cấp tự nhập thời hạn.
+   `PRODUCT_CONFIRMED`. `O-18@r1` (thời hạn grant mặc định) vẫn `OPEN`. Runtime dùng `expires_at`
+   tùy chọn theo từng grant.
 2. **Architecture decision:** không có ADR mới. Thứ tự khóa, lease và hàng ca duyệt dưới đây là
    thiết kế triển khai, không phải quyết định `Accepted`.
 3. **Implementation level:** `persistence-api` + `worker-provider` (chỉ evaluator kịch bản cho
-   local/test) + `web`: reader thay thế, hàng ca tác phẩm, phản đối và dừng/bật tự động. Chưa có AI
-   provider thật, điều tra riêng, ca bình luận hay UI quản lý grant/nhóm.
+   local/test) + `web` + governance cho bình luận: reader thay thế, hàng ca tác phẩm, phản đối,
+   dừng/bật tự động, và nối quyền kiểm duyệt bình luận (`admin` seat, grant cá nhân/nhóm
+   `comments` toàn Vink hoặc theo `WorkId`, kế thừa `discussion_moderator_grants`, hàng chờ theo
+   phạm vi + tự né và provenance quyết định). Chưa có AI provider thật, điều tra riêng, ca bình
+   luận, UI kiểm duyệt bình luận hay UI quản lý grant/nhóm.
 4. **Verification evidence:** xem mục 7.
 
 ## 1. Lưu trữ (`20261117000000_work_moderation_runtime.sql`)
@@ -28,6 +32,7 @@ Bốn chiều trạng thái:
 | `moderation_admin_seats` / `_audit` | Ghế admin do CLI cấp. Chỉ thay đổi thật mới ghi audit. |
 | `moderation_groups`, `moderation_group_members`, `moderation_grants` | Grant `works`/`comments` cho người hoặc nhóm, toàn Vink hoặc một `WorkId`, có thể có hạn. Grant bình luận cũ trong `discussion_moderator_grants` được đọc như grant kế thừa. |
 | `moderation_directory_audit` | Cấp, thu hồi, tạo nhóm, thêm/bớt thành viên. |
+| `comment_moderation_decisions` (`20261119000000`) | Audit chỉ thêm. `CHECK` và hai FK buộc đúng dạng `legacy_grant`, `governance_grant` hoặc `admin`. Trigger khi ghi kiểm tra actor, ghế hoặc grant, capability, phạm vi và hiệu lực tại `decided_at`. Dòng legacy giữ nguyên ID grant và lịch sử. |
 | `moderation_cases`, `moderation_case_notes` | Tối đa một ca mở mỗi revision. Ca gắn digest và `decision_version`. Ghi chú nội bộ chỉ được lưu khi CAS version thành công. |
 | `moderation_automation_state` / `_audit` | Chế độ, version, người đổi và lý do. |
 
@@ -48,6 +53,27 @@ Mọi đường ghi cùng chiều với lệnh tác giả #158, discussion và e
 - Kết luận ca đọc `work_id` của ca không khóa, rồi khóa tiền tố tác phẩm trước khi khóa ca.
 - Dừng tự động khóa độc quyền dòng chế độ, rồi chuyển mọi job `open`/`leased` sang `rerouted`
   và mở ca cho revision còn chờ, trong cùng commit.
+
+| Đường ghi | Thứ tự khóa liên quan tới duyệt bình luận |
+| --- | --- |
+| Quyết định bình luận | `FOR SHARE` trên ghế admin → grant legacy → nhóm → thành viên → grant governance, theo ID khi có nhiều dòng → `comments FOR UPDATE` trong phạm vi → `principals FOR UPDATE` → đọc standing bằng statement riêng → lấy `clock_timestamp()` → quyết định và audit trong một commit. |
+| Thu hồi grant governance | Grant `FOR NO KEY UPDATE` → standing của admin → cập nhật grant, audit và kiểm lại ca. `FOR NO KEY UPDATE` chặn quyết định bình luận, đồng thời cho phép FK của ca lấy `FOR KEY SHARE`. |
+| Thu hồi grant legacy | `UPDATE` grant đang hiệu lực. |
+| Xóa thành viên nhóm | Nhóm `FOR NO KEY UPDATE` → standing của admin → xóa thành viên, audit và kiểm lại ca. |
+| Bỏ ghế admin | `DELETE` ghế → audit (FK lấy `FOR KEY SHARE` trên principal) → kiểm lại ca. Kết luận phản đối tác phẩm lấy khóa ghế trước standing để giữ cùng chiều. |
+| Đình chỉ principal | Ghi suspension lấy `FOR KEY SHARE` trên principal qua FK, xung đột với standing `FOR UPDATE`. |
+| Người viết tự gỡ | Khóa bình luận → standing của người viết → gỡ. |
+| Worker hậu kiểm | Khóa delivery → ticket → bình luận → receipt dịch vụ. Xem [thứ tự khóa hậu kiểm](discussion-post-review.md#khóa-và-commit). |
+
+Nếu thay đổi quyền hoặc đình chỉ commit trước khi lấy được khóa tương ứng, lần duyệt thấy trạng thái
+mới. Khi quyết định đã giữ khóa, thay đổi cạnh tranh chờ giao dịch kết thúc. Quyết định chỉ xét các
+ghế, grant và thành viên đã khóa. Quyền mới xuất hiện trong lúc chờ có hiệu lực khi được khóa ở lần
+kiểm kế tiếp. Grant hết hạn khi chờ bị loại tại mốc `decided_at`. Core có thể chọn grant hợp lệ khác
+trong cùng giao dịch, và audit ghi căn cứ đã chọn.
+
+Down script lấy `ACCESS EXCLUSIVE` trên bảng audit và cho phép backout khi chỉ có provenance
+legacy. Sau quyết định bằng ghế admin hoặc grant governance, script từ chối để giữ lịch sử. Khi đó
+dùng bản sửa hoặc migration roll-forward giữ ba dạng audit.
 
 ## 3. Consumer đánh giá trong `vink-worker`
 
@@ -75,6 +101,8 @@ Mọi đường ghi cùng chiều với lệnh tác giả #158, discussion và e
 | Method | Path | Quyền |
 | --- | --- | --- |
 | `GET` | `/api/v1/moderation/works/queue` | Có grant `works` hoặc ghế admin. Chỉ liệt kê ca mà người gọi có quyền và không phải tự né. |
+| `GET` | `/api/v1/moderation/comments` | Có ghế admin, grant cá nhân/nhóm `comments` (global hoặc `WorkId`) hoặc grant kế thừa. Lọc sẵn phạm vi tác phẩm và tự né trước `pending_total` và phân trang (`can_decide` luôn `true` trên từng mục trả về). |
+| `POST` | `/api/v1/moderation/comments/{id}/decisions` | Kiểm lại standing, phạm vi, hạn và tự né (`403 moderator_recused`) sau khóa. Với grant theo tác phẩm, ID ngoài phạm vi và ID vắng mặt cùng trả `403 not_moderator`. Audit ghi provenance đã dùng. |
 | `GET` | `/api/v1/moderation/works/cases/{id}` | Như trên. Trả snapshot đã gửi (`document`, `content_digest`), lịch sử ghi chú. Ca trên tác phẩm của chính mình trả `403 recused`. |
 | `POST` | `.../cases/{id}/claim`, `release`, `note`, `escalate`, `takeover` | Theo core `ReviewCase`, fence `expected_version`. |
 | `POST` | `.../cases/{id}/conclude` | `approved`/`rejected` (bác cần lý do), fence ca + `DecisionVersion`. |
@@ -141,7 +169,10 @@ ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử 
 | `/ban-viet/{id}/kiem-duyet` | Tác giả xem trạng thái bản gửi/lý do, gửi phản đối và xem lịch sử. |
 
 Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
-không được hiển thị. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
+không được hiển thị. Chỉ dựng nội dung và control riêng tư sau khi tab xác nhận scope tài khoản;
+response thành công bằng cookie khi scope còn chưa biết không được dựng form rồi làm mất chữ/focus
+khi xác nhận phiên hoàn tất. Browser scenario giữ chậm response tài khoản thật và kiểm tra refresh
+cùng tài khoản giữ nguyên ô lý do, chữ và focus. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
 lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
 Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
 riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md); trang
@@ -161,7 +192,12 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
   và commit, gửi khi dừng, retry, ca/grant/nhóm/tự né; thêm CLI admin có timeout, reader hidden,
   ghi bình luận bị chặn/tự gỡ/công khai lại, phản đối gửi đồng thời, admin final, kết luận đồng
   thời, phiên bản cũ, riêng tư và ý định đã chuyển sang bản mới. Chuỗi upgrade/backout dùng
-  migration thật; không phải model evidence.
+  migration thật; không phải model evidence. `tests/postgres/comment_moderation_governance.rs` phủ
+  đường kiểm duyệt bình luận với admin/grant cá nhân/nhóm/kế thừa, tách `works`/`comments`, phạm
+  vi `WorkId`, tự né, fallback provenance, phân trang/cursor khi thu hẹp quyền, tác phẩm ẩn/rút
+  duyệt (`O-03@r2`), schema provenance/upgrade/backout và hậu kiểm. Các test dùng khóa và
+  `pg_blocking_pids` cho thu hồi grant, bỏ ghế, rời nhóm, quyền mới xuất hiện trong lúc chờ và
+  quan hệ khóa với FK của ca hoặc kết luận phản đối.
 - `cargo xtask verify discussion`: M3 có `ReviewWithdrawn`, 53/53 bước qua pure production và
   counterexample `mutatedWithdrawnStep` (không được để lộ body). M1 64 và M4 105 giữ nguyên.
   Simulation có biên; Apalache `NOT_RUN`. M3 không mô hình hóa HTML hay tên tác giả.

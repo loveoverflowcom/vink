@@ -71,14 +71,17 @@ those registries rather than duplicating long status narratives across skills.
     investigation}`; `verify discussion` replays 64/64 M1, 53/53 M3, 105/105 M4 governance and 24
     `evaluator-vectors.json` steps. Since `#159`
     ([moderation-runtime](docs/development/moderation-runtime.md)) work revisions have
-    persistence-api + worker: admin seats (`vink-app admin`), work grants and groups, review cases
-    and pause/enable under `/api/v1/moderation/*`, decision history, and a `vink-worker`
+    persistence-api + worker: admin seats (`vink-app admin`), work/comment grants and groups,
+    review cases and pause/enable under `/api/v1/moderation/*`, decision history, and a `vink-worker`
     evaluation consumer (off by default; only a local/test scripted evaluator, never production;
-    without a verdict every job goes to people). `O-17@r2` (`PRODUCT_CONFIRMED`) adds the
-    review-withdrawn page at the old URL (`GET /api/v1/works/{id}/reader`, Web reader). The follow-up
-    also serves the author-hidden page, persists work appeals and adds Web case/appeal/automation
-    screens plus author review status. Investigations, comment cases and grant/group management UI
-    remain unimplemented.
+    without a verdict every job goes to people). Comment moderation routes
+    (`/api/v1/moderation/comments*`) also enforce this governance directory (admin seats,
+    individual/group `comments` grants with global/`WorkId` scope, inherited legacy grants, recusal
+    and decision provenance). `O-17@r2` (`PRODUCT_CONFIRMED`) adds the review-withdrawn page at the
+    old URL (`GET /api/v1/works/{id}/reader`, Web reader). The follow-up also serves the
+    author-hidden page, persists work appeals and adds Web case/appeal/automation screens plus
+    author review status. Investigations, comment cases/hide/restore, comment moderation UI and
+    grant/group management UI remain unimplemented.
   - Author publication persistence + HTTP API (`#158`,
     [publication-runtime](docs/development/publication-runtime.md)) implements snapshot capture,
     `request-public` (queues evaluation or human review according to automation mode), `set-private` and owner state read,
@@ -109,11 +112,13 @@ those registries rather than duplicating long status narratives across skills.
   [outbox](docs/architecture/discussion-outbox.md), [reads](docs/architecture/discussion-reads.md),
   [Web reads](docs/development/discussion-web-reads.md)):** Vink owns two-tier discussion in
   PostgreSQL (root + flat replies). `premoderation.v1` is the only effective admission policy today
-  (with DB-held moderator grants via `vink-app moderator …`, durable `comment.submitted` outbox
-  deliveries consumed by `vink-worker`, `admission_shadow.v1` audit and operator post-review
-  tickets); the 10/11/2026 AI evaluator admission and comment-edit gates are not yet wired to
-  runtime. Reader Web consumes the actor-free public projection (`GET …/discussion/public`) and
-  authenticated own overlay (`GET …/discussion/me`). Reactions exist only as pure decisions.
+  (with moderation authority checked against `ModerationDirectory` across admin seats,
+  individual/group `comments` governance grants and inherited `vink-app moderator …` legacy grants,
+  durable `comment.submitted` outbox deliveries consumed by `vink-worker`, `admission_shadow.v1`
+  audit and operator post-review tickets); the 10/11/2026 AI evaluator admission and comment-edit
+  gates are not yet wired to runtime. Reader Web consumes the actor-free public projection
+  (`GET …/discussion/public`) and authenticated own overlay (`GET …/discussion/me`). Reactions
+  exist only as pure decisions.
 
 Keep these **four status dimensions** separate in docs, reviews and handoffs:
 

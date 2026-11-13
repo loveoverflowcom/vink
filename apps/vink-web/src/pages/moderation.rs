@@ -89,6 +89,18 @@ fn error_text(error: &ApiError) -> &'static str {
         _ => "Trạng thái hoặc quyền xử lý đã thay đổi. Tải lại hồ sơ trước khi thao tác tiếp.",
     }
 }
+// A valid cookie can make these reads succeed before the tab's initial account check.
+// Never mount private controls under an unknown scope: confirming that scope would remount
+// the inputs and discard text/focus. Anonymous and unavailable sessions still get a clear state.
+fn loading_text(session: crate::account::Session, pending: &'static str) -> &'static str {
+    use crate::session::Standing;
+    match session.standing.get() {
+        Standing::Anonymous | Standing::NeedsPrincipal => error_text(&ApiError::Unauthenticated),
+        Standing::Suspended => error_text(&ApiError::Forbidden),
+        Standing::Unavailable => error_text(&ApiError::Unavailable),
+        Standing::Unknown | Standing::Active(_) => pending,
+    }
+}
 fn state_label(state: &str) -> &'static str {
     match state {
         "queued" => "Chờ nhận",
@@ -132,7 +144,7 @@ pub fn ModerationHome() -> impl IntoView {
             <p>"Xem đúng bản đã gửi và ghi rõ căn cứ cho từng quyết định."</p>
             <Feedback actions/>
             {move || match data.get() {
-                Some((scope,cases,appeals,automation)) if scope == session.scope.get() => view! {
+                Some((scope,cases,appeals,automation)) if scope.is_some() && scope == session.scope.get() => view! {
                     <section aria-labelledby="case-list-title"><Heading id="case-list-title" level=HeadingLevel::H2>"Ca tác phẩm"</Heading>
                     {match cases {
                         Ok(cases) if cases.is_empty() => view! { <p>"Không có ca đang chờ trong phạm vi của bạn."</p> }.into_any(),
@@ -146,7 +158,7 @@ pub fn ModerationHome() -> impl IntoView {
                     {automation.as_ref().err().filter(|e| !matches!(e, ApiError::Forbidden)).map(|e| view! { <p>{format!("Duyệt tự động: {}", error_text(e))}</p> })}
                     {automation.ok().map(|automation| view! { <AutomationControls automation actions reason/> })}
                 }.into_any(),
-                _ => view! { <p role="status">"Đang kiểm tra quyền và tải hàng chờ…"</p> }.into_any(),
+                _ => view! { <p role="status">{loading_text(session, "Đang kiểm tra quyền và tải hàng chờ…")}</p> }.into_any(),
             }}
         </section>
     }
@@ -190,10 +202,10 @@ pub fn CasePage() -> impl IntoView {
     view! { <Title text="Ca kiểm duyệt — Vink"/><Meta name="robots" content="noindex"/>
         <section class="vk-moderation" id="moderation-case"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
             {move || match data.get() {
-                Some((scope,id,result)) if scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
+                Some((scope,id,result)) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
                     Ok(case) => view! { <CaseContent case actions reason note/> }.into_any(),
                     Err(e) => view! { <p>{error_text(&e)}</p> }.into_any(),
-                }, _ => view! { <p role="status">"Đang tải ca…"</p> }.into_any(),
+                }, _ => view! { <p role="status">{loading_text(session, "Đang tải ca…")}</p> }.into_any(),
             }}
         </section>
     }
@@ -256,9 +268,9 @@ pub fn AppealPage() -> impl IntoView {
     view! { <Title text="Xem xét phản đối — Vink"/><Meta name="robots" content="noindex"/>
         <section class="vk-moderation" id="moderation-appeal"><Link href="/kiem-duyet">"Hàng chờ kiểm duyệt"</Link><Feedback actions/>
             {move || match data.get() {
-                Some((scope,id,result)) if scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
+                Some((scope,id,result)) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => match result {
                     Ok(detail) => view! { <AppealContent detail actions reason/> }.into_any(), Err(e) => view! { <p>{error_text(&e)}</p> }.into_any(),
-                }, _ => view! { <p role="status">"Đang tải hồ sơ…"</p> }.into_any(),
+                }, _ => view! { <p role="status">{loading_text(session, "Đang tải hồ sơ…")}</p> }.into_any(),
             }}
         </section>
     }
@@ -303,7 +315,7 @@ pub fn AuthorReviews() -> impl IntoView {
             <Link href=move || format!("/ban-viet/{}",params.read().get("id").unwrap_or_default())>"Về bản nháp"</Link><Feedback actions/>
             <p>"Yêu cầu được ghi nhận tại Vink để quản trị viên xem xét. Chưa có thông báo nào được gửi."</p>
             {move || match data.get() {
-                Some((scope,id,Ok(state),Ok(appeals))) if scope==session.scope.get() && Some(id.clone())==params.read().get("id") => view! {
+                Some((scope,id,Ok(state),Ok(appeals))) if scope.is_some() && scope==session.scope.get() && Some(id.clone())==params.read().get("id") => view! {
                     <ul class="vk-moderation__list">{state.revisions.into_iter().map(|r| {
                         let path=format!("/api/v1/works/{}/revisions/{}/appeals",state.work_id,r.revision_id);
                         let version=r.decision_version;
@@ -320,8 +332,8 @@ pub fn AuthorReviews() -> impl IntoView {
                     }).collect_view()}</ul>
                     <Heading level=HeadingLevel::H2>"Hồ sơ đã ghi nhận"</Heading><ul>{appeals.into_iter().map(|a|view! { <li>{state_label(&a.state)}{a.resolution_reason.map(|r|view! { <p>{r}</p> })}</li> }).collect_view()}</ul>
                 }.into_any(),
-                Some((scope,_,Err(e),_)) | Some((scope,_,_,Err(e))) if scope==session.scope.get() => view! { <p>{error_text(&e)}</p> }.into_any(),
-                _ => view! { <p role="status">"Đang tải trạng thái kiểm duyệt…"</p> }.into_any(),
+                Some((scope,_,Err(e),_)) | Some((scope,_,_,Err(e))) if scope.is_some() && scope==session.scope.get() => view! { <p>{error_text(&e)}</p> }.into_any(),
+                _ => view! { <p role="status">{loading_text(session, "Đang tải trạng thái kiểm duyệt…")}</p> }.into_any(),
             }}
         </section>
     }

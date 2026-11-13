@@ -44,13 +44,16 @@ Author remove đã purge body được nhận diện bằng terminal removal, kh
 
 ```text
 submit:         publication SHARE → thread SHARE → target SHARE → principal UPDATE → rows mới
-moderator:      grant SHARE → comment UPDATE → principal UPDATE → human audit
+moderator:      directory SHARE (admin/legacy/groups/members/grants) → comment UPDATE → principal UPDATE → human audit
 author remove:  comment UPDATE → principal UPDATE
 request:        command-key advisory → comment UPDATE → ticket/event/delivery MỚI
 result:         command-key advisory → delivery UPDATE → ticket UPDATE → result
 worker:         delivery UPDATE → ticket UPDATE → comment UPDATE → service receipt
 requeue:        delivery UPDATE → requeue audit (không khóa comment/ticket)
 ```
+
+Quyết định của người duyệt kiểm tra standing và căn cứ quyền đã khóa tại mốc `decided_at`.
+Receipt của worker ghi `post-review_service.v1`. Xem [khóa governance](moderation-runtime.md#2-thứ-tự-khóa).
 
 Không human/submit/remove nào chờ delivery/ticket. Request không chạm delivery đã có; result
 không khóa comment. Advisory key không được human/worker lấy. Không có chiều khóa ngược trong

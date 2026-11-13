@@ -683,7 +683,7 @@ where
     }
 
     /// A moderation decision bound to the version the moderator reviewed (MOD-02). The store
-    /// rechecks the actor's grant and recusal in the same transaction as the write.
+    /// rechecks the actor's authority and recusal in the same transaction as the write.
     pub async fn moderate_comment(
         &self,
         actor: Option<PrincipalId>,
