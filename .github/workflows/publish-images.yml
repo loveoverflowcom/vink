@@ -1,0 +1,62 @@
+# Explicit manual publication only. No deploy, DNS, SSH or workflow_run trigger.
+name: Publish OCI images manually
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Verified target platform (confirm the test host first)
+        required: true
+        type: choice
+        options: [linux/amd64, linux/arm64]
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/develop' && github.repository == 'loveoverflowcom/vink'
+    runs-on: ${{ inputs.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PLATFORM: ${{ inputs.platform }}
+    steps:
+      # Same verified checkout pin as existing CI; no unpinned third-party actions.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build clean source without registry credentials
+        run: |
+          rustup toolchain install
+          cargo xtask infra build-images docker "$PLATFORM"
+      - name: Smoke loaders, non-root user and Web assets (no database)
+        run: |
+          set -eu
+          for name in web worker identity; do
+            image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
+            docker run --rm --entrypoint sh "$image" -c 'test "$(id -u)" -ne 0'
+            set +e
+            docker run --rm "$image" > /tmp/vink-config-check.log 2>&1
+            status=$?
+            set -e
+            test "$status" = 2
+          done
+          docker run --rm --entrypoint sh "ghcr.io/loveoverflowcom/vink-web:sha-$GITHUB_SHA" -c '
+            test -s /opt/vink/site/pkg/vink.js && test -s /opt/vink/site/pkg/vink_bg.wasm &&
+            test -s /opt/vink/site/pkg/vink-editor.js && test -s /opt/vink/site/pkg/vink.css &&
+            test -d /opt/vink/site/pkg/fonts && test -d /opt/vink/site/pkg/brand &&
+            test -d /opt/vink/site/pkg/expressions && test ! -e /src && test ! -e /opt/vink/.env'
+      - name: Publish explicitly and record remote digests
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          trap 'docker logout ghcr.io' EXIT
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          printf '```toml\nsource_revision = "%s"\nplatform = "%s"\n' "$GITHUB_SHA" "$PLATFORM" >> "$GITHUB_STEP_SUMMARY"
+          for name in web worker identity; do
+            image="ghcr.io/loveoverflowcom/vink-$name:sha-$GITHUB_SHA"
+            docker push "$image"
+            digest=$(docker image inspect --format '{{index .RepoDigests 0}}' "$image")
+            case "$digest" in ghcr.io/loveoverflowcom/vink-"$name"@sha256:*) ;; *) exit 1;; esac
+            printf '%s_image = "%s"\n' "$name" "$digest" >> "$GITHUB_STEP_SUMMARY"
+          done
+          printf '# Schema compatibility must be reviewed against both owners before rollback.\n```\n' >> "$GITHUB_STEP_SUMMARY"

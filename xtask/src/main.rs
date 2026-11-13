@@ -1,7 +1,8 @@
 //! `cargo xtask` — Vink's repository command surface for local development and CI.
 //!
 //! Commands are documented in docs/development/README.md. xtask never installs toolchains,
-//! starts containers, pushes, publishes or deploys. A missing prerequisite is reported as a
+//! starts service containers, pushes, publishes or deploys. The opt-in `infra build-images`
+//! adapter only builds OCI artifacts; it never starts runtime services. A missing prerequisite is reported as a
 //! failure with a fix hint, never as a pass.
 
 mod build;
@@ -13,6 +14,7 @@ mod doctor;
 mod env;
 mod expressions;
 mod identity;
+mod infra;
 mod kani;
 mod legacy;
 mod lifecycle;
@@ -44,6 +46,7 @@ pub const TEST_DATABASE_URL_MISSING: &str = "VINK_TEST_DATABASE_URL is not set; 
 const USAGE: &str = "\
 usage: cargo xtask <command>
 
+  infra --help           test inventory, OCI build and scoped DNS plans (no deploy)
   doctor                 check prerequisites and configuration (no secrets printed)
   build [--release]      build the server binaries and the browser bundle into target/site
   db migrate             apply App migrations (VINK_MIGRATE_DATABASE_URL), then Identity's
@@ -81,11 +84,25 @@ pub fn root() -> PathBuf {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
-    let env = env::Env::load(&root());
     if matches!(args.as_slice(), ["--help"] | ["help"] | ["-h"]) {
         println!("{}\n{USAGE}", cli::HELP);
         return ExitCode::SUCCESS;
     }
+    if let ["infra", rest @ ..] = args.as_slice() {
+        if matches!(rest, ["build-images", ..]) {
+            if let Err(error) = lifecycle::install_signals() {
+                return finish(Err(error));
+            }
+            let _lock = match lifecycle::Lock::acquire(&root().join("target/.xtask-artifacts.lock"))
+            {
+                Ok(lock) => lock,
+                Err(error) => return finish(Err(error)),
+            };
+            return finish(infra::run(&root(), rest));
+        }
+        return finish(infra::run(&root(), rest));
+    }
+    let env = env::Env::load(&root());
     match cli::parse(&args) {
         Err(error) => {
             eprintln!("xtask: {error}\n{}", cli::HELP);
