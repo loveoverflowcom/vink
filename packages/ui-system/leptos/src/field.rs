@@ -44,6 +44,7 @@ pub enum TextKind {
     Url,
     Tel,
     Search,
+    Password,
 }
 
 impl TextKind {
@@ -54,13 +55,14 @@ impl TextKind {
             Self::Url => "url",
             Self::Tel => "tel",
             Self::Search => "search",
+            Self::Password => "password",
         }
     }
 }
 
 /// One edit as typed. `composing` is true while an IME composition is open; a final event with
 /// `composing: false` follows `compositionend`. Validate or save only non-composing values.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct TextInput {
     pub value: String,
     pub composing: bool,
@@ -138,6 +140,7 @@ struct TextProps {
     name: Option<String>,
     max_length: Option<u32>,
     on_focus: Option<Callback<()>>,
+    revealed: Signal<bool>,
 }
 
 /// The native text control. The DOM value is written only when the caller's value changes (a
@@ -151,8 +154,11 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
             composing,
         });
     };
-    let initial = p.value.get_untracked();
+    // Even if a host sets a value, do not render it as a password attribute in HTML.
+    let is_password = control == TextControl::Field(TextKind::Password);
+    let initial = (!is_password).then(|| p.value.get_untracked());
     let value = p.value;
+    let revealed = p.revealed;
     let invalid = move || p.invalid.get().then_some("true");
     let described = p.described;
     let required = p.required.then_some("true");
@@ -194,7 +200,9 @@ fn text_control(control: TextControl, p: TextProps, node: NodeRef<leptos::html::
                     node_ref=node
                     id=p.id
                     class="vk-ui-input"
-                    type=kind
+                    type=move || {
+                        if is_password && revealed.get() { "text" } else { kind }
+                    }
                     name=p.name
                     maxlength=p.max_length
                     on:focus=move |_| { if let Some(focus) = p.on_focus { focus.run(()); } }
@@ -250,6 +258,7 @@ fn text_field(
     input_ref: Option<NodeRef<leptos::html::Input>>,
     on_focus: Option<Callback<()>>,
     variant: FieldVariant,
+    reveal_password: bool,
 ) -> impl IntoView {
     let invalid = Signal::derive(move || present(error.get()).is_some());
     let help =
@@ -261,6 +270,11 @@ fn text_field(
     };
     let floating = variant == FieldVariant::FloatingTonal;
     let node = input_ref.unwrap_or_default();
+    let reveal = reveal_password
+        && control == TextControl::Field(TextKind::Password)
+        && mode != FieldMode::Disabled;
+    let revealed = RwSignal::new(false);
+    let reveal_id = format!("{id}-reveal");
     let props = TextProps {
         id: id.clone(),
         value,
@@ -279,6 +293,7 @@ fn text_field(
         name,
         max_length,
         on_focus,
+        revealed: Signal::derive(move || revealed.get()),
     };
     let search = control == TextControl::Search;
     let clear = move || {
@@ -313,7 +328,7 @@ fn text_field(
                     {required_mark(required)}
                 </label>
             })}
-            <div class="vk-ui-field__control" data-search=search.then_some("true")>
+            <div class="vk-ui-field__control" data-search=search.then_some("true") data-reveal=reveal.then_some("true")>
                 {search.then(|| view! { <Icon name=IconName::Search /> })}
                 {text_control(control, props, node)}
                 {floating.then(|| view! {
@@ -323,6 +338,35 @@ fn text_field(
                     </label>
                 })}
                 {clear}
+                {reveal.then(|| view! {
+                    // Toggling a native type keeps the same node. Keep the caret even on a
+                    // browser that resets selection when changing the input's type.
+                    <span class="vk-ui-field__reveal" on:mousedown=move |ev| {
+                        if node.get_untracked().is_some_and(|input| {
+                            input.matches(":focus").unwrap_or(false)
+                        }) {
+                            ev.prevent_default();
+                        }
+                    }>
+                        <IconButton id=reveal_id icon=IconName::Visibility label="Hiện mật khẩu"
+                            pressed=Signal::derive(move || revealed.get())
+                            on_press=move |_| {
+                                let next = !revealed.get_untracked();
+                                if let Some(input) = node.get_untracked() {
+                                    let start = input.selection_start().ok().flatten();
+                                    let end = input.selection_end().ok().flatten();
+                                    let direction = input.selection_direction().ok().flatten();
+                                    input.set_type(if next { "text" } else { "password" });
+                                    if let (Some(start), Some(end)) = (start, end) {
+                                        let _ = input.set_selection_range_with_direction(
+                                            start, end, direction.as_deref().unwrap_or("none"),
+                                        );
+                                    }
+                                }
+                                revealed.set(next);
+                            } />
+                    </span>
+                })}
             </div>
             {messages(id, help, error)}
         </div>
@@ -347,6 +391,9 @@ pub fn TextField(
     #[prop(optional)] max_length: Option<u32>,
     #[prop(optional)] input_ref: Option<NodeRef<leptos::html::Input>>,
     #[prop(optional, into)] on_focus: Option<Callback<()>>,
+    /// Web password field only. Each mounted field starts hidden.
+    #[prop(optional)]
+    reveal_password: bool,
 ) -> impl IntoView {
     text_field(
         TextControl::Field(kind),
@@ -366,6 +413,7 @@ pub fn TextField(
         input_ref,
         on_focus,
         variant,
+        reveal_password,
     )
 }
 
@@ -402,6 +450,7 @@ pub fn TextArea(
         None,
         None,
         variant,
+        false,
     )
 }
 
@@ -451,6 +500,7 @@ pub fn SearchField(
         input_ref,
         None,
         FieldVariant::ExternalLabel,
+        false,
     )
     .into_any()
 }
@@ -489,6 +539,7 @@ fn search_bar(
         name,
         max_length: None,
         on_focus: None,
+        revealed: Signal::default(),
     };
     let clear = Callback::new(move |()| {
         on_input.run(TextInput {
@@ -1066,6 +1117,30 @@ mod tests {
             "{disabled}"
         );
         assert!(disabled.contains("Tính năng chưa khả dụng."), "{disabled}");
+    }
+
+    #[test]
+    fn password_field_renders_one_masked_native_control_without_a_value_attribute() {
+        let html = render(|| {
+            view! {
+                <TextField id="p" name="password" label="Mật khẩu" autocomplete="new-password"
+                    kind=TextKind::Password variant=FieldVariant::FloatingTonal reveal_password=true
+                    value=Signal::stored("fixture-secret".to_owned()) on_input=|_| {} />
+            }
+            .into_any()
+        });
+        assert_eq!(html.matches("<input").count(), 1);
+        for part in [
+            "type=\"password\"",
+            "name=\"password\"",
+            "autocomplete=\"new-password\"",
+            "type=\"button\"",
+            "aria-pressed=\"false\"",
+        ] {
+            assert!(html.contains(part), "{part} in {html}");
+        }
+        assert!(!html.contains("fixture-secret"));
+        assert!(!html.contains("maxlength"));
     }
 
     #[test]

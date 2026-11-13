@@ -375,8 +375,8 @@ khai trên Identity (`vink-identity`) và App (`vink-app`):
   cũ trước NFKC. Đăng ký và thêm mật khẩu luôn áp dụng `O-12@r2`.
 - Identity contract v1: `POST /identity/v1/password/register` và `POST /identity/v1/password/sign-in`.
 - App HTTP v1 edge: `POST /api/v1/auth/register` và `POST /api/v1/auth/login`, rate limit theo mạng nguồn (`PASSWORD_REGISTER` 5/giờ, `PASSWORD_LOGIN` 15/15 phút) trong PostgreSQL, phát cookie `__Host-vink_session`, thu hồi phiên cũ.
-- `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. Form Web/CMP và khôi phục
-  mật khẩu (`O-11`, `OPEN`) là phần việc còn lại.
+- `VINK_AUTH_SIGN_IN` vẫn mặc định `disabled` trong production. [Auth Web](../development/auth-web.md)
+  đã có form mật khẩu. CMP và khôi phục mật khẩu (`O-11`, `OPEN`) còn thiếu.
 
 ### Thêm mật khẩu vào tài khoản mã email
 

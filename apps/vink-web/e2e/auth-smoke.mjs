@@ -66,10 +66,16 @@ export async function openAccount(page, base, standing) {
   await page.waitFor(`${HYDRATED} && ${STANDING} === ${JSON.stringify(standing)}`, `Tôi: ${standing}`);
 }
 
+export async function useEmail(page) {
+  await page.waitFor(`${STANDING} === 'anonymous' && (${q('#sign-in-address')} || ${q('#use-email-code')})`, 'guest auth');
+  if (!(await page.eval(`Boolean(${q('#sign-in-address')})`))) await page.click('#use-email-code');
+  await page.waitFor(q('#sign-in-address'), 'email sign-in form');
+}
+
 /** Email → code through the form. Leaves the tab at the pen-name step or signed in. */
 export async function signIn(page, ctx, address) {
   const { args, seen } = ctx;
-  await page.waitFor(`${STANDING} === 'anonymous' && ${q('#sign-in-address')}`, 'sign-in form');
+  await useEmail(page);
   await fill(page, '#sign-in-address', address);
   await page.click('#sign-in-send');
   await page.waitFor(q('#sign-in-digits'), `code step for ${address}`);
@@ -178,13 +184,21 @@ export async function authWeb(page, { args, check, openPage }) {
   const html = await (await fetch(`${base}/toi`)).text();
   check(html.includes('name="vink-sign-in"') && html.includes('data-standing="unknown"') && !html.includes('id="sign-in-email"'), 'SSR says only whether sign-in is open; the standing is unknown until the browser asks');
   await openAccount(page, base, 'anonymous');
-  check(await page.eval(`${q('#sign-in-email')} && !${q('#sign-out')} && ${PANEL_TEXT}.includes('Bạn chưa đăng nhập')`), 'a guest sees the email step and no sign-out');
+  check(await page.eval(`${q('#password-login')} && ${q('#use-email-code')} && !${q('#sign-out')} && ${PANEL_TEXT}.includes('Bạn chưa đăng nhập')`), 'a guest sees password sign-in first and can choose email');
+  check(await page.eval(`!document.querySelector('#sign-in-email')`), 'only one guest form is visible');
+  // A real email-only deployment: the App gate is open, but the Identity method is unavailable.
+  await fill(page, '#password-login-username', 'email_only_fixture');
+  await fill(page, '#password-login-password', 'local browser fixture');
+  await page.click('#password-login-submit');
+  await page.waitFor(`${PANEL_TEXT}.includes('chưa mở đăng nhập và đăng ký bằng mật khẩu')`, 'real email-only method refusal');
+  check(await page.eval(`Boolean(${q('#use-email-code')})`), 'real 501 on password login leaves the email option available');
   await page.goto(`${base}/ban-viet`);
   await page.waitFor(`${HYDRATED} && ${q('#desk-sign-in')}`, 'guest desk');
   check(await page.eval(`${q('#desk-sign-in')}.getAttribute('href') === '/toi' && !${q('#create-draft')} && !${q('[data-testid=draft-empty]')}`), 'Bàn viết points a guest to Tôi and offers neither create nor an empty list');
 
   console.log('Auth Web: code request failures keep the typed address:');
   await openAccount(page, base, 'anonymous');
+  await useEmail(page);
   await fill(page, '#sign-in-address', 'khong-phai-email');
   await page.click('#sign-in-send');
   await page.waitFor(`${fieldError('sign-in-address')}.includes('Địa chỉ email chưa đúng')`, 'local email refusal');
@@ -198,7 +212,7 @@ export async function authWeb(page, { args, check, openPage }) {
     const done = await fabricate(page, 'POST', '/api/v1/auth/sign-in/challenges', status, { error: { code, message: 'test fixture' } });
     await page.click('#sign-in-send');
     await done();
-    await page.waitFor(`${fieldError('sign-in-address')}.includes(${JSON.stringify(text)})`, `${status} recovery copy`);
+    await page.waitFor(`${PANEL_TEXT}.includes(${JSON.stringify(text)})`, `${status} recovery copy`);
     check(await page.eval(`${q('#sign-in-address')}.value === ${JSON.stringify(mailC)} && ${q('#sign-in-email')} && !${PANEL_TEXT}.includes('test fixture')`), `${status} ${code} (fabricated): own recovery copy, the address stays, server text is not echoed`);
   }
 
@@ -227,7 +241,7 @@ export async function authWeb(page, { args, check, openPage }) {
     await sleep(250);
     await page.waitFor(`!${q('#sign-in-digits')} || ${q('#sign-in-complete')}.getAttribute('aria-busy') !== 'true'`, 'attempt answered');
   }
-  await page.waitFor(`${fieldError('sign-in-address')}.includes('Hãy xin mã mới')`, 'closed challenge');
+  await page.waitFor(`${PANEL_TEXT}.includes('Hãy xin mã mới')`, 'closed challenge');
   check(attempts >= 5 && attempts <= 7 && await page.eval(`${q('#sign-in-address')}.value === ${JSON.stringify(mailC)}`), `409 challenge_closed after ${attempts} wrong codes: back to the email step with the address kept`);
 
   console.log('Auth Web: a new person signs in and chooses a pen name:');
@@ -347,10 +361,11 @@ export async function authWeb(page, { args, check, openPage }) {
   }
   check(burned < 14, `the App's sign-in limit is reached after ${burned} more request(s)`);
   await openAccount(other, base, 'anonymous');
+  await useEmail(other);
   await fill(other, '#sign-in-address', mailB);
   await other.click('#sign-in-send');
-  await other.waitFor(`${fieldError('sign-in-address')}.includes('Có quá nhiều yêu cầu')`, '429 recovery copy');
-  check(await other.eval(`/thử lại sau \\d+ (giây|phút)/.test(${fieldError('sign-in-address')}) && ${q('#sign-in-address')}.value === ${JSON.stringify(mailB)} && ${q('#sign-in-send')}.getAttribute('aria-disabled') === 'true' && /Có thể xin mã sau \\d+ (giây|phút)/.test(${fieldError('sign-in-send')})`), '429 (real): the wait from Retry-After is shown, the address stays and the request waits');
+  await other.waitFor(`${PANEL_TEXT}.includes('Có quá nhiều yêu cầu')`, '429 recovery copy');
+  check(await other.eval(`/thử lại sau \\d+ (giây|phút)/.test(${PANEL_TEXT}) && ${q('#sign-in-address')}.value === ${JSON.stringify(mailB)} && ${q('#sign-in-send')}.getAttribute('aria-disabled') === 'true' && /Có thể gửi lại sau \\d+ (giây|phút)/.test(${fieldError('sign-in-send')})`), '429 (real): the wait from Retry-After is shown, the address stays and the request waits');
 
   for (const [name, tab] of [['account', other], ['desk', desk]]) {
     check(tab.errors.length === 0, `no console errors in the ${name} tab${tab.errors.length ? `: ${tab.errors.join(' | ')}` : ''}`);

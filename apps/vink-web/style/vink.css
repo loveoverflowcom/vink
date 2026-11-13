@@ -237,7 +237,21 @@ a {
 .vk-account-session { display: grid; gap: var(--vk-space-3); justify-items: start; }
 .vk-account-session:empty { display: none; }
 .vk-account-session p { margin: 0; overflow-wrap: anywhere; }
-.vk-account-form { display: grid; gap: var(--vk-space-3); inline-size: min(100%, 28rem); }
+.vk-account-form { display: grid; gap: var(--vk-space-3); inline-size: min(100%, 28rem); min-inline-size: 0; }
+.vk-account-form .vk-account-form { inline-size: 100%; }
+.vk-account-error { color: var(--vk-error); }
+/* Every field in this surface is required; the native accessibility state carries that fact. */
+.vk-account-form .vk-ui-field__required { display: none; }
+.vk-auth-alternatives { row-gap: 0; }
+/* The button's reserved spinner and aria-describedby carry progress without moving the form. */
+.vk-account .vk-ui-action:has(> [aria-busy="true"]) > .vk-ui-action__note {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .vk-account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2) var(--vk-space-3); }
 .vk-main:has(> .vk-me),
 .vk-main:has(> .vk-me) + .vk-footer {
@@ -253,7 +267,7 @@ a {
   .vk-appearance-rail-hint { display: block; }
   .vk-main:has(> .vk-me),
   .vk-main:has(> .vk-me) + .vk-footer { padding-inline: 16px; }
-  .vk-ui-scaffold:not([data-hide-bar]) :is(.vk-footer summary, .vk-me .vk-ui-choice__input) {
+  .vk-ui-scaffold:not([data-hide-bar]) :is(.vk-footer summary, .vk-me .vk-ui-choice__input, .vk-account :is(input, button, a)) {
     scroll-margin-block-end: calc(var(--vk-ui-bar-height, 5rem) + 16px);
   }
 }

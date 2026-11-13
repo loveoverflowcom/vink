@@ -1,15 +1,15 @@
-//! The tab's one source of session facts, and the sign-in flow in front of it.
+//! The tab's one source of session facts and the auth error contract.
 //!
 //! Pure decisions only (no HTTP, no reactivity): [`SessionOwner`] records what the server last
-//! confirmed about the presented session; [`SignInFlow`] is the email → code exchange. The
-//! reactive handle and the transports live in [`crate::account`].
+//! confirmed about the presented session. The reactive handle and auth forms live in
+//! [`crate::account`].
 //!
 //! Rules:
 //! - Only the server decides. A standing is replaced by an answer of the newest check; an older
 //!   check that answers late is dropped, so a slow "anonymous" can never undo a sign-in.
 //! - `generation` advances each time the confirmed principal changes (A → nobody, nobody → B,
-//!   A → B) after the first confirmation. Private views key on it; a reply fetched for an earlier
-//!   generation must not be shown. Returning to the same account is still a new generation.
+//!   A → B) after the first confirmation, and on a confirmed read after a session-change
+//!   signal even if the principal is the same. Private views key their replies on it.
 //! - A temporary failure keeps the last confirmed standing: the server authorizes every request
 //!   on its own, and a blip must not sign the page out or drop what the person is writing.
 //! - Nothing here is stored: no credential, address or code reaches browser storage or SSR.
@@ -51,9 +51,14 @@ pub struct SessionOwner {
     generation: u64,
     confirmed: bool,
     checks: u64,
+    session_may_have_changed: bool,
 }
 
 impl SessionOwner {
+    pub(crate) fn is_latest(&self, ticket: CheckTicket) -> bool {
+        ticket.0 == self.checks
+    }
+
     pub fn standing(&self) -> &Standing {
         &self.standing
     }
@@ -76,14 +81,22 @@ impl SessionOwner {
             .map(|principal| format!("{principal}/{}", self.generation))
     }
 
+    /// A signal about the browser session is stronger than a focus refresh. A new cookie can
+    /// represent the same principal; fence that principal's earlier private operations once
+    /// the server has confirmed who is now acting.
+    #[cfg(any(test, feature = "hydrate"))]
+    pub(crate) fn expect_session_change(&mut self) {
+        self.session_may_have_changed = true;
+    }
+
     pub fn begin_check(&mut self) -> CheckTicket {
         self.checks += 1;
         CheckTicket(self.checks)
     }
 
-    /// Applies the newest check's answer. Returns whether the confirmed principal changed.
+    /// Applies the newest check's answer. Returns whether the confirmed private scope changed.
     pub fn settle(&mut self, ticket: CheckTicket, observation: Observation) -> bool {
-        if ticket.0 != self.checks {
+        if !self.is_latest(ticket) {
             return false;
         }
         let next = match observation {
@@ -100,7 +113,9 @@ impl SessionOwner {
         };
         let before = self.principal().map(str::to_owned);
         self.standing = next;
-        let changed = self.confirmed && before.as_deref() != self.principal();
+        let signalled = std::mem::take(&mut self.session_may_have_changed);
+        let changed = self.confirmed
+            && (before.as_deref() != self.principal() || signalled && before.is_some());
         if changed {
             self.generation += 1;
         }
@@ -121,6 +136,13 @@ pub fn text_survives(typed_as: Option<&str>, now: Option<&str>) -> bool {
 /// Why a sign-in request did not succeed, as the person needs to tell them apart.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthError {
+    InvalidCredentials,
+    InvalidUsername,
+    InvalidPassword,
+    UsernameTaken,
+    AlreadySignedIn,
+    AlreadyEnrolled,
+    Forbidden,
     /// `422` on `email`: not a mailbox address.
     InvalidEmail,
     /// `422` on `code`: not six digits (also decided locally before sending).
@@ -161,26 +183,49 @@ impl AuthError {
         retry_after: Option<&str>,
     ) -> Self {
         match (status, code, field) {
+            (401, Some("invalid_credentials"), _) => Self::InvalidCredentials,
             (401, ..) => Self::Unauthenticated,
             (403, Some("account_disabled"), _) => Self::AccountDisabled,
             (403, Some("principal_suspended"), _) => Self::Suspended,
+            (403, ..) => Self::Forbidden,
             (409, Some("challenge_closed"), _) => Self::ChallengeClosed,
+            (409, Some("username_taken"), _) => Self::UsernameTaken,
+            (409, Some("already_signed_in"), _) => Self::AlreadySignedIn,
+            (409, Some("already_enrolled"), _) => Self::AlreadyEnrolled,
             (422, Some("code_rejected"), _) => Self::CodeRejected,
-            (422, _, Some("email")) => Self::InvalidEmail,
-            (422, _, Some("code")) => Self::InvalidCode,
-            (422, _, Some("pen_name")) => Self::InvalidPenName,
+            (422, Some("validation_failed"), Some("email")) => Self::InvalidEmail,
+            (422, Some("validation_failed"), Some("code")) => Self::InvalidCode,
+            (422, Some("validation_failed"), Some("pen_name")) => Self::InvalidPenName,
+            (422, Some("validation_failed"), Some("username")) => Self::InvalidUsername,
+            (422, Some("validation_failed"), Some("password")) => Self::InvalidPassword,
             (429, ..) => Self::RateLimited {
                 retry_after_seconds: retry_after.and_then(retry_after_seconds),
             },
-            (501, ..) => Self::NotOpen,
+            (501, Some("authority_not_configured"), _) => Self::NotOpen,
             (503, ..) => Self::Unavailable,
             _ => Self::Unexpected { status },
         }
     }
 
+    /// The write might have reached the server even if its acknowledgement did not reach us.
+    pub(crate) fn uncertain(&self) -> bool {
+        matches!(
+            self,
+            Self::Network | Self::Unavailable
+                | Self::Unexpected { status: 0 | 200..=299 | 408 | 500..=599 }
+        )
+    }
+
     /// What the person can do next, in their language. Never echoes server text.
     pub fn message(&self) -> String {
         match self {
+            Self::InvalidCredentials => "Tên đăng nhập hoặc mật khẩu chưa đúng.".into(),
+            Self::InvalidUsername => "Tên đăng nhập cần 3–30 ký tự: chữ cái không dấu, số, dấu _ hoặc dấu chấm.".into(),
+            Self::InvalidPassword => "Mật khẩu cần 10–128 ký tự sau khi chuẩn hóa Unicode và dữ liệu nhập không quá 4.096 byte.".into(),
+            Self::UsernameTaken => "Tên đăng nhập này đã được dùng. Hãy chọn tên khác.".into(),
+            Self::AlreadySignedIn => "Bạn đang có một phiên đăng nhập. Hãy kiểm tra tài khoản hiện tại.".into(),
+            Self::AlreadyEnrolled => "Tài khoản đã có thông tin đăng nhập bằng mật khẩu.".into(),
+            Self::Forbidden => "Vink chưa thể thực hiện thao tác này.".into(),
             Self::InvalidEmail => "Địa chỉ email chưa đúng. Hãy kiểm tra rồi thử lại.".into(),
             Self::InvalidCode => "Mã gồm đúng 6 chữ số trong thư.".into(),
             Self::CodeRejected => "Mã chưa đúng. Hãy kiểm tra thư và nhập lại.".into(),
@@ -188,7 +233,7 @@ impl AuthError {
                 "Mã đã hết hạn hoặc không còn dùng được. Hãy xin mã mới.".into()
             }
             Self::AccountDisabled => {
-                "Tài khoản của email này đang bị khóa đăng nhập. Hãy liên hệ Vink để được hỗ trợ."
+                "Tài khoản đang bị khóa đăng nhập. Hãy liên hệ Vink để được hỗ trợ."
                     .into()
             }
             Self::Suspended => {
@@ -241,155 +286,6 @@ pub type Millis = i64;
 /// The client's own minimum gap between two code requests; the server's limits still apply.
 pub const RESEND_COOLDOWN_MS: Millis = 60_000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Step {
-    #[default]
-    Email,
-    Code,
-}
-
-/// Identifies one sign-in request. A reply for an older attempt is dropped.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Attempt(u64);
-
-/// Email → code. The pen-name step follows from the session's standing, not from this flow,
-/// so a reload in the middle resumes at the right place.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct SignInFlow {
-    step: Step,
-    /// The address the code was requested for, as typed. Memory only.
-    email: String,
-    busy: bool,
-    error: Option<AuthError>,
-    resend_at: Option<Millis>,
-    expires_at: Option<Millis>,
-    attempts: u64,
-}
-
-impl SignInFlow {
-    pub fn step(&self) -> Step {
-        self.step
-    }
-
-    pub fn email(&self) -> &str {
-        &self.email
-    }
-
-    pub fn busy(&self) -> bool {
-        self.busy
-    }
-
-    pub fn error(&self) -> Option<&AuthError> {
-        self.error.as_ref()
-    }
-
-    pub fn expires_at(&self) -> Option<Millis> {
-        self.expires_at
-    }
-
-    /// Seconds until another code may be requested; `None` when it may be requested now.
-    pub fn resend_wait(&self, now: Millis) -> Option<u32> {
-        let remaining = self.resend_at? - now;
-        (remaining > 0).then(|| u32::try_from((remaining + 999) / 1_000).unwrap_or(u32::MAX))
-    }
-
-    fn begin(&mut self) -> Attempt {
-        self.busy = true;
-        self.error = None;
-        self.attempts += 1;
-        Attempt(self.attempts)
-    }
-
-    fn current(&self, attempt: Attempt) -> bool {
-        self.busy && attempt.0 == self.attempts
-    }
-
-    /// Asks for a code (first request or a resend). `None`: nothing is sent.
-    pub fn request_code(&mut self, email: &str, now: Millis) -> Option<(Attempt, String)> {
-        if self.busy || self.resend_wait(now).is_some() {
-            return None;
-        }
-        let email = email.trim();
-        if email.is_empty() || !email.contains('@') {
-            self.error = Some(AuthError::InvalidEmail);
-            return None;
-        }
-        self.email = email.to_owned();
-        Some((self.begin(), self.email.clone()))
-    }
-
-    pub fn code_sent(&mut self, attempt: Attempt, now: Millis, expires_at: Option<Millis>) {
-        if !self.current(attempt) {
-            return;
-        }
-        self.busy = false;
-        self.step = Step::Code;
-        self.expires_at = expires_at;
-        self.resend_at = Some(now + RESEND_COOLDOWN_MS);
-    }
-
-    /// Submits the typed code. Spaces are dropped; anything but six digits is refused here.
-    pub fn submit_code(&mut self, code: &str) -> Option<(Attempt, String)> {
-        if self.busy || self.step != Step::Code {
-            return None;
-        }
-        let code: String = code.chars().filter(|c| !c.is_whitespace()).collect();
-        if code.len() != 6 || !code.bytes().all(|b| b.is_ascii_digit()) {
-            self.error = Some(AuthError::InvalidCode);
-            return None;
-        }
-        Some((self.begin(), code))
-    }
-
-    /// A refused or unanswered request. Typed text is never cleared by a failure.
-    pub fn failed(&mut self, attempt: Attempt, error: AuthError, now: Millis) {
-        if !self.current(attempt) {
-            return;
-        }
-        self.busy = false;
-        match &error {
-            AuthError::RateLimited {
-                retry_after_seconds: Some(seconds),
-            } => self.resend_at = Some(now + Millis::from(*seconds) * 1_000),
-            // The challenge is gone or the account cannot sign in: only a new request helps.
-            AuthError::ChallengeClosed | AuthError::AccountDisabled | AuthError::Suspended => {
-                self.step = Step::Email;
-                self.expires_at = None;
-                self.resend_at = None;
-            }
-            _ => {}
-        }
-        self.error = Some(error);
-    }
-
-    /// The session exists now; the flow forgets the address.
-    pub fn signed_in(&mut self, attempt: Attempt) {
-        if self.current(attempt) {
-            *self = Self {
-                attempts: self.attempts,
-                ..Self::default()
-            };
-        }
-    }
-
-    /// Back to the address field, keeping what was typed.
-    pub fn change_email(&mut self) {
-        if !self.busy {
-            self.step = Step::Email;
-            self.error = None;
-            self.expires_at = None;
-        }
-    }
-
-    /// The session changed elsewhere (another tab signed in): this flow is over.
-    pub fn reset(&mut self) {
-        *self = Self {
-            attempts: self.attempts + 1,
-            ..Self::default()
-        };
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -436,6 +332,19 @@ mod tests {
         assert!(!settle(&mut guest, Observation::NeedsPrincipal));
         assert!(!settle(&mut guest, Observation::Suspended));
         assert_eq!(guest.generation(), 0);
+    }
+
+    #[test]
+    fn a_new_session_for_the_same_principal_fences_private_reads_only_after_confirmation() {
+        let mut owner = SessionOwner::default();
+        settle(&mut owner, Observation::Active(account("a")));
+        owner.expect_session_change();
+        settle(&mut owner, Observation::Unavailable);
+        assert_eq!(owner.scope().as_deref(), Some("a/0"));
+        assert!(settle(&mut owner, Observation::Active(account("a"))));
+        assert_eq!(owner.scope().as_deref(), Some("a/1"));
+        assert!(!settle(&mut owner, Observation::Active(account("a"))));
+        assert_eq!(owner.scope().as_deref(), Some("a/1"));
     }
 
     #[test]
@@ -548,6 +457,8 @@ mod tests {
             ("email", AuthError::InvalidEmail),
             ("code", AuthError::InvalidCode),
             ("pen_name", AuthError::InvalidPenName),
+            ("username", AuthError::InvalidUsername),
+            ("password", AuthError::InvalidPassword),
         ] {
             assert_eq!(
                 AuthError::from_response(422, Some("validation_failed"), Some(field), None),
@@ -556,85 +467,34 @@ mod tests {
         }
         assert_eq!(
             AuthError::from_response(403, Some("forbidden"), None, None),
-            AuthError::Unexpected { status: 403 }
+            AuthError::Forbidden
         );
+        for (fixture, status, error) in [
+            (
+                "error.invalid_credentials.json",
+                401,
+                AuthError::InvalidCredentials,
+            ),
+            ("error.username_taken.json", 409, AuthError::UsernameTaken),
+            (
+                "error.already_signed_in.json",
+                409,
+                AuthError::AlreadySignedIn,
+            ),
+            (
+                "error.already_enrolled.json",
+                409,
+                AuthError::AlreadyEnrolled,
+            ),
+        ] {
+            assert_eq!(classify(fixture, status, None), error);
+            assert!(!error.uncertain());
+        }
+        assert!(AuthError::Unexpected { status: 200 }.uncertain());
+        assert!(AuthError::Unavailable.uncertain());
+        assert!(AuthError::Network.uncertain());
         assert_eq!(wait_text(0), "1 giây");
         assert_eq!(wait_text(59), "59 giây");
         assert_eq!(wait_text(61), "2 phút");
-    }
-
-    #[test]
-    fn sign_in_flow_requests_once_and_waits_before_a_resend() {
-        let mut flow = SignInFlow::default();
-        assert!(flow.request_code("   ", 0).is_none());
-        assert_eq!(flow.error(), Some(&AuthError::InvalidEmail));
-        let (attempt, email) = flow.request_code("  an@vi-du.vn ", 1_000).unwrap();
-        assert_eq!(email, "an@vi-du.vn");
-        // A double press while the first request is outstanding sends nothing.
-        assert!(flow.request_code("an@vi-du.vn", 1_000).is_none());
-        flow.code_sent(attempt, 2_000, Some(602_000));
-        assert_eq!(flow.step(), Step::Code);
-        assert_eq!(flow.resend_wait(2_000), Some(60));
-        assert_eq!(flow.resend_wait(61_001), Some(1));
-        assert!(flow.request_code("an@vi-du.vn", 30_000).is_none());
-        assert_eq!(flow.resend_wait(62_000), None);
-        assert!(flow.request_code("an@vi-du.vn", 62_000).is_some());
-    }
-
-    #[test]
-    fn sign_in_flow_keeps_the_step_on_a_wrong_code_and_restarts_on_a_closed_challenge() {
-        let mut flow = SignInFlow::default();
-        let (attempt, _) = flow.request_code("an@vi-du.vn", 0).unwrap();
-        flow.code_sent(attempt, 0, None);
-        assert!(flow.submit_code("12 34").is_none());
-        assert_eq!(flow.error(), Some(&AuthError::InvalidCode));
-        let (attempt, code) = flow.submit_code(" 123 456 ").unwrap();
-        assert_eq!(code, "123456");
-        assert!(
-            flow.submit_code("123456").is_none(),
-            "one request at a time"
-        );
-        flow.failed(attempt, AuthError::CodeRejected, 0);
-        assert_eq!(flow.step(), Step::Code);
-        let (attempt, _) = flow.submit_code("654321").unwrap();
-        flow.failed(attempt, AuthError::ChallengeClosed, 0);
-        assert_eq!((flow.step(), flow.email()), (Step::Email, "an@vi-du.vn"));
-        assert_eq!(flow.error(), Some(&AuthError::ChallengeClosed));
-        // A closed challenge lifts the client's own wait: a new code is the only way on.
-        assert!(flow.request_code("an@vi-du.vn", 1).is_some());
-    }
-
-    #[test]
-    fn sign_in_flow_honours_retry_after_and_drops_stale_replies() {
-        let mut flow = SignInFlow::default();
-        let (attempt, _) = flow.request_code("an@vi-du.vn", 0).unwrap();
-        flow.failed(
-            attempt,
-            AuthError::RateLimited {
-                retry_after_seconds: Some(120),
-            },
-            10_000,
-        );
-        assert_eq!(flow.step(), Step::Email);
-        assert_eq!(flow.resend_wait(10_000), Some(120));
-        assert!(flow.request_code("an@vi-du.vn", 100_000).is_none());
-        let (old, _) = flow.request_code("an@vi-du.vn", 130_000).unwrap();
-        // Another tab signed in meanwhile: the reply of this attempt changes nothing.
-        flow.reset();
-        flow.code_sent(old, 130_500, None);
-        flow.failed(old, AuthError::Unavailable, 130_500);
-        assert_eq!(
-            (flow.step(), flow.error(), flow.busy()),
-            (Step::Email, None, false)
-        );
-        // Outage and lost answers keep the step and the typed address.
-        let (attempt, _) = flow.request_code("an@vi-du.vn", 200_000).unwrap();
-        flow.code_sent(attempt, 200_000, None);
-        let (attempt, _) = flow.submit_code("123456").unwrap();
-        flow.failed(attempt, AuthError::Unavailable, 200_000);
-        assert_eq!((flow.step(), flow.email()), (Step::Code, "an@vi-du.vn"));
-        let (attempt, _) = flow.submit_code("123456").unwrap();
-        flow.signed_in(attempt);
-        assert_eq!((flow.step(), flow.email()), (Step::Email, ""));
     }
 }

@@ -253,7 +253,7 @@ revision có signoff về sau, tra tại [kho TOML](../decisions/README.md).
 <!-- vdr: active O-12@r2 -->
 
 Cột “Trạng thái” dùng nhãn của tài liệu đó: phần **luật** là `PRODUCT_CONFIRMED` trừ khi ghi khác;
-cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **Hiện trạng triển khai từng phần:** `#150`, `#151`, `#157` có lõi thuần + application planning cho publication, moderation evaluator/admin và tombstone lifecycle; `#158` có PostgreSQL + HTTP API v1 cho snapshot, `request-public`, `set-private` và đọc trạng thái của tác giả ([runtime](../docs/development/publication-runtime.md)); `#152` có backend native username/mật khẩu trong Identity + App ([ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)). Các phần còn lại (UI consumer, xóa/gỡ ở tầng SQL/HTTP/UI, worker/provider AI, bộ sưu tập, sửa bình luận, hashtag, xếp hạng, phản đối) chưa có runtime. **11/11/2026** (`ADMIN-MODERATION-20261111`,
+cột “Đề xuất UX/dữ liệu” luôn là `DESIGN_PROPOSED`. **Hiện trạng triển khai từng phần:** `#150`, `#151`, `#157` có lõi thuần + application planning cho publication, moderation evaluator/admin và tombstone lifecycle; `#158` có PostgreSQL + HTTP API v1 cho snapshot, `request-public`, `set-private` và đọc trạng thái của tác giả ([runtime](../docs/development/publication-runtime.md)); `#152` có backend native username/mật khẩu trong Identity + App ([ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)). [Auth Web](../docs/development/auth-web.md) có đăng ký, đăng nhập và thêm mật khẩu. Các phần còn lại (xóa/gỡ ở tầng SQL/HTTP/UI, worker/provider AI, bộ sưu tập, sửa bình luận, hashtag, xếp hạng, phản đối) chưa có runtime. **11/11/2026** (`ADMIN-MODERATION-20261111`,
 [DecisionDelta §7](../docs/architecture/product-decisions-20261110.md#7-bổ-sung-11112026--quản-trị-kiểm-duyệt)):
 admin tổng, grant moderator, nhận ca, phản đối cả quyết định của moderator, dừng tự động, điều tra
 riêng và trang “Nội dung đã được ẩn” thay luật cũ của PUB-05 B, MOD-09 và MOD-10; có core thuần,
@@ -346,5 +346,5 @@ Hành vi chi tiết: [hashtag](../docs/architecture/hashtags.md),
 principal, bút danh và quyền với nội dung. Đăng ký mới yêu cầu phiên khách.
 [ADR D-05 §12](../docs/architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính)
 
-Web `/toi` hiện dùng mã email. Form Web/CMP cho mật khẩu và luồng khôi phục còn thiếu. `O-11` vẫn
-`OPEN`. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.
+Web `/toi` dùng mật khẩu làm lựa chọn đầu, vẫn có mã email và hỗ trợ thêm mật khẩu trên cùng
+tài khoản ([Auth Web](../docs/development/auth-web.md)). CMP và luồng khôi phục còn thiếu; `O-11` vẫn `OPEN`. Production mặc định `VINK_AUTH_SIGN_IN=disabled` và D-05 vẫn `PROVISIONAL`.

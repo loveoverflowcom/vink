@@ -418,7 +418,8 @@ The App facade for native email-code and password authentication is governed by
 profile, sign-in, registration and password enrollment answer `501 authority_not_configured`
 until `VINK_AUTH_SIGN_IN=enabled`. The local profile defaults to enabled. Session reads and
 logout work independently of that switch. Identity queues codes on `202` and delivers them
-asynchronously. Web `/toi` uses email-code. Password routes are backend only.
+asynchronously. [Web `/toi`](../../../../../docs/development/auth-web.md) uses the password routes
+with a separate email-code option.
 Every answer is `Cache-Control: no-store`. Unsafe methods
 need the same-origin `Origin` like every other route. Bodies never contain the challenge handle or
 the session credential: they travel only in `__Host-` cookies (`Path=/; Secure; HttpOnly`).

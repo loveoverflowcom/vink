@@ -57,13 +57,15 @@ pub fn sign_in_open() -> bool {
 }
 
 #[cfg(feature = "hydrate")]
-pub(crate) async fn current_account() -> Result<crate::contract::CurrentAccount, ApiError> {
-    http::get("/api/v1/auth/session/account").await
+pub(crate) async fn current_account()
+-> Result<crate::contract::CurrentAccount, crate::session::AuthError> {
+    http::auth::<(), _>("GET", "/api/v1/auth/session/account", &[200], None).await
 }
 
 #[cfg(feature = "hydrate")]
-pub(crate) async fn session_state() -> Result<crate::contract::SessionState, ApiError> {
-    http::get("/api/v1/auth/session").await
+pub(crate) async fn session_state()
+-> Result<crate::contract::SessionState, crate::session::AuthError> {
+    http::auth::<(), _>("GET", "/api/v1/auth/session", &[200], None).await
 }
 
 #[cfg(feature = "hydrate")]
@@ -73,6 +75,7 @@ pub(crate) async fn request_sign_in_code(
     http::auth(
         "POST",
         "/api/v1/auth/sign-in/challenges",
+        &[202],
         Some(&crate::contract::StartSignInRequest { email }),
     )
     .await
@@ -85,9 +88,64 @@ pub(crate) async fn complete_sign_in(
     http::auth(
         "POST",
         "/api/v1/auth/sign-in/complete",
+        &[200],
         Some(&crate::contract::CompleteSignInRequest { code }),
     )
     .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn register_password(
+    credentials: crate::contract::PasswordCredentials,
+) -> Result<crate::contract::SessionState, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        "/api/v1/auth/password/register",
+        &[200],
+        Some(&credentials),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn login_password(
+    credentials: crate::contract::PasswordCredentials,
+) -> Result<crate::contract::SessionState, crate::session::AuthError> {
+    http::auth(
+        "POST",
+        "/api/v1/auth/password/login",
+        &[200],
+        Some(&credentials),
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+const ENROLL_PASSWORD: &str = "/api/v1/auth/password/enroll";
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn request_enrollment_code()
+-> Result<crate::contract::ChallengeSent, crate::session::AuthError> {
+    http::auth::<(), _>(
+        "POST",
+        "/api/v1/auth/password/enroll/challenges",
+        &[202],
+        None,
+    )
+    .await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn enroll_password(
+    proof: crate::contract::EnrollPasswordRequest,
+) -> Result<crate::contract::PasswordEnrollmentStatus, crate::session::AuthError> {
+    http::auth("POST", ENROLL_PASSWORD, &[200], Some(&proof)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub(crate) async fn password_enrollment_status()
+-> Result<crate::contract::PasswordEnrollmentStatus, crate::session::AuthError> {
+    http::auth::<(), _>("GET", ENROLL_PASSWORD, &[200], None).await
 }
 
 #[cfg(feature = "hydrate")]
@@ -97,6 +155,7 @@ pub(crate) async fn provision_principal(
     http::auth(
         "POST",
         "/api/v1/auth/principal",
+        &[200, 201],
         Some(&crate::contract::ProvisionPrincipalRequest { pen_name }),
     )
     .await
@@ -105,7 +164,7 @@ pub(crate) async fn provision_principal(
 /// `DELETE /auth/session` answers `204` only when the session is revoked (or there was none).
 #[cfg(feature = "hydrate")]
 pub(crate) async fn sign_out() -> Result<(), crate::session::AuthError> {
-    http::auth::<(), ()>("DELETE", "/api/v1/auth/session", None).await
+    http::auth::<(), ()>("DELETE", "/api/v1/auth/session", &[204], None).await
 }
 
 /// Called when a private request is answered `401`: the session owner re-reads the session.
@@ -822,12 +881,15 @@ mod http {
     pub async fn auth<B: Serialize, T: DeserializeOwned>(
         method: &str,
         path: &str,
+        expected: &[u16],
         body: Option<&B>,
     ) -> Result<T, AuthError> {
         let unexpected = AuthError::Unexpected { status: 0 };
         let deadline = Deadline::new().map_err(|_| AuthError::Network)?;
         let signal = deadline.controller.signal();
-        let builder = request(method, path, Some(&signal)).ok_or(unexpected.clone())?;
+        let builder = request(method, path, Some(&signal))
+            .ok_or(unexpected.clone())?
+            .cache(web_sys::RequestCache::NoStore);
         let request = match body {
             Some(body) => builder.json(body),
             None => builder.build(),
@@ -836,6 +898,9 @@ mod http {
         let response = request.send().await.map_err(|_| AuthError::Network)?;
         let status = response.status();
         if (200..300).contains(&status) {
+            if !expected.contains(&status) {
+                return Err(AuthError::Unexpected { status });
+            }
             let text = response.text().await.map_err(|_| AuthError::Network)?;
             return crate::contract::decode_success(&text).ok_or(AuthError::Unexpected { status });
         }

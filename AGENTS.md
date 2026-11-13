@@ -99,8 +99,8 @@ those registries rather than duplicating long status narratives across skills.
   `services/vink-identity/src/password.rs`, `account_passwords`, throttling and App password
   registration/sign-in with the `__Host-vink_session` cookie). Native accounts with verified
   email can add a password on the same subject using a fresh code and read back enrollment
-  ([App auth contract](services/vink-app/contracts/http/v1/README.md#sign-in-d-05)). Web/CMP UI for
-  username/password, account recovery (`O-11`) and production sign-in unlock (`VINK_AUTH_SIGN_IN`
+  ([App auth contract](services/vink-app/contracts/http/v1/README.md#sign-in-d-05)). [Web Auth](docs/development/auth-web.md)
+  offers password registration, sign-in and enrollment alongside email codes. CMP auth, account recovery (`O-11`) and production sign-in unlock (`VINK_AUTH_SIGN_IN`
   defaults to `disabled` in production) remain unimplemented. Every protected App write takes the
   shared standing fence (`principal::require_active`) at commit.
 - **Discussion ([ownership ADR](docs/architecture/discussion-ownership.md),
