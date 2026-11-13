@@ -267,17 +267,17 @@ Authority comes from active comment moderation governance in Vink's database: an
 or matching `work` scope (`/api/v1/moderation/grants`, `/api/v1/moderation/groups`), or an
 inherited legacy operator grant (`vink-app moderator grant|revoke|list`). Owning a work never
 implies moderation authority. Each queue read checks live capability/membership/expiry/standing in
-its snapshot; each decision rechecks live authority, group membership, expiry and standing at
-commit inside its transaction, so a revocation, group removal, seat removal or suspension that
-commits first wins. A moderator **recuses** from comments they wrote and from comments on works
-they own (`403 moderator_recused`). Without live `comments` authority (or when the comment's work
-lies outside the caller's `WorkId`-scoped grant), the answer is `403 not_moderator` so
-unauthorized callers learn nothing about pending comments or state conflicts.
+its snapshot. Each decision resolves against locked authority rows and checks standing and expiry
+after waiting on the comment and principal locks. A moderator **recuses** from comments they wrote
+and from comments on works they own (`403 moderator_recused` on an otherwise authorized target).
+`403 not_moderator` covers missing `comments` authority and, for a work-scoped moderator, both
+out-of-scope and missing comment IDs. Global reviewers receive `404` for a missing ID. Both routes
+send `Cache-Control: no-store`.
 
 | Method and path | Success | Errors | Fixture |
 | --- | --- | --- | --- |
-| `GET /api/v1/moderation/comments?cursor=&limit=` | `200` pending comments in the caller's scope (excluding recused items), oldest first, with `pending_total` | `401`, `403` (`not_moderator`), `422`, `503` | [moderation.queue.json](fixtures/moderation.queue.json) |
-| `POST /api/v1/moderation/comments/{comment_id}/decisions` | `200` the comment's updated review state | `401`, `403` (`forbidden`, `not_moderator`, `moderator_recused`), `404`, `409` (`version_conflict`, `comment_removed`), `422` (`expected_version`, `reason`, `body`), `503` | [request](fixtures/moderation.decision.request.json), [response](fixtures/moderation.decision.response.json) |
+| `GET /api/v1/moderation/comments?cursor=&limit=` | `200` pending comments in the caller's scope (excluding recused items), oldest first, with `pending_total` | `401`, `403` (`not_moderator`, `principal_suspended`), `422`, `503` | [moderation.queue.json](fixtures/moderation.queue.json) |
+| `POST /api/v1/moderation/comments/{comment_id}/decisions` | `200` the comment's updated review state | `401`, `403` (`forbidden`, `not_moderator`, `moderator_recused`, `principal_suspended`), `404`, `409` (`version_conflict`, `comment_removed`), `422` (`expected_version`, `reason`, `body`), `503` | [request](fixtures/moderation.decision.request.json), [response](fixtures/moderation.decision.response.json) |
 
 - `action` is `approve`, `reject` or `remove`. `reason` (1–500 characters, NFC, newlines
   allowed) is **required** for `reject` and `remove` and is what the writer reads (MOD-04).
@@ -287,7 +287,8 @@ unauthorized callers learn nothing about pending comments or state conflicts.
   (`409 comment_removed`): removal is terminal.
 - `can_decide` is `true` for every item returned by the queue, because out-of-scope works and
   recused comments (comments written by the moderator or on works they own) are filtered before
-  `pending_total` and pagination. `work_title` is the current public snapshot's title, or `null`
+  `pending_total` and pagination. A cursor sets the starting position in the current authorized
+  scope. `work_title` is the current public snapshot's title, or `null`
   when the work is not publicly served (private, author-hidden, or review-withdrawn).
 - Every decision is recorded append-only with the moderator, the verified authority provenance
   (`legacy_grant` with `grant_id`, `governance_grant` with `governance_grant_id`, or `admin`), and

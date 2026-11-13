@@ -1545,6 +1545,62 @@ async fn work_appeal_deduplicates_and_only_admin_concludes_with_history(pool: Pg
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn appeal_waits_for_seat_removal_before_taking_the_principal(pool: PgPool) {
+    let app = app(&pool).await;
+    let revision = reject_for_appeal(&pool, &app).await;
+    let appeal = file_appeal(&app, &revision).await;
+    let path = format!(
+        "/api/v1/moderation/appeals/{}/conclude",
+        appeal["appeal"]["id"].as_str().unwrap()
+    );
+    let admin = dev_seed::OTHER_PRINCIPAL;
+    add_admin_seat(
+        &mut pool.acquire().await.unwrap(),
+        "test",
+        PrincipalId::from_uuid(admin),
+        None,
+    )
+    .await
+    .unwrap();
+
+    let mut removal = pool.begin().await.unwrap();
+    let blocker = backend_pid(&mut removal).await;
+    sqlx::query("DELETE FROM moderation_admin_seats WHERE principal_id = $1")
+        .bind(admin)
+        .execute(&mut *removal)
+        .await
+        .unwrap();
+    let concluding = tokio::spawn(async move {
+        call(
+            &app,
+            "POST",
+            &path,
+            Some(admin),
+            Some(ORIGIN),
+            Some(
+                json!({"expected_decision_version": 2, "verdict": "reverse", "reason": "Xem lại"}),
+            ),
+        )
+        .await
+    });
+    wait_blocked_by(&pool, blocker).await;
+    sqlx::query("SET LOCAL lock_timeout = '2s'")
+        .execute(&mut *removal)
+        .await
+        .unwrap();
+    // The removal audit takes this FK lock after deleting the seat.
+    sqlx::query("SELECT id FROM principals WHERE id = $1 FOR KEY SHARE")
+        .bind(admin)
+        .execute(&mut *removal)
+        .await
+        .unwrap();
+    removal.commit().await.unwrap();
+    let (status, _, body) = concluding.await.unwrap();
+    assert_eq!(status, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(json(&body)["error"]["code"], "not_admin");
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 async fn private_closes_appeal_and_refuses_late_conclusion_and_snapshot_reads(pool: PgPool) {
     let app = app(&pool).await;
     let revision = reject_for_appeal(&pool, &app).await;

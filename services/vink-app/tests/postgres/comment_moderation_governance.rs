@@ -515,17 +515,27 @@ async fn capability_separation_and_work_scope_enforced_strictly(pool: PgPool) {
     .await;
     assert_eq!(st, StatusCode::FORBIDDEN, "works queue for legacy: {body}");
 
-    // Scoped W1 moderator sees ONLY c_w1 (`pending_total == 1`), decides c_w1, and is refused with
-    // `not_moderator` on W2 (even when passing wrong expected_version, never leaking conflict!).
+    // A scoped moderator sees only W1. An ID outside W1 has the same outcome as an absent ID.
     let (st, _, body) = get_queue_http(&app, scoped_mod_id, None, None).await;
     assert_eq!(st, StatusCode::OK, "{body}");
     assert_eq!(body["pending_total"], 1);
     assert_eq!(body["items"].as_array().unwrap().len(), 1);
     assert_eq!(body["items"][0]["comment_id"], c_w1.to_string());
 
-    let (st, _, body) = decide_http(&app, scoped_mod_id, c_w2, 99, "approve", None).await;
-    assert_eq!(st, StatusCode::FORBIDDEN, "{body}");
-    assert_eq!(body["error"]["code"], "not_moderator");
+    let outside = decide_http(&app, scoped_mod_id, c_w2, 99, "approve", None).await;
+    let missing = decide_http(
+        &app,
+        scoped_mod_id,
+        CommentId::from_uuid(Uuid::now_v7()),
+        99,
+        "approve",
+        None,
+    )
+    .await;
+    assert_eq!(outside, missing);
+    assert_eq!(outside.0, StatusCode::FORBIDDEN);
+    assert_eq!(outside.1.as_deref(), Some("no-store"));
+    assert_eq!(outside.2["error"]["code"], "not_moderator");
 
     let (st, _, body) = decide_http(&app, scoped_mod_id, c_w1, 1, "approve", None).await;
     assert_eq!(st, StatusCode::OK, "{body}");
@@ -996,59 +1006,54 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
     insert_principal(&pool, gov_mod, "Gov schema").await;
     grant_admin(&pool, admin_id).await;
     let gov_grant = create_grant_http(&app, admin_id, "principal", gov_mod, "comments", None).await;
+    let work_grant = create_grant_http(&app, admin_id, "principal", gov_mod, "works", None).await;
 
     let bad_c = post(&vink, other(), None, "Kiểm ràng buộc SQL").await;
-    for (stmt, bind_legacy, bind_gov, expected_constraint) in [
+    let shape = "comment_moderation_decisions_provenance_required";
+    let authority = "comment_moderation_decisions_authority_matches";
+    for (kind, actor, legacy, governance, expected) in [
+        ("admin", admin_id, Some(legacy_grant), None, shape),
+        ("admin", admin_id, None, Some(gov_grant), shape),
+        ("governance_grant", gov_mod, None, None, shape),
         (
-            "INSERT INTO comment_moderation_decisions
-                    (comment_id, version, action, moderator_id, authority_kind, grant_id)
-             VALUES ($1, 8, 'approve', $2, 'admin', $3)",
-            Some(legacy_grant),
-            None,
-            "comment_moderation_decisions_provenance_required",
-        ),
-        (
-            "INSERT INTO comment_moderation_decisions
-                    (comment_id, version, action, moderator_id, authority_kind, governance_grant_id)
-             VALUES ($1, 8, 'approve', $2, 'admin', $4)",
-            None,
-            Some(gov_grant),
-            "comment_moderation_decisions_provenance_required",
-        ),
-        (
-            "INSERT INTO comment_moderation_decisions
-                    (comment_id, version, action, moderator_id, authority_kind)
-             VALUES ($1, 8, 'approve', $2, 'governance_grant')",
-            None,
-            None,
-            "comment_moderation_decisions_provenance_required",
-        ),
-        (
-            "INSERT INTO comment_moderation_decisions
-                    (comment_id, version, action, moderator_id, authority_kind, grant_id, governance_grant_id)
-             VALUES ($1, 8, 'approve', $2, 'governance_grant', $3, $4)",
+            "governance_grant",
+            gov_mod,
             Some(legacy_grant),
             Some(gov_grant),
-            "comment_moderation_decisions_provenance_required",
+            shape,
         ),
+        ("legacy_grant", gov_mod, None, Some(gov_grant), shape),
+        ("legacy_grant", gov_mod, Some(legacy_grant), None, authority),
         (
-            "INSERT INTO comment_moderation_decisions
-                    (comment_id, version, action, moderator_id, authority_kind, governance_grant_id)
-             VALUES ($1, 8, 'approve', $2, 'legacy_grant', $4)",
+            "governance_grant",
+            admin_id,
             None,
             Some(gov_grant),
-            "comment_moderation_decisions_provenance_required",
+            authority,
         ),
+        (
+            "governance_grant",
+            gov_mod,
+            None,
+            Some(work_grant),
+            authority,
+        ),
+        ("admin", gov_mod, None, None, authority),
     ] {
-        let err = sqlx::query(stmt)
-            .bind(bad_c.as_uuid())
-            .bind(gov_mod)
-            .bind(bind_legacy)
-            .bind(bind_gov)
-            .execute(&pool)
-            .await
-            .unwrap_err();
-        assert_eq!(constraint(err), expected_constraint);
+        let err = sqlx::query(
+            "INSERT INTO comment_moderation_decisions
+                     (comment_id, version, action, moderator_id, authority_kind, grant_id, governance_grant_id)
+             VALUES ($1, 8, 'approve', $2, $3, $4, $5)",
+        )
+        .bind(bad_c.as_uuid())
+        .bind(actor)
+        .bind(kind)
+        .bind(legacy)
+        .bind(governance)
+        .execute(&pool)
+        .await
+        .unwrap_err();
+        assert_eq!(constraint(err), expected);
     }
 
     // Audit insert failure rolls back the comment state update atomically.
@@ -1108,8 +1113,17 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
         decision_provenance(&pool, bad_c, 3).await,
         ("admin".into(), None, None, admin_id, None)
     );
-    let refused = sqlx::raw_sql(down_sql).execute(&pool).await.unwrap_err();
+    let mut conn = pool.acquire().await.unwrap();
+    let refused = sqlx::raw_sql(down_sql)
+        .execute(&mut *conn)
+        .await
+        .unwrap_err();
     assert!(refused.to_string().contains("roll forward"), "{refused}");
+    sqlx::query("ROLLBACK").execute(&mut *conn).await.unwrap();
+    assert_eq!(
+        decision_provenance(&pool, bad_c, 2).await.2,
+        Some(gov_grant)
+    );
 }
 
 /// Human reaffirmation advances version cleanly, post-review worker never overrides a newer human
@@ -1884,4 +1898,82 @@ async fn concurrent_revocations_membership_seat_expiry_and_self_admin_races(pool
     assert!(res_human.is_ok(), "human race: {res_human:?}");
     assert!(res_worker.is_ok(), "worker race: {res_worker:?}");
     let _: GrantId = g_live;
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_seat_added_while_waiting_is_used_only_by_the_next_decision(pool: PgPool) {
+    let app = app(&pool).await;
+    let vink = seeded(&pool).await;
+    let admin = Uuid::now_v7();
+    let reviewer = Uuid::now_v7();
+    insert_principal(&pool, admin, "Quản trị viên").await;
+    insert_principal(&pool, reviewer, "Người duyệt").await;
+    grant_admin(&pool, admin).await;
+    let grant = create_grant_http(&app, admin, "principal", reviewer, "comments", None).await;
+    let comment = post(&vink, other(), None, "Chờ kiểm duyệt").await;
+
+    let mut barrier = pool.begin().await.unwrap();
+    let blocker = backend_pid(&mut barrier).await;
+    sqlx::query("SELECT id FROM comments WHERE id = $1 FOR UPDATE")
+        .bind(comment.as_uuid())
+        .execute(&mut *barrier)
+        .await
+        .unwrap();
+    let deciding = tokio::spawn({
+        let app = app.clone();
+        async move { decide_http(&app, reviewer, comment, 1, "approve", None).await }
+    });
+    wait_blocked_by(&pool, blocker).await;
+    grant_admin(&pool, reviewer).await;
+    barrier.commit().await.unwrap();
+
+    assert_eq!(deciding.await.unwrap().0, StatusCode::OK);
+    assert_eq!(
+        decision_provenance(&pool, comment, 2).await,
+        ("governance_grant".into(), None, Some(grant), reviewer, None)
+    );
+    assert_eq!(
+        decide_http(&app, reviewer, comment, 2, "approve", None)
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        decision_provenance(&pool, comment, 3).await,
+        ("admin".into(), None, None, reviewer, None)
+    );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn governance_revocation_can_wait_on_the_admin_without_blocking_a_case_grant_fk(
+    pool: PgPool,
+) {
+    let app = app(&pool).await;
+    let admin = Uuid::now_v7();
+    insert_principal(&pool, admin, "Quản trị viên").await;
+    grant_admin(&pool, admin).await;
+    let grant = create_grant_http(&app, admin, "principal", admin, "works", None).await;
+
+    let mut case_write = pool.begin().await.unwrap();
+    let blocker = backend_pid(&mut case_write).await;
+    sqlx::query("SELECT id FROM principals WHERE id = $1 FOR UPDATE")
+        .bind(admin)
+        .execute(&mut *case_write)
+        .await
+        .unwrap();
+    let revoking = tokio::spawn(async move { revoke_grant_http(&app, admin, grant).await });
+    wait_blocked_by(&pool, blocker).await;
+    // A work-case write already holding its principal/case locks takes this same lock through
+    // claimed_basis_grant_id_fkey (or concluded_basis_grant_id_fkey).
+    sqlx::query("SET LOCAL lock_timeout = '2s'")
+        .execute(&mut *case_write)
+        .await
+        .unwrap();
+    sqlx::query("SELECT id FROM moderation_grants WHERE id = $1 FOR KEY SHARE")
+        .bind(grant)
+        .execute(&mut *case_write)
+        .await
+        .unwrap();
+    case_write.commit().await.unwrap();
+    revoking.await.unwrap();
 }

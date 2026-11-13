@@ -13,6 +13,8 @@ DO $$ BEGIN
         RAISE EXCEPTION 'comment moderation governance decisions exist; preserve history and roll forward';
     END IF;
 END $$;
+DROP TRIGGER comment_moderation_decisions_authority_matches ON comment_moderation_decisions;
+DROP FUNCTION check_comment_decision_authority();
 DROP INDEX IF EXISTS comment_moderation_decisions_governance_grant_idx;
 ALTER TABLE comment_moderation_decisions
     DROP CONSTRAINT comment_moderation_decisions_provenance_required,

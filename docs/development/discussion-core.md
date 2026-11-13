@@ -88,6 +88,10 @@ thuần (`domain/discussion/reaction.rs`), chưa có bảng, store, route, contr
   `pending` (audit ở [admission](../architecture/discussion-admission.md#1-baseline-đối-chiếu-tại-head-thực-thi-ac-01)).
 - **Hai trục:** `removal` (null/author/moderation) tách `review` (pending/approved/rejected). Chỉ
   present + approved là công khai; người viết thấy trạng thái bình luận của mình.
+- **Duyệt:** `ModerationDirectory` áp dụng ghế admin, grant `comments` cá nhân/nhóm và grant
+  legacy. Hàng chờ lọc phạm vi và tự né trước khi đếm hoặc phân trang. Duyệt hoặc từ chối hợp lệ
+  luôn tăng version và ghi một dòng audit, kể cả khi xác nhận lại trạng thái hiện tại. Xem
+  [thứ tự khóa và provenance](moderation-runtime.md#2-thứ-tự-khóa).
 - **Gỡ:** người viết gỡ của mình → xóa chữ khỏi database. Kiểm duyệt gỡ → giữ chữ cho audit, không
   đường đọc nào trả về. Root bị ẩn còn reply công khai → điểm neo không chữ/danh tính.
 - **Tác giả tác phẩm:** chỉ bật/tắt (`CommentsMode`, `SettingsGeneration`). Gỡ bình luận người

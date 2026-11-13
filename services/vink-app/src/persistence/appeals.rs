@@ -4,7 +4,7 @@ use sqlx::{PgConnection, PgPool, query, query_as, query_scalar};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::moderation::load_moderation_directory;
+use super::moderation::{load_moderation_directory, lock_admin_seat};
 use super::moderation_write::{
     DecisionSource, apply_pointer_effect, lock_work, sync_job_states, write_decision,
     write_publication_pointers,
@@ -200,26 +200,6 @@ pub async fn file(
     Ok((record, replayed))
 }
 
-/// Serialize seat revocation with an admin conclusion. The work and principal prefix is taken
-/// first; then this shared seat lock, before closing any cases.
-async fn require_admin(conn: &mut PgConnection, actor: PrincipalId) -> Result<(), Error> {
-    let seat: Option<Uuid> = query_scalar(
-        "SELECT principal_id FROM moderation_admin_seats WHERE principal_id = $1 FOR SHARE",
-    )
-    .bind(actor.as_uuid())
-    .fetch_optional(&mut *conn)
-    .await
-    .map_err(classify)?;
-    if seat.is_none() {
-        return Err(Error::Forbidden("not_admin"));
-    }
-    load_moderation_directory(conn, OffsetDateTime::now_utc())
-        .await?
-        .require_admin(actor, OffsetDateTime::now_utc())
-        .map_err(|e| Error::Forbidden(e.as_str()))?;
-    Ok(())
-}
-
 pub async fn conclude(
     pool: &PgPool,
     actor: PrincipalId,
@@ -236,8 +216,12 @@ pub async fn conclude(
         .map_err(classify)?;
     let work = WorkId::from_uuid(work.ok_or(Error::NotFound)?);
     let owner = lock_work(&mut tx, work).await?.ok_or(Error::NotFound)?;
+    // Seat removal holds the seat before touching the principal and revalidating cases.
+    let has_seat = lock_admin_seat(&mut tx, actor).await?;
     require_active(&mut tx, actor).await?;
-    require_admin(&mut tx, actor).await?;
+    if !has_seat {
+        return Err(Error::Forbidden("not_admin"));
+    }
     let appeals = book(&mut tx, work).await?;
     let appeal = appeals.get(id).ok_or(Error::NotFound)?;
     let ReviewSubject::WorkRevision {

@@ -80,7 +80,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
             delete(remove_comment),
         )
         .route("/works/{work_id}/discussion/settings", put(set_settings))
-        // Moderation (D2T-02c): authority is the actor's active grant, rechecked at commit.
+        // Moderation (D2T-02c): resolve the actor's current comment-review authority.
         .route("/moderation/comments", get(get_moderation_queue))
         .route(
             "/moderation/comments/{comment_id}/decisions",

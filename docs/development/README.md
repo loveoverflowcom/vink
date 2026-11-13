@@ -255,9 +255,9 @@ Identity, chờ readiness trên socket rồi mới chạy App; dừng App thì I
 local, xtask đặt `VINK_IDENTITY_CALLER_UID`/`VINK_IDENTITY_SERVER_UID` bằng uid của bạn nếu chưa đặt.
 
 Binary `vink-app` nhận `serve` (mặc định), `migrate`, `dev-seed` và
-`moderator grant <principal-uuid> <ghi chú> | revoke <principal-uuid> | list`: lệnh vận hành duy
-nhất cấp/thu hồi quyền kiểm duyệt bình luận (dùng `DATABASE_URL`; không có route HTTP nào làm việc
-này, quyền sở hữu tác phẩm không bao giờ kéo theo quyền kiểm duyệt). Mã thoát: `0` thành công,
+`moderator grant <principal-uuid> <ghi chú> | revoke <principal-uuid> | list`: lệnh vận hành cho
+grant bình luận legacy, dùng `DATABASE_URL`. Admin quản lý grant governance qua
+[`/api/v1/moderation/grants`](moderation-runtime.md#4-http-api-no-store). Mã thoát `0` là thành công,
 `1` lỗi runtime (kể cả credential migrate thiếu quyền — không thử lại bằng role khác), `2` cấu hình
 hoặc cách gọi sai. `tag list | history [<n>] | create <version> <form|theme> <nhãn> | rename|alias
 <version> <tag-uuid> <nhãn> | describe <version> <tag-uuid> [<mô tả>] | retire <version> <tag-uuid>

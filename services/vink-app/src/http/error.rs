@@ -229,7 +229,7 @@ impl ApiError {
             ),
             Self::NotModerator => (
                 "not_moderator",
-                "an active moderator grant is required".to_string(),
+                "active comment moderation authority is required".to_string(),
                 None,
                 None,
             ),

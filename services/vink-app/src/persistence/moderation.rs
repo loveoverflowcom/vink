@@ -44,6 +44,13 @@ pub async fn load_moderation_directory(
     conn: &mut PgConnection,
     _now: OffsetDateTime,
 ) -> Result<ModerationDirectory, StoreError> {
+    ModerationDirectory::restore(load_directory_facts(conn).await?)
+        .map_err(|e| integrity("moderation directory restore failed", e))
+}
+
+pub(super) async fn load_directory_facts(
+    conn: &mut PgConnection,
+) -> Result<DirectoryFacts, StoreError> {
     // 1. Admins
     let admin_rows: Vec<Uuid> = query_scalar("SELECT principal_id FROM moderation_admin_seats")
         .fetch_all(&mut *conn)
@@ -79,7 +86,7 @@ pub async fn load_moderation_directory(
     let grant_rows: Vec<GrantRow> = query_as(
         "SELECT id, grantee_kind, grantee_id, capability, scope_kind,
                 scope_work_id, expires_at, revoked, origin
-           FROM moderation_grants",
+           FROM moderation_grants ORDER BY id",
     )
     .fetch_all(&mut *conn)
     .await
@@ -174,13 +181,12 @@ pub async fn load_moderation_directory(
         })
         .collect();
 
-    ModerationDirectory::restore(DirectoryFacts {
+    Ok(DirectoryFacts {
         admins,
         suspended,
         grants,
         groups,
     })
-    .map_err(|e| integrity("moderation directory restore failed", format!("{e:?}")))
 }
 
 /// The admin prefix of an admin-only command: standing fence, then directory and seat.
@@ -195,6 +201,21 @@ async fn admin_seat(
         .require_admin(admin, now)
         .map_err(|e| ModerationActionError::Forbidden(e.as_str()))?;
     Ok((directory, seat))
+}
+
+/// Lock the seat ahead of principal locks on paths that must serialize against its deletion.
+pub(super) async fn lock_admin_seat(
+    conn: &mut PgConnection,
+    actor: PrincipalId,
+) -> Result<bool, StoreError> {
+    let seat: Option<Uuid> = query_scalar(
+        "SELECT principal_id FROM moderation_admin_seats WHERE principal_id = $1 FOR SHARE",
+    )
+    .bind(actor.as_uuid())
+    .fetch_optional(conn)
+    .await
+    .map_err(classify)?;
+    Ok(seat.is_some())
 }
 
 async fn write_directory_audit(
@@ -1159,14 +1180,6 @@ pub async fn create_moderation_grant(
     now: OffsetDateTime,
 ) -> Result<GrantId, ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
-    if let Grantee::Group(group) = spec.grantee {
-        // Lock the group before the admin's principal row to match the global Level 1 -> Level 3 order.
-        let _ = query_scalar::<_, Uuid>("SELECT id FROM moderation_groups WHERE id = $1 FOR SHARE")
-            .bind(group.as_uuid())
-            .fetch_optional(&mut *tx)
-            .await
-            .map_err(classify)?;
-    }
     let (directory, seat) = admin_seat(&mut tx, admin, now).await?;
     if spec.expires_at.is_some_and(|at| at <= now) {
         return Err(ModerationActionError::ValidationFailed("expires_in_past"));
@@ -1238,10 +1251,10 @@ pub async fn revoke_moderation_grant(
     now: OffsetDateTime,
 ) -> Result<(), ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
-    // Lock the grant before the admin's principal row (Level 1 -> Level 3) so a moderator who
-    // also holds an admin seat cannot deadlock against an in-flight comment moderation decision.
+    // A comment decision can hold this grant while waiting for the same admin's principal row.
+    // Use NO KEY UPDATE so case writes holding a principal/case row can still check their grant FK.
     let row: Option<String> =
-        query_scalar("SELECT origin FROM moderation_grants WHERE id = $1 FOR UPDATE")
+        query_scalar("SELECT origin FROM moderation_grants WHERE id = $1 FOR NO KEY UPDATE")
             .bind(grant_id.as_uuid())
             .fetch_optional(&mut *tx)
             .await
@@ -1328,10 +1341,10 @@ pub async fn set_group_membership(
     now: OffsetDateTime,
 ) -> Result<(), ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
-    // Lock the group before the admin's principal row (Level 1 -> Level 3) so membership changes
-    // serialize without cycling against in-flight comment moderation decisions.
+    // Serialize membership changes before acquiring the admin's principal row. This lock
+    // conflicts with comment moderation's FOR SHARE and permits group FK checks.
     let locked: Option<Uuid> =
-        query_scalar("SELECT id FROM moderation_groups WHERE id = $1 FOR UPDATE")
+        query_scalar("SELECT id FROM moderation_groups WHERE id = $1 FOR NO KEY UPDATE")
             .bind(group.as_uuid())
             .fetch_optional(&mut *tx)
             .await

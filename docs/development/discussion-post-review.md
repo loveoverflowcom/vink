@@ -52,6 +52,9 @@ worker:         delivery UPDATE → ticket UPDATE → comment UPDATE → service
 requeue:        delivery UPDATE → requeue audit (không khóa comment/ticket)
 ```
 
+Quyết định của người duyệt kiểm tra standing và căn cứ quyền đã khóa tại mốc `decided_at`.
+Receipt của worker ghi `post-review_service.v1`. Xem [khóa governance](moderation-runtime.md#2-thứ-tự-khóa).
+
 Không human/submit/remove nào chờ delivery/ticket. Request không chạm delivery đã có; result
 không khóa comment. Advisory key không được human/worker lấy. Không có chiều khóa ngược trong
 các đường này. Hai batch claim có thể chạm cùng comment, nhưng không chờ delivery của batch kia.
