@@ -194,6 +194,12 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 
 ## Lệnh
 
+Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workflows.md):
+`build api`, `dev api --auth identity`, `dev worker`, `dev web`, `dev preview`,
+`verify unit app --filter …`, `verify web --scenario password`; thêm `--plan` để xem phụ thuộc,
+hoặc `doctor` trước lệnh để kiểm prerequisite. Những lệnh tổng hợp bên dưới giữ compatibility.
+API mode bỏ bundle và SSR/static routes, vẫn biên dịch dependency Rust SSR.
+
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |
 | `cargo xtask doctor` | Kiểm toolchain, wasm target, wasm-bindgen, Node 22+/npm, `DATABASE_URL` và `VINK_MIGRATE_DATABASE_URL` (ẩn credential, thử kết nối); `VINK_TEST_DATABASE_URL`, `psql` và Chrome là cảnh báo | Thiếu điều kiện cho `dev` |

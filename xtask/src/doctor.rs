@@ -285,3 +285,47 @@ pub fn chrome_binary(env: &Env) -> Option<String> {
     .find(|p| output(p, &["--version"], Path::new(".")).is_some())
     .map(|p| p.to_string())
 }
+
+/// The same resolved plan drives both preflight and execution; no optional tool can fail an
+/// unrelated scope. This function probes dependencies but never builds/migrates/starts services.
+pub fn scoped(plan: &crate::plan::Plan, env: &Env) -> Result<(), String> {
+    use crate::plan::Tool;
+    for tool in &plan.tools {
+        let detail = match tool {
+            Tool::Rust => toolchain(&root()),
+            Tool::WasmTarget => wasm_target(&root()),
+            Tool::Bindgen => require_wasm_bindgen(&root()),
+            Tool::Node => node_version(),
+            Tool::Npm => npm_version(),
+            Tool::Chrome => {
+                chrome_binary(env).ok_or_else(|| "Chrome not found; set VINK_CHROME".into())
+            }
+        }?;
+        println!("[PASS] {tool:?}: {detail}");
+    }
+    for key in &plan.databases {
+        let url = env
+            .get(key)
+            .ok_or_else(|| format!("{key} is required by the selected plan"))?;
+        if matches!(*key, "DATABASE_URL" | "VINK_IDENTITY_DATABASE_URL") {
+            probe_runtime_database(&url)?;
+        } else {
+            probe_database(&url)?;
+        }
+        println!("[PASS] {key}: {}", describe_database(&url)?);
+    }
+    Ok(())
+}
+
+fn probe_runtime_database(url: &str) -> Result<(), String> {
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    runtime.block_on(async {
+        let pool=sqlx::postgres::PgPoolOptions::new().max_connections(1).acquire_timeout(Duration::from_secs(5)).connect(url).await.map_err(|_|"runtime database connection failed (credentials hidden)")?;
+        let privileged=vink_store_postgres::role_is_privileged(&pool).await.map_err(|_|"runtime role probe failed")?;
+        pool.close().await;
+        if privileged {Err("dev runtime must use a restricted runtime role, never migrator/test-superuser credentials".into())}else{Ok(())}
+    })
+}

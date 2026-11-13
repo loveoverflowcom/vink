@@ -147,10 +147,21 @@ impl FromRequestParts<AppState> for Actor {
     }
 }
 
-pub fn router(state: AppState) -> Router {
+/// Public API and health use exactly the same handlers and authorization in both modes.
+fn routes(state: &AppState) -> Router<AppState> {
     Router::new()
         .merge(health::routes())
         .nest("/api/v1", api::routes(state.clone()))
+}
+
+pub fn api_router(state: AppState) -> Router {
+    routes(&state)
+        .layer(TraceLayer::new_for_http())
+        .with_state(state)
+}
+
+pub fn router(state: AppState) -> Router {
+    routes(&state)
         .merge(ssr::routes(&state))
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -189,6 +200,29 @@ mod tests {
         let status = response.status();
         let body = response.into_body().collect().await.unwrap().to_bytes();
         (status, String::from_utf8_lossy(&body).into_owned())
+    }
+
+    #[tokio::test]
+    async fn api_composition_has_no_ssr_or_static_routes_and_keeps_private_guard() {
+        let pool = lazy_pool("postgres://vink:unused@127.0.0.1:1/vink").unwrap();
+        let router = api_router(AppState::new(
+            Vink::new(PgStore::new(pool)),
+            Arc::new(NoAuthority),
+            "http://127.0.0.1:3000",
+            Path::new("target/site"),
+        ));
+        for path in ["/", "/toi", "/ban-viet", "/pkg/vink.js"] {
+            assert_eq!(get(&router, path).await.0, StatusCode::NOT_FOUND, "{path}");
+        }
+        assert_eq!(get(&router, "/health/live").await.0, StatusCode::OK);
+        assert_eq!(
+            get(&router, "/api/v1/drafts").await.0,
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            get(&router, "/api/v1/works").await.0,
+            StatusCode::SERVICE_UNAVAILABLE
+        );
     }
 
     #[tokio::test]

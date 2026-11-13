@@ -21,6 +21,11 @@ The map records coverage, not current PASS results. For requested maintenance of
 instructions or repeated checking workflows, use
 [vink-maintain-verification](../../vink-maintain-verification/SKILL.md).
 
+For a focused local task, use the [scoped workflow guide](../../../../docs/development/scoped-workflows.md):
+`verify unit <owner> [--filter NAME]`, `verify web --scenario NAME`, and `doctor <scoped command>`.
+Inspect dependencies with trailing `--plan`. A selected result is not a full lane PASS; `restart`
+includes `main` as setup. Full lanes and formal-method obligations below remain unchanged.
+
 ## Pick lanes by change
 
 | Change | Lanes | Notes |

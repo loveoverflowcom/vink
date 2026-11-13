@@ -61,7 +61,7 @@ preview/dry-run for an applicable mutation rather than inventing one for read-on
 Make fixture/resource ownership and cleanup explicit, and keep credentials and manuscripts
 out of diagnostics. Update the development guide with any changed command contract.
 
-Browser smoke checks interactions via CDP and writes captures/context under `target/verify-web`;
+Browser smoke checks interactions via CDP and writes captures/context under `target/verify-web/<run-id>/`;
 the UI preview commands have separate capture/test outputs. Native diagnostic commands and
 limits are owned by the development guide. Open captures before visual claims; a saved image
 or common/JVM test is not native runtime evidence.

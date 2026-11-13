@@ -37,7 +37,7 @@ use vink_app::http::{AppState, router};
 use vink_app::persistence::{self, PgStore, lazy_pool};
 use vink_app::{dev_seed, identity, runtime};
 
-const USAGE: &str = "usage: vink-app [serve|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
+const USAGE: &str = "usage: vink-app [serve|serve-api|migrate|dev-seed]\n       vink-app admin add <principal-uuid> [<reason>]\n       vink-app admin remove <principal-uuid> [<reason>]\n       vink-app admin list\n       vink-app moderator grant <principal-uuid> <note>\n       vink-app moderator revoke <principal-uuid>\n       vink-app moderator list\n       vink-app principal suspend <principal-uuid> <reason>\n       vink-app principal reinstate <principal-uuid>\n       vink-app principal list\n       vink-app tag list\n       vink-app tag history [<limit>]\n       vink-app tag create <catalog-version> <form|theme> <label>\n       vink-app tag rename <catalog-version> <tag-uuid> <label>\n       vink-app tag describe <catalog-version> <tag-uuid> [<description>]\n       vink-app tag alias <catalog-version> <tag-uuid> <label>\n       vink-app tag retire <catalog-version> <tag-uuid> [<successor-uuid>]\n       vink-app outbox status\n       vink-app outbox dead [<limit>]\n       vink-app outbox requeue <event-uuid> <consumer> <note>\n       vink-app post-review request|result|status|pending\n       vink-app maintenance prune";
 
 #[derive(Debug, PartialEq, Eq)]
 enum AdminCommand {
@@ -284,6 +284,7 @@ fn main() -> ExitCode {
     if !matches!(
         command.as_str(),
         "serve"
+            | "serve-api"
             | "migrate"
             | "dev-seed"
             | "admin"
@@ -421,7 +422,7 @@ fn main() -> ExitCode {
             Loaded::App(config) if let Some(operation) = post_review_command => {
                 post_review(&config, operation).await
             }
-            Loaded::App(config) => serve(config).await,
+            Loaded::App(config) => serve(config, command == "serve-api").await,
         }
     });
     match result {
@@ -906,7 +907,7 @@ async fn post_review(config: &Config, command: PostReviewCommand) -> Result<(), 
     }
 }
 
-async fn serve(config: Config) -> Result<(), Failure> {
+async fn serve(config: Config, api_only: bool) -> Result<(), Failure> {
     let pool = lazy_pool(&config.database_url)
         .map_err(|error| Failure::Usage(format!("DATABASE_URL is not usable: {error}")))?;
     let directory = Arc::new(Vink::new(PgStore::new(pool.clone())));
@@ -935,7 +936,7 @@ async fn serve(config: Config) -> Result<(), Failure> {
     .with_trusted_proxies(config.trusted_proxies.clone())
     .with_identity_probe(probe)
     .with_restricted_role_required(config.profile == Profile::Production);
-    if !config.site_root.join("pkg").join("vink.js").exists() {
+    if !api_only && !config.site_root.join("pkg").join("vink.js").exists() {
         tracing::warn!(
             site_root = %config.site_root.display(),
             "browser bundle missing; pages render but will not hydrate (run `cargo xtask build`)"
@@ -960,7 +961,12 @@ async fn serve(config: Config) -> Result<(), Failure> {
     );
     axum::serve(
         listener,
-        router(state).into_make_service_with_connect_info::<SocketAddr>(),
+        (if api_only {
+            vink_app::http::api_router(state)
+        } else {
+            router(state)
+        })
+        .into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(runtime::shutdown_signal())
     .await
