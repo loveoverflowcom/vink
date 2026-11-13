@@ -12,11 +12,21 @@ export function contains(outer, inner) {
     && inner.y + inner.height <= outer.y + outer.height;
 }
 
+/** Whether `rect` lies between the panel's inner edges (inside its start/end padding), 1 CSS px
+ * of sub-pixel tolerance. A missing or non-finite inner box never passes. */
+export function insideInner(inner, rect) {
+  return [inner?.x, inner?.width, rect?.x, rect?.width].every(Number.isFinite) && inner.width > 0
+    && rect.x >= inner.x - 1 && rect.x + rect.width <= inner.x + inner.width + 1;
+}
+
 export function openingInvariants(m) {
   return {
     'INV-1': contains(m.panel, m.title) && contains(m.viewport, m.title),
     'INV-2': contains(m.viewport, m.panel),
     'INV-4': m.documentWidth <= m.viewport.width && m.scrollWidth <= m.clientWidth,
+    // F-02: text never crosses the panel's own padding (a long word wider than the column used
+    // to leave ~5 CSS px on one side and 48 on the other at 200% text on a 320 CSS px phone).
+    'INV-5': insideInner(m.inner, m.title) && insideInner(m.inner, m.actions),
   };
 }
 
@@ -25,8 +35,19 @@ async function measure(page) {
     const d = document.querySelector('dialog[open]'), scope = document.getElementById('specimen-scope');
     const rect = el => { const r = el.getBoundingClientRect(); return { x:r.x,y:r.y,width:r.width,height:r.height }; };
     const style = el => { const s = getComputedStyle(el); return {family:s.fontFamily,size:s.fontSize,lineHeight:s.lineHeight}; };
+    const body = d.querySelector('.vk-ui-dialog__panel'), bodyStyle = getComputedStyle(body);
+    const padStart = parseFloat(bodyStyle.paddingInlineStart), padEnd = parseFloat(bodyStyle.paddingInlineEnd);
+    const lines = el => { const r = document.createRange(); r.selectNodeContents(el);
+      return new Set([...r.getClientRects()].filter(q => q.width > 0).map(q => Math.round(q.top))).size; };
     return { viewport:{x:0,y:0,width:innerWidth,height:innerHeight}, panel:rect(d),
-      title:rect(d.querySelector('h2')), content:rect(d.querySelector('.vk-ui-dialog__panel')),
+      title:rect(d.querySelector('h2')), content:rect(body),
+      // Inner box of the panel in viewport coordinates: the dialog's client width (scrollbar
+      // excluded) minus the panel's start/end padding. Padding is derived, never assumed.
+      inner:{x:d.getBoundingClientRect().x + d.clientLeft + padStart, width:d.clientWidth - padStart - padEnd},
+      padding:{start:padStart, end:padEnd},
+      // Recorded, not asserted: how the text sets in the column (the rule is not an aesthetic target).
+      setting:{titleLines:lines(d.querySelector('h2')),
+        actionLabelLines:[...d.querySelectorAll('.vk-ui-dialog__actions .vk-ui-button__label')].map(lines)},
       actions:rect(d.querySelector('.vk-ui-dialog__actions')), font:style(d.querySelector('h2')),
       scrollTop:d.scrollTop, scrollHeight:d.scrollHeight, clientHeight:d.clientHeight,
       scrollWidth:d.scrollWidth, clientWidth:d.clientWidth, documentWidth:document.documentElement.scrollWidth,

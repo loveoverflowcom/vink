@@ -366,3 +366,91 @@ SIGTERM trong gallery được giữ riêng trong báo cáo, không gộp thành
 Còn cần chủ sản phẩm: `ANCHOR-CAND-01`, mức bắt buộc sau pilot, hướng spacing F-02 và UX của
 F-04. Ranh giới thiết bị vẫn cần lượt Android/iOS/OS IME/screen reader riêng; việc sửa source
 và test Desktop không thay những bằng chứng đó.
+
+## 11. Vòng sửa 2: F-02, lề và padding của dialog/sheet ở chữ lớn (13/11/2026)
+
+Nhánh `codex/ui-large-text-spacing`, base `origin/develop@7d9dc54f63a2b759cc5979007dd4f665fe0ec86f`. Chủ
+sản phẩm yêu cầu “xử lý F-02”; quy tắc dưới đây do agent triển khai đề xuất. **Đã được chủ sản phẩm
+duyệt ngày 13/11/2026** (lời duyệt nguyên văn: “Duyệt quy tắc”, trả lời đề nghị xác nhận quy tắc của
+đúng PR này ở HEAD `84413ef15a3d89ba2efdc0c9ec1e239738deda05`), nên F-02 không còn
+`NEEDS_HUMAN_DESIGN_DECISION`. Lời duyệt chỉ nói về **quy tắc spacing** (hai biến CSS dưới đây): nó không
+duyệt ảnh nào làm mốc, nên mốc vẫn là `NO_APPROVED_REFERENCE` và sổ
+[visual-anchors](visual-anchors.md) không đổi. Quy tắc đảo được bằng cách đổi hai biến CSS.
+
+**F-02 được đo lại và hóa ra có phần khách quan.** Ngoài “cột hẹp”, ở dialog 320×700 chữ 200%
+từ dài nhất (≈173 CSS px) rộng hơn cột còn lại (130 CSS px) nên **tràn qua padding bên phải**
+(đo: trái 48, phải ≈ 5), và `Giữ bản nháp` xuống ba dòng trong một nút gần tròn. Đây là invariant
+mới **INV-5**: tiêu đề và vùng hành động nằm giữa hai mép trong của panel (sau padding), dung sai
+1 CSS px; mép trong tính từ `clientWidth` của dialog (đã trừ scrollbar) và padding tính toán thật.
+
+```text
+LayoutSpec (rút gọn): dialog/sheet dùng chung, chữ lớn trên màn hẹp
+Intent: đọc câu hỏi, chọn hành động; không đổi cấu trúc, thứ tự hay CTA.
+Regions (giữ nguyên): #panel > #title, #context, #content, #actions.
+Rule (mới): margin = clamp(space-2, 5vw, space-4); gutter = clamp(space-3, 10cqi, space-6),
+  dùng cho padding panel và padding ngang của nút trong #actions; dialog là size container.
+Hierarchy/Interaction: không đổi (focus vào, trả focus, dismiss policy, cuộn: INV-1…4 giữ).
+Invariants: INV-5 (mới); ở chữ 100% mọi số đo giữ bằng trước (padding 24 CSS px, cột 225/295 ở 320/390).
+Compare: 320×700 và 390×844 × sáng/tối × 100%/200%, dialog và sheet.
+```
+
+Lý do chọn đơn vị: `5vw` và `10cqi` là cận theo bề rộng thật (viewport; bề rộng chính overlay) nên
+không phụ thuộc cỡ chữ; hai token (`space-2/3` làm sàn, `space-4/6` làm trần) giữ giá trị cũ ở chữ 100%
+trên mọi điện thoại từ 320 CSS px (margin 16, padding 24) và trên dialog rộng. Không thêm token.
+Cách không chọn: giới hạn cứng bằng px (không theo cỡ chữ của người dùng), media query theo `rem`
+(rem trong media query lấy cỡ chữ mặc định của trình duyệt, không theo cỡ chữ gốc đã đổi),
+ép nút chiếm cả hàng (không giải quyết padding ngang của nút).
+
+| Ca (light = dark), root 32px | Cột chữ trước → sau (CSS px) | Dòng tiêu đề | Số dòng nhãn nút | INV-5 |
+| --- | --- | --- | --- | --- |
+| Dialog 320×700 | 130 → 203 | 7 → 6 | 3 → 2 | **FAIL → PASS** |
+| Dialog 390×844 | 200 → 254 | 6 → 4 | 3 → 1 | PASS → PASS |
+| Sheet 320×700 | 194 → 244 | 4 → 3 | 1 → 1 | PASS → PASS |
+| Sheet 390×844 | 279 → 300 | 2 → 2 | 1 → 1 | PASS → PASS |
+| Cả bốn ca ở chữ 100% | 225/257/295/327 → giữ nguyên | giữ nguyên | giữ nguyên | PASS → PASS |
+
+Số đo từ `overlay-contexts.json` (`measurements.inner/padding/setting`), viewport thật, DPR 1, Chrome
+headless, chữ bằng root font-size (không phải zoom). Số dòng và chiều rộng cột được **ghi**, chỉ INV-5
+được **kiểm**: không có ngưỡng thẩm mỹ chung. Chữ 200% ở 320 CSS px vẫn dùng nhiều dòng hơn 100%
+(đó là bản chất của chữ gấp đôi), không còn tràn padding.
+
+Ảnh đã mở (trước/sau cùng scenario, theme, viewport, font, scale; JPEG thu nhỏ trong
+[repair-2](evidence/ui-ux-quality-174/repair-2/)): dialog 320×700 sáng chữ 200% — tiêu đề tràn sát mép
+phải và “Xóa / bản / nháp” từng từ một dòng → hai lề cân, “Xóa bản” trên một dòng; dialog 390×844 tối
+chữ 200% — “Giữ / bản / nháp” ba dòng trong nút gần tròn → một dòng. **fixed:** F-02 phần tràn
+padding và nhãn nút; **still:** không (cột ở chữ 200% vẫn hẹp hơn chữ 100% theo bản chất); **new/
+regressed:** không thấy ở 16 ca. Đã dùng 1/2 vòng sửa của lát này.
+
+**Counterpart và consumer.** CMP `VinkFeedback.kt` đặt padding theo `VinkDimens` (dp, không nhân theo
+cỡ chữ) nên không có hiện tượng này: **không áp dụng**, không đổi CMP. Consumer trong app dùng đường
+chung: `tag-picker` (Khám phá) nhận quy tắc mới; `#draft-preview` và `#leave-editor` có kích thước và
+padding do trang quyết định (`vink.css`, “Page-owned dialog sizing”, giữ nguyên) và chỉ nhận gutter
+mới ở padding ngang của nút.
+
+**Reproducer và kiểm chứng.** Trước khi sửa, cùng smoke (`--overlays-only 1`) với INV-5 chạy trên CSS
+chưa đổi: **FAIL 2/16** (dialog 320×700 chữ 200%, sáng và tối); sau sửa **16/16** đạt INV-1…5, bàn phím,
+hủy, mở lại và chính sách bấm ngoài. Unit test `overlay-capture.test.mjs` giữ số đo F-02 thật (cột
+130, tiêu đề 172,7) làm ca bị từ chối và từ chối bounds thiếu/không hữu hạn.
+
+| Lệnh (local, không dùng GitHub CI) | Kết quả |
+| --- | --- |
+| `node --test …/overlay-capture.test.mjs` | PASS (3 test) |
+| `cargo xtask ui-preview leptos verify` | PASS — 838 capture; ma trận overlay 16 ca |
+| `cargo xtask verify quick` | PASS (9 bước, gồm kiểm tra liên kết/skill/quyết định) |
+| `cargo xtask verify web` | PASS — bảy phase. Lần chạy đầu có **một** lỗi ở `review-withdrawn` (“the case UI renders the submitted snapshot”, kiểm tra ngay sau khi nút nhận ca hiện, không chờ nội dung snapshot) không liên quan tới dialog; chạy lại nguyên lane PASS. Ghi nhận như một race của kiểm tra có sẵn, chưa sửa trong lát này |
+| `ui-preview cmp verify`, host Android/iOS | **NOT_RUN** — không đổi CMP (padding dp, không nhân theo chữ); Desktop/Web không thay native |
+| `verify postgres`/`discussion`/`kani` | **NOT_RUN** — không đổi backend |
+
+| Chiều | Scenario / target | Kết quả |
+| --- | --- | --- |
+| Functional | mở, Tab trong dialog, Escape + trả focus, mở lại, bấm ngoài theo policy (16 ca) | PASS |
+| Geometry | INV-1…5 ở 320×700 và 390×844, 100% và 200%, hai theme, dialog và sheet | PASS (trước sửa INV-5 FAIL 2/16) |
+| Visual | 4 ảnh trước/sau đã mở; còn lại đọc qua số đo | Cải thiện đo được; `NO_APPROVED_REFERENCE`, không tự thành baseline |
+| Accessibility/Responsive | reflow không cuộn ngang, nhãn nút không còn ba dòng ở 390; chữ bằng root font-size | PASS phần đo; OS text scale, screen reader, contrast mới: **NOT_RUN** |
+| Interaction | bàn phím giả lập (CDP) trên Chrome headless | PASS; Android/iOS, OS IME, TalkBack/VoiceOver: **NOT_RUN** |
+
+Giới hạn: số đo lấy từ Chrome headless có scrollbar cổ điển 15 CSS px nên dialog hẹp hơn điện thoại thật
+có scrollbar chồng; ở chữ 100% quy tắc cho giá trị token cũ khi bề rộng overlay ≥ 240 CSS px (đã đo
+ở 320/390). Hướng spacing đã được chủ sản phẩm duyệt (xem đầu mục); muốn đổi thì đổi
+`--vk-overlay-margin` và `--vk-overlay-gutter` và chạy lại INV-5.
+
