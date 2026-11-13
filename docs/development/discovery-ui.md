@@ -69,6 +69,8 @@ CARGO_PROFILE_TEST_DEBUG=0. GitHub CI không đọc/chờ.
 
 OS IME thật, screen reader, thiết bị/virtual keyboard thật và Android/iOS/native service integration: NOT_RUN.
 Các lane riêng `verify postgres|discussion|expressions|kani`: NOT_RUN trong lượt UI này;
-không thay storage/domain/model. IME trong browser là event simulation, không phải phiên gõ hệ điều hành.
+không thay storage/domain/model. IME trong browser là event simulation, không phải phiên gõ hệ điều hành. Enter khi đang tổ hợp ở ô tìm
+do `SearchField` dùng chung giữ (form không còn bản sao riêng); kiểm bằng phím tin cậy sau
+`Input.imeSetComposition`, và đã chứng minh đối chứng âm (tắt guard dùng chung thì kiểm tra thất bại).
 Catalog rename/retire trực tiếp khi đang mở trang chưa có phiên browser riêng.
 Fixture SQL publication không chứng minh auth hoặc quy trình xuất bản production.

@@ -115,7 +115,6 @@ fn DiscoveryChrome(
     let focus = expect_context::<DiscoveryFocus>().0;
     let enhanced = RwSignal::new(false);
     Effect::new(move |_| enhanced.set(true));
-    let composing = StoredValue::new(false);
     let is_tag = context.tag_page.is_some();
     let action = context
         .tag_page
@@ -173,12 +172,7 @@ fn DiscoveryChrome(
                 <div class="vk-discovery-main">
                     <Form method="get" action=action.clone() noscroll=true on_form_data=Arc::new(drop_unnamed_submitter)
                         attr:role="search" attr:id="public-search" attr:class="vk-public-search"
-                        on:submit=move |_| focus.set(Some("works-title"))
-                        on:compositionstart=move |_| composing.set_value(true)
-                        on:compositionend=move |_| composing.set_value(false)
-                        on:keydown=move |event: leptos::ev::KeyboardEvent| {
-                            if event.key() == "Enter" && (composing.get_value() || event.is_composing() || event.key_code() == 229) { event.prevent_default(); }
-                        }>
+                        on:submit=move |_| focus.set(Some("works-title"))>
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
                         <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" } name="q"
                             variant=SearchVariant::Bar help="Trong toàn thư viện công khai"

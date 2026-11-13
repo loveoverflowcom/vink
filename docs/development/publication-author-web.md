@@ -80,6 +80,7 @@ gửi duyệt” thay vì đoán, và không tự tiếp tục.
 | `revision_rejected`, `unknown_revision`, `work_unavailable`, `idempotency_key_reused` | Dừng, nói đúng điều đã xảy ra, đọc lại state |
 | `401`/`403`/`404` | Phân biệt phiên hết / bị từ chối / không thuộc về bạn; dữ kiện riêng của phiên cũ rời trang |
 | Mạng/timeout/`5xx`/phản hồi không hiểu | Luôn là *chưa rõ*, không thành thành công hay từ chối |
+| Máy chủ đã ghi nhận lệnh nhưng lần đọc xác nhận lỗi (pha `acknowledged`) | Không còn “Đang gửi…” và không nói đã công khai: “Đã gửi yêu cầu, nhưng chưa đọc lại được kết quả” + “Tải lại”; hành động chính khóa kèm lý do cho tới khi đọc xong; đọc thành công mới thành `reconciled`. Không gửi lại lệnh nào |
 | `replayed` thiếu `ticket_id` | Một câu trả lời bình thường; đọc state, không tạo ticket thứ hai |
 | Đổi phiên/tài khoản/work | Epoch mới: không dữ kiện, thao tác hay câu trả lời nào của phạm vi cũ còn tác dụng |
 
@@ -155,7 +156,7 @@ làm việc ngay trước commit.
 | F-4 Nút “Gửi bản mới” xám không lý do khi có lệnh chưa rõ | **Fixed** vòng 2 — “Kiểm tra lại lệnh trước rồi mới gửi tiếp.” |
 | F-5 Câu “…không nằm trong bản đã gửi” sai khi chưa gửi gì | **Fixed** vòng 2 — “…sẽ không nằm trong bản được gửi.” |
 | F-6 Ảnh 200% bị cắt dưới vùng | **Fixed** (chiều cao capture) |
-| F-7 Ở 320 px/200% nhãn “Kiểm tra lại” xuống ba dòng; cột chữ rất hẹp (~160 CSS px, do khung trang chung với “Thông tin tác phẩm”) | **Still open** — dùng được, không cắt; không có vòng thứ ba |
+| F-7 Ở 320 px/200% nhãn “Kiểm tra lại” xuống ba dòng; cột chữ rất hẹp (~160 CSS px, do khung trang chung với “Thông tin tác phẩm”) | Nhãn: **fixed** ở [PR client-state](#rà-soát-client-state-13112026) (xem bên dưới). Cột chữ hẹp: **không sửa ở đây** — là lựa chọn thiết kế chung của khung trang ở chữ 200% (#174 F-02, `NEEDS_HUMAN_DESIGN_DECISION`) |
 
 **Hai lần chạy `verify web` đầu tiên của phase mới** thất bại vì môi trường, không phải hành vi: (1)
 `target/` bị xóa giữa chừng bởi một tiến trình ngoài; (2) phase `auth` có sẵn cố ý làm cạn bộ giới
@@ -172,3 +173,66 @@ database nhận `429`. Phase mới nay chạy trên database App riêng (`vink_v
 - Ảnh là bằng chứng của lượt chạy, không phải baseline; `NO_APPROVED_REFERENCE`.
 - Chưa đo `Worker` thật (consumer tắt mặc định; evaluator kịch bản chỉ ở local/test) và chưa có
   AI provider, SLA, thông báo.
+
+## Rà soát client-state (13/11/2026)
+
+Lát `codex/client-state-interaction-alignment`, base `origin/develop@7d9dc54f63a2b759cc5979007dd4f665fe0ec86f`
+(sau khi #176 đã merge; không có PR mở nào chạm cùng file; chưa có Auth Web Password UX trong cây). Đọc
+`account`, `session`, `desk`, `discussion`, `endorsement`, `tag`, `moderation`, `shell` và
+`SearchField`/`TextField` dùng chung theo các tiêu chí vòng đời, mutation và interaction. Chỉ sửa điều
+có bằng chứng; mỗi sửa có reproducer chạy trên code cũ trước.
+
+| # | Kịch bản → owner/lifetime | Kết luận | Xử lý |
+| --- | --- | --- | --- |
+| F-7 | Vùng công khai ở 320 px/200%: thẻ phục hồi lồng trong bề mặt của vùng; “Kiểm tra lại” và “Gửi bản mới” xuống từng từ một dòng | **Defect** (caller dùng đúng primitive, thiếu công thức container hẹp) | Container `vk-publication` ≤ 16rem: thẻ lồng còn `--vk-space-2`, hành động xếp dọc, nút theo công thức `vk-state-panel` đã có; nút phục hồi bỏ icon dẫn đầu; invariant “không từng-từ-một-dòng” ở 12 ô × 5 trạng thái |
+| N-1 | Rút bài xong: nút chính đang giữ focus biến mất (`Primary::Nothing`) → focus về `<body>` | **Defect** (adapter của vùng) | `restore_lost_focus`: về hành động chính nếu còn, nếu không về `#publication-title` (`tabindex=-1`, không cuộn); chỉ khi focus thực sự mất |
+| N-2 | “Đã hiểu”/“Kiểm tra lại”/“Gửi lại bản đã chụp” bị gỡ khỏi DOM → focus về `<body>` (nặng nhất khi server đang riêng tư nên không có nút chính) | **Defect** (cùng owner) | Cùng cơ chế; mọi nút hành động trong vùng đặt cờ `refocus` |
+| N-3 | Lệnh đã được ACK nhưng lần đọc xác nhận lỗi → pha vẫn là “Đang gửi…” mãi, như thể còn chờ | **Defect** (reducer) | Pha `Acknowledged(done)`: nói đúng điều đã xảy ra, `working()` = false, “Tải lại”, hành động chính khóa kèm lý do; đọc xong mới `Reconciled` |
+| N-4 | Ô tìm của Khám phá tự bắt composition trên `<form>` trong khi `SearchField` dùng chung đã giữ Enter lúc tổ hợp; kiểm tra cũ dùng `KeyboardEvent` tổng hợp nên **không bao giờ** có thể gửi form (vô hiệu) | **Trùng lặp + lỗ hổng bằng chứng**, hành vi giữ nguyên | Bỏ bản sao ở `DiscoveryChrome`; kiểm tra mới dùng phím tin cậy sau `Input.imeSetComposition`; đối chứng âm: tắt guard dùng chung → kiểm tra thất bại |
+| M-1 | Moderation `Actions`: một lần hoàn tất cũ có thể xóa `busy` của lần mới khi route A → B → A | **Không phải defect hiện hữu**: mỗi route mount `Actions` riêng nên hoàn tất cũ ghi vào signal đã hủy; `scope` là `principal/generation` nên A → B → A khác nhau; tham số cùng-instance không đi tới được bằng UI | Không đổi code; ghi để không báo lại |
+| — | Session (`SessionOwner`, ticket kiểm tra, generation), desk list/editor, discussion, endorsement, tags, shell overlay, `SearchField` clear/IME | Đã có ticket/epoch/fence và test; không tìm thấy defect | Không đổi |
+| — | `Effect` vô hiệu hóa cache khi con trỏ công khai đổi (`invalidate_publication`) | **Khoảng trống bằng chứng**: chưa có kịch bản trình duyệt | Ghi nhận, không sửa |
+
+Phân loại: F-7/N-1/N-2/N-3 là defect có reproducer; N-4 là refactor giữ hành vi kèm sửa bằng chứng;
+cột chữ hẹp ở chữ 200% là lựa chọn thiết kế (#174 F-02) nên không bị che bằng CSS cục bộ.
+
+**Reproducer trên code cũ** (phase `publication-author` với các kiểm tra mới, chạy ở chế độ “mềm” trên
+cây trước khi sửa, ghi nhận mọi `FAIL` thay vì dừng ở cái đầu): hình học F-7 (5 trạng thái: “Gửi bản
+mới” 3 dòng/3 từ, “Kiểm tra lại” 3/3, “Gửi lại bản đã chụp” 5/5), focus về `<body>` sau “Kiểm tra lại”,
+sau “Đã hiểu” khi riêng tư, sau “Gửi lại bản đã chụp” và sau khi rút bài xong, và N-3 (không bao giờ
+tới `acknowledged`). Sau khi sửa cùng các kiểm tra đó PASS.
+
+**Kết quả chạy** (cục bộ, macOS, PostgreSQL 17.11, Chrome headless; không dùng GitHub CI; SHA cuối ở mô
+tả PR):
+
+| Lệnh | Kết quả |
+| --- | --- |
+| `cargo xtask verify quick` | PASS (gồm `publication_state::tests` 37 test: thêm `an_acknowledged_command_whose_confirming_read_failed…`, và kiểm tra repo/liên kết) |
+| `cargo xtask verify web` | PASS — bảy phase; `main` có kiểm tra IME phím tin cậy mới; `publication-author` 86 kiểm tra, 72 ảnh trong `target/verify-web/screenshots` |
+| `verify postgres`, `discussion`, `kani` | **NOT_RUN** — không đổi backend/domain/persistence |
+| `ui-preview leptos verify`, `ui-preview cmp verify`, host Android/iOS | **NOT_RUN** — không đổi `packages/ui-system` hay `packages/vink-patterns` (CSS đổi nằm ở `apps/vink-web/style/vink.css`); native không thể suy từ Desktop/Web |
+
+**Đối chứng âm** (kiểm tra phải có sức mạnh): tắt guard Enter-lúc-tổ-hợp của `SearchField` →
+kiểm tra mới ở Khám phá thất bại (kiểm tra cũ dùng sự kiện tổng hợp sẽ vẫn qua); bỏ `is_composing`
+khỏi nút chính của vùng công khai → kiểm tra IME của phase thất bại.
+
+**Năm chiều (slice này, phase `publication-author`, 320/390/1024 × sáng/tối × 100%/200%, Chrome headless):**
+
+| Chiều | Scenario / target | Kết quả |
+| --- | --- | --- |
+| Functional | pha `acknowledged` (đọc xác nhận bị hủy thật), mất ACK, hai tab, rút bài | PASS |
+| Geometry | 5 trạng thái × 12 ô: không cuộn ngang, không nằm ngoài vùng, không cắt, nhãn không từng-từ-một-dòng | PASS (trước sửa: FAIL ở 320/200%) |
+| Visual | ảnh `publication-{uncertain,conflict}-320-{light,dark}-200` trước/sau đã mở | Xem bên dưới; `NO_APPROVED_REFERENCE` |
+| Accessibility/Responsive | focus không rơi về `<body>` sau lệnh; chữ 200% | Focus PASS; screen reader, bàn phím-only toàn luồng, reduced motion **NOT_RUN** |
+| Interaction | trả focus theo control biến mất; chống gửi trùng; IME phím tin cậy (CDP, không phải OS IME) | PASS |
+
+**Ảnh đã mở** (Chrome headless, viewport 320×4200 CSS px, root 32 px = chữ 200%, Be Vietnam Pro/Literata
+tự host, `document.fonts.ready` chờ trước khi chụp; ảnh “trước” là của lượt chạy cây trước sửa):
+`conflict-320-light-200` — nút “Gửi lại bản đã chụp” 5 dòng → 3 dòng, “Đã hiểu” 1 dòng, thẻ phục hồi hẹp
+hơn lề; `uncertain-320-dark-200` — “Kiểm tra lại” 3 → 2 dòng, “Gửi bản mới” 3 → 2 dòng.
+Vòng sửa: 1/2 đã dùng. **fixed:** nhãn hành động từng-từ-một-dòng; **still:** cột chữ ~160 CSS px ở 200%
+trên điện thoại (lựa chọn thiết kế chung, #174 F-02); **new/regressed:** không thấy.
+
+**Phụ thuộc và bàn giao:** không phụ thuộc backend; không đổi wire/API. Delta tài liệu chung cho owner
+feature-map: thêm assertion `publication-author` (acknowledged, focus sau lệnh, ma trận nhãn) và kiểm
+tra IME phím tin cậy ở Khám phá (`discoveryReading`); thay “composition Enter … (event tổng hợp)”.

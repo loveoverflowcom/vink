@@ -328,6 +328,12 @@ async function rest(env) {
 }
 
 const press = (page) => page.click('#publication-primary');
+/** Where focus is, as the page names it. `<body>` means focus was lost with a removed control. */
+const focusAt = (page) => page.eval(`document.activeElement ? (document.activeElement.id || document.activeElement.tagName) : 'none'`);
+const focusKept = async (page) => {
+  const at = await focusAt(page);
+  return { at, kept: at !== 'BODY' && at !== 'none' && (await page.eval(`Boolean(document.activeElement?.closest('${PUBLICATION}'))`)) };
+};
 const intentOf = async (page, work) => (await stateOf(page, work)).intent?.revision_id;
 const caseOf = async (mod, work, revision) =>
   (await call(mod, '/api/v1/moderation/works/queue')).body.find((c) => c.work_id === work && c.revision_id === revision);
@@ -470,6 +476,9 @@ async function retries({ author, mod, work, base, check, reopen }) {
   await matrix(author, 'uncertain', check);
   await author.click('#publication-retry');
   await waitPhase(author, 'reconciled', 'settled from the state', 30000);
+  await sleep(300);
+  const checked = await focusKept(author);
+  check(checked.kept, `the "Kiểm tra lại" that was pressed is gone once settled: focus stays in the region (focus: ${checked.at})`);
   check(wire.count('POST', '/publication/request-public') === 1 && (await stateOf(author, work)).generation === gen0 + 1 && (await casesFor(mod, work, committed.intent.revision_id)) === 1, 'checking settled it from the state: no second request, one review case for that revision, generation moved once');
   await wire.close();
 
@@ -489,6 +498,51 @@ async function retries({ author, mod, work, base, check, reopen }) {
   check(wire.count('POST', '/publication/request-public') === 2 && replayed.generation === gen1 + 1 && replayed.intent.revision_id === replayed.revisions.at(-1).revision_id && (await casesFor(mod, work, replayed.intent.revision_id)) === 1, 'the check replayed the original command once: one effect, one review case for that revision');
   check(await author.eval(`document.querySelector('#publication-live').innerText.includes('Đã ghi nhận yêu cầu công khai')`), 'only then does the region confirm, from the state it read');
   await wire.close();
+
+  // The command is acknowledged but the read that confirms it fails (real network failure): the
+  // page must not keep saying it is sending, must not claim a result, and must offer the read.
+  await reopen(author);
+  const gen2 = (await stateOf(author, work)).generation;
+  wire = new Wire(author);
+  await wire.enable();
+  wire.failBefore = { method: 'GET', suffix: '/publication/state' };
+  await press(author);
+  await waitPhase(author, 'acknowledged', 'an acknowledged command whose confirming read failed', 30000);
+  const acknowledged = await stateOf(author, work);
+  const text = await panelText(author);
+  check(acknowledged.generation === gen2 + 1 && text.includes('Đã gửi yêu cầu, nhưng chưa đọc lại được kết quả') && !(await author.eval(`document.querySelector('#publication-live').innerText.includes('Đang gửi')`)), 'acknowledged, read failed: the region says the command went through and the result is unread, not "Đang gửi…" and not "đã công khai"');
+  check(await author.eval(`document.querySelector('#publication-primary')?.getAttribute('aria-disabled') === 'true' && Boolean(document.querySelector('#publication-reload'))`), 'the action waits for a read and the notice offers it');
+  await author.click('#publication-reload');
+  await waitPhase(author, 'reconciled', 'the read settles it', 30000);
+  check(wire.count('POST', '/publication/request-public') === 1 && wire.count('POST', '/snapshots') === 1, 'reading again settled it: no command was sent twice');
+  await wire.close();
+}
+
+/** Tab A presses (its request is held before it reaches the server); tab B makes the work private;
+ * A's request is then released and refused. Leaves A in a generation conflict. */
+async function slowVersusWithdrawal({ author, other, work, check, label }) {
+  await other.click('#publication-refresh');
+  await other.waitFor(`document.querySelector('#audience-applied')?.innerText.includes('Công khai')`, 'the second tab reads the public state');
+  const wire = new Wire(author);
+  wire.hold = { method: 'POST', suffix: '/publication/request-public' };
+  await wire.enable();
+  const rev0 = await countRevisions(author, work);
+  await press(author);
+  await wire.heldRequest();
+  const captured = (await stateOf(author, work)).revisions.at(-1).revision_id;
+  check((await countRevisions(author, work)) === rev0 + 1, `${label}: the first tab froze its snapshot and its request is on the way`);
+  await choose(other, 'private');
+  await other.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Chuyển riêng tư'`, 'the withdrawal action');
+  await press(other);
+  await waitPhase(other, 'reconciled', 'the withdrawal settles', 30000);
+  const priv = await stateOf(author, work);
+  check(priv.audience === 'private' && !priv.pointer, `${label}: the other tab made the work private`);
+  await wire.release();
+  await waitPhase(author, 'conflict', 'the slow request is refused');
+  const after = await stateOf(author, work);
+  check(after.audience === 'private' && !after.intent && after.generation === priv.generation, `${label}: the slow request did not win: still private, no intent, generation unchanged`);
+  await wire.close();
+  return { captured, rev0, wire };
 }
 
 async function twoTabs({ author, mod, work, base, check, openPage, reopen, editorPath }) {
@@ -497,34 +551,34 @@ async function twoTabs({ author, mod, work, base, check, openPage, reopen, edito
   const other = await openPage();
   await other.goto(`${base}${editorPath}`);
   await other.waitFor(`${EDITOR_READY} && ${HYDRATED_EXPR} && document.querySelector('${PUBLICATION}')?.dataset.phase === 'ready'`, 'the second tab');
-  const wire = new Wire(author);
-  wire.hold = { method: 'POST', suffix: '/publication/request-public' };
-  await wire.enable();
-  const rev0 = await countRevisions(author, work);
-  await press(author);
-  await wire.heldRequest();
-  const captured = (await stateOf(author, work)).revisions.at(-1).revision_id;
-  check((await countRevisions(author, work)) === rev0 + 1, 'the first tab froze its snapshot and its request is on the way');
-  await choose(other, 'private');
-  await other.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Chuyển riêng tư'`, 'the withdrawal action');
-  await press(other);
-  await waitPhase(other, 'reconciled', 'the withdrawal settles', 30000);
-  const priv = await stateOf(author, work);
-  check(priv.audience === 'private' && !priv.pointer, 'the other tab made the work private');
-  await wire.release();
-  await waitPhase(author, 'conflict', 'the slow request is refused');
-  const after = await stateOf(author, work);
-  check(after.audience === 'private' && !after.intent && after.generation === priv.generation, 'the slow request did not win: the work is still private, no intent, generation unchanged');
+
+  // First cycle: the author reads the conflict and dismisses it.
+  await slowVersusWithdrawal({ author, other, work, check, label: 'cycle 1' });
   check((await panelText(author)).includes('Trạng thái công khai đã đổi ở nơi khác') && (await panelText(author)).includes('bản đã chụp vẫn giữ nguyên'), 'the first tab names a generation conflict and keeps its frozen revision');
   await author.waitFor(`document.querySelector('#audience-applied')?.innerText.includes('Chỉ mình tôi')`, 'the first tab reads the new state');
   check(await author.eval(`Boolean(document.querySelector('#publication-resume'))`), 'sending the frozen revision again is an explicit choice');
   await matrix(author, 'conflict', check);
+  // The work is private: there is no primary action to return to. Focus must not fall to <body>.
+  await author.click('#publication-dismiss');
+  await author.waitFor(`!document.querySelector('#publication-recovery')`, 'the notice is gone');
+  await sleep(300);
+  const dismissed = await focusKept(author);
+  check(dismissed.kept && dismissed.at === 'publication-title', `dismissing with no primary action left returns focus to the region heading (focus: ${dismissed.at})`);
+
+  // Back to a pending public submission, then a second slow request that is sent again on purpose.
+  await choose(author, 'public');
+  await author.waitFor(`document.querySelector('#publication-primary')?.innerText === 'Gửi duyệt bản đã lưu'`, 'the submit action');
+  await press(author);
+  await waitPhase(author, 'reconciled', 'a normal submission', 30000);
+  const { captured, rev0, wire } = await slowVersusWithdrawal({ author, other, work, check, label: 'cycle 2' });
+  await author.waitFor(`document.querySelector('#publication-resume')`, 'the explicit resend');
   await author.click('#publication-resume');
   await waitPhase(author, 'reconciled', 'sent again on purpose', 30000);
   const resumed = await stateOf(author, work);
-  check(resumed.audience === 'public' && resumed.intent.revision_id === captured && resumed.revisions.length === rev0 + 1 && wire.count('POST', '/snapshots') === 1, 'it sent the same captured revision against the generation now shown; no new snapshot was taken');
+  check(resumed.audience === 'public' && resumed.intent.revision_id === captured && resumed.revisions.length === rev0 + 1, 'it sent the same captured revision against the generation now shown; no new snapshot was taken');
+  const afterResume = await focusKept(author);
+  check(afterResume.kept, `the control that was pressed is gone, focus stays in the region (focus: ${afterResume.at})`);
   await matrix(author, 'resumed', check);
-  await wire.close();
   await other.send('Target.closeTarget', { targetId: undefined }).catch(() => {});
 }
 
@@ -552,6 +606,9 @@ async function withdrawal({ author, mod, work, base, check, reopen, editorPath }
   check(priv.audience === 'private' && priv.generation === gen0 + 1 && (await panelText(author)).includes('Chưa xác nhận việc chuyển riêng tư'), 'the withdrawal committed and the answer was lost: unconfirmed, not claimed');
   await author.click('#publication-retry');
   await waitPhase(author, 'reconciled', 'settled', 30000);
+  await sleep(300);
+  const withdrawn = await focusKept(author);
+  check(withdrawn.kept, `after the withdrawal settled the pressed control is gone (nothing left to press): focus stays in the region, not on <body> (focus: ${withdrawn.at})`);
   check(wire.count('POST', '/publication/set-private') === 1 && (await stateOf(author, work)).generation === gen0 + 1, 'the check settled it from the state: no second withdrawal');
   await wire.close();
   check((await author.body()).endsWith('[chưa lưu]') && (await author.status()) === 'unsaved' && !storedText(await author.draft(work)).includes('[chưa lưu]'), 'the unsaved text is still in the editor, still unsaved, and was not saved by the withdrawal');
@@ -582,7 +639,19 @@ async function geometry(page) {
     probe.remove();
     const rr = root.getBoundingClientRect();
     const name = (el) => el.id || el.getAttribute('data-testid') || el.textContent.trim().slice(0, 28);
-    const out = { hit, horizontal: de.scrollWidth - de.clientWidth, region: root.scrollWidth - root.clientWidth, outside: [], small: [], clipped: [], ellipsis: [] };
+    const out = { hit, horizontal: de.scrollWidth - de.clientWidth, region: root.scrollWidth - root.clientWidth, outside: [], small: [], clipped: [], ellipsis: [], wrapped: [] };
+    const lines = (el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size;
+    };
+    // An action label may wrap, but never to one word per line: at most max(2, ceil(words / 2)) lines.
+    for (const el of root.querySelectorAll('.vk-ui-button__label')) {
+      if (!el.getClientRects().length) continue;
+      const words = el.textContent.trim().split(/\\s+/).length;
+      const n = lines(el);
+      if (n > Math.max(2, Math.ceil(words / 2))) out.wrapped.push(name(el) + ':' + n + '/' + words);
+    }
     for (const el of root.querySelectorAll('button, a, label.vk-ui-choice__target, summary')) {
       if (!el.getClientRects().length) continue;
       const r = el.getBoundingClientRect();
@@ -618,6 +687,7 @@ async function matrix(page, name, check) {
         if (geo.outside.length) failures.push(`${cell}: outside ${geo.outside.join(',')}`);
         if (geo.clipped.length) failures.push(`${cell}: clipped ${geo.clipped.join(',')}`);
         if (geo.ellipsis.length) failures.push(`${cell}: truncated ${geo.ellipsis.join(',')}`);
+        if (geo.wrapped.length) failures.push(`${cell}: an action label wraps to one word per line (${geo.wrapped.join(',')})`);
         for (const item of geo.small) smallest.add(item);
         await page.capture(`publication-${name}-${width}-${theme}-${scale}`, { source: 'publication-author', state: name, cell });
       }

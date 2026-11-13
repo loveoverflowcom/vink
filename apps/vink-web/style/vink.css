@@ -601,6 +601,18 @@ a {
 .vk-publication__actions:empty { display: none; }
 .vk-publication > .vk-editor-recovery { padding: var(--vk-space-3); }
 .vk-publication > .vk-editor-recovery .vk-notice__actions { margin: 0; }
+/* The recovery notice sits inside the region's own surface, so its padding comes on top of the
+   region's. When the region is narrow for its text (rem-relative: it is reached at 200% text on a
+   phone, not at 100%) the nested card gives up its padding, its actions take the full width, and
+   the region's buttons follow the shared narrow-container recipe (`vk-state-panel`, 16rem: less
+   horizontal padding so whole Vietnamese words fit). */
+.vk-publication { container: vk-publication / inline-size; }
+@container vk-publication (max-width: 16rem) {
+  .vk-publication .vk-ui-button { padding-inline: var(--vk-space-3); }
+  .vk-publication > .vk-editor-recovery { padding: var(--vk-space-2); }
+  .vk-publication > .vk-editor-recovery .vk-notice__actions { flex-direction: column; align-items: stretch; }
+  .vk-publication > .vk-editor-recovery .vk-notice__actions > .vk-ui-action { flex: 0 0 auto; align-items: stretch; }
+}
 
 .vk-field {
   display: flex;
