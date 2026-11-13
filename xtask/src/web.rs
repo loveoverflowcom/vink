@@ -26,6 +26,7 @@ const OTHER_PRINCIPAL: &str = "22222222-2222-4222-8222-222222222222";
 /// exhausts the App's per-network sign-in limiter (stored in the database), and a scenario that
 /// signs in three people must not depend on running before or after it.
 const PUBLICATION_DATABASE: &str = "vink_verify_web_publication";
+const PASSWORD_AUTH_DATABASE: &str = "vink_verify_web_password_auth";
 /// Auth Web phase: Identity's own scratch database and a runtime role that owns nothing in it.
 const IDENTITY_DATABASE: &str = "vink_verify_web_identity";
 const IDENTITY_ROLE: &str = "vink_verify_web_identity_runtime";
@@ -453,11 +454,13 @@ fn smoke_with_env(
 enum IdentityPhase {
     /// Email code, pen name, draft, sign-out, account switch.
     Auth,
+    /// AUTH-PASSWORD-WEB-01: the same App against native Identity with both methods.
+    PasswordAuth,
     /// PUB-AUTHOR-WEB-01: the author's whole publication path with a second, granted moderator.
     PublicationAuthor,
 }
 
-/// Starts the real `vink-identity` (email-code authority) on its own scratch database and runs
+/// Starts the real `vink-identity` (email-code or native authority) on its own scratch database and runs
 /// the Auth Web browser phase against an App that has no fixture principal. The local outbox is
 /// the only mail transport, so the browser check reads codes from that directory; no production
 /// transport is exercised. The runtime role is created here with a throwaway password and owns
@@ -525,7 +528,13 @@ fn auth_web(
         )
         .env("VINK_IDENTITY_SOCKET", &socket)
         .env("VINK_IDENTITY_CALLER_UID", uid.to_string())
-        .env("VINK_IDENTITY_AUTHORITY", "email-code")
+        .env(
+            "VINK_IDENTITY_AUTHORITY",
+            match phase {
+                IdentityPhase::PasswordAuth => "native",
+                _ => "email-code",
+            },
+        )
         .env("VINK_IDENTITY_LOCAL_OUTBOX", &outbox)
         .env("VINK_LOG_FORMAT", "text")
         .stdout(Stdio::null())
@@ -559,6 +568,13 @@ fn auth_web(
         IdentityPhase::Auth => smoke(
             root,
             &["--phase", "auth", "--outbox", &outbox],
+            chrome,
+            &origin,
+            state,
+        ),
+        IdentityPhase::PasswordAuth => smoke(
+            root,
+            &["--phase", "auth-password", "--outbox", &outbox],
             chrome,
             &origin,
             state,
@@ -617,6 +633,41 @@ fn publication_author(
             chrome,
             state,
             IdentityPhase::PublicationAuthor,
+        )
+    })();
+    let _ = crate::identity::sql(admin_url, &drop);
+    result
+}
+
+/// The email-code phase exhausts the App's network limiter. Password auth also uses email
+/// (including enrollment), so give it independent App state and fresh Identity state.
+fn password_auth_web(
+    root: &Path,
+    server: &Server,
+    admin_url: &str,
+    chrome: &str,
+    state: &Path,
+) -> Result<(), String> {
+    let drop = format!("DROP DATABASE IF EXISTS {PASSWORD_AUTH_DATABASE} WITH (FORCE)");
+    let _ = crate::identity::sql(admin_url, &drop);
+    crate::identity::sql(
+        admin_url,
+        &format!("CREATE DATABASE {PASSWORD_AUTH_DATABASE}"),
+    )
+    .map_err(|e| format!("password auth scratch database: {e}"))?;
+    let result = (|| {
+        let app = server.with_database(&with_database(admin_url, PASSWORD_AUTH_DATABASE)?);
+        crate::process::run(
+            &mut app.command(root, &["migrate"]),
+            "vink-app migrate (password auth scratch)",
+        )?;
+        auth_web(
+            root,
+            &app,
+            admin_url,
+            chrome,
+            state,
+            IdentityPhase::PasswordAuth,
         )
     })();
     let _ = crate::identity::sql(admin_url, &drop);
@@ -721,6 +772,17 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
                 &chrome,
                 &out_dir.join("smoke-state.json"),
                 IdentityPhase::Auth,
+            )
+        },
+    ) && report.step(
+        "Auth Web password (AUTH-PASSWORD-WEB-01): registration, enrollment, lost ACK and cross-tab session (native Identity, local outbox)",
+        || {
+            password_auth_web(
+                &root,
+                &server,
+                &url,
+                &chrome,
+                &out_dir.join("smoke-state.json"),
             )
         },
     ) && report.step(

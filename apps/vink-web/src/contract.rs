@@ -612,8 +612,7 @@ pub struct CurrentAccount {
     pub display_name: String,
 }
 
-/// `GET /auth/session` and `POST /auth/sign-in/complete`: the server's decision about the
-/// presented session. Never a credential.
+/// The server's decision about a presented or newly issued session. Never a credential.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionState {
     pub state: SessionStateKind,
@@ -630,21 +629,45 @@ pub enum SessionStateKind {
     Active,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 pub struct StartSignInRequest {
     pub email: String,
 }
 
-/// `202` of `POST /auth/sign-in/challenges`. The challenge handle stays in an HttpOnly cookie.
+/// `202` of either code request. The challenge handle stays in an HttpOnly cookie.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ChallengeSent {
     /// RFC 3339.
     pub expires_at: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
 pub struct CompleteSignInRequest {
     pub code: String,
+}
+
+// Request DTOs deliberately have no Debug representation or browser storage consumer.
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct PasswordCredentials {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Serialize)]
+#[cfg_attr(test, derive(Deserialize))]
+pub struct EnrollPasswordRequest {
+    pub code: String,
+    pub username: String,
+    pub password: String,
+}
+
+/// Account status, never a receipt naming the credentials that were entered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PasswordEnrollmentStatus {
+    pub enrolled: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -919,6 +942,13 @@ mod tests {
         let sent: ChallengeSent = round_trip("auth.challenge.response.json");
         assert_eq!(sent.expires_at, "2026-11-07T10:10:00Z");
         let _: CompleteSignInRequest = round_trip("auth.complete.request.json");
+        let _: PasswordCredentials = round_trip("auth.register.request.json");
+        let _: PasswordCredentials = round_trip("auth.login.request.json");
+        let _: EnrollPasswordRequest = round_trip("auth.enroll.request.json");
+        assert!(round_trip::<PasswordEnrollmentStatus>("auth.enroll.response.json").enrolled);
+        assert!(
+            !round_trip::<PasswordEnrollmentStatus>("auth.enroll.status.unenrolled.json").enrolled
+        );
         let _: ProvisionPrincipalRequest = round_trip("auth.principal.request.json");
         let created: ProvisionedPrincipal = round_trip("auth.principal.response.json");
         assert!(created.created);

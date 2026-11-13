@@ -104,7 +104,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | Yêu cầu | Vì sao không model | Đặc tả | Implementation và gap |
 | --- | --- | --- | --- |
 | HTG-01..06 | Quyền của hashtag là hệ quả của “chỉ index bài đủ điều kiện” (đã có trong M1/M5); phần còn lại là hàm thuần trên chuỗi, hợp unit test hơn | [hashtag](../architecture/hashtags.md) | **Chưa có** grammar, projection, tham số lọc, UI |
-| ACC-03 | Auth được kiểm qua PostgreSQL và hai binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | `persistence-api` cho đăng ký, đăng nhập và thêm mật khẩu. `O-12@r2` đã áp dụng, `O-11` vẫn `OPEN`. Web/CMP cho mật khẩu và production còn thiếu |
+| ACC-03 | Auth được kiểm qua PostgreSQL và hai binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | `persistence-api` + [`web`](auth-web.md) cho đăng ký, đăng nhập và thêm mật khẩu. `O-12@r2` đã áp dụng, `O-11` vẫn `OPEN`. CMP và production còn thiếu |
 | WR-04, ED-02, D-11 | `DEFERRED` | — | Không triển khai |
 
 ## 2. Acceptance của lượt tài liệu/model
@@ -184,8 +184,8 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
   xếp hạng (`RANK/TOP`), điều tra riêng và ca bình luận theo governance mới.
 - **UI & trình duyệt:** Web đã có ca tác phẩm, phản đối, chế độ tự động và trạng thái bản gửi.
   Chưa có Web/CMP UI cho chọn audience/xuất bản, trang tombstone, sửa bình luận,
-  bộ sưu tập, hashtag, Đề xuất/Top 100 hay form đăng nhập và thêm username/mật khẩu (policy
-  mật khẩu theo `O-12@r2` đã có ở backend: 10–128 ký tự sau NFKC).
+  bộ sưu tập, hashtag, Đề xuất/Top 100. [Auth Web](auth-web.md) đã có form đăng ký, đăng nhập và
+  thêm mật khẩu theo `O-12@r2`; CMP chưa có auth.
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
   kênh thông báo quản trị viên.
 - **Model checking (Apalache):** NOT_RUN. Simulation là thực thi ngẫu nhiên có biên, không vét cạn.

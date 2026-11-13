@@ -78,6 +78,9 @@ control giữ chiều cao tối thiểu nhưng được cao thêm. Sáng/Tối: 
 `ExternalLabel` (mặc định) và `FloatingTonal`. `FloatingTonal` là short field một dòng;
 PR-02 dùng `variant=FieldVariant::FloatingTonal` cho `draft-title` và giữ nguyên `id`, `name`,
 `max_length`, `input_ref`, `on_focus`, callback và value. `TextArea` Web thêm `variant` opt-in cho recipe multiline Nhận xét R3.1 (#134), tái dùng native field/composition owner; mặc định và CMP giữ nhãn ngoài;
+`TextKind::Password` của Leptos dùng một input native `type=password`, không render giá trị vào HTML.
+`reveal_password` thêm nút icon `type=button`, tên “Hiện mật khẩu” và `aria-pressed`, không đổi node
+hay chỗ dành cho nút khi bật/tắt. Host chọn autocomplete và giữ secret trong form; CMP chưa có mode này.
 `SearchField` mặc định giữ anatomy nhãn ngoài. Search R3 (#90) bổ sung trên Web
 `SearchVariant::Bar`, optional `name`, `clear_href`, `clear_id`, `on_clear`, `input_ref`.
 Bar dùng cùng native `text_control`, một kính lúp `type=submit`, nhãn thật intrinsic và

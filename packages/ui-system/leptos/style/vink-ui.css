@@ -572,6 +572,23 @@
   inset-inline-end: 0;
 }
 
+/* Keep room for the reveal target in either mode. The input and its label do not move. */
+.vk-ui-field__control[data-reveal] .vk-ui-input {
+  padding-inline-end: calc(var(--vk-density-control-height) + var(--vk-space-3));
+}
+.vk-ui-field__control[data-reveal] .vk-ui-field__label {
+  margin-inline-end: calc(var(--vk-density-control-height) + var(--vk-space-3));
+}
+.vk-ui-field__reveal {
+  position: absolute;
+  inset-inline-end: var(--vk-space-1);
+  inset-block-end: 0;
+  display: flex;
+  align-items: center;
+  min-block-size: var(--vk-density-control-height);
+}
+.vk-ui-input::-ms-reveal { display: none; }
+
 .vk-ui-input[type="search"]::-webkit-search-cancel-button { appearance: none; }
 
 /* Search R5.1: one input line and an associated visually-hidden native label.

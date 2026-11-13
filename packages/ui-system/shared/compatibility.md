@@ -19,7 +19,8 @@ cũ giữ nguyên. Catalog thêm `action.toggle-action` và `composition.endorse
 PR-01 Quiet Lavender thêm `FieldVariant::{ExternalLabel,FloatingTonal}` ở cả hai renderer;
 `ExternalLabel` mặc định giữ callsite. CMP short fields mặc định đổi từ Material outlined label
 sang nhãn ngoài; muốn nhãn nổi dùng `FloatingTonal`. Textarea luôn nhãn ngoài. Giữ toàn bộ
-TextFieldValue/native input và API form/editor. Field disabled thiếu helper có lý do trung tính.
+TextFieldValue/native input và API form/editor. `TextKind::Password`/reveal là bổ sung Leptos;
+CMP không đổi renderer hoặc luồng xác thực. Field disabled thiếu helper có lý do trung tính.
 Chip idle tonal, focus actions/fields một perimeter; Text button chừa status slot cả khi enabled.
 Catalog 0.5.3 đăng ký `external-label` trong entry hiện có, token source vẫn 0.4.0.
 
