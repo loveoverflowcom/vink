@@ -169,7 +169,10 @@ ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử 
 | `/ban-viet/{id}/kiem-duyet` | Tác giả xem trạng thái bản gửi/lý do, gửi phản đối và xem lịch sử. |
 
 Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
-không được hiển thị. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
+không được hiển thị. Chỉ dựng nội dung và control riêng tư sau khi tab xác nhận scope tài khoản;
+response thành công bằng cookie khi scope còn chưa biết không được dựng form rồi làm mất chữ/focus
+khi xác nhận phiên hoàn tất. Browser scenario giữ chậm response tài khoản thật và kiểm tra refresh
+cùng tài khoản giữ nguyên ô lý do, chữ và focus. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
 lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
 Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
 riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md); trang

@@ -90,9 +90,9 @@ class Wire {
     } else await this.page.send('Fetch.continueRequest', { requestId });
   }
 
-  enable() {
+  enable(urlPatterns = ['*/api/v1/works/*', '*/api/v1/drafts/*']) {
     const patterns = [];
-    for (const urlPattern of ['*/api/v1/works/*', '*/api/v1/drafts/*']) {
+    for (const urlPattern of urlPatterns) {
       patterns.push({ urlPattern, requestStage: 'Request' }, { urlPattern, requestStage: 'Response' });
     }
     return this.page.send('Fetch.enable', { patterns });
@@ -212,10 +212,28 @@ export async function publicationAuthor(page, { args, check, openPage }) {
   check(new Set([principalA, principalAdmin, principalM]).size === 3, 'the author, the admin and the moderator are three real principals with separate sessions');
   // Setup through the operator CLI (the admin seat has no web way to be granted).
   execFileSync(process.env.VINK_E2E_APP_BIN, ['admin', 'add', principalAdmin, 'verify web PUB-AUTHOR-WEB-01'], { env: process.env, stdio: 'pipe' });
+  // The cookie is valid, but this new document has not confirmed whose session it is yet.
+  // Let the real private queue answer before the real account answer: no usable control may
+  // appear under the unknown scope and then disappear when the account confirmation arrives.
+  const sessionWire = new Wire(admin);
+  sessionWire.holdResponse = { method: 'GET', suffix: '/auth/session/account' };
+  await sessionWire.enable(['*/api/v1/auth/session/account']);
   await admin.goto(`${base}/kiem-duyet`);
+  await sessionWire.heldAnswer();
+  await admin.waitFor(`${HYDRATED} && document.querySelector('#moderation-home')`, 'hydrated queue while account confirmation is held');
+  await admin.waitFor(`performance.getEntriesByType('resource').some((r) => r.name.endsWith('/api/v1/moderation/automation'))`, 'the real automation read before account confirmation');
+  await admin.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+  check(!(await admin.eval(`${q('#automation-toggle')}`)), 'no moderation controls render before the tab confirms the acting account');
+  await sessionWire.releaseAnswer();
+  await sessionWire.close();
   await admin.waitFor(`${HYDRATED} && ${q('#automation-toggle')}`, 'the admin controls');
   if (!(await admin.eval(`document.querySelector('#moderation-home').textContent.includes('Đang dừng')`))) {
     await admin.typeAtEnd('#automation-reason', 'verify web PUB-AUTHOR-WEB-01: người duyệt xử lý');
+    const accountReads = await admin.eval(`performance.getEntriesByType('resource').filter((r) => r.name.endsWith('/api/v1/auth/session/account')).length`);
+    await admin.eval(`window.__moderationReason = document.querySelector('#automation-reason'); window.dispatchEvent(new Event('focus'))`);
+    await admin.waitFor(`performance.getEntriesByType('resource').filter((r) => r.name.endsWith('/api/v1/auth/session/account')).length > ${accountReads}`, 'same-account focus refresh');
+    await admin.eval(`new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    check(await admin.eval(`document.querySelector('#automation-reason') === window.__moderationReason && window.__moderationReason.value === 'verify web PUB-AUTHOR-WEB-01: người duyệt xử lý' && document.activeElement === window.__moderationReason`), 'confirmed-account refresh preserves the moderation reason node, text and focus');
     await admin.click('#automation-toggle');
     await admin.waitFor(`document.querySelector('#moderation-home')?.textContent.includes('Đang dừng')`, 'automation paused through the page');
   }
