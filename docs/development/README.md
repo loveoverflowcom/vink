@@ -30,6 +30,11 @@ chưa tích hợp composer/reaction/sticker persistence.
 
 [Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
 
+## Nền test-domain/container
+
+[Runbook và lệnh infra](../../infra/test/README.md) tách build image, publish GHCR,
+DNS plan và deploy; không thay các workflow local. Mẫu cần facts target thật, chưa phải test online.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,

@@ -1,0 +1,14 @@
+# Copy outside Git and fill only verified facts. Empty values intentionally fail check.
+schema = 1
+public_origin = "https://test.vink.forum"
+platform = "" # verified VPS: linux/amd64 or linux/arm64, not the Mac's architecture
+app_image = "" # actual ghcr.io/loveoverflowcom/vink-web@sha256:... after publish
+worker_image = ""
+identity_image = ""
+host_port = 3300 # bind only 127.0.0.1 on the deployment host
+uid = 10001 # same UID across the two socket peers; rootless mapping must be qualified
+socket_dir = "/run/vink-test-identity"
+secrets_dir = "/etc/vink-test"
+dns_target = "" # verified public IPv4 or CNAME target, no URL or port
+# Conservative local bound; verify provider-supported TTL before apply.
+dns_ttl = 300

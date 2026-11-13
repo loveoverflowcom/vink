@@ -1,0 +1,44 @@
+# Same source/toolchain as local xtask. Build has no DB, provider, DNS or SSH input.
+FROM docker.io/library/node:24-bookworm-slim AS node
+FROM docker.io/library/rust:1.99.1-bookworm AS source
+WORKDIR /src
+COPY . .
+FROM source AS app-build
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+# Match Cargo.lock; doctor checks the CLI again when building the bundle.
+RUN rustup target add wasm32-unknown-unknown \
+ && cargo install wasm-bindgen-cli --version 0.2.129 --locked
+RUN cargo xtask build web --release
+FROM source AS worker-build
+RUN cargo xtask build worker --release
+FROM source AS identity-build
+RUN cargo xtask build identity --release
+
+FROM docker.io/library/debian:bookworm-slim AS runtime
+RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --gid 10001 vink && useradd --uid 10001 --gid vink --no-create-home vink
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.source="https://github.com/loveoverflowcom/vink" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}"
+WORKDIR /opt/vink
+USER 10001:10001
+
+FROM runtime AS web
+COPY --from=app-build /src/target/release/vink-app /usr/local/bin/vink-app
+COPY --from=app-build /src/target/site /opt/vink/site
+ENV VINK_SITE_ROOT=/opt/vink/site
+ENTRYPOINT ["/usr/local/bin/vink-app"]
+CMD ["serve"]
+
+FROM runtime AS worker
+COPY --from=worker-build /src/target/release/vink-worker /usr/local/bin/vink-worker
+ENTRYPOINT ["/usr/local/bin/vink-worker"]
+
+FROM runtime AS identity
+COPY --from=identity-build /src/target/release/vink-identity /usr/local/bin/vink-identity
+ENTRYPOINT ["/usr/local/bin/vink-identity"]
+CMD ["serve"]
