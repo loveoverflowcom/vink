@@ -574,6 +574,20 @@ a {
 .vk-work-info > .vk-ui-supporting-details > summary { width: fit-content; max-width: 100%; }
 .vk-work-info > .vk-ui-supporting-details > .vk-ui-supporting-details__content { padding: 0; background: transparent; }
 
+/* Publication region (PUB-AUTHOR-WEB-01, docs/design/publication-author.md): same surface and
+   rhythm as the work info above it, one column at every width, no scroll area of its own. */
+.vk-publication { display: grid; gap: var(--vk-space-3); min-inline-size: 0; padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); }
+.vk-publication__heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-1) var(--vk-space-4); min-inline-size: 0; }
+.vk-publication__heading > .vk-ui-heading { margin: 0; font-family: var(--vk-font-ui); font-size: var(--vk-type-body-size); font-weight: var(--vk-type-label-weight); overflow-wrap: anywhere; }
+.vk-publication p { margin: 0; overflow-wrap: anywhere; }
+.vk-publication__live:empty { display: none; }
+.vk-publication__summary, .vk-publication__choice { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
+.vk-publication__muted { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
+.vk-publication__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-3); min-inline-size: 0; }
+.vk-publication__actions:empty { display: none; }
+.vk-publication > .vk-editor-recovery { padding: var(--vk-space-3); }
+.vk-publication > .vk-editor-recovery .vk-notice__actions { margin: 0; }
+
 .vk-field {
   display: flex;
   flex-direction: column;

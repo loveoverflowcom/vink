@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "work_unavailable",
+    "message": "the work is not active; nothing was written"
+  }
+}

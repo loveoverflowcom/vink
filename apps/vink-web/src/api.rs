@@ -664,6 +664,83 @@ pub async fn save_draft_tags(
     http::send("PUT", &draft_tags_path(work_id), Some(request)).await
 }
 
+/// `GET /api/v1/works/{id}/publication/state` (and the author's three commands below): the work
+/// ID is one encoded segment, so it can never add a path part or a query.
+fn author_work_path(work_id: &str, tail: &str) -> String {
+    use percent_encoding::utf8_percent_encode;
+    format!(
+        "/api/v1/works/{}/{tail}",
+        utf8_percent_encode(work_id, &DISCUSSION_ID)
+    )
+}
+
+pub fn publication_state_path(work_id: &str) -> String {
+    author_work_path(work_id, "publication/state")
+}
+
+pub fn snapshots_path(work_id: &str) -> String {
+    author_work_path(work_id, "snapshots")
+}
+
+pub fn request_public_path(work_id: &str) -> String {
+    author_work_path(work_id, "publication/request-public")
+}
+
+pub fn set_private_path(work_id: &str) -> String {
+    author_work_path(work_id, "publication/set-private")
+}
+
+/// The author's own publication state. Private (`no-store`) and read only in the browser.
+#[cfg(feature = "hydrate")]
+pub async fn load_publication_state(
+    work_id: &str,
+) -> Result<crate::contract::publication::AuthorPublicationState, ApiError> {
+    http::get(&publication_state_path(work_id)).await
+}
+
+/// Freezes the saved draft and tags. Every call carries a `command_key`; a replay with the same
+/// key and versions returns the first revision and writes nothing.
+#[cfg(feature = "hydrate")]
+pub async fn capture_snapshot(
+    work_id: &str,
+    request: &crate::contract::publication::CaptureSnapshotRequest,
+) -> Result<crate::contract::publication::CapturedSnapshot, ApiError> {
+    http::send("POST", &snapshots_path(work_id), Some(request)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn request_public(
+    work_id: &str,
+    request: &crate::contract::publication::RequestPublicRequest,
+) -> Result<crate::contract::publication::RequestPublicReceipt, ApiError> {
+    http::send("POST", &request_public_path(work_id), Some(request)).await
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn set_private(
+    work_id: &str,
+    request: &crate::contract::publication::SetPrivateRequest,
+) -> Result<crate::contract::publication::SetPrivateReceipt, ApiError> {
+    http::send("POST", &set_private_path(work_id), Some(request)).await
+}
+
+/// Calls that end after 30 s: a lost answer to a write is then uncertain, never a rejection.
+/// Aborting a request proves nothing about the server, which may have committed it.
+#[cfg_attr(not(any(test, feature = "hydrate")), allow(dead_code))]
+fn bounded(path: &str) -> bool {
+    let publication_command = path.ends_with("/snapshots")
+        || path.ends_with("/publication/request-public")
+        || path.ends_with("/publication/set-private");
+    publication_command
+        || path.contains("/moderation/")
+        || path.contains("/appeals")
+        || path.contains("/publication/state")
+        || path.contains("/discussion")
+        || path.contains("/endorsement")
+        || path.contains("/tags")
+        || path.starts_with("/api/v1/auth/")
+}
+
 #[cfg(feature = "hydrate")]
 mod http {
     use gloo_net::http::{Request, Response};
@@ -720,16 +797,7 @@ mod http {
         path.starts_with("/api/v1/auth/")
     }
 
-    /// These calls end after 30 s. For writes, a lost answer is then uncertain.
-    fn bounded(path: &str) -> bool {
-        path.contains("/moderation/")
-            || path.contains("/appeals")
-            || path.contains("/publication/state")
-            || path.contains("/discussion")
-            || path.contains("/endorsement")
-            || path.contains("/tags")
-            || is_auth(path)
-    }
+    use super::bounded;
 
     fn request(
         method: &str,
@@ -908,6 +976,69 @@ mod tag_path_tests {
             super::tag_suggestions_path("hồi & x=1#", "theme"),
             "/api/v1/tags/suggestions?q=h%E1%BB%93i%20%26%20x%3D1%23&facet=theme"
         );
+    }
+}
+
+#[cfg(test)]
+mod publication_path_tests {
+    const WORK: &str = "33333333-3333-4333-8333-333333333333";
+
+    #[test]
+    fn the_work_id_is_one_encoded_segment_in_every_publication_path() {
+        assert_eq!(
+            super::publication_state_path(WORK),
+            format!("/api/v1/works/{WORK}/publication/state")
+        );
+        assert_eq!(
+            super::snapshots_path(WORK),
+            format!("/api/v1/works/{WORK}/snapshots")
+        );
+        assert_eq!(
+            super::request_public_path(WORK),
+            format!("/api/v1/works/{WORK}/publication/request-public")
+        );
+        assert_eq!(
+            super::set_private_path(WORK),
+            format!("/api/v1/works/{WORK}/publication/set-private")
+        );
+        for hostile in ["../x?y=1#z", "a/b", "a b", "%2e%2e", "ế?"] {
+            for path in [
+                super::publication_state_path(hostile),
+                super::snapshots_path(hostile),
+                super::request_public_path(hostile),
+                super::set_private_path(hostile),
+            ] {
+                let parts = path.trim_start_matches("/api/v1/works/");
+                let (id, _) = parts.split_once('/').expect("a segment then the tail");
+                assert!(
+                    id.bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'%' || b == b'-' || b == b'_'),
+                    "{hostile} -> {path}"
+                );
+                assert!(!path.contains(['?', '#', ' ']), "{path}");
+            }
+        }
+    }
+
+    /// Every publication call has a deadline: the three commands (a lost answer is uncertain,
+    /// never a rejection) and the state read. Nothing else is claimed by this list.
+    #[test]
+    fn every_publication_call_ends_by_deadline() {
+        for path in [
+            super::publication_state_path(WORK),
+            super::snapshots_path(WORK),
+            super::request_public_path(WORK),
+            super::set_private_path(WORK),
+        ] {
+            assert!(super::bounded(&path), "{path} has no deadline");
+        }
+        // The hostile ID cannot move a command out of its class.
+        assert!(super::bounded(&super::snapshots_path("x/snapshots?a")));
+        // Public reads keep their own owner (READ-02) and are not bounded here.
+        assert!(!super::bounded(&format!(
+            "/api/v1/works/{WORK}/publication"
+        )));
+        assert!(!super::bounded("/api/v1/drafts"));
     }
 }
 

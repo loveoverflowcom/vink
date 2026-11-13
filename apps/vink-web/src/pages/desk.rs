@@ -961,7 +961,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                 <crate::pages::work_info::WorkInfo work_id=work_id.get_value() session labels
                     on_save=Callback::new(move |()| save()) />
             </div>
-            <vink_ui::Link attr:id="editor-review-status" href=format!("/ban-viet/{}/kiem-duyet",work_id.get_value())>"Trạng thái kiểm duyệt và phản đối"</vink_ui::Link>
+            <crate::pages::publication::PublicationPanel work_id=work_id.get_value() session
+                on_save=Callback::new(move |()| save())
+                is_composing=Callback::new(move |()| body.is_composing()) />
         </form>
         <vink_ui::Dialog id="leave-editor" open=leave_open
             title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ chữ chưa lưu và rời trang?" } else { "Rời trang khi còn chữ chưa lưu?" }.to_string())
@@ -1315,6 +1317,11 @@ pub(crate) fn failure(error: &ApiError) -> Failure {
         | ApiError::RevisionChanged { .. }
         | ApiError::TagConflict { .. }
         | ApiError::TagRefused(_)
+        | ApiError::SnapshotConflict { .. }
+        | ApiError::GenerationConflict { .. }
+        | ApiError::RevisionRejected
+        | ApiError::UnknownRevision
+        | ApiError::WorkUnavailable
         | ApiError::Unexpected { .. } => Failure::Unexpected,
     }
 }

@@ -370,7 +370,13 @@ pub fn error_message(error: &ApiError) -> &'static str {
         | ApiError::EndorsementConflict { .. }
         | ApiError::RevisionChanged { .. }
         | ApiError::TagConflict { .. }
-        | ApiError::TagRefused(_) => {
+        | ApiError::TagRefused(_)
+        // Publication answers never reach the composer either.
+        | ApiError::SnapshotConflict { .. }
+        | ApiError::GenerationConflict { .. }
+        | ApiError::RevisionRejected
+        | ApiError::UnknownRevision
+        | ApiError::WorkUnavailable => {
             "Thiết lập đã thay đổi ở nơi khác. Tải lại trước khi đổi tiếp."
         }
         ApiError::CommentRemoved => "Nhận xét không còn hiển thị.",

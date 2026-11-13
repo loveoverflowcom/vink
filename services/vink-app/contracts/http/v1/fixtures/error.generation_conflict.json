@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "audience intent generation changed; nothing was written",
+    "current_version": 5,
+    "field": "expected_generation"
+  }
+}

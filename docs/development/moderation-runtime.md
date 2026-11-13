@@ -143,7 +143,9 @@ ràng buộc duy nhất `(work_id, revision_id, decision_version)`; lịch sử 
 Đọc riêng tư bằng `LocalResource`, kết quả gắn session scope và route; phản hồi của tài khoản cũ
 không được hiển thị. Nút pending khóa gửi trùng, không đổi quyết định lạc quan. Lỗi mạng/CAS giữ
 lý do và tải lại trạng thái để đối chiếu. UI không cấp quyền: server vẫn kiểm mọi lệnh.
-Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận, sửa policy hoặc chọn audience/xuất bản.
+Chưa có UI cấp grant/nhóm, điều tra riêng, ca bình luận hoặc sửa policy. Chọn audience/gửi duyệt/chuyển
+riêng tư nằm ở [vùng công khai của Bàn viết](publication-author-web.md); trang
+`/ban-viet/{id}/kiem-duyet` dùng cùng một DTO trạng thái và cùng lời gọi tên quyết định với vùng đó.
 
 ## 8. Rollout
 

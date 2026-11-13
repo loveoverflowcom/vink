@@ -48,21 +48,6 @@ pub struct Automation {
     pub version: i64,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct AuthorState {
-    pub work_id: String,
-    pub audience: String,
-    pub revisions: Vec<Revision>,
-}
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct Revision {
-    pub can_appeal: bool,
-    pub decision_reason: Option<String>,
-    pub revision_id: String,
-    pub title: String,
-    pub moderation: String,
-    pub decision_version: Option<i64>,
-}
-#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Filed {
     pub appeal: Appeal,
     pub replayed: bool,

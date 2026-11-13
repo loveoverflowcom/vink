@@ -2,7 +2,7 @@
 //! and commands are fenced by the tab's session scope; server versions decide every write.
 use crate::{
     api,
-    contract::{ApiError, moderation::*},
+    contract::{ApiError, moderation::*, publication::AuthorPublicationState},
     document::DocumentView,
 };
 use leptos::prelude::*;
@@ -290,10 +290,9 @@ pub fn AuthorReviews() -> impl IntoView {
         let scope = session.scope.get();
         actions.reload.track();
         async move {
-            let state = api::moderation_get::<AuthorState>(&format!(
-                "/api/v1/works/{id}/publication/state"
-            ))
-            .await;
+            let state =
+                api::moderation_get::<AuthorPublicationState>(&api::publication_state_path(&id))
+                    .await;
             let appeals =
                 api::moderation_get::<Vec<Appeal>>(&format!("/api/v1/works/{id}/appeals")).await;
             (scope, id, state, appeals)
@@ -310,7 +309,11 @@ pub fn AuthorReviews() -> impl IntoView {
                         let version=r.decision_version;
                         let already_filed=appeals.iter().any(|a|a.revision_id==r.revision_id && Some(a.decision_version)==version);
                         let can_appeal=r.can_appeal && version.is_some() && !already_filed;
-                        view! { <li><Heading level=HeadingLevel::H2>{r.title}</Heading><p>{match r.moderation.as_str() {"approved"=>"Đã duyệt","rejected"=>"Bị từ chối","pending"=>"Đang chờ kiểm duyệt",_=>"Chờ người duyệt"}}</p>
+                        // One wording of a decision (shared with the editor's publication region);
+                        // "Đang công khai" comes only from the public pointer, never from a decision.
+                        let public = state.pointer.as_ref().is_some_and(|p| p.revision_id == r.revision_id);
+                        view! { <li><Heading level=HeadingLevel::H2>{r.title}</Heading><p>{super::publication::decision_label(r.moderation)}</p>
+                            {public.then(|| view! { <p>"Đang công khai."</p> })}
                             {r.decision_reason.map(|r| view! { <p>{r}</p> })}
                             {can_appeal.then(|| view! { <Button id=format!("file-appeal-{}",r.revision_id) state=actions.state() on_press=move |_| actions.run.run((path.clone(),json!({"expected_decision_version":version})))>"Yêu cầu quản trị viên xem xét"</Button> })}
                         </li> }

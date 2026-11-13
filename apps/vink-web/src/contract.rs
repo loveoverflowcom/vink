@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 pub mod moderation;
+pub mod publication;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocumentDto {
@@ -697,6 +698,23 @@ pub enum ApiError {
     RevisionChanged {
         current_revision_id: String,
     },
+    /// `409 version_conflict` of `POST …/snapshots`: `field` names the version that moved. Nothing
+    /// was written; the author's text stays and the next save decides.
+    SnapshotConflict {
+        field: SnapshotField,
+        current_version: i64,
+    },
+    /// `409 version_conflict` of `request-public`/`set-private` (`expected_generation`): the
+    /// work's audience intent moved elsewhere. Nothing was written.
+    GenerationConflict {
+        current_generation: i64,
+    },
+    /// `409 revision_rejected`: that revision was already rejected; only a new one can be sent.
+    RevisionRejected,
+    /// `404 unknown_revision`: the revision is not one of this work's.
+    UnknownRevision,
+    /// `409 work_unavailable`: the work is no longer active.
+    WorkUnavailable,
     /// `409 version_conflict` of draft tags: `stored` is what the server holds. If it equals the
     /// desired state, that state holds (a lost acknowledgement); otherwise show it, never resend.
     TagConflict {
@@ -715,6 +733,15 @@ pub enum ApiError {
     Unexpected {
         status: u16,
     },
+}
+
+/// Which version a refused snapshot found moved.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SnapshotField {
+    /// `expected_draft_version`: the text changed (another tab saved).
+    Draft,
+    /// `expected_metadata_version`: the tags changed.
+    Metadata,
 }
 
 /// Why the server refused a draft-tag save; `field` is `form` or `themes`.
@@ -760,7 +787,40 @@ impl ApiError {
             (403, Some("self_endorsement")) => Self::SelfEndorsement,
             (403, Some("endorsement_not_permitted")) => Self::EndorsementNotPermitted,
             (403, _) => Self::Forbidden,
+            (404, Some("unknown_revision")) => Self::UnknownRevision,
             (404, _) => Self::NotFound,
+            // A publication command names the moved version; the draft and tag saves do not.
+            (409, Some("version_conflict"))
+                if body.as_ref().is_some_and(|b| {
+                    b.current_version.is_some()
+                        && matches!(
+                            b.field.as_deref(),
+                            Some(
+                                "expected_generation"
+                                    | "expected_draft_version"
+                                    | "expected_metadata_version"
+                            )
+                        )
+                }) =>
+            {
+                let body = body.expect("guarded above");
+                let current = body.current_version.unwrap_or_default();
+                match body.field.as_deref() {
+                    Some("expected_draft_version") => Self::SnapshotConflict {
+                        field: SnapshotField::Draft,
+                        current_version: current,
+                    },
+                    Some("expected_metadata_version") => Self::SnapshotConflict {
+                        field: SnapshotField::Metadata,
+                        current_version: current,
+                    },
+                    _ => Self::GenerationConflict {
+                        current_generation: current,
+                    },
+                }
+            }
+            (409, Some("revision_rejected")) => Self::RevisionRejected,
+            (409, Some("work_unavailable")) => Self::WorkUnavailable,
             (409, Some("version_conflict")) => match body {
                 Some(ErrorBody {
                     endorsement: Some(observed),
@@ -1160,6 +1220,64 @@ mod tests {
                 409,
                 Some(round_trip::<ErrorEnvelope>("error.version_conflict.json"))
             ),
+            ApiError::VersionConflict { current_version: 5 }
+        );
+    }
+
+    /// PUB-AUTHOR-WEB-01: the three publication commands tell the moved version apart, and a
+    /// plain draft conflict still reads as one.
+    #[test]
+    fn classifies_every_publication_refusal() {
+        let classify = |name: &str, status: u16| {
+            ApiError::from_response(status, Some(round_trip::<ErrorEnvelope>(name)))
+        };
+        assert_eq!(
+            classify("error.snapshot_draft_conflict.json", 409),
+            ApiError::SnapshotConflict {
+                field: SnapshotField::Draft,
+                current_version: 8
+            }
+        );
+        assert_eq!(
+            classify("error.snapshot_metadata_conflict.json", 409),
+            ApiError::SnapshotConflict {
+                field: SnapshotField::Metadata,
+                current_version: 6
+            }
+        );
+        assert_eq!(
+            classify("error.generation_conflict.json", 409),
+            ApiError::GenerationConflict {
+                current_generation: 5
+            }
+        );
+        assert_eq!(
+            classify("error.revision_rejected.json", 409),
+            ApiError::RevisionRejected
+        );
+        assert_eq!(
+            classify("error.unknown_revision.json", 404),
+            ApiError::UnknownRevision
+        );
+        assert_eq!(
+            classify("error.work_unavailable.json", 409),
+            ApiError::WorkUnavailable
+        );
+        assert_eq!(
+            classify("error.publication_key_reused.json", 422),
+            ApiError::KeyReused
+        );
+        // A not-found work stays a plain not found; a draft conflict stays a plain conflict.
+        assert_eq!(classify("error.not_found.json", 404), ApiError::NotFound);
+        assert_eq!(
+            classify("error.version_conflict.json", 409),
+            ApiError::VersionConflict { current_version: 5 }
+        );
+        // A conflict naming a field this build does not know is not guessed at.
+        let mut unknown = round_trip::<ErrorEnvelope>("error.generation_conflict.json");
+        unknown.error.field = Some("expected_policy".into());
+        assert_eq!(
+            ApiError::from_response(409, Some(unknown)),
             ApiError::VersionConflict { current_version: 5 }
         );
     }

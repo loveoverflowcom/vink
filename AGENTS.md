@@ -82,7 +82,10 @@ those registries rather than duplicating long status narratives across skills.
   - Author publication persistence + HTTP API (`#158`,
     [publication-runtime](docs/development/publication-runtime.md)) implements snapshot capture,
     `request-public` (queues evaluation or human review according to automation mode), `set-private` and owner state read,
-    with pre-#158 pointers backfilled as `legacy_bootstrap`.
+    with pre-#158 pointers backfilled as `legacy_bootstrap`. Bàn viết consumes these routes in its
+    “Công khai” region (`PUB-AUTHOR-WEB-01`,
+    [owner](docs/development/publication-author-web.md)): choose audience, save → snapshot →
+    request-public of exactly the saved version, withdraw, reconcile lost answers; no CMP consumer.
   - Remaining target models (`collections`, `comment_edit`, `discovery` in
     `services/vink-app/behavior/target`) are **model evidence only**; no UI consumer, delete/remove
     route, real AI provider, collection, hashtag, ranking or comment edit exists in

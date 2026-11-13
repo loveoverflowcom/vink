@@ -22,6 +22,10 @@ const SAMPLE_AUTHOR: &str = "11111111-1111-4111-8111-111111111111";
 /// a moderator grant so it can approve the author's comments it then endorses (neither the
 /// comments' writer nor the work's owner, so not recused).
 const OTHER_PRINCIPAL: &str = "22222222-2222-4222-8222-222222222222";
+/// The publication-author scenario gets its own App database: the Auth Web phase deliberately
+/// exhausts the App's per-network sign-in limiter (stored in the database), and a scenario that
+/// signs in three people must not depend on running before or after it.
+const PUBLICATION_DATABASE: &str = "vink_verify_web_publication";
 /// Auth Web phase: Identity's own scratch database and a runtime role that owns nothing in it.
 const IDENTITY_DATABASE: &str = "vink_verify_web_identity";
 const IDENTITY_ROLE: &str = "vink_verify_web_identity_runtime";
@@ -351,6 +355,21 @@ impl Server {
         }
     }
 
+    /// The same server settings on another App database (its own rows, including rate limits).
+    fn with_database(&self, url: &str) -> Self {
+        let mut env = self.env.clone();
+        for (key, value) in &mut env {
+            if key == "DATABASE_URL" || key == "VINK_MIGRATE_DATABASE_URL" {
+                *value = url.into();
+            }
+        }
+        Self {
+            port: self.port,
+            env,
+            log: self.log.with_file_name("server-publication.log"),
+        }
+    }
+
     fn command(&self, root: &Path, args: &[&str]) -> Command {
         let mut command = Command::new(binary(root, "vink-app"));
         command
@@ -402,17 +421,40 @@ fn smoke(
     base: &str,
     state: &Path,
 ) -> Result<(), String> {
+    smoke_with_env(root, node_args, chrome, base, state, &[])
+}
+
+/// `envs` reach only this browser phase. The publication-author scenario uses them to run the
+/// operator CLI (`vink-app admin add`) that seats its admin: setup, never a check.
+fn smoke_with_env(
+    root: &Path,
+    node_args: &[&str],
+    chrome: &str,
+    base: &str,
+    state: &Path,
+    envs: &[(String, String)],
+) -> Result<(), String> {
     let mut command = Command::new("node");
     command
         .current_dir(root)
         .arg(root.join("apps/vink-web/e2e/browser-smoke.mjs"))
         .args(["--base", base, "--chrome", chrome, "--state"])
         .arg(state)
-        .args(node_args);
+        .args(node_args)
+        .envs(envs.iter().map(|(k, v)| (k, v)));
     crate::process::run(
         &mut command,
         &format!("browser smoke {}", node_args.join(" ")),
     )
+}
+
+/// Browser phases that run against the real Identity process (no fixture principal).
+#[derive(Clone, Copy)]
+enum IdentityPhase {
+    /// Email code, pen name, draft, sign-out, account switch.
+    Auth,
+    /// PUB-AUTHOR-WEB-01: the author's whole publication path with a second, granted moderator.
+    PublicationAuthor,
 }
 
 /// Starts the real `vink-identity` (email-code authority) on its own scratch database and runs
@@ -426,6 +468,7 @@ fn auth_web(
     admin_url: &str,
     chrome: &str,
     state: &Path,
+    phase: IdentityPhase,
 ) -> Result<(), String> {
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     let dir = state.parent().ok_or("state file has no directory")?;
@@ -512,15 +555,71 @@ fn auth_web(
     let mut guard = app.start(root)?;
     let origin = format!("http://127.0.0.1:{}", app.port);
     let outbox = outbox.display().to_string();
-    let result = smoke(
-        root,
-        &["--phase", "auth", "--outbox", &outbox],
-        chrome,
-        &origin,
-        state,
-    );
+    let result = match phase {
+        IdentityPhase::Auth => smoke(
+            root,
+            &["--phase", "auth", "--outbox", &outbox],
+            chrome,
+            &origin,
+            state,
+        ),
+        IdentityPhase::PublicationAuthor => {
+            let mut envs = app.env.clone();
+            envs.push((
+                "VINK_E2E_APP_BIN".into(),
+                binary(root, "vink-app").display().to_string(),
+            ));
+            smoke_with_env(
+                root,
+                &["--phase", "publication-author", "--outbox", &outbox],
+                chrome,
+                &origin,
+                state,
+                &envs,
+            )
+        }
+    };
     let _ = guard.terminate(Duration::from_secs(15));
     let _ = identity.terminate(Duration::from_secs(10));
+    result
+}
+
+/// PUB-AUTHOR-WEB-01 on its own App database: created, migrated, seeded with the operator CLI
+/// (including the tag catalog the scenario picks from), run against the real Identity, dropped.
+fn publication_author(
+    root: &Path,
+    server: &Server,
+    admin_url: &str,
+    chrome: &str,
+    state: &Path,
+) -> Result<(), String> {
+    let drop = format!("DROP DATABASE IF EXISTS {PUBLICATION_DATABASE} WITH (FORCE)");
+    let _ = crate::identity::sql(admin_url, &drop);
+    crate::identity::sql(
+        admin_url,
+        &format!("CREATE DATABASE {PUBLICATION_DATABASE}"),
+    )
+    .map_err(|e| format!("publication scratch database: {e}"))?;
+    let result = (|| {
+        let own = server.with_database(&with_database(admin_url, PUBLICATION_DATABASE)?);
+        for step in ["migrate", "dev-seed"] {
+            let mut command = own.command(root, &[step]);
+            crate::process::run(
+                &mut command,
+                &format!("vink-app {step} (publication scratch)"),
+            )?;
+        }
+        seed_tag_catalog(root, &own)?;
+        auth_web(
+            root,
+            &own,
+            admin_url,
+            chrome,
+            state,
+            IdentityPhase::PublicationAuthor,
+        )
+    })();
+    let _ = crate::identity::sql(admin_url, &drop);
     result
 }
 
@@ -616,6 +715,18 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
         "Auth Web: email code, pen name, draft, sign-out, account switch (real Identity, local outbox)",
         || {
             auth_web(
+                &root,
+                &server,
+                &url,
+                &chrome,
+                &out_dir.join("smoke-state.json"),
+                IdentityPhase::Auth,
+            )
+        },
+    ) && report.step(
+        "Publication author (PUB-AUTHOR-WEB-01): save → snapshot → request-public, moderator UI, lost ACKs, two tabs, withdrawal, session (real Identity, three principals)",
+        || {
+            publication_author(
                 &root,
                 &server,
                 &url,

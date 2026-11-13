@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "draft metadata changed since expected_metadata_version; nothing was written",
+    "current_version": 6,
+    "field": "expected_metadata_version"
+  }
+}
