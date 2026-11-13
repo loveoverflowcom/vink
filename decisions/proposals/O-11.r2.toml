@@ -1,0 +1,32 @@
+version = 1
+id = "O-11"
+revision = 2
+
+[base]
+revision = 1
+sha256 = "e8e933cc7781916464b1c069efa77c3b75fff266ed9b17cc6f3bdf1e4daee258"
+
+[content]
+kind = "product"
+domain = "account"
+title = "Khôi phục mật khẩu bằng email trong luồng riêng"
+resolution = """
+Phạm vi được chủ sản phẩm xác nhận trong issue #181 ngày 13/11/2026: “Có thể lấy lại mật khẩu qua email, cần luồng riêng”. Khôi phục giữ nguyên account/subject, principal, bút danh và dữ liệu; không dùng proof đăng nhập mã email hoặc thêm mật khẩu làm proof đặt lại.
+
+Phần chi tiết sau là đề xuất chờ duyệt, chưa phải hành vi có hiệu lực: email khôi phục là tùy chọn, phải được gắn và xác minh trên đúng tài khoản trước khi quên mật khẩu; không bắt buộc email khi đăng ký. Người không còn email đã xác minh hoặc không vào được hộp thư không được tự động lấy lại tài khoản bằng username/bút danh; không hứa hẹn hỗ trợ thủ công chưa có quy trình.
+
+Khuyến nghị dùng mã một lần ở luồng riêng trên /toi, gửi tới email đã xác minh đã gắn; phản hồi yêu cầu không cho biết tài khoản/email có tồn tại. Chứng minh quyền hộp thư và thay credential phải gắn đúng tài khoản, purpose và phiên bản credential/email tại commit. Đặt mật khẩu mới áp dụng O-12@r2. Khuyến nghị thu hồi toàn bộ phiên và các proof cũ khi đặt lại thành công, rồi yêu cầu đăng nhập lại, không phát phiên mới từ recovery.
+
+Đặc tả và các phương án, trạng thái, ranh giới quyền, câu hỏi sản phẩm còn mở nằm tại docs/architecture/password-recovery.md và LayoutSpec docs/design/password-recovery.md. Chưa triển khai runtime; cần chủ sản phẩm duyệt đúng revision/hash trước khi coi các chi tiết đề xuất là luật.
+"""
+rationale = """
+Issue #181 chốt kênh email và sự tách biệt luồng, không phê duyệt mọi chi tiết của một revision mới. Tái dùng authority, outbox, secret handle và SessionOwner hiện hữu giảm đường quyền cạnh tranh nhưng không tái dùng purpose/proof. Đăng ký mật khẩu hiện không có email; email-change chỉ cập nhật hàng địa chỉ đã có, nên cần một lát gắn email có proof trước khi recovery dùng được. Thu hồi mọi phiên làm giảm rủi ro phiên bị chiếm nhưng gây đăng xuất các thiết bị; giữ email tùy chọn tránh tự đổi điều kiện đăng ký. Hai điểm này vẫn cần xác nhận sản phẩm.
+"""
+requires = [
+    "O-12@r2",
+    "USER-08@r2",
+]
+related_ids = [
+    "ACC-03",
+    "D-05",
+]
