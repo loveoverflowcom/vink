@@ -16,9 +16,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-const HYDRATED = `document.documentElement.dataset.hydrated === 'true'`;
-const STANDING = `document.querySelector('#account-session')?.dataset.standing`;
-const EDITOR_READY = `document.querySelector('[data-testid=editor-body] .cm-content[contenteditable=true]')`;
+export const HYDRATED = `document.documentElement.dataset.hydrated === 'true'`;
+export const STANDING = `document.querySelector('#account-session')?.dataset.standing`;
+export const EDITOR_READY = `document.querySelector('[data-testid=editor-body] .cm-content[contenteditable=true]')`;
 const PANEL_TEXT = `(document.querySelector('.vk-account')?.textContent ?? '')`;
 const PEN_NAME_A = 'Nguyễn Thị Ánh';
 const PEN_NAME_B = 'Bút danh thứ hai';
@@ -27,19 +27,19 @@ const BODY_A = 'Dòng đầu viết sau khi đăng nhập,\n  dòng thụt vào 
 const UNSAVED = '\n\nKhổ chưa lưu khi phiên kết thúc.';
 const UNSAVED_LINE = 'Khổ chưa lưu khi phiên kết thúc.';
 
-function q(selector) {
+export function q(selector) {
   return `document.querySelector(${JSON.stringify(selector)})`;
 }
 
 /** Replaces the value of a text field as committed input. */
-async function fill(page, selector, text) {
+export async function fill(page, selector, text) {
   await page.eval(`(() => { const el = ${q(selector)}; el.focus(); el.select(); })()`);
   if (text) await page.send('Input.insertText', { text });
   else await page.key('Backspace');
 }
 
 /** Reads the code Identity wrote for `address` to its local outbox (a file per challenge). */
-async function mailedCode(outbox, address, seen) {
+export async function mailedCode(outbox, address, seen) {
   const deadline = Date.now() + 15000;
   while (Date.now() < deadline) {
     for (const name of readdirSync(outbox)) {
@@ -56,18 +56,18 @@ async function mailedCode(outbox, address, seen) {
   throw new Error(`no outbox message for ${address} within 15s`);
 }
 
-async function cookies(page, base) {
+export async function cookies(page, base) {
   const { cookies } = await page.send('Network.getCookies', { urls: [base] });
   return Object.fromEntries(cookies.map((c) => [c.name, c]));
 }
 
-async function openAccount(page, base, standing) {
+export async function openAccount(page, base, standing) {
   await page.goto(`${base}/toi`);
   await page.waitFor(`${HYDRATED} && ${STANDING} === ${JSON.stringify(standing)}`, `Tôi: ${standing}`);
 }
 
 /** Email → code through the form. Leaves the tab at the pen-name step or signed in. */
-async function signIn(page, ctx, address) {
+export async function signIn(page, ctx, address) {
   const { args, seen } = ctx;
   await page.waitFor(`${STANDING} === 'anonymous' && ${q('#sign-in-address')}`, 'sign-in form');
   await fill(page, '#sign-in-address', address);
@@ -80,7 +80,7 @@ async function signIn(page, ctx, address) {
   return code;
 }
 
-async function signOut(page, base) {
+export async function signOut(page, base) {
   const answers = [];
   const listener = (message) => {
     if (message.sessionId !== page.sessionId || message.method !== 'Network.responseReceived') return;
@@ -95,7 +95,7 @@ async function signOut(page, base) {
 }
 
 /** Answers the next request matching `method path` itself; the server never sees it. */
-async function fabricate(page, method, path, status, body, headers = []) {
+export async function fabricate(page, method, path, status, body, headers = []) {
   let done;
   const answered = new Promise((resolve) => (done = resolve));
   const listener = (message) => {
@@ -162,7 +162,7 @@ class ListGate {
 }
 
 const storedText = (draft) => draft.document.blocks.map((block) => block.lines.join('\n')).join('\n\n');
-const account = (page) => page.eval(`fetch('/api/v1/auth/session/account').then(async (r) => ({ status: r.status, body: r.ok ? await r.json() : null }))`);
+export const account = (page) => page.eval(`fetch('/api/v1/auth/session/account').then(async (r) => ({ status: r.status, body: r.ok ? await r.json() : null }))`);
 const fieldError = (id) => `(document.getElementById(${JSON.stringify(id)})?.getAttribute('aria-describedby') ?? '').split(' ').map((i) => document.getElementById(i)?.textContent ?? '').join(' ')`;
 
 export async function authWeb(page, { args, check, openPage }) {

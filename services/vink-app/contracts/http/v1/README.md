@@ -53,6 +53,10 @@ consumer yet and no native consumer exists.
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
 | `PUT /api/v1/drafts/{work_id}` | `200` new version | `401`, `403`, `404`, `409`, `422`, `503` | [request](fixtures/draft.save.request.json), [response](fixtures/draft.save.response.json) |
+| `GET /api/v1/works/{work_id}/publication/state` (`/publication/me`) | `200` the author's own state, `no-store`: `audience`, `lifecycle`, `generation`, `intent`, `pointer`, `revisions` (oldest first, each with `moderation`, `decision_version`, `decision_reason`, `can_appeal`), `open_ticket` | `401`, `403`, `404`, `503` | [public r1 + pending r2](fixtures/publication.state.public_r1_pending_r2.json), [rejected](fixtures/publication.state.public_rejected.json), [private](fixtures/publication.state.private.json) |
+| `POST /api/v1/works/{work_id}/snapshots` | `201` (`200` on replay) a revision frozen at exactly `expected_draft_version` + `expected_metadata_version`; a replay with the same `command_key` and versions returns the first revision even after the draft moved on | `401`, `403`, `404`, `409` `version_conflict` (`field`: `expected_draft_version` or `expected_metadata_version`, with `current_version`), `422` (`idempotency_key_reused`), `503` | [request](fixtures/snapshot.capture.request.json), [response](fixtures/snapshot.capture.response.json), [draft moved](fixtures/error.snapshot_draft_conflict.json), [tags moved](fixtures/error.snapshot_metadata_conflict.json) |
+| `POST /api/v1/works/{work_id}/publication/request-public` | `200` `submitted`/`waiting`/`published`/`reaffirmed` with the new `generation`; a replay (`replayed: true`) may omit `ticket_id`: read the state | `401`, `403`, `404` (`unknown_revision`), `409` (`version_conflict` with `field: expected_generation`, `revision_rejected`, `work_unavailable`), `422`, `503` | [request](fixtures/publication.request_public.request.json), [response](fixtures/publication.request_public.response.json), [replayed](fixtures/publication.request_public.response.replayed.json), [stale](fixtures/error.generation_conflict.json), [rejected](fixtures/error.revision_rejected.json), [unknown](fixtures/error.unknown_revision.json), [inactive](fixtures/error.work_unavailable.json), [key reused](fixtures/error.publication_key_reused.json) |
+| `POST /api/v1/works/{work_id}/publication/set-private` | `200` `made_private` with the new `generation` | as above | [request](fixtures/publication.set_private.request.json), [response](fixtures/publication.set_private.response.json) |
 
 ### Public discovery (TAG-PR-04)
 
@@ -543,5 +547,10 @@ buộc người duyệt giải quyết qua luồng phản đối; lệnh kết l
 `409 stale_decision`, `final_decision`, `nothing_to_appeal`, `withdrawn`, `already_resolved`;
 `403 recused`/`not_admin`; `422` khi thiếu lý do/phiên bản; `404` đối tượng không thuộc tác giả.
 Chuyển riêng tư đóng hồ sơ cùng ca/job. Kết luận bản cũ không đổi ý định công khai bản mới.
+
+A receipt is history of one command, never the work's state: after every command the client reads
+`…/publication/state` again. Web consumer: the desk's publication region
+([publication-author-web](../../../../../docs/development/publication-author-web.md)); it decodes the
+fixtures above on its side (`contract/publication.rs`).
 
 Owner publication state includes `can_appeal` and `decision_reason` per revision. These are display facts; the appeal command rechecks owner, standing, audience, provenance and decision version at commit. Case queue rows include the submitted `title`; case detail includes `viewer_is_admin` for rendering controls.

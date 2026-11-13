@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "revision_rejected",
+    "message": "the requested revision was rejected by moderation; nothing was written",
+    "field": "revision_id"
+  }
+}

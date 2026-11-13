@@ -147,6 +147,12 @@ impl EditorSession {
         self.edits != self.saved_edits || self.conflict.is_some()
     }
 
+    /// How many edits the author made so far. A coordinator that must send "what the author
+    /// pressed on" (publication) compares two readings: equal means nothing was typed between.
+    pub fn edits(&self) -> u64 {
+        self.edits
+    }
+
     pub fn can_save(&self) -> bool {
         self.in_flight.is_none() && self.conflict.is_none()
     }

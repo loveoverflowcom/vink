@@ -57,5 +57,8 @@ Lần chạy 11/11/2026 trên nhánh `codex/publication-persistence-api` (Postgr
 - `services/vink-app/tests/postgres/publication.rs` (9 test): vòng đời snapshot, ticket, r1/r2, riêng tư/ETag `404`, khóa `publications` FOR SHARE, legacy seed, nâng cấp migration thật, backout, retry đồng thời cùng key (thất bại với adapter đọc receipt trước khóa).
 
 [Moderation runtime](moderation-runtime.md) nối worker/người duyệt, Web trạng thái/phản đối và reader
-ẩn/bị gỡ. Còn thiếu: UI chọn audience/gửi duyệt, CMP, xóa tác phẩm; replay của request-public
-không trả lại `ticket_id` (đọc qua `GET …/publication/state`).
+ẩn/bị gỡ. [Vùng công khai của Bàn viết](publication-author-web.md) (PUB-AUTHOR-WEB-01) là consumer
+Web của bốn route trên: chọn audience, lưu → chụp → gửi, chuyển riêng tư, đối soát khi mất phản
+hồi. Còn thiếu: CMP, xóa tác phẩm; replay của request-public không trả lại `ticket_id` (đọc qua
+`GET …/publication/state`, Web đã xử lý như một câu trả lời bình thường). `revisions` của state
+xếp cũ trước mới sau; consumer không dựa vào thứ tự.

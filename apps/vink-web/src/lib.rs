@@ -24,6 +24,7 @@ pub mod navigation;
 mod pages;
 pub mod public_list;
 pub mod public_reads;
+pub mod publication_state;
 pub mod search;
 #[cfg(feature = "ssr")]
 pub mod server;

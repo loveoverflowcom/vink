@@ -2815,4 +2815,264 @@ mod tests {
             }
         }
     }
+    /// The author's publication commands (PUB-AUTHOR-WEB-01): the Web desk decodes these exact
+    /// fixtures, so a provider change to the state, the commands or their refusals fails both sides.
+    mod author_publication {
+        use super::*;
+
+        const WORK: &str = "33333333-3333-4333-8333-333333333333";
+        const R1: &str = "0192f3a1-0000-7000-8000-0000000000b1";
+        const R2: &str = "0192f3a1-0000-7000-8000-0000000000b2";
+
+        fn at(minutes: i64) -> OffsetDateTime {
+            datetime!(2026-10-30 08:00:00 UTC) + time::Duration::minutes(minutes)
+        }
+
+        fn revision(
+            id: &str,
+            title: &str,
+            hash: &str,
+            moderation: &'static str,
+            decision_version: Option<i64>,
+            snapshot: &str,
+            minutes: i64,
+        ) -> AuthorRevisionView {
+            AuthorRevisionView {
+                can_appeal: false,
+                decision_reason: None,
+                revision_id: id.to_string(),
+                title: title.to_string(),
+                content_hash: hash.repeat(32).chars().take(64).collect(),
+                moderation,
+                decision_version,
+                metadata_snapshot_id: Some(snapshot.to_string()),
+                created_at: at(minutes),
+            }
+        }
+
+        #[test]
+        fn author_state_messages_match_fixtures() {
+            let public_r1_pending_r2 = AuthorPublicationState {
+                work_id: WORK.into(),
+                audience: "public",
+                lifecycle: "active",
+                generation: 4,
+                intent: Some(PublishIntentView {
+                    revision_id: R2.into(),
+                    generation: 4,
+                }),
+                pointer: Some(PublicPointerView {
+                    revision_id: R1.into(),
+                    intent_generation: 2,
+                }),
+                revisions: vec![
+                    revision(
+                        R1,
+                        "[Mẫu] Mưa trên phố cũ",
+                        "b1",
+                        "approved",
+                        Some(2),
+                        "0192f3a1-0000-7000-8000-0000000000e1",
+                        0,
+                    ),
+                    revision(
+                        R2,
+                        "[Mẫu] Mưa trên phố cũ — bản hai",
+                        "b2",
+                        "pending",
+                        Some(1),
+                        "0192f3a1-0000-7000-8000-0000000000e2",
+                        30,
+                    ),
+                ],
+                open_ticket: Some(OpenTicketView {
+                    evaluation_id: "0192f3a1-0000-7000-8000-0000000000c2".into(),
+                    revision_id: R2.into(),
+                    policy_version: 1,
+                }),
+            };
+            assert_matches(
+                "publication.state.public_r1_pending_r2.json",
+                &public_r1_pending_r2,
+            );
+            let mut rejected = revision(
+                R1,
+                "[Mẫu] Mưa trên phố cũ",
+                "b1",
+                "rejected",
+                Some(2),
+                "0192f3a1-0000-7000-8000-0000000000e1",
+                0,
+            );
+            rejected.can_appeal = true;
+            rejected.decision_reason = Some("Nội dung chưa phù hợp chính sách cộng đồng.".into());
+            assert_matches(
+                "publication.state.public_rejected.json",
+                &AuthorPublicationState {
+                    work_id: WORK.into(),
+                    audience: "public",
+                    lifecycle: "active",
+                    generation: 3,
+                    intent: Some(PublishIntentView {
+                        revision_id: R1.into(),
+                        generation: 3,
+                    }),
+                    pointer: None,
+                    revisions: vec![rejected],
+                    open_ticket: None,
+                },
+            );
+            assert_matches(
+                "publication.state.private.json",
+                &AuthorPublicationState {
+                    work_id: WORK.into(),
+                    audience: "private",
+                    lifecycle: "active",
+                    generation: 1,
+                    intent: None,
+                    pointer: None,
+                    revisions: vec![],
+                    open_ticket: None,
+                },
+            );
+        }
+
+        #[test]
+        fn command_messages_match_fixtures() {
+            let capture: CaptureSnapshotRequest = parse("snapshot.capture.request.json");
+            assert_eq!(
+                (
+                    capture.expected_draft_version,
+                    capture.expected_metadata_version
+                ),
+                (7, 5)
+            );
+            let hash: String = "b2".repeat(32);
+            assert_matches(
+                "snapshot.capture.response.json",
+                &CapturedSnapshotResponse {
+                    outcome: "saved",
+                    revision_id: R2.into(),
+                    content_hash: hash,
+                    metadata_snapshot_id: Some("0192f3a1-0000-7000-8000-0000000000e2".into()),
+                    draft_version: 7,
+                    metadata_version: 5,
+                    replayed: false,
+                },
+            );
+            let request: RequestPublicRequest = parse("publication.request_public.request.json");
+            assert_eq!(
+                (request.revision_id.as_str(), request.expected_generation),
+                (R2, 3)
+            );
+            assert_matches(
+                "publication.request_public.response.json",
+                &RequestPublicResponse {
+                    outcome: "submitted",
+                    revision_id: R2.into(),
+                    generation: 4,
+                    ticket_id: Some("0192f3a1-0000-7000-8000-0000000000c2".into()),
+                    replayed: false,
+                },
+            );
+            // A replay does not carry the ticket: the client reads the state instead.
+            assert_matches(
+                "publication.request_public.response.replayed.json",
+                &RequestPublicResponse {
+                    outcome: "submitted",
+                    revision_id: R2.into(),
+                    generation: 4,
+                    ticket_id: None,
+                    replayed: true,
+                },
+            );
+            let private: SetPrivateRequest = parse("publication.set_private.request.json");
+            assert_eq!(private.expected_generation, 4);
+            assert_matches(
+                "publication.set_private.response.json",
+                &SetPrivateResponse {
+                    outcome: "made_private",
+                    generation: 5,
+                    replayed: false,
+                },
+            );
+        }
+
+        /// A client reconciles the right version because the refusal names the one that moved.
+        #[test]
+        fn publication_refusals_match_fixtures() {
+            let cases = [
+                (
+                    "error.snapshot_draft_conflict.json",
+                    ApiError::SnapshotConflict {
+                        current_draft_version: Some(8),
+                        current_metadata_version: None,
+                    },
+                    409,
+                ),
+                (
+                    "error.snapshot_metadata_conflict.json",
+                    ApiError::SnapshotConflict {
+                        current_draft_version: None,
+                        current_metadata_version: Some(6),
+                    },
+                    409,
+                ),
+                (
+                    "error.generation_conflict.json",
+                    ApiError::PublicationConflict {
+                        current_generation: 5,
+                    },
+                    409,
+                ),
+                (
+                    "error.revision_rejected.json",
+                    ApiError::RevisionRejected,
+                    409,
+                ),
+                (
+                    "error.unknown_revision.json",
+                    ApiError::UnknownRevision,
+                    404,
+                ),
+                (
+                    "error.work_unavailable.json",
+                    ApiError::WorkUnavailable,
+                    409,
+                ),
+                (
+                    "error.publication_key_reused.json",
+                    ApiError::PublicationKeyReused,
+                    422,
+                ),
+            ];
+            for (name, error, status) in cases {
+                assert_eq!(error.status().as_u16(), status, "{name}");
+                assert_matches(name, &error.envelope());
+            }
+        }
+
+        /// Unknown request fields never select an actor, an owner or a moderation outcome.
+        #[test]
+        fn command_requests_refuse_authority_fields() {
+            for (name, forged) in [
+                ("snapshot.capture.request.json", "actor_id"),
+                ("publication.request_public.request.json", "moderation"),
+                ("publication.set_private.request.json", "owner_id"),
+            ] {
+                let mut raw = fixture(name);
+                raw[forged] = Value::from("approved");
+                let refused = match name {
+                    "snapshot.capture.request.json" => {
+                        serde_json::from_value::<CaptureSnapshotRequest>(raw).is_err()
+                    }
+                    "publication.request_public.request.json" => {
+                        serde_json::from_value::<RequestPublicRequest>(raw).is_err()
+                    }
+                    _ => serde_json::from_value::<SetPrivateRequest>(raw).is_err(),
+                };
+                assert!(refused, "{name} accepted {forged}");
+            }
+        }
+    }
 }

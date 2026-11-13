@@ -15,6 +15,7 @@ import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
 import { endorsementAsAuthor, endorsementAsReader } from './endorsement-smoke.mjs';
 import { authWeb } from './auth-smoke.mjs';
+import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -665,8 +666,10 @@ async function launchChrome() {
   throw new Error(`Chrome did not open DevTools within 20s: ${output}`);
 }
 
-async function openPage(cdp) {
-  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });
+async function openPage(cdp, browserContextId) {
+  // `browserContextId` opens the tab in an isolated context: its own cookie jar, so two real
+  // sessions (an author and a moderator) can be signed in at the same moment.
+  const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', ...(browserContextId ? { browserContextId } : {}) });
   const { sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true });
   const page = new Page(cdp, sessionId);
   await page.send('Page.enable');
@@ -3637,6 +3640,7 @@ try {
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') await reviewWithdrawnPage(page, { args, check });
   else if (args.phase === 'auth') await authWeb(page, { args, check, openPage: () => openPage(cdp) });
+  else if (args.phase === 'publication-author') await publicationAuthor(page, { args, check, openPage: (isolated) => openPage(cdp, isolated), capture: (target, name, evidence) => target.capture(name, evidence) });
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);

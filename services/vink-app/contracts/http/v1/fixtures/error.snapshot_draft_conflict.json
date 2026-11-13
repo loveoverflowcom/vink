@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "version_conflict",
+    "message": "draft text changed since expected_draft_version; nothing was written",
+    "current_version": 8,
+    "field": "expected_draft_version"
+  }
+}

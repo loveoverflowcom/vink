@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "unknown_revision",
+    "message": "the revision was not found on this work",
+    "field": "revision_id"
+  }
+}

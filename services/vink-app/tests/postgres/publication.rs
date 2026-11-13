@@ -922,3 +922,257 @@ async fn concurrent_retries_with_one_key_apply_once_and_replay(pool: PgPool) {
             .unwrap();
     assert_eq!(jobs, 1);
 }
+
+/// PUB-AUTHOR-WEB-01: what the Web desk relies on to recover from a lost answer, a second tab and
+/// a draft that keeps changing. Every claim is read back from the database, not from the answer.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn author_web_recovery_contract_on_real_rows(pool: PgPool) {
+    let app = app(&pool).await;
+    let author = dev_seed::SAMPLE_AUTHOR;
+    let work = dev_seed::SAMPLE_WORK;
+    let post = |path: String, body: serde_json::Value| {
+        let app = app.clone();
+        async move { call(&app, "POST", &path, Some(author), Some(ORIGIN), Some(body)).await }
+    };
+    let state = || {
+        let app = app.clone();
+        async move {
+            let (status, cache, body) = call(
+                &app,
+                "GET",
+                &publication_state_path(work),
+                Some(author),
+                None,
+                None,
+            )
+            .await;
+            assert_eq!(
+                (status, cache.as_deref()),
+                (StatusCode::OK, Some("no-store"))
+            );
+            json(&body)
+        }
+    };
+    let count = |sql: &'static str| {
+        let pool = pool.clone();
+        async move {
+            sqlx::query_scalar::<_, i64>(sql)
+                .bind(work)
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+        }
+    };
+
+    // 1. The author keeps writing: draft v1 → v2 with a title only this version has.
+    let put = |version: i64, title: &str| {
+        let app = app.clone();
+        let body = json!({
+            "expected_version": version,
+            "title": title,
+            "document": { "schema_version": 1, "blocks": [{ "lines": [format!("Dòng của {title}")] }] }
+        });
+        async move {
+            call(
+                &app,
+                "PUT",
+                &format!("/api/v1/drafts/{work}"),
+                Some(author),
+                Some(ORIGIN),
+                Some(body),
+            )
+            .await
+        }
+    };
+    let (status, _, body) = put(1, "Bản chữ thứ hai").await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["version"], 2);
+
+    // 2. A snapshot of exactly the acknowledged versions (draft 2, metadata 1).
+    let capture = json!({"command_key": "web-capture-0001", "expected_draft_version": 2, "expected_metadata_version": 1});
+    let (status, _, body) = post(snapshots_path(work), capture.clone()).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let first = json(&body);
+    let revision = first["revision_id"].as_str().unwrap().to_string();
+    let revision_uuid = Uuid::parse_str(&revision).unwrap();
+    assert_eq!(
+        (
+            first["draft_version"].as_i64(),
+            first["metadata_version"].as_i64()
+        ),
+        (Some(2), Some(1))
+    );
+    let revisions = count("SELECT count(*) FROM revisions WHERE work_id = $1").await;
+    assert_eq!(revisions, 2, "the seeded revision and the capture");
+
+    // 3. The author types on and saves again (draft v3): the captured revision does not move.
+    let (status, _, _) = put(2, "Bản chữ thứ ba").await;
+    assert_eq!(status, StatusCode::OK);
+    let (title, hash): (String, String) =
+        sqlx::query_as("SELECT title, content_hash FROM revisions WHERE id = $1")
+            .bind(revision_uuid)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(title, "Bản chữ thứ hai", "a snapshot is immutable");
+    assert_eq!(hash, first["content_hash"].as_str().unwrap());
+
+    // 4. The capture answer was lost: the same key and versions return the first revision even
+    // though the draft has moved on, and write nothing.
+    let (status, _, body) = post(snapshots_path(work), capture.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let replay = json(&body);
+    assert_eq!(
+        (replay["replayed"].as_bool(), replay["revision_id"].as_str()),
+        (Some(true), Some(revision.as_str()))
+    );
+    assert_eq!(
+        count("SELECT count(*) FROM revisions WHERE work_id = $1").await,
+        revisions
+    );
+
+    // 5. A new press with the stale versions names the draft as what moved (never the tags),
+    // and writes nothing.
+    let (status, _, body) = post(
+        snapshots_path(work),
+        json!({"command_key": "web-capture-0002", "expected_draft_version": 2, "expected_metadata_version": 1}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    let error = json(&body)["error"].clone();
+    assert_eq!(
+        (error["field"].as_str(), error["current_version"].as_i64()),
+        (Some("expected_draft_version"), Some(3))
+    );
+    assert_eq!(
+        count("SELECT count(*) FROM revisions WHERE work_id = $1").await,
+        revisions
+    );
+
+    // 6. With the right draft version and stale tags the refusal names the tags.
+    let (status, _, body) = post(
+        snapshots_path(work),
+        json!({"command_key": "web-capture-0003", "expected_draft_version": 3, "expected_metadata_version": 7}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(json(&body)["error"]["field"], "expected_metadata_version");
+
+    // 7. request-public pins the generation on screen (2) and the captured revision.
+    let request = json!({"command_key": "web-public-0001", "revision_id": revision, "expected_generation": 2});
+    let (status, _, body) = post(request_public_path(work), request.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let accepted = json(&body);
+    assert_eq!(accepted["generation"], 3);
+    assert!(accepted["ticket_id"].is_string());
+    let jobs = count("SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1").await;
+    assert_eq!(jobs, 1);
+    // The state the page reads afterwards: r1 still the public pointer, r2 pending and first.
+    let after = state().await;
+    assert_eq!(after["generation"], 3);
+    assert_eq!(
+        after["pointer"]["revision_id"],
+        dev_seed::SAMPLE_REVISION.to_string()
+    );
+    assert_eq!(after["intent"]["revision_id"], revision);
+    let ours = after["revisions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["revision_id"] == revision)
+        .expect("the captured revision is listed");
+    assert_eq!(ours["moderation"], "pending");
+    assert_eq!(
+        after["revisions"][0]["revision_id"],
+        dev_seed::SAMPLE_REVISION.to_string(),
+        "the server lists oldest first; the page never depends on it"
+    );
+    assert_eq!(after["open_ticket"]["revision_id"], revision);
+
+    // 8. The answer was lost: the replay says so, carries no ticket and creates no second job.
+    let (status, _, body) = post(request_public_path(work), request.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let replayed = json(&body);
+    assert_eq!(replayed["replayed"], true);
+    assert!(replayed.get("ticket_id").is_none(), "{replayed}");
+    assert_eq!(
+        count("SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1").await,
+        jobs
+    );
+
+    // 9. Another tab withdraws (generation 3 → 4). The first tab then replays its old command:
+    // the receipt is history, it does not revive the intent, and the work stays private.
+    let (status, _, body) = post(
+        set_private_path(work),
+        json!({"command_key": "web-private-0001", "expected_generation": 3}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["generation"], 4);
+    let (status, _, body) = post(request_public_path(work), request.clone()).await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["replayed"], true);
+    let private = state().await;
+    assert_eq!(
+        (private["audience"].as_str(), private["generation"].as_i64()),
+        (Some("private"), Some(4))
+    );
+    assert!(
+        private.get("pointer").is_none() && private.get("intent").is_none(),
+        "{private}"
+    );
+    let (status, _, _) = call(&app, "GET", &public_read_path(work), None, None, None).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "the replay did not republish"
+    );
+    assert_eq!(
+        count("SELECT count(*) FROM work_evaluation_jobs WHERE work_id = $1").await,
+        jobs
+    );
+
+    // 10. A stale press names the generation that moved and writes nothing.
+    let (status, _, body) = post(
+        request_public_path(work),
+        json!({"command_key": "web-public-0002", "revision_id": revision, "expected_generation": 3}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+    let error = json(&body)["error"].clone();
+    assert_eq!(
+        (error["field"].as_str(), error["current_version"].as_i64()),
+        (Some("expected_generation"), Some(4))
+    );
+
+    // 11. The withdrawal is replayed too (its answer was lost) after a republish elsewhere
+    // (generation 4 → 5): the replay does not withdraw again.
+    let (status, _, _) = post(
+        request_public_path(work),
+        json!({"command_key": "web-public-0003", "revision_id": revision, "expected_generation": 4}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _, body) = post(
+        set_private_path(work),
+        json!({"command_key": "web-private-0001", "expected_generation": 3}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(json(&body)["replayed"], true);
+    let again = state().await;
+    assert_eq!(
+        (again["audience"].as_str(), again["generation"].as_i64()),
+        (Some("public"), Some(5))
+    );
+
+    // 12. The same key with another payload is a defect the server refuses, never a replay.
+    let (status, _, body) = post(
+        set_private_path(work),
+        json!({"command_key": "web-private-0001", "expected_generation": 5}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert_eq!(json(&body)["error"]["code"], "idempotency_key_reused");
+    assert_eq!(state().await["generation"], 5);
+}
