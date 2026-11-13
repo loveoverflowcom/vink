@@ -20,7 +20,7 @@ use serde_json::Value;
 
 use super::smtp_sink::Sink;
 use super::{Run, expect, request, sql};
-use crate::web;
+use crate::lifecycle;
 
 mod password_enrollment;
 
@@ -319,7 +319,7 @@ fn operator(
     env: &[(&str, &str)],
     args: &[&str],
 ) -> Result<String, String> {
-    let mut command = Command::new(web::binary(run.scratch.root, binary));
+    let mut command = Command::new(lifecycle::binary(run.scratch.root, binary));
     command
         .args(args)
         .current_dir(run.scratch.root)

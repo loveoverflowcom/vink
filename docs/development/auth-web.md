@@ -18,7 +18,7 @@ principal, bản nháp. Dùng [API Auth đã có](../../services/vink-app/contra
 | --- | --- |
 | ACC-03 / USER-08@r2 | Must — Pilot / `PRODUCT_CONFIRMED`: [PRD §14.6](../../prd/requirements.md#146-tài-khoản-acc-03), [DecisionDelta](../architecture/product-decisions-20261110.md) tại `af3c34b` dòng 41 |
 | O-12@r2 | `PRODUCT_CONFIRMED`: [proposal](../../decisions/proposals/O-12.r2.toml), [signoff](../../decisions/signoffs/O-12.r2.toml). Server chuẩn hóa NFKC, đếm 10–128 code point cho mật khẩu mới, dữ liệu nhập tối đa 4096 byte; login giữ đường tương thích hash cũ |
-| O-11@r1 | `OPEN`: [DecisionDelta](../architecture/product-decisions-20261110.md) tại `af3c34b` dòng 87. Khôi phục tách khỏi mã email |
+| O-11@r1 | `OPEN` ở registry; 13/11 chủ sản phẩm xác nhận kênh email và luồng riêng ở [#181](https://github.com/loveoverflowcom/vink/issues/181). [Proposal r2](../../decisions/proposals/O-11.r2.toml) pending, chưa có runtime |
 | D-05@r1 | `PROVISIONAL`: [decision log](../architecture/decisions.md) tại `73ab92f` dòng 47 và [ADR](../architecture/auth-authority.md). Gate production giữ nguyên |
 
 ## 1. Một nguồn trạng thái phiên
@@ -162,3 +162,11 @@ password; trình duyệt chưa có phase riêng cho mode đó.
 - Các view nháp còn đọc nối tiếp: lần đọc mới có thể đợi câu trả lời cũ đến hạn; dữ liệu danh
   sách thuộc scope cũ bị gỡ. Thảo luận đã có cơ chế bỏ lượt đọc riêng cũ khi đổi scope
   ([Reader reads](discussion-web-reads.md)).
+
+## Đặc tả recovery #181 (chưa triển khai)
+
+[Luồng Web → App → Identity](../architecture/password-recovery.md) và [LayoutSpec](../design/password-recovery.md)
+đề xuất entry “Quên mật khẩu?” riêng trên `/toi`, không đổi các form đăng nhập/enrollment hiện có.
+Trace tại `4c78601` xác nhận tài khoản password-only chưa có đường Web/App gắn email đã xác minh;
+đó là dependency bắt buộc, không dùng mã sign-in để gộp tài khoản. Scope này chỉ có tài liệu và
+O-11@r2 pending; chưa chạy browser/DB recovery và không kế thừa PASS Auth bên trên cho recovery.

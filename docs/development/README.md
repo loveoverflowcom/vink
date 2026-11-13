@@ -30,6 +30,11 @@ chưa tích hợp composer/reaction/sticker persistence.
 
 [Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
 
+## Nền test-domain/container
+
+[Runbook và lệnh infra](../../infra/test/README.md) tách build image, publish GHCR,
+DNS plan và deploy; không thay các workflow local. Mẫu cần facts target thật, chưa phải test online.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,
@@ -193,6 +198,12 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 (mặc định `http://127.0.0.1:3000`): lệnh ghi từ một origin khác bị trả `403`.
 
 ## Lệnh
+
+Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workflows.md):
+`build api`, `dev api --auth identity`, `dev worker`, `dev web`, `dev preview`,
+`verify unit app --filter …`, `verify web --scenario password`; thêm `--plan` để xem phụ thuộc,
+hoặc `doctor` trước lệnh để kiểm prerequisite. Những lệnh tổng hợp bên dưới giữ compatibility.
+API mode bỏ bundle và SSR/static routes, vẫn biên dịch dependency Rust SSR.
 
 | Lệnh | Việc thực hiện | Thoát khác 0 khi |
 | --- | --- | --- |

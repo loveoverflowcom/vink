@@ -104,7 +104,7 @@ Scenario viết dạng `model/scenario`; số trong ngoặc là bước trong `*
 | Yêu cầu | Vì sao không model | Đặc tả | Implementation và gap |
 | --- | --- | --- | --- |
 | HTG-01..06 | Quyền của hashtag là hệ quả của “chỉ index bài đủ điều kiện” (đã có trong M1/M5); phần còn lại là hàm thuần trên chuỗi, hợp unit test hơn | [hashtag](../architecture/hashtags.md) | **Chưa có** grammar, projection, tham số lọc, UI |
-| ACC-03 | Auth được kiểm qua PostgreSQL và hai binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | `persistence-api` + [`web`](auth-web.md) cho đăng ký, đăng nhập và thêm mật khẩu. `O-12@r2` đã áp dụng, `O-11` vẫn `OPEN`. CMP và production còn thiếu |
+| ACC-03 | Auth được kiểm qua PostgreSQL và hai binary thật | [ADR D-05 §12](../architecture/auth-authority.md#12-đổi-hướng-10112026-username--mật-khẩu-là-chính) | `persistence-api` + [`web`](auth-web.md) cho đăng ký, đăng nhập và thêm mật khẩu. `O-12@r2` đã áp dụng; [recovery #181](../architecture/password-recovery.md) có spec + O-11@r2 `PENDING`, registry hiện hành vẫn `O-11@r1 OPEN`, runtime chưa có. CMP và production còn thiếu |
 | WR-04, ED-02, D-11 | `DEFERRED` | — | Không triển khai |
 
 ## 2. Acceptance của lượt tài liệu/model
@@ -189,5 +189,5 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
   kênh thông báo quản trị viên. Đã có đặc tả kiến trúc và hợp đồng dữ liệu cho pilot đối chiếu song song
   trên môi trường cô lập tại [đặc tả pilot AI kiểm duyệt tác phẩm](../architecture/moderation-ai-pilot.md)
-  (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r1`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r1.toml) `PENDING`).
+  (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r2`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`).
 - **Model checking (Apalache):** NOT_RUN. Simulation là thực thi ngẫu nhiên có biên, không vét cạn.

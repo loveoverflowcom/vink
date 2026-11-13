@@ -153,7 +153,7 @@ kiểm tương thích hợp đồng/script). Chưa dựng queue/worker/provider 
 **không** phù hợp: nó là tín hiệu “chỉ được giữ lại, không bao giờ làm sạch” của policy ứng viên cũ,
 khác ngữ nghĩa evaluator quyết định. Phương án thiết kế cho pilot AI đối chiếu song song bằng bài gửi
 thật trên môi trường cô lập xem tại [đặc tả pilot AI kiểm duyệt tác phẩm](moderation-ai-pilot.md)
-(`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r1`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r1.toml) `PENDING`).
+(`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r2`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`).
 
 ## 5. Quản trị viên, moderator và phản đối
 

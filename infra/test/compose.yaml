@@ -1,0 +1,106 @@
+# Pair with services/postgres/compose.yaml. Never use the local overlay (it publishes a DB port).
+name: vink-test
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/bootstrap_password
+    volumes:
+      - ${VINK_TEST_SECRETS_DIR:?render inventory first}/postgres-bootstrap-password:/run/secrets/bootstrap_password:ro
+  app:
+    image: ${VINK_TEST_APP_IMAGE:?actual registry digest required}
+    platform: ${VINK_TEST_PLATFORM:?verified target platform required}
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/app-runtime.env"]
+    environment:
+      VINK_PROFILE: production
+      VINK_BIND: 0.0.0.0:3000
+      VINK_PUBLIC_ORIGIN: ${VINK_PUBLIC_ORIGIN:?}
+      VINK_SITE_ROOT: /opt/vink/site
+      VINK_AUTH_SIGN_IN: disabled
+      VINK_IDENTITY_SOCKET: /run/vink-identity/identity.sock
+      VINK_IDENTITY_SERVER_UID: ${VINK_TEST_UID:?}
+      VINK_LOG_FORMAT: json
+    ports: ["127.0.0.1:${VINK_TEST_HOST_PORT:?}:3000"]
+    volumes: ["${VINK_TEST_SOCKET_DIR:?}:/run/vink-identity:ro"]
+    stop_grace_period: 20s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, http://127.0.0.1:3000/health/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  worker:
+    image: ${VINK_TEST_WORKER_IMAGE:?}
+    platform: ${VINK_TEST_PLATFORM:?}
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/worker-runtime.env"]
+    environment:
+      VINK_PROFILE: production
+      VINK_PUBLIC_ORIGIN: ${VINK_PUBLIC_ORIGIN:?}
+      VINK_WORKER_EVALUATION: disabled
+      VINK_AUTH_SIGN_IN: disabled
+      VINK_LOG_FORMAT: json
+    stop_grace_period: 20s
+  identity:
+    image: ${VINK_TEST_IDENTITY_IMAGE:?}
+    platform: ${VINK_TEST_PLATFORM:?}
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/identity-runtime.env"]
+    environment:
+      VINK_IDENTITY_SOCKET: /run/vink-identity/identity.sock
+      VINK_IDENTITY_CALLER_UID: ${VINK_TEST_UID:?}
+      VINK_LOG_FORMAT: json
+    volumes: ["${VINK_TEST_SOCKET_DIR:?}:/run/vink-identity"]
+    stop_grace_period: 20s
+    healthcheck:
+      test: [CMD, curl, --fail, --silent, --unix-socket, /run/vink-identity/identity.sock, http://identity/health/ready]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+  provision:
+    profiles: [provision]
+    image: docker.io/library/postgres:17.11-alpine
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/provision.env"]
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: vink
+      PGDATABASE: postgres
+    volumes: ["./:/opt/vink-postgres:ro"]
+    entrypoint: [/bin/sh, /opt/vink-postgres/provision.sh]
+  migrate-app:
+    profiles: [migration]
+    image: ${VINK_TEST_APP_IMAGE:?}
+    platform: ${VINK_TEST_PLATFORM:?}
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/app-migrator.env"]
+    command: [migrate]
+  migrate-identity:
+    profiles: [migration]
+    image: ${VINK_TEST_IDENTITY_IMAGE:?}
+    platform: ${VINK_TEST_PLATFORM:?}
+    user: "${VINK_TEST_UID:?}:${VINK_TEST_UID:?}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    env_file: ["${VINK_TEST_SECRETS_DIR:?}/identity-migrator.env"]
+    command: [migrate]
+volumes:
+  vink-postgres:
+    external: true
+    name: vink-test-postgres

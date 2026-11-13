@@ -16,8 +16,8 @@ use std::time::{Duration, Instant};
 
 use sqlx::{AssertSqlSafe, Connection, Executor, PgConnection};
 
+use crate::lifecycle::{self, Guard};
 use crate::process::Report;
-use crate::web::{self, Guard};
 
 /// A credential marker sent to the contract; it must never reach a log.
 const CREDENTIAL: &str = "vink-verify-credential-marker-7f3a";
@@ -44,10 +44,23 @@ pub struct Scratch<'a> {
 }
 
 pub fn verify(report: &mut Report, scratch: &Scratch<'_>) -> bool {
-    let dir = scratch.root.join("target/verify-identity");
+    let dir = match lifecycle::run_directory(scratch.root, "verify-identity") {
+        Ok(dir) => dir,
+        Err(error) => {
+            report.fail("Identity evidence directory", &error);
+            return false;
+        }
+    };
+    let socket_owner = match lifecycle::SocketDir::new() {
+        Ok(owner) => owner,
+        Err(error) => {
+            report.fail("Identity socket directory", &error);
+            return false;
+        }
+    };
     let run = Run {
         scratch,
-        socket: dir.join("sock/identity.sock"),
+        socket: socket_owner.0.join("identity.sock"),
         dir,
     };
     report.step(
@@ -219,7 +232,7 @@ pub(crate) fn sql(url: &str, statement: &str) -> Result<i64, String> {
 
 impl Run<'_> {
     fn binary(&self) -> Command {
-        let mut command = Command::new(web::binary(self.scratch.root, "vink-identity"));
+        let mut command = Command::new(lifecycle::binary(self.scratch.root, "vink-identity"));
         command
             .current_dir(self.scratch.root)
             .env_clear()
@@ -236,7 +249,6 @@ impl Run<'_> {
 
     /// Fresh output directory and a socket directory closed to other users.
     fn prepare(&self) -> Result<(), String> {
-        let _ = std::fs::remove_dir_all(&self.dir);
         let sock = self.socket.parent().expect("socket has a directory");
         std::fs::create_dir_all(sock).map_err(|e| e.to_string())?;
         std::fs::set_permissions(sock, std::fs::Permissions::from_mode(0o700))
@@ -260,7 +272,7 @@ impl Run<'_> {
             .envs(env.iter().copied())
             .output()
             .map_err(|e| format!("{label}: {e}"))?;
-        let stderr = web::strip_ansi(&String::from_utf8_lossy(&out.stderr));
+        let stderr = lifecycle::strip_ansi(&String::from_utf8_lossy(&out.stderr));
         std::fs::write(self.log(&format!("config-{label}")), &stderr).map_err(|e| e.to_string())?;
         if out.status.code() != Some(2) || !stderr.contains(needle) {
             return Err(format!(
@@ -381,7 +393,7 @@ impl Run<'_> {
             .env("VINK_IDENTITY_MIGRATE_DATABASE_URL", url)
             .output()
             .map_err(|e| format!("migrate {label}: {e}"))?;
-        let stderr = web::strip_ansi(&String::from_utf8_lossy(&out.stderr));
+        let stderr = lifecycle::strip_ansi(&String::from_utf8_lossy(&out.stderr));
         std::fs::write(self.log(&format!("migrate-{label}")), &stderr)
             .map_err(|e| e.to_string())?;
         Ok((out.status.code(), stderr))
@@ -783,7 +795,7 @@ impl Run<'_> {
             .env("VINK_IDENTITY_SOCKET", &self.socket)
             .output()
             .map_err(|e| e.to_string())?;
-        let second_err = web::strip_ansi(&String::from_utf8_lossy(&second.stderr));
+        let second_err = lifecycle::strip_ansi(&String::from_utf8_lossy(&second.stderr));
         std::fs::write(self.log("second-instance"), &second_err).map_err(|e| e.to_string())?;
         let still = request(&self.socket, "GET", "/health/ready", &[], b"");
         self.stop(first)?;
@@ -864,9 +876,9 @@ impl Run<'_> {
         server_uid: u32,
         extra: &[(&str, &str)],
     ) -> Result<(Guard, u16), String> {
-        let port = web::free_port()?;
+        let port = lifecycle::free_port()?;
         let log = std::fs::File::create(self.log(name)).map_err(|e| e.to_string())?;
-        let child = Command::new(web::binary(self.scratch.root, "vink-app"))
+        let child = Command::new(lifecycle::binary(self.scratch.root, "vink-app"))
             .arg("serve")
             .current_dir(self.scratch.root)
             .env_clear()

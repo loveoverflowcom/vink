@@ -97,7 +97,7 @@ dùng bản sửa hoặc migration roll-forward giữ ba dạng audit.
   production, `scenario` trên job bị bỏ qua.
 - **Pilot AI đối chiếu song song (chưa triển khai):** thiết kế cho thử nghiệm AI ngoài trên môi trường
   `App + PostgreSQL` cô lập xem tại [đặc tả pilot AI kiểm duyệt tác phẩm](../architecture/moderation-ai-pilot.md)
-  (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r1`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r1.toml) `PENDING`);
+  (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r2`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`);
   worker chính hiện tại vẫn không đọc nội dung bài trong `ClaimedJob` và `/health/ready` giữ `ai_moderation: not_implemented`.
 
 ## 4. HTTP API (`no-store`)
