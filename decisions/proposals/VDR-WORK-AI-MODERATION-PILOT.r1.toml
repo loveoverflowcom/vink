@@ -1,0 +1,46 @@
+version = 1
+id = "VDR-WORK-AI-MODERATION-PILOT"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "moderation"
+title = "Pilot AI kiểm duyệt tác phẩm song song trên môi trường cô lập bằng bài gửi thật"
+resolution = """
+Chọn phương án B (chạy song song/bóng tách biệt hoàn toàn khỏi quyết định xuất bản chính thức) cho pilot AI kiểm duyệt tác phẩm trên cặp App + PostgreSQL cô lập sử dụng các bản gửi thật đã bấm gửi duyệt công khai (request-public):
+
+1. Tách luồng chính thức và luồng đối chiếu pilot: luồng kiểm duyệt chính thức giữ nguyên quy tắc hiện hành (người duyệt mở và kết thúc ca trên moderation_cases, viết work_revision_moderation/publications/work_appeals). Runner pilot chạy song song với hàng đợi và bảng kết quả riêng (work_ai_pilot_jobs, work_ai_pilot_results), không có đường ghi sang các bảng quyết định chính thức hoặc phát hành bài.
+2. UI người duyệt chạy mù (blind): màn hình ca kiểm duyệt không hiển thị kết quả AI pilot trước khi người duyệt kết luận để giữ độc lập ground truth. Nếu người duyệt kết thúc trước, kết quả AI đến sau chỉ ghi dấu human_concluded_first = true để đối soát.
+3. Dữ liệu và bất biến an toàn: working_drafts và autosave (save_draft / capture_snapshot) không bao giờ tạo job AI (MOD-05, INV-08). Chỉ revision có yêu cầu công khai đang active từ request-public mới hợp lệ; pre-flight và pre-record kiểm tra lại intent, audience='public', lifecycle='active' và set-private (rút về riêng tư) để hủy/loại bỏ kết quả. Payload gửi ra ngoài tối giản ở { title, blocks } chuẩn hóa Unicode NFC kèm policy_version tách khối dữ liệu tác giả khỏi chỉ dẫn hệ thống; loại bỏ ID/tên/email tác giả, ID bài viết, bản nháp, ghi chú ca, lịch sử duyệt, phản đối.
+4. Kiểm soát lỗi và dừng khẩn: giữ hợp đồng RawEvaluatorOutput đóng kín (deny_unknown_fields), tắt tools/grounding, lease_duration > request_timeout, retry tối đa 3 lần chỉ với timeout/lỗi tạm thời, circuit-breaker cho lỗi xác thực/cấu hình, công tắc dừng cả ở config lẫn runtime mode.
+5. Bảo lưu phạm vi: không thay đổi MOD-06 (ngưỡng tự động công khai), MOD-09/MOD-14, không áp dụng cho bình luận, và không mặc định cho phép gửi bài ra provider ngoài nếu chưa qua kiểm tra tiền điều kiện.
+
+Các điểm mở sản phẩm (open_product) cần chủ sản phẩm xác nhận trước khi bật gọi provider mạng thật:
+- Chọn vendor/gói thương mại (Google Vertex AI / Gemini Paid vs OpenAI API vs Anthropic API vs self-hosted) và xác nhận có yêu cầu Zero Data Retention (ZDR) cứng trước khi chạy hay chấp nhận gói trả phí No-Training + tắt cache/grounding với log chống lạm dụng tối đa <= 30 ngày của vendor.
+- Chốt thời hạn lưu và xóa/hủy DB pilot sau khi hoàn tất báo cáo đối chiếu (đề xuất <= 30 ngày sau nghiệm thu báo cáo).
+- Chốt việc giữ nguyên payload không kèm tags/metadata trong pilot giai đoạn 1 hay cho phép gửi kèm tag thể loại/chủ đề đã duyệt ở giai đoạn tiếp theo.
+"""
+rationale = """
+Đối chiếu mã nguồn tại develop@4ff33bf4 cho thấy EvaluationWorker hiện trả None nếu tắt mock, khiến finish_job chuyển ngay job sang rerouted và mở ca người duyệt. Nếu gán trực tiếp luồng gọi AI vào trong EvaluationWorker::pass (phương án A), độ trễ mạng/timeout/retry tới 3 lần sẽ làm trễ mở moderation_cases (với lease_duration = 30s hiện tại), dễ đụng timeout thuê bao khi gọi AI, và buộc cơ chế automation pause (MOD-14) kiêm vai trò công tắc tắt pilot. Tách runner pilot sang phương án B bảo toàn tuyệt đối MOD-05, MOD-06, MOD-09, MOD-14, PUB-06, INV-08, giúp dừng pilot hoặc mất kết nối không ảnh hưởng hàng đợi người duyệt và thu thập được ma trận đối chiếu mù trên 5 nhóm văn học tiếng Việt (thơ, phương ngữ, lời thoại, trào phúng, bài mơ hồ). Proposal này mang trạng thái PENDING cho tới khi chủ sản phẩm xem xét và signoff.
+"""
+requires = [
+    "ADM-05@r1",
+    "ADM-06@r1",
+    "O-17@r2",
+    "USER-03@r1",
+    "USER-05@r1",
+    "USER-06@r1",
+    "USER-14@r1",
+]
+related_ids = [
+    "D-07",
+    "INV-08",
+    "MOD-05",
+    "MOD-06",
+    "MOD-07",
+    "MOD-08",
+    "MOD-09",
+    "MOD-14",
+    "PUB-06",
+    "S-05",
+]
