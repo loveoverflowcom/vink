@@ -32,6 +32,113 @@ use super::*;
 
 const COMMENT_GOVERNANCE_MIGRATION: i64 = 20_261_119_000_000;
 
+/// A grant inserted after the directory locks must not become an unfenced fallback. Revoke it
+/// while the decision waits: either the decision refuses, or it must wait and observe revocation.
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn a_new_grant_cannot_bypass_the_in_flight_authority_fence(pool: PgPool) {
+    let vink = Arc::new(seeded(&pool).await);
+    let admin = Uuid::now_v7();
+    let reviewer = Uuid::now_v7();
+    insert_principal(&pool, admin, "Admin").await;
+    insert_principal(&pool, reviewer, "Reviewer").await;
+    grant_admin(&pool, admin).await;
+    let expires_at: OffsetDateTime =
+        sqlx::query_scalar("SELECT clock_timestamp() + interval '10 seconds'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let spec = GrantSpec {
+        grantee: Grantee::Principal(PrincipalId::from_uuid(reviewer)),
+        capability: ReviewCapability::Comments,
+        scope: GrantScope::Global,
+        expires_at: Some(expires_at),
+    };
+    create_moderation_grant(
+        &pool,
+        PrincipalId::from_uuid(admin),
+        spec,
+        OffsetDateTime::now_utc(),
+    )
+    .await
+    .unwrap();
+    let comment = post(&vink, other(), None, "A grant changes while waiting").await;
+    let mut pauser = pool.begin().await.unwrap();
+    let pauser_pid = backend_pid(&mut pauser).await;
+    sqlx::query("SELECT id FROM comments WHERE id = $1 FOR UPDATE")
+        .bind(comment.as_uuid())
+        .execute(&mut *pauser)
+        .await
+        .unwrap();
+    let mut deciding = {
+        let vink = Arc::clone(&vink);
+        tokio::spawn(async move {
+            decide(
+                &vink,
+                principal(reviewer),
+                comment,
+                1,
+                ModerationAction::Approve,
+            )
+            .await
+        })
+    };
+    wait_blocked_by(&pool, pauser_pid).await;
+    let new_grant = create_moderation_grant(
+        &pool,
+        PrincipalId::from_uuid(admin),
+        GrantSpec {
+            expires_at: None,
+            ..spec
+        },
+        OffsetDateTime::now_utc(),
+    )
+    .await
+    .unwrap();
+    let mut revoking = pool.begin().await.unwrap();
+    let revoke_pid = backend_pid(&mut revoking).await;
+    sqlx::query("SELECT id FROM moderation_grants WHERE id = $1 FOR UPDATE")
+        .bind(new_grant.as_uuid())
+        .execute(&mut *revoking)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE moderation_grants SET revoked = true, revoked_at = now() WHERE id = $1")
+        .bind(new_grant.as_uuid())
+        .execute(&mut *revoking)
+        .await
+        .unwrap();
+    // The original, locked grant admits the target before waiting, then expires. A grant
+    // inserted meanwhile must not be used as an unlocked fallback, even if its revocation
+    // only becomes visible after the decision has resumed.
+    sqlx::query(
+        "SELECT pg_sleep(GREATEST(EXTRACT(EPOCH FROM ($1::timestamptz - clock_timestamp())), 0)::double precision + 0.02)",
+    )
+    .bind(expires_at)
+    .execute(&pool)
+    .await
+    .unwrap();
+    pauser.rollback().await.unwrap();
+    let result = tokio::select! {
+        result = &mut deciding => {
+            revoking.commit().await.unwrap();
+            result.unwrap()
+        },
+        () = wait_blocked_by(&pool, revoke_pid) => {
+            revoking.commit().await.unwrap();
+            deciding.await.unwrap()
+        },
+    };
+    assert_eq!(result, Err(DiscussionError::NotModerator));
+    assert_eq!(review_of(&pool, comment).await, ("pending".into(), 1));
+    let audits: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM comment_moderation_decisions WHERE comment_id = $1",
+    )
+    .bind(comment.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(audits, 0);
+}
+
 async fn insert_principal(pool: &PgPool, id: Uuid, name: &str) {
     sqlx::query("INSERT INTO principals (id, display_name) VALUES ($1, $2)")
         .bind(id)
@@ -1815,10 +1922,11 @@ async fn concurrent_revocations_membership_seat_expiry_and_self_admin_races(pool
         ),
         vink.remove_own_comment(other(), sample_work(), c5),
     );
-    assert!(matches!(
-        (&res_mod, &res_rm),
-        (Ok(_), Ok(_)) | (Err(DiscussionError::Removed), Ok(_)) | (Ok(_), Err(_))
-    ));
+    assert!(res_rm.is_ok(), "writer removal race: {res_rm:?}");
+    assert!(
+        matches!(res_mod, Ok(_) | Err(DiscussionError::Removed)),
+        "moderation race: {res_mod:?}"
+    );
 
     let c6 = post(
         &vink,
