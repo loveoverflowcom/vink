@@ -174,3 +174,10 @@ nên rollback binary phải đi kèm script rollback tương ứng:
    nguyên, không ai bị đăng xuất.
 4. Hai script được chạy trên PostgreSQL thật trong `verify postgres`. Luôn `pg_dump` theo owner
    trước khi migrate/rollback ([sao lưu](../../services/postgres/README.md)).
+
+## Recovery #181: chỉ là đặc tả
+
+[Đặc tả recovery](../architecture/password-recovery.md) đề xuất purpose/receipt/retention riêng,
+chống dò account, xử lý thư gửi lại và revoke phiên. Chưa có route, migration hoặc quyền vận hành
+reset; không dùng lệnh disable/enable hay sửa trực tiếp password hash để giả lập recovery đã nghiệm
+thu. Các mục vận hành và retention ở trên là hiện trạng, không tự bao phủ bảng/route đề xuất.

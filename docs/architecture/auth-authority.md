@@ -358,8 +358,11 @@ cùng tài khoản** (Argon2id, chuỗi PHC, rehash khi tham số đổi): đó 
 
 2. Lỗi đăng nhập đồng nhất (không lộ username tồn tại); rate limit theo mạng nguồn **và** theo
    username; đổi mật khẩu thu hồi phiên khác.
-3. Khôi phục tài khoản (O-11): nếu không có email, quên mật khẩu là mất tài khoản. Đề xuất email đã
-   xác minh là kênh khôi phục **tùy chọn**, tái dùng challenge/outbox hiện có.
+3. Khôi phục tài khoản (O-11): ngày 13/11/2026 chủ sản phẩm xác nhận email và luồng riêng
+   ([#181](https://github.com/loveoverflowcom/vink/issues/181)). [Đặc tả recovery](password-recovery.md)
+   tách hiện trạng khỏi đích, có dependency gắn email cho account password-only, proof riêng và
+   concurrency/ACK. [O-11@r2](../../decisions/proposals/O-11.r2.toml) vẫn `PENDING`: email tùy chọn
+   và thu hồi mọi phiên chưa được signoff; `O-11@r1 OPEN` và D-05 Provisional giữ nguyên.
 4. Tài khoản mã email hiện có có thể thêm username và mật khẩu qua luồng triển khai bên dưới.
 5. Danh sách blocker §9 đổi trọng tâm: deliverability không còn chặn đăng nhập; thêm review lưu trữ
    mật khẩu, chống credential stuffing, và (sau) kiểm mật khẩu đã lộ.
