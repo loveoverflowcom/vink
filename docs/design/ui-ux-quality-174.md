@@ -370,8 +370,12 @@ và test Desktop không thay những bằng chứng đó.
 ## 11. Vòng sửa 2: F-02, lề và padding của dialog/sheet ở chữ lớn (13/11/2026)
 
 Nhánh `codex/ui-large-text-spacing`, base `origin/develop@7d9dc54f63a2b759cc5979007dd4f665fe0ec86f`. Chủ
-sản phẩm yêu cầu “xử lý F-02”; quy tắc dưới đây là **đề xuất thiết kế của agent triển khai**, không
-phải signoff về thẩm mỹ, và đảo được bằng cách đổi hai biến CSS. Mốc: `NO_APPROVED_REFERENCE`.
+sản phẩm yêu cầu “xử lý F-02”; quy tắc dưới đây do agent triển khai đề xuất. **Đã được chủ sản phẩm
+duyệt ngày 13/11/2026** (lời duyệt nguyên văn: “Duyệt quy tắc”, trả lời đề nghị xác nhận quy tắc của
+đúng PR này ở HEAD `84413ef15a3d89ba2efdc0c9ec1e239738deda05`), nên F-02 không còn
+`NEEDS_HUMAN_DESIGN_DECISION`. Lời duyệt chỉ nói về **quy tắc spacing** (hai biến CSS dưới đây): nó không
+duyệt ảnh nào làm mốc, nên mốc vẫn là `NO_APPROVED_REFERENCE` và sổ
+[visual-anchors](visual-anchors.md) không đổi. Quy tắc đảo được bằng cách đổi hai biến CSS.
 
 **F-02 được đo lại và hóa ra có phần khách quan.** Ngoài “cột hẹp”, ở dialog 320×700 chữ 200%
 từ dài nhất (≈173 CSS px) rộng hơn cột còn lại (130 CSS px) nên **tràn qua padding bên phải**
@@ -447,6 +451,6 @@ hủy, mở lại và chính sách bấm ngoài. Unit test `overlay-capture.test
 
 Giới hạn: số đo lấy từ Chrome headless có scrollbar cổ điển 15 CSS px nên dialog hẹp hơn điện thoại thật
 có scrollbar chồng; ở chữ 100% quy tắc cho giá trị token cũ khi bề rộng overlay ≥ 240 CSS px (đã đo
-ở 320/390). Quy tắc chưa được chủ sản phẩm duyệt như một hướng spacing; đổi lại bằng `--vk-overlay-margin`
-và `--vk-overlay-gutter`.
+ở 320/390). Hướng spacing đã được chủ sản phẩm duyệt (xem đầu mục); muốn đổi thì đổi
+`--vk-overlay-margin` và `--vk-overlay-gutter` và chạy lại INV-5.
 
