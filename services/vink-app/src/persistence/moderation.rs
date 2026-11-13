@@ -1159,6 +1159,14 @@ pub async fn create_moderation_grant(
     now: OffsetDateTime,
 ) -> Result<GrantId, ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
+    if let Grantee::Group(group) = spec.grantee {
+        // Lock the group before the admin's principal row to match the global Level 1 -> Level 3 order.
+        let _ = query_scalar::<_, Uuid>("SELECT id FROM moderation_groups WHERE id = $1 FOR SHARE")
+            .bind(group.as_uuid())
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(classify)?;
+    }
     let (directory, seat) = admin_seat(&mut tx, admin, now).await?;
     if spec.expires_at.is_some_and(|at| at <= now) {
         return Err(ModerationActionError::ValidationFailed("expires_in_past"));
@@ -1230,13 +1238,15 @@ pub async fn revoke_moderation_grant(
     now: OffsetDateTime,
 ) -> Result<(), ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
-    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
+    // Lock the grant before the admin's principal row (Level 1 -> Level 3) so a moderator who
+    // also holds an admin seat cannot deadlock against an in-flight comment moderation decision.
     let row: Option<String> =
         query_scalar("SELECT origin FROM moderation_grants WHERE id = $1 FOR UPDATE")
             .bind(grant_id.as_uuid())
             .fetch_optional(&mut *tx)
             .await
             .map_err(classify)?;
+    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
     // Inherited comment grants are revoked through `vink-app moderator revoke`.
     if row.as_deref() != Some("admin") {
         return Err(ModerationActionError::NotFound);
@@ -1318,13 +1328,15 @@ pub async fn set_group_membership(
     now: OffsetDateTime,
 ) -> Result<(), ModerationActionError> {
     let mut tx = pool.begin().await.map_err(classify)?;
-    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
+    // Lock the group before the admin's principal row (Level 1 -> Level 3) so membership changes
+    // serialize without cycling against in-flight comment moderation decisions.
     let locked: Option<Uuid> =
         query_scalar("SELECT id FROM moderation_groups WHERE id = $1 FOR UPDATE")
             .bind(group.as_uuid())
             .fetch_optional(&mut *tx)
             .await
             .map_err(classify)?;
+    let (_, seat) = admin_seat(&mut tx, admin, now).await?;
     if locked.is_none() {
         return Err(ModerationActionError::NotFound);
     }

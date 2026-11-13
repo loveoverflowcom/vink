@@ -1023,7 +1023,7 @@ mod tests {
                 .any(|reply| reply.rejection_reason.is_some())
         );
         let queue: ModerationQueue = round_trip("moderation.queue.json");
-        assert!(queue.items.iter().any(|item| !item.can_decide));
+        assert!(queue.items.iter().all(|item| item.can_decide));
         let decision: ModerationDecisionRequest = round_trip("moderation.decision.request.json");
         assert_eq!(decision.action, "reject");
         let _: ModerationDecision = round_trip("moderation.decision.response.json");

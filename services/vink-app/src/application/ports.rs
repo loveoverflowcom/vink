@@ -324,10 +324,12 @@ pub trait DiscussionStore: Send + Sync {
         mode: CommentsMode,
     ) -> impl Future<Output = Result<Guarded<ModeChange, SettingsError>, StoreError>> + Send;
 
-    /// In one transaction: the actor's active grant under a share lock (a revocation waits or
-    /// wins), `authorize_moderation` (grant + recusal), then `ModerationAction::apply` on the
-    /// locked comment row and an audit row naming the grant and reason. A non-moderator learns
-    /// nothing about the comment (`Denied(NotModerator)` before any lookup).
+    /// In one transaction: acquire directory share locks, lock the comment row, verify actor
+    /// standing and resolve `ModerationDirectory` at post-lock commit time (admin seat, global or
+    /// work-scoped `comments` grant via principal/group, or inherited legacy grant; recusing on own
+    /// comment or own work), then `ModerationAction::apply` and write an append-only audit row with
+    /// exact authority provenance. A principal with no live comment capability learns nothing about
+    /// comments (`Denied(NotModerator)` before any comment lookup).
     fn moderate_comment(
         &self,
         actor: PrincipalId,
@@ -337,7 +339,8 @@ pub trait DiscussionStore: Send + Sync {
         reason: Option<&ModerationReason>,
     ) -> impl Future<Output = Result<Guarded<Transition, LifecycleError>, StoreError>> + Send;
 
-    /// Pending, present comments oldest first; `None` when `actor` holds no active grant.
+    /// Pending, present comments within `actor`'s comment-review scope (excluding recused items),
+    /// oldest first; `None` when `actor` holds no active comment-review authority.
     fn moderation_queue(
         &self,
         actor: PrincipalId,

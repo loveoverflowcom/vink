@@ -3,11 +3,19 @@
 //! only what that decision returns. The schema enforces the two tiers on its own
 //! (`migrations/20261103000000_discussion.sql`), so a defect here cannot store a third tier.
 //!
-//! Lock order, shared by every path: publication → thread → comment row. A submission holds share
-//! locks on the publication, thread and target rows; a mode change updates the thread row and a
-//! moderation decision locks only the comment row, so no two paths wait on each other in reverse.
-//! Literary endorsement (`endorsement.rs`) takes the same prefix with share locks and then only
-//! its own key lock and row, so it never waits on these paths in reverse either.
+//! Lock order, shared by every path:
+//! - Discussion writes: publication -> thread -> comment row -> principal row (`FOR UPDATE`).
+//! - Moderation decisions: Level 1 directory `FOR SHARE` locks (`moderation_admin_seats` ->
+//!   `discussion_moderator_grants` -> `moderation_groups` -> `moderation_group_members` ->
+//!   `moderation_grants`) -> Level 2 comment row (`FOR UPDATE`) -> Level 3 actor principal row
+//!   (`FOR UPDATE`). Directory mutations take Level 1 -> Level 3, preventing AB-BA deadlocks
+//!   while serializing revocation, group removal, seat removal and expiry with decisions.
+//!
+//! A submission holds share locks on the publication, thread and target rows; a mode change
+//! updates the thread row and a moderation decision locks only the comment row, so no two
+//! discussion paths wait on each other in reverse. Literary endorsement (`endorsement.rs`) takes
+//! the same prefix with share locks and then only its own key lock and row, so it never waits
+//! on these paths in reverse either.
 //!
 //! Every write then takes the standing fence (#120): the actor's principal row FOR UPDATE
 //! (`principal::locked_standing`, or `require_active` for writes whose decision does not model
@@ -29,6 +37,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::PgStore;
+use super::moderation::load_moderation_directory;
 use super::outbox;
 use super::postgres::classify;
 use super::principal::{locked_standing, require_active};
@@ -45,9 +54,7 @@ use crate::domain::discussion::lifecycle::{
 use crate::domain::discussion::moderation::{GrantNote, ModerationReason};
 use crate::domain::discussion::outbox::EventKind;
 use crate::domain::discussion::page::{PREVIEW_REPLIES, PageCursor, PageLimit};
-use crate::domain::discussion::policy::{
-    Denied, authorize_mode_change, authorize_moderation, authorize_writer_removal,
-};
+use crate::domain::discussion::policy::{Denied, authorize_mode_change, authorize_writer_removal};
 use crate::domain::discussion::settings::{
     CommentsMode, DiscussionSettings, ModeChange, SettingsError, SettingsGeneration,
 };
@@ -60,6 +67,10 @@ use crate::domain::discussion::visibility::{
 };
 use crate::domain::discussion::{CommentPlacement, StoredPosition};
 use crate::domain::ids::{CommentId, PrincipalId, ThreadId, WorkId};
+use crate::domain::moderation::authority::{
+    AuthorityBasis, AuthorityRefusal, GrantOrigin, ModerationDirectory, ReviewCapability,
+    ReviewTarget,
+};
 
 const SUBMIT: &str = "submit_comment";
 
@@ -91,18 +102,25 @@ struct QueueRow {
 }
 
 impl QueueRow {
-    fn item(self, moderator: PrincipalId) -> Result<QueueItem, StoreError> {
+    fn item(
+        self,
+        moderator: PrincipalId,
+        directory: &ModerationDirectory,
+        now: OffsetDateTime,
+    ) -> Result<QueueItem, StoreError> {
         let writer = PrincipalId::from_uuid(self.author_id);
-        let can_decide = authorize_moderation(
-            moderator,
-            true,
-            writer,
-            PrincipalId::from_uuid(self.owner_id),
-        )
-        .is_ok();
+        let work_id = WorkId::from_uuid(self.work_id);
+        let work_author = PrincipalId::from_uuid(self.owner_id);
+        let can_decide = directory
+            .resolve(
+                moderator,
+                &ReviewTarget::comment(work_id, writer, work_author),
+                now,
+            )
+            .is_ok();
         Ok(QueueItem {
             comment_id: CommentId::from_uuid(self.id),
-            work_id: WorkId::from_uuid(self.work_id),
+            work_id,
             work_title: self.work_title,
             is_root: self.is_root,
             writer: AuthorName {
@@ -117,6 +135,91 @@ impl QueueRow {
                 .ok_or_else(|| integrity("stored version", self.moderation_version))?,
             can_decide,
         })
+    }
+}
+
+/// Level 1 directory share locks for `actor` in canonical table order before locking any comment
+/// or principal row: `moderation_admin_seats` -> `discussion_moderator_grants` ->
+/// `moderation_groups` -> `moderation_group_members` -> `moderation_grants`.
+async fn lock_actor_authority(
+    conn: &mut sqlx::PgConnection,
+    actor: PrincipalId,
+) -> Result<(), StoreError> {
+    let actor_id = actor.as_uuid();
+    let _ = sqlx::query_scalar::<_, Uuid>(
+        "SELECT principal_id FROM moderation_admin_seats WHERE principal_id = $1 FOR SHARE",
+    )
+    .bind(actor_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
+    let _ = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM discussion_moderator_grants
+          WHERE principal_id = $1 AND revoked_at IS NULL
+          ORDER BY id FOR SHARE",
+    )
+    .bind(actor_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
+    let group_ids: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT g.id
+           FROM moderation_groups g
+           JOIN moderation_group_members m ON m.group_id = g.id
+          WHERE m.principal_id = $1
+          ORDER BY g.id FOR SHARE OF g",
+    )
+    .bind(actor_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
+    let _ = sqlx::query_scalar::<_, Uuid>(
+        "SELECT group_id FROM moderation_group_members
+          WHERE principal_id = $1
+          ORDER BY group_id FOR SHARE",
+    )
+    .bind(actor_id)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
+    let _ = sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM moderation_grants
+          WHERE NOT revoked
+            AND capability = 'comments'
+            AND (
+                (grantee_kind = 'principal' AND grantee_id = $1)
+                OR (grantee_kind = 'group' AND grantee_id = ANY($2))
+            )
+          ORDER BY id FOR SHARE",
+    )
+    .bind(actor_id)
+    .bind(&group_ids)
+    .fetch_all(&mut *conn)
+    .await
+    .map_err(classify)?;
+    Ok(())
+}
+
+fn provenance_for_authority(
+    directory: &ModerationDirectory,
+    basis: AuthorityBasis,
+) -> Result<(&'static str, Option<Uuid>, Option<Uuid>), StoreError> {
+    match basis {
+        AuthorityBasis::Admin => Ok(("admin", None, None)),
+        AuthorityBasis::Grant(grant_id) => {
+            let grant = directory
+                .facts()
+                .grants
+                .iter()
+                .find(|g| g.id == grant_id)
+                .ok_or_else(|| integrity("verified grant missing from directory", grant_id))?;
+            match grant.origin {
+                GrantOrigin::InheritedComment => {
+                    Ok(("legacy_grant", Some(grant_id.as_uuid()), None))
+                }
+                GrantOrigin::Admin => Ok(("governance_grant", None, Some(grant_id.as_uuid()))),
+            }
+        }
     }
 }
 
@@ -849,21 +952,23 @@ impl DiscussionStore for PgStore {
         reason: Option<&ModerationReason>,
     ) -> Result<Guarded<Transition, LifecycleError>, StoreError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
-        // Authority at commit: a revocation (UPDATE) waits for this share lock, or this read sees
-        // it committed. Checked before the comment lookup so non-moderators learn nothing.
-        let grant: Option<Uuid> = sqlx::query_scalar(
-            "SELECT id FROM discussion_moderator_grants
-              WHERE principal_id = $1 AND revoked_at IS NULL FOR SHARE",
-        )
-        .bind(actor.as_uuid())
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(classify)?;
-        let Some(grant) = grant else {
+        // Authority at commit: hold Level 1 directory share locks before touching comments
+        // (Level 2) or principals (Level 3), matching moderation mutations to stay deadlock-free.
+        lock_actor_authority(&mut tx, actor).await?;
+        let pre_now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+        let directory_pre = load_moderation_directory(&mut tx, pre_now).await?;
+        if !directory_pre.holds_live_capability(actor, ReviewCapability::Comments, pre_now) {
             return Ok(Guarded::Denied(Denied::NotModerator));
-        };
-        let row: Option<(Uuid, String, Option<String>, i64, Uuid)> = sqlx::query_as(
-            "SELECT c.author_id, c.review, c.removal, c.moderation_version, w.owner_id
+        }
+        if directory_pre.facts().suspended.contains(&actor) {
+            return Err(StoreError::PrincipalSuspended);
+        }
+
+        let row: Option<(Uuid, Uuid, String, Option<String>, i64, Uuid)> = sqlx::query_as(
+            "SELECT t.work_id, c.author_id, c.review, c.removal, c.moderation_version, w.owner_id
                FROM comments c
                JOIN discussion_threads t ON t.id = c.thread_id
                JOIN works w ON w.id = t.work_id
@@ -874,24 +979,41 @@ impl DiscussionStore for PgStore {
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
-        let Some((writer, raw_review, raw_removal, version, work_author)) = row else {
+        let Some((work_id, writer, raw_review, raw_removal, version, work_author)) = row else {
             return Ok(Guarded::NotFound);
         };
-        if let Err(denied) = authorize_moderation(
+
+        // Standing fence after comment lock: an uncommitted suspension waits here and refuses.
+        require_active(&mut tx, actor).await?;
+        let commit_now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+        let directory = load_moderation_directory(&mut tx, commit_now).await?;
+        let verified = match directory.resolve(
             actor,
-            true,
-            PrincipalId::from_uuid(writer),
-            PrincipalId::from_uuid(work_author),
+            &ReviewTarget::comment(
+                WorkId::from_uuid(work_id),
+                PrincipalId::from_uuid(writer),
+                PrincipalId::from_uuid(work_author),
+            ),
+            commit_now,
         ) {
-            return Ok(Guarded::Denied(denied));
-        }
+            Ok(verified) => verified,
+            Err(AuthorityRefusal::Suspended) => return Err(StoreError::PrincipalSuspended),
+            Err(AuthorityRefusal::Recused) => return Ok(Guarded::Denied(Denied::Recused)),
+            Err(AuthorityRefusal::NotAuthorized | AuthorityRefusal::NotAdmin) => {
+                return Ok(Guarded::Denied(Denied::NotModerator));
+            }
+        };
+        let (authority_kind, grant_id, governance_grant_id) =
+            provenance_for_authority(&directory, verified.basis())?;
+
         let decided = action.apply(
             state(&raw_review, raw_removal.as_deref(), version)?,
             expected,
         );
         if let Ok(Transition::Changed(next)) = decided {
-            // A suspended moderator decides nothing, grant or not.
-            require_active(&mut tx, actor).await?;
             sqlx::query(
                 "UPDATE comments SET review = $2, removal = $3, moderation_version = $4,
                         updated_at = now()
@@ -906,14 +1028,16 @@ impl DiscussionStore for PgStore {
             .map_err(classify)?;
             sqlx::query(
                 "INSERT INTO comment_moderation_decisions
-                        (comment_id, version, action, moderator_id, grant_id, reason)
-                 VALUES ($1, $2, $3, $4, $5, $6)",
+                        (comment_id, version, action, moderator_id, authority_kind, grant_id, governance_grant_id, reason)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
             )
             .bind(comment_id.as_uuid())
             .bind(next.version().get())
             .bind(action_code(action))
             .bind(actor.as_uuid())
-            .bind(grant)
+            .bind(authority_kind)
+            .bind(grant_id)
+            .bind(governance_grant_id)
             .bind(reason.map(ModerationReason::as_str))
             .execute(&mut *tx)
             .await
@@ -930,20 +1054,37 @@ impl DiscussionStore for PgStore {
         limit: PageLimit,
     ) -> Result<Option<ModerationQueue>, StoreError> {
         let mut tx = read_snapshot(self.pool()).await?;
-        let moderator: bool = sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM discussion_moderator_grants
-                             WHERE principal_id = $1 AND revoked_at IS NULL)",
-        )
-        .bind(actor.as_uuid())
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(classify)?;
-        if !moderator {
+        let now: OffsetDateTime = sqlx::query_scalar("SELECT clock_timestamp()")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(classify)?;
+        let directory = load_moderation_directory(&mut tx, now).await?;
+        if !directory.holds_live_capability(actor, ReviewCapability::Comments, now) {
             return Ok(None);
         }
+        if directory.facts().suspended.contains(&actor) {
+            return Err(StoreError::PrincipalSuspended);
+        }
+        let Some((global_scope, work_ids)) =
+            directory.capability_scope(actor, ReviewCapability::Comments, now)
+        else {
+            return Ok(None);
+        };
+        let work_uuids: Vec<Uuid> = work_ids.iter().map(|id| id.as_uuid()).collect();
         let pending_total: i64 = sqlx::query_scalar(
-            "SELECT count(*) FROM comments WHERE review = 'pending' AND removal IS NULL",
+            "SELECT count(*)
+               FROM comments c
+               JOIN discussion_threads t ON t.id = c.thread_id
+               JOIN works w ON w.id = t.work_id
+              WHERE c.review = 'pending'
+                AND c.removal IS NULL
+                AND c.author_id <> $1
+                AND w.owner_id <> $1
+                AND ($2::boolean OR t.work_id = ANY($3::uuid[]))",
         )
+        .bind(actor.as_uuid())
+        .bind(global_scope)
+        .bind(&work_uuids)
         .fetch_one(&mut *tx)
         .await
         .map_err(classify)?;
@@ -957,13 +1098,19 @@ impl DiscussionStore for PgStore {
                JOIN works w ON w.id = t.work_id
                JOIN principals a ON a.id = c.author_id
                LEFT JOIN publications p ON p.work_id = w.id
-               LEFT JOIN work_publications wp ON wp.work_id = w.id
                LEFT JOIN revisions rv ON rv.id = p.revision_id
-              WHERE c.review = 'pending' AND c.removal IS NULL
-                AND ($1::timestamptz IS NULL OR (c.created_at, c.id) > ($1, $2))
+              WHERE c.review = 'pending'
+                AND c.removal IS NULL
+                AND c.author_id <> $1
+                AND w.owner_id <> $1
+                AND ($2::boolean OR t.work_id = ANY($3::uuid[]))
+                AND ($4::timestamptz IS NULL OR (c.created_at, c.id) > ($4, $5))
               ORDER BY c.created_at, c.id
-              LIMIT $3",
+              LIMIT $6",
         )
+        .bind(actor.as_uuid())
+        .bind(global_scope)
+        .bind(&work_uuids)
         .bind(after_at)
         .bind(after_id)
         .bind(i64::from(limit.get()) + 1)
@@ -976,7 +1123,7 @@ impl DiscussionStore for PgStore {
         });
         let items = rows
             .into_iter()
-            .map(|row| row.item(actor))
+            .map(|row| row.item(actor, &directory, now))
             .collect::<Result<_, _>>()?;
         Ok(Some(ModerationQueue {
             pending_total,

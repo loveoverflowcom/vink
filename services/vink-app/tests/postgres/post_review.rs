@@ -1016,7 +1016,34 @@ async fn upgrade_and_unused_backout_preserve_comments_and_human_audit(pool: PgPo
     );
     previous.run(&pool).await.unwrap();
     let vink = setup(&pool).await;
-    let id = approved(&pool, &vink).await;
+    // A comment approved + audited by the pre-governance binary (before 20261117/20261119 tables).
+    let id = post(&vink, "Nội dung cần kiểm lại, không ghi vào log").await;
+    let grant_id: Uuid = sqlx::query_scalar(
+        "SELECT id FROM discussion_moderator_grants WHERE principal_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(MODERATOR)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE comments SET review = 'approved', moderation_version = 2 WHERE id = $1")
+        .bind(id.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id, grant_id, reason)
+         VALUES ($1, 2, 'approve', $2, $3, NULL)",
+    )
+    .bind(id.as_uuid())
+    .bind(MODERATOR)
+    .bind(grant_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    OutboxWorker::production(pool.clone(), OutboxSettings::default())
+        .run_once()
+        .await
+        .unwrap();
     MIGRATOR.run(&pool).await.unwrap();
     let mut conn = pool.acquire().await.unwrap();
     sqlx::raw_sql(include_str!(

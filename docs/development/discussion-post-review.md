@@ -44,7 +44,7 @@ Author remove đã purge body được nhận diện bằng terminal removal, kh
 
 ```text
 submit:         publication SHARE → thread SHARE → target SHARE → principal UPDATE → rows mới
-moderator:      grant SHARE → comment UPDATE → principal UPDATE → human audit
+moderator:      directory SHARE (admin/legacy/groups/members/grants) → comment UPDATE → principal UPDATE → human audit
 author remove:  comment UPDATE → principal UPDATE
 request:        command-key advisory → comment UPDATE → ticket/event/delivery MỚI
 result:         command-key advisory → delivery UPDATE → ticket UPDATE → result

@@ -16,7 +16,8 @@ người dùng tới source/assertion hiện có; đây không phải bảng k�
 [Bình luận hai tầng](discussion-core.md) ghi core, use case application, migration/adapter
 PostgreSQL và registry D2T-INV. Vink sở hữu bình luận theo
 [ADR ownership](../architecture/discussion-ownership.md) (chốt 03/11/2026). HTTP API v1 có route
-đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt bằng grant trong database; #120 DISC-02/03 thêm public projection không phụ thuộc Identity và overlay riêng tư có cursor riêng ([quyết định](../architecture/discussion-reads.md)). [UI thảo luận](../design/discussion-ui.md) dùng public projection cho SSR/browser và own list/lookup sau hydration; [Web reads](discussion-web-reads.md) giữ cursor, capability và request theo Session scope. Kiểm thử ghi cục bộ dùng LocalFixture có nhãn rõ; đăng nhập production mặc định khóa và chưa có UI kiểm duyệt.
+đọc/gửi/gỡ/bật-tắt và authority kiểm duyệt qua `ModerationDirectory` (admin seat, grant cá
+nhân/nhóm `comments` và grant legacy trong database); #120 DISC-02/03 thêm public projection không phụ thuộc Identity và overlay riêng tư có cursor riêng ([quyết định](../architecture/discussion-reads.md)). [UI thảo luận](../design/discussion-ui.md) dùng public projection cho SSR/browser và own list/lookup sau hydration; [Web reads](discussion-web-reads.md) giữ cursor, capability và request theo Session scope. Kiểm thử ghi cục bộ dùng LocalFixture có nhãn rõ; đăng nhập production mặc định khóa và chưa có UI kiểm duyệt.
 
 [Đọc công khai có điều kiện](public-conditional-reads.md) (READ-01, [#52](https://github.com/loveoverflowcom/vink/issues/52))
 ghi ETag mạnh trên đúng byte JSON, `private, no-cache`, thứ tự lỗi trước 304, bằng chứng và số đo.

@@ -415,6 +415,22 @@ impl ModerationDirectory {
         })
     }
 
+    /// Whether this actor holds at least one live basis for this capability (or an admin seat),
+    /// ignoring suspension so callers can separate missing authority from suspended authority.
+    pub fn holds_live_capability(
+        &self,
+        actor: PrincipalId,
+        capability: ReviewCapability,
+        now: OffsetDateTime,
+    ) -> bool {
+        self.0.admins.contains(&actor)
+            || self
+                .0
+                .grants
+                .iter()
+                .any(|g| g.live(now) && g.capability == capability && self.holds(actor, g.grantee))
+    }
+
     /// Whether this actor has at least one active grant for this capability, or is an admin.
     pub fn has_any_capability(
         &self,
@@ -422,16 +438,36 @@ impl ModerationDirectory {
         capability: ReviewCapability,
         now: OffsetDateTime,
     ) -> bool {
+        !self.suspended(actor) && self.holds_live_capability(actor, capability, now)
+    }
+
+    /// Works covered by `actor` for `capability` at `now`: `(true, _)` denotes global scope,
+    /// `(false, work_ids)` lists distinct covered works. `None` when suspended or unauthorized.
+    pub fn capability_scope(
+        &self,
+        actor: PrincipalId,
+        capability: ReviewCapability,
+        now: OffsetDateTime,
+    ) -> Option<(bool, Vec<WorkId>)> {
         if self.suspended(actor) {
-            return false;
+            return None;
         }
-        if self.0.admins.contains(&actor) {
-            return true;
+        let mut global = self.0.admins.contains(&actor);
+        let mut work_ids = Vec::new();
+        for grant in &self.0.grants {
+            if grant.live(now) && grant.capability == capability && self.holds(actor, grant.grantee)
+            {
+                match grant.scope {
+                    GrantScope::Global => global = true,
+                    GrantScope::Work(work) => {
+                        if !work_ids.contains(&work) {
+                            work_ids.push(work);
+                        }
+                    }
+                }
+            }
         }
-        self.0
-            .grants
-            .iter()
-            .any(|g| g.live(now) && g.capability == capability && self.holds(actor, g.grantee))
+        (global || !work_ids.is_empty()).then_some((global, work_ids))
     }
 
     fn audit(seat: AdminSeat, change: DirectoryChange) -> DirectoryAudit {

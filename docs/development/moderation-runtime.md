@@ -13,8 +13,11 @@ Bốn chiều trạng thái:
 2. **Architecture decision:** không có ADR mới. Thứ tự khóa, lease và hàng ca duyệt dưới đây là
    thiết kế triển khai, không phải quyết định `Accepted`.
 3. **Implementation level:** `persistence-api` + `worker-provider` (chỉ evaluator kịch bản cho
-   local/test) + `web`: reader thay thế, hàng ca tác phẩm, phản đối và dừng/bật tự động. Chưa có AI
-   provider thật, điều tra riêng, ca bình luận hay UI quản lý grant/nhóm.
+   local/test) + `web` + governance cho bình luận: reader thay thế, hàng ca tác phẩm, phản đối,
+   dừng/bật tự động, và nối quyền kiểm duyệt bình luận (`admin` seat, grant cá nhân/nhóm
+   `comments` toàn Vink hoặc theo `WorkId`, kế thừa `discussion_moderator_grants`, hàng chờ theo
+   phạm vi + tự né và provenance quyết định). Chưa có AI provider thật, điều tra riêng, ca bình
+   luận, UI kiểm duyệt bình luận hay UI quản lý grant/nhóm.
 4. **Verification evidence:** xem mục 7.
 
 ## 1. Lưu trữ (`20261117000000_work_moderation_runtime.sql`)
@@ -28,6 +31,7 @@ Bốn chiều trạng thái:
 | `moderation_admin_seats` / `_audit` | Ghế admin do CLI cấp. Chỉ thay đổi thật mới ghi audit. |
 | `moderation_groups`, `moderation_group_members`, `moderation_grants` | Grant `works`/`comments` cho người hoặc nhóm, toàn Vink hoặc một `WorkId`, có thể có hạn. Grant bình luận cũ trong `discussion_moderator_grants` được đọc như grant kế thừa. |
 | `moderation_directory_audit` | Cấp, thu hồi, tạo nhóm, thêm/bớt thành viên. |
+| `comment_moderation_decisions` (`20261119000000`) | Mở rộng provenance kiểm duyệt bình luận: `authority_kind` (`legacy_grant`, `governance_grant`, `admin`), `grant_id` nullable (giữ backfill dòng cũ thành `legacy_grant`), `governance_grant_id -> moderation_grants(id)` và `CHECK` buộc khớp provenance; script rollback từ chối khi đã có dòng `governance_grant` hoặc `admin`. |
 | `moderation_cases`, `moderation_case_notes` | Tối đa một ca mở mỗi revision. Ca gắn digest và `decision_version`. Ghi chú nội bộ chỉ được lưu khi CAS version thành công. |
 | `moderation_automation_state` / `_audit` | Chế độ, version, người đổi và lý do. |
 
@@ -48,6 +52,13 @@ Mọi đường ghi cùng chiều với lệnh tác giả #158, discussion và e
 - Kết luận ca đọc `work_id` của ca không khóa, rồi khóa tiền tố tác phẩm trước khi khóa ca.
 - Dừng tự động khóa độc quyền dòng chế độ, rồi chuyển mọi job `open`/`leased` sang `rerouted`
   và mở ca cho revision còn chờ, trong cùng commit.
+- Đường kiểm duyệt bình luận và lệnh directory (`create_moderation_grant` nhóm,
+  `revoke_moderation_grant`, `set_group_membership`) giữ thứ tự khóa thống nhất: Level 1
+  directory (`moderation_admin_seats` → `discussion_moderator_grants` → `moderation_groups` →
+  `moderation_group_members` → `moderation_grants`) → Level 2 `comments FOR UPDATE` → Level 3
+  `principals FOR UPDATE` (fence standing), rồi đọc `clock_timestamp()` và `ModerationDirectory`
+  sau khóa trước khi quyết định. Nhờ đó không sinh AB-BA deadlock ngay cả khi chính admin tự thu
+  hồi quyền hoặc rời nhóm đang dùng để duyệt bình luận.
 
 ## 3. Consumer đánh giá trong `vink-worker`
 
@@ -75,6 +86,8 @@ Mọi đường ghi cùng chiều với lệnh tác giả #158, discussion và e
 | Method | Path | Quyền |
 | --- | --- | --- |
 | `GET` | `/api/v1/moderation/works/queue` | Có grant `works` hoặc ghế admin. Chỉ liệt kê ca mà người gọi có quyền và không phải tự né. |
+| `GET` | `/api/v1/moderation/comments` | Có ghế admin, grant cá nhân/nhóm `comments` (global hoặc `WorkId`) hoặc grant kế thừa. Lọc sẵn phạm vi tác phẩm và tự né trước `pending_total` và phân trang (`can_decide` luôn `true` trên từng mục trả về). |
+| `POST` | `/api/v1/moderation/comments/{id}/decisions` | Kiểm lại standing, `ModerationDirectory` (cùng `WorkId` và tự né `403 moderator_recused`, ngoài phạm vi `403 not_moderator`) sau khóa, ghi `comment_moderation_decisions` kèm provenance (`legacy_grant`/`governance_grant`/`admin`). |
 | `GET` | `/api/v1/moderation/works/cases/{id}` | Như trên. Trả snapshot đã gửi (`document`, `content_digest`), lịch sử ghi chú. Ca trên tác phẩm của chính mình trả `403 recused`. |
 | `POST` | `.../cases/{id}/claim`, `release`, `note`, `escalate`, `takeover` | Theo core `ReviewCase`, fence `expected_version`. |
 | `POST` | `.../cases/{id}/conclude` | `approved`/`rejected` (bác cần lý do), fence ca + `DecisionVersion`. |
@@ -161,7 +174,10 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
   và commit, gửi khi dừng, retry, ca/grant/nhóm/tự né; thêm CLI admin có timeout, reader hidden,
   ghi bình luận bị chặn/tự gỡ/công khai lại, phản đối gửi đồng thời, admin final, kết luận đồng
   thời, phiên bản cũ, riêng tư và ý định đã chuyển sang bản mới. Chuỗi upgrade/backout dùng
-  migration thật; không phải model evidence.
+  migration thật; không phải model evidence. `tests/postgres/comment_moderation_governance.rs` phủ
+  đường kiểm duyệt bình luận với admin/grant cá nhân/nhóm/kế thừa, tách `works`/`comments`, phạm
+  vi `WorkId`, tự né, fallback provenance, phân trang/cursor khi thu hẹp quyền, tác phẩm ẩn/rút
+  duyệt (`O-03@r2`), schema provenance/upgrade/backout, hậu kiểm và barrier race không deadlock.
 - `cargo xtask verify discussion`: M3 có `ReviewWithdrawn`, 53/53 bước qua pure production và
   counterexample `mutatedWithdrawnStep` (không được để lộ body). M1 64 và M4 105 giữ nguyên.
   Simulation có biên; Apalache `NOT_RUN`. M3 không mô hình hóa HTML hay tên tác giả.

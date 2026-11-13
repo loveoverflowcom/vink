@@ -1455,9 +1455,11 @@ async fn moderators_recuse_from_their_own_comments_and_their_own_works(pool: PgP
         .iter()
         .map(|i| (i.comment_id, i.can_decide))
         .collect();
-    assert_eq!(flags, vec![(readers, true), (moderators_own, false)]);
+    assert_eq!(queue.pending_total, 1);
+    assert_eq!(flags, vec![(readers, true)]);
     let authors_view = vink.moderation_queue(author(), None, None).await.unwrap();
-    assert!(authors_view.items.iter().all(|item| !item.can_decide));
+    assert_eq!(authors_view.pending_total, 0);
+    assert!(authors_view.items.is_empty());
     assert_eq!(
         decide(&vink, moderator(), readers, 1, ModerationAction::Approve)
             .await
@@ -1525,7 +1527,7 @@ async fn rejection_reasons_reach_only_their_writer_and_are_required_in_sql(pool:
         (
             "INSERT INTO comment_moderation_decisions (comment_id, version, action, moderator_id)
              VALUES ($1, 9, 'approve', $2)",
-            "comment_moderation_decisions_grant_required",
+            "comment_moderation_decisions_provenance_required",
         ),
     ] {
         let error = sqlx::query(statement)
@@ -2211,3 +2213,6 @@ async fn upgrade_records_premoderation_for_existing_comments(pool: PgPool) {
 
 #[path = "discussion_reads.rs"]
 mod reads;
+
+#[path = "comment_moderation_governance.rs"]
+mod governance;

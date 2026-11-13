@@ -687,10 +687,14 @@ async fn test_schema_upgrade_and_legacy_compatibility(pool: PgPool) {
 const PUBLICATION_MIGRATION: i64 = 20_261_116_000_000;
 const MODERATION_MIGRATION: i64 = 20_261_117_000_000;
 const APPEALS_MIGRATION: i64 = 20_261_118_000_000;
+const COMMENT_GOVERNANCE_MIGRATION: i64 = 20_261_119_000_000;
 
 fn down_script() -> String {
     format!(
-        "{}\n{}\n{}",
+        "{}\n{}\n{}\n{}",
+        include_str!(
+            "../../migrations-rollback/20261119000000_comment_moderation_governance.down.sql"
+        ),
         include_str!("../../migrations-rollback/20261118000000_work_appeals.down.sql"),
         include_str!("../../migrations-rollback/20261117000000_work_moderation_runtime.down.sql"),
         include_str!(
@@ -752,7 +756,8 @@ async fn upgrade_backfills_paired_state_for_old_pointers(pool: PgPool) {
         vec![
             PUBLICATION_MIGRATION,
             MODERATION_MIGRATION,
-            APPEALS_MIGRATION
+            APPEALS_MIGRATION,
+            COMMENT_GOVERNANCE_MIGRATION,
         ]
     );
 
