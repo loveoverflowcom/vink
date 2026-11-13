@@ -187,5 +187,7 @@ negative control. Không invariant nào dựa vào antecedent không đạt tớ
   bộ sưu tập, hashtag, Đề xuất/Top 100. [Auth Web](auth-web.md) đã có form đăng ký, đăng nhập và
   thêm mật khẩu theo `O-12@r2`; CMP chưa có auth.
 - **AI evaluator & vận hành:** Chưa có bộ đánh giá tiếng Việt (MOD-06), chưa có provider AI thật hay
-  kênh thông báo quản trị viên.
+  kênh thông báo quản trị viên. Đã có đặc tả kiến trúc và hợp đồng dữ liệu cho pilot đối chiếu song song
+  trên môi trường cô lập tại [đặc tả pilot AI kiểm duyệt tác phẩm](../architecture/moderation-ai-pilot.md)
+  (`DESIGN_PROPOSED`, `NOT_IMPLEMENTED`, proposal [`VDR-WORK-AI-MODERATION-PILOT@r2`](../../decisions/proposals/VDR-WORK-AI-MODERATION-PILOT.r2.toml) `PENDING`).
 - **Model checking (Apalache):** NOT_RUN. Simulation là thực thi ngẫu nhiên có biên, không vét cạn.
