@@ -1895,8 +1895,51 @@ async fn concurrent_revocations_membership_seat_expiry_and_self_admin_races(pool
             0
         ),
     );
-    assert!(res_human.is_ok(), "human race: {res_human:?}");
-    assert!(res_worker.is_ok(), "worker race: {res_worker:?}");
+    // Either contender may acquire the comment first. A worker hold advances version 2 → 3,
+    // so a human carrying version 2 must then conflict; a human first supersedes the ticket.
+    // Require the matching durable state, receipt and audit, never accept an arbitrary error.
+    let (review, outcome, observed, audits) = match res_human {
+        Ok(state) => {
+            assert_eq!(state.review(), Review::Approved);
+            assert_eq!(state.version().get(), 3);
+            ("approved", "superseded", 3_i64, 2_i64)
+        }
+        Err(DiscussionError::ModerationConflict { current: 3 }) => ("pending", "held", 2, 1),
+        other => panic!("human race: {other:?}"),
+    };
+    assert!(
+        matches!(
+            res_worker,
+            Ok(Completion::Succeed {
+                already_applied: false
+            })
+        ),
+        "worker race: {res_worker:?}"
+    );
+    let final_state: (String, i64, Option<String>) =
+        sqlx::query_as("SELECT review, moderation_version, removal FROM comments WHERE id = $1")
+            .bind(c6.as_uuid())
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(final_state, (review.into(), 3, None));
+    let receipt: (String, i64, i64) = sqlx::query_as(
+        "SELECT outcome, observed_version, resulting_version
+           FROM comment_post_review_receipts WHERE ticket_id = $1",
+    )
+    .bind(ticket)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(receipt, (outcome.into(), observed, 3));
+    let count: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM comment_moderation_decisions WHERE comment_id = $1",
+    )
+    .bind(c6.as_uuid())
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(count, audits);
     let _: GrantId = g_live;
 }
 
