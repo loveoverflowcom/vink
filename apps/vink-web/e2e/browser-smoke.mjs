@@ -1578,7 +1578,12 @@ async function accountAppearance(page) {
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
-  check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
+  // CDP media/key acknowledgments do not guarantee style recalculation has settled.
+  // Keep every focus/check/motion condition, with a bounded wait and a second-frame check.
+  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`;
+  await page.waitFor(forcedColorsReady, 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms', 2000);
+  await editorLayoutReady(page);
+  check(await page.eval(forcedColorsReady), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
   await appearanceFocusContrast(page, 'forced-colors');
   await page.capture('appearance-forced-colors-reduced-motion');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
@@ -3363,7 +3368,12 @@ async function editorChrome(page) {
   await page.viewport(390, 420);
   await page.typeInBody('');
   await page.lineStart();
-  check(await page.eval(`(() => { const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`), 'reduced mobile viewport keeps the active caret visible without fixed controls');
+  // CodeMirror schedules selection scrolling after resize. Observe the resulting geometry,
+  // without scrolling/focusing on the test's behalf or weakening the viewport bounds.
+  const mobileCaretReady = `(() => { if (!document.activeElement?.matches('.cm-content') || !getSelection()?.rangeCount) return false; const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`;
+  await page.waitFor(mobileCaretReady, 'reduced mobile viewport keeps the active caret visible without fixed controls', 2000);
+  await editorLayoutReady(page);
+  check(await page.eval(mobileCaretReady), 'reduced mobile viewport keeps the active caret visible without fixed controls');
   await page.capture('editor-short-mobile-390');
   await page.viewport(1440);
   await page.eval(`document.documentElement.dataset.theme = 'light'; document.querySelector('#draft-title').focus(); document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
