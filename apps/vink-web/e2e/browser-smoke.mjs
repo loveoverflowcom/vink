@@ -371,7 +371,34 @@ class Page {
               paddingLeft: s.paddingLeft, paddingRight: s.paddingRight,
               textLines: new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size };
           };
+          const preferenceSurface = prefix === 'page' ? '.vk-appearance-card' : '#profile-menu';
+          const surface = document.querySelector(preferenceSurface);
+          const surfaceStyle = getComputedStyle(surface);
+          const region = surface.querySelector('.vk-appearance-region');
+          const rows = [...region.querySelectorAll('.vk-appearance-row')];
           return { prefix, surface: bounds(prefix === 'page' ? '#me' : '#profile-menu'),
+            preferences: {
+              surface: bounds(preferenceSurface), padding: ['Top', 'Right', 'Bottom', 'Left'].map(side => parseFloat(surfaceStyle['padding' + side])),
+              background: surfaceStyle.backgroundColor, radius: parseFloat(surfaceStyle.borderRadius),
+              scroll: { top: surface.scrollTop, height: surface.scrollHeight, clientHeight: surface.clientHeight },
+              rowGap: parseFloat(getComputedStyle(region).rowGap),
+              rows: rows.map((row, index) => {
+                const fieldset = row.querySelector('fieldset');
+                const selector = '#' + fieldset.id;
+                const heading = bounds(selector + '-title');
+                const group = bounds(selector);
+                const selected = fieldset.querySelector('label:has(:checked)');
+                return {
+                  heading, group, gap: group.y - heading.y - heading.height,
+                  before: index ? row.getBoundingClientRect().top - rows[index - 1].getBoundingClientRect().bottom : null,
+                  inset: parseFloat(getComputedStyle(row).paddingBlockStart),
+                  divider: parseFloat(getComputedStyle(row).borderBlockStartWidth),
+                  choiceGap: parseFloat(getComputedStyle(fieldset).columnGap),
+                  targets: [...fieldset.querySelectorAll('label')].map((_, i) => bounds(selector + ' label:nth-of-type(' + (i + 1) + ')')),
+                  selected: selected && getComputedStyle(selected).backgroundColor,
+                };
+              }),
+            },
             heading: bounds(prefix === 'page' ? '#me-title' : '.vk-profile-heading'),
             account: bounds('#' + prefix + '-account'), identity: bounds('#' + prefix + '-account .vk-account-status'),
             avatar: bounds('#' + prefix + '-account .vk-ui-avatar'),
@@ -1218,6 +1245,10 @@ async function serverHtml() {
 
 const RAIL_WIDTH = `Math.round(document.querySelector('.vk-ui-rail').getBoundingClientRect().width)`;
 const PROFILE_OPEN = `document.querySelector('[data-testid=profile-menu]').open`;
+// Poll live transitions. Waiting on a snapshot of Animation.finished promises
+// can stall DevTools after a dirty editor resize.
+const APPEARANCE_SETTLED = `!document.getAnimations().some(a =>
+  a instanceof CSSTransition && (a.pending || a.playState === 'running'))`;
 
 async function openProfile(page) {
   await page.click('#profile-trigger');
@@ -1227,11 +1258,7 @@ async function openProfile(page) {
 async function chooseTheme(page, value, group = 'overlay-theme') {
   await page.click(`label:has(input[name="${group}"][value="${value}"])`);
   await page.waitFor(value === 'system' ? `!document.documentElement.hasAttribute('data-theme')` : `document.documentElement.dataset.theme === '${value}'`, `${value} appearance`);
-  // Sample contrast after the current CSS transitions finish. Holding on to a snapshot
-  // of Animation.finished promises stalled DevTools after the dirty editor resized.
-  // Poll the live transitions instead, without waiting for CSS loading animations.
-  await page.waitFor(`!document.getAnimations().some(a =>
-    a instanceof CSSTransition && (a.pending || a.playState === 'running'))`, `${value} appearance transitions`);
+  await page.waitFor(APPEARANCE_SETTLED, `${value} appearance transitions`);
   await assertBrand(page, value);
 }
 
@@ -1428,12 +1455,27 @@ function accountLayoutGeometry(context, scenario) {
       m.action.x + m.action.width <= m.surface.contentLeft + m.surface.contentWidth + 1,
       `${scenario}: the panel action shares the content axis`);
   }
+  const { preferences: p } = m;
+  const inside = r => r && r.x >= p.surface.contentLeft - 1 &&
+    r.x + r.width <= p.surface.contentLeft + p.surface.contentWidth + 1;
+  check(near(p.radius, 28) && p.rows.every(row => [row.heading, row.group, ...row.targets].every(inside) &&
+    row.inset === 0 && row.divider === 0),
+    `${scenario}: all preference controls fit the inner rect (1px tolerance) without row dividers`);
+  if (context.fontSize === '16px') {
+    check(p.padding.every(value => near(value, 24)) && near(p.rowGap, 24) &&
+      p.rows.every(row => near(row.gap, 8) && near(row.choiceGap, 8) && (row.before === null || near(row.before, 24))),
+      `${scenario}: 24px gutter and group gap, 8px label and choice gaps at 100%`);
+  }
 }
 
 function appearanceRows(page, prefix) {
   return page.eval(`(() => {
     const scope = document.querySelector(${JSON.stringify(prefix === 'page' ? '#me' : '#profile-menu')});
     const rows = [...scope.querySelectorAll('.vk-appearance-row')];
+    const colors = document.createElement('canvas').getContext('2d');
+    const root = getComputedStyle(document.documentElement);
+    const asColor = value => { colors.fillStyle = value.trim(); return colors.fillStyle; };
+    const selectedColors = ['--vk-primary-container', '--vk-on-primary-container'].map(name => asColor(root.getPropertyValue(name)));
     const choices = [['Hệ thống', 'Sáng', 'Tối'], ['100%', '200%'], ['Tự động', 'Mở rộng', 'Thu gọn']];
     return rows.length === choices.length && rows.every((row, index) => {
       const heading = row.querySelector('h3'), group = row.querySelector('fieldset');
@@ -1444,7 +1486,9 @@ function appearanceRows(page, prefix) {
         labels.map(el => el.textContent).join('|') === choices[index].join('|') &&
         labels.filter(el => el.querySelector(':checked')).length === 1 && labels.every(el => {
           const style = getComputedStyle(el), label = el.querySelector('.vk-ui-choice__label');
-          return el.getBoundingClientRect().height >= 48 && style.borderRadius === getComputedStyle(document.documentElement).getPropertyValue('--vk-radius-full').trim() &&
+          const rect = el.getBoundingClientRect(), selected = Boolean(el.querySelector(':checked'));
+          return rect.width >= 48 && rect.height >= 48 && style.borderRadius === root.getPropertyValue('--vk-radius-full').trim() &&
+            (!selected || (asColor(style.backgroundColor) === selectedColors[0] && asColor(style.color) === selectedColors[1])) &&
             el.scrollWidth <= el.clientWidth + 1 &&
             getComputedStyle(el, '::before').maskImage.startsWith('url(') &&
             getComputedStyle(el, '::after').opacity === (el.querySelector(':checked') ? '1' : '0') &&
@@ -1459,6 +1503,14 @@ function appearanceRows(page, prefix) {
   })()`);
 }
 
+async function chooseTextSize(page, scale, group) {
+  if (!await page.eval(`document.querySelector('#${group} input:checked')?.value === '${scale}'`)) {
+    await page.click(`#${group} label:has([value="${scale}"])`);
+  }
+  await page.waitFor(`getComputedStyle(document.documentElement).fontSize === '${scale === 200 ? 32 : 16}px' &&
+    document.querySelector('#${group} input:checked')?.value === '${scale}' && ${APPEARANCE_SETTLED}`, `${group} applies ${scale}% text`);
+}
+
 async function appearanceFocusContrast(page, scenario) {
   await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
   const contrast = await page.eval(`(() => {
@@ -1471,7 +1523,7 @@ async function appearanceFocusContrast(page, scenario) {
 }
 
 async function preferenceSurfaces(page) {
-  console.log('R2.2 shared appearance surfaces and native build disclosure:');
+  console.log('shared appearance surfaces and native build disclosure:');
   for (const theme of ['light', 'dark']) {
     await page.viewport(390, 844);
     await chooseTheme(page, theme, 'page-theme');
@@ -1513,6 +1565,39 @@ async function preferenceSurfaces(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after the native build detail');
 }
 
+async function shortAppearanceStart(page) {
+  for (const height of [320, 280]) {
+    await page.viewport(834, height);
+    await openProfile(page);
+    const opened = await page.eval(`(() => {
+      const panel = document.querySelector('#profile-menu');
+      const { top, bottom } = panel.getBoundingClientRect();
+      const visible = selector => {
+        const r = panel.querySelector(selector).getBoundingClientRect();
+        return r.top >= top && r.bottom <= bottom;
+      };
+      return { scrollTop: panel.scrollTop, title: visible('#profile-title'),
+        close: visible('#profile-close'), focused: document.activeElement.id };
+    })()`);
+    check(opened.scrollTop <= 1 && opened.title && opened.close && opened.focused === 'profile-close',
+      `834×${height}/200%: opening keeps the title and focused Close visible ${JSON.stringify(opened)}`);
+    await page.capture(`account-overlay-834-${height}-compact-dark-text200-start`);
+    await page.key('Tab');
+    check(await page.eval(`(() => {
+      const choice = document.querySelector('#overlay-theme input[value=dark]:checked');
+      if (document.activeElement !== choice) return false;
+      const r = choice.getBoundingClientRect();
+      const panel = document.querySelector('#profile-menu').getBoundingClientRect();
+      return r.top >= panel.top && r.bottom <= panel.bottom &&
+        choice === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    })()`), `834×${height}/200%: Tab reveals and focuses the selected radio`);
+    await page.key('Escape');
+    check(await page.eval(`!${PROFILE_OPEN} && document.activeElement.id === 'profile-trigger'`),
+      `834×${height}/200%: Escape returns focus to Tôi`);
+  }
+  await page.viewport(834, 360);
+}
+
 async function accountAppearance(page) {
   console.log('shared account presentation and bounded appearance overlay:');
   await page.viewport(1440);
@@ -1537,6 +1622,12 @@ async function accountAppearance(page) {
     document.querySelector('#page-rail input:checked')?.value === 'compact' &&
     getComputedStyle(document.documentElement).fontSize === '32px' &&
     ${RAIL_WIDTH} === 96`, 'panel updates page radios, text size and rail immediately');
+  check(await page.eval(`(() => {
+    const rail = document.querySelector('#navigation').getBoundingClientRect();
+    const panel = document.querySelector('#profile-menu').getBoundingClientRect();
+    return document.activeElement === document.querySelector('#overlay-rail input:checked') &&
+      Math.abs(panel.left - rail.right - 16) <= 1;
+  })()`), 'changing the rail moves the open panel without moving radio focus');
   await page.key('Escape');
   check(await page.eval(`document.activeElement?.id === 'profile-trigger'`), 'Escape returns to the trigger on /toi');
   await page.reload();
@@ -1562,10 +1653,27 @@ async function accountAppearance(page) {
     document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' &&
     !document.querySelector('#profile-menu .vk-account-status') && document.querySelector('#open-me')`), 'compact appearance dialog identifies its purpose and preserves the active route');
   check(await appearanceRows(page, 'overlay'), 'panel uses the same three native groups, glyphs and selection checks');
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  const visible = nodes.filter(node => !node.ignored);
+  const hasName = (role, name) => visible.some(node => node.role.value === role && node.name?.value === name);
+  const checked = visible.filter(node => node.role.value === 'radio' &&
+    node.properties?.some(prop => prop.name === 'checked' && String(prop.value.value) === 'true'));
+  check(hasName('dialog', 'Giao diện') && hasName('button', 'Đóng Giao diện') && hasName('button', 'Mở trang Tôi') &&
+    ['Chế độ màu', 'Cỡ chữ', 'Thanh điều hướng'].every(name => hasName('radiogroup', name)) &&
+    ['Hệ thống', 'Sáng', 'Tối', '100%', '200%', 'Tự động', 'Mở rộng', 'Thu gọn'].every(name => hasName('radio', name)) &&
+    checked.length === 3 && ['Sáng', '100%', 'Tự động'].every(name => checked.some(node => node.name?.value === name)),
+    'Chrome AX exposes the named modal, actions and full native radio groups with checked state');
   await chooseTheme(page, 'system');
+  const choicePositions = () => page.eval(`[...document.querySelectorAll('#overlay-theme .vk-ui-choice__label')].map(el => {
+    const { x, y, width, height } = el.getBoundingClientRect();
+    return [x, y, width, height];
+  })`);
+  const beforeArrow = await choicePositions();
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
   await page.waitFor(`document.querySelector('#overlay-theme input:checked')?.value === 'light' && document.documentElement.dataset.theme === 'light'`, 'native Arrow updates utility preference');
+  check(JSON.stringify(await choicePositions()) === JSON.stringify(beforeArrow),
+    'selection keeps each theme label in place');
   check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.outlineStyle === 'solid' && parseFloat(style.outlineWidth) === 2 && style.outlineOffset === '-2px' && style.boxShadow === 'none' && getComputedStyle(face, '::after').opacity === '1'; })()`), 'native keyboard focus paints one flush 2px perimeter independently of the selected check');
   await page.key('ArrowLeft');
   await page.waitFor(`${PROFILE_OPEN} && document.querySelector('#overlay-theme input:checked')?.value === 'system'`, 'native ArrowLeft keeps panel open');
@@ -1604,9 +1712,11 @@ async function accountAppearance(page) {
     if ((await page.eval(RAIL_WIDTH)) !== (rail === 'expanded' ? 220 : 96)) await page.click('#navigation-toggle');
     for (const theme of ['system', 'light', 'dark']) {
       for (const scale of [100, 200]) {
-        await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
         await openProfile(page);
+        await chooseTextSize(page, scale, 'overlay-text');
         await chooseTheme(page, theme);
+        await page.key('Escape');
+        await openProfile(page);
         const scenario = `${width}-${height}-${rail}-${theme}-text${scale}`;
         check(await page.eval(`(() => { const rail = document.querySelector('.vk-ui-rail'); return rail.scrollWidth <= rail.clientWidth; })()`), `${scenario}: the rail needs no horizontal scrolling`);
         check(await page.eval(`(() => {
@@ -1616,28 +1726,56 @@ async function accountAppearance(page) {
             dialog.scrollWidth <= dialog.clientWidth && document.documentElement.scrollWidth <= innerWidth &&
             document.querySelector('#profile-trigger').getAttribute('aria-expanded') === 'true';
         })()`), `${scenario}: modal stays beside the rail, within the viewport, without internal horizontal overflow`);
+        check(await page.eval(`(() => {
+          const panel = document.querySelector('#profile-menu'), rect = panel.getBoundingClientRect();
+          const title = document.querySelector('#profile-title').getBoundingClientRect();
+          return panel.scrollTop <= 1 && title.top >= rect.top && title.bottom <= rect.bottom &&
+            document.activeElement === panel.querySelector('#overlay-theme input:checked');
+        })()`), `${scenario}: title and initial radio focus are present at the start of the panel`);
         if (height === 900 && width === 1440 && scale === 100 && theme !== 'system') await textContrast(page, theme, 'account');
+        check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
+        accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
+        if (width === 834 && height === 360 && scale === 200) {
+          check(await page.eval(`(() => {
+            const panel = document.querySelector('#profile-menu');
+            const targets = [...panel.querySelectorAll('.vk-ui-choice__target')];
+            const reachable = targets.every(target => {
+              target.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+              const r = target.getBoundingClientRect();
+              return target.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+            });
+            panel.scrollTop = 0;
+            return reachable;
+          })()`), `${scenario}: every radio hit target can be revealed in the scrollport`);
+        }
         await page.eval(`document.querySelector('#profile-close').focus()`);
         await page.key('Tab', SHIFT);
         check(await page.eval(`(() => {
           const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
-          return el.id === 'open-me' && r.top >= d.top && r.bottom <= d.bottom && r.height >= 44;
-        })()`), `${scenario}: Shift+Tab reaches and reveals the final action`);
+          return el.id === 'open-me' && r.top >= d.top && r.bottom <= d.bottom && r.height >= 44 &&
+            el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        })()`), `${scenario}: Shift+Tab reaches the final action and its hit target is exposed`);
         if (await page.eval(`document.querySelector('#profile-menu').scrollHeight > document.querySelector('#profile-menu').clientHeight`)) await page.capture(`account-overlay-${scenario}-bottom`);
         await page.key('Tab');
         check(await page.eval(`(() => {
           const el = document.activeElement, r = el.getBoundingClientRect(), d = document.querySelector('#profile-menu').getBoundingClientRect();
-          return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom;
-        })()`), `${scenario}: Tab reveals the close action at the start`);
-        await page.eval(`document.querySelector('#profile-menu').scrollTop = 0`);
-        check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
-        accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
+          return el.id === 'profile-close' && r.top >= d.top && r.bottom <= d.bottom &&
+            el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        })()`), `${scenario}: Tab reveals the close action and its hit target`);
+        if (width === 834 && height === 360 && scale === 200) {
+          await page.capture(`account-overlay-${scenario}-close`);
+        }
         await page.key('Escape');
         check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
       }
     }
   }
-  await page.eval(`document.documentElement.style.fontSize = ''; localStorage.removeItem('vink.ui.rail')`);
+  // The matrix ends on the compact rail, dark theme and 200% text.
+  await shortAppearanceStart(page);
+  await openProfile(page);
+  await chooseTextSize(page, 100, 'overlay-text');
+  await page.key('Escape');
+  await page.eval(`localStorage.removeItem('vink.ui.rail')`);
   await page.viewport(1440);
   await page.goto(`${args.base}/toi`);
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'canonical Me restored');
@@ -1946,8 +2084,10 @@ async function adaptiveShell(page) {
   check(await page.eval(`document.activeElement?.value === 'dark'`), 'storage denial keeps utility on the session-local preference');
   await page.capture('appearance-storage-denied-overlay-dark');
   await chooseTheme(page, 'system');
+  await chooseTextSize(page, 200, 'overlay-text');
   await page.click('#open-me');
-  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'system'`, 'storage-denied System survives client navigation');
+  await page.waitFor(`location.pathname === '/toi' && document.querySelector('#page-theme input:checked')?.value === 'system' &&
+    document.querySelector('#page-text input:checked')?.value === '200'`, 'storage-denied System and text size survive client navigation');
   await page.capture('appearance-storage-denied-page-system');
   await page.send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
   await page.reload();
@@ -1963,7 +2103,8 @@ async function adaptiveShell(page) {
       await chooseTheme(page, theme, 'page-theme');
       if (width === 1440 && theme !== 'system') await textContrast(page, theme, 'me');
       for (const scale of [100, 200]) {
-        await page.eval(`document.documentElement.style.fontSize = '${scale}%'; scrollTo(0, 0)`);
+        await chooseTextSize(page, scale, 'page-text');
+        await page.eval(`scrollTo(0, 0)`);
         await bottomNavigationAlignment(page, `shell ${width}px/${scale}%/${theme}`);
         // Layout can update before glyphs repaint after a root-text change. The
         // generic capture helper also serves actual no-JS pages, so wait only here.
@@ -1984,11 +2125,11 @@ async function adaptiveShell(page) {
           await page.eval(`scrollTo(0, 0)`);
         }
       }
-      await page.eval(`document.documentElement.style.fontSize = ''`);
+      await chooseTextSize(page, 100, 'page-text');
     }
   }
   await page.viewport(1024);
-  await page.eval(`document.documentElement.style.fontSize = '200%'`);
+  await chooseTextSize(page, 200, 'page-text');
   const compactWords = await page.eval(`(() => {
     const labels = [...document.querySelectorAll('.vk-ui-rail .vk-ui-nav-item__label')].filter((el) => el.textContent === 'Khám phá');
     return { count: labels.length, intact: labels.every((el) => [[0,4],[5,8]].every(([a,b]) => {
@@ -1999,7 +2140,7 @@ async function adaptiveShell(page) {
   check(compactWords.count > 0 && compactWords.intact, '1024px / 200% text keeps compact rail Vietnamese words intact');
   await page.capture('1024-compact-words-text200');
   await page.viewport(320);
-  await page.capture('320-me-dark-text200');
+  await page.capture('320-me-dark-text200-after-rail-reflow');
   check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), '320px / 200% text reflows without horizontal overflow');
   await page.eval(`scrollTo(0, document.documentElement.scrollHeight)`);
   await page.waitFor(`parseFloat(getComputedStyle(document.querySelector('.vk-ui-scaffold')).getPropertyValue('--vk-ui-bar-height')) === document.querySelector('.vk-ui-bottom-nav').getBoundingClientRect().height`, 'measured bottom clearance');
@@ -2019,7 +2160,8 @@ async function adaptiveShell(page) {
   await page.click('.vk-ui-bottom-nav a[href="/toi"]');
   await page.waitFor(`location.pathname === '/toi'`, 'mobile Tôi screen');
   await chooseTheme(page, 'system', 'page-theme');
-  await page.eval(`document.documentElement.style.fontSize = ''; scrollTo(0, 0)`);
+  await chooseTextSize(page, 100, 'page-text');
+  await page.eval(`scrollTo(0, 0)`);
   await page.viewport(1280);
   await appearanceFirstPaint(page);
 }
@@ -2069,8 +2211,9 @@ async function appearanceFirstPaint(page) {
 
   // Another tab can write a preference after the bootstrap has applied this document's snapshot.
   await page.viewport(1440);
+  await chooseTextSize(page, 200, 'page-text');
   await page.eval(`localStorage.removeItem('vink.ui.theme');
-    localStorage.setItem('vink.ui.rail', 'compact'); localStorage.setItem('vink.ui.text', '200');`);
+    localStorage.setItem('vink.ui.rail', 'compact');`);
   const { identifier: changeRailStorage } = await page.send('Page.addScriptToEvaluateOnNewDocument', { source: `
     const observer = new MutationObserver(() => {
       if (document.documentElement?.dataset.rail !== 'compact') return;

@@ -121,12 +121,28 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         {
             page_scroll.set_value(window().scroll_y().unwrap_or_default());
             if dialog.show_modal().is_ok() {
-                // Focus the selected appearance choice, not an unrelated action.
+                // A previous session may have scrolled to the destination action.
+                dialog.set_scroll_top(0);
+                // Keep the heading visible at the start. On a short window, Tab
+                // from Close will reveal the selected theme using native traversal.
                 use wasm_bindgen::JsCast;
-                if let Ok(Some(input)) = dialog.query_selector("input:checked")
-                    && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()
+                let scrollport_bottom = dialog.get_bounding_client_rect().top()
+                    + f64::from(dialog.client_top() + dialog.client_height());
+                let visible_choice = dialog
+                    .query_selector("#overlay-theme input:checked")
+                    .ok()
+                    .flatten()
+                    .filter(|choice| {
+                        choice.get_bounding_client_rect().bottom() <= scrollport_bottom
+                    });
+                let initial_focus = visible_choice
+                    .or_else(|| dialog.query_selector("#profile-close").ok().flatten());
+                if let Some(target) = initial_focus
+                    .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok())
                 {
-                    let _ = input.focus();
+                    let options = web_sys::FocusOptions::new();
+                    options.set_prevent_scroll(true);
+                    let _ = target.focus_with_options(&options);
                 }
                 restore_scroll(page_scroll);
             } else {
