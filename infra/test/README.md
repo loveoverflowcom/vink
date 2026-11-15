@@ -1,8 +1,6 @@
 # Nền test-domain và OCI Vink
 
-**Scope:** code/config foundation cho `test.vink.forum`; không phải production hoặc một môi trường
-đã online. Không có VPS, IP/CPU, proxy, authoritative DNS, secrets hay quyền publish/deploy được
-xác minh trong lượt này. Không lấy IP Cantos hoặc kiến trúc Mac làm target mặc định.
+**Phạm vi:** cấu hình và quy trình cho `test.vink.forum`. Xem [triển khai thử ngày 15/11/2026](../../docs/development/test-container-evidence.md#triển-khai-thực-trên-vps-ngày-15112026) để lấy digest, cấu hình VPS và kết quả DNS/HTTPS đã quan sát. Xác minh lại target trước mỗi lượt.
 
 ## Ranh giới và lựa chọn
 
@@ -11,11 +9,10 @@ xác minh trong lượt này. Không lấy IP Cantos hoặc kiến trúc Mac là
   hóa do operator xuất từ provider, không gọi mạng và không chứng minh provider đã kết nối.
 - Image: **CHOICE-02 B**, ba final images (`vink-web`, `vink-worker`, `vink-identity`) dùng chung
   builder. Worker không mang site và không chạy pipeline npm; Identity cũng không cần Web build.
-  Các binary vẫn cùng workspace, không thêm service/domain owner. Chưa đo kích thước image.
+  Các binary vẫn cùng workspace và giữ nguyên các service/domain owner.
 - Runtime: **CHOICE-03 B, Compose**, kế thừa topology Compose hiện hữu ở services/postgres.
-  Đây là manifest ứng viên, chưa chốt runtime VPS. Không cài Docker/khởi động VM Cantos, không
-  thêm Quadlet/Kubernetes song song. Mac có Podman nhưng VM `cantos-deploy` đang tắt; không tự
-  khởi động hoặc sửa VM của công việc khác.
+  VPS thử ngày 15/11 dùng Podman rootful với provider `podman-compose`. Các dịch vụ Vink dùng
+  Compose. Edge Caddy hiện có vẫn chạy bằng Quadlet và thêm bridge ingress riêng cho Web Vink.
 
 Các lựa chọn kỹ thuật trên có thể đảo ngược; không nâng D-05 hoặc proposal sản phẩm thành Accepted.
 Tham chiếu [App/Identity](../../docs/architecture/identity-postgres-boundaries.md),
@@ -62,7 +59,8 @@ podman compose --env-file /etc/vink-test/compose.public.env \
 ```
 
 `config` có thể in secret từ `env_file`: chỉ chạy cục bộ, không upload output/log; đừng dùng để
-chứng minh redaction. Manifest này chưa được runtime Compose kiểm chứng trong lượt này.
+chứng minh redaction. Lượt VPS dùng đường dẫn tuyệt đối cho các file Compose và overlay
+riêng cho ingress. Xem [cấu hình đã chạy](../../docs/development/test-container-evidence.md).
 
 ### Secrets và UID
 
@@ -105,13 +103,13 @@ coi version tag hoặc local image ID là registry digest. Multiarch chỉ build
 
 [Manual workflow](../../.github/workflows/publish-images.yml) chỉ `workflow_dispatch` trên develop,
 không trigger push/PR, không credentials ở build/smoke; `GITHUB_TOKEN packages:write` chỉ dùng bước
-push. Không có Spaceship/SSH secret. Publish thật chưa được thực hiện/dispatch. Operator chọn
+push. Không có Spaceship/SSH secret. Lượt 15/11 đã publish và pull ba digest. Operator chọn
 platform đã xác minh. Workflow ghi remote RepoDigests cùng source SHA/platform vào summary TOML;
 copy `web_image` sang `app_image` của inventory. Pull credential trên VPS chỉ `read:packages`,
 không tái dùng token publisher. Không dùng `latest` để rollback.
 
 Trước publish phải smoke image với scratch PostgreSQL/roles đúng quyền và image topology, không
-chỉ loader smoke trong workflow. Lần này chưa có container daemon nên smoke đó NOT_RUN. Workflow
+chỉ loader smoke trong workflow. Lượt thử 15/11 có loader smoke và kiểm runtime riêng trên VPS. Workflow
 loader smoke chỉ chứng minh loader/config và asset presence, không chứng minh Auth/SSR chạy thật.
 
 ## DNS plan và apply sau khi có quyền
@@ -121,8 +119,9 @@ Nguồn chính thức đã đọc 13/11/2026:
 [Spaceship API/schema](https://docs.spaceship.dev/),
 [GHCR](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry),
 [publish](https://docs.github.com/en/actions/tutorials/publish-packages/publish-docker-images).
-MCP được công bố tại `https://mcp.spaceship.com/mcp`; client hiện không có Spaceship tool đã kết
-nối. Không lấy dashboard URL làm bằng chứng auth. API không phải đường triển khai thứ hai.
+MCP được công bố tại `https://mcp.spaceship.com/mcp`. Lượt 15/11 dùng Advanced DNS UI của
+Spaceship sau khi người vận hành đăng nhập vì client chưa có connector. Khi dùng UI, đọc lại
+scope ngay trước Save và kiểm record, TTL và nameserver sau Save.
 
 Sau khi owner xác thực vào đúng account: đọc domain và authoritative NS thật; nếu không do
 Spaceship phục vụ thì dừng, không đổi NS. Đọc **mọi trang records**, giữ export gốc + provider ID.
@@ -150,11 +149,12 @@ Không hỗ trợ apply AAAA trước khi IPv6/HTTPS/routing có evidence.
 
 `dns-check` là kiểm pure snapshot, không khóa transaction provider. MCP apply phải fresh-read và
 kiểm lại từng kết quả; nếu provider không có CAS, khoảng race còn tồn tại, không hứa atomicity.
-Đích test hiện chưa có nên chưa tạo diff thật, chưa apply hay verified DNS.
+Lượt 15/11 thêm đúng bản ghi A cho `test` qua Advanced DNS UI. Hai NS có thẩm quyền và resolver
+đều trả đúng record. Quy trình planner trên snapshot tổng hợp có bằng chứng riêng.
 
 ## Runbook test và rollback
 
-Không SSH/deploy/restart trong lượt này. Trước vận hành, xác nhận CPU, runtime+version, socket/UID
+Trước vận hành, xác nhận CPU, runtime+version, socket/UID
 mapping, proxy đang dùng, port3300 trống, disk, secret management và quyền target. Không dựng proxy
 thứ hai tranh80/443 của Cantos.
 

@@ -35,6 +35,9 @@ chưa tích hợp composer/reaction/sticker persistence.
 [Runbook và lệnh infra](../../infra/test/README.md) tách build image, publish GHCR,
 DNS plan và deploy; không thay các workflow local. Mẫu cần facts target thật, chưa phải test online.
 
+[Bài đọc luồng triển khai Cantos và VPS test Vink](test-vps-deployment-guide.md) lần theo cấu hình
+Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS chung.
+
 ## Skeleton làm được gì
 
 - Workspace Rust (toolchain pin 1.99.1) gồm ứng dụng Leptos SSR + Axum, bundle hydration WASM,
