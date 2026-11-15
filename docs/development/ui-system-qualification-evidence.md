@@ -1,6 +1,7 @@
 # UIS-06 — quality gates, replay và diagnostic hosts
 
 Bổ sung hiện hành sau UIS-06:
+- [#220 — hòa giải sau Giao diện R1 #219](appearance-220-review.md) chỉ giữ dấu check 16 px và focus selected tương phản cao; giữ recipe, gutter và focus màn thấp đã merge. Bằng chứng và giới hạn của lượt này nằm ở báo cáo, không thay kết quả lịch sử #219.
 - [#209 — Giao diện R1 cho panel và trang Tôi](#giao-diện-r1-cho-panel-và-trang-tôi) đo và chụp ma trận Web của hai nơi đổi tùy chọn.
 - [#208 — Chuẩn hóa anatomy/gutter và phân cấp hành động Dialog Editor (R1)](../design/dialog-anatomy-r1-208.md) bổ sung `ButtonVariant::DangerText`, `Dialog` `context: Option<Signal<String>>` / `secondary_actions` và xóa CSS vá dialog ở app; chỉ chạy kiểm Web (`verify web --scenario main`, `ui-preview leptos verify`, `verify quick` không tính pre-existing check trên `test-vps-deployment-guide.md`), còn runtime native CMP/Android/iOS là `NOT_RUN`.
 [UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi requalification của optional

@@ -1,0 +1,3089 @@
+{
+  "source_sha": "17d6344e367e9816025352b262938dc6fe92c1ef",
+  "baseline_sha": "c3b6e7da2a1ebfdb13b8c37817be4a771e0bbc1d",
+  "run_id": "1794772990566793000-67600",
+  "boundary": "LocalFixture + App + PostgreSQL 17 + Chrome headless/CDP; root text scale, not browser zoom",
+  "review": "self-review; NO_APPROVED_REFERENCE",
+  "source_css_sha256": "5903f4eeeffa2d68d29df4f2b4103065b410f4b0a397a548cf8b3775423c462d",
+  "served_css_sha256": "d569b177c360ec814c7056a6dc1af179ed47f33bb16e36fc855312a758a75f29",
+  "images": {
+    "r22-me-light-selected-focus.png": {
+      "sha256": "3a51b3221b45e6cb0cd86ff8a3f9dbabf687ee8ec67122c8eb06b534779b66fc",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "light",
+      "root_font_size": "16px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "r22-me-dark-selected-focus.png": {
+      "sha256": "21ad75a1233846711e3474f864f63b7a95d92acaeaee1e694aa56af164e75e83",
+      "viewport": [
+        390,
+        844
+      ],
+      "theme": "dark",
+      "root_font_size": "16px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "account-overlay-834-280-compact-dark-text200-start.png": {
+      "sha256": "80be0c17d8b9e939548e4e492c014f9b94d8f00cdfa1ea839b53f824e88a8316",
+      "viewport": [
+        834,
+        280
+      ],
+      "theme": "dark",
+      "root_font_size": "32px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "320-me-dark-text200-appearance.png": {
+      "sha256": "a7cef2f3de59b196e8bf00ae366533a6e8eb58384f4678045ab6cb34a02a779d",
+      "viewport": [
+        320,
+        900
+      ],
+      "theme": "dark",
+      "root_font_size": "32px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "account-overlay-1440-900-expanded-light-text100.png": {
+      "sha256": "cae09a427d35b17ac7cef4ed5632c2008b4c5604fe36eb09805005634881e173",
+      "viewport": [
+        1440,
+        900
+      ],
+      "theme": "light",
+      "root_font_size": "16px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "account-overlay-834-360-compact-dark-text200-bottom.png": {
+      "sha256": "bab2db0d7d0ec3cc5f7b53a72935aa385a818202b5bc3e8cc761a77b446813ab",
+      "viewport": [
+        834,
+        360
+      ],
+      "theme": "dark",
+      "root_font_size": "32px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "320-me-dark-text200-end.png": {
+      "sha256": "ba530afad55c62b12f8604e63a0f700a238a71725b427a3e3d48780e9133ed31",
+      "viewport": [
+        320,
+        900
+      ],
+      "theme": "dark",
+      "root_font_size": "32px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "editor-short-mobile-caret-failed.png": {
+      "sha256": "77646a6f04401270567aa1258fac14284e3a5a8bb90da5ca355be4615abf5ecc",
+      "viewport": [
+        390,
+        420
+      ],
+      "theme": "dark",
+      "root_font_size": "16px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    },
+    "1280-editor-dirty-overlay-dark.png": {
+      "sha256": "622ed5887b129d82b2c8f1ad21ce5a93dcb1d0d61911ee4dd16230384fa04918",
+      "viewport": [
+        1280,
+        900
+      ],
+      "theme": "dark",
+      "root_font_size": "16px",
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "inspected": true
+    }
+  },
+  "matrix": {
+    "account-overlay-1440-900-expanded-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-expanded-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-expanded-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-expanded-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-expanded-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-expanded-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-900-compact-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1024-900-compact-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-compact-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-900-expanded-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-expanded-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-1440-360-compact-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-expanded-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "account-overlay-834-360-compact-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        360
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1440-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1440,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1280-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1280,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "1024-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        1024,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "834-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        834,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "32px",
+      "padding": [
+        31.2,
+        31.2,
+        31.2,
+        31.2
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "32px",
+      "padding": [
+        31.2,
+        31.2,
+        31.2,
+        31.2
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "390-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        390,
+        844
+      ],
+      "font_size": "32px",
+      "padding": [
+        31.2,
+        31.2,
+        31.2,
+        31.2
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-system-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-system-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        25.6,
+        25.6,
+        25.6,
+        25.6
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-light-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-light-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        25.6,
+        25.6,
+        25.6,
+        25.6
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-dark-text100": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "16px",
+      "padding": [
+        24,
+        24,
+        24,
+        24
+      ],
+      "group_gap": 24,
+      "row_gaps": [
+        8,
+        8,
+        8
+      ],
+      "choice_gaps": [
+        8,
+        8,
+        8
+      ],
+      "minimum_control_width": 99.25,
+      "minimum_control_height": 48,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    },
+    "320-me-dark-text200": {
+      "build": "17d6344e367e9816025352b262938dc6fe92c1ef",
+      "viewport": [
+        320,
+        900
+      ],
+      "font_size": "32px",
+      "padding": [
+        25.6,
+        25.6,
+        25.6,
+        25.6
+      ],
+      "group_gap": 48,
+      "row_gaps": [
+        16,
+        16,
+        16
+      ],
+      "choice_gaps": [
+        16,
+        16,
+        16
+      ],
+      "minimum_control_width": 120.484375,
+      "minimum_control_height": 49.796875,
+      "radius": 28,
+      "dividers": [
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "chrome": "157.0.8103.78",
+  "postgres": "17.11",
+  "focus_contrast_runtime": {
+    "light": 10.84,
+    "dark": 8.23,
+    "forced-colors": 19.04
+  }
+}

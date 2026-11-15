@@ -27,9 +27,10 @@ Screen /toi — đích Tôi của thanh điều hướng mobile
   từ nhãn tới lựa chọn và giữa lựa chọn 8 px ở 100%.
   Khoảng giữa nhóm do gap sở hữu. Vùng chạm tối thiểu 48 × 48 CSS px, cao theo chữ.
 - Lựa chọn idle dùng `surface-container-low/on-surface`. Checked dùng
-  `primary-container/on-primary-container` và dấu check có chỗ dành sẵn.
-  Vòng focus 2 px hiển thị độc lập. Forced colors dùng màu hệ thống cho
-  trạng thái chọn/focus và giữ dấu check.
+  `primary-container/on-primary-container` và dấu check 16 px có chỗ dành sẵn.
+  Vòng focus 2 px hiển thị độc lập; trên mục đã chọn dùng `on-primary-container`
+  để tăng tương phản với nền tonal. Forced colors tiếp tục dùng màu hệ thống
+  cho trạng thái chọn/focus và giữ dấu check.
 - [Shell](../../apps/vink-web/src/shell.rs) giữ native modal, scrim, inert,
   anchor, focus và history. Khi mở, focus vào radio màu đang chọn nếu radio
   nằm trọn trong vùng nhìn. Nếu màn thấp hơn, focus bắt đầu ở nút Đóng cạnh
@@ -43,3 +44,5 @@ thu gọn/mở rộng, chữ 100%/200%, sáng/tối/hệ thống và viewport ca
 Kiểm focus lúc mở ở 834 × 320/280 px, tối 200%, rail thu gọn.
 Kiểm `/toi` ở 320/390/1440 px, chữ 100%/200%, sáng/tối. Đối chiếu qua
 [ma trận và bằng chứng Web](../development/ui-system-qualification-evidence.md#giao-diện-r1-cho-panel-và-trang-tôi).
+
+Delta sau #219 và kiểm chứng local ở [review #220](../development/appearance-220-review.md).

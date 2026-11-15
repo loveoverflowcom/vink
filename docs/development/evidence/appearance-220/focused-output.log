@@ -1,0 +1,33 @@
+2026-11-15T20:11:07.472568Z  INFO sqlx::postgres::notice: relation "_sqlx_migrations" already exists, skipping
+2026-11-15T20:11:07.474454Z  INFO vink_app: migrations applied applied=[] latest=20261120000000
+REVOKE
+GRANT
+GRANT
+GRANT
+REVOKE
+2026-11-15T20:11:07.499218Z  INFO vink_app: development fixture present work=33333333-3333-4333-8333-333333333333 author=11111111-1111-4111-8111-111111111111
+  ok  focused unsaved Vietnamese stanza
+  ok  focused native selection ready
+shell utilities preserve the live dirty editor:
+  ok  desktop editor defaults to compact
+  ok  manual preference can expand the editor rail
+  ok  opening Tôi utility does not invoke the leave guard
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  fragment Back closes appearance and keeps the dirty editor URL without opening a second dialog
+  ok  plain fragment Back does not invoke the dirty editor leave guard
+  ok  native content focus immediately restores the CodeMirror selection
+  ok  rail, text size and theme preserve EditorView, selection, text and dirty state
+  ok  real / navigation consults the existing guard
+  ok  real /ban-viet navigation consults the existing guard
+  ok  real /toi navigation consults the existing guard
+  ok  real /ban-viet/01a1e0d5-c61a-77a8-9a41-a8c190a64e74/kiem-duyet navigation consults the existing guard
+  ok  mobile resize retains editor and hides bottom bar
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  utility changes sent no draft writes and retained the caret selection
+  ok  shell and fragment traversal preserve the confirmed draft version
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  no console errors or exceptions
+browser-smoke: PASS (appearance-editor-focused)
