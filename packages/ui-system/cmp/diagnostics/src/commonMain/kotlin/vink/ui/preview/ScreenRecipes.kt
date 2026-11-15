@@ -83,8 +83,8 @@ fun ScreenRecipe(id: String, scenario: String) {
                         "screen.desk" -> {
                             VinkHeading("Bàn viết", HeadingLevel.H1)
                             DraftResume(draft, navigate)
-                            VinkSearchField("Tìm trong bản thảo đã tải", query, { query = it })
-                            VinkText("Mẫu · Tối đa 100 nháp trong app; bản nháp chỉ bạn đọc được.", role = TypeRole.Caption)
+                            VinkSearchField("Ô tìm kiếm — mẫu", query, { query = it })
+                            VinkText("Mẫu khối viết tiếp cũ · Không phải bố cục Bàn viết Web hiện tại. Chưa nối tìm kiếm hay phân trang.", role = TypeRole.Caption)
                             VinkLink(draft.title, draft.href, navigate)
                         }
                         "screen.editor" -> {

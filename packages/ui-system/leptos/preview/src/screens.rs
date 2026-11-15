@@ -184,9 +184,8 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
             }.into_any(),
             "screen.desk" => view! {
                 <Heading level=HeadingLevel::H1>"Bàn viết"</Heading>
-                <DraftResume draft=draft(long) />
-                <SearchField id="sample-draft-search" label="Tìm trong bản thảo đã tải" value=search on_input=move |e: TextInput| search.set(e.value) />
-                <Text role=TypeRole::Caption>"Mẫu · Tối đa 100 nháp trong app; bản nháp chỉ bạn đọc được."</Text>
+                <SearchField id="sample-draft-search" label="Tìm bản thảo — mẫu" value=search on_input=move |e: TextInput| search.set(e.value) />
+                <Text role=TypeRole::Caption>"Mẫu hàng bản thảo · Không nối tìm kiếm/phân trang. Bàn viết Web tìm toàn bộ nháp, 24 mục/trang và tối đa 240 mục/phần."</Text>
                 <Surface tone=SurfaceTone::Low padding=Space::None>
                     <DraftRow draft=draft(long) />
                 </Surface>

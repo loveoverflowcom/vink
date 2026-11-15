@@ -52,3 +52,8 @@ CSS composition ở [leptos/patterns.css](leptos/patterns.css), được build p
 CSS app chỉ giữ bố cục màn, host CodeMirror và hành vi sticky. Lệnh do
 [development guide](../../docs/development/README.md) sở hữu; kết quả và giới hạn ở
 [bằng chứng UIS-05](../../docs/development/ui-system-adoption-evidence.md).
+
+Delta #213: Desk Web và recipe `screen.desk` không mount `DraftResume`; pattern và
+`DraftMetadata` mặc định còn được giữ tương thích, không còn là bố cục Desk hiện hành.
+Recipe CMP chứa khối viết tiếp được ghi rõ là mẫu cũ, không đại diện Bàn viết native (chưa có).
+Row Web dùng thời gian local sau hydrate, fallback UTC ở SSR và không version nhìn thấy.
