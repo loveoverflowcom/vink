@@ -1,0 +1,524 @@
+SQL source: 3e10fdd (unchanged in 5787cd1). Measurement/tests: 5787cd1. PostgreSQL 17.11, macOS aarch64.
+Command: CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 DATABASE_URL=<scratch> VINK_PG_QUERY_LOG=<scratch-server-log> cargo test --locked -p vink-app --test postgres author_work -- --include-ignored --nocapture --test-threads=1
+
+running 5 tests
+test author_works::author_work_corpus_cursor_privacy_and_legacy_contract ... ok
+test author_works::author_work_metrics_failure_preserves_list ... ok
+test author_works::author_work_query_plans_and_fixed_statement_count ... #214 corpus: 100 / 10001 owned works; same timestamps, 10000 comments concentrated on one public work, selected page=24+1; PostgreSQL PostgreSQL 17.11 (Homebrew) on aarch64-apple-darwin24.6.0, compiled by Apple clang version 17.0.0 (clang-1700.6.4.2), 64-bit
+11111111-1111-4111-8111-111111111111 Recent
+Sort (actual time=6.519..6.523 rows=25 loops=1)
+  Sort Key: page.updated_at DESC, page.work_id
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=463
+  CTE page
+    ->  Limit (actual time=6.405..6.408 rows=25 loops=1)
+          Buffers: shared hit=359
+          ->  Result (actual time=6.404..6.407 rows=25 loops=1)
+                Buffers: shared hit=359
+                ->  Sort (actual time=6.403..6.404 rows=25 loops=1)
+                      Sort Key: (COALESCE(d_1.updated_at, w.created_at)) DESC, w.id
+                      Sort Method: top-N heapsort  Memory: 35kB
+                      Buffers: shared hit=359
+                      ->  Nested Loop Left Join (actual time=0.927..5.612 rows=10001 loops=1)
+                            Buffers: shared hit=359
+                            ->  Hash Right Join (actual time=0.922..2.508 rows=10001 loops=1)
+                                  Hash Cond: (d_1.work_id = w.id)
+                                  Buffers: shared hit=359
+                                  ->  Seq Scan on working_drafts d_1 (actual time=0.002..0.386 rows=10101 loops=1)
+                                        Buffers: shared hit=274
+                                  ->  Hash (actual time=0.910..0.910 rows=10001 loops=1)
+                                        Buckets: 16384  Batches: 1  Memory Usage: 675kB
+                                        Buffers: shared hit=85
+                                        ->  Seq Scan on works w (actual time=0.003..0.487 rows=10001 loops=1)
+                                              Filter: (owner_id = '11111111-1111-4111-8111-111111111111'::uuid)
+                                              Rows Removed by Filter: 100
+                                              Buffers: shared hit=85
+                            ->  Limit (actual time=0.000..0.000 rows=0 loops=10001)
+                                  ->  Sort (actual time=0.000..0.000 rows=0 loops=10001)
+                                        Sort Key: r_1.created_at DESC, r_1.id DESC
+                                        Sort Method: quicksort  Memory: 25kB
+                                        ->  Result (actual time=0.000..0.000 rows=0 loops=10001)
+                                              One-Time Filter: (d_1.work_id IS NULL)
+                                              ->  Bitmap Heap Scan on revisions r_1 (never executed)
+                                                    Recheck Cond: (work_id = w.id)
+                                                    ->  Bitmap Index Scan on revisions_work_id_id_key (never executed)
+                                                          Index Cond: (work_id = w.id)
+  ->  Hash Left Join (actual time=6.467..6.513 rows=25 loops=1)
+        Hash Cond: ((page.work_id = lm.work_id) AND (r.id = lm.revision_id))
+        Buffers: shared hit=463
+        ->  Nested Loop Left Join (actual time=6.462..6.505 rows=25 loops=1)
+              Buffers: shared hit=462
+              ->  Nested Loop Left Join (actual time=6.456..6.480 rows=25 loops=1)
+                    Join Filter: (pr.work_id = page.work_id)
+                    Buffers: shared hit=437
+                    ->  Nested Loop Left Join (actual time=6.455..6.476 rows=25 loops=1)
+                          Buffers: shared hit=437
+                          ->  Hash Right Join (actual time=6.449..6.453 rows=25 loops=1)
+                                Hash Cond: (p.work_id = page.work_id)
+                                Buffers: shared hit=362
+                                ->  Seq Scan on publications p (actual time=0.002..0.002 rows=1 loops=1)
+                                      Buffers: shared hit=1
+                                ->  Hash (actual time=6.443..6.444 rows=25 loops=1)
+                                      Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                      Buffers: shared hit=361
+                                      ->  Hash Right Join (actual time=6.438..6.441 rows=25 loops=1)
+                                            Hash Cond: ((im.work_id = page.work_id) AND (im.revision_id = wp.intent_revision_id))
+                                            Buffers: shared hit=361
+                                            ->  Seq Scan on work_revision_moderation im (actual time=0.002..0.002 rows=1 loops=1)
+                                                  Buffers: shared hit=1
+                                            ->  Hash (actual time=6.433..6.433 rows=25 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                                  Buffers: shared hit=360
+                                                  ->  Hash Right Join (actual time=6.427..6.430 rows=25 loops=1)
+                                                        Hash Cond: (wp.work_id = page.work_id)
+                                                        Buffers: shared hit=360
+                                                        ->  Seq Scan on work_publications wp (actual time=0.008..0.008 rows=1 loops=1)
+                                                              Buffers: shared hit=1
+                                                        ->  Hash (actual time=6.416..6.416 rows=25 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                                              Buffers: shared hit=359
+                                                              ->  CTE Scan on page (actual time=6.406..6.412 rows=25 loops=1)
+                                                                    Buffers: shared hit=359
+                          ->  Index Scan using working_drafts_pkey on working_drafts d (actual time=0.001..0.001 rows=1 loops=25)
+                                Index Cond: (work_id = page.work_id)
+                                Buffers: shared hit=75
+                    ->  Index Scan using revisions_pkey on revisions pr (actual time=0.000..0.000 rows=0 loops=25)
+                          Index Cond: (id = p.revision_id)
+              ->  Limit (actual time=0.001..0.001 rows=0 loops=25)
+                    Buffers: shared hit=25
+                    ->  Sort (actual time=0.001..0.001 rows=0 loops=25)
+                          Sort Key: r.created_at DESC, r.id DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=25
+                          ->  Bitmap Heap Scan on revisions r (actual time=0.000..0.000 rows=0 loops=25)
+                                Recheck Cond: (work_id = page.work_id)
+                                Buffers: shared hit=25
+                                ->  Bitmap Index Scan on revisions_work_id_id_key (actual time=0.000..0.000 rows=0 loops=25)
+                                      Index Cond: (work_id = page.work_id)
+                                      Buffers: shared hit=25
+        ->  Hash (actual time=0.001..0.001 rows=1 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 9kB
+              Buffers: shared hit=1
+              ->  Seq Scan on work_revision_moderation lm (actual time=0.001..0.001 rows=1 loops=1)
+                    Buffers: shared hit=1
+        SubPlan 2
+          ->  Sort (never executed)
+                Sort Key: work_draft_tags.slot
+                ->  Bitmap Heap Scan on work_draft_tags (never executed)
+                      Recheck Cond: (work_id = page.work_id)
+                      ->  Bitmap Index Scan on work_draft_tags_once_key (never executed)
+                            Index Cond: (work_id = page.work_id)
+        SubPlan 3
+          ->  Sort (never executed)
+                Sort Key: work_metadata_snapshot_tags.slot
+                ->  Bitmap Heap Scan on work_metadata_snapshot_tags (never executed)
+                      Recheck Cond: (snapshot_id = pr.metadata_snapshot_id)
+                      ->  Bitmap Index Scan on work_metadata_snapshot_tags_once_key (never executed)
+                            Index Cond: (snapshot_id = pr.metadata_snapshot_id)
+Planning:
+  Buffers: shared hit=347 read=5
+Planning Time: 0.874 ms
+Execution Time: 6.594 ms
+11111111-1111-4111-8111-111111111111 Title
+Sort (actual time=7.199..7.203 rows=25 loops=1)
+  Sort Key: ((page.title_key)::text) COLLATE "C", page.work_id
+  Sort Method: quicksort  Memory: 28kB
+  Buffers: shared hit=475
+  CTE page
+    ->  Limit (actual time=7.010..7.013 rows=25 loops=1)
+          Buffers: shared hit=362
+          ->  Result (actual time=7.009..7.012 rows=25 loops=1)
+                Buffers: shared hit=362
+                ->  Sort (actual time=7.008..7.009 rows=25 loops=1)
+                      Sort Key: ((COALESCE(d_1.desk_title_key, btrim(regexp_replace(translate(replace(replace(replace(replace(replace(replace(replace(replace(replace(NORMALIZE(COALESCE(r_1.title, 'Chưa đặt tên'::text), NFD), '𐗉'::text, '𐗉'::text), '𐗤'::text, '𐗤'::text), '𑎃'::text, '𑎃'::text), '𑎅'::text, '𑎅'::text), '𑎎'::text, '𑎎'::text), '𑎑'::text, '𑎑'::text), '𖵨'::text, '𖵨'::text), '𖵩'::text, '𖵩'::text), '𖵪'::text, '𖵪'::text), '	
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ ÆÐØÞĐđĦĲĿŁŊŒŦƁƂƄƆƇƉƊƋƎƏƐƑƓƔƖƗƘƜƝƟƢƤƦƧƩƬƮƱƲƳƵƷƸƼǄǅǇǈǊǋǤǱǲǶǷȜȠȢȤȺȻȽȾɁɃɄɅɆɈɊɌɎͰͲͶͿΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩϏϘϚϜϞϠϢϤϦϨϪϬϮϴϷϹϺϽϾϿЂЄЅІЈЉЊЋЏАБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯѠѢѤѦѨѪѬѮѰѲѴѸѺѼѾҀҊҌҎҐҒҔҖҘҚҜҞҠҢҤҦҨҪҬҮҰҲҴҶҸҺҼҾӀӃӅӇӉӋӍӔӘӠӨӶӺӼӾԀԂԄԆԈԊԌԎԐԒԔԖԘԚԜԞԠԢԤԦԨԪԬԮԱԲԳԴԵԶԷԸԹԺԻԼԽԾԿՀՁՂՃՄՅՆՇՈՉՊՋՌՍՎՏՐՑՒՓՔՕՖႠႡႢႣႤႥႦႧႨႩႪႫႬႭႮႯႰႱႲႳႴႵႶႷႸႹႺႻႼႽႾႿჀჁჂჃჄჅჇჍᎠᎡᎢᎣᎤᎥᎦᎧᎨᎩᎪᎫᎬᎭᎮᎯᎰᎱᎲᎳᎴᎵᎶᎷᎸᎹᎺᎻᎼᎽᎾᎿᏀᏁᏂᏃᏄᏅᏆᏇᏈᏉᏊᏋᏌᏍᏎᏏᏐᏑᏒᏓᏔᏕᏖᏗᏘᏙᏚᏛᏜᏝᏞᏟᏠᏡᏢᏣᏤᏥᏦᏧᏨᏩᏪᏫᏬᏭᏮᏯᏰᏱᏲᏳᏴᏵ ᲉᲐᲑᲒᲓᲔᲕᲖᲗᲘᲙᲚᲛᲜᲝᲞᲟᲠᲡᲢᲣᲤᲥᲦᲧᲨᲩᲪᲫᲬᲭᲮᲯᲰᲱᲲᲳᲴᲵᲶᲷᲸᲹᲺᲽᲾᲿẞỺỼỾ             ℲⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫⅬⅭⅮⅯↃⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⰀⰁⰂⰃⰄⰅⰆⰇⰈⰉⰊⰋⰌⰍⰎⰏⰐⰑⰒⰓⰔⰕⰖⰗⰘⰙⰚⰛⰜⰝⰞⰟⰠⰡⰢⰣⰤⰥⰦⰧⰨⰩⰪⰫⰬⰭⰮⰯⱠⱢⱣⱤⱧⱩⱫⱭⱮⱯⱰⱲⱵⱾⱿⲀⲂⲄⲆⲈⲊⲌⲎⲐⲒⲔⲖⲘⲚⲜⲞⲠⲢⲤⲦⲨⲪⲬⲮⲰⲲⲴⲶⲸⲺⲼⲾⳀⳂⳄⳆⳈⳊⳌⳎⳐⳒⳔⳖⳘⳚⳜⳞⳠⳢⳫⳭⳲ　ꙀꙂꙄꙆꙈꙊꙌꙎꙐꙒꙔꙖꙘꙚꙜꙞꙠꙢꙤꙦꙨꙪꙬꚀꚂꚄꚆꚈꚊꚌꚎꚐꚒꚔꚖꚘꚚꜢꜤꜦꜨꜪꜬꜮꜲꜴꜶꜸꜺꜼꜾꝀꝂꝄꝆꝈꝊꝌꝎꝐꝒꝔꝖꝘꝚꝜꝞꝠꝢꝤꝦꝨꝪꝬꝮꝹꝻꝽꝾꞀꞂꞄꞆꞋꞍꞐꞒꞖꞘꞚꞜꞞꞠꞢꞤꞦꞨꞪꞫꞬꞭꞮꞰꞱꞲꞳꞴꞶꞸꞺꞼꞾꟀꟂꟄꟅꟆꟇꟉꟋꟌ꟎Ꟑ꟒꟔ꟖꟘꟚꟜꟵＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ𐐀𐐁𐐂𐐃𐐄𐐅𐐆𐐇𐐈𐐉𐐊𐐋𐐌𐐍𐐎𐐏𐐐𐐑𐐒𐐓𐐔𐐕𐐖𐐗𐐘𐐙𐐚𐐛𐐜𐐝𐐞𐐟𐐠𐐡𐐢𐐣𐐤𐐥𐐦𐐧𐒰𐒱𐒲𐒳𐒴𐒵𐒶𐒷𐒸𐒹𐒺𐒻𐒼𐒽𐒾𐒿𐓀𐓁𐓂𐓃𐓄𐓅𐓆𐓇𐓈𐓉𐓊𐓋𐓌𐓍𐓎𐓏𐓐𐓑𐓒𐓓𐕰𐕱𐕲𐕳𐕴𐕵𐕶𐕷𐕸𐕹𐕺𐕼𐕽𐕾𐕿𐖀𐖁𐖂𐖃𐖄𐖅𐖆𐖇𐖈𐖉𐖊𐖌𐖍𐖎𐖏𐖐𐖑𐖒𐖔𐖕𐲀𐲁𐲂𐲃𐲄𐲅𐲆𐲇𐲈𐲉𐲊𐲋𐲌𐲍𐲎𐲏𐲐𐲑𐲒𐲓𐲔𐲕𐲖𐲗𐲘𐲙𐲚𐲛𐲜𐲝𐲞𐲟𐲠𐲡𐲢𐲣𐲤𐲥𐲦𐲧𐲨𐲩𐲪𐲫𐲬𐲭𐲮𐲯𐲰𐲱𐲲𐵐𐵑𐵒𐵓𐵔𐵕𐵖𐵗𐵘𐵙𐵚𐵛𐵜𐵝𐵞𐵟𐵠𐵡𐵢𐵣𐵤𐵥𑢠𑢡𑢢𑢣𑢤𑢥𑢦𑢧𑢨𑢩𑢪𑢫𑢬𑢭𑢮𑢯𑢰𑢱𑢲𑢳𑢴𑢵𑢶𑢷𑢸𑢹𑢺𑢻𑢼𑢽𑢾𑢿𖹀𖹁𖹂𖹃𖹄𖹅𖹆𖹇𖹈𖹉𖹊𖹋𖹌𖹍𖹎𖹏𖹐𖹑𖹒𖹓𖹔𖹕𖹖𖹗𖹘𖹙𖹚𖹛𖹜𖹝𖹞𖹟𖺠𖺡𖺢𖺣𖺤𖺥𖺦𖺧𖺨𖺩𖺪𖺫𖺬𖺭𖺮𖺯𖺰𖺱𖺲𖺳𖺴𖺵𖺶𖺷𖺸𞤀𞤁𞤂𞤃𞤄𞤅𞤆𞤇𞤈𞤉𞤊𞤋𞤌𞤍𞤎𞤏𞤐𞤑𞤒𞤓𞤔𞤕𞤖𞤗𞤘𞤙𞤚𞤛𞤜𞤝𞤞𞤟𞤠𞤡̴̵̶̷̸̡̢̧̨̛̖̗̘̙̜̝̞̟̠̣̤̥̦̩̪̫̬̭̮̯̰̱̲̳̹̺̻̼͇͈͉͍͎̀́̂̃̄̅̆̇̈̉̊̋̌̍̎̏̐̑̒̓̔̽̾̿̀́͂̓̈́͆͊͋͌̕̚ͅ͏͓͔͕͖͙͚͐͑͒͗͛ͣͤͥͦͧͨͩͪͫͬͭͮͯ҃҄҅҆҇͘͜͟͢͝͞͠͡҈҉ְֱֲֳִֵֶַָׇֹֺֻּֽֿׁׂ֑֖֛֢֣֤֥֦֧֪ׅ֚֭֮֒֓֔֕֗֘֙֜֝֞֟֠֡֨֩֫֬֯ׄ׈׉ًٌٍؘَؙُؚِّْٰܑٕٖٜٟۣ۪ۭܱܴܷܸܹܻܼܾ݂݄݆݈ؐؑؒؓؔؕؖؗٓٔٗ٘ٙٚٛٝٞۖۗۘۙۚۛۜ۟۠ۡۢۤۧۨ۫۬ܰܲܳܵܶܺܽܿ݀݁݃݅݇݉݊ަާިީުޫެޭޮޯްࣰࣱࣲ߲߽࡙࡚࡛࢙࢚࢛࣏࣐࣑࣒࣓ࣣࣦࣩ࣭࣮࣯ࣶࣹࣺ߫߬߭߮߯߰߱߳ࠖࠗ࠘࠙ࠛࠜࠝࠞࠟࠠࠡࠢࠣࠥࠦࠧࠩࠪࠫࠬ࠭ࢗ࢘࢜࢝࢞࢟࣊࣋࣌࣍࣎ࣔࣕࣖࣗࣘࣙࣚࣛࣜࣝࣞࣟ࣠࣡ࣤࣥࣧࣨ࣪࣫࣬ࣳࣴࣵࣷࣸࣻࣼࣽࣾࣿऀँंःऺऻ़ािीुूृॄॅॆेैॉॊोौ्ॎॏ॒॑॓॔ॕॖॗॢॣঁংঃ়ািীুূৃৄেৈোৌ্ৗৢৣ৾ਁਂਃ਼ਾਿੀੁੂੇੈੋੌ੍ੑੰੱੵઁંઃ઼ાિીુૂૃૄૅેૈૉોૌ્ૢૣૺૻૼ૽૾૿ଁଂଃ଼ାିୀୁୂୃୄେୈୋୌ୍୓୔୕ୖୗୢୣஂாிீுூெேைொோௌ்ௗఀఁంఃఄ఼ాిీుూృౄెేైొోౌ్ౕౖౢౣಁಂಃ಼ಾಿೀುೂೃೄೆೇೈೊೋೌ್ೕೖೢೣೳഀഁംഃ഻഼ാിീുൂൃൄെേൈൊോൌ്ൗൢൣඁංඃ්ාැෑිීුූෘෙේෛොෝෞෟෲෳัิีึืฺุู็่้๊๋์ํ๎ັິີຶື຺ຸູົຼ່້໊໋໌ໍ໎༹༘༙༵༷༾༿ཱཱཱིིུུྲྀཷླྀཹེཻོཽཾཿ྄ཱྀྀྂྃ྆྇ྍྎྏྐྑྒྒྷྔྕྖྗྙྚྛྜྜྷྞྟྠྡྡྷྣྤྥྦྦྷྨྩྪྫྫྷྭྮྯྰྱྲླྴྵྶྷྸྐྵྺྻྼ࿆ါာိီုူေဲဳဴဵံ့း္်ျြွှၖၗၘၙၞၟၠၢၣၤၧၨၩၪၫၬၭၱၲၳၴႂႃႄႅႆႇႈႉႊႋႌႍႏႚႛႜႝ፝፞፟ᜒᜓ᜔᜕ᜲᜳ᜴ᝒᝓᝲᝳ឴឵ាិីឹឺុូួើឿៀេែៃោៅំះៈ៉៊់៌៍៎៏័៑្៓៝᠋᠌᠍᠏ᢅᢆᢩᤠᤡᤢᤣᤤᤥᤦᤧᤨᤩᤪᤫᤰᤱᤲᤳᤴᤵᤶᤷᤸ᤻ᨘ᤹᤺ᨗᨙᨚᨛᩕᩖᩗᩘᩙᩚᩛᩜᩝᩞ᩠ᩡᩢᩣᩤᩥᩦᩧᩨᩩᩪᩫᩬᩭᩮᩯᩰᩱᩲᩳᩴ᩿᪵᪶᪷᪸᪹᪺᪽᩵᩶᩷᩸᩹᩺᩻᩼᪰᪱᪲᪳᪴᪻᪼᪾ᪿᫀ᫃᫄᫊᫁᫂᫅᫆᫇᫈᫉᫋ᫌᫍᫎ᫏᫐᫑᫒᫓᫔᫕᫖᫗᫘᫙᫚᫛᫜᫝᫞᫟᫠᫡᫢᫣᫤᫥᫦᫧᫨᫩᫪᫫᫬᫭᫮᫯᫰ᬀᬁᬂᬃᬄ᬴ᬵᬶᬷᬸᬹᬺᬻᬼᬽᬾᬿᭀᭁᭂᭃ᭄᭬᭫᭭᭮᭯᭰᭱᭲᭳ᮀᮁᮂᮡᮢᮣᮤᮥᮦᮧᮨᮩ᮪᮫ᮬᮭ᯦ᯧᯨᯩᯪᯫᯬᯭᯮᯯᯰᯱ᯲᯳ᰤᰥᰦᰧᰨᰩᰪᰫᰬᰭᰮᰯᰰᰱᰲᰳᰴᰵᰶ᳔᰷᳕᳖᳗᳘᳙᳜᳝᳞᳟᳐᳑᳒᳚᳛᳠᳡᳢᳣᳤᳥᳦᳧᳨᳭᳴᳷⃒⃓⃘⃙⃚᷐᷎᷺᷂᷊᷏᷹᷽᷿᷷᷸᳸᳹᷀᷁᷃᷄᷅᷆᷇᷈᷉᷋᷌᷑᷒ᷓᷔᷕᷖᷗᷘᷙᷚᷛᷜᷝᷞᷟᷠᷡᷢᷣᷤᷥᷦᷧᷨᷩᷪᷫᷬᷭᷮᷯᷰᷱᷲᷳᷴ᷵᷻᷾⃐⃑⃔⃕⃖⃗⃛⃜᷶᷼᷍⃝⃞⃟⃠⃡⃢⃣⃤⃥⃦⃪⃫゙゚⵿〪⃨⃬⃭⃮⃯〭〮〯〫⃧⃩⃰⳯⳰⳱ⷠⷡⷢⷣⷤⷥⷦⷧⷨⷩⷪⷫⷬⷭⷮⷯⷰⷱⷲⷳⷴⷵⷶⷷⷸⷹⷺⷻⷼⷽⷾⷿ꙯〬꙰꙱꙲ꙴꙵꙶꙷꙸꙹꙺꙻ꙼꙽ꚞꚟ꛰꛱ꠂ꠆ꠋꠣꠤꠥꠦꠧ꠬ꢀꢁꢴꢵꢶꢷꢸꢹꢺꢻꢼꢽꢾꢿꣀꣁꣂꣃ꣄ꣅ꣠꣡꣢꣣꣤꣥꣦꣧꣨꣩꣪꣫꣬꣭꣮꣯꣰꣱ꣿꤦꤧꤨꤩꤪ꤫꤬꤭ꥇꥈꥉꥊꥋꥌꥍꥎꥏꥐꥑꥒ꥓ꦀꦁꦂꦃ꦳ꦴꦵꦶꦷꦸꦹꦺꦻꦼꦽꦾꦿ꧀ꧥꨩꨪꨫꨬꨭꨮꨯꨰꨱꨲꨳꨴꨵꨶꩃꩌꩍꩻꩼꩽꪴꪰꪲꪳꪷꪸꪾ꪿꫁ꫫꫬꫭꫮꫯꫵ꫶ꯣꯤꯥꯦꯧꯨꯩꯪ꯬꯭ﬞ︀︁︂︃︄︅︆︇︈︉︊︋︌︍︎️︧︨︩︪︫︬︭𐇽𐋠︠︡︢︣︤︥︦︮︯𐍶𐍷𐍸𐍹𐍺𐨁𐨂𐨃𐨅𐨆𐨌𐨍𐨎𐨹𐨿𐨺𐫦𐨏𐨸𐫥𐴤𐴥𐴦𐴧𐵩𐵪𐵫𐵬𐵭𐺫𐺬𐻋𐻌𐻍𐻎𐻏𐻰𐻱𐻲𐻳𐻴𐻵𐻶𐻷𐻸𐻹𐻺𐻻𐻼𐻽𐻾𐻿𐽆𐽇𐽋𐽍𐽎𐽏𐽐𐾃𐾅𐽈𐽉𐽊𐽌𐾂𐾄𑀀𑀁𑀂𑀸𑀹𑀺𑀻𑀼𑀽𑀾𑀿𑁀𑁁𑁂𑁃𑁄𑁅𑁆𑁰𑁳𑁴𑁿𑂀𑂁𑂂𑂰𑂱𑂲𑂳𑂴𑂵𑂶𑂷𑂸𑂺𑂹𑃂𑄀𑄁𑄂𑄧𑄨𑄩𑄪𑄫𑄬𑄭𑄮𑄯𑄰𑄱𑄲𑄳𑄴𑅅𑅆𑅳𑆀𑆁𑆂𑆳𑆴𑆵𑆶𑆷𑆸𑆹𑆺𑆻𑆼𑆽𑆾𑆿𑇀𑇉𑇊𑇋𑇌𑇎𑇏𑈬𑈭𑈮𑈯𑈰𑈱𑈲𑈳𑈴𑈶𑈵𑈷𑈾𑉁𑋟𑋠𑋡𑋢𑋣𑋤𑋥𑋦𑋧𑋨𑋩𑋪𑌀𑌁𑌂𑌃𑌻𑌼𑌾𑌿𑍀𑍁𑍂𑍃𑍄𑍇𑍈𑍋𑍌𑍍𑍗𑍢𑍣𑍦𑍧𑍨𑍩𑍪𑍫𑍬𑍰𑍱𑍲𑍳𑍴𑎸𑎹𑎺𑎻𑎼𑎽𑎾𑎿𑏀𑏅𑏅𑎸𑏈𑏉𑏊𑏌𑏍𑏎𑏏𑏐𑏒𑏡𑏢𑐵𑐶𑐷𑐸𑐹𑐺𑐻𑐼𑐽𑐾𑐿𑑀𑑁𑑂𑑃𑑄𑑅𑑆𑑞𑒰𑒱𑒲𑒳𑒴𑒵𑒶𑒷𑒸𑒻𑒻𑒼𑒽𑒾𑒿𑓀𑓁𑓃𑓂𑖯𑖰𑖱𑖲𑖳𑖴𑖵𑖸𑖹𑖺𑖻𑖼𑖽𑖾𑗀𑖿𑗜𑗝𑘰𑘱𑘲𑘳𑘴𑘵𑘶𑘷𑘸𑘹𑘺𑘻𑘼𑘽𑘾𑘿𑙀𑚫𑚬𑚭𑚮𑚯𑚰𑚱𑚲𑚳𑚴𑚵𑚷𑚶𑜝𑜞𑜟𑜠𑜡𑜢𑜣𑜤𑜥𑜦𑜧𑜨𑜩𑜪𑜫𑠬𑠭𑠮𑠯𑠰𑠱𑠲𑠳𑠴𑠵𑠶𑠷𑠸𑠺𑠹𑤰𑤱𑤲𑤳𑤴𑤵𑤷𑤸𑤻𑤼𑤽𑤾𑥀𑥂𑥃𑧑𑧒𑧓𑧔𑧕𑧖𑧗𑧚𑧛𑧜𑧝𑧞𑧟𑧠𑧤𑨁𑨂𑨃𑨄𑨅𑨆𑨇𑨈𑨉𑨊𑨳𑨴𑨵𑨶𑨷𑨸𑨹𑨻𑨼𑨽𑨾𑩇𑩑𑩒𑩓𑩔𑩕𑩖𑩗𑩘𑩙𑩚𑩛𑪊𑪋𑪌𑪍𑪎𑪏𑪐𑪑𑪒𑪓𑪔𑪕𑪖𑪗𑪘𑪙𑭠𑭡𑭢𑭣𑭤𑭥𑭦𑭧𑰯𑰰𑰱𑰲𑰳𑰴𑰵𑰶𑰸𑰹𑰺𑰻𑰼𑰽𑰾𑰿𑲒𑲓𑲔𑲕𑲖𑲗𑲘𑲙𑲚𑲛𑲜𑲝𑲞𑲟𑲠𑲡𑲢𑲣𑲤𑲥𑲦𑲧𑲩𑲪𑲫𑲬𑲭𑲮𑲯𑲰𑲱𑲲𑲳𑲴𑲵𑲶𑴱𑴲𑴳𑴴𑴵𑴶𑴺𑴼𑴽𑴿𑵀𑵁𑵂𑵃𑵄𑵅𑵇𑶊𑶋𑶌𑶍𑶎𑶐𑶑𑶓𑶔𑶕𑶖𑶗𑷰𑻳𑻴𑻵𑻶𑼀𑼁𑼃𑼴𑼵𑼶𑼷𑼸𑼹𑼺𑼾𑼿𑽀𑽁𑽂𑽚𓑀𓑇𓑈𓑉𓑊𓑋𓑌𓑍𓑎𓑏𓑐𓑑𓑒𓑓𓑔𓑕𖄣𖄠𖄡𖄢𖄣𖄤𖄥𖄦𖄧𖄨𖄩𖄪𖄫𖄬𖄭𖄮𖫰𖫱𖫲𖫳𖫴𖄯𖬰𖬱𖬲𖬳𖬴𖬵𖬶𖽏𖽑𖽒𖽓𖽔𖽕𖽖𖽗𖽘𖽙𖽚𖽛𖽜𖽝𖽞𖽟𖽠𖽡𖽢𖽣𖽤𖽥𖽦𖽧𖽨𖽩𖽪𖽫𖽬𖽭𖽮𖽯𖽰𖽱𖽲𖽳𖽴𖽵𖽶𖽷𖽸𖽹𖽺𖽻𖽼𖽽𖽾𖽿𖾀𖾁𖾂𖾃𖾄𖾅𖾆𖾇𖾏𖾐𖾑𖾒𖿤𖿰𖿱𛲝𛲞𜼀𜼁𜼂𜼃𜼄𜼅𜼆𜼇𜼈𜼉𜼊𜼋𜼌𜼍𜼎𜼏𜼐𜼑𜼒𜼓𜼔𜼕𜼖𜼗𜼘𜼙𜼚𜼛𜼜𜼝𜼞𜼟𜼠𜼡𜼢𜼣𜼤𜼥𜼦𜼧𜼨𜼩𜼪𜼫𜼬𜼭𜼰𜼱𜼲𜼳𜼴𜼵𜼶𜼷𜼸𜼹𜼺𜼻𜼼𜼽𜼾𜼿𜽀𜽁𜽂𜽃𜽄𜽅𜽆𝄧𝄨𝅧𝅨𝅩𝅥𝅦𝅮𝅯𝅰𝅱𝅲𝅻𝅼𝅽𝅾𝅿𝆀𝆁𝆂𝆊𝆋𝅭𝆅𝆆𝆇𝆈𝆉𝆪𝆫𝆬𝆭𝉂𝉃𝉄𝉐𝉑𝉒𝉛𝉜𝉟𝊀𝊁𝨀𝨁𝨂𝨃𝨄𝨅𝨆𝨇𝨈𝨉𝨊𝨋𝨌𝨍𝨎𝨏𝨐𝨑𝨒𝨓𝨔𝨕𝨖𝨗𝨘𝨙𝨚𝨛𝨜𝨝𝨞𝨟𝨠𝨡𝨢𝨣𝨤𝨥𝨦𝨧𝨨𝨩𝨪𝨫𝨬𝨭𝨮𝨯𝨰𝨱𝨲𝨳𝨴𝨵𝨶𝨻𝨼𝨽𝨾𝨿𝩀𝩁𝩂𝩃𝩄𝩅𝩆𝩇𝩈𝩉𝩊𝩋𝩌𝩍𝩎𝩏𝩐𝩑𝩒𝩓𝩔𝩕𝩖𝩗𝩘𝩙𝩚𝩛𝩜𝩝𝩞𝩟𝩠𝩡𝩢𝩣𝩤𝩥𝩦𝩧𝩨𝩩𝩪𝩫𝩬𝩵𝪄𝪛𝪜𝪝𝪞𝪟𝪡𝪢𝪣𝪤𝪥𝪦𝪧𝪨𝪩𝪪𝪫𝪬𝪭𝪮𝪯𞓮𞗯𞀀𞀁𞀂𞀃𞀄𞀅𞀆𞀈𞀉𞀊𞀋𞀌𞀍𞀎𞀏𞀐𞀑𞀒𞀓𞀔𞀕𞀖𞀗𞀘𞀛𞀜𞀝𞀞𞀟𞀠𞀡𞀣𞀤𞀦𞀧𞀨𞀩𞀪𞂏𞄰𞄱𞄲𞄳𞄴𞄵𞄶𞊮𞋬𞋭𞋮𞋯𞓯𞗮𞓬𞓭𞛣𞛦𞛮𞛯𞛵𞥊𞣐𞣑𞣒𞣓𞣔𞣕𞣖𞥄𞥅𞥆𞥇𞥈𞥉󠄀󠄁󠄂󠄃󠄄󠄅󠄆󠄇󠄈󠄉󠄊󠄋󠄌󠄍󠄎󠄏󠄐󠄑󠄒󠄓󠄔󠄕󠄖󠄗󠄘󠄙󠄚󠄛󠄜󠄝󠄞󠄟󠄠󠄡󠄢󠄣󠄤󠄥󠄦󠄧󠄨󠄩󠄪󠄫󠄬󠄭󠄮󠄯󠄰󠄱󠄲󠄳󠄴󠄵󠄶󠄷󠄸󠄹󠄺󠄻󠄼󠄽󠄾󠄿󠅀󠅁󠅂󠅃󠅄󠅅󠅆󠅇󠅈󠅉󠅊󠅋󠅌󠅍󠅎󠅏󠅐󠅑󠅒󠅓󠅔󠅕󠅖󠅗󠅘󠅙󠅚󠅛󠅜󠅝󠅞󠅟󠅠󠅡󠅢󠅣󠅤󠅥󠅦󠅧󠅨󠅩󠅪󠅫󠅬󠅭󠅮󠅯󠅰󠅱󠅲󠅳󠅴󠅵󠅶󠅷󠅸󠅹󠅺󠅻󠅼󠅽󠅾󠅿󠆀󠆁󠆂󠆃󠆄󠆅󠆆󠆇󠆈󠆉󠆊󠆋󠆌󠆍󠆎󠆏󠆐󠆑󠆒󠆓󠆔󠆕󠆖󠆗󠆘󠆙󠆚󠆛󠆜󠆝󠆞󠆟󠆠󠆡󠆢󠆣󠆤󠆥󠆦󠆧󠆨󠆩󠆪󠆫󠆬󠆭󠆮󠆯󠆰󠆱󠆲󠆳󠆴󠆵󠆶󠆷󠆸󠆹󠆺󠆻󠆼󠆽󠆾󠆿󠇀󠇁󠇂󠇃󠇄󠇅󠇆󠇇󠇈󠇉󠇊󠇋󠇌󠇍󠇎󠇏󠇐󠇑󠇒󠇓󠇔󠇕󠇖󠇗󠇘󠇙󠇚󠇛󠇜󠇝󠇞󠇟󠇠󠇡󠇢󠇣󠇤󠇥󠇦󠇧󠇨󠇩󠇪󠇫󠇬󠇭󠇮󠇯'::text, '     abcdefghijklmnopqrstuvwxyz  æðøþddħĳŀłŋœŧɓƃƅɔƈɖɗƌǝəɛƒɠɣɩɨƙɯɲɵƣƥʀƨʃƭʈʊʋƴƶʒƹƽǆǆǉǉǌǌǥǳǳƕƿȝƞȣȥⱥȼƚⱦɂƀʉʌɇɉɋɍɏͱͳͷϳαβγδεζηθικλμνξοπρστυφχψωϗϙϛϝϟϡϣϥϧϩϫϭϯθϸϲϻͻͼͽђєѕіјљњћџабвгдежзиклмнопрстуфхцчшщъыьэюяѡѣѥѧѩѫѭѯѱѳѵѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӏӄӆӈӊӌӎӕәӡөӷӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣԥԧԩԫԭԯաբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆⴀⴁⴂⴃⴄⴅⴆⴇⴈⴉⴊⴋⴌⴍⴎⴏⴐⴑⴒⴓⴔⴕⴖⴗⴘⴙⴚⴛⴜⴝⴞⴟⴠⴡⴢⴣⴤⴥⴧⴭꭰꭱꭲꭳꭴꭵꭶꭷꭸꭹꭺꭻꭼꭽꭾꭿꮀꮁꮂꮃꮄꮅꮆꮇꮈꮉꮊꮋꮌꮍꮎꮏꮐꮑꮒꮓꮔꮕꮖꮗꮘꮙꮚꮛꮜꮝꮞꮟꮠꮡꮢꮣꮤꮥꮦꮧꮨꮩꮪꮫꮬꮭꮮꮯꮰꮱꮲꮳꮴꮵꮶꮷꮸꮹꮺꮻꮼꮽꮾꮿᏸᏹᏺᏻᏼᏽ ᲊაბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰჱჲჳჴჵჶჷჸჹჺჽჾჿßỻỽỿ             ⅎⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹⅺⅻⅼⅽⅾⅿↄⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩⰰⰱⰲⰳⰴⰵⰶⰷⰸⰹⰺⰻⰼⰽⰾⰿⱀⱁⱂⱃⱄⱅⱆⱇⱈⱉⱊⱋⱌⱍⱎⱏⱐⱑⱒⱓⱔⱕⱖⱗⱘⱙⱚⱛⱜⱝⱞⱟⱡɫᵽɽⱨⱪⱬɑɱɐɒⱳⱶȿɀⲁⲃⲅⲇⲉⲋⲍⲏⲑⲓⲕⲗⲙⲛⲝⲟⲡⲣⲥⲧⲩⲫⲭⲯⲱⲳⲵⲷⲹⲻⲽⲿⳁⳃⳅⳇⳉⳋⳍⳏⳑⳓⳕⳗⳙⳛⳝⳟⳡⳣⳬⳮⳳ ꙁꙃꙅꙇꙉꙋꙍꙏꙑꙓꙕꙗꙙꙛꙝꙟꙡꙣꙥꙧꙩꙫꙭꚁꚃꚅꚇꚉꚋꚍꚏꚑꚓꚕꚗꚙꚛꜣꜥꜧꜩꜫꜭꜯꜳꜵꜷꜹꜻꜽꜿꝁꝃꝅꝇꝉꝋꝍꝏꝑꝓꝕꝗꝙꝛꝝꝟꝡꝣꝥꝧꝩꝫꝭꝯꝺꝼᵹꝿꞁꞃꞅꞇꞌɥꞑꞓꞗꞙꞛꞝꞟꞡꞣꞥꞧꞩɦɜɡɬɪʞʇʝꭓꞵꞷꞹꞻꞽꞿꟁꟃꞔʂᶎꟈꟊɤꟍ꟏ꟑꟓꟕꟗꟙꟛƛꟶａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ𐐨𐐩𐐪𐐫𐐬𐐭𐐮𐐯𐐰𐐱𐐲𐐳𐐴𐐵𐐶𐐷𐐸𐐹𐐺𐐻𐐼𐐽𐐾𐐿𐑀𐑁𐑂𐑃𐑄𐑅𐑆𐑇𐑈𐑉𐑊𐑋𐑌𐑍𐑎𐑏𐓘𐓙𐓚𐓛𐓜𐓝𐓞𐓟𐓠𐓡𐓢𐓣𐓤𐓥𐓦𐓧𐓨𐓩𐓪𐓫𐓬𐓭𐓮𐓯𐓰𐓱𐓲𐓳𐓴𐓵𐓶𐓷𐓸𐓹𐓺𐓻𐖗𐖘𐖙𐖚𐖛𐖜𐖝𐖞𐖟𐖠𐖡𐖣𐖤𐖥𐖦𐖧𐖨𐖩𐖪𐖫𐖬𐖭𐖮𐖯𐖰𐖱𐖳𐖴𐖵𐖶𐖷𐖸𐖹𐖻𐖼𐳀𐳁𐳂𐳃𐳄𐳅𐳆𐳇𐳈𐳉𐳊𐳋𐳌𐳍𐳎𐳏𐳐𐳑𐳒𐳓𐳔𐳕𐳖𐳗𐳘𐳙𐳚𐳛𐳜𐳝𐳞𐳟𐳠𐳡𐳢𐳣𐳤𐳥𐳦𐳧𐳨𐳩𐳪𐳫𐳬𐳭𐳮𐳯𐳰𐳱𐳲𐵰𐵱𐵲𐵳𐵴𐵵𐵶𐵷𐵸𐵹𐵺𐵻𐵼𐵽𐵾𐵿𐶀𐶁𐶂𐶃𐶄𐶅𑣀𑣁𑣂𑣃𑣄𑣅𑣆𑣇𑣈𑣉𑣊𑣋𑣌𑣍𑣎𑣏𑣐𑣑𑣒𑣓𑣔𑣕𑣖𑣗𑣘𑣙𑣚𑣛𑣜𑣝𑣞𑣟𖹠𖹡𖹢𖹣𖹤𖹥𖹦𖹧𖹨𖹩𖹪𖹫𖹬𖹭𖹮𖹯𖹰𖹱𖹲𖹳𖹴𖹵𖹶𖹷𖹸𖹹𖹺𖹻𖹼𖹽𖹾𖹿𖺻𖺼𖺽𖺾𖺿𖻀𖻁𖻂𖻃𖻄𖻅𖻆𖻇𖻈𖻉𖻊𖻋𖻌𖻍𖻎𖻏𖻐𖻑𖻒𖻓𞤢𞤣𞤤𞤥𞤦𞤧𞤨𞤩𞤪𞤫𞤬𞤭𞤮𞤯𞤰𞤱𞤲𞤳𞤴𞤵𞤶𞤷𞤸𞤹𞤺𞤻𞤼𞤽𞤾𞤿𞥀𞥁𞥂𞥃'::text), ' +'::text, ' '::text, 'g'::text), ' '::text)))::text) COLLATE "C", w.id
+                      Sort Method: top-N heapsort  Memory: 35kB
+                      Buffers: shared hit=362
+                      ->  Nested Loop Left Join (actual time=1.223..6.129 rows=10001 loops=1)
+                            Buffers: shared hit=362
+                            ->  Hash Right Join (actual time=1.216..3.007 rows=10001 loops=1)
+                                  Hash Cond: (d_1.work_id = w.id)
+                                  Buffers: shared hit=359
+                                  ->  Seq Scan on working_drafts d_1 (actual time=0.002..0.588 rows=10101 loops=1)
+                                        Buffers: shared hit=274
+                                  ->  Hash (actual time=1.205..1.205 rows=10001 loops=1)
+                                        Buckets: 16384  Batches: 1  Memory Usage: 675kB
+                                        Buffers: shared hit=85
+                                        ->  Seq Scan on works w (actual time=0.003..0.754 rows=10001 loops=1)
+                                              Filter: (owner_id = '11111111-1111-4111-8111-111111111111'::uuid)
+                                              Rows Removed by Filter: 100
+                                              Buffers: shared hit=85
+                            ->  Limit (actual time=0.000..0.000 rows=0 loops=10001)
+                                  Buffers: shared hit=3
+                                  ->  Sort (actual time=0.000..0.000 rows=0 loops=10001)
+                                        Sort Key: r_1.created_at DESC, r_1.id DESC
+                                        Sort Method: quicksort  Memory: 25kB
+                                        Buffers: shared hit=3
+                                        ->  Result (actual time=0.000..0.000 rows=0 loops=10001)
+                                              One-Time Filter: (d_1.work_id IS NULL)
+                                              ->  Bitmap Heap Scan on revisions r_1 (never executed)
+                                                    Recheck Cond: (work_id = w.id)
+                                                    ->  Bitmap Index Scan on revisions_work_id_id_key (never executed)
+                                                          Index Cond: (work_id = w.id)
+  ->  Hash Left Join (actual time=7.130..7.179 rows=25 loops=1)
+        Hash Cond: ((page.work_id = lm.work_id) AND (r.id = lm.revision_id))
+        Buffers: shared hit=469
+        ->  Nested Loop Left Join (actual time=7.113..7.159 rows=25 loops=1)
+              Buffers: shared hit=468
+              ->  Nested Loop Left Join (actual time=7.082..7.106 rows=25 loops=1)
+                    Join Filter: (pr.work_id = page.work_id)
+                    Buffers: shared hit=442
+                    ->  Nested Loop Left Join (actual time=7.071..7.092 rows=25 loops=1)
+                          Buffers: shared hit=440
+                          ->  Hash Right Join (actual time=7.064..7.070 rows=25 loops=1)
+                                Hash Cond: (p.work_id = page.work_id)
+                                Buffers: shared hit=365
+                                ->  Seq Scan on publications p (actual time=0.003..0.003 rows=1 loops=1)
+                                      Buffers: shared hit=1
+                                ->  Hash (actual time=7.058..7.060 rows=25 loops=1)
+                                      Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                      Buffers: shared hit=364
+                                      ->  Hash Right Join (actual time=7.051..7.055 rows=25 loops=1)
+                                            Hash Cond: ((im.work_id = page.work_id) AND (im.revision_id = wp.intent_revision_id))
+                                            Buffers: shared hit=364
+                                            ->  Seq Scan on work_revision_moderation im (actual time=0.003..0.003 rows=1 loops=1)
+                                                  Buffers: shared hit=1
+                                            ->  Hash (actual time=7.046..7.046 rows=25 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                  Buffers: shared hit=363
+                                                  ->  Hash Right Join (actual time=7.039..7.042 rows=25 loops=1)
+                                                        Hash Cond: (wp.work_id = page.work_id)
+                                                        Buffers: shared hit=363
+                                                        ->  Seq Scan on work_publications wp (actual time=0.007..0.007 rows=1 loops=1)
+                                                              Buffers: shared hit=1
+                                                        ->  Hash (actual time=7.029..7.029 rows=25 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                              Buffers: shared hit=362
+                                                              ->  CTE Scan on page (actual time=7.011..7.019 rows=25 loops=1)
+                                                                    Buffers: shared hit=362
+                          ->  Index Scan using working_drafts_pkey on working_drafts d (actual time=0.001..0.001 rows=1 loops=25)
+                                Index Cond: (work_id = page.work_id)
+                                Buffers: shared hit=75
+                    ->  Index Scan using revisions_pkey on revisions pr (actual time=0.000..0.000 rows=0 loops=25)
+                          Index Cond: (id = p.revision_id)
+                          Buffers: shared hit=2
+              ->  Limit (actual time=0.002..0.002 rows=0 loops=25)
+                    Buffers: shared hit=26
+                    ->  Sort (actual time=0.002..0.002 rows=0 loops=25)
+                          Sort Key: r.created_at DESC, r.id DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=26
+                          ->  Bitmap Heap Scan on revisions r (actual time=0.000..0.000 rows=0 loops=25)
+                                Recheck Cond: (work_id = page.work_id)
+                                Heap Blocks: exact=1
+                                Buffers: shared hit=26
+                                ->  Bitmap Index Scan on revisions_work_id_id_key (actual time=0.000..0.000 rows=0 loops=25)
+                                      Index Cond: (work_id = page.work_id)
+                                      Buffers: shared hit=25
+        ->  Hash (actual time=0.003..0.003 rows=1 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 9kB
+              Buffers: shared hit=1
+              ->  Seq Scan on work_revision_moderation lm (actual time=0.001..0.001 rows=1 loops=1)
+                    Buffers: shared hit=1
+        SubPlan 2
+          ->  Sort (never executed)
+                Sort Key: work_draft_tags.slot
+                ->  Bitmap Heap Scan on work_draft_tags (never executed)
+                      Recheck Cond: (work_id = page.work_id)
+                      ->  Bitmap Index Scan on work_draft_tags_once_key (never executed)
+                            Index Cond: (work_id = page.work_id)
+        SubPlan 3
+          ->  Sort (never executed)
+                Sort Key: work_metadata_snapshot_tags.slot
+                ->  Bitmap Heap Scan on work_metadata_snapshot_tags (never executed)
+                      Recheck Cond: (snapshot_id = pr.metadata_snapshot_id)
+                      ->  Bitmap Index Scan on work_metadata_snapshot_tags_once_key (never executed)
+                            Index Cond: (snapshot_id = pr.metadata_snapshot_id)
+Planning:
+  Buffers: shared hit=533
+Planning Time: 1.033 ms
+Execution Time: 7.263 ms
+22222222-2222-4222-8222-222222222222 Recent
+Sort (actual time=0.801..0.803 rows=25 loops=1)
+  Sort Key: page.updated_at DESC, page.work_id
+  Sort Method: quicksort  Memory: 27kB
+  Buffers: shared hit=382
+  CTE page
+    ->  Limit (actual time=0.708..0.711 rows=25 loops=1)
+          Buffers: shared hit=278
+          ->  Result (actual time=0.708..0.710 rows=25 loops=1)
+                Buffers: shared hit=278
+                ->  Sort (actual time=0.707..0.708 rows=25 loops=1)
+                      Sort Key: (COALESCE(d_1.updated_at, w.created_at)) DESC, w.id
+                      Sort Method: top-N heapsort  Memory: 35kB
+                      Buffers: shared hit=278
+                      ->  Nested Loop Left Join (actual time=0.647..0.693 rows=100 loops=1)
+                            Buffers: shared hit=278
+                            ->  Hash Right Join (actual time=0.644..0.660 rows=100 loops=1)
+                                  Hash Cond: (d_1.work_id = w.id)
+                                  Buffers: shared hit=278
+                                  ->  Seq Scan on working_drafts d_1 (actual time=0.002..0.348 rows=10101 loops=1)
+                                        Buffers: shared hit=274
+                                  ->  Hash (actual time=0.015..0.015 rows=100 loops=1)
+                                        Buckets: 1024  Batches: 1  Memory Usage: 14kB
+                                        Buffers: shared hit=4
+                                        ->  Index Scan using works_owner_id_idx on works w (actual time=0.005..0.010 rows=100 loops=1)
+                                              Index Cond: (owner_id = '22222222-2222-4222-8222-222222222222'::uuid)
+                                              Buffers: shared hit=4
+                            ->  Limit (actual time=0.000..0.000 rows=0 loops=100)
+                                  ->  Sort (actual time=0.000..0.000 rows=0 loops=100)
+                                        Sort Key: r_1.created_at DESC, r_1.id DESC
+                                        Sort Method: quicksort  Memory: 25kB
+                                        ->  Result (actual time=0.000..0.000 rows=0 loops=100)
+                                              One-Time Filter: (d_1.work_id IS NULL)
+                                              ->  Bitmap Heap Scan on revisions r_1 (never executed)
+                                                    Recheck Cond: (work_id = w.id)
+                                                    ->  Bitmap Index Scan on revisions_work_id_id_key (never executed)
+                                                          Index Cond: (work_id = w.id)
+  ->  Hash Left Join (actual time=0.746..0.795 rows=25 loops=1)
+        Hash Cond: ((page.work_id = lm.work_id) AND (r.id = lm.revision_id))
+        Buffers: shared hit=382
+        ->  Nested Loop Left Join (actual time=0.742..0.789 rows=25 loops=1)
+              Buffers: shared hit=381
+              ->  Nested Loop Left Join (actual time=0.739..0.768 rows=25 loops=1)
+                    Join Filter: (pr.work_id = page.work_id)
+                    Buffers: shared hit=356
+                    ->  Nested Loop Left Join (actual time=0.737..0.763 rows=25 loops=1)
+                          Buffers: shared hit=356
+                          ->  Hash Right Join (actual time=0.734..0.738 rows=25 loops=1)
+                                Hash Cond: (p.work_id = page.work_id)
+                                Buffers: shared hit=281
+                                ->  Seq Scan on publications p (actual time=0.000..0.000 rows=1 loops=1)
+                                      Buffers: shared hit=1
+                                ->  Hash (actual time=0.731..0.732 rows=25 loops=1)
+                                      Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                      Buffers: shared hit=280
+                                      ->  Hash Right Join (actual time=0.727..0.729 rows=25 loops=1)
+                                            Hash Cond: ((im.work_id = page.work_id) AND (im.revision_id = wp.intent_revision_id))
+                                            Buffers: shared hit=280
+                                            ->  Seq Scan on work_revision_moderation im (actual time=0.001..0.001 rows=1 loops=1)
+                                                  Buffers: shared hit=1
+                                            ->  Hash (actual time=0.724..0.724 rows=25 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                                                  Buffers: shared hit=279
+                                                  ->  Hash Right Join (actual time=0.719..0.722 rows=25 loops=1)
+                                                        Hash Cond: (wp.work_id = page.work_id)
+                                                        Buffers: shared hit=279
+                                                        ->  Seq Scan on work_publications wp (actual time=0.001..0.001 rows=1 loops=1)
+                                                              Buffers: shared hit=1
+                                                        ->  Hash (actual time=0.716..0.716 rows=25 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                                              Buffers: shared hit=278
+                                                              ->  CTE Scan on page (actual time=0.709..0.715 rows=25 loops=1)
+                                                                    Buffers: shared hit=278
+                          ->  Index Scan using working_drafts_pkey on working_drafts d (actual time=0.001..0.001 rows=1 loops=25)
+                                Index Cond: (work_id = page.work_id)
+                                Buffers: shared hit=75
+                    ->  Index Scan using revisions_pkey on revisions pr (actual time=0.000..0.000 rows=0 loops=25)
+                          Index Cond: (id = p.revision_id)
+              ->  Limit (actual time=0.001..0.001 rows=0 loops=25)
+                    Buffers: shared hit=25
+                    ->  Sort (actual time=0.001..0.001 rows=0 loops=25)
+                          Sort Key: r.created_at DESC, r.id DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=25
+                          ->  Bitmap Heap Scan on revisions r (actual time=0.000..0.000 rows=0 loops=25)
+                                Recheck Cond: (work_id = page.work_id)
+                                Buffers: shared hit=25
+                                ->  Bitmap Index Scan on revisions_work_id_id_key (actual time=0.000..0.000 rows=0 loops=25)
+                                      Index Cond: (work_id = page.work_id)
+                                      Buffers: shared hit=25
+        ->  Hash (actual time=0.001..0.001 rows=1 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 9kB
+              Buffers: shared hit=1
+              ->  Seq Scan on work_revision_moderation lm (actual time=0.001..0.001 rows=1 loops=1)
+                    Buffers: shared hit=1
+        SubPlan 2
+          ->  Sort (never executed)
+                Sort Key: work_draft_tags.slot
+                ->  Bitmap Heap Scan on work_draft_tags (never executed)
+                      Recheck Cond: (work_id = page.work_id)
+                      ->  Bitmap Index Scan on work_draft_tags_once_key (never executed)
+                            Index Cond: (work_id = page.work_id)
+        SubPlan 3
+          ->  Sort (never executed)
+                Sort Key: work_metadata_snapshot_tags.slot
+                ->  Bitmap Heap Scan on work_metadata_snapshot_tags (never executed)
+                      Recheck Cond: (snapshot_id = pr.metadata_snapshot_id)
+                      ->  Bitmap Index Scan on work_metadata_snapshot_tags_once_key (never executed)
+                            Index Cond: (snapshot_id = pr.metadata_snapshot_id)
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.449 ms
+Execution Time: 0.841 ms
+22222222-2222-4222-8222-222222222222 Title
+Sort (actual time=0.725..0.727 rows=25 loops=1)
+  Sort Key: ((page.title_key)::text) COLLATE "C", page.work_id
+  Sort Method: quicksort  Memory: 28kB
+  Buffers: shared hit=382
+  CTE page
+    ->  Limit (actual time=0.619..0.622 rows=25 loops=1)
+          Buffers: shared hit=278
+          ->  Result (actual time=0.619..0.621 rows=25 loops=1)
+                Buffers: shared hit=278
+                ->  Sort (actual time=0.618..0.619 rows=25 loops=1)
+                      Sort Key: ((COALESCE(d_1.desk_title_key, btrim(regexp_replace(translate(replace(replace(replace(replace(replace(replace(replace(replace(replace(NORMALIZE(COALESCE(r_1.title, 'Chưa đặt tên'::text), NFD), '𐗉'::text, '𐗉'::text), '𐗤'::text, '𐗤'::text), '𑎃'::text, '𑎃'::text), '𑎅'::text, '𑎅'::text), '𑎎'::text, '𑎎'::text), '𑎑'::text, '𑎑'::text), '𖵨'::text, '𖵨'::text), '𖵩'::text, '𖵩'::text), '𖵪'::text, '𖵪'::text), '	
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ ÆÐØÞĐđĦĲĿŁŊŒŦƁƂƄƆƇƉƊƋƎƏƐƑƓƔƖƗƘƜƝƟƢƤƦƧƩƬƮƱƲƳƵƷƸƼǄǅǇǈǊǋǤǱǲǶǷȜȠȢȤȺȻȽȾɁɃɄɅɆɈɊɌɎͰͲͶͿΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩϏϘϚϜϞϠϢϤϦϨϪϬϮϴϷϹϺϽϾϿЂЄЅІЈЉЊЋЏАБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯѠѢѤѦѨѪѬѮѰѲѴѸѺѼѾҀҊҌҎҐҒҔҖҘҚҜҞҠҢҤҦҨҪҬҮҰҲҴҶҸҺҼҾӀӃӅӇӉӋӍӔӘӠӨӶӺӼӾԀԂԄԆԈԊԌԎԐԒԔԖԘԚԜԞԠԢԤԦԨԪԬԮԱԲԳԴԵԶԷԸԹԺԻԼԽԾԿՀՁՂՃՄՅՆՇՈՉՊՋՌՍՎՏՐՑՒՓՔՕՖႠႡႢႣႤႥႦႧႨႩႪႫႬႭႮႯႰႱႲႳႴႵႶႷႸႹႺႻႼႽႾႿჀჁჂჃჄჅჇჍᎠᎡᎢᎣᎤᎥᎦᎧᎨᎩᎪᎫᎬᎭᎮᎯᎰᎱᎲᎳᎴᎵᎶᎷᎸᎹᎺᎻᎼᎽᎾᎿᏀᏁᏂᏃᏄᏅᏆᏇᏈᏉᏊᏋᏌᏍᏎᏏᏐᏑᏒᏓᏔᏕᏖᏗᏘᏙᏚᏛᏜᏝᏞᏟᏠᏡᏢᏣᏤᏥᏦᏧᏨᏩᏪᏫᏬᏭᏮᏯᏰᏱᏲᏳᏴᏵ ᲉᲐᲑᲒᲓᲔᲕᲖᲗᲘᲙᲚᲛᲜᲝᲞᲟᲠᲡᲢᲣᲤᲥᲦᲧᲨᲩᲪᲫᲬᲭᲮᲯᲰᲱᲲᲳᲴᲵᲶᲷᲸᲹᲺᲽᲾᲿẞỺỼỾ             ℲⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫⅬⅭⅮⅯↃⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⰀⰁⰂⰃⰄⰅⰆⰇⰈⰉⰊⰋⰌⰍⰎⰏⰐⰑⰒⰓⰔⰕⰖⰗⰘⰙⰚⰛⰜⰝⰞⰟⰠⰡⰢⰣⰤⰥⰦⰧⰨⰩⰪⰫⰬⰭⰮⰯⱠⱢⱣⱤⱧⱩⱫⱭⱮⱯⱰⱲⱵⱾⱿⲀⲂⲄⲆⲈⲊⲌⲎⲐⲒⲔⲖⲘⲚⲜⲞⲠⲢⲤⲦⲨⲪⲬⲮⲰⲲⲴⲶⲸⲺⲼⲾⳀⳂⳄⳆⳈⳊⳌⳎⳐⳒⳔⳖⳘⳚⳜⳞⳠⳢⳫⳭⳲ　ꙀꙂꙄꙆꙈꙊꙌꙎꙐꙒꙔꙖꙘꙚꙜꙞꙠꙢꙤꙦꙨꙪꙬꚀꚂꚄꚆꚈꚊꚌꚎꚐꚒꚔꚖꚘꚚꜢꜤꜦꜨꜪꜬꜮꜲꜴꜶꜸꜺꜼꜾꝀꝂꝄꝆꝈꝊꝌꝎꝐꝒꝔꝖꝘꝚꝜꝞꝠꝢꝤꝦꝨꝪꝬꝮꝹꝻꝽꝾꞀꞂꞄꞆꞋꞍꞐꞒꞖꞘꞚꞜꞞꞠꞢꞤꞦꞨꞪꞫꞬꞭꞮꞰꞱꞲꞳꞴꞶꞸꞺꞼꞾꟀꟂꟄꟅꟆꟇꟉꟋꟌ꟎Ꟑ꟒꟔ꟖꟘꟚꟜꟵＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺ𐐀𐐁𐐂𐐃𐐄𐐅𐐆𐐇𐐈𐐉𐐊𐐋𐐌𐐍𐐎𐐏𐐐𐐑𐐒𐐓𐐔𐐕𐐖𐐗𐐘𐐙𐐚𐐛𐐜𐐝𐐞𐐟𐐠𐐡𐐢𐐣𐐤𐐥𐐦𐐧𐒰𐒱𐒲𐒳𐒴𐒵𐒶𐒷𐒸𐒹𐒺𐒻𐒼𐒽𐒾𐒿𐓀𐓁𐓂𐓃𐓄𐓅𐓆𐓇𐓈𐓉𐓊𐓋𐓌𐓍𐓎𐓏𐓐𐓑𐓒𐓓𐕰𐕱𐕲𐕳𐕴𐕵𐕶𐕷𐕸𐕹𐕺𐕼𐕽𐕾𐕿𐖀𐖁𐖂𐖃𐖄𐖅𐖆𐖇𐖈𐖉𐖊𐖌𐖍𐖎𐖏𐖐𐖑𐖒𐖔𐖕𐲀𐲁𐲂𐲃𐲄𐲅𐲆𐲇𐲈𐲉𐲊𐲋𐲌𐲍𐲎𐲏𐲐𐲑𐲒𐲓𐲔𐲕𐲖𐲗𐲘𐲙𐲚𐲛𐲜𐲝𐲞𐲟𐲠𐲡𐲢𐲣𐲤𐲥𐲦𐲧𐲨𐲩𐲪𐲫𐲬𐲭𐲮𐲯𐲰𐲱𐲲𐵐𐵑𐵒𐵓𐵔𐵕𐵖𐵗𐵘𐵙𐵚𐵛𐵜𐵝𐵞𐵟𐵠𐵡𐵢𐵣𐵤𐵥𑢠𑢡𑢢𑢣𑢤𑢥𑢦𑢧𑢨𑢩𑢪𑢫𑢬𑢭𑢮𑢯𑢰𑢱𑢲𑢳𑢴𑢵𑢶𑢷𑢸𑢹𑢺𑢻𑢼𑢽𑢾𑢿𖹀𖹁𖹂𖹃𖹄𖹅𖹆𖹇𖹈𖹉𖹊𖹋𖹌𖹍𖹎𖹏𖹐𖹑𖹒𖹓𖹔𖹕𖹖𖹗𖹘𖹙𖹚𖹛𖹜𖹝𖹞𖹟𖺠𖺡𖺢𖺣𖺤𖺥𖺦𖺧𖺨𖺩𖺪𖺫𖺬𖺭𖺮𖺯𖺰𖺱𖺲𖺳𖺴𖺵𖺶𖺷𖺸𞤀𞤁𞤂𞤃𞤄𞤅𞤆𞤇𞤈𞤉𞤊𞤋𞤌𞤍𞤎𞤏𞤐𞤑𞤒𞤓𞤔𞤕𞤖𞤗𞤘𞤙𞤚𞤛𞤜𞤝𞤞𞤟𞤠𞤡̴̵̶̷̸̡̢̧̨̛̖̗̘̙̜̝̞̟̠̣̤̥̦̩̪̫̬̭̮̯̰̱̲̳̹̺̻̼͇͈͉͍͎̀́̂̃̄̅̆̇̈̉̊̋̌̍̎̏̐̑̒̓̔̽̾̿̀́͂̓̈́͆͊͋͌̕̚ͅ͏͓͔͕͖͙͚͐͑͒͗͛ͣͤͥͦͧͨͩͪͫͬͭͮͯ҃҄҅҆҇͘͜͟͢͝͞͠͡҈҉ְֱֲֳִֵֶַָׇֹֺֻּֽֿׁׂ֑֖֛֢֣֤֥֦֧֪ׅ֚֭֮֒֓֔֕֗֘֙֜֝֞֟֠֡֨֩֫֬֯ׄ׈׉ًٌٍؘَؙُؚِّْٰܑٕٖٜٟۣ۪ۭܱܴܷܸܹܻܼܾ݂݄݆݈ؐؑؒؓؔؕؖؗٓٔٗ٘ٙٚٛٝٞۖۗۘۙۚۛۜ۟۠ۡۢۤۧۨ۫۬ܰܲܳܵܶܺܽܿ݀݁݃݅݇݉݊ަާިީުޫެޭޮޯްࣰࣱࣲ߲߽࡙࡚࡛࢙࢚࢛࣏࣐࣑࣒࣓ࣣࣦࣩ࣭࣮࣯ࣶࣹࣺ߫߬߭߮߯߰߱߳ࠖࠗ࠘࠙ࠛࠜࠝࠞࠟࠠࠡࠢࠣࠥࠦࠧࠩࠪࠫࠬ࠭ࢗ࢘࢜࢝࢞࢟࣊࣋࣌࣍࣎ࣔࣕࣖࣗࣘࣙࣚࣛࣜࣝࣞࣟ࣠࣡ࣤࣥࣧࣨ࣪࣫࣬ࣳࣴࣵࣷࣸࣻࣼࣽࣾࣿऀँंःऺऻ़ािीुूृॄॅॆेैॉॊोौ्ॎॏ॒॑॓॔ॕॖॗॢॣঁংঃ়ািীুূৃৄেৈোৌ্ৗৢৣ৾ਁਂਃ਼ਾਿੀੁੂੇੈੋੌ੍ੑੰੱੵઁંઃ઼ાિીુૂૃૄૅેૈૉોૌ્ૢૣૺૻૼ૽૾૿ଁଂଃ଼ାିୀୁୂୃୄେୈୋୌ୍୓୔୕ୖୗୢୣஂாிீுூெேைொோௌ்ௗఀఁంఃఄ఼ాిీుూృౄెేైొోౌ్ౕౖౢౣಁಂಃ಼ಾಿೀುೂೃೄೆೇೈೊೋೌ್ೕೖೢೣೳഀഁംഃ഻഼ാിീുൂൃൄെേൈൊോൌ്ൗൢൣඁංඃ්ාැෑිීුූෘෙේෛොෝෞෟෲෳัิีึืฺุู็่้๊๋์ํ๎ັິີຶື຺ຸູົຼ່້໊໋໌ໍ໎༹༘༙༵༷༾༿ཱཱཱིིུུྲྀཷླྀཹེཻོཽཾཿ྄ཱྀྀྂྃ྆྇ྍྎྏྐྑྒྒྷྔྕྖྗྙྚྛྜྜྷྞྟྠྡྡྷྣྤྥྦྦྷྨྩྪྫྫྷྭྮྯྰྱྲླྴྵྶྷྸྐྵྺྻྼ࿆ါာိီုူေဲဳဴဵံ့း္်ျြွှၖၗၘၙၞၟၠၢၣၤၧၨၩၪၫၬၭၱၲၳၴႂႃႄႅႆႇႈႉႊႋႌႍႏႚႛႜႝ፝፞፟ᜒᜓ᜔᜕ᜲᜳ᜴ᝒᝓᝲᝳ឴឵ាិីឹឺុូួើឿៀេែៃោៅំះៈ៉៊់៌៍៎៏័៑្៓៝᠋᠌᠍᠏ᢅᢆᢩᤠᤡᤢᤣᤤᤥᤦᤧᤨᤩᤪᤫᤰᤱᤲᤳᤴᤵᤶᤷᤸ᤻ᨘ᤹᤺ᨗᨙᨚᨛᩕᩖᩗᩘᩙᩚᩛᩜᩝᩞ᩠ᩡᩢᩣᩤᩥᩦᩧᩨᩩᩪᩫᩬᩭᩮᩯᩰᩱᩲᩳᩴ᩿᪵᪶᪷᪸᪹᪺᪽᩵᩶᩷᩸᩹᩺᩻᩼᪰᪱᪲᪳᪴᪻᪼᪾ᪿᫀ᫃᫄᫊᫁᫂᫅᫆᫇᫈᫉᫋ᫌᫍᫎ᫏᫐᫑᫒᫓᫔᫕᫖᫗᫘᫙᫚᫛᫜᫝᫞᫟᫠᫡᫢᫣᫤᫥᫦᫧᫨᫩᫪᫫᫬᫭᫮᫯᫰ᬀᬁᬂᬃᬄ᬴ᬵᬶᬷᬸᬹᬺᬻᬼᬽᬾᬿᭀᭁᭂᭃ᭄᭬᭫᭭᭮᭯᭰᭱᭲᭳ᮀᮁᮂᮡᮢᮣᮤᮥᮦᮧᮨᮩ᮪᮫ᮬᮭ᯦ᯧᯨᯩᯪᯫᯬᯭᯮᯯᯰᯱ᯲᯳ᰤᰥᰦᰧᰨᰩᰪᰫᰬᰭᰮᰯᰰᰱᰲᰳᰴᰵᰶ᳔᰷᳕᳖᳗᳘᳙᳜᳝᳞᳟᳐᳑᳒᳚᳛᳠᳡᳢᳣᳤᳥᳦᳧᳨᳭᳴᳷⃒⃓⃘⃙⃚᷐᷎᷺᷂᷊᷏᷹᷽᷿᷷᷸᳸᳹᷀᷁᷃᷄᷅᷆᷇᷈᷉᷋᷌᷑᷒ᷓᷔᷕᷖᷗᷘᷙᷚᷛᷜᷝᷞᷟᷠᷡᷢᷣᷤᷥᷦᷧᷨᷩᷪᷫᷬᷭᷮᷯᷰᷱᷲᷳᷴ᷵᷻᷾⃐⃑⃔⃕⃖⃗⃛⃜᷶᷼᷍⃝⃞⃟⃠⃡⃢⃣⃤⃥⃦⃪⃫゙゚⵿〪⃨⃬⃭⃮⃯〭〮〯〫⃧⃩⃰⳯⳰⳱ⷠⷡⷢⷣⷤⷥⷦⷧⷨⷩⷪⷫⷬⷭⷮⷯⷰⷱⷲⷳⷴⷵⷶⷷⷸⷹⷺⷻⷼⷽⷾⷿ꙯〬꙰꙱꙲ꙴꙵꙶꙷꙸꙹꙺꙻ꙼꙽ꚞꚟ꛰꛱ꠂ꠆ꠋꠣꠤꠥꠦꠧ꠬ꢀꢁꢴꢵꢶꢷꢸꢹꢺꢻꢼꢽꢾꢿꣀꣁꣂꣃ꣄ꣅ꣠꣡꣢꣣꣤꣥꣦꣧꣨꣩꣪꣫꣬꣭꣮꣯꣰꣱ꣿꤦꤧꤨꤩꤪ꤫꤬꤭ꥇꥈꥉꥊꥋꥌꥍꥎꥏꥐꥑꥒ꥓ꦀꦁꦂꦃ꦳ꦴꦵꦶꦷꦸꦹꦺꦻꦼꦽꦾꦿ꧀ꧥꨩꨪꨫꨬꨭꨮꨯꨰꨱꨲꨳꨴꨵꨶꩃꩌꩍꩻꩼꩽꪴꪰꪲꪳꪷꪸꪾ꪿꫁ꫫꫬꫭꫮꫯꫵ꫶ꯣꯤꯥꯦꯧꯨꯩꯪ꯬꯭ﬞ︀︁︂︃︄︅︆︇︈︉︊︋︌︍︎️︧︨︩︪︫︬︭𐇽𐋠︠︡︢︣︤︥︦︮︯𐍶𐍷𐍸𐍹𐍺𐨁𐨂𐨃𐨅𐨆𐨌𐨍𐨎𐨹𐨿𐨺𐫦𐨏𐨸𐫥𐴤𐴥𐴦𐴧𐵩𐵪𐵫𐵬𐵭𐺫𐺬𐻋𐻌𐻍𐻎𐻏𐻰𐻱𐻲𐻳𐻴𐻵𐻶𐻷𐻸𐻹𐻺𐻻𐻼𐻽𐻾𐻿𐽆𐽇𐽋𐽍𐽎𐽏𐽐𐾃𐾅𐽈𐽉𐽊𐽌𐾂𐾄𑀀𑀁𑀂𑀸𑀹𑀺𑀻𑀼𑀽𑀾𑀿𑁀𑁁𑁂𑁃𑁄𑁅𑁆𑁰𑁳𑁴𑁿𑂀𑂁𑂂𑂰𑂱𑂲𑂳𑂴𑂵𑂶𑂷𑂸𑂺𑂹𑃂𑄀𑄁𑄂𑄧𑄨𑄩𑄪𑄫𑄬𑄭𑄮𑄯𑄰𑄱𑄲𑄳𑄴𑅅𑅆𑅳𑆀𑆁𑆂𑆳𑆴𑆵𑆶𑆷𑆸𑆹𑆺𑆻𑆼𑆽𑆾𑆿𑇀𑇉𑇊𑇋𑇌𑇎𑇏𑈬𑈭𑈮𑈯𑈰𑈱𑈲𑈳𑈴𑈶𑈵𑈷𑈾𑉁𑋟𑋠𑋡𑋢𑋣𑋤𑋥𑋦𑋧𑋨𑋩𑋪𑌀𑌁𑌂𑌃𑌻𑌼𑌾𑌿𑍀𑍁𑍂𑍃𑍄𑍇𑍈𑍋𑍌𑍍𑍗𑍢𑍣𑍦𑍧𑍨𑍩𑍪𑍫𑍬𑍰𑍱𑍲𑍳𑍴𑎸𑎹𑎺𑎻𑎼𑎽𑎾𑎿𑏀𑏅𑏅𑎸𑏈𑏉𑏊𑏌𑏍𑏎𑏏𑏐𑏒𑏡𑏢𑐵𑐶𑐷𑐸𑐹𑐺𑐻𑐼𑐽𑐾𑐿𑑀𑑁𑑂𑑃𑑄𑑅𑑆𑑞𑒰𑒱𑒲𑒳𑒴𑒵𑒶𑒷𑒸𑒻𑒻𑒼𑒽𑒾𑒿𑓀𑓁𑓃𑓂𑖯𑖰𑖱𑖲𑖳𑖴𑖵𑖸𑖹𑖺𑖻𑖼𑖽𑖾𑗀𑖿𑗜𑗝𑘰𑘱𑘲𑘳𑘴𑘵𑘶𑘷𑘸𑘹𑘺𑘻𑘼𑘽𑘾𑘿𑙀𑚫𑚬𑚭𑚮𑚯𑚰𑚱𑚲𑚳𑚴𑚵𑚷𑚶𑜝𑜞𑜟𑜠𑜡𑜢𑜣𑜤𑜥𑜦𑜧𑜨𑜩𑜪𑜫𑠬𑠭𑠮𑠯𑠰𑠱𑠲𑠳𑠴𑠵𑠶𑠷𑠸𑠺𑠹𑤰𑤱𑤲𑤳𑤴𑤵𑤷𑤸𑤻𑤼𑤽𑤾𑥀𑥂𑥃𑧑𑧒𑧓𑧔𑧕𑧖𑧗𑧚𑧛𑧜𑧝𑧞𑧟𑧠𑧤𑨁𑨂𑨃𑨄𑨅𑨆𑨇𑨈𑨉𑨊𑨳𑨴𑨵𑨶𑨷𑨸𑨹𑨻𑨼𑨽𑨾𑩇𑩑𑩒𑩓𑩔𑩕𑩖𑩗𑩘𑩙𑩚𑩛𑪊𑪋𑪌𑪍𑪎𑪏𑪐𑪑𑪒𑪓𑪔𑪕𑪖𑪗𑪘𑪙𑭠𑭡𑭢𑭣𑭤𑭥𑭦𑭧𑰯𑰰𑰱𑰲𑰳𑰴𑰵𑰶𑰸𑰹𑰺𑰻𑰼𑰽𑰾𑰿𑲒𑲓𑲔𑲕𑲖𑲗𑲘𑲙𑲚𑲛𑲜𑲝𑲞𑲟𑲠𑲡𑲢𑲣𑲤𑲥𑲦𑲧𑲩𑲪𑲫𑲬𑲭𑲮𑲯𑲰𑲱𑲲𑲳𑲴𑲵𑲶𑴱𑴲𑴳𑴴𑴵𑴶𑴺𑴼𑴽𑴿𑵀𑵁𑵂𑵃𑵄𑵅𑵇𑶊𑶋𑶌𑶍𑶎𑶐𑶑𑶓𑶔𑶕𑶖𑶗𑷰𑻳𑻴𑻵𑻶𑼀𑼁𑼃𑼴𑼵𑼶𑼷𑼸𑼹𑼺𑼾𑼿𑽀𑽁𑽂𑽚𓑀𓑇𓑈𓑉𓑊𓑋𓑌𓑍𓑎𓑏𓑐𓑑𓑒𓑓𓑔𓑕𖄣𖄠𖄡𖄢𖄣𖄤𖄥𖄦𖄧𖄨𖄩𖄪𖄫𖄬𖄭𖄮𖫰𖫱𖫲𖫳𖫴𖄯𖬰𖬱𖬲𖬳𖬴𖬵𖬶𖽏𖽑𖽒𖽓𖽔𖽕𖽖𖽗𖽘𖽙𖽚𖽛𖽜𖽝𖽞𖽟𖽠𖽡𖽢𖽣𖽤𖽥𖽦𖽧𖽨𖽩𖽪𖽫𖽬𖽭𖽮𖽯𖽰𖽱𖽲𖽳𖽴𖽵𖽶𖽷𖽸𖽹𖽺𖽻𖽼𖽽𖽾𖽿𖾀𖾁𖾂𖾃𖾄𖾅𖾆𖾇𖾏𖾐𖾑𖾒𖿤𖿰𖿱𛲝𛲞𜼀𜼁𜼂𜼃𜼄𜼅𜼆𜼇𜼈𜼉𜼊𜼋𜼌𜼍𜼎𜼏𜼐𜼑𜼒𜼓𜼔𜼕𜼖𜼗𜼘𜼙𜼚𜼛𜼜𜼝𜼞𜼟𜼠𜼡𜼢𜼣𜼤𜼥𜼦𜼧𜼨𜼩𜼪𜼫𜼬𜼭𜼰𜼱𜼲𜼳𜼴𜼵𜼶𜼷𜼸𜼹𜼺𜼻𜼼𜼽𜼾𜼿𜽀𜽁𜽂𜽃𜽄𜽅𜽆𝄧𝄨𝅧𝅨𝅩𝅥𝅦𝅮𝅯𝅰𝅱𝅲𝅻𝅼𝅽𝅾𝅿𝆀𝆁𝆂𝆊𝆋𝅭𝆅𝆆𝆇𝆈𝆉𝆪𝆫𝆬𝆭𝉂𝉃𝉄𝉐𝉑𝉒𝉛𝉜𝉟𝊀𝊁𝨀𝨁𝨂𝨃𝨄𝨅𝨆𝨇𝨈𝨉𝨊𝨋𝨌𝨍𝨎𝨏𝨐𝨑𝨒𝨓𝨔𝨕𝨖𝨗𝨘𝨙𝨚𝨛𝨜𝨝𝨞𝨟𝨠𝨡𝨢𝨣𝨤𝨥𝨦𝨧𝨨𝨩𝨪𝨫𝨬𝨭𝨮𝨯𝨰𝨱𝨲𝨳𝨴𝨵𝨶𝨻𝨼𝨽𝨾𝨿𝩀𝩁𝩂𝩃𝩄𝩅𝩆𝩇𝩈𝩉𝩊𝩋𝩌𝩍𝩎𝩏𝩐𝩑𝩒𝩓𝩔𝩕𝩖𝩗𝩘𝩙𝩚𝩛𝩜𝩝𝩞𝩟𝩠𝩡𝩢𝩣𝩤𝩥𝩦𝩧𝩨𝩩𝩪𝩫𝩬𝩵𝪄𝪛𝪜𝪝𝪞𝪟𝪡𝪢𝪣𝪤𝪥𝪦𝪧𝪨𝪩𝪪𝪫𝪬𝪭𝪮𝪯𞓮𞗯𞀀𞀁𞀂𞀃𞀄𞀅𞀆𞀈𞀉𞀊𞀋𞀌𞀍𞀎𞀏𞀐𞀑𞀒𞀓𞀔𞀕𞀖𞀗𞀘𞀛𞀜𞀝𞀞𞀟𞀠𞀡𞀣𞀤𞀦𞀧𞀨𞀩𞀪𞂏𞄰𞄱𞄲𞄳𞄴𞄵𞄶𞊮𞋬𞋭𞋮𞋯𞓯𞗮𞓬𞓭𞛣𞛦𞛮𞛯𞛵𞥊𞣐𞣑𞣒𞣓𞣔𞣕𞣖𞥄𞥅𞥆𞥇𞥈𞥉󠄀󠄁󠄂󠄃󠄄󠄅󠄆󠄇󠄈󠄉󠄊󠄋󠄌󠄍󠄎󠄏󠄐󠄑󠄒󠄓󠄔󠄕󠄖󠄗󠄘󠄙󠄚󠄛󠄜󠄝󠄞󠄟󠄠󠄡󠄢󠄣󠄤󠄥󠄦󠄧󠄨󠄩󠄪󠄫󠄬󠄭󠄮󠄯󠄰󠄱󠄲󠄳󠄴󠄵󠄶󠄷󠄸󠄹󠄺󠄻󠄼󠄽󠄾󠄿󠅀󠅁󠅂󠅃󠅄󠅅󠅆󠅇󠅈󠅉󠅊󠅋󠅌󠅍󠅎󠅏󠅐󠅑󠅒󠅓󠅔󠅕󠅖󠅗󠅘󠅙󠅚󠅛󠅜󠅝󠅞󠅟󠅠󠅡󠅢󠅣󠅤󠅥󠅦󠅧󠅨󠅩󠅪󠅫󠅬󠅭󠅮󠅯󠅰󠅱󠅲󠅳󠅴󠅵󠅶󠅷󠅸󠅹󠅺󠅻󠅼󠅽󠅾󠅿󠆀󠆁󠆂󠆃󠆄󠆅󠆆󠆇󠆈󠆉󠆊󠆋󠆌󠆍󠆎󠆏󠆐󠆑󠆒󠆓󠆔󠆕󠆖󠆗󠆘󠆙󠆚󠆛󠆜󠆝󠆞󠆟󠆠󠆡󠆢󠆣󠆤󠆥󠆦󠆧󠆨󠆩󠆪󠆫󠆬󠆭󠆮󠆯󠆰󠆱󠆲󠆳󠆴󠆵󠆶󠆷󠆸󠆹󠆺󠆻󠆼󠆽󠆾󠆿󠇀󠇁󠇂󠇃󠇄󠇅󠇆󠇇󠇈󠇉󠇊󠇋󠇌󠇍󠇎󠇏󠇐󠇑󠇒󠇓󠇔󠇕󠇖󠇗󠇘󠇙󠇚󠇛󠇜󠇝󠇞󠇟󠇠󠇡󠇢󠇣󠇤󠇥󠇦󠇧󠇨󠇩󠇪󠇫󠇬󠇭󠇮󠇯'::text, '     abcdefghijklmnopqrstuvwxyz  æðøþddħĳŀłŋœŧɓƃƅɔƈɖɗƌǝəɛƒɠɣɩɨƙɯɲɵƣƥʀƨʃƭʈʊʋƴƶʒƹƽǆǆǉǉǌǌǥǳǳƕƿȝƞȣȥⱥȼƚⱦɂƀʉʌɇɉɋɍɏͱͳͷϳαβγδεζηθικλμνξοπρστυφχψωϗϙϛϝϟϡϣϥϧϩϫϭϯθϸϲϻͻͼͽђєѕіјљњћџабвгдежзиклмнопрстуфхцчшщъыьэюяѡѣѥѧѩѫѭѯѱѳѵѹѻѽѿҁҋҍҏґғҕҗҙқҝҟҡңҥҧҩҫҭүұҳҵҷҹһҽҿӏӄӆӈӊӌӎӕәӡөӷӻӽӿԁԃԅԇԉԋԍԏԑԓԕԗԙԛԝԟԡԣԥԧԩԫԭԯաբգդեզէըթժիլխծկհձղճմյնշոչպջռսվտրցւփքօֆⴀⴁⴂⴃⴄⴅⴆⴇⴈⴉⴊⴋⴌⴍⴎⴏⴐⴑⴒⴓⴔⴕⴖⴗⴘⴙⴚⴛⴜⴝⴞⴟⴠⴡⴢⴣⴤⴥⴧⴭꭰꭱꭲꭳꭴꭵꭶꭷꭸꭹꭺꭻꭼꭽꭾꭿꮀꮁꮂꮃꮄꮅꮆꮇꮈꮉꮊꮋꮌꮍꮎꮏꮐꮑꮒꮓꮔꮕꮖꮗꮘꮙꮚꮛꮜꮝꮞꮟꮠꮡꮢꮣꮤꮥꮦꮧꮨꮩꮪꮫꮬꮭꮮꮯꮰꮱꮲꮳꮴꮵꮶꮷꮸꮹꮺꮻꮼꮽꮾꮿᏸᏹᏺᏻᏼᏽ ᲊაბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰჱჲჳჴჵჶჷჸჹჺჽჾჿßỻỽỿ             ⅎⅰⅱⅲⅳⅴⅵⅶⅷⅸⅹⅺⅻⅼⅽⅾⅿↄⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩⰰⰱⰲⰳⰴⰵⰶⰷⰸⰹⰺⰻⰼⰽⰾⰿⱀⱁⱂⱃⱄⱅⱆⱇⱈⱉⱊⱋⱌⱍⱎⱏⱐⱑⱒⱓⱔⱕⱖⱗⱘⱙⱚⱛⱜⱝⱞⱟⱡɫᵽɽⱨⱪⱬɑɱɐɒⱳⱶȿɀⲁⲃⲅⲇⲉⲋⲍⲏⲑⲓⲕⲗⲙⲛⲝⲟⲡⲣⲥⲧⲩⲫⲭⲯⲱⲳⲵⲷⲹⲻⲽⲿⳁⳃⳅⳇⳉⳋⳍⳏⳑⳓⳕⳗⳙⳛⳝⳟⳡⳣⳬⳮⳳ ꙁꙃꙅꙇꙉꙋꙍꙏꙑꙓꙕꙗꙙꙛꙝꙟꙡꙣꙥꙧꙩꙫꙭꚁꚃꚅꚇꚉꚋꚍꚏꚑꚓꚕꚗꚙꚛꜣꜥꜧꜩꜫꜭꜯꜳꜵꜷꜹꜻꜽꜿꝁꝃꝅꝇꝉꝋꝍꝏꝑꝓꝕꝗꝙꝛꝝꝟꝡꝣꝥꝧꝩꝫꝭꝯꝺꝼᵹꝿꞁꞃꞅꞇꞌɥꞑꞓꞗꞙꞛꞝꞟꞡꞣꞥꞧꞩɦɜɡɬɪʞʇʝꭓꞵꞷꞹꞻꞽꞿꟁꟃꞔʂᶎꟈꟊɤꟍ꟏ꟑꟓꟕꟗꟙꟛƛꟶａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ𐐨𐐩𐐪𐐫𐐬𐐭𐐮𐐯𐐰𐐱𐐲𐐳𐐴𐐵𐐶𐐷𐐸𐐹𐐺𐐻𐐼𐐽𐐾𐐿𐑀𐑁𐑂𐑃𐑄𐑅𐑆𐑇𐑈𐑉𐑊𐑋𐑌𐑍𐑎𐑏𐓘𐓙𐓚𐓛𐓜𐓝𐓞𐓟𐓠𐓡𐓢𐓣𐓤𐓥𐓦𐓧𐓨𐓩𐓪𐓫𐓬𐓭𐓮𐓯𐓰𐓱𐓲𐓳𐓴𐓵𐓶𐓷𐓸𐓹𐓺𐓻𐖗𐖘𐖙𐖚𐖛𐖜𐖝𐖞𐖟𐖠𐖡𐖣𐖤𐖥𐖦𐖧𐖨𐖩𐖪𐖫𐖬𐖭𐖮𐖯𐖰𐖱𐖳𐖴𐖵𐖶𐖷𐖸𐖹𐖻𐖼𐳀𐳁𐳂𐳃𐳄𐳅𐳆𐳇𐳈𐳉𐳊𐳋𐳌𐳍𐳎𐳏𐳐𐳑𐳒𐳓𐳔𐳕𐳖𐳗𐳘𐳙𐳚𐳛𐳜𐳝𐳞𐳟𐳠𐳡𐳢𐳣𐳤𐳥𐳦𐳧𐳨𐳩𐳪𐳫𐳬𐳭𐳮𐳯𐳰𐳱𐳲𐵰𐵱𐵲𐵳𐵴𐵵𐵶𐵷𐵸𐵹𐵺𐵻𐵼𐵽𐵾𐵿𐶀𐶁𐶂𐶃𐶄𐶅𑣀𑣁𑣂𑣃𑣄𑣅𑣆𑣇𑣈𑣉𑣊𑣋𑣌𑣍𑣎𑣏𑣐𑣑𑣒𑣓𑣔𑣕𑣖𑣗𑣘𑣙𑣚𑣛𑣜𑣝𑣞𑣟𖹠𖹡𖹢𖹣𖹤𖹥𖹦𖹧𖹨𖹩𖹪𖹫𖹬𖹭𖹮𖹯𖹰𖹱𖹲𖹳𖹴𖹵𖹶𖹷𖹸𖹹𖹺𖹻𖹼𖹽𖹾𖹿𖺻𖺼𖺽𖺾𖺿𖻀𖻁𖻂𖻃𖻄𖻅𖻆𖻇𖻈𖻉𖻊𖻋𖻌𖻍𖻎𖻏𖻐𖻑𖻒𖻓𞤢𞤣𞤤𞤥𞤦𞤧𞤨𞤩𞤪𞤫𞤬𞤭𞤮𞤯𞤰𞤱𞤲𞤳𞤴𞤵𞤶𞤷𞤸𞤹𞤺𞤻𞤼𞤽𞤾𞤿𞥀𞥁𞥂𞥃'::text), ' +'::text, ' '::text, 'g'::text), ' '::text)))::text) COLLATE "C", w.id
+                      Sort Method: top-N heapsort  Memory: 35kB
+                      Buffers: shared hit=278
+                      ->  Nested Loop Left Join (actual time=0.556..0.603 rows=100 loops=1)
+                            Buffers: shared hit=278
+                            ->  Hash Right Join (actual time=0.554..0.569 rows=100 loops=1)
+                                  Hash Cond: (d_1.work_id = w.id)
+                                  Buffers: shared hit=278
+                                  ->  Seq Scan on working_drafts d_1 (actual time=0.001..0.275 rows=10101 loops=1)
+                                        Buffers: shared hit=274
+                                  ->  Hash (actual time=0.013..0.013 rows=100 loops=1)
+                                        Buckets: 1024  Batches: 1  Memory Usage: 14kB
+                                        Buffers: shared hit=4
+                                        ->  Index Scan using works_owner_id_idx on works w (actual time=0.002..0.008 rows=100 loops=1)
+                                              Index Cond: (owner_id = '22222222-2222-4222-8222-222222222222'::uuid)
+                                              Buffers: shared hit=4
+                            ->  Limit (actual time=0.000..0.000 rows=0 loops=100)
+                                  ->  Sort (actual time=0.000..0.000 rows=0 loops=100)
+                                        Sort Key: r_1.created_at DESC, r_1.id DESC
+                                        Sort Method: quicksort  Memory: 25kB
+                                        ->  Result (actual time=0.000..0.000 rows=0 loops=100)
+                                              One-Time Filter: (d_1.work_id IS NULL)
+                                              ->  Bitmap Heap Scan on revisions r_1 (never executed)
+                                                    Recheck Cond: (work_id = w.id)
+                                                    ->  Bitmap Index Scan on revisions_work_id_id_key (never executed)
+                                                          Index Cond: (work_id = w.id)
+  ->  Hash Left Join (actual time=0.661..0.715 rows=25 loops=1)
+        Hash Cond: ((page.work_id = lm.work_id) AND (r.id = lm.revision_id))
+        Buffers: shared hit=382
+        ->  Nested Loop Left Join (actual time=0.656..0.707 rows=25 loops=1)
+              Buffers: shared hit=381
+              ->  Nested Loop Left Join (actual time=0.652..0.685 rows=25 loops=1)
+                    Join Filter: (pr.work_id = page.work_id)
+                    Buffers: shared hit=356
+                    ->  Nested Loop Left Join (actual time=0.651..0.680 rows=25 loops=1)
+                          Buffers: shared hit=356
+                          ->  Hash Right Join (actual time=0.647..0.650 rows=25 loops=1)
+                                Hash Cond: (p.work_id = page.work_id)
+                                Buffers: shared hit=281
+                                ->  Seq Scan on publications p (actual time=0.000..0.000 rows=1 loops=1)
+                                      Buffers: shared hit=1
+                                ->  Hash (actual time=0.645..0.645 rows=25 loops=1)
+                                      Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                      Buffers: shared hit=280
+                                      ->  Hash Right Join (actual time=0.640..0.643 rows=25 loops=1)
+                                            Hash Cond: ((im.work_id = page.work_id) AND (im.revision_id = wp.intent_revision_id))
+                                            Buffers: shared hit=280
+                                            ->  Seq Scan on work_revision_moderation im (actual time=0.001..0.001 rows=1 loops=1)
+                                                  Buffers: shared hit=1
+                                            ->  Hash (actual time=0.637..0.638 rows=25 loops=1)
+                                                  Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                  Buffers: shared hit=279
+                                                  ->  Hash Right Join (actual time=0.632..0.635 rows=25 loops=1)
+                                                        Hash Cond: (wp.work_id = page.work_id)
+                                                        Buffers: shared hit=279
+                                                        ->  Seq Scan on work_publications wp (actual time=0.001..0.001 rows=1 loops=1)
+                                                              Buffers: shared hit=1
+                                                        ->  Hash (actual time=0.629..0.629 rows=25 loops=1)
+                                                              Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                                                              Buffers: shared hit=278
+                                                              ->  CTE Scan on page (actual time=0.620..0.626 rows=25 loops=1)
+                                                                    Buffers: shared hit=278
+                          ->  Index Scan using working_drafts_pkey on working_drafts d (actual time=0.001..0.001 rows=1 loops=25)
+                                Index Cond: (work_id = page.work_id)
+                                Buffers: shared hit=75
+                    ->  Index Scan using revisions_pkey on revisions pr (actual time=0.000..0.000 rows=0 loops=25)
+                          Index Cond: (id = p.revision_id)
+              ->  Limit (actual time=0.001..0.001 rows=0 loops=25)
+                    Buffers: shared hit=25
+                    ->  Sort (actual time=0.001..0.001 rows=0 loops=25)
+                          Sort Key: r.created_at DESC, r.id DESC
+                          Sort Method: quicksort  Memory: 25kB
+                          Buffers: shared hit=25
+                          ->  Bitmap Heap Scan on revisions r (actual time=0.000..0.000 rows=0 loops=25)
+                                Recheck Cond: (work_id = page.work_id)
+                                Buffers: shared hit=25
+                                ->  Bitmap Index Scan on revisions_work_id_id_key (actual time=0.000..0.000 rows=0 loops=25)
+                                      Index Cond: (work_id = page.work_id)
+                                      Buffers: shared hit=25
+        ->  Hash (actual time=0.001..0.001 rows=1 loops=1)
+              Buckets: 1024  Batches: 1  Memory Usage: 9kB
+              Buffers: shared hit=1
+              ->  Seq Scan on work_revision_moderation lm (actual time=0.001..0.001 rows=1 loops=1)
+                    Buffers: shared hit=1
+        SubPlan 2
+          ->  Sort (never executed)
+                Sort Key: work_draft_tags.slot
+                ->  Bitmap Heap Scan on work_draft_tags (never executed)
+                      Recheck Cond: (work_id = page.work_id)
+                      ->  Bitmap Index Scan on work_draft_tags_once_key (never executed)
+                            Index Cond: (work_id = page.work_id)
+        SubPlan 3
+          ->  Sort (never executed)
+                Sort Key: work_metadata_snapshot_tags.slot
+                ->  Bitmap Heap Scan on work_metadata_snapshot_tags (never executed)
+                      Recheck Cond: (snapshot_id = pr.metadata_snapshot_id)
+                      ->  Bitmap Index Scan on work_metadata_snapshot_tags_once_key (never executed)
+                            Index Cond: (snapshot_id = pr.metadata_snapshot_id)
+Planning:
+  Buffers: shared hit=23
+Planning Time: 0.377 ms
+Execution Time: 0.756 ms
+METRICS
+Nested Loop (actual time=4.971..4.972 rows=1 loops=1)
+  Join Filter: (a.work_id = a_2.work_id)
+  Buffers: shared hit=20257
+  CTE anchors
+    ->  Function Scan on a_3 (actual time=0.002..0.002 rows=1 loops=1)
+  ->  Nested Loop (actual time=0.006..0.007 rows=1 loops=1)
+        Join Filter: (a.work_id = a_1.work_id)
+        Buffers: shared hit=2
+        ->  GroupAggregate (actual time=0.005..0.006 rows=1 loops=1)
+              Group Key: a_1.work_id
+              Buffers: shared hit=2
+              ->  Sort (actual time=0.004..0.004 rows=1 loops=1)
+                    Sort Key: a_1.work_id
+                    Sort Method: quicksort  Memory: 25kB
+                    Buffers: shared hit=2
+                    ->  Nested Loop Left Join (actual time=0.003..0.004 rows=1 loops=1)
+                          Buffers: shared hit=2
+                          ->  CTE Scan on anchors a_1 (actual time=0.002..0.002 rows=1 loops=1)
+                          ->  Index Scan using work_endorsements_selected_idx on work_endorsements e (actual time=0.001..0.001 rows=0 loops=1)
+                                Index Cond: ((work_id = a_1.work_id) AND (revision_id = a_1.revision_id))
+                                Buffers: shared hit=2
+        ->  CTE Scan on anchors a (actual time=0.000..0.000 rows=1 loops=1)
+  ->  GroupAggregate (actual time=4.964..4.964 rows=1 loops=1)
+        Group Key: a_2.work_id
+        Buffers: shared hit=20255
+        ->  Sort (actual time=4.509..4.689 rows=10000 loops=1)
+              Sort Key: a_2.work_id
+              Sort Method: quicksort  Memory: 853kB
+              Buffers: shared hit=20255
+              ->  Nested Loop Left Join (actual time=0.009..4.120 rows=10000 loops=1)
+                    Buffers: shared hit=20255
+                    ->  Nested Loop Left Join (actual time=0.003..0.003 rows=1 loops=1)
+                          Buffers: shared hit=2
+                          ->  CTE Scan on anchors a_2 (actual time=0.000..0.000 rows=1 loops=1)
+                          ->  Index Scan using discussion_threads_work_id_key on discussion_threads t (actual time=0.003..0.003 rows=1 loops=1)
+                                Index Cond: (work_id = a_2.work_id)
+                                Buffers: shared hit=2
+                    ->  Index Scan using comments_id_root_thread_key on comments c (actual time=0.006..3.764 rows=10000 loops=1)
+                          Index Cond: (thread_id = t.id)
+                          Filter: ((removal IS NULL) AND (review = 'approved'::text))
+                          Buffers: shared hit=20253
+Planning:
+  Buffers: shared hit=148 read=2
+Planning Time: 0.400 ms
+Execution Time: 4.985 ms
+ok
+test author_works::author_work_revision_counts_public_projection_and_content_metadata_changes ... ok
+test author_works::author_work_statement_count_measurement ... PostgreSQL server log: page_size=1, page SELECTs=1, metrics SELECTs=1
+PostgreSQL server log: page_size=24, page SELECTs=1, metrics SELECTs=1
+PostgreSQL server log: page_size=100, page SELECTs=1, metrics SELECTs=1
+ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 187 filtered out; finished in 7.23s
+

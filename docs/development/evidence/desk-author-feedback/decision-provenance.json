@@ -1,0 +1,70 @@
+{
+  "checkout": "5787cd1",
+  "command": "target/debug/xtask decision query --domain publication",
+  "snapshot_sha256": "cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2",
+  "records": [
+    {
+      "id": "ADM-06",
+      "revision": 1,
+      "status": "PRODUCT_CONFIRMED",
+      "sha256": "2ccf2386a8b8e1a46fefafc393f8a546b0d5d63d0b0c2625614497383515c4d8",
+      "source": {
+        "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+        "group": "ADMIN-MODERATION-20261111",
+        "kind": "legacy_import",
+        "line": 177,
+        "path": "docs/architecture/product-decisions-20261110.md"
+      }
+    },
+    {
+      "id": "ADM-07",
+      "revision": 1,
+      "status": "PRODUCT_CONFIRMED",
+      "sha256": "ed9841c38d459b26df39d4e3000cf3754ca50c011bce7254915cd2a1ec4246a7",
+      "source": {
+        "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+        "group": "ADMIN-MODERATION-20261111",
+        "kind": "legacy_import",
+        "line": 178,
+        "path": "docs/architecture/product-decisions-20261110.md"
+      }
+    },
+    {
+      "id": "ADM-08",
+      "revision": 1,
+      "status": "PRODUCT_CONFIRMED",
+      "sha256": "d17f6fe51307fd764bedc248200354ea4c11454dd46d8d82fd6030181b8092bf",
+      "source": {
+        "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+        "group": "ADMIN-MODERATION-20261111",
+        "kind": "legacy_import",
+        "line": 179,
+        "path": "docs/architecture/product-decisions-20261110.md"
+      }
+    },
+    {
+      "id": "O-17",
+      "revision": 2,
+      "status": "PRODUCT_CONFIRMED",
+      "sha256": "cb30cb43040a3fad50bd4930096e537057a2f3c6037b387d8c332be497fa15aa",
+      "source": {
+        "kind": "proposal",
+        "path": "decisions/proposals/O-17.r2.toml",
+        "signoff_path": "decisions/signoffs/O-17.r2.toml"
+      }
+    },
+    {
+      "id": "USER-02",
+      "revision": 1,
+      "status": "PRODUCT_CONFIRMED",
+      "sha256": "2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b",
+      "source": {
+        "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+        "group": "PRODUCT-DECISIONS-20261110",
+        "kind": "legacy_import",
+        "line": 35,
+        "path": "docs/architecture/product-decisions-20261110.md"
+      }
+    }
+  ]
+}
