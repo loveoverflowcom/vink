@@ -67,15 +67,25 @@ giới hạn bằng page size. Stored key tránh chi phí gập từng title khi
 đảm SQL writer khác không làm key cũ. Chưa có bằng chứng cần denormalize owner/order hoặc
 trigram index. Response/read buffer phía application tối đa 101 summaries, không manuscript.
 Plan đầy đủ: [query-plans.txt](evidence/desk-pagination/query-plans.txt); log runner ở
-`target/issue201/query-plans.log`. Sẽ ghim final source/evidence sau tích hợp #202.
+`target/issue201/query-plans.log`. Nguồn backend ghim tại `832c8fbfb64bc68fe9b15e6d0c05d54e4455322a`; sẽ bổ sung evidence Web sau tích hợp #202.
 
 ## Bằng chứng và phần còn lại
 
-Lượt backend trên base + dirty inputs #201: focused unit draft 9 PASS;
-focused PostgreSQL đầu tiên 4 PASS/1 measurement ignored (paging, isolation, backfill/CAS,
-Unicode parity). Đã phát hiện và sửa migration version trùng trước khi commit;
-supplement Unicode được thêm sau ca parity thất bại. Những lần thất bại không là PASS.
-Các test trace/blank-title và checks cuối đang tiếp tục; chưa nghiệm thu AC-01..09 toàn bộ.
+Backend `832c8fbfb64bc68fe9b15e6d0c05d54e4455322a`, cùng checkout/macOS ở trên:
+
+- `cargo xtask verify quick`: PASS toàn lane trước bổ sung path-builder và live-movement test;
+  path-builder sau đó PASS qua `cargo test -p vink-web --features ssr --lib private_draft_paths`.
+- `cargo xtask verify postgres`: PASS toàn lane với migration cuối, gồm store 6,
+  App 185 (2 measurement ignored), Identity 48, role/provisioning, binaries, worker,
+  sign-in/enrollment, backup/restore và cleanup scratch. Test mới kiểm cả title/timestamp
+  đổi vị trí giữa hai trang: cursor live không hứa snapshot, đọc head mới mới thấy mục di chuyển.
+- Unicode parity exhaustive, generated-key backfill/CAS, auth/scope/strict params,
+  private/no-store/SSR, trace query redaction đều PASS ở PostgreSQL thật.
+- Log tại `target/issue201/{quick,postgres,path-test,query-plans}.log` (local, không CI).
+
+Đã sửa migration version trùng và supplement Unicode trước commit; lỗi rollback stack do
+migration mới và fixture socket Identity vượt 100 byte cũng đã sửa rồi chạy lại. Các lượt
+thất bại trước đó không là PASS. Chưa nghiệm thu AC-05/06/07/09 phía Web.
 
 Unit/contract, PostgreSQL, browser và source-only được báo riêng khi hoàn tất. Cần #202 merge
 vào `develop`, cập nhật nhánh từ đó, nối Web và chạy `cargo xtask verify web --scenario main`.

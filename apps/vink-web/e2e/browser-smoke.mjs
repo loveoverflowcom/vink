@@ -19,6 +19,7 @@ import { authWeb } from './auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
+import { draftPagination } from './draft-pagination-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -563,6 +564,8 @@ class DraftGate {
     this.list = null;
     this.holdGets = false;
     this.gets = [];
+    this.getURLs = new Map();
+    this.requests = [];
     this.posts = [];
     this.postCount = 0;
     this.dropAck = false;
@@ -592,14 +595,20 @@ class DraftGate {
     } else if (request.method === 'POST') {
       this.postCount++;
       this.posts.push(requestId);
-    } else if (this.holdGets) this.gets.push(requestId);
-    else await this.answerGet(requestId);
+    } else {
+      this.getURLs.set(requestId, request.url);
+      this.requests.push(request.url);
+      if (this.holdGets && (!this.holdWhen || this.holdWhen(request.url))) this.gets.push(requestId);
+      else await this.answerGet(requestId);
+    }
   }
 
   enable() {
     return this.page.send('Fetch.enable', { patterns: [
       { urlPattern: `${args.base}/api/v1/drafts`, requestStage: 'Request' },
       { urlPattern: `${args.base}/api/v1/drafts`, requestStage: 'Response' },
+      { urlPattern: `${args.base}/api/v1/drafts?*`, requestStage: 'Request' },
+      { urlPattern: `${args.base}/api/v1/drafts?*`, requestStage: 'Response' },
     ] });
   }
 
@@ -611,7 +620,22 @@ class DraftGate {
 
   async answerGet(requestId) {
     if (!this.list) return this.page.send('Fetch.continueRequest', { requestId });
-    return this.fulfill(requestId, this.list.status ?? 200, this.list.body);
+    const params = new URL(this.getURLs.get(requestId)).searchParams;
+    this.getURLs.delete(requestId);
+    let body = this.list.body;
+    if ((this.list.status ?? 200) === 200 && !this.list.raw) {
+      // This is a transport/geometry fixture, not evidence for PostgreSQL semantics.
+      const key = s => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/đ/g, 'd').trim().replace(/\s+/g, ' ');
+      const q = key(params.get('q') ?? '');
+      let rows = body.drafts.filter(d => key(d.title || 'Chưa đặt tên').includes(q));
+      if (params.get('sort') === 'title') rows = [...rows].sort((a,b) => {
+        const x = key(a.title || 'Chưa đặt tên'), y = key(b.title || 'Chưa đặt tên');
+        return x < y ? -1 : x > y ? 1 : a.work_id.localeCompare(b.work_id);
+      });
+      const start = Number(params.get('cursor')?.split(':')[1] ?? 0), limit = Number(params.get('limit') ?? 100);
+      body = { drafts: rows.slice(start, start + limit), ...(start + limit < rows.length ? { next_cursor: `fixture:${start + limit}` } : {}) };
+    }
+    return this.fulfill(requestId, this.list.status ?? 200, body);
   }
 
   fulfill(requestId, status, body) {
@@ -2206,12 +2230,12 @@ async function draftDashboard(page) {
   };
   page.cdp.listeners.push(countManuscripts);
   const longTitle = '[Fixture] Đường về — Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ còn đang viết dở, dưới mái hiên của căn nhà nhỏ bên sông';
-  const cards = Array.from({ length: 100 }, (_, i) => ({
+  const cards = Array.from({ length: 24 }, (_, i) => ({
     work_id: `88888888-8888-4888-8888-${String(i).padStart(12, '0')}`,
     title: i === 0 ? longTitle.normalize('NFD') : i === 1 ? '[Fixture] ĐƯỜNG VỀ CÓ NẮNG' : i === 2 ? '' : `[Fixture] Bản thảo ${i}`,
     version: i + 1, updated_at: '2026-11-01T08:30:00Z',
   }));
-  cards[43].title = cards[42].title; // Repeated titles still open their own work IDs.
+  cards[19].title = cards[18].title; // Repeated titles still open their own work IDs.
   gate.list = { body: { drafts: cards } };
   gate.holdGets = true;
   await gate.enable();
@@ -2222,10 +2246,10 @@ async function draftDashboard(page) {
   check(await page.eval(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'true' && !document.querySelector('[data-testid=draft-empty]') && !document.querySelector('#create-draft')`), 'loading is distinct from empty and cannot create');
   gate.holdGets = false;
   await gate.answerGet(initial);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, '100 loaded rows');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, '24 loaded rows');
   const resumeHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#resume h2').textContent === ${JSON.stringify(cards[0].title)}`), 'resume opens exactly the first authorized card and preserves its full combining title');
-  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Tìm trong 100 bản thảo gần đây đã tải') && document.querySelector('#draft-search-help').textContent === 'Trong danh sách đã tải'`), '100 loaded rows are not claimed as a global total');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Đã tải 24 bản thảo') && document.querySelector('#draft-search-help').textContent === 'Trong toàn bộ bản thảo của bạn'`), '24 loaded rows are not claimed as a global total');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && row.textContent.includes('Phiên bản ' + (i + 1)) && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row shows the provider work_id, version and update timestamp');
   check(manuscriptRequests === 0, 'list/resume never fetch full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
@@ -2331,11 +2355,12 @@ async function draftDashboard(page) {
         if (width <= 834 && scale === 200) {
           await page.click('#draft-search');
           await page.send('Input.insertText', { text: 'duong ve' });
+          await page.key('Enter');
           await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'search at 200% text');
           await searchBarGeometry(page, '#draft-search', `Desk with clear ${width}/${scale}/${theme}`);
           await page.capture(`desk-clear-${width}-${scale}-${theme}`);
           await page.click('#draft-search-clear');
-          await page.waitFor(`document.activeElement?.id === 'draft-search' && document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear at 200% restores both focus and inventory');
+          await page.waitFor(`document.activeElement?.id === 'draft-search' && document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'clear at 200% restores both focus and inventory');
           await page.eval(`document.activeElement.blur()`);
           check(await page.eval(`(async () => {
             for (const selector of ['#draft-sort', '#refresh-drafts']) {
@@ -2383,8 +2408,8 @@ async function draftDashboard(page) {
     gate.list = { body: { drafts: [{ ...cards[0], title }] } };
     await page.click('#refresh-drafts');
     await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1 && document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, `one ${variant} draft refreshed`);
-    await page.waitFor(`document.querySelector('#draft-scope').textContent.includes('Tìm trong 1 bản thảo đã tải')`, 'settled one-row inventory');
-    check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Tìm trong 1 bản thảo đã tải') && document.querySelector('.vk-draft-row__title').textContent === ${JSON.stringify(title || 'Chưa đặt tên')}`), `one ${variant} summary preserves title, scope and resume identity`);
+    await page.waitFor(`document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo')`, 'settled one-row inventory');
+    check(await page.eval(`document.querySelector('#resume h2').textContent === ${JSON.stringify(title || 'Chưa đặt tên')} && document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)} && document.querySelector('#draft-scope').textContent.includes('Đã tải 1 bản thảo') && document.querySelector('.vk-draft-row__title').textContent === ${JSON.stringify(title || 'Chưa đặt tên')}`), `one ${variant} summary preserves title, scope and resume identity`);
     for (const scale of [100, 200]) {
       await page.viewport(320);
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
@@ -2402,12 +2427,15 @@ async function draftDashboard(page) {
   await page.viewport(1440);
   gate.list = { body: { drafts: cards } };
   await page.click('#refresh-drafts');
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'restore 100 loaded rows');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'restore 24 loaded rows');
   const search = async text => {
+    const requestsBefore = gate.requests.length;
     await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
     await page.send('Input.insertText', { text });
+    check(gate.requests.length === requestsBefore, 'unsubmitted search text does not issue a read');
+    await page.key('Enter');
   };
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Tìm trong 100')`, 'settled inventory before typing');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent.includes('Đã tải 24')`, 'settled inventory before typing');
   await page.eval(`window.__resultAnnouncements=[]; window.__resultObserver = new MutationObserver(() => window.__resultAnnouncements.push(document.querySelector('[data-testid=draft-result-count]').textContent)); window.__resultObserver.observe(document.querySelector('[data-testid=draft-result-count]'), {childList:true,subtree:true,characterData:true})`);
   await search('duong ve');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'accentless Vietnamese results');
@@ -2415,9 +2443,9 @@ async function draftDashboard(page) {
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 1`, 'combining accented results');
   await search('không có tên này');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
-  check(await page.eval(`window.__resultAnnouncements.length===0 && document.activeElement.id==='draft-search'`), 'filtering successive input does not announce every keystroke or move focus');
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='0 trong 100 bản thảo gần đây đã tải.'`, 'one settled no-result announcement');
-  check(await page.eval(`window.__resultAnnouncements.length===1 && document.querySelectorAll('#drafts [role=status]').length===1`), 'only one live result status announces the settled query');
+  check(await page.eval(`document.activeElement.id==='draft-search'`), 'submitting a server query preserves focus');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='Đã tải 0 bản thảo.'`, 'one settled no-result announcement');
+  check(await page.eval(`window.__resultAnnouncements.length>=3 && document.querySelectorAll('#drafts [role=status]').length===1`), 'one live result status reports each completed server query');
   await page.eval(`window.__resultObserver.disconnect()`);
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resumeHref)}`), 'search never changes the most recent resume target');
   await page.viewport(390);
@@ -2426,7 +2454,7 @@ async function draftDashboard(page) {
   check(await page.eval(`!!document.querySelector('[data-testid=draft-no-results] .vk-ui-panel__actions #clear-draft-search')`), 'draft clear belongs to the no-results panel');
   await captureRecovery(page, 'desk-no-results', '[data-testid=draft-no-results]');
   await page.click('#clear-draft-search');
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear query');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'clear query');
   await page.waitFor(`document.activeElement?.id === 'draft-search'`, 'clearing draft results restores search focus');
   await page.eval(`const sort = document.querySelector('#draft-sort'); sort.value = 'title'; sort.dispatchEvent(new Event('change', { bubbles: true }))`);
   await page.waitFor(`document.querySelector('[data-testid=draft-row]').textContent.includes('[Fixture] Bản thảo 10')`, 'title sort');
@@ -2435,7 +2463,7 @@ async function draftDashboard(page) {
   await page.eval(`window.__draftSearchInput = document.querySelector('#draft-search'); window.__draftSubmits=0; document.querySelector('.vk-draft-search').addEventListener('submit',()=>window.__draftSubmits++)`);
   await page.key('Enter');
   await page.click('.vk-draft-search button[type=submit]');
-  check(await page.eval(`!location.search && window.__draftSubmits===2 && document.querySelectorAll('[data-testid=draft-row]').length===2 && document.querySelector('[data-testid=resume-draft]').getAttribute('href')===${JSON.stringify(resumeHref)}`), 'Desk Enter and click submit stay local and preserve sort/resume/scope');
+  check(await page.eval(`!location.search && window.__draftSubmits===2 && document.querySelectorAll('[data-testid=draft-row]').length===2 && document.querySelector('[data-testid=resume-draft]').getAttribute('href')===${JSON.stringify(resumeHref)}`), 'Desk Enter and click submit query the server without URL persistence and preserve sort/resume');
   await page.eval(`window.__draftSearchInput.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}))`);
   await page.eval(`window.__draftSearchInput.focus()`);
   await page.key('Enter');
@@ -3325,6 +3353,7 @@ async function mainPhase(page) {
   await adaptiveShell(page);
   await draftDashboard(page);
   await draftR6Hierarchy(page);
+  await draftPagination(page, { args, check, DraftGate, sleep });
   await selectChevron(page);
   await publicReading(page);
   await editorChrome(page);
