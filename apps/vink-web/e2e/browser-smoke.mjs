@@ -19,6 +19,7 @@ import { authWeb } from './auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
+import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -672,8 +673,9 @@ async function downloaded(dir, before = []) {
   throw new Error(`no finished download; directory entries: ${JSON.stringify(readdirSync(dir))}`);
 }
 
-async function launchChrome() {
-  const profile = mkdtempSync(join(tmpdir(), 'vink-chrome-'));
+async function launchChrome(existingProfile) {
+  const profile = existingProfile ?? mkdtempSync(join(tmpdir(), 'vink-chrome-'));
+  if (existingProfile) rmSync(join(profile, 'DevToolsActivePort'), { force: true });
   const flags = [
     '--headless=new',
     '--remote-debugging-port=0',
@@ -4303,6 +4305,7 @@ try {
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
   else if (args.phase === 'main') await mainPhase(page);
+  else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') await reviewWithdrawnPage(page, { args, check });
@@ -4321,6 +4324,16 @@ try {
     await appearanceFirstPaint(page);
   }
   else throw new Error(`unknown phase ${args.phase}`);
+  if (args.phase === 'main' || args.phase === 'public-storage') {
+    const state = await publicStorage(page, { args, check, openPage: () => openPage(cdp) });
+    const stopped = new Promise(resolve => chrome.child.once('exit', resolve));
+    chrome.child.kill(); await stopped;
+    Object.assign(chrome, await launchChrome(chrome.profile));
+    const reopenedCdp = new Cdp(chrome.url); await reopenedCdp.open();
+    const reopened = await openPage(reopenedCdp); activePage = reopened;
+    await storageReopened(reopened, args, check, state);
+    check(reopened.errors.length === 0, 'reopened storage page has no console errors');
+  }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   console.log(`browser-smoke: PASS (${args.phase})`);
 } catch (error) {

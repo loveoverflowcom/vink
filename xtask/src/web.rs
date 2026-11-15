@@ -818,10 +818,12 @@ fn run_web_checks(
             return false;
         }
     };
-    if selected
-        .iter()
-        .any(|s| matches!(s, Scenario::Main | Scenario::Discovery | Scenario::Restart))
-    {
+    if selected.iter().any(|s| {
+        matches!(
+            s,
+            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart
+        )
+    }) {
         let mut guard = match server.start(root) {
             Ok(guard) => guard,
             Err(e) => {
@@ -835,6 +837,15 @@ fn run_web_checks(
     ) {
         return false;
     }
+        if selected.contains(&Scenario::Storage)
+            && !selected.contains(&Scenario::Main)
+            && !report.step(
+                "public IndexedDB: transactions, failure, multi-tab, migration and profile reopen",
+                || smoke(root, &["--phase", "public-storage"], chrome, origin, state),
+            )
+        {
+            return false;
+        }
         if selected.contains(&Scenario::Discovery) && !report.step(
         "discovery: SQL fixture corpus, real pagination/SSR/reader return and transport race",
         || {

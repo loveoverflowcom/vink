@@ -21,7 +21,7 @@ Tất cả ví dụ chạy ở repo root. Dùng `cargo xtask --help` để xem c
 | Preview Leptos | `cargo xtask dev preview` | wasm target/bindgen | Static host của preview, không App/Identity/DB |
 | Kiểm preview | `cargo xtask verify preview` | wasm target/bindgen, Node, Chrome | Giữ toàn bộ assertion preview hiện hữu |
 | Một Web scenario | `cargo xtask verify web --scenario password` | Web tools + Chrome, test PG credential | App + Identity và scratch của scenario; không worker |
-| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 8 scenario bên dưới |
+| Web regression đầy đủ | `cargo xtask verify web` | Web tools + Chrome, test PG credential | Toàn bộ 9 selector bên dưới (storage đã nằm trong main, không lặp) |
 | Regression hiện hữu | `cargo xtask verify all` | Theo từng lane | Vẫn quick → discussion → expressions → postgres → web; Kani riêng |
 
 `build` nhận `api|web|worker|identity|preview`; `--release` dùng cho bốn target server, không
@@ -80,6 +80,7 @@ file khóa để vượt một lượt đang chạy.
 | Selector | Setup / dependency | Assertion được dùng lại |
 | --- | --- | --- |
 | `main` | App scratch + seed + catalog; fixture tác giả | Toàn bộ phase `main`: SSR/hydration/editor và các kiểm con hiện hữu |
+| `storage` | App scratch + seed/catalog; hai tab Chrome và reopen cùng profile | IndexedDB public envelope/transaction/epoch/quota/migration; cũng chạy trong `main` |
 | `discovery` | Seed/catalog + corpus SQL riêng | `discovery-corpus` |
 | `restart` | **Dependency `main`** lưu nháp/state; stop → retire tag → start | `after-restart`, version/text/tag/export và graceful stop |
 | `endorsement` | Seed/catalog; App tác giả + reader có moderator grant trong scratch | `endorsement`, không cần Identity |

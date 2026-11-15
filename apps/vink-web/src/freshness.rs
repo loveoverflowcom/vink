@@ -201,6 +201,7 @@ pub struct Status<V> {
 struct Entry<V> {
     data: Option<V>,
     cached_unverified: bool,
+    restore: Option<Ticket>,
     /// Start of the request that confirmed `data`: a conservative lower bound.
     validated_at: Millis,
     /// Cached snapshot may lag origin state (`mark_stale`): refreshes once due, without clearing backoff.
@@ -222,6 +223,7 @@ impl<V> Entry<V> {
         Self {
             data: None,
             cached_unverified: false,
+            restore: None,
             validated_at: Millis::NEG_INFINITY,
             stale: false,
             immediate_retry: false,
@@ -360,6 +362,54 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         Load::Fetch(self.start(key, now))
     }
 
+    /// Reserve an optional asynchronous cache read before starting the network request.
+    /// Network/SSR completion, removal, invalidation and clear invalidate this ticket.
+    pub fn begin_restore(&mut self, key: &K, now: Millis) -> Option<Ticket> {
+        if self.entries.contains_key(key) || self.removed.contains_key(key) {
+            return None;
+        }
+        let ticket = Ticket::allocate();
+        self.entry(key, now).restore = Some(ticket);
+        Some(ticket)
+    }
+
+    /// Restore never confirms freshness, advances a network flight, or resets retry policy.
+    /// Display age is an explicit owner policy, not a storage retention duration.
+    pub fn restore(
+        &mut self,
+        key: &K,
+        ticket: Ticket,
+        data: V,
+        age: Millis,
+        max_display_age: Option<Millis>,
+        now: Millis,
+    ) -> bool {
+        let Some(max_age) = max_display_age else {
+            return false;
+        };
+        if !max_age.is_finite()
+            || max_age <= 0.0
+            || !age.is_finite()
+            || age < 0.0
+            || age >= max_age
+            || !(self.reusable)(&data)
+        {
+            return false;
+        }
+        let Some(entry) = self.entries.get_mut(key) else {
+            return false;
+        };
+        if entry.restore != Some(ticket) || entry.data.is_some() || entry.rejected.is_some() {
+            return false;
+        }
+        entry.restore = None;
+        entry.data = Some(data);
+        entry.cached_unverified = true;
+        entry.validated_at = now - age;
+        entry.stale = true;
+        true
+    }
+
     /// Records a server-rendered snapshot the page hydrated with. `rendered_at` must not be
     /// later than the server read (the page's navigation start is a safe bound). Never replaces
     /// a newer snapshot, a running request, or an authoritative removal at or after `rendered_at`.
@@ -373,6 +423,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         }
         let cached = self.cache.get(key);
         let entry = self.entry(key, now);
+        entry.restore = None;
         if entry.data.is_none() {
             entry.data = cached;
         }
@@ -451,6 +502,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             return Applied::Discarded;
         }
         entry.in_flight = None;
+        entry.restore = None;
         let random = random.clamp(0.0, 1.0);
         match outcome {
             Outcome::Fresh(data) => {
@@ -504,6 +556,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
         if let Some(entry) = self.entries.get_mut(key) {
             entry.stale = true;
             entry.in_flight = None;
+            entry.restore = None;
         }
     }
 
@@ -514,6 +567,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             if predicate(key) {
                 entry.stale = true;
                 entry.in_flight = None;
+                entry.restore = None;
             }
         }
     }
@@ -525,6 +579,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             entry.stale = true;
             entry.immediate_retry = true;
             entry.in_flight = None;
+            entry.restore = None;
         }
     }
 
@@ -535,6 +590,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
                 entry.stale = true;
                 entry.immediate_retry = true;
                 entry.in_flight = None;
+                entry.restore = None;
             }
         }
     }
@@ -600,6 +656,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
                 if *data != before {
                     entry.stale = true;
                     entry.in_flight = None;
+                    entry.restore = None;
                 }
             }
         }
@@ -625,6 +682,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C
             entry.last_seen = now;
             if entry.observers == 0 {
                 entry.in_flight = None;
+                entry.restore = None;
                 if let Some(data) = entry.data.take() {
                     if (self.reusable)(&data) {
                         self.cache.put(key.clone(), data);
