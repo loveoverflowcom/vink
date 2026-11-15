@@ -74,19 +74,19 @@ Hằng số ở `freshness::Policy::V1`. Mọi mốc thời gian dùng `performa
 | “Thử lại” (thủ công) | `Trigger::Manual` bỏ qua ngưỡng 120 s và backoff, vẫn single-flight và vẫn có validator (`rejected` dừng kiểm tra tự động trừ khi mở điều hướng mới hoặc thử lại có chủ đích) |
 | Lỗi `4xx` / từ chối có kiểu (**CHOICE-01 A**) | Adapter có kiểu phân loại theo `status + error.code + error.field` trên hợp đồng hiện có (**không** parse `error.message`; giới hạn envelope 64 KiB). `422 validation_failed cursor` → `RestartCursor` (dừng retry cursor cũ, hiện `#restart-public` về trang 1); `422 validation_failed` theo `q`/`tag`/`limit`/`query` → `InvalidInput` (báo đúng lỗi nhập liệu + link bỏ lọc, không kẹt vòng lặp reset cursor); envelope hỏng/code lạ/`400`/`414` → `Fallback` (dừng retry tự động với thông báo hữu hạn) |
 | Lỗi tạm (`429`, mạng, timeout 30 s, `5xx`, raw `304` lần hai) | Giữ last-success trên màn hình với thông báo riêng; backoff 5 → 10 → 20 → 40 → 80 → 120 s (trần), jitter 80–100 %, tôn trọng `Retry-After` dạng giây (trần 120 s). Không retry mutation |
-| `404` / rút bài / ẩn bài (`Outcome::Removed`, `invalidate_withdrawn`) | Xóa entry `Publication` ngay và ghi **removal fence** (`Store::removed` + `Coordinator::withdrawn_at`), lọc card khỏi mọi `WorkList` đang giữ hoặc `seed` cũ hơn mốc rút bài, đồng thời báo trang reader kiểm `/api/v1/works/{id}/reader` (`ReviewWithdrawn` / `Hidden` theo `O-17@r2` / `PUB-07`). **Không** là tombstone vĩnh viễn: điều hướng `load()` mới nhận `200` (`Outcome::Fresh`) sẽ gỡ fence khi tác phẩm được công khai lại |
+| `404` / rút bài / ẩn bài (`Outcome::Removed`, `invalidate_withdrawn`) | Xóa entry `Publication` ngay và ghi **removal fence** (`Store::removed` + `Coordinator::withdrawn`), lọc card khỏi mọi `WorkList` đang giữ hoặc `seed` cũ hơn mốc rút bài, đồng thời báo trang reader kiểm `/api/v1/works/{id}/reader` (`ReviewWithdrawn` / `Hidden` theo `O-17@r2` / `PUB-07`). **Không** là tombstone vĩnh viễn: điều hướng `load()` mới nhận `200` (`Outcome::Fresh`) sẽ gỡ fence khi tác phẩm được công khai lại |
 | Bản đổi nội dung (`200` khác) | Khám phá cập nhật tại chỗ (key ổn định: giữ row, focus, scroll). Reader **không** thay chữ đang đọc: hiện “Tác phẩm vừa có bản cập nhật” + “Xem bản mới”; áp dụng thì về đầu nội dung và focus `#noi-dung` |
 | `max_display_age = 15 phút` | Snapshot xác nhận quá 15 phút không được render ngay ở **lần mount mới** (sẽ tải với loading thật). Nội dung đang trên màn hình không bị rút vì lỗi tạm |
 | `retain_unobserved = 5 phút`, tối đa 16 entry | **Soft cap LRU/retention trên entry không quan sát**: entry không view nào quan sát bị thu gom sau 5 phút; vượt `16` (`Policy::V1.max_entries`) thì bỏ entry không quan sát cũ nhất (entry đang quan sát không bị bỏ). **Chưa có hard byte budget** theo dung lượng payload |
 | Hydration | Snapshot SSR được seed với `validated_at = 0` (chỉ tính cận dưới an toàn của điều hướng hiện tại). Trang mở bằng back/forward có `rendered_at = -∞` vì tuổi HTML cache không rõ. `seed` bị chặn nếu đã có snapshot mới hơn, request đang bay, hoặc removal fence tại/sau `rendered_at` |
-| Tách `mark_stale` vs `mutation_confirmed` (**CHOICE-02 A**) | **`mark_stale` / `mark_stale_where`** (stale chung) đánh dấu `stale = true` và vô hiệu hóa ticket đang bay nhưng **giữ nguyên `failures`/`retry_at`** để không vượt backoff khi lỗi tạm; đọc `status()`/`changed()` hay lặp `mark_stale` không xóa backoff. **`mutation_confirmed` / `mutation_confirmed_where`** (qua `invalidate_publication` / `invalidate_withdrawn` từ ACK của `pages/publication.rs`, `pages/moderation.rs`, `ReplacementView`) đánh dấu `immediate_retry = true` để các owner **đang quan sát trên tab hiện** kiểm tra lại ngay không cần chờ timer 120 s (gộp single-flight; owner ẩn hoặc không có view quan sát không tự poll). Lưu nháp riêng vẫn **không** invalidate snapshot công khai |
+| Tách `mark_stale` vs `mutation_confirmed` (**CHOICE-02 A**) | **`mark_stale` / `mark_stale_where`** (stale chung) đánh dấu `stale = true` và vô hiệu hóa ticket đang bay nhưng **giữ nguyên `failures`/`retry_at`** để không vượt backoff khi lỗi tạm; đọc `status()`/`changed()` hay lặp `mark_stale` không xóa backoff. **`mutation_confirmed` / `mutation_confirmed_where`** (qua `invalidate_publication` / `invalidate_withdrawn` từ ACK của `pages/publication.rs` và đường đọc `/reader`) đánh dấu `immediate_retry = true` để các owner **đang quan sát trên tab hiện** kiểm tra lại ngay không cần chờ timer 120 s (gộp single-flight; owner ẩn hoặc không có view quan sát không tự poll). Lưu nháp riêng vẫn **không** invalidate snapshot công khai |
 
 Ngoài phạm vi store: nháp riêng (`no-store`, CAS/409), editor CodeMirror và văn bản chưa lưu,
 discussion (`/discussion/public*` và `/discussion/me` dùng `discussion_reads::OwnState` không cache),
 endorsements, catalog thẻ, `vink-worker` outbox và màn Bàn viết/kiểm duyệt. Store chỉ ở bộ nhớ tab;
-đóng tab/kill process là mất. Khi đổi tài khoản/phiên hoặc auth fail, `session.rs`/`account` gọi
-`clear()` (đồng thời giải quyết mọi waiter đang chờ bằng `LoadError::Unavailable` để không treo).
-Không IndexedDB/HTTP disk policy riêng/Service Worker.
+đóng tab/kill process là mất. `Store::clear()` và `Coordinator::clear()` hiện chỉ có kiểm thử;
+chưa có caller reset cache công khai khi đổi tài khoản/phiên. Cache này không chứa dữ liệu riêng
+theo tài khoản. Không IndexedDB/HTTP disk policy riêng/Service Worker.
 
 ### Chỗ còn cần quyết định sản phẩm
 
@@ -102,8 +102,12 @@ Không IndexedDB/HTTP disk policy riêng/Service Worker.
 
 - **Ticket tăng đơn điệu** cho mỗi request; chỉ ticket hiện hành của entry được commit.
   `mark_stale`, `mutation_confirmed`, `remove`, `clear` làm request đang chạy không thể commit; ticket
-  không bao giờ lặp và kết hợp **removal fence** (`withdrawn_at` + `removed`) chặn `seed` cũ hơn mốc
+  không bao giờ lặp và kết hợp **removal fence** (`withdrawn` + `removed`) chặn `seed` cũ hơn mốc
   gỡ bài hồi sinh bản đã rút hoặc card đã gỡ. Không so sánh ETag để suy bản mới.
+- **Đọc `/reader`:** dùng chung ticket với `/publication`; cả cache và kết quả trả về Resource
+  phải qua ticket hiện hành. Invalidation không xóa removal fence. Phản hồi cũ (kể cả `404` hoặc
+  trang ẩn) không ghi đè phản hồi mới, kể cả khi đồng hồ có cùng giá trị. `validated_at` lấy lúc
+  bắt đầu request; `ReaderGuard` hoàn tất với lỗi tạm khi future bị hủy để giải phóng waiter.
 - **Single-flight & dọn waiter (`WaiterGuard`):** view mount khi chưa có snapshot hiển thị được sẽ chờ
   request đang chạy (`Load::Join`), không tạo request thứ hai. Nếu view unmount/Future bị drop trước
   khi hoàn tất, `WaiterGuard` hủy đúng `WaiterId`; nếu `invalidate`/`withdraw`/`remove`/`clear` xảy ra
@@ -136,7 +140,7 @@ Phân biệt rạch ròi bốn khái niệm dễ nhầm lẫn:
 | --- | --- | --- | --- | --- |
 | `GET /api/v1/works` | Công khai (`no Actor`); `200`/`304`: `ETag` strong + `private, no-cache`; lỗi `422`/`503`: `no-store` | `DiscoveryCursor` v2 (33 B: `published_at + work_id + SearchScope` SHA-256), **không** là sync watermark; `limit` mặc định `12`, tối đa `24`; tối đa `4` tag lọc (`8` ref) | **Có (Web pilot):** `PublicKey::Works(q, canonical_tags, cursor)`, stale 120 s, `max_display_age` 15 m, soft cap 16 | Card của tác phẩm bị `invalidate_withdrawn` được cắt khỏi snapshot & `seed` cũ hơn mốc rút, rồi xác nhận lại với origin; `422 cursor` → `#restart-public`; `422 q/tag/limit/query` → báo lỗi field, dừng retry |
 | `GET /api/v1/works/{work_id}/publication` | Công khai (`no Actor`); `200`/`304`: `ETag` strong + `private, no-cache`; `404`/lỗi: `no-store` | Theo `work_id`, chỉ trỏ `revision_id` đang công khai hiện hành | **Có (Web pilot):** `PublicKey::Publication(work_id)`, cùng policy trên | Reader giữ chữ đang đọc và mời “Xem bản mới” khi `200` đổi nội dung; `404` hoặc `set-private`/case/appeal/reader `withdraw` xóa ngay + đặt removal fence; công khai lại mở bằng `200` mới |
-| `GET /api/v1/works/{work_id}/reader` | Công khai (`no Actor`); khi công khai dùng `ETag` READ-01 (`private, no-cache`), khi `ReviewWithdrawn`/`Hidden` (`200`) hoặc `404`/`503` trả `no-store` | Read model đơn `ReaderResponse` (`published` / `review_withdrawn` / `hidden`) | **Ngoài READ-02:** gọi trực tiếp `fetch_reader` khi `Publication` báo đã rút/404 để dựng `ReplacementView` (`O-17@r2` / `PUB-07`) | Nếu nhận `ReviewWithdrawn`/`Hidden`, gọi `invalidate_withdrawn(work_id)` và hiển thị notice + bình luận đủ điều kiện (`noindex`, không title/body) |
+| `GET /api/v1/works/{work_id}/reader` | Công khai (`no Actor`); khi công khai dùng `ETag` READ-01 (`private, no-cache`), khi `ReviewWithdrawn`/`Hidden` (`200`) hoặc `404`/`503` trả `no-store` | Read model đơn `ReaderResponse` (`published` / `review_withdrawn` / `hidden`) | Điều hướng và kiểm trang thay thế dùng ticket `PublicKey::Publication(work_id)`; kết quả công khai cập nhật cache READ-02, trạng thái ẩn/gỡ không cache | Ticket hiện hành mới được trả vào UI hoặc thu hồi snapshot; `ReviewWithdrawn`/`Hidden` hiện notice + bình luận đủ điều kiện (`noindex`, không title/body) |
 | `GET /api/v1/tags`, `/tags/suggestions`, `/tags/slugs/{slug}` | Công khai (`no Actor`); `Cache-Control: no-store`, chưa có `ETag` READ-01 | Bounded/top-K catalog: `MAX_LISTED_TAGS = 200` (+ `truncated`), `MAX_SUGGESTIONS = 10` | **Ngoài READ-02:** nạp theo lượt trang/gõ có debounce/hủy từ UI | Đổi/ngừng dùng thẻ phản ánh ngay ở lần gọi kế tiếp |
 | `GET /api/v1/works/{work_id}/discussion/public`, `.../roots/{root_id}/replies` | Công khai (`no Actor`); `Cache-Control: no-store`, chưa có `ETag` | `PageCursor` v1 (`created_at ASC, id ASC`, `CursorScope::Thread`), trang mặc định `20`, tối đa `50`, preview `3` reply | **Ngoài READ-02:** không đưa vào `freshness::Store` | `404`/`409` khi tác phẩm gỡ/ẩn hoặc sai phạm vi cursor |
 | `GET /api/v1/works/{work_id}/discussion/me` | Có auth (`Actor`, `401` cho khách, `503` khi Identity lỗi); `no-store` | `PageCursor` v1 (`CursorScope::Own`), batch `20` | **Ngoài READ-02:** `discussion_reads::OwnState` (generation-fenced ticket trong RAM, không cache liên phiên) | Tự reset khi `clear` session hoặc đổi tài khoản |
@@ -145,9 +149,13 @@ Phân biệt rạch ròi bốn khái niệm dễ nhầm lẫn:
 
 ## Bằng chứng
 
+### Phiên triển khai `921ac1c` (lịch sử)
+
+Kết quả dưới đây do phiên triển khai trước review ghi nhận; kết quả bản sửa nằm ở mục kế tiếp.
+
 | Kiểm | Lane | Kết quả |
 | --- | --- | --- |
-| `freshness::tests` (20): 119/120/180 s; đọc không gia hạn; spread có trần; một wake cho mọi entry; bốn trigger đồng thời → một ticket; manual/invalidate không bị snapshot fresh nuốt; `mark_stale` giữ nguyên `failures`/`retry_at` còn `mutation_confirmed` cho 1 lần thử ngay rồi nối lại backoff + `Retry-After`; lỗi giữ last-success; phân loại `422` (`cursor` vs `q`/`tag`/`limit`/`query` vs lỗi/envelope hỏng) dừng retry; 404 xóa và response muộn bị loại; `clear_removal`/`record_fresh`; reset scope; mốc từ lúc bắt đầu request; `max_display_age` chỉ chặn lần mount mới; GC + trần mềm 16 entry; entry không quan sát không bị poll; raw 304 → một lần không điều kiện; chuỗi ngẫu nhiên 300 × 80 bước | `quick` / `unit web` | PASS cục bộ |
+| `freshness::tests` (20): 119/120/180 s; đọc không gia hạn; spread có trần; một wake cho mọi entry; bốn trigger đồng thời → một ticket; manual/invalidate không bị snapshot fresh nuốt; `mark_stale` giữ nguyên `failures`/`retry_at` còn `mutation_confirmed` cho 1 lần thử ngay rồi nối lại backoff + `Retry-After`; lỗi giữ last-success; phân loại `422` (`cursor` vs `q`/`tag`/`limit`/`query` vs lỗi/envelope hỏng) dừng retry; 404 xóa và response muộn bị loại; `clear_removal`/`record_fresh` của bản trước review; reset scope; mốc từ lúc bắt đầu request; `max_display_age` chỉ chặn lần mount mới; GC + trần mềm 16 entry; entry không quan sát không bị poll; raw 304 → một lần không điều kiện; chuỗi ngẫu nhiên 300 × 80 bước | `quick` / `unit web` | PASS cục bộ |
 | `contract` (`verify unit web --filter contract`, 20 bài, gồm `contract::tests::classifies_public_read_error_matrix_without_parsing_messages`) và `public_reads::tests` (3): ma trận `status + error.code + error.field` (không parse `error.message`, chặn >64 KiB); mutation ACK chỉ đánh thức owner đang hiển thị & gộp signal; rút bài xóa card ở mọi `Works` snapshot + rào nhân quả `begin_external_read` trên đồng hồ đóng băng và không chặn công khai lại; waiter khởi đầu luôn kết thúc khi invalidate/withdraw/remove/clear/cancel (ánh xạ SSR `422` kiểm end-to-end trong `verify web`) | `unit web` / `web` | PASS cục bộ |
 | `cacheFirstPublicReads` (Chrome headless + CDP, đồng hồ `performance.now`, `visibilityState` và Fetch qua CDP) + toàn bộ `cargo xtask verify web` (8 phase) | `web` | PASS cục bộ |
 
@@ -166,6 +174,47 @@ không kẹt tombstone.
 Đồng hồ giả chỉ dịch `performance.now()`; timer thật 120 s không được chờ trong smoke — đường
 timer được kiểm ở unit (`next_wake`/`due`). Ẩn tab được giả lập bằng cách ghi đè
 `document.visibilityState`, không phải chuyển tab hay khóa máy thật.
+
+### Review và sửa tiếp trên `develop@36a7e47` (15/11/2026)
+
+Review `921ac1c` và bản rebase `46c7e24` tái hiện lỗi xóa fence quá sớm: request `/reader` trước
+lúc rút bài có thể ghi lại revision cũ sau invalidation của pointer riêng tư hoặc sau công khai lại.
+Bản sửa dùng ticket chung, chặn cả kết quả Resource bị supersede và ghi tuổi từ lúc bắt đầu đọc.
+Ba regression test tại `public_reads::tests` kiểm đảo thứ tự, clock đóng băng, invalidation,
+request bị hủy cùng waiter và phản hồi `404` cũ. Mã Rust đã chốt tại `b8ddc87`, fixture trình duyệt
+đã chốt tại `eab358f`; cập nhật sau đó trong tài liệu này không đổi source kiểm thử.
+
+- `cargo xtask verify web --scenario main --scenario review --scenario publication`: phần `main`
+  **PASS** (cache, SSR/hydration, `422`, raw `304`, focus/DOM, editor); toàn lệnh **FAIL** ở setup
+  grant của `review`, nên `publication` **NOT_RUN** trong lệnh này. Runner nền chỉ seed principal
+  reviewer trong `seed_discovery_fixture`, không phải khi chọn `review` riêng.
+- `cargo xtask verify web --scenario discovery --scenario review --scenario publication`:
+  **PASS** cả ba scenario. Fixture discovery bổ sung reviewer còn thiếu; không đổi runner hay
+  bỏ assertion. Đây là tổng hợp bốn scenario đã kiểm, **không phải full lane 8 scenario**.
+- Môi trường: macOS, Chrome headless, PostgreSQL tạm ở loopback `127.0.0.1:55439`, Identity thật
+  với local outbox trong scenario publication. Dùng `CARGO_PROFILE_DEV_DEBUG=0`,
+  `CARGO_PROFILE_TEST_DEBUG=0`, `CARGO_INCREMENTAL=0` để vừa dung lượng đĩa và cache npm tạm
+  riêng; hai lỗi môi trường trước đó (quyền cache npm, hết đĩa) đã được xử lý trước các kết quả này.
+- `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 cargo xtask verify quick`
+  tại `558f63f` (chỉ thêm assertion cho kết quả test so với `eab358f`): **PASS** fmt, ba clippy
+  server/browser/preview, 53 doctest và 747 unit/contract (gồm 210 Web, 80 xtask; 1 ignored).
+  Toàn lệnh **FAIL** tại repository checks: `docs/development/test-vps-deployment-guide.md`
+  có URL PostgreSQL mang password không thuộc danh sách placeholder. Blob tài liệu
+  `4d8c6428e5add34b0580b17b541bf25f4dfe0455` và scanner `xtask/src/checks.rs`
+  `35d9eb7e989710ccb0e0335a45282595223bd40e` giống hệt `origin/develop@36a7e47`;
+  không phải hồi quy do PR này. Các lần chỉnh sau chỉ sửa tài liệu và đã kiểm diff/liên kết.
+
+Review UI là **self-review**, không duyệt một visual baseline mới (`NO_APPROVED_REFERENCE`):
+
+| Chiều | Kết quả và giới hạn |
+| --- | --- |
+| Functional | **PASS** các scenario và hồi quy cache nêu trên |
+| Geometry | **PASS** assertion reflow của `main`, gồm recovery cursor ở 320px/chữ 200% |
+| Visual | **PASS** trong hai ảnh đã mở `explore-refresh-failed.png`, `reader-update-available.png` (1280px, sáng); các trạng thái `422` chưa mở ảnh riêng (**NOT_RUN**) |
+| Accessibility/Responsive | **PASS** kiểm keyboard/focus và ma trận responsive của `main`; screen reader và OS IME thật **NOT_RUN** |
+| Interaction | **PASS** giữ row/focus khi `304`, retry/backoff, ẩn bài và phục hồi; thiết bị native **NOT_RUN** |
+
+Bằng chứng PASS ở mục trước thuộc phiên triển khai `921ac1c`, không thay cho bản sửa này.
 
 ### Số đo
 
@@ -211,7 +260,7 @@ Chưa chọn giữa Kotlin repository + StateFlow + Ktor (A của issue) và Rus
 
 ## Chưa làm / rủi ro còn lại
 
-- Đã nối caller mutation cho `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`), kiểm duyệt viên/admin (`pages/moderation.rs`), trang đọc khi rút/ẩn bài (`pages/mod.rs`) và `clear()` từ đổi/lỗi tài khoản (`session.rs`/`account`). Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
+- Đã nối `invalidate_publication` / `invalidate_withdrawn` từ tác giả (`pages/publication.rs`) và đường đọc khi rút/ẩn bài (`api.rs`, `pages/mod.rs`). Chưa có caller invalidation từ `pages/moderation.rs` hoặc caller `clear()` từ `session.rs`/`account`. Rủi ro còn lại là **tab khác hoặc thiết bị khác** chưa nhận push/broadcast liên tab ngay lúc rút bài (vẫn chờ revalidate hoặc lần mở tiếp theo).
 - Giá trị giả định `max_display_age = 15 phút` (và chính sách hiển thị stale khi lỗi tạm / offline lâu hơn) vẫn là mục **`OPEN`** chờ chủ sản phẩm chốt; `READ-01-CHOICE-*` và `READ-02-CHOICE-*` vẫn là `DESIGN_PROPOSED`.
 - Offline full-text, lưu bền ngoài bộ nhớ tab (IndexedDB/SQLite), Top 100 runtime và CMP/native product network owner đều **`NOT_IMPLEMENTED`** (CMP không có product owner).
 - Spike `leptos-fetch` chưa chạy trong Vink; kết luận dựa trên tài liệu + source 0.4.10.
