@@ -36,6 +36,13 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
   check(JSON.stringify(await rows()) === JSON.stringify([corpus[0].work_id]), 'browser finds the old draft without loading intermediate pages');
   check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resume)}`), 'filtered results do not redefine Viết tiếp');
   await search('[Paging201]');
+  for (const width of [390,1440]) for (const scale of [100,200]) {
+    await page.viewport(width);
+    await page.eval(`document.documentElement.style.fontSize='${scale}%'; document.querySelector('#load-more-drafts').scrollIntoView({block:'center'})`);
+    check(await page.eval(`(() => { const b=document.querySelector('#load-more-drafts').getBoundingClientRect(); return document.documentElement.scrollWidth<=innerWidth && b.left>=0 && b.right<=innerWidth && b.width>=48 && b.height>=48; })()`), `load-more target fits ${width}px at text ${scale}%`);
+    await page.capture(`desk-more-${width}-${scale}`, { boundary: 'real-corpus-real-api', scenario: '#201-continuation' });
+  }
+  await page.viewport(1440); await page.eval(`document.documentElement.style.fontSize=''`);
   for (const sort of ['recent', 'title']) {
     if (sort === 'title') {
       await page.eval(`const s = document.querySelector('#draft-sort'); s.value='title'; s.dispatchEvent(new Event('change',{bubbles:true}))`);
@@ -74,6 +81,19 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
     check(new URL(gate.getURLs.get(retry)).searchParams.get('cursor') === cursor, 'retry submits the unadvanced cursor');
     gate.holdGets = false; await gate.answerGet(retry); await settled();
     check((await rows()).length === 48, 'retry appends the real next page once');
+
+    // A refresh supersedes an in-flight append in the same query scope.
+    gate.holdGets = true; await page.click('#load-more-drafts');
+    const lateAppend = await gate.next('gets');
+    await page.click('#refresh-drafts');
+    const freshHead = await gate.next('gets');
+    check(!new URL(gate.getURLs.get(freshHead)).searchParams.has('cursor'), 'refresh starts at the head while append is delayed');
+    gate.holdGets = false; await gate.answerGet(freshHead); await settled();
+    const newHead = await rows();
+    await gate.fulfill(lateAppend, 200, { drafts: [{ work_id: '99999999-9999-4999-8999-999999999998', title: 'OBSOLETE TAIL', version: 1, updated_at: '2026-01-01T00:00:00Z' }], next_cursor: 'obsolete-tail' }).catch(() => {});
+    await sleep(150);
+    check(newHead.length === 24 && JSON.stringify(await rows()) === JSON.stringify(newHead), 'late append cannot splice an obsolete tail onto refreshed head');
+    await page.click('#load-more-drafts'); await settled();
 
     // A successful head read discards old tails, even while input has an unsubmitted edit.
     await type('Chữ chưa gửi ỹ ỷ');
