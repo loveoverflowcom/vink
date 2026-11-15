@@ -488,6 +488,32 @@ async fn author_work_query_plans_and_fixed_statement_count(pool: PgPool) {
         .await
         .unwrap();
     println!("METRICS\n{}", plan.join("\n"));
+    let app = app(&pool).await;
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        "/api/v1/author/works?q=mua+tren+pho+cu",
+        Some(dev_seed::SAMPLE_AUTHOR),
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        json(&body)["works"][0]["publication"]["current_public"]["comments"],
+        10000
+    );
+    let (status, _, body) = call(
+        &app,
+        "GET",
+        &format!("/api/v1/works/{}/discussion/public", dev_seed::SAMPLE_WORK),
+        None,
+        None,
+        None,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert!(json(&body)["roots"].as_array().unwrap().len() < 10000);
 }
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
