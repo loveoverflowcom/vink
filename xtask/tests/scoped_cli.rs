@@ -32,7 +32,11 @@ fn inspection_and_invalid_selection_never_call_executor_or_reveal_credentials() 
             .args(args)
             .env("PATH", &dir)
             .env("CARGO", dir.join("cargo"))
-            .env("DATABASE_URL", "postgres://secret:private-marker@host/dev")
+            // Documented local-only placeholder; the assertion below still detects its marker.
+            .env(
+                "DATABASE_URL",
+                "postgres://secret:private-marker-local-only@host/dev",
+            )
             .env("VINK_BIND", "private-marker")
             .output()
             .unwrap();

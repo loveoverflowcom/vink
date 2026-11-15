@@ -938,9 +938,27 @@ a {
 .vk-discussion-reply-composer > .vk-discussion-composer { margin: 0; }
 .vk-discussion-pagination[hidden] { display: none; }
 
-/* Reader R3.1: text enlargement uses the measure, not larger side gutters. */
+/* Public reading on phones: use the extra height for text, keeping the shared control sizes. */
 @media (max-width: 759px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 16px; }
+  .vk-reader-page, .vk-discovery { margin-block-start: min(var(--vk-space-4), 16px); }
+  #reader-return, .vk-discovery .vk-explore__heading { margin-block-end: min(var(--vk-space-6), 24px); }
+  .vk-reader-freshness > [data-testid] { margin-block: -8px min(var(--vk-space-6), 24px); }
+  .vk-reader__header { margin-block-end: min(var(--vk-space-6), 24px); }
+  .vk-reader-tags { margin-block: 0 min(var(--vk-space-4), 16px); }
+  .vk-reader-tags:not(:has(> li)) { display: none; }
+
+  .vk-discovery .vk-discovery-tools { margin-block-end: min(var(--vk-space-2), 8px); }
+  .vk-discovery .vk-explore__heading p { margin-block-start: min(var(--vk-space-2), 8px); }
+  .vk-discovery #works-title { margin-block: min(var(--vk-space-6), 24px) min(var(--vk-space-4), 16px); }
+  .vk-discovery #public-results > .vk-public-list { margin-block-start: min(var(--vk-space-3), 12px); }
+  .vk-discovery .vk-public-row__link { padding: min(var(--vk-space-4), 16px) min(var(--vk-space-3), 12px); }
+  /* Recovery links are direct children of the stream on a failed read. */
+  .vk-discovery #community-stream > .vk-ui-link {
+    display: block;
+    inline-size: fit-content;
+    margin-block-start: min(var(--vk-space-2), 8px);
+  }
 }
 @media (max-width: 359px) {
   .vk-main:has(> .vk-reader-page) { padding-inline: 12px; }
