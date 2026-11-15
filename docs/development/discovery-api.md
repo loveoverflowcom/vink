@@ -216,10 +216,10 @@ pilot hiện tại nhỏ hơn nhiều; con số chỉ cho biết bậc độ l�
 - **Canonical URL thẻ:** khi `resolution = redirect`, chuyển sang `tag.slug`; `retired` hiện kế nhiệm (nếu
   có) và không có kết quả; `not_found` là trạng thái riêng (trang thẻ SSR có thể trả `404`). Không đoán
   slug, không redirect ra ngoài.
-- **Cache trình duyệt:** owner READ-02 hiện khóa theo endpoint + `work_id`
-  ([freshness](public-read-freshness.md)); #100 phải đưa **cả query string** (q, tag, limit, cursor) vào
-  khóa, nếu không một câu trả lời của bộ lọc cũ hiện dưới nhãn mới. So `filters` của câu trả lời với bộ lọc
-  đang áp dụng để bỏ câu trả lời trễ.
+- **Cache trình duyệt:** owner READ-02 ([freshness](public-read-freshness.md)) khóa theo
+  `PublicKey::Works(ExploreQuery)` gồm **`q`, tập `tag` chuẩn hóa và `cursor`**, nên câu trả lời
+  của bộ lọc cũ không bao giờ lọt sang nhãn mới. View cũng so bộ lọc/đích đang áp dụng và dùng
+  ticket đơn điệu + `WaiterGuard` để loại bỏ response trễ.
 - **Phân trang:** `next_cursor` là chuỗi mờ; đổi `q`/thẻ phải bỏ cursor (server trả `422 cursor` nếu
   không). Không có tổng số; không tự suy số từ danh sách đã tải.
 - **Thẻ trên card/reader:** `tags` đã là thẻ công khai đang hoạt động với nhãn hiện hành; mô tả/kế nhiệm có
@@ -240,14 +240,17 @@ PostgreSQL thật qua router production. Kết quả chạy ở mục 10.
 
 ## 9. Còn thiếu
 
-- **UI** (#100; #99 chỉ thêm bộ chọn thẻ cho bản nháp): Khám phá vẫn tìm trong 12 card đã tải; chưa có ô lọc thẻ, trang thẻ, phân trang hay
-  hiển thị thẻ trên card/reader. Trình duyệt: không đổi UI nên `verify web` chỉ là hồi quy (mục 10); không
-  có ảnh chụp mới vì không có thay đổi hiển thị.
-- **Publication**: chưa có writer production của `publications`/`metadata_snapshot_id`; mọi kết quả trong
-  test đến từ fixture SQL. Không bằng chứng nào ở đây cho thấy tác giả xuất bản được.
-- **Quy mô**: truy vấn chữ không khớp là tuyến tính; chưa có `pg_trgm`, tổng số, sắp xếp khác “mới nhất”.
-- **Cache trình duyệt cho query** (READ-02): khóa theo query string là việc của #100.
-- **Native/CMP**: không consumer.
+- **UI & đọc công khai:** Khám phá (#100) đã chuyển sang truy vấn server qua `GET /api/v1/works`
+  với `q`, lọc thẻ, trang thẻ `/the/{slug}` và phân trang cursor, cộng phục hồi theo field khi
+  `422` (`cursor` vs `q`/`tag`/`limit`/`query`). Xem thêm [tổng hợp Khám phá UI](discovery-ui.md)
+  và [READ-02](public-read-freshness.md).
+- **Publication:** ở lát #98 lịch sử chưa có writer production; từ #158 đã có author publication
+  runtime (`snapshots`, `request-public`, `set-private`, xem [publication-runtime](publication-runtime.md)),
+  nhưng truy vấn tìm kiếm vẫn dùng SQL/cursor hiện có.
+- **Quy mô:** truy vấn chữ không khớp là tuyến tính; chưa có `pg_trgm`, tổng số, sắp xếp khác “mới nhất”.
+- **Cache trình duyệt cho query** (READ-02): đã đưa khóa `(q, tag, cursor)` và phân loại `422` vào
+  `PublicKey::Works(ExploreQuery)` / `freshness.rs`.
+- **Native/CMP:** không consumer (`NOT_IMPLEMENTED`).
 
 ## 10. Bằng chứng phiên
 

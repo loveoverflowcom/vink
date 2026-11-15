@@ -10,9 +10,10 @@
 
 use leptos::prelude::*;
 
-#[cfg(feature = "hydrate")]
+#[cfg(any(feature = "hydrate", test))]
 use crate::api::LoadError;
 use crate::contract::{Publication, WorkList};
+use crate::freshness::Rejection;
 
 /// What a cached representation is: the endpoint and the parameter that selects it. No
 /// identity, cookie or token belongs here (public reads take none).
@@ -45,8 +46,10 @@ pub struct Live<T: Send + Sync + 'static> {
     pub refreshing: Signal<bool>,
     /// The last check failed temporarily; `data` is the last success.
     pub failed: Signal<bool>,
-    /// The origin answered 404: the snapshot must no longer be shown.
+    /// The origin answered 404 or withdrew the work: the snapshot must no longer be shown.
     pub removed: Signal<bool>,
+    /// Non-retryable 4xx rejection observed while following this key (e.g. 422 cursor).
+    pub rejected: Signal<Option<Rejection>>,
     key: PublicKey,
 }
 
@@ -80,7 +83,8 @@ pub fn follow_publication(initial: Publication) -> Live<Publication> {
     })
 }
 
-/// When a work is known to be review-withdrawn, purge cached publication and remove its explore cards.
+/// Call after withdrawing or hiding a work: purge its cached publication, drop its card from
+/// cached searches, and wake observed owners promptly.
 pub fn invalidate_withdrawn(work_id: &str) {
     #[cfg(feature = "hydrate")]
     browser::invalidate_withdrawn(work_id);
@@ -88,13 +92,19 @@ pub fn invalidate_withdrawn(work_id: &str) {
     let _ = work_id;
 }
 
-/// A work's public revision appeared or changed (an approval the author's page read): the cached
-/// publication and cached lists are stale. Unlike [`invalidate_withdrawn`] no card is removed.
+/// Call after a confirmed publication change so observed publication/list views revalidate without
+/// waiting for the 120s timer. Unlike [`invalidate_withdrawn`] no card is optimistically removed.
 pub fn invalidate_publication(work_id: &str) {
     #[cfg(feature = "hydrate")]
     browser::invalidate_publication(work_id);
     #[cfg(not(feature = "hydrate"))]
     let _ = work_id;
+}
+
+/// A client reader request uses the same ticket fence as scheduled publication reads.
+#[cfg(feature = "hydrate")]
+pub fn begin_reader_read(work_id: &str) -> browser::ReaderGuard {
+    browser::begin_reader_read(work_id)
 }
 
 fn follow<T>(
@@ -120,11 +130,11 @@ where
         });
         Live {
             data: data.into(),
-            refreshing: Signal::derive(move || {
-                status.read().as_ref().is_some_and(|s| s.refreshing)
-            }),
-            failed: Signal::derive(move || status.read().as_ref().is_some_and(|s| s.failed)),
-            removed: Signal::derive(move || status.read().is_none()),
+            refreshing: Memo::new(move |_| status.read().as_ref().is_some_and(|s| s.refreshing))
+                .into(),
+            failed: Memo::new(move |_| status.read().as_ref().is_some_and(|s| s.failed)).into(),
+            removed: Memo::new(move |_| status.read().is_none()).into(),
+            rejected: Memo::new(move |_| status.read().as_ref().and_then(|s| s.rejected)).into(),
             key,
         }
     }
@@ -136,6 +146,7 @@ where
             refreshing: Signal::stored(false),
             failed: Signal::stored(false),
             removed: Signal::stored(false),
+            rejected: Signal::stored(None),
             key,
         }
     }
@@ -148,6 +159,480 @@ pub async fn load(key: PublicKey) -> Result<Snapshot, LoadError> {
     browser::load(key).await
 }
 
+#[cfg(any(feature = "hydrate", test))]
+mod coordinator {
+    use std::collections::BTreeMap;
+
+    use super::{LoadError, PublicKey, Snapshot};
+    use crate::freshness::{
+        Applied, Load, Millis, Outcome, Policy, Status, Store, Ticket, Trigger,
+    };
+
+    pub type Reply = Result<Snapshot, LoadError>;
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct WaiterId(pub u64);
+
+    #[derive(Debug, Default)]
+    pub struct Effects {
+        pub replies: Vec<(WaiterId, Reply)>,
+        pub fetches: Vec<(PublicKey, Ticket)>,
+        pub notify_changed: bool,
+        pub reschedule: bool,
+    }
+
+    pub enum LoadStart {
+        Immediate(Reply),
+        Wait { id: WaiterId, effects: Effects },
+    }
+
+    #[derive(Clone, Copy)]
+    struct WithdrawnFence {
+        at: Millis,
+        seq: u64,
+    }
+
+    /// Pure browser-tab read coordinator separating waiter accounting, invalidation waking,
+    /// withdrawal card stripping, and timer planning from DOM/Web APIs.
+    pub struct Coordinator {
+        pub store: Store<PublicKey, Snapshot>,
+        waiters: BTreeMap<PublicKey, Vec<WaiterId>>,
+        withdrawn: BTreeMap<String, WithdrawnFence>,
+        next_waiter: u64,
+        seq: u64,
+    }
+
+    impl Coordinator {
+        pub fn new(policy: Policy) -> Self {
+            Self {
+                store: Store::new(policy),
+                waiters: BTreeMap::new(),
+                withdrawn: BTreeMap::new(),
+                next_waiter: 1,
+                seq: 0,
+            }
+        }
+
+        pub fn begin_reader_read(&mut self, key: &PublicKey, at: Millis) -> Ticket {
+            self.store.begin_external_read(key, at)
+        }
+
+        fn alloc_waiter(&mut self) -> WaiterId {
+            let id = WaiterId(self.next_waiter);
+            self.next_waiter += 1;
+            id
+        }
+
+        fn prune_withdrawn(&mut self, at: Millis) {
+            let retain = self.store.policy().retain_unobserved;
+            self.withdrawn.retain(|_, f| at - f.at < retain);
+            let max = self.store.policy().max_entries;
+            while self.withdrawn.len() > max {
+                let Some(oldest) = self
+                    .withdrawn
+                    .iter()
+                    .min_by(|a, b| {
+                        a.1.at
+                            .total_cmp(&b.1.at)
+                            .then_with(|| a.1.seq.cmp(&b.1.seq))
+                    })
+                    .map(|(k, _)| k.clone())
+                else {
+                    break;
+                };
+                self.withdrawn.remove(&oldest);
+            }
+        }
+
+        pub fn load(&mut self, key: &PublicKey, at: Millis) -> LoadStart {
+            match self.store.load(key, at) {
+                Load::Ready(snapshot) => LoadStart::Immediate(Ok(snapshot)),
+                Load::Rejected(rejection) => {
+                    LoadStart::Immediate(Err(LoadError::Invalid(rejection)))
+                }
+                Load::Fetch(ticket) => {
+                    let id = self.alloc_waiter();
+                    self.waiters.entry(key.clone()).or_default().push(id);
+                    LoadStart::Wait {
+                        id,
+                        effects: Effects {
+                            fetches: vec![(key.clone(), ticket)],
+                            notify_changed: true,
+                            reschedule: true,
+                            ..Effects::default()
+                        },
+                    }
+                }
+                Load::Join => {
+                    let id = self.alloc_waiter();
+                    self.waiters.entry(key.clone()).or_default().push(id);
+                    LoadStart::Wait {
+                        id,
+                        effects: Effects::default(),
+                    }
+                }
+            }
+        }
+
+        pub fn cancel_waiter(&mut self, key: &PublicKey, id: WaiterId) {
+            if let Some(list) = self.waiters.get_mut(key) {
+                list.retain(|existing| *existing != id);
+                if list.is_empty() {
+                    self.waiters.remove(key);
+                }
+            }
+        }
+
+        pub fn follow_seed(
+            &mut self,
+            key: PublicKey,
+            mut initial: Snapshot,
+            rendered_at: Millis,
+            at: Millis,
+        ) {
+            self.prune_withdrawn(at);
+            if self.store.is_removed_at(&key, rendered_at) {
+                return;
+            }
+            let mut sanitized = false;
+            if let Snapshot::Works(list) = &mut initial {
+                let withdrawn: Vec<String> = self
+                    .withdrawn
+                    .iter()
+                    .filter(|(_, f)| rendered_at <= f.at)
+                    .map(|(id, _)| id.clone())
+                    .collect();
+                if !withdrawn.is_empty() {
+                    let before = list.works.len();
+                    list.works
+                        .retain(|card| !withdrawn.iter().any(|id| id == &card.work_id));
+                    sanitized = list.works.len() != before;
+                }
+            }
+            self.store.seed(&key, initial, rendered_at, at);
+            if sanitized {
+                self.store.mutation_confirmed(&key);
+            }
+            self.store.observe(&key, at);
+        }
+
+        pub fn release(&mut self, key: &PublicKey, at: Millis) -> Effects {
+            self.store.release(key, at);
+            Effects {
+                reschedule: true,
+                ..Effects::default()
+            }
+        }
+
+        pub fn status(&self, key: &PublicKey) -> Option<Status<Snapshot>> {
+            // Starting a new request creates an empty entry; it does not restore removed text.
+            if self.store.is_removed_at(key, Millis::NEG_INFINITY) {
+                return None;
+            }
+            self.store.status(key)
+        }
+
+        pub fn check(
+            &mut self,
+            key: &PublicKey,
+            trigger: Trigger,
+            at: Millis,
+            visible: bool,
+        ) -> Effects {
+            if trigger != Trigger::Manual && !visible {
+                return Effects {
+                    reschedule: true,
+                    ..Effects::default()
+                };
+            }
+            if let Some(ticket) = self.store.begin(key, trigger, at) {
+                Effects {
+                    fetches: vec![(key.clone(), ticket)],
+                    notify_changed: true,
+                    reschedule: true,
+                    ..Effects::default()
+                }
+            } else {
+                Effects {
+                    reschedule: true,
+                    ..Effects::default()
+                }
+            }
+        }
+
+        fn push_waiter_replies(&mut self, key: &PublicKey, reply: &Reply, effects: &mut Effects) {
+            if let Some(ids) = self.waiters.remove(key) {
+                for id in ids {
+                    effects.replies.push((id, reply.clone()));
+                }
+            }
+        }
+
+        fn wake_matching(
+            &mut self,
+            mut predicate: impl FnMut(&PublicKey) -> bool,
+            at: Millis,
+            visible: bool,
+            effects: &mut Effects,
+        ) {
+            let waiting_keys: Vec<PublicKey> = self
+                .waiters
+                .keys()
+                .filter(|k| predicate(k) && self.store.needs_fetch_when_waiting(k))
+                .cloned()
+                .collect();
+            for key in waiting_keys {
+                match self.store.load(&key, at) {
+                    Load::Ready(snap) => self.push_waiter_replies(&key, &Ok(snap), effects),
+                    Load::Rejected(rej) => {
+                        self.push_waiter_replies(&key, &Err(LoadError::Invalid(rej)), effects);
+                    }
+                    Load::Fetch(ticket) => effects.fetches.push((key, ticket)),
+                    Load::Join => {}
+                }
+            }
+            if visible {
+                let observed = self.store.matching_observed(predicate);
+                for key in observed {
+                    if let Some(ticket) = self.store.begin(&key, Trigger::Signal, at) {
+                        effects.fetches.push((key, ticket));
+                    }
+                }
+            }
+        }
+
+        pub fn invalidate_publication(
+            &mut self,
+            work_id: &str,
+            at: Millis,
+            visible: bool,
+        ) -> Effects {
+            let target = PublicKey::Publication(work_id.to_string());
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            self.store
+                .mutation_confirmed_where(|k| k == &target || matches!(k, PublicKey::Works(_)));
+            self.wake_matching(
+                |k| k == &target || matches!(k, PublicKey::Works(_)),
+                at,
+                visible,
+                &mut effects,
+            );
+            effects
+        }
+
+        pub fn finish_reader(
+            &mut self,
+            key: PublicKey,
+            ticket: Ticket,
+            result: Result<crate::contract::ReaderResponse, LoadError>,
+            at: Millis,
+            random: f64,
+            visible: bool,
+        ) -> (Result<crate::contract::ReaderResponse, LoadError>, Effects) {
+            use crate::contract::ReaderResponse;
+            // Gate the resource result as well as the cache: a discarded body must never seed a view.
+            if !self.store.is_current(&key, ticket) {
+                return (Err(LoadError::Unavailable), Effects::default());
+            }
+            let outcome = match &result {
+                Ok(ReaderResponse::Published(publication)) => {
+                    Outcome::Fresh(Snapshot::Publication(publication.clone()))
+                }
+                Ok(ReaderResponse::Hidden { .. } | ReaderResponse::ReviewWithdrawn { .. })
+                | Err(LoadError::NotFound) => Outcome::Removed,
+                Err(LoadError::Invalid(rejection)) => Outcome::Rejected(*rejection),
+                Err(LoadError::Unavailable) => Outcome::Temporary { retry_after: None },
+            };
+            let effects = self.finish(key, ticket, outcome, at, random, visible);
+            (result, effects)
+        }
+
+        fn apply_withdrawal(
+            &mut self,
+            work_id: &str,
+            at: Millis,
+            visible: bool,
+            remove_entry: bool,
+            effects: &mut Effects,
+        ) {
+            self.seq += 1;
+            self.withdrawn
+                .insert(work_id.to_string(), WithdrawnFence { at, seq: self.seq });
+            self.prune_withdrawn(at);
+            let target = PublicKey::Publication(work_id.to_string());
+            if remove_entry {
+                self.store.remove_at(&target, at);
+            }
+            self.push_waiter_replies(&target, &Err(LoadError::NotFound), effects);
+            self.store.edit_all(|key, snapshot| {
+                if matches!(key, PublicKey::Works(_))
+                    && let Snapshot::Works(list) = snapshot
+                {
+                    list.works.retain(|card| card.work_id != work_id);
+                }
+            });
+            self.store
+                .mutation_confirmed_where(|k| matches!(k, PublicKey::Works(_)));
+            self.wake_matching(|k| matches!(k, PublicKey::Works(_)), at, visible, effects);
+        }
+
+        pub fn withdraw_publication(
+            &mut self,
+            work_id: &str,
+            at: Millis,
+            visible: bool,
+        ) -> Effects {
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            self.apply_withdrawal(work_id, at, visible, true, &mut effects);
+            effects
+        }
+
+        pub fn finish(
+            &mut self,
+            key: PublicKey,
+            ticket: Ticket,
+            outcome: Outcome<Snapshot>,
+            at: Millis,
+            random: f64,
+            visible: bool,
+        ) -> Effects {
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            let applied = self.store.complete(&key, ticket, outcome, at, random);
+            match applied {
+                Applied::Fresh { .. } => {
+                    if let PublicKey::Publication(id) = &key {
+                        self.withdrawn.remove(id);
+                    }
+                    if let Some(reply) = self.store.status(&key).and_then(|s| s.data).map(Ok) {
+                        self.push_waiter_replies(&key, &reply, &mut effects);
+                    }
+                }
+                Applied::Removed => {
+                    self.push_waiter_replies(&key, &Err(LoadError::NotFound), &mut effects);
+                    if let PublicKey::Publication(id) = &key {
+                        self.apply_withdrawal(id, at, visible, false, &mut effects);
+                    }
+                }
+                Applied::Rejected(rejection) => {
+                    self.push_waiter_replies(
+                        &key,
+                        &Err(LoadError::Invalid(rejection)),
+                        &mut effects,
+                    );
+                }
+                Applied::Failed => {
+                    self.push_waiter_replies(&key, &Err(LoadError::Unavailable), &mut effects);
+                }
+                Applied::Discarded => {
+                    if self.waiters.get(&key).is_some_and(|ws| !ws.is_empty()) {
+                        match self.store.load(&key, at) {
+                            Load::Ready(data) => {
+                                self.push_waiter_replies(&key, &Ok(data), &mut effects);
+                            }
+                            Load::Rejected(rejection) => {
+                                self.push_waiter_replies(
+                                    &key,
+                                    &Err(LoadError::Invalid(rejection)),
+                                    &mut effects,
+                                );
+                            }
+                            Load::Fetch(new_ticket) => effects.fetches.push((key, new_ticket)),
+                            Load::Join => {}
+                        }
+                    }
+                }
+            }
+            effects
+        }
+
+        pub fn tick(&mut self, at: Millis, visible: bool) -> Effects {
+            let mut effects = Effects {
+                reschedule: true,
+                ..Effects::default()
+            };
+            if !visible {
+                return effects;
+            }
+            for key in self.store.due(at) {
+                if let Some(ticket) = self.store.begin(&key, Trigger::Due, at) {
+                    effects.fetches.push((key, ticket));
+                }
+            }
+            effects.notify_changed = !effects.fetches.is_empty();
+            effects
+        }
+
+        pub fn signal_all(&mut self, at: Millis, visible: bool) -> Effects {
+            let mut effects = Effects {
+                reschedule: true,
+                ..Effects::default()
+            };
+            if !visible {
+                return effects;
+            }
+            for key in self.store.observed() {
+                if let Some(ticket) = self.store.begin(&key, Trigger::Signal, at) {
+                    effects.fetches.push((key, ticket));
+                }
+            }
+            effects.notify_changed = !effects.fetches.is_empty();
+            effects
+        }
+
+        #[cfg(test)]
+        pub fn mark_stale_scope(
+            &mut self,
+            mut predicate: impl FnMut(&PublicKey) -> bool,
+            at: Millis,
+            visible: bool,
+        ) -> Effects {
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            self.store.mark_stale_where(&mut predicate);
+            self.wake_matching(predicate, at, visible, &mut effects);
+            effects
+        }
+
+        #[cfg(test)]
+        pub fn clear(&mut self) -> Effects {
+            let mut effects = Effects {
+                notify_changed: true,
+                reschedule: true,
+                ..Effects::default()
+            };
+            let all = std::mem::take(&mut self.waiters);
+            for (_, ids) in all {
+                for id in ids {
+                    effects.replies.push((id, Err(LoadError::Unavailable)));
+                }
+            }
+            self.store.clear();
+            self.withdrawn.clear();
+            effects
+        }
+
+        #[cfg(test)]
+        pub fn pending_waiter_count(&self, key: &PublicKey) -> usize {
+            self.waiters.get(key).map_or(0, Vec::len)
+        }
+    }
+}
+
 #[cfg(feature = "hydrate")]
 mod browser {
     use std::cell::RefCell;
@@ -157,30 +642,27 @@ mod browser {
     use leptos::prelude::*;
     use wasm_bindgen::{JsCast, closure::Closure};
 
-    use super::{LoadError, PublicKey, Snapshot};
+    use super::coordinator::{Coordinator, Effects, LoadStart, Reply, WaiterId};
+    use super::{PublicKey, Snapshot};
+    use crate::api::LoadError;
     use crate::contract::{Publication, WorkList};
-    use crate::freshness::{
-        Applied, Load, Millis, Outcome, Policy, Status, Store, Ticket, Trigger,
-    };
-
-    type Reply = Result<Snapshot, LoadError>;
+    use crate::freshness::{Millis, Outcome, Policy, Status, Ticket, Trigger};
 
     struct Owner {
-        store: Store<PublicKey, Snapshot>,
-        /// Mounting views with no displayable snapshot, waiting for the key's one request.
-        waiters: BTreeMap<PublicKey, Vec<oneshot::Sender<Reply>>>,
+        coord: Coordinator,
+        channels: BTreeMap<WaiterId, oneshot::Sender<Reply>>,
         timer: Option<i32>,
         tick: Option<Closure<dyn FnMut()>>,
-        listening: bool,
+        listener: Option<Closure<dyn FnMut()>>,
     }
 
     thread_local! {
         static OWNER: RefCell<Owner> = RefCell::new(Owner {
-            store: Store::new(Policy::V1),
-            waiters: BTreeMap::new(),
+            coord: Coordinator::new(Policy::V1),
+            channels: BTreeMap::new(),
             timer: None,
             tick: None,
-            listening: false,
+            listener: None,
         });
         static CHANGED: ArcTrigger = ArcTrigger::new();
     }
@@ -219,33 +701,88 @@ mod browser {
         }
     }
 
-    pub async fn load(key: PublicKey) -> Reply {
-        let (reply, receive) = oneshot::channel();
-        let start = with(|owner| match owner.store.load(&key, now()) {
-            Load::Ready(data) => {
-                let _ = reply.send(Ok(data));
-                None
+    struct WaiterGuard {
+        key: PublicKey,
+        id: WaiterId,
+        settled: bool,
+    }
+
+    impl Drop for WaiterGuard {
+        fn drop(&mut self) {
+            if !self.settled {
+                let id = self.id;
+                let key = self.key.clone();
+                with(|owner| {
+                    owner.channels.remove(&id);
+                    owner.coord.cancel_waiter(&key, id);
+                });
             }
-            Load::Fetch(ticket) => {
-                owner.waiters.entry(key.clone()).or_default().push(reply);
-                Some(ticket)
-            }
-            Load::Join => {
-                owner.waiters.entry(key.clone()).or_default().push(reply);
-                None
-            }
-        });
-        if let Some(ticket) = start {
+        }
+    }
+
+    fn apply_effects(effects: Effects) {
+        let deliveries: Vec<(oneshot::Sender<Reply>, Reply)> = if effects.replies.is_empty() {
+            Vec::new()
+        } else {
+            with(|owner| {
+                effects
+                    .replies
+                    .into_iter()
+                    .filter_map(|(id, reply)| owner.channels.remove(&id).map(|tx| (tx, reply)))
+                    .collect()
+            })
+        };
+        for (tx, reply) in deliveries {
+            let _ = tx.send(reply);
+        }
+        for (key, ticket) in effects.fetches {
             spawn_fetch(key, ticket);
         }
-        receive.await.unwrap_or(Err(LoadError::Unavailable))
+        if effects.notify_changed {
+            changed();
+        }
+        if effects.reschedule {
+            reschedule();
+        }
+    }
+
+    pub async fn load(key: PublicKey) -> Reply {
+        let at = now();
+        let (receive, mut guard) = {
+            let (tx, rx) = oneshot::channel();
+            let effects_to_run = with(|owner| match owner.coord.load(&key, at) {
+                LoadStart::Immediate(reply) => Err(reply),
+                LoadStart::Wait { id, effects } => {
+                    owner.channels.insert(id, tx);
+                    Ok((id, effects))
+                }
+            });
+            match effects_to_run {
+                Err(reply) => return reply,
+                Ok((id, effects)) => {
+                    apply_effects(effects);
+                    (
+                        rx,
+                        WaiterGuard {
+                            key,
+                            id,
+                            settled: false,
+                        },
+                    )
+                }
+            }
+        };
+        let reply = receive.await.unwrap_or(Err(LoadError::Unavailable));
+        guard.settled = true;
+        reply
     }
 
     pub fn follow(key: PublicKey, initial: Snapshot) -> Memo<Option<Status<Snapshot>>> {
         let at = now();
         with(|owner| {
-            owner.store.seed(&key, initial, rendered_at(), at);
-            owner.store.observe(&key, at);
+            owner
+                .coord
+                .follow_seed(key.clone(), initial, rendered_at(), at);
         });
         listen();
         // After hydration, never during it: a refresh flag set mid-hydration would disagree
@@ -254,52 +791,89 @@ mod browser {
         Effect::new(move |_| check(&mounted, Trigger::Signal));
         let released = key.clone();
         on_cleanup(move || {
-            with(|owner| owner.store.release(&released, now()));
-            reschedule();
+            let effects = with(|owner| owner.coord.release(&released, now()));
+            apply_effects(effects);
         });
         Memo::new(move |_| {
             CHANGED.with(|trigger| trigger.track());
-            with(|owner| owner.store.status(&key))
+            with(|owner| owner.coord.status(&key))
         })
     }
 
     pub fn check(key: &PublicKey, trigger: Trigger) {
-        if trigger != Trigger::Manual && !visible() {
-            return;
-        }
-        let ticket = with(|owner| owner.store.begin(key, trigger, now()));
-        if let Some(ticket) = ticket {
-            spawn_fetch(key.clone(), ticket);
-            changed();
-        }
-        reschedule();
+        let effects = with(|owner| owner.coord.check(key, trigger, now(), visible()));
+        apply_effects(effects);
     }
 
     pub fn invalidate_publication(work_id: &str) {
-        with(|owner| {
-            let key = PublicKey::Publication(work_id.to_string());
+        let effects = with(|owner| {
             owner
-                .store
-                .invalidate_where(|k| k == &key || matches!(k, PublicKey::Works(_)));
+                .coord
+                .invalidate_publication(work_id, now(), visible())
         });
-        changed();
+        apply_effects(effects);
     }
 
     pub fn invalidate_withdrawn(work_id: &str) {
-        with(|owner| {
-            let key = PublicKey::Publication(work_id.to_string());
-            owner
-                .store
-                .invalidate_where(|k| k == &key || matches!(k, PublicKey::Works(_)));
-            owner.store.edit_all(|key, snapshot| {
-                if matches!(key, PublicKey::Works(_))
-                    && let Snapshot::Works(list) = snapshot
-                {
-                    list.works.retain(|card| card.work_id != work_id);
-                }
+        let effects = with(|owner| owner.coord.withdraw_publication(work_id, now(), visible()));
+        apply_effects(effects);
+    }
+
+    pub struct ReaderGuard {
+        key: PublicKey,
+        ticket: Ticket,
+        settled: bool,
+    }
+
+    impl ReaderGuard {
+        pub fn finish(
+            mut self,
+            result: Result<crate::contract::ReaderResponse, LoadError>,
+        ) -> Result<crate::contract::ReaderResponse, LoadError> {
+            let (result, effects) = with(|owner| {
+                owner.coord.finish_reader(
+                    self.key.clone(),
+                    self.ticket,
+                    result,
+                    now(),
+                    js_sys::Math::random(),
+                    visible(),
+                )
             });
-        });
+            self.settled = true;
+            apply_effects(effects);
+            result
+        }
+    }
+
+    impl Drop for ReaderGuard {
+        fn drop(&mut self) {
+            if !self.settled {
+                let (_, effects) = with(|owner| {
+                    owner.coord.finish_reader(
+                        self.key.clone(),
+                        self.ticket,
+                        Err(LoadError::Unavailable),
+                        now(),
+                        0.0,
+                        visible(),
+                    )
+                });
+                apply_effects(effects);
+            }
+        }
+    }
+
+    pub fn begin_reader_read(work_id: &str) -> ReaderGuard {
+        let key = PublicKey::Publication(work_id.to_string());
+        let ticket = with(|owner| owner.coord.begin_reader_read(&key, now()));
         changed();
+        reschedule();
+        ReaderGuard {
+            key,
+            ticket,
+            settled: false,
+        }
     }
 
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
@@ -319,58 +893,12 @@ mod browser {
     fn finish(key: PublicKey, ticket: Ticket, outcome: Outcome<Snapshot>) {
         let at = now();
         let random = js_sys::Math::random();
-        let (replies, restart) = with(|owner| {
-            let applied = owner.store.complete(&key, ticket, outcome, at, random);
-            if let (Applied::Removed, PublicKey::Publication(id)) = (applied, &key) {
-                // The work's card is a derived preview of what the origin just removed.
-                owner
-                    .store
-                    .invalidate_where(|key| matches!(key, PublicKey::Works(_)));
-                owner.store.edit_all(|key, snapshot| {
-                    if matches!(key, PublicKey::Works(_))
-                        && let Snapshot::Works(list) = snapshot
-                    {
-                        list.works.retain(|card| &card.work_id != id);
-                    }
-                });
-            }
-            let reply = match applied {
-                Applied::Fresh { .. } => owner.store.status(&key).and_then(|s| s.data).map(Ok),
-                Applied::Removed => Some(Err(LoadError::NotFound)),
-                Applied::Failed => Some(Err(LoadError::Unavailable)),
-                Applied::Discarded => None,
-            };
-            if let Some(reply) = reply {
-                let waiting = owner.waiters.remove(&key).unwrap_or_default();
-                return (
-                    waiting.into_iter().map(|w| (w, reply.clone())).collect(),
-                    None,
-                );
-            }
-            // Superseded while views wait: give them a request of their own.
-            if !owner.waiters.contains_key(&key) {
-                return (Vec::new(), None);
-            }
-            match owner.store.load(&key, at) {
-                Load::Fetch(ticket) => (Vec::new(), Some(ticket)),
-                Load::Join => (Vec::new(), None),
-                Load::Ready(data) => {
-                    let waiting = owner.waiters.remove(&key).unwrap_or_default();
-                    (
-                        waiting.into_iter().map(|w| (w, Ok(data.clone()))).collect(),
-                        None,
-                    )
-                }
-            }
+        let effects = with(|owner| {
+            owner
+                .coord
+                .finish(key, ticket, outcome, at, random, visible())
         });
-        for (waiter, reply) in replies {
-            let _ = waiter.send(reply);
-        }
-        if let Some(ticket) = restart {
-            spawn_fetch(key, ticket);
-        }
-        changed();
-        reschedule();
+        apply_effects(effects);
     }
 
     /// The single scheduler timer: armed only while visible and something observed can refresh.
@@ -384,7 +912,7 @@ mod browser {
             if !visible {
                 return;
             }
-            let Some(wake) = owner.store.next_wake(at) else {
+            let Some(wake) = owner.coord.store.next_wake(at) else {
                 return;
             };
             let tick = owner
@@ -401,36 +929,462 @@ mod browser {
     }
 
     fn tick() {
-        with(|owner| owner.timer = None);
-        if visible() {
-            let at = now();
-            for key in with(|owner| owner.store.due(at)) {
-                check(&key, Trigger::Due);
-            }
-        }
-        reschedule();
+        let effects = with(|owner| {
+            owner.timer = None;
+            owner.coord.tick(now(), visible())
+        });
+        apply_effects(effects);
     }
 
     /// Focus, becoming visible, `online` and a back/forward-cache restore revalidate observed
     /// stale snapshots (`online` is only a hint: a failure still backs off). Hidden pauses the
     /// timer. Installed once for the tab's lifetime; views only observe/release.
     fn listen() {
-        if with(|owner| std::mem::replace(&mut owner.listening, true)) {
-            return;
-        }
-        let signal = Closure::<dyn FnMut()>::new(|| {
-            if visible() {
-                for key in with(|owner| owner.store.observed()) {
-                    check(&key, Trigger::Signal);
-                }
+        with(|owner| {
+            if owner.listener.is_some() {
+                return;
             }
-            reschedule();
+            let signal = Closure::<dyn FnMut()>::new(|| {
+                let effects = with(|owner| owner.coord.signal_all(now(), visible()));
+                apply_effects(effects);
+            });
+            let callback = signal.as_ref().unchecked_ref();
+            let _ = document().add_event_listener_with_callback("visibilitychange", callback);
+            for event in ["focus", "online", "pageshow"] {
+                let _ = window().add_event_listener_with_callback(event, callback);
+            }
+            owner.listener = Some(signal);
         });
-        let callback = signal.as_ref().unchecked_ref();
-        let _ = document().add_event_listener_with_callback("visibilitychange", callback);
-        for event in ["focus", "online", "pageshow"] {
-            let _ = window().add_event_listener_with_callback(event, callback);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::coordinator::{Coordinator, LoadStart};
+    use super::{LoadError, PublicKey, Snapshot};
+    use crate::contract::{DocumentDto, Publication, WorkCard, WorkFilters, WorkList};
+    use crate::discovery::ExploreQuery;
+    use crate::freshness::{InputField, Outcome, Policy, Rejection, Trigger};
+
+    fn sample_work(id: &str) -> WorkCard {
+        WorkCard {
+            work_id: id.into(),
+            title: format!("Title {id}"),
+            author_display_name: "Author".into(),
+            published_at: "2026-11-15T00:00:00Z".into(),
+            tags: vec![],
         }
-        signal.forget();
+    }
+
+    fn sample_list(ids: &[&str]) -> Snapshot {
+        Snapshot::Works(WorkList {
+            works: ids.iter().map(|id| sample_work(id)).collect(),
+            filters: WorkFilters {
+                q: None,
+                tags: vec![],
+            },
+            next_cursor: None,
+        })
+    }
+
+    fn sample_pub(id: &str, rev: &str) -> Snapshot {
+        Snapshot::Publication(Publication {
+            work_id: id.into(),
+            revision_id: rev.into(),
+            title: format!("Title {id}"),
+            author_display_name: "Author".into(),
+            document: DocumentDto {
+                schema_version: 1,
+                blocks: vec![],
+            },
+            published_at: "2026-11-15T00:00:00Z".into(),
+            tags: vec![],
+        })
+    }
+
+    #[test]
+    fn mutation_ack_wakes_only_observed_visible_owners_and_coalesces_signals() {
+        let mut c = Coordinator::new(Policy::V1);
+        let pub_k = PublicKey::Publication("w1".into());
+        let observed_q = PublicKey::Works(ExploreQuery::default());
+        let hidden_q = PublicKey::Works(ExploreQuery::new("mua".into(), vec![], None));
+
+        c.follow_seed(pub_k.clone(), sample_pub("w1", "r1"), 0.0, 10.0);
+        c.follow_seed(observed_q.clone(), sample_list(&["w1"]), 0.0, 10.0);
+        c.store.seed(&hidden_q, sample_list(&["w1"]), 0.0, 10.0);
+
+        // When hidden, invalidation marks stale/confirmed without spawning network traffic.
+        let hidden_eff = c.invalidate_publication("w1", 20.0, false);
+        assert!(hidden_eff.fetches.is_empty());
+
+        // Becoming visible signals observed keys once, coalescing concurrent triggers.
+        let vis_eff = c.signal_all(30.0, true);
+        assert_eq!(vis_eff.fetches.len(), 2);
+        let keys: Vec<&PublicKey> = vis_eff.fetches.iter().map(|(k, _)| k).collect();
+        assert!(keys.contains(&&pub_k));
+        assert!(keys.contains(&&observed_q));
+        assert!(!keys.contains(&&hidden_q), "unobserved keys never poll");
+
+        let dup = c.signal_all(31.0, true);
+        assert!(dup.fetches.is_empty(), "single-flight coalesces signals");
+    }
+
+    #[test]
+    fn withdraw_purges_publication_and_list_cards_and_blocks_old_seeds() {
+        let mut c = Coordinator::new(Policy::V1);
+        let pub_k = PublicKey::Publication("w1".into());
+        let list_k = PublicKey::Works(ExploreQuery::default());
+
+        c.follow_seed(pub_k.clone(), sample_pub("w1", "r1"), 0.0, 10.0);
+        c.follow_seed(list_k.clone(), sample_list(&["w1", "w2"]), 0.0, 10.0);
+        let stale_fetch = c.check(&list_k, Trigger::Manual, 20.0, true);
+        assert_eq!(stale_fetch.fetches.len(), 1);
+        let (_, old_ticket) = stale_fetch.fetches[0].clone();
+
+        // Confirm withdrawal of w1 at t = 30.
+        let w_eff = c.withdraw_publication("w1", 30.0, true);
+        assert_eq!(c.status(&pub_k), None);
+        let Snapshot::Works(list_after) = c.status(&list_k).unwrap().data.unwrap() else {
+            panic!()
+        };
+        assert_eq!(
+            list_after
+                .works
+                .iter()
+                .map(|w| w.work_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["w2"]
+        );
+        // Observed explore owner wakes promptly to confirm with origin.
+        assert_eq!(w_eff.fetches.len(), 1);
+        assert_eq!(w_eff.fetches[0].0, list_k);
+
+        // Older in-flight response for list_k (started before withdrawal) is discarded!
+        let old_commit = c.finish(
+            list_k.clone(),
+            old_ticket,
+            Outcome::Fresh(sample_list(&["w1", "w2"])),
+            35.0,
+            0.0,
+            true,
+        );
+        assert!(old_commit.fetches.is_empty());
+        let Snapshot::Works(still_purged) = c.status(&list_k).unwrap().data.unwrap() else {
+            panic!()
+        };
+        assert_eq!(still_purged.works.len(), 1);
+
+        // Stale SSR/hydration seed rendered at t=0 cannot resurrect withdrawn w1 in publication or list.
+        c.follow_seed(pub_k.clone(), sample_pub("w1", "r1"), 0.0, 40.0);
+        assert_eq!(c.status(&pub_k), None);
+        let other_q = PublicKey::Works(ExploreQuery::new("tho".into(), vec![], None));
+        c.follow_seed(other_q.clone(), sample_list(&["w1", "w3"]), 0.0, 40.0);
+        let Snapshot::Works(sanitized) = c.status(&other_q).unwrap().data.unwrap() else {
+            panic!()
+        };
+        assert_eq!(sanitized.works.len(), 1);
+        assert_eq!(sanitized.works[0].work_id, "w3");
+
+        // Re-publication recovers when a fresh load receives an authoritative 200.
+        let LoadStart::Wait {
+            id: waiter,
+            effects,
+        } = c.load(&pub_k, 50.0)
+        else {
+            panic!("should fetch after withdrawal, not permanent tombstone")
+        };
+        assert_eq!(effects.fetches.len(), 1);
+        let (_, repub_ticket) = effects.fetches[0].clone();
+        let done = c.finish(
+            pub_k.clone(),
+            repub_ticket,
+            Outcome::Fresh(sample_pub("w1", "r2")),
+            60.0,
+            0.0,
+            true,
+        );
+        assert_eq!(done.replies.len(), 1);
+        assert_eq!(done.replies[0].0, waiter);
+        assert!(matches!(done.replies[0].1, Ok(Snapshot::Publication(_))));
+        assert!(c.status(&pub_k).is_some());
+    }
+
+    fn reader_publication(revision: &str) -> crate::contract::ReaderResponse {
+        let Snapshot::Publication(publication) = sample_pub("w1", revision) else {
+            panic!()
+        };
+        crate::contract::ReaderResponse::Published(publication)
+    }
+
+    #[test]
+    fn reader_ticket_survives_republication_and_private_pointer_invalidation() {
+        for republish in [false, true] {
+            let mut c = Coordinator::new(Policy::V1);
+            let key = PublicKey::Publication("w1".into());
+            let old = c.begin_reader_read(&key, 70.0);
+            c.withdraw_publication("w1", 70.0, true);
+            // The existing pointer observer signals both Some -> None and publication changes.
+            c.invalidate_publication("w1", 70.0, true);
+            if republish {
+                let new = c.begin_reader_read(&key, 70.0);
+                assert_eq!(
+                    c.status(&key),
+                    None,
+                    "pending re-publication must not expose the removed view"
+                );
+                let (reply, _) = c.finish_reader(
+                    key.clone(),
+                    new,
+                    Ok(reader_publication("r3")),
+                    70.0,
+                    0.0,
+                    true,
+                );
+                assert_eq!(reply, Ok(reader_publication("r3")));
+            }
+            // A frozen clock must not let the old read win after the new fence was cleared.
+            let (reply, _) = c.finish_reader(
+                key.clone(),
+                old,
+                Ok(reader_publication("r2")),
+                70.0,
+                0.0,
+                true,
+            );
+            assert_eq!(reply, Err(LoadError::Unavailable));
+            if republish {
+                assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r3")));
+            } else {
+                c.follow_seed(key.clone(), sample_pub("w1", "r2"), 0.0, 70.0);
+                assert_eq!(c.status(&key), None);
+            }
+        }
+    }
+
+    #[test]
+    fn reader_ticket_orders_cache_refreshes_and_records_request_start() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Publication("w1".into());
+        let first = c.begin_reader_read(&key, 0.0);
+        let second = c.begin_reader_read(&key, 0.0);
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            second,
+            Ok(reader_publication("r2")),
+            30_000.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Ok(reader_publication("r2")));
+        c.follow_seed(key.clone(), sample_pub("w1", "r2"), 0.0, 30_000.0);
+        assert_eq!(c.store.next_wake(30_000.0), Some(120_000.0));
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            first,
+            Ok(reader_publication("r1")),
+            30_001.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r2")));
+
+        let pending = c.begin_reader_read(&key, 40_000.0);
+        c.invalidate_publication("w1", 40_001.0, true);
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            pending,
+            Ok(reader_publication("old")),
+            40_002.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert!(
+            c.store.has_in_flight(&key),
+            "discarded reader must preserve the newer scheduled flight"
+        );
+    }
+
+    #[test]
+    fn cancelled_reader_settles_joined_waiter_and_late_denial_cannot_hide_newer_read() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Publication("w1".into());
+        let cancelled = c.begin_reader_read(&key, 0.0);
+        let LoadStart::Wait { id, .. } = c.load(&key, 1.0) else {
+            panic!()
+        };
+        let (_, effects) = c.finish_reader(
+            key.clone(),
+            cancelled,
+            Err(LoadError::Unavailable),
+            2.0,
+            0.0,
+            true,
+        );
+        assert_eq!(effects.replies, vec![(id, Err(LoadError::Unavailable))]);
+        assert!(!c.store.has_in_flight(&key));
+        let stale = c.begin_reader_read(&key, 3.0);
+        let fresh = c.begin_reader_read(&key, 3.0);
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            fresh,
+            Ok(reader_publication("r3")),
+            4.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Ok(reader_publication("r3")));
+        let (reply, _) =
+            c.finish_reader(key.clone(), stale, Err(LoadError::NotFound), 5.0, 0.0, true);
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r3")));
+    }
+
+    #[test]
+    fn pending_initial_waiters_never_hang_on_invalidate_withdraw_remove_clear_or_cancel() {
+        // 1. Invalidate while initial read pending restarts waiter fetch; old response discarded.
+        let mut c = Coordinator::new(Policy::V1);
+        let pub_k = PublicKey::Publication("w1".into());
+        let LoadStart::Wait { id: w1, effects } = c.load(&pub_k, 0.0) else {
+            panic!()
+        };
+        let old_ticket = effects.fetches[0].1;
+        let inv = c.invalidate_publication("w1", 10.0, true);
+        assert_eq!(inv.fetches.len(), 1);
+        let new_ticket = inv.fetches[0].1;
+        assert_ne!(old_ticket, new_ticket);
+
+        // Old flight arriving late does not resolve with stale data and does not break new flight.
+        let stale_done = c.finish(
+            pub_k.clone(),
+            old_ticket,
+            Outcome::Fresh(sample_pub("w1", "stale")),
+            20.0,
+            0.0,
+            true,
+        );
+        assert!(stale_done.replies.is_empty());
+        assert_eq!(c.pending_waiter_count(&pub_k), 1);
+
+        let fresh_done = c.finish(
+            pub_k.clone(),
+            new_ticket,
+            Outcome::Fresh(sample_pub("w1", "fresh")),
+            25.0,
+            0.0,
+            true,
+        );
+        assert_eq!(fresh_done.replies.len(), 1);
+        assert_eq!(fresh_done.replies[0].0, w1);
+        assert_eq!(fresh_done.replies[0].1, Ok(sample_pub("w1", "fresh")));
+
+        // 2. Withdraw / remove while initial load pending resolves waiters immediately as NotFound.
+        let pub_w2 = PublicKey::Publication("w2".into());
+        let LoadStart::Wait { id: w2_waiter, .. } = c.load(&pub_w2, 30.0) else {
+            panic!()
+        };
+        let wd = c.withdraw_publication("w2", 35.0, true);
+        assert_eq!(wd.replies, vec![(w2_waiter, Err(LoadError::NotFound))]);
+        assert_eq!(c.pending_waiter_count(&pub_w2), 0);
+
+        // 3. Clear while multiple initial loads pending resolves every waiter without hanging.
+        let k_a = PublicKey::Works(ExploreQuery::default());
+        let k_b = PublicKey::Publication("w3".into());
+        let LoadStart::Wait { id: id_a, .. } = c.load(&k_a, 40.0) else {
+            panic!()
+        };
+        let LoadStart::Wait { id: id_b, .. } = c.load(&k_b, 41.0) else {
+            panic!()
+        };
+        let cleared = c.clear();
+        assert_eq!(cleared.replies.len(), 2);
+        assert!(
+            cleared
+                .replies
+                .contains(&(id_a, Err(LoadError::Unavailable)))
+        );
+        assert!(
+            cleared
+                .replies
+                .contains(&(id_b, Err(LoadError::Unavailable)))
+        );
+
+        // 4. Dropped waiter (cancel_waiter) + rejected 422 stops pending waits cleanly.
+        let bad_q = PublicKey::Works(ExploreQuery::new("!".into(), vec![], Some("bad".into())));
+        let LoadStart::Wait {
+            id: cancel_id,
+            effects,
+        } = c.load(&bad_q, 50.0)
+        else {
+            panic!()
+        };
+        let t_bad = effects.fetches[0].1;
+        c.cancel_waiter(&bad_q, cancel_id);
+        assert_eq!(c.pending_waiter_count(&bad_q), 0);
+        let rejected = c.finish(
+            bad_q.clone(),
+            t_bad,
+            Outcome::Rejected(Rejection::RestartCursor),
+            55.0,
+            0.0,
+            true,
+        );
+        assert!(rejected.replies.is_empty());
+        let LoadStart::Immediate(second) = c.load(&bad_q, 60.0) else {
+            panic!("cached rejection must return immediately without retry loop")
+        };
+        assert_eq!(second, Err(LoadError::Invalid(Rejection::RestartCursor)));
+
+        // Verify InputField 422 maps distinctly too; mark_stale_scope also respects backoff.
+        let bad_q2 = PublicKey::Works(ExploreQuery::new("!".into(), vec![], None));
+        let LoadStart::Wait { id: wq, effects } = c.load(&bad_q2, 70.0) else {
+            panic!()
+        };
+        let done_q = c.finish(
+            bad_q2,
+            effects.fetches[0].1,
+            Outcome::Rejected(Rejection::InvalidInput(InputField::Query)),
+            75.0,
+            0.0,
+            true,
+        );
+        assert_eq!(
+            done_q.replies,
+            vec![(
+                wq,
+                Err(LoadError::Invalid(Rejection::InvalidInput(
+                    InputField::Query
+                )))
+            )]
+        );
+
+        let backoff_k = PublicKey::Publication("w4".into());
+        c.follow_seed(backoff_k.clone(), sample_pub("w4", "r1"), 0.0, 80.0);
+        let f1 = c.check(&backoff_k, Trigger::Manual, 85.0, true);
+        c.finish(
+            backoff_k.clone(),
+            f1.fetches[0].1,
+            Outcome::Temporary {
+                retry_after: Some(30_000.0),
+            },
+            90.0,
+            0.0,
+            true,
+        );
+        let stale_wake = c.mark_stale_scope(|k| k == &backoff_k, 100.0, true);
+        assert!(
+            stale_wake.fetches.is_empty(),
+            "generic stale never wakes before retry_at"
+        );
+
+        // Tick & release lifecycle: timer respects backoff deadline, wakes when due, and release pauses polling.
+        assert!(c.tick(20_000.0, true).fetches.is_empty());
+        let due_tick = c.tick(40_000.0, true);
+        assert!(due_tick.reschedule);
+        assert_eq!(due_tick.fetches.len(), 1);
+        let rel = c.release(&backoff_k, 120_000.0);
+        assert!(rel.reschedule);
+        assert!(c.tick(500_000.0, true).fetches.is_empty());
     }
 }

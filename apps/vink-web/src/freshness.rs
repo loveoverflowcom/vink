@@ -57,6 +57,43 @@ pub enum Trigger {
     Manual,
 }
 
+/// Validated query/filter fields reported by discovery HTTP 422 responses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum InputField {
+    Query,
+    Tag,
+    Limit,
+    Parameter,
+}
+
+/// Semantic public-read rejection derived strictly from `status + error.code + error.field`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum Rejection {
+    /// Cursor malformed or scoped to another search: stop retrying it and restart from page 1.
+    RestartCursor,
+    /// Query string, tag filter, page limit, or query parameter rejected by validation.
+    InvalidInput(InputField),
+    /// Missing/malformed error envelope, unknown error code, or unmapped 4xx: finite fallback.
+    Fallback,
+}
+
+/// Classifies a non-retryable public-read rejection from status, `error.code`, and
+/// `error.field`, without ever inspecting `error.message`.
+pub fn classify_rejection(status: u16, code: Option<&str>, field: Option<&str>) -> Rejection {
+    match (status, code, field) {
+        (422, Some("validation_failed"), Some("cursor")) => Rejection::RestartCursor,
+        (422, Some("validation_failed"), Some("q")) => Rejection::InvalidInput(InputField::Query),
+        (422, Some("validation_failed"), Some("tag")) => Rejection::InvalidInput(InputField::Tag),
+        (422, Some("validation_failed"), Some("limit")) => {
+            Rejection::InvalidInput(InputField::Limit)
+        }
+        (422, Some("validation_failed"), Some("query")) => {
+            Rejection::InvalidInput(InputField::Parameter)
+        }
+        _ => Rejection::Fallback,
+    }
+}
+
 /// What the transport established about one request.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Outcome<V> {
@@ -64,7 +101,9 @@ pub enum Outcome<V> {
     Fresh(V),
     /// Authoritative absence (404): the snapshot must not be shown again.
     Removed,
-    /// Timeout, network, 5xx or an unexpected response; `retry_after` from the server if any.
+    /// Non-retryable client/input/cursor rejection (`400`, `414`, `422`): stops polling.
+    Rejected(Rejection),
+    /// Timeout, network, 408/429/5xx or an unexpected response; `retry_after` from the server if any.
     Temporary { retry_after: Option<Millis> },
 }
 
@@ -73,6 +112,7 @@ impl<V> Outcome<V> {
         match self {
             Self::Fresh(value) => Outcome::Fresh(f(value)),
             Self::Removed => Outcome::Removed,
+            Self::Rejected(rejection) => Outcome::Rejected(rejection),
             Self::Temporary { retry_after } => Outcome::Temporary { retry_after },
         }
     }
@@ -87,7 +127,9 @@ pub enum PublicStatus {
     Unconditional,
     /// Authoritative absence.
     Removed,
-    /// Anything else, including a second raw 304: keep the last success and back off.
+    /// Non-retryable client rejection (400, 414, 422).
+    Rejected,
+    /// Anything else (0, 408, 409, 429, 5xx), including a second raw 304: keep last success and back off.
     Temporary,
 }
 
@@ -96,6 +138,7 @@ pub fn public_status(status: u16) -> PublicStatus {
         200..=299 => PublicStatus::Body,
         304 => PublicStatus::Unconditional,
         404 => PublicStatus::Removed,
+        400 | 414 | 422 => PublicStatus::Rejected,
         _ => PublicStatus::Temporary,
     }
 }
@@ -123,6 +166,8 @@ pub enum Load<V> {
     Fetch(Ticket),
     /// No displayable snapshot and a request is already running: wait for it.
     Join,
+    /// Terminal client/input/cursor rejection without retry loop; manual retry still clears it.
+    Rejected(Rejection),
 }
 
 /// The effect of a completion.
@@ -132,6 +177,8 @@ pub enum Applied {
     Fresh { changed: bool },
     /// Committed: entry dropped because the origin says it no longer exists.
     Removed,
+    /// Committed: non-retryable rejection recorded, automatic polling stopped.
+    Rejected(Rejection),
     /// Committed: failure recorded, last success kept.
     Failed,
     /// A superseded ticket (invalidated, removed, cleared or replaced); nothing changed.
@@ -146,6 +193,8 @@ pub struct Status<V> {
     pub refreshing: bool,
     /// The last attempt failed temporarily; `data` is the last success.
     pub failed: bool,
+    /// Non-retryable rejection recorded for this key (e.g. background refresh hit 422 cursor).
+    pub rejected: Option<Rejection>,
 }
 
 #[derive(Clone, Debug)]
@@ -153,7 +202,12 @@ struct Entry<V> {
     data: Option<V>,
     /// Start of the request that confirmed `data`: a conservative lower bound.
     validated_at: Millis,
-    invalidated: bool,
+    /// Cached snapshot may lag origin state (`mark_stale`): refreshes once due, without clearing backoff.
+    stale: bool,
+    /// Confirmed server write (`mutation_confirmed`): permits ONE immediate check even during backoff.
+    immediate_retry: bool,
+    /// Non-retryable client/cursor/query rejection (`422` etc.); suppresses automatic retries.
+    rejected: Option<Rejection>,
     in_flight: Option<(Ticket, Millis)>,
     failures: u32,
     retry_at: Millis,
@@ -167,7 +221,9 @@ impl<V> Entry<V> {
         Self {
             data: None,
             validated_at: Millis::NEG_INFINITY,
-            invalidated: false,
+            stale: false,
+            immediate_retry: false,
+            rejected: None,
             in_flight: None,
             failures: 0,
             retry_at: Millis::NEG_INFINITY,
@@ -179,13 +235,15 @@ impl<V> Entry<V> {
 
     /// When a scheduled or signalled check becomes due, if this entry is refreshable at all.
     fn check_at(&self, policy: &Policy, with_spread: bool) -> Option<Millis> {
-        if self.data.is_none() || self.in_flight.is_some() {
+        if self.data.is_none() || self.in_flight.is_some() || self.rejected.is_some() {
             return None;
         }
-        Some(if self.invalidated {
+        Some(if self.immediate_retry {
             Millis::NEG_INFINITY
         } else if self.failures > 0 {
             self.retry_at
+        } else if self.stale {
+            Millis::NEG_INFINITY
         } else {
             self.validated_at + policy.stale_after + if with_spread { self.spread } else { 0.0 }
         })
@@ -196,6 +254,10 @@ impl<V> Entry<V> {
 pub struct Store<K, V> {
     policy: Policy,
     entries: BTreeMap<K, Entry<V>>,
+    /// Timestamp of authoritative `404` / `remove`: rejects older `seed` calls without creating
+    /// a permanent tombstone against a new origin `Fresh` response on re-publication.
+    removed: BTreeMap<K, Millis>,
+    high_water: Millis,
     next_ticket: u64,
 }
 
@@ -204,6 +266,8 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         Self {
             policy,
             entries: BTreeMap::new(),
+            removed: BTreeMap::new(),
+            high_water: Millis::NEG_INFINITY,
             next_ticket: 1,
         }
     }
@@ -220,6 +284,26 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         self.entries.is_empty()
     }
 
+    fn record_time(&mut self, now: Millis) {
+        if now.is_finite() {
+            self.high_water = self.high_water.max(now);
+        }
+    }
+
+    fn trim_removed(&mut self) {
+        while self.removed.len() > self.policy.max_entries {
+            let Some(oldest) = self
+                .removed
+                .iter()
+                .min_by(|a, b| a.1.total_cmp(b.1))
+                .map(|(k, _)| k.clone())
+            else {
+                break;
+            };
+            self.removed.remove(&oldest);
+        }
+    }
+
     fn entry(&mut self, key: &K, now: Millis) -> &mut Entry<V> {
         self.entries
             .entry(key.clone())
@@ -229,16 +313,25 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     fn start(&mut self, key: &K, now: Millis) -> Ticket {
         let ticket = Ticket(self.next_ticket);
         self.next_ticket += 1;
-        self.entry(key, now).in_flight = Some((ticket, now));
+        let entry = self.entry(key, now);
+        entry.immediate_retry = false;
+        entry.rejected = None;
+        entry.in_flight = Some((ticket, now));
         ticket
     }
 
     /// A view mounts on `key`. Reading never extends `validated_at`.
     pub fn load(&mut self, key: &K, now: Millis) -> Load<V> {
+        self.record_time(now);
         self.collect(now);
         let max_age = self.policy.max_display_age;
         let entry = self.entry(key, now);
         entry.last_seen = now;
+        if let Some(rejection) = entry.rejected
+            && entry.data.is_none()
+        {
+            return Load::Rejected(rejection);
+        }
         if let Some(data) = &entry.data
             && now - entry.validated_at <= max_age
         {
@@ -252,20 +345,55 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
 
     /// Records a server-rendered snapshot the page hydrated with. `rendered_at` must not be
     /// later than the server read (the page's navigation start is a safe bound). Never replaces
-    /// a newer snapshot or a request already running.
+    /// a newer snapshot, a running request, or an authoritative removal at or after `rendered_at`.
     pub fn seed(&mut self, key: &K, data: V, rendered_at: Millis, now: Millis) {
+        self.record_time(now);
+        if let Some(&removed_at) = self.removed.get(key) {
+            if rendered_at <= removed_at {
+                return;
+            }
+            self.removed.remove(key);
+        }
         let entry = self.entry(key, now);
-        if entry.in_flight.is_none() && (entry.data.is_none() || entry.validated_at < rendered_at) {
+        if entry.in_flight.is_none()
+            && entry.rejected.is_none()
+            && (entry.data.is_none() || entry.validated_at < rendered_at)
+        {
             entry.data = Some(data);
             entry.validated_at = rendered_at;
-            entry.invalidated = false;
+            entry.stale = false;
+            entry.immediate_retry = false;
             entry.failures = 0;
+            entry.retry_at = Millis::NEG_INFINITY;
         }
     }
 
+    /// True when an authoritative removal was recorded at or after `rendered_at` and no newer
+    /// fresh load has cleared it yet.
+    pub fn is_removed_at(&self, key: &K, rendered_at: Millis) -> bool {
+        self.removed
+            .get(key)
+            .is_some_and(|&removed_at| rendered_at <= removed_at)
+    }
+
+    /// An out-of-band origin read shares the entry's ticket fence and request-start clock.
+    /// Its caller must complete it, including on cancellation.
+    pub fn begin_external_read(&mut self, key: &K, now: Millis) -> Ticket {
+        self.record_time(now);
+        self.start(key, now)
+    }
+
+    pub fn is_current(&self, key: &K, ticket: Ticket) -> bool {
+        self.entries
+            .get(key)
+            .and_then(|e| e.in_flight)
+            .is_some_and(|(current, _)| current == ticket)
+    }
+
     /// Starts a check if `trigger` warrants one; `None` coalesces with a running request or
-    /// means the snapshot is fresh enough.
+    /// means the snapshot is fresh enough or backing off or rejected.
     pub fn begin(&mut self, key: &K, trigger: Trigger, now: Millis) -> Option<Ticket> {
+        self.record_time(now);
         let policy = self.policy;
         let entry = self.entries.get(key)?;
         if entry.in_flight.is_some() {
@@ -289,6 +417,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         now: Millis,
         random: f64,
     ) -> Applied {
+        self.record_time(now);
         let policy = self.policy;
         let Some(entry) = self.entries.get_mut(key) else {
             return Applied::Discarded;
@@ -303,20 +432,33 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         let random = random.clamp(0.0, 1.0);
         match outcome {
             Outcome::Fresh(data) => {
+                self.removed.remove(key);
                 let changed = entry.data.as_ref() != Some(&data);
                 entry.data = Some(data);
                 entry.validated_at = started_at;
-                entry.invalidated = false;
+                entry.stale = false;
+                entry.immediate_retry = false;
+                entry.rejected = None;
                 entry.failures = 0;
                 entry.retry_at = Millis::NEG_INFINITY;
                 entry.spread = random * policy.jitter;
                 Applied::Fresh { changed }
             }
             Outcome::Removed => {
-                self.entries.remove(key);
+                self.remove_at(key, now);
                 Applied::Removed
             }
+            Outcome::Rejected(rejection) => {
+                entry.data = None;
+                entry.stale = false;
+                entry.immediate_retry = false;
+                entry.failures = 0;
+                entry.retry_at = Millis::NEG_INFINITY;
+                entry.rejected = Some(rejection);
+                Applied::Rejected(rejection)
+            }
             Outcome::Temporary { retry_after } => {
+                entry.immediate_retry = false;
                 entry.failures = entry.failures.saturating_add(1);
                 let exponent = entry.failures.saturating_sub(1).min(16) as i32;
                 let backoff = (policy.retry_base * 2f64.powi(exponent)).min(policy.retry_max);
@@ -331,52 +473,95 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         }
     }
 
-    /// A successful mutation changed what `key` represents: refetch it next, keep showing the
-    /// current snapshot meanwhile, and make any running request unable to commit.
-    pub fn invalidate(&mut self, key: &K) {
+    /// Marks cached data stale without clearing any existing retry backoff (`failures`/`retry_at`).
+    /// Supersedes any running request.
+    pub fn mark_stale(&mut self, key: &K) {
         if let Some(entry) = self.entries.get_mut(key) {
-            entry.invalidated = true;
+            entry.stale = true;
             entry.in_flight = None;
         }
     }
 
-    /// Drop `key` and supersede its running request.
-    pub fn remove(&mut self, key: &K) {
+    /// Generic invalidation over a scope: marks matching entries stale and supersedes running
+    /// requests while preserving active retry backoff deadlines.
+    pub fn mark_stale_where(&mut self, mut predicate: impl FnMut(&K) -> bool) {
+        for (key, entry) in &mut self.entries {
+            if predicate(key) {
+                entry.stale = true;
+                entry.in_flight = None;
+            }
+        }
+    }
+
+    /// Confirmed server mutation: supersedes any running request and grants ONE immediate check
+    /// (consumed when that attempt starts). If that attempt fails temporarily, backoff resumes.
+    pub fn mutation_confirmed(&mut self, key: &K) {
+        if let Some(entry) = self.entries.get_mut(key) {
+            entry.stale = true;
+            entry.immediate_retry = true;
+            entry.in_flight = None;
+        }
+    }
+
+    /// Confirmed server mutation across a matching scope.
+    pub fn mutation_confirmed_where(&mut self, mut predicate: impl FnMut(&K) -> bool) {
+        for (key, entry) in &mut self.entries {
+            if predicate(key) {
+                entry.stale = true;
+                entry.immediate_retry = true;
+                entry.in_flight = None;
+            }
+        }
+    }
+
+    /// Drop `key`, supersede its running request, and record removal time `now` to reject older
+    /// `seed` calls without blocking new origin loads on future re-publication.
+    pub fn remove_at(&mut self, key: &K, now: Millis) {
+        self.record_time(now);
         self.entries.remove(key);
+        let fence = if self.high_water.is_finite() {
+            self.high_water.max(now)
+        } else {
+            now
+        };
+        self.removed.insert(key.clone(), fence);
+        self.trim_removed();
+    }
+
+    /// Drop `key` and supersede its running request using the store's high-water clock.
+    pub fn remove(&mut self, key: &K) {
+        let at = if self.high_water.is_finite() {
+            self.high_water
+        } else {
+            0.0
+        };
+        self.remove_at(key, at);
     }
 
     /// Scope reset (for example another account): every snapshot and request is superseded.
     /// Tickets keep increasing, so no earlier request can match a later entry.
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.removed.clear();
     }
 
     /// Edits a held snapshot without confirming it (a derived preview of an authoritative
-    /// removal elsewhere). Freshness is unchanged.
+    /// removal elsewhere). Existing backoff deadlines remain intact.
     pub fn edit(&mut self, key: &K, edit: impl FnOnce(&mut V)) {
         if let Some(data) = self.entries.get_mut(key).and_then(|e| e.data.as_mut()) {
             edit(data);
         }
     }
 
-    /// Supersede requests in every matching scope, including entries still awaiting first data.
-    pub fn invalidate_where(&mut self, mut predicate: impl FnMut(&K) -> bool) {
-        for (key, entry) in &mut self.entries {
-            if predicate(key) {
-                entry.invalidated = true;
-                entry.in_flight = None;
-            }
-        }
-    }
-
-    /// Update every retained derived snapshot, including unobserved searches.
+    /// Update every retained derived snapshot, including unobserved searches. Preserves existing
+    /// retry backoff deadlines while marking changed entries stale.
     pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
         for (key, entry) in &mut self.entries {
             if let Some(data) = &mut entry.data {
                 let before = data.clone();
                 edit(key, data);
                 if *data != before {
-                    entry.invalidated = true;
+                    entry.stale = true;
                     entry.in_flight = None;
                 }
             }
@@ -384,12 +569,14 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     }
 
     pub fn observe(&mut self, key: &K, now: Millis) {
+        self.record_time(now);
         let entry = self.entry(key, now);
         entry.observers += 1;
         entry.last_seen = now;
     }
 
     pub fn release(&mut self, key: &K, now: Millis) {
+        self.record_time(now);
         if let Some(entry) = self.entries.get_mut(key) {
             entry.observers = entry.observers.saturating_sub(1);
             entry.last_seen = now;
@@ -397,10 +584,29 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         self.collect(now);
     }
 
+    pub fn has_in_flight(&self, key: &K) -> bool {
+        self.entries.get(key).is_some_and(|e| e.in_flight.is_some())
+    }
+
+    pub fn needs_fetch_when_waiting(&self, key: &K) -> bool {
+        self.entries
+            .get(key)
+            .is_none_or(|e| e.data.is_none() && e.in_flight.is_none() && e.rejected.is_none())
+    }
+
+    pub fn matching_observed(&self, mut predicate: impl FnMut(&K) -> bool) -> Vec<K> {
+        self.entries
+            .iter()
+            .filter(|(k, e)| e.observers > 0 && predicate(k))
+            .map(|(k, _)| k.clone())
+            .collect()
+    }
+
     pub fn status(&self, key: &K) -> Option<Status<V>> {
         self.entries.get(key).map(|entry| Status {
             refreshing: entry.data.is_some() && entry.in_flight.is_some(),
             failed: entry.data.is_some() && entry.failures > 0,
+            rejected: entry.rejected,
             data: entry.data.clone(),
         })
     }
@@ -425,7 +631,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     }
 
     /// When the single scheduler timer should fire next; `None` when nothing observed can be
-    /// refreshed (no snapshot, or every request is running).
+    /// refreshed (no snapshot, rejected, or every request is running).
     pub fn next_wake(&self, now: Millis) -> Option<Millis> {
         self.entries
             .values()
@@ -436,9 +642,12 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     }
 
     /// Drop unobserved, idle entries past retention, then the least recently seen unobserved
-    /// ones above `max_entries`.
+    /// ones above `max_entries`. Also expires and bounds removal fences.
     pub fn collect(&mut self, now: Millis) {
+        self.record_time(now);
         let retain = self.policy.retain_unobserved;
+        self.removed.retain(|_, at| now - *at < retain);
+        self.trim_removed();
         self.entries
             .retain(|_, e| e.observers > 0 || e.in_flight.is_some() || now - e.last_seen < retain);
         while self.entries.len() > self.policy.max_entries {
@@ -495,7 +704,8 @@ mod tests {
             Some(Status {
                 data: Some(1),
                 refreshing: true,
-                failed: false
+                failed: false,
+                rejected: None,
             })
         );
         assert_eq!(s.load(&"works", 180.0 * S), Load::Ready(1));
@@ -554,7 +764,7 @@ mod tests {
         let mut s = store();
         s.observe(&"works", 0.0);
         fetched(&mut s, "works", 1, 0.0);
-        s.invalidate(&"works");
+        s.mark_stale(&"works");
         assert_eq!(s.next_wake(1.0), Some(1.0));
         assert!(s.begin(&"works", Trigger::Signal, 1.0).is_some());
     }
@@ -578,7 +788,8 @@ mod tests {
                 Some(Status {
                     data: Some(7),
                     refreshing: false,
-                    failed: true
+                    failed: true,
+                    rejected: None,
                 })
             );
             let wake = s.next_wake(now).unwrap();
@@ -638,7 +849,7 @@ mod tests {
         fetched(&mut s, "p", 1, 0.0);
         let early = s.begin(&"p", Trigger::Manual, 1.0).unwrap();
         // An invalidation supersedes the running request …
-        s.invalidate(&"p");
+        s.mark_stale(&"p");
         let late = s.begin(&"p", Trigger::Signal, 2.0).unwrap();
         assert_eq!(
             s.complete(&"p", early, Outcome::Fresh(99), 3.0, 0.0),
@@ -767,7 +978,10 @@ mod tests {
         assert_eq!(public_status(200), PublicStatus::Body);
         assert_eq!(public_status(304), PublicStatus::Unconditional);
         assert_eq!(public_status(404), PublicStatus::Removed);
-        for status in [0, 401, 403, 409, 500, 503] {
+        for status in [400, 414, 422] {
+            assert_eq!(public_status(status), PublicStatus::Rejected, "{status}");
+        }
+        for status in [0, 401, 403, 408, 409, 429, 500, 503] {
             assert_eq!(public_status(status), PublicStatus::Temporary, "{status}");
         }
         assert_eq!(retry_after_ms(" 30 "), Some(30_000.0));
@@ -780,6 +994,205 @@ mod tests {
         ] {
             assert_eq!(retry_after_ms(value), None, "{value}");
         }
+    }
+
+    #[test]
+    fn classify_rejection_maps_known_422_fields_without_reading_message() {
+        assert_eq!(
+            classify_rejection(422, Some("validation_failed"), Some("cursor")),
+            Rejection::RestartCursor
+        );
+        assert_eq!(
+            classify_rejection(422, Some("validation_failed"), Some("q")),
+            Rejection::InvalidInput(InputField::Query)
+        );
+        assert_eq!(
+            classify_rejection(422, Some("validation_failed"), Some("tag")),
+            Rejection::InvalidInput(InputField::Tag)
+        );
+        assert_eq!(
+            classify_rejection(422, Some("validation_failed"), Some("limit")),
+            Rejection::InvalidInput(InputField::Limit)
+        );
+        assert_eq!(
+            classify_rejection(422, Some("validation_failed"), Some("query")),
+            Rejection::InvalidInput(InputField::Parameter)
+        );
+        // Unknown codes (even with field="cursor") and unknown/missing envelopes never trigger cursor restart.
+        for case in [
+            (422, Some("unknown_future_code"), Some("cursor")),
+            (422, Some("validation_failed"), Some("unknown_field")),
+            (422, Some("validation_failed"), None),
+            (422, None, None),
+            (400, Some("validation_failed"), Some("cursor")),
+            (414, None, None),
+        ] {
+            assert_eq!(
+                classify_rejection(case.0, case.1, case.2),
+                Rejection::Fallback,
+                "{case:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn rejected_outcome_stops_retries_and_only_manual_resets() {
+        let mut s = store();
+        s.observe(&"p2", 0.0);
+        let Load::Fetch(first) = s.load(&"p2", 0.0) else {
+            panic!()
+        };
+        assert_eq!(
+            s.complete(
+                &"p2",
+                first,
+                Outcome::Rejected(Rejection::RestartCursor),
+                10.0,
+                0.0
+            ),
+            Applied::Rejected(Rejection::RestartCursor)
+        );
+        assert_eq!(s.next_wake(10.0), None);
+        assert!(s.due(500.0 * S).is_empty());
+        assert_eq!(s.begin(&"p2", Trigger::Signal, 20.0), None);
+        assert_eq!(s.begin(&"p2", Trigger::Due, 500.0 * S), None);
+        assert_eq!(
+            s.load(&"p2", 30.0),
+            Load::Rejected(Rejection::RestartCursor)
+        );
+        s.mark_stale(&"p2");
+        s.mutation_confirmed(&"p2");
+        assert_eq!(s.next_wake(30.0), None);
+        assert_eq!(s.begin(&"p2", Trigger::Signal, 40.0), None);
+        assert_eq!(
+            s.status(&"p2"),
+            Some(Status {
+                data: None,
+                refreshing: false,
+                failed: false,
+                rejected: Some(Rejection::RestartCursor),
+            })
+        );
+        // Background 422 on an already-rendered observed entry stops polling immediately.
+        let mut bg = store();
+        bg.observe(&"page2", 0.0);
+        fetched(&mut bg, "page2", 1, 0.0);
+        let t = bg.begin(&"page2", Trigger::Due, 120.0 * S).unwrap();
+        assert_eq!(
+            bg.complete(
+                &"page2",
+                t,
+                Outcome::Rejected(Rejection::InvalidInput(InputField::Query)),
+                121.0 * S,
+                0.0,
+            ),
+            Applied::Rejected(Rejection::InvalidInput(InputField::Query))
+        );
+        assert_eq!(bg.next_wake(121.0 * S), None);
+        assert_eq!(bg.begin(&"page2", Trigger::Signal, 200.0 * S), None);
+        // Only an explicit manual retry starts a new flight.
+        assert!(bg.begin(&"page2", Trigger::Manual, 201.0 * S).is_some());
+    }
+
+    #[test]
+    fn mark_stale_and_mutation_ack_preserve_backoff_after_temporary_failure() {
+        let mut s = store();
+        s.observe(&"w", 0.0);
+        fetched(&mut s, "w", 1, 0.0);
+
+        // Repro: fresh -> mark_stale -> begin -> Temporary { retry_after: 30_000 }
+        s.mark_stale(&"w");
+        let t1 = s
+            .begin(&"w", Trigger::Signal, 1_000.0)
+            .expect("first check");
+        assert_eq!(
+            s.complete(
+                &"w",
+                t1,
+                Outcome::Temporary {
+                    retry_after: Some(30.0 * S),
+                },
+                1_100.0,
+                0.0,
+            ),
+            Applied::Failed
+        );
+        // Retry deadline stays respected (never NEG_INFINITY / 1_100).
+        assert_eq!(s.next_wake(1_100.0), Some(31_100.0));
+        assert!(s.due(1_500.0).is_empty());
+        assert_eq!(s.begin(&"w", Trigger::Signal, 1_500.0), None);
+        assert_eq!(s.begin(&"w", Trigger::Due, 31_099.0), None);
+
+        // Reading status, calling mark_stale again, or no-op edit_all cannot clear backoff.
+        let _ = s.status(&"w");
+        s.mark_stale(&"w");
+        s.edit_all(|_, _| {});
+        assert_eq!(s.next_wake(2_000.0), Some(31_100.0));
+        assert_eq!(s.begin(&"w", Trigger::Signal, 2_000.0), None);
+
+        // At retry_at, one flight fires; another temporary failure doubles backoff.
+        let t2 = s.begin(&"w", Trigger::Due, 31_100.0).expect("retry_at due");
+        assert_eq!(
+            s.complete(
+                &"w",
+                t2,
+                Outcome::Temporary { retry_after: None },
+                31_200.0,
+                1.0
+            ),
+            Applied::Failed
+        );
+        let wake2 = s.next_wake(31_200.0).expect("second backoff");
+        assert_eq!(wake2, 31_200.0 + 10.0 * S);
+        assert_eq!(s.begin(&"w", Trigger::Signal, wake2 - 1.0), None);
+
+        // Confirmed mutation grants ONE immediate check even while backing off; if that attempt
+        // also temporarily fails, backoff resumes from the accumulated failure count.
+        s.mutation_confirmed(&"w");
+        assert_eq!(s.next_wake(32_000.0), Some(32_000.0));
+        let t3 = s
+            .begin(&"w", Trigger::Signal, 32_000.0)
+            .expect("mutation wake");
+        assert_eq!(
+            s.complete(
+                &"w",
+                t3,
+                Outcome::Temporary { retry_after: None },
+                32_100.0,
+                1.0
+            ),
+            Applied::Failed
+        );
+        assert_eq!(s.next_wake(32_100.0), Some(32_100.0 + 20.0 * S));
+        assert_eq!(s.begin(&"w", Trigger::Signal, 32_200.0), None);
+    }
+
+    #[test]
+    fn removal_blocks_older_seeds_without_preventing_republication() {
+        let mut s = store();
+        s.observe(&"p", 0.0);
+        s.seed(&"p", 10, 0.0, 10.0);
+        assert_eq!(s.status(&"p").unwrap().data, Some(10));
+
+        // Authoritative removal at t = 100.
+        s.remove_at(&"p", 100.0);
+        assert_eq!(s.status(&"p"), None);
+
+        // Stale SSR/navigation seed rendered before or at removal cannot resurrect it.
+        s.seed(&"p", 10, 0.0, 120.0);
+        assert_eq!(s.status(&"p"), None);
+        s.seed(&"p", 10, 100.0, 120.0);
+        assert_eq!(s.status(&"p"), None);
+
+        // Re-publication in the same tab queries origin and recovers cleanly on 200 Fresh.
+        let Load::Fetch(repub) = s.load(&"p", 150.0) else {
+            panic!("removed must not be a permanent tombstone")
+        };
+        assert_eq!(
+            s.complete(&"p", repub, Outcome::Fresh(20), 160.0, 0.0),
+            Applied::Fresh { changed: true }
+        );
+        assert_eq!(s.status(&"p").unwrap().data, Some(20));
     }
 
     #[test]
@@ -842,9 +1255,10 @@ mod tests {
                     4 | 5 if !tickets.is_empty() => {
                         let (k, t) = tickets.remove(next(tickets.len() as u64) as usize);
                         value += 1;
-                        let outcome = match next(4) {
+                        let outcome = match next(5) {
                             0 => Outcome::Removed,
-                            1 => Outcome::Temporary { retry_after: None },
+                            1 => Outcome::Rejected(Rejection::RestartCursor),
+                            2 => Outcome::Temporary { retry_after: None },
                             _ => Outcome::Fresh(value),
                         };
                         let before = s.status(&k);
@@ -858,11 +1272,15 @@ mod tests {
                         dead.push((k, t));
                     }
                     6 => {
-                        s.invalidate(&key);
+                        if next(2) == 0 {
+                            s.mark_stale(&key);
+                        } else {
+                            s.mutation_confirmed(&key);
+                        }
                         dead.extend(tickets.iter().filter(|(k, _)| *k == key));
                     }
                     7 => {
-                        s.remove(&key);
+                        s.remove_at(&key, now);
                         dead.extend(tickets.iter().filter(|(k, _)| *k == key));
                     }
                     _ => {

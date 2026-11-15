@@ -90,7 +90,6 @@ pub fn Reader() -> impl IntoView {
                         Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
                             status.set(200);
                             status.set_no_store();
-                            crate::public_reads::invalidate_withdrawn(&work_id);
                             view! { <ReplacementView work_id author_name=None return_href=return_href.get_untracked() /> }.into_any()
                         }
                         Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
@@ -99,7 +98,6 @@ pub fn Reader() -> impl IntoView {
                         }) => {
                             status.set(200);
                             status.set_no_store();
-                            crate::public_reads::invalidate_withdrawn(&work_id);
                             view! {
                                 <ReplacementView
                                     work_id=work_id
@@ -134,6 +132,7 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
     let live = public_reads::follow_publication(publication.clone());
     let latest = live.data;
     let removed = live.removed;
+    let rejected = live.rejected;
     let shown = RwSignal::new(publication);
     let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
     let context = discovery::reader_context();
@@ -158,10 +157,15 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
                         Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
                             Some((work_id, None))
                         }
+                        Ok(crate::contract::ReaderResponse::Published(publication)) => {
+                            // The old body was already removed; recovery may show only the newly
+                            // authorized snapshot, never the previous `shown` value.
+                            shown.try_set(publication);
+                            None
+                        }
                         _ => None,
                     };
                     if let Some((work_id, author_name)) = replacement {
-                        crate::public_reads::invalidate_withdrawn(&work_id);
                         withdrawn_state.try_set(Some((work_id, author_name)));
                     }
                 });
@@ -182,6 +186,8 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
             .into_any()
         } else if removed.get() {
             view! { <NotFoundContent return_href=not_found_href() /> }.into_any()
+        } else if rejected.get().is_some() {
+            view! { <Unavailable /> }.into_any()
         } else {
             let live = live.clone();
             view! { <PublicationContent publication=shown.get() live update shown /> }.into_any()

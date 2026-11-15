@@ -63,11 +63,10 @@ Public read không gọi Identity; header `Authorization` không ảnh hưởng 
 
 ## Rút bài và bản đã gửi
 
-Request bắt đầu đọc sau khi lệnh rút (hiện là SQL fixture `DELETE FROM publications`) commit sẽ
-nhận `404 no-store`, kể cả khi gửi tag cũ hoặc `*`. Request có snapshot trước commit có thể còn
+Request bắt đầu đọc sau khi lệnh rút (`POST /api/v1/works/{work_id}/publication/set-private`, kiểm duyệt từ chối `O-17@r2`, hoặc SQL fixture trong test) commit sẽ
+nhận `404 no-store` trên `/publication` và `200 ReviewWithdrawn|Hidden no-store` trên `/reader`, kể cả khi gửi tag cũ hoặc `*`. Request có snapshot trước commit có thể còn
 trả bản cũ — đó là ngữ nghĩa của một câu SELECT đã bắt đầu. Bản sao đã nằm ở client không bị
-endpoint này thu hồi; READ-02 phải quyết định hiển thị bản cũ/offline và xóa khi có bằng chứng mất
-quyền. PUB-03 vẫn chưa hoàn tất: chưa có lệnh rút bài sản phẩm.
+endpoint này thu hồi từ xa; READ-02 xóa bản đã rút qua `invalidate_withdrawn`, removal fence và kiểm tra lại với origin.
 
 ## Phân chia với READ-02
 

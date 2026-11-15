@@ -448,12 +448,20 @@ pub async fn set_comments_mode(
     .await
 }
 
+pub use crate::freshness::{InputField as InvalidInputField, Rejection as InvalidRead};
+
 /// Public read failures; serialized into the hydration payload with the page data.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LoadError {
     NotFound,
-    Invalid,
+    Invalid(InvalidRead),
     Unavailable,
+}
+
+impl LoadError {
+    pub const fn is_invalid(&self) -> bool {
+        matches!(self, Self::Invalid(_))
+    }
 }
 
 pub fn works_resource(
@@ -582,7 +590,17 @@ pub fn reader_resource(
     {
         Resource::new(
             move || work_id.get(),
-            |id| browser(public_get(format!("/api/v1/works/{id}/reader"))),
+            |id| {
+                browser(async move {
+                    #[cfg(feature = "hydrate")]
+                    let read = crate::public_reads::begin_reader_read(&id);
+                    let result: Result<crate::contract::ReaderResponse, LoadError> =
+                        public_get(format!("/api/v1/works/{id}/reader")).await;
+                    #[cfg(feature = "hydrate")]
+                    let result = read.finish(result);
+                    result
+                })
+            },
         )
     }
 }
@@ -611,7 +629,16 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
     {
         http::get(&path).await.map_err(|error| match error {
             ApiError::NotFound => LoadError::NotFound,
-            ApiError::Invalid { .. } => LoadError::Invalid,
+            ApiError::Invalid { field } => {
+                LoadError::Invalid(crate::freshness::classify_rejection(
+                    422,
+                    Some("validation_failed"),
+                    field.as_deref(),
+                ))
+            }
+            ApiError::Unexpected {
+                status: 400 | 414 | 422,
+            } => LoadError::Invalid(InvalidRead::Fallback),
             _ => LoadError::Unavailable,
         })
     }
@@ -622,11 +649,13 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
     }
 }
 
-#[cfg(not(feature = "ssr"))]
+#[cfg(feature = "hydrate")]
 pub(crate) async fn fetch_reader(
     work_id: &str,
 ) -> Result<crate::contract::ReaderResponse, LoadError> {
-    public_get(format!("/api/v1/works/{work_id}/reader")).await
+    let read = crate::public_reads::begin_reader_read(work_id);
+    let result = public_get(format!("/api/v1/works/{work_id}/reader")).await;
+    read.finish(result)
 }
 
 /// Browser public reads go through the tab's READ-02 owner (cache-first, single-flight).
@@ -975,12 +1004,21 @@ mod http {
             else {
                 return temporary;
             };
-            match public_status(response.status()) {
+            let status = response.status();
+            match public_status(status) {
                 PublicStatus::Body => {
                     return response.json::<T>().await.map_or(temporary, Outcome::Fresh);
                 }
                 PublicStatus::Unconditional => continue,
                 PublicStatus::Removed => return Outcome::Removed,
+                PublicStatus::Rejected => {
+                    let body = response.text().await.ok();
+                    let rejection = crate::contract::classify_public_read_bytes(
+                        status,
+                        body.as_deref().map(str::as_bytes),
+                    );
+                    return Outcome::Rejected(rejection);
+                }
                 PublicStatus::Temporary => {
                     let retry_after = response
                         .headers()

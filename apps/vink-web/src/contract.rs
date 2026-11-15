@@ -894,6 +894,30 @@ impl ApiError {
     }
 }
 
+/// Maps an optional HTTP error envelope cleanly to a semantic public-read rejection using only
+/// `status + error.code + error.field` (never `error.message`).
+pub fn classify_public_read_envelope(
+    status: u16,
+    envelope: Option<&ErrorEnvelope>,
+) -> crate::freshness::Rejection {
+    let body = envelope.map(|e| &e.error);
+    crate::freshness::classify_rejection(
+        status,
+        body.map(|b| b.code.as_str()),
+        body.and_then(|b| b.field.as_deref()),
+    )
+}
+
+/// Decodes bounded error response bytes cleanly as [`ErrorEnvelope`] (falling back to `None`
+/// on malformed, non-JSON, empty, or oversized bodies) and classifies the public-read rejection.
+pub fn classify_public_read_bytes(status: u16, body: Option<&[u8]>) -> crate::freshness::Rejection {
+    const MAX_ERROR_BYTES: usize = 64 * 1024;
+    let envelope = body
+        .filter(|bytes| bytes.len() <= MAX_ERROR_BYTES)
+        .and_then(|bytes| serde_json::from_slice::<ErrorEnvelope>(bytes).ok());
+    classify_public_read_envelope(status, envelope.as_ref())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1341,6 +1365,89 @@ mod tests {
                 ApiError::Unavailable,
             ]
         );
+    }
+
+    #[test]
+    fn classifies_public_read_error_matrix_without_parsing_messages() {
+        use crate::freshness::{InputField, Rejection};
+
+        let fixture =
+            std::fs::read(format!("{FIXTURES}/error.validation_failed.json")).expect("fixture");
+        assert_eq!(
+            classify_public_read_bytes(422, Some(&fixture)),
+            Rejection::Fallback
+        );
+
+        let payload = |code: &str, field: Option<&str>, msg: &str| {
+            serde_json::to_vec(&serde_json::json!({
+                "error": {
+                    "code": code,
+                    "message": msg,
+                    "field": field,
+                }
+            }))
+            .unwrap()
+        };
+
+        // Valid 422 discovery field matrix (ignores misleading message text completely).
+        assert_eq!(
+            classify_public_read_bytes(
+                422,
+                Some(&payload("validation_failed", Some("cursor"), "not valid")),
+            ),
+            Rejection::RestartCursor
+        );
+        for (field, expected) in [
+            ("q", InputField::Query),
+            ("tag", InputField::Tag),
+            ("limit", InputField::Limit),
+            ("query", InputField::Parameter),
+        ] {
+            assert_eq!(
+                classify_public_read_bytes(
+                    422,
+                    Some(&payload(
+                        "validation_failed",
+                        Some(field),
+                        "cursor expired!"
+                    )),
+                ),
+                Rejection::InvalidInput(expected),
+                "{field}"
+            );
+        }
+
+        // Unknown codes (even mentioning field="cursor"), unknown fields, malformed/empty JSON,
+        // HTML error pages, and oversized payloads fall back finitely without resetting cursors.
+        assert_eq!(
+            classify_public_read_bytes(
+                422,
+                Some(&payload("future_reason", Some("cursor"), "restart cursor")),
+            ),
+            Rejection::Fallback
+        );
+        assert_eq!(
+            classify_public_read_bytes(
+                422,
+                Some(&payload("validation_failed", Some("other"), "invalid")),
+            ),
+            Rejection::Fallback
+        );
+        for raw in [
+            None,
+            Some(b"".as_slice()),
+            Some(b"{}".as_slice()),
+            Some(b"{not-json".as_slice()),
+            Some(b"<html>422</html>".as_slice()),
+        ] {
+            assert_eq!(classify_public_read_bytes(422, raw), Rejection::Fallback);
+        }
+        let huge = vec![b' '; 70 * 1024];
+        assert_eq!(
+            classify_public_read_bytes(422, Some(&huge)),
+            Rejection::Fallback
+        );
+        assert_eq!(classify_public_read_bytes(400, None), Rejection::Fallback);
     }
 }
 
