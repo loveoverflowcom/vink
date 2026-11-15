@@ -221,7 +221,7 @@ mod tests {
         let crate::freshness::Load::Fetch(old_c) = store.load(&c, 1.0) else {
             panic!("must fetch");
         };
-        store.invalidate_where(|_| true);
+        store.mark_stale_where(|_| true);
         store.edit_all(|_, works| works.retain(|id| *id != "withdrawn"));
         assert_eq!(
             store.complete(&c, old_c, Outcome::Fresh(vec!["withdrawn"]), 2.0, 0.0),

@@ -776,25 +776,41 @@ async function cacheFirstPublicReads(page) {
   const network = ({ sessionId, method, params }) => {
     if (sessionId !== page.sessionId) return;
     if (method === 'Network.requestWillBeSent') {
-      const path = new URL(params.request.url).pathname;
-      if (path === worksPath || path === publicationPath) seen.push(Object.assign(record(params.requestId), { path }));
+      const parsed = new URL(params.request.url);
+      const path = parsed.pathname;
+      if (path === worksPath || path === publicationPath) {
+        seen.push(Object.assign(record(params.requestId), { path, href: parsed.pathname + parsed.search }));
+      }
     }
     if (method === 'Network.requestWillBeSentExtraInfo') record(params.requestId).ifNoneMatch = Object.entries(params.headers).find(([name]) => name.toLowerCase() === 'if-none-match')?.[1] ?? null;
     if (method === 'Network.responseReceivedExtraInfo') record(params.requestId).wire = params.statusCode;
   };
   const count = path => seen.filter(entry => entry.path === path).length;
+  const countHref = href => seen.filter(entry => entry.href === href).length;
   // Fetch-domain fixtures: undefined = continue to the real server, 'hold' = keep pending.
   const fixtures = new Map();
   const held = [];
   const gate = ({ sessionId, method, params }) => {
     if (sessionId !== page.sessionId || method !== 'Fetch.requestPaused') return;
-    const answer = fixtures.get(new URL(params.request.url).pathname);
-    if (answer === 'hold') return held.push(params.requestId);
-    (answer ? page.send('Fetch.fulfillRequest', {
-      requestId: params.requestId, responseCode: answer.status,
-      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
-      body: Buffer.from(JSON.stringify(answer.body)).toString('base64'),
-    }) : page.send('Fetch.continueRequest', { requestId: params.requestId })).catch(() => {});
+    const parsed = new URL(params.request.url);
+    const entry = fixtures.get(parsed.pathname + parsed.search) ?? fixtures.get(parsed.pathname);
+    if (entry === 'hold') return held.push(params.requestId);
+    const answer = typeof entry === 'function' ? entry(params) : entry;
+    if (!answer) {
+      page.send('Fetch.continueRequest', { requestId: params.requestId }).catch(() => {});
+      return;
+    }
+    const headers = [
+      ...(answer.status === 304 ? [] : [{ name: 'Content-Type', value: answer.contentType ?? 'application/json' }]),
+      { name: 'Cache-Control', value: 'no-store' },
+      ...(answer.headers ?? []),
+    ];
+    const req = { requestId: params.requestId, responseCode: answer.status, responseHeaders: headers };
+    if (answer.status !== 304) {
+      const payload = answer.rawBody !== undefined ? answer.rawBody : JSON.stringify(answer.body);
+      req.body = Buffer.from(payload).toString('base64');
+    }
+    page.send('Fetch.fulfillRequest', req).catch(() => {});
   };
   // Freeze cache time before validation: host scheduling must not turn 119 s into >=120 s.
   // Keep the real clock separately for the time-to-rows measurements below.
@@ -862,16 +878,64 @@ async function cacheFirstPublicReads(page) {
     check(count(worksPath) === 3, 'becoming visible with a stale snapshot sends exactly one request');
 
     await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works*`, requestStage: 'Request' }] });
-    fixtures.set(worksPath, { status: 503, body: { error: { code: 'dependency_unavailable' } } });
+    fixtures.set(worksPath, {
+      status: 503,
+      headers: [{ name: 'Retry-After', value: '30' }],
+      body: { error: { code: 'dependency_unavailable' } },
+    });
     await advance(121);
     await signals(['focus']);
     await page.waitFor(`document.querySelector('[data-testid=public-refresh-failed]')`, 'refresh failure notice');
+    const afterFailureCount = count(worksPath);
     check(await page.eval(`document.querySelector('.vk-public-row').__kept === true && !document.querySelector('[data-testid=public-unavailable], [data-testid=public-empty]') && document.querySelector('#public-collection').getAttribute('aria-busy') === 'false'`), 'a temporary refresh failure keeps the last success on screen, separate from the unavailable/empty states');
+    // AC-02: focus/online/visibilitychange before Retry-After deadline sends zero new requests.
+    await advance(10);
+    await signals(['focus', 'online', 'visibilitychange']);
+    await sleep(350);
+    check(count(worksPath) === afterFailureCount, 'Retry-After backoff refuses focus/online/visibility revalidation before retry_at');
+    // Once retry_at passes, focus revalidates once and clears failure notice without remount.
+    fixtures.delete(worksPath);
+    await advance(25);
+    await signals(['focus']);
+    await page.waitFor(`!document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing === 'false'`, 'post-backoff signal recovers cleanly');
+    check(count(worksPath) === afterFailureCount + 1 && await page.eval(`document.querySelector('.vk-public-row').__kept === true`), 'backoff clears after retry_at and preserves mounted rows');
+
+    // Manual retry still bypasses stale/backoff and clears failure notice.
+    fixtures.set(worksPath, { status: 503, headers: [{ name: 'Retry-After', value: '60' }], body: { error: { code: 'dependency_unavailable' } } });
+    await advance(121);
+    await signals(['focus']);
+    await page.waitFor(`document.querySelector('[data-testid=public-refresh-failed]')`, 'second refresh failure for manual retry');
     await page.capture('explore-refresh-failed');
     fixtures.delete(worksPath);
     await page.click('[data-testid=public-refresh-failed] button');
     await page.waitFor(`!document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing === 'false'`, 'manual retry recovers');
     check(await page.eval(`document.querySelector('.vk-public-row').__kept === true`), 'manual retry restores freshness without remounting the list');
+
+    // AC-06: Raw 304 on an uncached route triggers at most one unconditional reload (`200`), and double 304 stops cleanly.
+    const clientNavigate = href => page.eval(`(() => { const a = document.createElement('a'); a.href = ${JSON.stringify(href)}; document.body.append(a); a.click(); a.remove(); })()`);
+    const raw304Query = '/api/v1/works?q=raw304';
+    let raw304Once = true;
+    fixtures.set(raw304Query, () => {
+      if (!raw304Once) return undefined;
+      raw304Once = false;
+      return { status: 304 };
+    });
+    await clientNavigate('/?q=raw304');
+    await page.waitFor(`new URL(location.href).searchParams.get('q') === 'raw304' && document.querySelector('[data-testid=public-no-results]')`, 'raw 304 recovers via single unconditional reload');
+    check(countHref(raw304Query) === 2, 'raw 304 triggers at most one unconditional fallback reload');
+
+    const double304Query = '/api/v1/works?q=double304';
+    fixtures.set(double304Query, { status: 304 });
+    await clientNavigate('/?q=double304');
+    await page.waitFor(`new URL(location.href).searchParams.get('q') === 'double304' && document.querySelector('[data-testid=public-unavailable]')`, 'double raw 304 fails finitely');
+    await advance(130);
+    await signals(['focus']);
+    await sleep(250);
+    check(countHref(double304Query) === 2, 'double raw 304 stops at two requests without infinite loop');
+    fixtures.delete(raw304Query);
+    fixtures.delete(double304Query);
+    await clientNavigate('/');
+    await page.waitFor(`location.pathname === '/' && location.search === '' && document.querySelector('#public-collection')`, 'return to Explore before reader checks');
 
     // Reader: a changed representation is offered, never swapped mid-reading; a 404 removes it.
     await page.click('.vk-public-row__link');
@@ -906,6 +970,51 @@ async function cacheFirstPublicReads(page) {
     await page.send('Fetch.continueRequest', { requestId: held.pop() });
     await page.waitFor(`document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`, 'origin list restores the card');
     check(true, 'the origin’s list, not the derived preview, decides membership once it answers');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 're-publication recovers without permanent tombstone');
+    check(await page.eval(`document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'after prior 404 removal a subsequent fresh 200 restores the reader cleanly');
+
+    // AC-01: Typed 422 / malformed error recovery without retrying bad keys or looping on non-cursor errors.
+    const cursorQuery = '/api/v1/works?q=cursorerr&cursor=stale';
+    fixtures.set(cursorQuery, {
+      status: 422,
+      body: { error: { code: 'validation_failed', field: 'cursor', message: 'opaque server message ignored' } },
+    });
+    await clientNavigate('/?q=cursorerr&cursor=stale');
+    await page.waitFor(`document.querySelector('[data-testid=public-invalid][data-invalid-kind="cursor"]') && document.querySelector('#restart-public')`, '422 cursor recovery view');
+    const cCount = countHref(cursorQuery);
+    await advance(130);
+    await signals(['focus', 'online']);
+    await sleep(300);
+    check(countHref(cursorQuery) === cCount, '422 cursor stops retrying even across focus/online/130s');
+    await page.click('#restart-public');
+    await page.waitFor(`new URL(location.href).searchParams.get('q') === 'cursorerr' && !new URL(location.href).searchParams.has('cursor') && document.querySelector('#public-results')`, 'clicking #restart-public drops cursor and recovers');
+
+    const inputQuery = '/api/v1/works?q=!!!';
+    fixtures.set(inputQuery, {
+      status: 422,
+      body: { error: { code: 'validation_failed', field: 'q', message: 'unrelated' } },
+    });
+    await clientNavigate('/?q=!!!');
+    await page.waitFor(`document.querySelector('[data-testid=public-invalid][data-invalid-kind="q"]') && document.querySelector('#clear-invalid-filters') && !document.querySelector('#restart-public')`, '422 q renders input alert without cursor reset');
+    const qCount = countHref(inputQuery);
+    await advance(130);
+    await signals(['focus', 'online']);
+    await sleep(300);
+    check(countHref(inputQuery) === qCount, '422 q never enters retry or cursor-reset loop');
+
+    const fallbackQuery = '/api/v1/works?q=malformed422';
+    fixtures.set(fallbackQuery, { status: 422, contentType: 'text/html', rawBody: '<html>not json</html>' });
+    await clientNavigate('/?q=malformed422');
+    await page.waitFor(`document.querySelector('[data-testid=public-invalid][data-invalid-kind="fallback"]') && !document.querySelector('#restart-public')`, 'malformed 422 stops in finite fallback');
+    const fCount = countHref(fallbackQuery);
+    await advance(130);
+    await signals(['focus']);
+    await sleep(250);
+    check(countHref(fallbackQuery) === fCount, 'malformed 422 stops retrying');
+    fixtures.clear();
+    await page.click('[data-testid=public-invalid] + a');
+    await page.waitFor(`location.pathname === '/' && location.search === '' && document.querySelector('#public-collection')`, 'return cleanly to unfiltered Explore');
   } finally {
     await page.eval(`if (window.__vinkClock) { performance.now = window.__vinkClock.realNow; delete window.__vinkClock; }`).catch(() => {});
     await page.send('Fetch.disable').catch(() => {});
@@ -3802,7 +3911,7 @@ async function discussionReadingAndWrites(page) {
   check(!closed.settings.comments_open && closed.settings.generation > 1, 'closed mode is a durable provider fact');
   await captureDiscussionMatrix(page, 'local-postgres-closed', '#feedback-heading', 'real-local-postgresql-with-fixture-identity');
   await page.click('#discussion-mode-toggle');
-  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'author reopens the same thread');
+  await page.waitFor(`document.querySelector('#discussion-mode-toggle')?.textContent==='Tắt bình luận' && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true' && document.querySelector('#remove-comment-${commentId}')`, 'author reopens the same thread');
   await page.click(`#remove-comment-${commentId}`);
   await page.waitFor(`!document.querySelector('[data-own-comment="${commentId}"] .vk-discussion-own-body')?.textContent && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'own removal refreshes the authorized projection');
 

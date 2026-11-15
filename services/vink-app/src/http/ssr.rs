@@ -114,7 +114,24 @@ impl PublicReads for PublicReadsAdapter {
                 })
                 .await
                 .map_err(|error| match error {
-                    crate::application::discovery::DiscoveryError::Invalid(_) => LoadError::Invalid,
+                    crate::application::discovery::DiscoveryError::Invalid(input) => {
+                        use crate::application::discovery::DiscoveryInput;
+                        use vink_web::api::{InvalidInputField, InvalidRead};
+                        LoadError::Invalid(match input {
+                            DiscoveryInput::Cursor(_) | DiscoveryInput::CursorScope => {
+                                InvalidRead::RestartCursor
+                            }
+                            DiscoveryInput::Query(_) => {
+                                InvalidRead::InvalidInput(InvalidInputField::Query)
+                            }
+                            DiscoveryInput::Tag(_) => {
+                                InvalidRead::InvalidInput(InvalidInputField::Tag)
+                            }
+                            DiscoveryInput::Limit(_) => {
+                                InvalidRead::InvalidInput(InvalidInputField::Limit)
+                            }
+                        })
+                    }
                     _ => LoadError::Unavailable,
                 })?;
             to_web(&WorkList::from(&page))

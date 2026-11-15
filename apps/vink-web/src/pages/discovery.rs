@@ -211,7 +211,7 @@ fn DiscoveryChrome(
                                             let live = public_reads::follow_works(context.query.clone(), list);
                                             view! { <PublicResults context live /> }.into_any()
                                         }
-                                        Err(error) => view! { <DiscoveryFailure context invalid=error == LoadError::Invalid /> }.into_any(),
+                                        Err(error) => view! { <DiscoveryFailure context error /> }.into_any(),
                                     }
                                 })
                             }}
@@ -240,11 +240,7 @@ fn DiscoveryHeader(
     let list = match result {
         Ok(list) => list,
         Err(error) => {
-            status.set(if error == LoadError::Invalid {
-                422
-            } else {
-                503
-            });
+            status.set(if error.is_invalid() { 422 } else { 503 });
             return view! {
                 <Title text="Chưa tải được kết quả — Vink" />
                 <Meta name="robots" content="noindex" />
@@ -431,51 +427,72 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
     let data = live.data;
     let refreshing = live.refreshing;
     let failed = live.failed;
+    let rejected = live.rejected;
+    let removed = live.removed;
     let works = Memo::new(move |_| data.with(|list| list.works.clone()));
     #[cfg(feature = "hydrate")]
     super::restore_public_position(works);
     let list_context = context.clone();
     let page_context = context.clone();
     let empty_context = context.clone();
+    let rejected_context = context.clone();
+    let removed_context = context.clone();
     view! {
-        <div id="public-collection" aria-busy=move || refreshing.get().to_string() data-refreshing=move || refreshing.get().to_string()>
-            <Show when=move || failed.get()>
-                <div data-testid="public-refresh-failed"><InlineNotice tone=Tone::Warning
-                    message="Chưa làm mới được kết quả. Bạn vẫn đang xem bản đã tải cho cùng bộ lọc."
-                    action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
-                    on_recover={ let live = live.clone(); move |_| live.refresh() } /></div>
-            </Show>
-            <div id="public-results">
-                <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">{move || if applied_query.is_empty() { format!("{} tác phẩm trên trang này.", works.read().len()) } else { format!("{} tác phẩm trên trang này cho “{}”.", works.read().len(), applied_query) }}</p>
-                {move || if works.read().is_empty() {
-                    let filtered = !empty_context.query.tags.is_empty() || !empty_context.query.q.is_empty();
-                    let mut no_tags = empty_context.clone(); no_tags.query.tags.clear(); no_tags.query.cursor = None; no_tags.tag_page = None;
-                    let mut no_query = empty_context.clone(); no_query.query.q.clear(); no_query.query.cursor = None;
-                    view! { <div data-testid=if filtered { "public-no-results" } else { "public-empty" }>
-                        <h3>{if filtered { "Không tìm thấy tác phẩm phù hợp." } else { "Chưa có tác phẩm nào được công khai." }}</h3>
-                        <p>{if filtered { "Thử từ khóa khác hoặc bỏ bớt bộ lọc." } else { "Bạn có thể bắt đầu một bản nháp ở Bàn viết." }}</p>
-                        {(!empty_context.query.tags.is_empty()).then(|| view! { <a id="clear-public-tags" class="vk-ui-link" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
-                        {(!empty_context.query.q.is_empty()).then(|| view! { <a id="clear-public-results" class="vk-ui-link" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
-                    </div> }.into_any()
-                } else {
-                    let context = list_context.clone();
-                    view! { <ul class="vk-public-list" role="list">
-                        <For each=move || works.with(|works| works.iter().map(|work| work.work_id.clone()).collect::<Vec<_>>()) key=Clone::clone
-                            children=move |work_id| view! { <ResultRow work_id data context=context.clone() /> } />
-                    </ul> }.into_any()
-                }}
-                <nav class="vk-public-pagination" aria-label="Trang kết quả">
-                    {move || data.with(|list| list.next_cursor.clone()).map(|cursor| {
-                        let mut next = page_context.clone(); next.query.cursor = Some(cursor);
-                        view! { <a id="public-next" class="vk-ui-link" href=next.href(None)>"Trang tiếp →"</a> }
-                    })}
-                    {context.query.cursor.is_some().then(|| {
-                        let mut first = context.clone(); first.query.cursor = None;
-                        view! { <a id="public-first" class="vk-ui-link" href=first.href(None)>"Về trang đầu"</a> }
-                    })}
-                </nav>
-            </div>
-        </div>
+        {move || if let Some(rejection) = rejected.get() {
+            view! { <DiscoveryFailure context=rejected_context.clone() error=LoadError::Invalid(rejection) /> }.into_any()
+        } else if removed.get() {
+            view! { <DiscoveryFailure context=removed_context.clone() error=LoadError::NotFound /> }.into_any()
+        } else {
+            let applied_query = applied_query.clone();
+            let list_context = list_context.clone();
+            let page_context = page_context.clone();
+            let empty_context = empty_context.clone();
+            let live = live.clone();
+            let retry_context_cursor = context.query.cursor.is_some();
+            view! {
+                <div id="public-collection" aria-busy=move || refreshing.get().to_string() data-refreshing=move || refreshing.get().to_string()>
+                    <Show when=move || failed.get()>
+                        <div data-testid="public-refresh-failed"><InlineNotice tone=Tone::Warning
+                            message="Chưa làm mới được kết quả. Bạn vẫn đang xem bản đã tải cho cùng bộ lọc."
+                            action=RecoveryAction { intent: RecoveryIntent::Retry, label: "Thử lại".into() }
+                            on_recover={ let live = live.clone(); move |_| live.refresh() } /></div>
+                    </Show>
+                    <div id="public-results">
+                        <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">{move || if applied_query.is_empty() { format!("{} tác phẩm trên trang này.", works.read().len()) } else { format!("{} tác phẩm trên trang này cho “{}”.", works.read().len(), applied_query) }}</p>
+                        {move || if works.read().is_empty() {
+                            let filtered = !empty_context.query.tags.is_empty() || !empty_context.query.q.is_empty();
+                            let mut no_tags = empty_context.clone(); no_tags.query.tags.clear(); no_tags.query.cursor = None; no_tags.tag_page = None;
+                            let mut no_query = empty_context.clone(); no_query.query.q.clear(); no_query.query.cursor = None;
+                            view! { <div data-testid=if filtered { "public-no-results" } else { "public-empty" }>
+                                <h3>{if filtered { "Không tìm thấy tác phẩm phù hợp." } else { "Chưa có tác phẩm nào được công khai." }}</h3>
+                                <p>{if filtered { "Thử từ khóa khác hoặc bỏ bớt bộ lọc." } else { "Bạn có thể bắt đầu một bản nháp ở Bàn viết." }}</p>
+                                {(!empty_context.query.tags.is_empty()).then(|| view! { <a id="clear-public-tags" class="vk-ui-link" href=no_tags.href(None)>"Bỏ lọc thẻ"</a> })}
+                                {(!empty_context.query.q.is_empty()).then(|| view! { <a id="clear-public-results" class="vk-ui-link" href=no_query.href(None)>"Xóa tìm kiếm"</a> })}
+                            </div> }.into_any()
+                        } else {
+                            let context = list_context.clone();
+                            view! { <ul class="vk-public-list" role="list">
+                                <For each=move || works.with(|works| works.iter().map(|work| work.work_id.clone()).collect::<Vec<_>>()) key=Clone::clone
+                                    children=move |work_id| view! { <ResultRow work_id data context=context.clone() /> } />
+                            </ul> }.into_any()
+                        }}
+                        <nav class="vk-public-pagination" aria-label="Trang kết quả">
+                            {
+                                let page_context = page_context.clone();
+                                move || data.with(|list| list.next_cursor.clone()).map(|cursor| {
+                                    let mut next = page_context.clone(); next.query.cursor = Some(cursor);
+                                    view! { <a id="public-next" class="vk-ui-link" href=next.href(None)>"Trang tiếp →"</a> }
+                                })
+                            }
+                            {retry_context_cursor.then(|| {
+                                let mut first = page_context.clone(); first.query.cursor = None;
+                                view! { <a id="public-first" class="vk-ui-link" href=first.href(None)>"Về trang đầu"</a> }
+                            })}
+                        </nav>
+                    </div>
+                </div>
+            }.into_any()
+        }}
     }.into_any()
 }
 
@@ -512,15 +529,56 @@ pub(super) fn PublicTags(tags: Vec<PublicTagDto>) -> impl IntoView {
 }
 
 #[component]
-fn DiscoveryFailure(context: ExploreContext, invalid: bool) -> AnyView {
+fn DiscoveryFailure(context: ExploreContext, error: LoadError) -> AnyView {
+    use crate::api::{InvalidInputField, InvalidRead};
     let mut first = context.clone();
     first.query.cursor = None;
-    view! {
-        {if invalid { view! { <div role="alert" data-testid="public-invalid"><p>"Đường dẫn tìm kiếm hoặc trang kết quả không còn hợp lệ."</p></div> }.into_any() }
-        else { view! { <Unavailable /> }.into_any() }}
-        <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
-        <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
-    }.into_any()
+    match error {
+        LoadError::Invalid(InvalidRead::RestartCursor) => view! {
+            <div role="alert" data-testid="public-invalid" data-invalid-kind="cursor">
+                <p>"Trang kết quả không còn hợp lệ hoặc không còn khớp tìm kiếm hiện tại."</p>
+            </div>
+            <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
+            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
+        }
+        .into_any(),
+        LoadError::Invalid(InvalidRead::InvalidInput(field)) => {
+            let (kind, message) = match field {
+                InvalidInputField::Query => (
+                    "q",
+                    "Từ khóa tìm kiếm không hợp lệ (cần ít nhất một chữ hoặc số và không vượt quá giới hạn).",
+                ),
+                InvalidInputField::Tag => (
+                    "tag",
+                    "Bộ lọc thẻ không hợp lệ hoặc vượt quá số lượng cho phép.",
+                ),
+                InvalidInputField::Limit => ("limit", "Số lượng kết quả mỗi trang không hợp lệ."),
+                InvalidInputField::Parameter => {
+                    ("query", "Tham số tìm kiếm trên đường dẫn không hợp lệ.")
+                }
+            };
+            view! {
+                <div role="alert" data-testid="public-invalid" data-invalid-kind=kind>
+                    <p>{message}</p>
+                </div>
+                <a id="clear-invalid-filters" class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
+            }
+            .into_any()
+        }
+        LoadError::Invalid(InvalidRead::Fallback) => view! {
+            <div role="alert" data-testid="public-invalid" data-invalid-kind="fallback">
+                <p>"Không thể tải danh sách tác phẩm với yêu cầu hiện tại."</p>
+            </div>
+            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
+        }
+        .into_any(),
+        LoadError::NotFound | LoadError::Unavailable => view! {
+            <Unavailable />
+            <a id="restart-public" class="vk-ui-link" href=first.href(None)>"Thử từ trang đầu"</a>
+            <a class="vk-ui-link" href="/">"Bỏ toàn bộ bộ lọc"</a>
+        }
+        .into_any(),
+    }
 }
 
 /// The draft selection is shared. When reflow hides a focused presentation, carry focus to its

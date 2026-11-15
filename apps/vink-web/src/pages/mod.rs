@@ -134,6 +134,7 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
     let live = public_reads::follow_publication(publication.clone());
     let latest = live.data;
     let removed = live.removed;
+    let rejected = live.rejected;
     let shown = RwSignal::new(publication);
     let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
     let context = discovery::reader_context();
@@ -182,6 +183,8 @@ fn PublicationView(publication: Publication, reader_work_id: String) -> impl Int
             .into_any()
         } else if removed.get() {
             view! { <NotFoundContent return_href=not_found_href() /> }.into_any()
+        } else if rejected.get().is_some() {
+            view! { <Unavailable /> }.into_any()
         } else {
             let live = live.clone();
             view! { <PublicationContent publication=shown.get() live update shown /> }.into_any()
