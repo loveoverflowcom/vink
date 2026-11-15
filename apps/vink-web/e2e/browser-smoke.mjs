@@ -1040,6 +1040,14 @@ async function cacheFirstPublicReads(page) {
     check(await page.eval(`document.querySelectorAll('.vk-reader').length === 1 && document.querySelector('.vk-document').textContent.includes('Khổ thay thế') && !document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'the reader applies the new version only on request, replacing the whole text once');
     await page.waitFor(`document.activeElement?.id === 'noi-dung'`, 'focus moves to the content start after applying');
 
+    // The update/composition checks advance more than the 5-minute unobserved retention
+    // before the next 404 signal. Confirm a new list snapshot for the separate purge race.
+    await page.click('#reader-return');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'prime list for card revocation');
+    await signals(['focus']);
+    await settled('#public-collection', 'list confirmed for card revocation');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${updated.revision_id}'`, 'return to updated Reader before revocation');
     fixtures.set(publicationPath, { status: 404, body: { error: { code: 'not_found' } } });
     // Both public projections must agree while removed. A fresh Published /reader response
     // is authoritative recovery, so do not leave that route serving the real published fixture.
