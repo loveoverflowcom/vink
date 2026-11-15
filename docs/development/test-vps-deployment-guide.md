@@ -18,8 +18,9 @@ flowchart LR
 ```
 
 Sơ đồ nối bốn luồng cần đọc. Nhánh Cantos dựa trên source và ghi nhận lịch sử, còn nhánh Vink
-là đường diễn tập cho VPS chung. [Runbook test Vink](../../infra/test/README.md) sở hữu các bước
-vận hành và [báo cáo container](test-container-evidence.md) ghi bằng chứng từ lượt trước.
+là topology đã chạy thử trên VPS chung. [Runbook test Vink](../../infra/test/README.md) sở hữu các bước
+vận hành. [Báo cáo triển khai thực](test-container-evidence.md#triển-khai-thực-trên-vps-ngày-15112026)
+ghi source, digest, overlay Compose, Caddy và kiểm tra DNS/HTTPS ngày 15/11/2026.
 
 Hai ref `origin/develop` được đối chiếu với remote ngày 15/11/2026. Các link Cantos pin SHA
 `a1fca178f9a284c8177d60601d856fc64dae1953`. Mã Vink được đọc tại
@@ -87,7 +88,8 @@ hoạch bàn giao riêng rồi đối chiếu khi chạy. Compose Vink hiện ch
 **Lỗi điển hình.** `secrets status` thấy version enabled nhưng process vẫn lỗi đọc credential.
 Kiểm UID/mode/path trong namespace của consumer với secret dạng file. Với Vink, xác nhận DB URL
 vào đúng service và `/health/ready` báo schema `current`, role `restricted`. `pg_isready` chỉ
-cho biết PostgreSQL nhận kết nối. Bàn giao secret thực và runtime Vink là `NOT_RUN`.
+cho biết PostgreSQL nhận kết nối. Trên VPS thử, các file env/secret được chuẩn bị cục bộ cho
+Vink và readiness DB đã đạt. Tải cấu hình hoặc secret từ Google Cloud vẫn `NOT_RUN`.
 
 ## 2. APK Cantos và App Distribution
 
@@ -217,7 +219,8 @@ edge, kiểm DNS nội bộ và gọi `/health/ready` tới upstream được ch
 Có thể dùng công cụ chẩn đoán sẵn có cùng namespace nếu image edge thiếu curl. Sau khi đường
 này đạt, kiểm config của vhost riêng, Host/origin và forwarded IP theo peer thật trước khi
 reload có phép. Giữ HTTPS, `X-Robots-Tag: noindex, nofollow` và chính sách cache/private của
-Vink. DNS provider, TLS, vhost và upstream thực là `NOT_RUN`.
+Vink. Lượt thật dùng bản ghi A tại Spaceship, bridge ingress riêng giữa Caddy và Web, chứng chỉ
+HTTPS hợp lệ và kiểm upstream từ Caddy. Xem [kết quả DNS và Caddy](test-container-evidence.md#caddy-và-dns).
 [Reverse proxy Caddy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy),
 [Runbook test](../../infra/test/README.md#runbook-test-và-rollback).
 
@@ -324,17 +327,16 @@ có thể phục hồi từ trước bước thay đổi schema. [So sánh migra
 
 ## Vink đã có / Cần kiểm trên VPS / Bước tiếp theo
 
-Lượt kiểm ngày 15/11/2026 đã đọc source ở hai SHA trên và kiểm Firebase Console. Trong
-namespace cách ly mạng, dry-run import và hai channel App Distribution Cantos cho kết quả
-dự kiến, còn `deploy vps` bị từ chối. Vink qua 8 test của
-`cargo test --offline --locked -p xtask infra::tests::` và chạy
-`dns-plan`, `dns-check`, `dns-rollback` trên snapshot tổng hợp. Đọc payload, upload, triển khai
-và kiểm host/provider DNS thực đều `NOT_RUN`.
+Lượt đọc code đã đối chiếu hai SHA, Firebase Console, dry-run import và hai channel App
+Distribution Cantos trong namespace cách ly mạng, từ chối dự kiến của `deploy vps`, 8 test
+`cargo test --offline --locked -p xtask infra::tests::` và `dns-plan`, `dns-check`,
+`dns-rollback` trên snapshot tổng hợp. Bảng dưới đây ghi thêm bằng chứng khi chạy thật.
+[Báo cáo triển khai](test-container-evidence.md#triển-khai-thực-trên-vps-ngày-15112026).
 
-| Mốc | Vink đã có | Cần kiểm trên VPS hoặc builder | Bước tiếp theo |
+| Mốc | Vink đã có | Kết quả thực trên VPS hoặc builder | Bước tiếp theo |
 | --- | --- | --- | --- |
-| Image built | Ba target build và loader smoke trong workflow | Platform, tài nguyên builder, asset, Linux smoke với DB scratch · `NOT_RUN` | Build source SHA đã chọn và smoke theo topology |
-| Image published | Workflow manual ghi digest và platform | RepoDigest thật của ba image, quyền pull, smoke đúng digest · `NOT_RUN` | Publish thủ công sau smoke và lưu ba tham chiếu theo digest |
-| Service ready | Compose, split-role provision/migrate, socket và health | Tài nguyên VPS, UID/network, readiness DB/Identity, worker lifecycle, SSR/API nội bộ · `NOT_RUN` | Provision riêng, migrate và chạy bộ digest đã chọn |
-| DNS/TLS | Planner A/CNAME, check drift, rollback theo scope | NS/provider và snapshot, endpoint, vhost, chứng chỉ/renew, kết nối edge → Vink · `NOT_RUN` | Kiểm upstream từ edge, sau đó đối chiếu authoritative DNS và HTTPS |
-| Test online | Runbook và ranh giới app/auth đã có | HTTPS public, SSR, API, hydration/assets, đọc công khai · `NOT_RUN` | Ghi nhận kết quả public theo SHA, digest, platform và migration versions. Giữ sign-in tắt |
+| Image built | Ba target build và loader smoke | Build và loader/non-root/assets smoke PASS ở Actions `linux/amd64` | Ghi SHA/platform cùng bản build tiếp theo |
+| Image published | Workflow manual ghi digest và platform | Publish GHCR và pull/inspect 3/3 digest trên VPS PASS | Dùng lại ba digest trong báo cáo triển khai |
+| Service ready | Compose, split-role provision/migrate, socket và health | App/Identity/PostgreSQL healthy, Worker running, hai schema current | Reboot và diễn tập khôi phục `NOT_RUN` |
+| DNS/TLS | Planner A/CNAME và runbook ingress | Spaceship A TTL 300, hai NS và resolver đều khớp, HTTPS hợp lệ, Caddy đi được tới Web | Kiểm gia hạn TLS và rollback `NOT_RUN` |
+| Test online | Runbook và ranh giới app/auth | Public SSR/API và nút điều hướng PASS trên [test.vink.forum](https://test.vink.forum/) | Đăng nhập vẫn tắt, luồng có phiên `NOT_RUN` |
