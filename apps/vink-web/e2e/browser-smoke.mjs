@@ -19,6 +19,7 @@ import { authWeb } from './auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
+import { editorWriting } from './editor-writing-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -2720,6 +2721,7 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
+  await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction, downloaded });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
   await page.goto(`${args.base}/ban-viet`);
@@ -2869,12 +2871,14 @@ async function editorChrome(page) {
   check(await page.eval(`document.querySelector('.vk-editor-help').open && ${live}`), 'keyboard opens writing help without remounting the text');
   await page.key('Enter');
   check(await page.eval(`!document.querySelector('.vk-editor-help').open`), 'keyboard closes optional writing help');
-  // Native Tab order follows the visible secondary actions, Save, title and body.
+  // Native Tab order follows actions, Save, title, the full-title disclosure, then body.
   await page.eval(`document.querySelector('#preview').focus()`);
   for (const id of ['export', 'save', 'draft-title']) {
     await page.key('Tab');
     check(await page.eval(`document.activeElement.id === '${id}'`), `editor Tab reaches ${id}`);
   }
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#draft-title-details > summary') && !document.querySelector('#draft-title-details').open`), 'editor Tab reaches the collapsed full-title disclosure');
   await page.key('Tab');
   check(await page.eval(`(() => {
     const body = document.querySelector('[data-testid=editor-body]'), style = getComputedStyle(body);

@@ -153,6 +153,14 @@ Shell có ID `navigation-toggle`, `navigation-primary`, `navigation-tooltip`, `p
 radio theme có `name=overlay-theme|page-theme` và `value=light|dark|system`. `save-status` có `data-status` là `saved`, `unsaved`, `saving`, `failed`, `conflict`.
 Đây là điểm tìm phần tử, không thay thế việc kiểm nội dung, version và dữ liệu bền vững.
 
+Editor [#193](../design/editor-writing-reflow-193.md) thêm `#draft-title-details`
+(summary “Xem trọn tiêu đề”), bản đọc `#draft-title-full` và nút `#edit-full-title`.
+Input một dòng vẫn sở hữu chỉnh sửa; bản đọc wrap dùng trực tiếp cùng title state.
+`editorChrome` gọi [editorWriting](../../apps/vink-web/e2e/editor-writing-smoke.mjs)
+để kiểm reflow, raw buffer/view, native selection/undo/composition, no-write,
+UTF-16 so với trim/NFC/scalar ở API, preview/export và focus. Cũng chạy trong
+`verify web --scenario main`; không là scenario xtask riêng.
+
 ## Phần việc còn lại của quyết định sản phẩm 10/11/2026
 
 Bảng ghi các phần đã có điểm vào và các phần đang chờ. Nguồn và bằng chứng model ở

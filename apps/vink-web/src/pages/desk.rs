@@ -938,6 +938,23 @@ fn Editor(draft: Draft) -> impl IntoView {
                             session.update(|s| s.text.edited());
                         }
                     } />
+                // Read the entire title without replacing the native editing control. This
+                // projection has no buffer of its own; native selection/undo/IME stay in input.
+                <details id="draft-title-details" class="vk-editor-title-details">
+                    <summary>"Xem trọn tiêu đề"</summary>
+                    <p id="draft-title-full">{move || {
+                        let value = title.get();
+                        if value.is_empty() { "Chưa đặt tên".to_string() } else { value }
+                    }}</p>
+                    <Button id="edit-full-title" variant=ButtonVariant::Text on_press=move |_| {
+                        #[cfg(feature = "hydrate")]
+                        if let Some(input) = title_input.get_untracked() {
+                            // User-requested focus also reveals the editing line. Do not select
+                            // or write its value: focus preserves its directional selection.
+                            let _ = input.focus();
+                        }
+                    }>"Chỉnh tiêu đề"</Button>
+                </details>
                 <div class="vk-field" on:focusin=move |_| last_field.set_value(Field::Body)>
                     <span
                         id=BODY_LABEL_ID

@@ -30,6 +30,10 @@ perimeter ở control đang nhận focus; forced-colors giữ dấu hiệu hệ 
 Toolbar chỉ sticky ở desktop đủ rộng/cao; mở Chi tiết thì trả về document flow.
 CodeMirror tiếp tục đo chiều cao sticky để giữ caret rõ.
 
+[#193 — mặt viết và title dài](editor-writing-reflow-193.md) bổ sung disclosure
+“Xem trọn tiêu đề” dùng cùng title state, giữ native input và giới hạn hiện hành;
+giảm riêng gutter/paper mobile mà không đổi typography/measure desktop.
+
 ## Hành vi và sửa lỗi có bằng chứng
 
 Status ngắn: Đã lưu / Chưa lưu / Đang lưu… / Chưa xác nhận lưu. / Chưa lưu được. /

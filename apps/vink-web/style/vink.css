@@ -582,6 +582,29 @@ a {
 .vk-editor-paper > .vk-field { min-inline-size: 0; }
 .vk-editor-paper .vk-editor-body { background: transparent; }
 .vk-editor-paper .vk-editor-body .cm-editor .cm-content { padding: var(--vk-space-2) 0 var(--vk-space-6); }
+.vk-editor-title-details { min-inline-size: 0; margin-block-start: calc(-1 * var(--vk-space-4)); }
+.vk-editor-title-details > summary {
+  min-block-size: var(--vk-size-hit-target);
+  padding-block: var(--vk-space-3);
+  color: var(--vk-on-surface-variant);
+  cursor: pointer;
+}
+.vk-editor-title-details > p {
+  margin: var(--vk-space-2) 0;
+  font-family: var(--vk-font-reading);
+  font-size: var(--vk-type-headline-size);
+  font-weight: var(--vk-type-headline-weight);
+  line-height: var(--vk-type-headline-line-height);
+  white-space: break-spaces;
+  overflow-wrap: anywhere;
+}
+/* Bound decoration on phones independently of the user's text size. The page and paper
+   each retain a token gutter for focus; desktop writing measure and all targets stay intact. */
+@media (max-width: 47.999rem) {
+  .vk-main:has(> .vk-desk--editor) { padding-inline: min(var(--vk-space-2), 8px); }
+  .vk-desk--editor .vk-editor-paper { padding-inline: min(var(--vk-space-2), 8px); }
+  .vk-desk--editor .vk-editor-heading__back { margin-inline-start: 0; }
+}
 .vk-editor-help { color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
 .vk-editor-help summary { min-height: var(--vk-size-hit-target); padding-block: var(--vk-space-3); cursor: pointer; }
 .vk-editor-help p { margin: 0 0 var(--vk-space-3); }
