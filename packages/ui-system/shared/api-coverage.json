@@ -329,6 +329,12 @@
     {
       "renderer": "leptos",
       "source": "packages/vink-patterns/leptos/src/lib.rs",
+      "symbol": "AuthorWorkRow",
+      "entry": "screen.desk"
+    },
+    {
+      "renderer": "leptos",
+      "source": "packages/vink-patterns/leptos/src/lib.rs",
       "symbol": "EditorToolbar",
       "entry": "screen.editor"
     },
