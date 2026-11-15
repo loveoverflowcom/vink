@@ -44,3 +44,5 @@ thu gọn/mở rộng, chữ 100%/200%, sáng/tối/hệ thống và viewport ca
 Kiểm focus lúc mở ở 834 × 320/280 px, tối 200%, rail thu gọn.
 Kiểm `/toi` ở 320/390/1440 px, chữ 100%/200%, sáng/tối. Đối chiếu qua
 [ma trận và bằng chứng Web](../development/ui-system-qualification-evidence.md#giao-diện-r1-cho-panel-và-trang-tôi).
+
+Delta sau #219 và kiểm chứng local ở [review #220](../development/appearance-220-review.md).

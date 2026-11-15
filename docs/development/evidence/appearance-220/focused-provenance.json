@@ -1,0 +1,7 @@
+{
+  "source_sha": "17d6344e367e9816025352b262938dc6fe92c1ef",
+  "helper": "shellWithDirtyEditor",
+  "helper_sha256": "35bb11d0d80e524790ae29fdf22629af1d213c018cf40bf447e91528cfc59d73",
+  "diagnostic_script_sha256": "0c5005c476009305a3b393f7d4da0523b10446afdca8636afeea10990eaaa315",
+  "canonical_main_modified": false
+}
