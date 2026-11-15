@@ -2269,7 +2269,7 @@ async function draftR6Hierarchy(page) {
   gate.list = {body:{drafts:cards}};
   await gate.enable();
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent==='Tìm trong 3 bản thảo đã tải.'`, 'R6 fixture with settled inventory');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent==='Đã tải 3 bản thảo.'`, 'R6 fixture with settled inventory');
   for (const [width, scale, theme] of [[390,100,'light'], [320,200,'dark'], [1440,100,'light'], [1280,100,'light'], [1440,200,'dark'], [1280,200,'dark']]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';scrollTo(0,0)`);
