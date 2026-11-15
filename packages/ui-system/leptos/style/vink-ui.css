@@ -282,6 +282,12 @@
   color: var(--vk-on-error);
 }
 
+.vk-ui-button--danger-text {
+  padding-inline: var(--vk-space-3) var(--vk-space-6);
+  background-color: transparent;
+  color: var(--vk-error);
+}
+
 .vk-ui-button[data-state="disabled"],
 .vk-ui-icon-button[data-state="disabled"],
 .vk-ui-chip[data-state="disabled"] {
@@ -292,6 +298,7 @@
 }
 
 .vk-ui-button--text[data-state="disabled"],
+.vk-ui-button--danger-text[data-state="disabled"],
 .vk-ui-icon-button[data-state="disabled"] { background-color: transparent; }
 
 .vk-ui-button[data-state="pending"],
@@ -1430,6 +1437,9 @@
   inline-size: min(32rem, calc(100% - 2 * var(--vk-overlay-margin)));
   max-inline-size: none;
   max-block-size: calc(100% - 2 * var(--vk-overlay-margin));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--vk-size-hit-target);
   padding: 0;
   border: 0;
   border-radius: var(--vk-radius-xl);
@@ -1461,18 +1471,33 @@
   overflow-wrap: break-word;
 }
 
-.vk-ui-dialog__content:empty { display: none; }
+.vk-ui-dialog__context:empty,
+.vk-ui-dialog__content:empty,
+.vk-ui-dialog__actions:empty { display: none; }
 
 .vk-ui-dialog__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--vk-space-2) var(--vk-space-3);
-  padding-block-start: var(--vk-space-2);
+  padding-block-start: var(--vk-space-1);
 }
 
 /* Buttons here take the same gutter, so a label keeps room for whole Vietnamese words. */
 .vk-ui-dialog__actions .vk-ui-button { padding-inline: var(--vk-overlay-gutter); }
+.vk-ui-dialog__actions .vk-ui-button__label { overflow-wrap: break-word; }
+
+@container vk-overlay (max-width: 24rem) {
+  .vk-ui-dialog__actions > .vk-ui-action {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .vk-ui-dialog__actions .vk-ui-button {
+    inline-size: 100%;
+    padding-inline: var(--vk-space-3);
+  }
+}
 
 @media (max-width: 759.98px) {
   .vk-ui-dialog--sheet {

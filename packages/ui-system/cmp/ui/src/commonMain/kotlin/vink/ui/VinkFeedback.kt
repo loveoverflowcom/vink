@@ -481,6 +481,7 @@ fun VinkDialog(
     closeReason: CloseReason = CloseReason.Dismiss,
     mainFocus: FocusRequester? = null,
     content: @Composable () -> Unit = {},
+    secondaryActions: (@Composable RowScope.() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit,
 ) {
     var wasOpen by remember { mutableStateOf(false) }
@@ -559,6 +560,15 @@ fun VinkDialog(
                             verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2),
                         ) {
                             Row(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2), verticalAlignment = Alignment.CenterVertically, content = actions)
+                        }
+                        secondaryActions?.let { secondary ->
+                            FlowRow(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2, Alignment.End),
+                                verticalArrangement = Arrangement.spacedBy(VinkDimens.Space2),
+                            ) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2), verticalAlignment = Alignment.CenterVertically, content = secondary)
+                            }
                         }
                     }
                 }

@@ -125,9 +125,10 @@ focus-within của parent cho trailing action. Forced-colors được thêm stro
 focus; không có chuyển động nhãn custom.
 
 Chip idle dùng SurfaceContainer, selected dùng SecondaryContainer + check/pressed; slot check
-được giữ để toggle không dịch hàng. Filled/Tonal/Text/Outlined/Danger và action guards giữ nguyên;
-status slot của cả Text button được chừa trước pending. Tonal dành cho hành động phụ, Filled cho
-hành động chính; không đổi default API của Button.
+được giữ để toggle không dịch hàng. Filled/Tonal/Text/Outlined/Danger/DangerText và action guards giữ nguyên;
+status slot của cả Text/DangerText button được chừa trước pending. Tonal dành cho hành động phụ, Filled cho
+hành động chính, `DangerText` cho cảnh báo bước đầu phá hủy, và `Danger` đặc chỉ cho xác nhận phá hủy cuối;
+Web `Button.variant` nhận `Signal<ButtonVariant>` để đổi cấp mà không remount nút.
 
 Quyết định CHOICE-01: Material3 TextField + indicator transparent + border có điều kiện, giữ
 native IME/caret/label và không xây BasicTextField mới. CHOICE-02: floating shell / input nhãn ngoài
@@ -212,7 +213,7 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `Stack` | `direction: Direction`, `gap: Space`, `align: Align`, `wrap: bool` | — | Thứ tự đọc khác thứ tự nguồn. CMP: `Stretch` = `Start` (con tự quyết bề rộng) |
 | `Grid` | `min: GridMin`, `gap: Space` | — | Masonry, cột cố định |
 | `Divider` | `decorative: bool` | — | — |
-| `Button` | `variant: ButtonVariant` (Filled/Tonal/Outlined/Text/Danger), `state: ActionState`, `leading: IconName?`; Web: `kind: ButtonKind` (Button mặc định / Submit), `id?`, `described_by?` liên kết mô tả vào native target và nối note của state | `on_press` ×1 | Fetch, retry, permission, spinner (UIS-03). CMP: không có Submit |
+| `Button` | `variant: ButtonVariant` (Filled/Tonal/Outlined/Text/Danger/DangerText; Web nhận `Signal<ButtonVariant>`), `state: ActionState`, `leading: IconName?`; Web: `kind: ButtonKind` (Button mặc định / Submit), `id?`, `described_by?` liên kết mô tả vào native target và nối note của state | `on_press` ×1 | Fetch, retry, permission, spinner (UIS-03). CMP: không có Submit |
 | `IconButton` | `icon`, `label` (bắt buộc), `state`, `pressed: bool?`; Web: `id?` | `on_press` ×1 | Tooltip hover-only |
 | `Link` | `href`, `variant: LinkVariant` (Inline/Standalone); Web: `target: LinkTarget` (SameTab/NewTab); CMP: `external`, `onNavigate` | Web: trình duyệt điều hướng, giữ modifier-click; CMP: `onNavigate(href)` | Router. URL ngoài allow-list hiện như chữ ở cả hai |
 | `FilterChip` | `label`, `selected`, `state`; Web: `id?` | `on_toggle(bool)` ×1 | Danh sách lọc, query |

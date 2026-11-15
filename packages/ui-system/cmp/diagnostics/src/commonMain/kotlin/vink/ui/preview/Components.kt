@@ -313,6 +313,7 @@ private fun ActionButton(scenario: String) {
             VinkButton("Xem trước", press("Tonal"), variant = ButtonVariant.Tonal, leading = IconName.Visibility)
             VinkButton("Tải .txt", press("Outlined"), variant = ButtonVariant.Outlined)
             VinkButton("Hủy", press("Text"), variant = ButtonVariant.Text)
+            VinkButton("Rời mà không lưu…", press("DangerText"), variant = ButtonVariant.DangerText)
             VinkButton("Xóa bản nháp", press("Danger"), variant = ButtonVariant.Danger)
         }
     }

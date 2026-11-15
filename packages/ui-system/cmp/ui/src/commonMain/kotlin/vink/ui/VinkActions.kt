@@ -60,7 +60,7 @@ sealed interface ActionState {
         }
 }
 
-enum class ButtonVariant(val id: String) { Filled("filled"), Tonal("tonal"), Outlined("outlined"), Text("text"), Danger("danger") }
+enum class ButtonVariant(val id: String) { Filled("filled"), Tonal("tonal"), Outlined("outlined"), Text("text"), Danger("danger"), DangerText("danger-text") }
 
 /** Minimum native target: Material's 48dp, never the Web compact 44. */
 private val NativeControl = maxOf(48.dp, VinkDimens.DensityControlHeight)
@@ -88,6 +88,7 @@ fun VinkButton(
         ButtonVariant.Filled -> c[ColorRole.ActionPrimaryContainer] to c[ColorRole.ActionPrimaryContent]
         ButtonVariant.Tonal -> c[ColorRole.ActionTonalContainer] to c[ColorRole.ActionTonalContent]
         ButtonVariant.Outlined, ButtonVariant.Text -> androidx.compose.ui.graphics.Color.Transparent to c[ColorRole.Primary]
+        ButtonVariant.DangerText -> androidx.compose.ui.graphics.Color.Transparent to c[ColorRole.Error]
         ButtonVariant.Danger -> c[ColorRole.Error] to c[ColorRole.OnError]
     }
     val disabled = state is ActionState.Disabled
@@ -101,12 +102,12 @@ fun VinkButton(
             colors = ButtonDefaults.buttonColors(
                 containerColor = container,
                 contentColor = content,
-                disabledContainerColor = if (variant == ButtonVariant.Text) androidx.compose.ui.graphics.Color.Transparent else c[ColorRole.DisabledContainer],
+                disabledContainerColor = if (variant == ButtonVariant.Text || variant == ButtonVariant.DangerText) androidx.compose.ui.graphics.Color.Transparent else c[ColorRole.DisabledContainer],
                 disabledContentColor = c[ColorRole.DisabledContent],
             ),
             border = if (variant == ButtonVariant.Outlined && !disabled) BorderStroke(1.dp, c[ColorRole.Outline]) else null,
             contentPadding = PaddingValues(
-                start = if (variant == ButtonVariant.Text) VinkDimens.Space3 else VinkDimens.Space6,
+                start = if (variant == ButtonVariant.Text || variant == ButtonVariant.DangerText) VinkDimens.Space3 else VinkDimens.Space6,
                 // Reserve the status slot before pending to keep every variant stable.
                 end = VinkDimens.Space6,
                 top = VinkDensityDimens.ControlPadding.at(LocalVink.current.density),

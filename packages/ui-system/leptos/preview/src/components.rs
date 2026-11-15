@@ -335,6 +335,7 @@ fn action_button(scenario: &str) -> AnyView {
                 <Button variant=ButtonVariant::Tonal leading=IconName::Visibility on_press=press("Tonal")>"Xem trước"</Button>
                 <Button variant=ButtonVariant::Outlined on_press=press("Outlined")>"Tải .txt"</Button>
                 <Button variant=ButtonVariant::Text on_press=press("Text")>"Hủy"</Button>
+                <Button variant=ButtonVariant::DangerText on_press=press("DangerText")>"Rời mà không lưu…"</Button>
                 <Button variant=ButtonVariant::Danger on_press=press("Danger")>"Xóa bản nháp"</Button>
             </Stack>
             <form

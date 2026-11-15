@@ -2636,6 +2636,40 @@ async function leaveActionScene(page, scene, stage, expected, disabled = []) {
   await editorLayoutReady(page);
   const inventory = await page.eval(`[...document.querySelectorAll('${dialog} button')].map(b => b.id)`);
   check(inventory.join() === expected.join(), `${name}: exact action inventory ${JSON.stringify(inventory)}`);
+  const anatomy = await page.eval(`(() => {
+    const d = document.querySelector('${dialog}');
+    const panel = d.querySelector('.vk-ui-dialog__panel');
+    const ps = getComputedStyle(panel);
+    const padLeft = parseFloat(ps.paddingLeft), padRight = parseFloat(ps.paddingRight);
+    const padTop = parseFloat(ps.paddingTop), padBottom = parseFloat(ps.paddingBottom);
+    const ctx = d.querySelector('.vk-ui-dialog__context');
+    const filled = [...d.querySelectorAll('.vk-ui-button--filled')].map(b => b.id);
+    const secondary = d.querySelector('.vk-ui-dialog__actions--secondary');
+    const secondaryBorder = secondary ? parseFloat(getComputedStyle(secondary).borderTopWidth) : 0;
+    const classes = Object.fromEntries([...d.querySelectorAll('button')].map(b => [b.id, [...b.classList]]));
+    return { padLeft, padRight, padTop, padBottom, ctxId: ctx?.id ?? null, ctxText: ctx?.textContent?.trim() ?? '', filled, secondaryBorder, classes };
+  })()`);
+  const minGutter = scene.width >= 390 && scene.scale === 100 ? 24 : 12;
+  check(anatomy.padLeft >= minGutter - 0.5 && Math.abs(anatomy.padLeft - anatomy.padRight) < 1 &&
+      Math.abs(anatomy.padTop - anatomy.padBottom) < 1 && anatomy.ctxId === 'leave-editor-context' &&
+      anatomy.ctxText.length > 0 && anatomy.filled.length <= 1 && anatomy.secondaryBorder === 0,
+    `${name}: shared dialog anatomy, gutter (>=${minGutter}px), divider-free actions and <=1 filled CTA ${JSON.stringify(anatomy)}`);
+  if (stage === 'confirm') {
+    check(anatomy.classes['discard-back']?.includes('vk-ui-button--tonal') &&
+      anatomy.classes['discard-confirm']?.includes('vk-ui-button--danger'),
+      `${name}: confirm stage hierarchy Quay lại=Tonal, confirm=Danger`);
+  } else if (stage.includes('conflict')) {
+    check(anatomy.classes['leave-stay']?.includes('vk-ui-button--filled') &&
+      anatomy.classes['leave-export']?.includes('vk-ui-button--tonal') &&
+      anatomy.classes['leave-discard']?.includes('vk-ui-button--danger-text'),
+      `${name}: conflict hierarchy Stay=Filled, Export=Tonal, Discard=DangerText`);
+  } else {
+    check(anatomy.classes['leave-stay']?.includes('vk-ui-button--text') &&
+      anatomy.classes['leave-save']?.includes('vk-ui-button--filled') &&
+      (!anatomy.classes['leave-export'] || anatomy.classes['leave-export']?.includes('vk-ui-button--tonal')) &&
+      (!anatomy.classes['leave-discard'] || anatomy.classes['leave-discard']?.includes('vk-ui-button--danger-text')),
+      `${name}: saveable hierarchy Stay=Text, Save=Filled, Export=Tonal, Discard=DangerText`);
+  }
   await page.eval(`document.querySelector('${title}').focus({preventScroll:true}); document.querySelector('${dialog}').scrollTop = 0`);
   const top = await read();
   const dialogRect = await page.eval(`document.querySelector('${dialog}').getBoundingClientRect().toJSON()`);
@@ -3004,13 +3038,13 @@ async function editorChrome(page) {
     await page.click(kind === 'preview' ? '#preview' : '.vk-editor-heading__back');
     const dialog = kind === 'preview' ? '#draft-preview' : '#leave-editor';
     await page.waitFor(`document.querySelector('${dialog}').open`, `${kind} dialog`);
-    if (kind === 'preview') check(await page.eval(`document.querySelector('#draft-preview').textContent.includes('Chữ còn trên trang.')`), 'preview reads unsaved text during conflict');
+    if (kind === 'preview') check(await page.eval(`document.querySelector('#draft-preview').textContent.includes('Chữ còn trên trang.') && document.querySelector('#draft-preview-context')?.classList.contains('vk-ui-dialog__context') && document.querySelector('#preview-close')?.classList.contains('vk-ui-button--tonal')`), 'preview reads unsaved text during conflict and uses shared context + Tonal close');
     for (const width of [1440, 1024, 834, 390, 320]) for (const scale of [100, 200]) for (const theme of ['light', 'dark']) {
       await page.viewport(width);
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'; document.documentElement.dataset.theme = '${theme}'; document.querySelector('${dialog}').scrollTop = 0`);
       await page.waitFor(`!document.getAnimations().some(a => a.playState === 'running' && a.effect.target?.checkVisibility() && Number.isFinite(a.effect.getComputedTiming().endTime))`, 'visible editor transitions settled');
       await page.capture(`editor-${kind}-${width}-${scale}-${theme}`);
-      check(await page.eval(`(() => { const d = document.querySelector('${dialog}'), r = d.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && d.scrollWidth <= d.clientWidth + 1 && ${live}; })()`), `${kind} ${width}/${scale}/${theme}: dialog fits and text view survives`);
+      check(await page.eval(`(() => { const d = document.querySelector('${dialog}'), r = d.getBoundingClientRect(), p = parseFloat(getComputedStyle(d.querySelector('.vk-ui-dialog__panel')).paddingLeft); return r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight && d.scrollWidth <= d.clientWidth + 1 && (${width} >= 390 && ${scale} === 100 ? p >= 23.5 : p >= 11.5) && ${live}; })()`), `${kind} ${width}/${scale}/${theme}: dialog fits, shared gutter holds and text view survives`);
       await page.eval(`document.querySelector('${dialog} .vk-ui-dialog__title').focus()`);
       await page.key('Tab');
       check(await page.eval(`document.activeElement.id === '${kind === 'preview' ? 'preview-close' : 'leave-stay'}'`), `${kind}: Tab reaches the safe action`);
@@ -3468,7 +3502,7 @@ async function mainPhase(page) {
     await page.click('#leave-save');
     await gate.fail(await gate.next());
     await page.waitStatus('failed', 'failed save');
-    check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Chưa lưu được'), 'dialog explains the failed save');
+    check((await page.eval(`document.querySelector('#leave-editor-context').textContent`)).includes('Chưa lưu được'), 'dialog explains the failed save');
     check((await page.eval(`location.pathname`)) === editorPath && (await page.body()).endsWith(' Mất kết nối.'), 'failure keeps the route and the text');
     await page.click('#leave-export');
     const rescue = await downloaded(downloads);
@@ -3561,7 +3595,7 @@ async function draftTags(page, workId) {
   check(await page.eval(`!document.querySelector('#work-tags-edit').open && document.querySelector('[data-testid=tag-selection-summary]').textContent.includes('Tản văn')`), 'closing metadata keeps the unsaved selection visible');
   await page.click('#navigation-primary a[href="/"]');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for a tag-only change');
-  check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Thẻ đã chọn'), 'the dialog names the unsaved tags');
+  check((await page.eval(`document.querySelector('#leave-editor-context').textContent`)).includes('Thẻ đã chọn'), 'the dialog names the unsaved tags');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('[data-testid=leave-editor]').open`, 'stayed');
   check((await page.eval(`location.pathname`)) === editorPath, 'a tag-only change held the navigation');
@@ -3633,7 +3667,7 @@ async function draftTags(page, workId) {
   await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with tag conflict');
   await leaveActionScene(page, tagConflictScene, 'tag-conflict',
     ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'], ['leave-save']);
-  check(await page.eval(`document.querySelector('#leave-message').textContent.includes('Thẻ đã đổi ở nơi khác')`), 'leave prompt explains the tag conflict');
+  check(await page.eval(`document.querySelector('#leave-editor-context').textContent.includes('Thẻ đã đổi ở nơi khác')`), 'leave prompt explains the tag conflict');
   await page.key('Tab');
   await page.key('Enter');
   check(await page.eval(`document.querySelector('#leave-editor').open`) && (await draftTagsOf(page, workId)).version === 3,
@@ -3685,7 +3719,7 @@ async function draftTags(page, workId) {
   await waitTagStatus(page, 'unsaved');
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector('[data-testid=leave-editor]').open`, 'leave dialog for text and tags');
-  check((await page.eval(`document.querySelector('[data-testid=leave-message]').textContent`)).includes('Chữ và thẻ'), 'the dialog names both parts');
+  check((await page.eval(`document.querySelector('#leave-editor-context').textContent`)).includes('Chữ và thẻ'), 'the dialog names both parts');
   await page.click('#leave-save');
   await page.waitFor(`location.pathname === '/ban-viet'`, 'left after both saves');
   stored = await draftTagsOf(page, workId);
