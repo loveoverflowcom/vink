@@ -3,6 +3,7 @@
 mod api;
 mod appeals;
 mod auth;
+mod author_works;
 mod conditional;
 pub mod contract;
 mod drafts;

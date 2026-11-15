@@ -1,5 +1,5 @@
 //! Bounded private-summary adapter for the shared read owner. No transport/cache/authority.
-use crate::contract::{DraftCard, DraftList};
+use crate::contract::author_works::{AuthorWorkCard as DraftCard, AuthorWorkList as DraftList};
 use crate::read_lifecycle::{Intent, PageChain, ReadOwner, ReadTicket};
 
 pub const PAGE_SIZE: usize = 24;
@@ -25,7 +25,7 @@ impl DraftPages {
         page: DraftList,
     ) -> bool {
         let append = ticket.intent == Intent::Append;
-        if page.drafts.len() > PAGE_SIZE
+        if page.works.len() > PAGE_SIZE
             || page
                 .next_cursor
                 .as_ref()
@@ -46,16 +46,16 @@ impl DraftPages {
         if !owner.accept_page(
             ticket,
             &mut chain,
-            page.drafts.iter().map(|d| d.work_id.clone()),
+            page.works.iter().map(|d| d.work_id.clone()),
             page.next_cursor,
         ) {
             return false;
         }
         if !append || next_part {
-            self.drafts = page.drafts;
+            self.drafts = page.works;
             self.part = if next_part { self.part + 1 } else { 1 };
         } else {
-            self.drafts.extend(page.drafts);
+            self.drafts.extend(page.works);
         }
         self.chain = chain;
         self.loaded = true;
@@ -68,11 +68,12 @@ mod tests {
     use super::*;
     fn page(start: usize, more: bool) -> DraftList {
         DraftList {
-            drafts: (start..start + PAGE_SIZE)
+            works: (start..start + PAGE_SIZE)
                 .map(|id| DraftCard {
                     work_id: id.to_string(),
                     title: format!("Bản {id}"),
-                    version: 1,
+                    draft_version: Some(1),
+                    publication: None,
                     updated_at: "2026-11-15T00:00:00Z".into(),
                 })
                 .collect(),

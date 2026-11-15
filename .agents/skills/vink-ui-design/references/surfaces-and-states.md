@@ -10,7 +10,7 @@ thiết kế, không khẳng định tính năng đã chạy. Dùng requirement 
 | --- | --- | --- | --- |
 | Tác giả / Bàn viết | Bản đang viết, audience, trạng thái lưu/duyệt từng bản, phản hồi liên quan | Viết tiếp, lưu nháp hoặc chọn công khai snapshot | Bảng KPI lượt thích che bản thảo; hứa autosave khi chỉ lưu thủ công |
 | Người đọc / Khám phá & Bộ sưu tập | Bài hợp ngữ cảnh, lọc theo thẻ/hashtag, Đề xuất / Top 100 hữu hạn, bộ sưu tập cá nhân | Đọc một bài hoặc duyệt bộ sưu tập | Feed vô hạn trống, hero quá lớn, xếp hạng văn chương bằng sao, lộ tên/số đếm bộ sưu tập riêng tư |
-| Xưởng Viết & Thảo luận | Tác phẩm, loại phản hồi tác giả mong muốn, thảo luận hai tầng và “Đánh giá cao” / “Hữu ích” | Đọc, ghi nhận và góp ý | Form nhận xét dài bắt buộc, áp lực tích điểm để được đăng |
+| Xưởng Viết & Thảo luận | Tác phẩm, loại phản hồi tác giả mong muốn, thảo luận hai tầng và “Thấm” / “Hữu ích” | Đọc, ghi nhận và góp ý | Form nhận xét dài bắt buộc, áp lực tích điểm để được đăng |
 | Quản trị viên / Kiểm duyệt | Bản/bình luận `NeedsAdmin`, quyết định override có lý do, case phản đối (`MOD-09/10`) | Xem đúng revision/bình luận và quyết định theo authority | AI score thành phán quyết không thể override; hứa đã gửi thông báo khi chưa nối kênh |
 | *(Hoãn)* Biên tập / Tạp Chí (`DEFERRED` 10/11/2026) | Chỉ thiết kế khi user yêu cầu riêng | — | Đưa Tạp Chí hoặc nhiều chương vào luồng mặc định khi đang `DEFERRED` |
 

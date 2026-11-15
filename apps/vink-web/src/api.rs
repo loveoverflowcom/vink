@@ -704,6 +704,18 @@ pub fn drafts_path(
 }
 
 #[cfg(feature = "hydrate")]
+pub async fn search_author_works(
+    q: &str,
+    sort: crate::draft_list::DraftSort,
+    limit: usize,
+    cursor: Option<&str>,
+) -> Result<crate::contract::author_works::AuthorWorkList, ApiError> {
+    let path =
+        drafts_path(q, sort, limit, cursor).replacen("/api/v1/drafts?", "/api/v1/author/works?", 1);
+    http::get(&path).await
+}
+
+#[cfg(feature = "hydrate")]
 pub async fn search_drafts(
     q: &str,
     sort: crate::draft_list::DraftSort,
@@ -867,6 +879,7 @@ fn bounded(path: &str) -> bool {
         || path.contains("/publication/state")
         || path.contains("/discussion")
         || path.contains("/endorsement")
+        || path.starts_with("/api/v1/author/works")
         || path.contains("/tags")
         || path.starts_with("/api/v1/auth/")
 }

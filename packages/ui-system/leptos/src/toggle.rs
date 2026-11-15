@@ -192,12 +192,12 @@ impl ToggleView {
 
 /// Every string the control shows or speaks. `label` stays visible in every state;
 /// `selected_name` is the accessible name once On is confirmed and must contain the label's
-/// words (WCAG 2.5.3), e.g. "Đánh giá cao" / "Bỏ đánh giá cao".
+/// words (WCAG 2.5.3), e.g. "Thấm" / "Bỏ Thấm".
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ToggleCopy {
     pub label: String,
     pub selected_name: String,
-    /// Spoken after the number: "12 lượt đánh giá cao".
+    /// Spoken after the number: "12 lượt Thấm".
     pub count_unit: String,
     pub count_unavailable: String,
     pub pending_on: String,
@@ -472,7 +472,7 @@ mod tests {
             view! {
                 <ToggleAction
                     id="work-1"
-                    copy=ToggleCopy::new("Đánh giá cao", "Bỏ đánh giá cao")
+                    copy=ToggleCopy::new("Thấm", "Bỏ Thấm")
                     value=value
                     phase=phase
                     count=count
@@ -505,7 +505,7 @@ mod tests {
         let b = button(&html);
         for needle in [
             "type=\"button\"",
-            "aria-label=\"Đánh giá cao\"",
+            "aria-label=\"Thấm\"",
             "aria-describedby=\"work-1-count\"",
             "data-pressed=\"false\"",
             "data-state=\"enabled\"",
@@ -524,10 +524,7 @@ mod tests {
             CountFact::Known(0),
             None,
         );
-        assert!(
-            button(&html).contains("aria-label=\"Bỏ đánh giá cao\""),
-            "{html}"
-        );
+        assert!(button(&html).contains("aria-label=\"Bỏ Thấm\""), "{html}");
         assert!(
             html.contains("data-pressed=\"true\"") && html.contains("<svg"),
             "check mark: {html}"
@@ -577,7 +574,7 @@ mod tests {
             ToggleValue::Off,
             TogglePhase::Idle,
             CountFact::Hidden,
-            Some("Bạn không thể đánh giá tác phẩm của mình."),
+            Some("Bạn không thể tự Thấm tác phẩm của mình."),
         );
         let b = button(&html);
         assert!(
@@ -585,7 +582,7 @@ mod tests {
             "{b}"
         );
         assert!(
-            html.contains("Bạn không thể đánh giá tác phẩm của mình."),
+            html.contains("Bạn không thể tự Thấm tác phẩm của mình."),
             "{html}"
         );
         assert!(

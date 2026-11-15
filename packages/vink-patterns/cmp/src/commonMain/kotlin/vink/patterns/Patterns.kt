@@ -159,7 +159,7 @@ fun RecentFeedback(items: List<Feedback>, onNavigate: (String) -> Unit) {
 
 /** What a literary endorsement (LVE #73) is about; copy only, the App's core decides. */
 enum class EndorsementKind(val id: String) {
-    /** One published revision of a work: “Đánh giá cao”. */
+    /** One published revision of a work: “Thấm”. */
     Work("work"),
 
     /** A root comment or a flat reply, each its own target: “Hữu ích”. */
@@ -169,9 +169,9 @@ enum class EndorsementKind(val id: String) {
     val copy: ToggleCopy
         get() = when (this) {
             Work -> ToggleCopy(
-                "Đánh giá cao", "Bỏ đánh giá cao", countUnit = "lượt đánh giá cao",
-                pendingOn = "Đang gửi đánh giá cao…", pendingOff = "Đang bỏ đánh giá cao…",
-                failed = "Không thể đánh giá lúc này.", unknown = "Chưa rõ bạn đã đánh giá cao chưa.",
+                "Thấm", "Bỏ Thấm", countUnit = "lượt Thấm",
+                pendingOn = "Đang gửi Thấm…", pendingOff = "Đang bỏ Thấm…",
+                failed = "Không thể Thấm lúc này.", unknown = "Chưa rõ bạn đã Thấm chưa.",
             )
             Comment -> ToggleCopy(
                 "Hữu ích", "Bỏ đánh dấu hữu ích", countUnit = "lượt hữu ích",
@@ -182,10 +182,10 @@ enum class EndorsementKind(val id: String) {
 
     /** Visible text, never hover-only; no login control is implied (no auth authority yet). */
     fun reason(block: EndorsementBlock): String = when (block) {
-        EndorsementBlock.OwnContent -> if (this == Work) "Bạn không thể đánh giá tác phẩm của chính mình." else "Bạn không thể đánh dấu nhận xét của chính mình."
-        EndorsementBlock.NotPermitted -> if (this == Work) "Tài khoản này chưa thể đánh giá." else "Tài khoản này chưa thể đánh dấu hữu ích."
-        EndorsementBlock.SignedOut -> if (this == Work) "Cần đăng nhập để đánh giá." else "Cần đăng nhập để đánh dấu hữu ích."
-        EndorsementBlock.Unavailable -> if (this == Work) "Không thể đánh giá lúc này." else "Không thể đánh dấu lúc này."
+        EndorsementBlock.OwnContent -> if (this == Work) "Bạn không thể tự Thấm tác phẩm của mình." else "Bạn không thể đánh dấu nhận xét của chính mình."
+        EndorsementBlock.NotPermitted -> if (this == Work) "Tài khoản này chưa thể Thấm." else "Tài khoản này chưa thể đánh dấu hữu ích."
+        EndorsementBlock.SignedOut -> if (this == Work) "Cần đăng nhập để Thấm." else "Cần đăng nhập để đánh dấu hữu ích."
+        EndorsementBlock.Unavailable -> if (this == Work) "Không thể Thấm lúc này." else "Không thể đánh dấu lúc này."
     }
 }
 

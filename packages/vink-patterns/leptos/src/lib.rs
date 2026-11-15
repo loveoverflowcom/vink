@@ -4,6 +4,10 @@
 use leptos::prelude::*;
 use vink_ui::*;
 
+mod timestamp;
+use timestamp::Timestamp;
+pub use timestamp::updated_at_label;
+
 mod tags;
 pub use tags::{
     CatalogFacts, THEME_LIMIT, TagChip, TagFacts, TagLink, TagOption, TagOptions, TagSelector,
@@ -33,9 +37,7 @@ pub fn WorkByline(
     view! {
         <div class="vk-work-byline">
             <AuthorByline name=author.name identity_key=author.key.unwrap_or_default() size />
-            <time class="vk-work-byline__date" datetime=author.published_at.clone()>
-                {display_date(&author.published_at)} " (UTC)"
-            </time>
+            <span class="vk-work-byline__date"><Timestamp instant=author.published_at /></span>
         </div>
     }
 }
@@ -80,11 +82,10 @@ pub struct DraftSummary {
 
 #[component]
 pub fn DraftMetadata(version: i64, updated_at: String) -> impl IntoView {
-    let label = updated_at_label(&updated_at);
     view! {
         <span class="vk-draft-meta">
             <span>"Phiên bản " {version}</span>
-            <span><span aria-hidden="true">"· "</span><span class="vk-ui-visually-hidden">"Cập nhật "</span><time datetime=updated_at>{label}</time></span>
+            <span><span aria-hidden="true">"· "</span><span class="vk-ui-visually-hidden">"Cập nhật "</span><Timestamp instant=updated_at /></span>
         </span>
     }
 }
@@ -119,19 +120,55 @@ pub fn DraftResume(draft: DraftSummary) -> impl IntoView {
     }
 }
 
-/// One flat navigation target with the complete title and its version/update date.
+/// One flat navigation target. The complete title stays in the DOM; version stays in facts.
 #[component]
 pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     view! {
         <Link href=draft.href attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
             <span class="vk-draft-row__text">
                 <span class="vk-draft-row__title">{draft.title}</span>
-                <DraftMetadata version=draft.version updated_at=draft.updated_at />
+                <span class="vk-draft-meta"><span>"Cập nhật " <Timestamp instant=draft.updated_at /></span></span>
             </span>
             <span class="vk-draft-row__open" aria-hidden="true">
                 <Icon name=IconName::ArrowBack />
             </span>
         </Link>
+    }
+}
+
+/// Read-only facts supplied by the host; no DTO, request or endorsement command.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthorWorkSummary {
+    pub title: String,
+    pub updated_at: String,
+    pub editor_href: Option<String>,
+    pub status: String,
+    pub metrics: Option<String>,
+    pub public_context: Option<String>,
+    pub reader_href: Option<String>,
+}
+#[component]
+pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl IntoView {
+    view! {
+        <div class="vk-author-work">
+            <Show when=move || work.with(|w| w.editor_href.is_some())
+                fallback=move || view! { <span class="vk-draft-row__title">{move || work.get().title}</span> }>
+                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
+                    <span class="vk-draft-row__title">{move || work.get().title}</span>
+                    <span class="vk-draft-row__open" aria-hidden="true"><Icon name=IconName::ArrowBack /></span>
+                </Link>
+            </Show>
+            <p class="vk-draft-meta vk-author-work__status">{move || work.get().status}<span>" · Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span></p>
+            <Show when=move || work.with(|w| w.metrics.is_some())>
+                <p class="vk-author-work__metrics" data-testid="author-work-metrics">{move || work.get().metrics}</p>
+            </Show>
+            <Show when=move || work.with(|w| w.public_context.is_some())>
+                <p class="vk-author-work__context">{move || work.get().public_context}</p>
+            </Show>
+            <Show when=move || work.with(|w| w.reader_href.is_some())>
+                <Link href=Signal::derive(move || work.get().reader_href.unwrap_or_default()) variant=LinkVariant::Inline attr:class="vk-author-work__reader">"Đọc bản công khai"<span class="vk-ui-visually-hidden">{move || format!(" của {}",work.get().title)}</span></Link>
+            </Show>
+        </div>
     }
 }
 
@@ -411,7 +448,7 @@ fn discussion_comment(
         <article id=format!("comment-{}", comment.id) class="vk-feedback-item vk-discussion-comment" tabindex="-1">
             <div class="vk-discussion-byline">
                 <div><p class="vk-discussion-name">{comment.author.name.clone()}</p>
-                    <time datetime=comment.author.published_at.clone()>{display_date(&comment.author.published_at)} " (UTC)"</time>
+                    <Timestamp instant=comment.author.published_at.clone() />
             {comment.context.map(|context| match context {
                 DiscussionContext::Root => view! { <p class="vk-discussion-context">"Trả lời bình luận gốc"</p> }.into_any(),
                 DiscussionContext::Unavailable => view! { <p class="vk-discussion-context">"Bình luận được trả lời không còn hiển thị"</p> }.into_any(),
@@ -441,7 +478,7 @@ fn discussion_comment(
 /// target, decided by the App's `domain::endorsement` through its adapter, never here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EndorsementKind {
-    /// One published revision of a work: “Đánh giá cao”.
+    /// One published revision of a work: “Thấm”.
     Work,
     /// A root comment or a flat reply, each its own target: “Hữu ích”.
     Comment,
@@ -461,13 +498,13 @@ impl EndorsementKind {
     pub fn copy(self) -> ToggleCopy {
         let (label, selected, unit, on, off, failed, unknown) = match self {
             Self::Work => (
-                "Đánh giá cao",
-                "Bỏ đánh giá cao",
-                "lượt đánh giá cao",
-                "Đang gửi đánh giá cao…",
-                "Đang bỏ đánh giá cao…",
-                "Không thể đánh giá lúc này.",
-                "Chưa rõ bạn đã đánh giá cao chưa.",
+                "Thấm",
+                "Bỏ Thấm",
+                "lượt Thấm",
+                "Đang gửi Thấm…",
+                "Đang bỏ Thấm…",
+                "Không thể Thấm lúc này.",
+                "Chưa rõ bạn đã Thấm chưa.",
             ),
             Self::Comment => (
                 "Hữu ích",
@@ -493,18 +530,18 @@ impl EndorsementKind {
     pub const fn reason(self, block: EndorsementBlock) -> &'static str {
         match (self, block) {
             (Self::Work, EndorsementBlock::OwnContent) => {
-                "Bạn không thể đánh giá tác phẩm của chính mình."
+                "Bạn không thể tự Thấm tác phẩm của mình."
             }
             (Self::Comment, EndorsementBlock::OwnContent) => {
                 "Bạn không thể đánh dấu nhận xét của chính mình."
             }
-            (Self::Work, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể đánh giá.",
+            (Self::Work, EndorsementBlock::NotPermitted) => "Tài khoản này chưa thể Thấm.",
             (Self::Comment, EndorsementBlock::NotPermitted) => {
                 "Tài khoản này chưa thể đánh dấu hữu ích."
             }
-            (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh giá.",
+            (Self::Work, EndorsementBlock::SignedOut) => "Cần đăng nhập để Thấm.",
             (Self::Comment, EndorsementBlock::SignedOut) => "Cần đăng nhập để đánh dấu hữu ích.",
-            (Self::Work, EndorsementBlock::Unavailable) => "Không thể đánh giá lúc này.",
+            (Self::Work, EndorsementBlock::Unavailable) => "Không thể Thấm lúc này.",
             (Self::Comment, EndorsementBlock::Unavailable) => "Tạm chưa thể đánh dấu hữu ích.",
         }
     }
@@ -596,24 +633,35 @@ pub fn RecentFeedback(items: Vec<Feedback>) -> impl IntoView {
     }
 }
 
-pub fn updated_at_label(timestamp: &str) -> String {
-    match (timestamp.get(0..10), timestamp.get(11..16)) {
-        (Some(date), Some(clock))
-            if timestamp.get(10..11) == Some("T") && timestamp.ends_with('Z') =>
-        {
-            let parts: Vec<_> = date.split('-').collect();
-            if let [year, month, day] = parts.as_slice() {
-                return format!("{day}/{month}/{year}, {clock} UTC");
-            }
-            timestamp.to_string()
-        }
-        _ => timestamp.to_string(),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn compact_row_keeps_unicode_destination_and_version_facts_outside_row_presentation() {
+        let draft = DraftSummary {
+            title: "Đường về — ỹ ỷ ữ ợ".into(),
+            version: 17,
+            updated_at: "2026-11-01T23:30:00Z".into(),
+            href: "/ban-viet/work-17".into(),
+        };
+        let row = Owner::new().with(|| view! { <DraftRow draft=draft.clone() /> }.to_html());
+        assert!(
+            row.contains(&draft.title) && row.contains("href=\"/ban-viet/work-17\""),
+            "{row}"
+        );
+        assert!(
+            row.contains("datetime=\"2026-11-01T23:30:00Z\"") && !row.contains("Phiên bản"),
+            "{row}"
+        );
+        let metadata = Owner::new().with(|| {
+            view! { <DraftMetadata version=draft.version updated_at=draft.updated_at /> }.to_html()
+        });
+        assert!(
+            metadata.contains("Phiên bản ") && metadata.contains("17"),
+            "other consumers retain version: {metadata}"
+        );
+    }
 
     #[test]
     fn public_composition_escapes_user_text_and_never_invents_a_profile() {
@@ -728,11 +776,11 @@ mod tests {
             },
         );
         assert!(
-            work.contains("aria-label=\"Bỏ đánh giá cao\"") && work.contains(">Đánh giá cao<"),
+            work.contains("aria-label=\"Bỏ Thấm\"") && work.contains(">Thấm<"),
             "{work}"
         );
         assert!(
-            work.contains("lượt đánh giá cao") && work.contains("data-kind=\"work\""),
+            work.contains("lượt Thấm") && work.contains("data-kind=\"work\""),
             "{work}"
         );
         let comment = render(
@@ -757,7 +805,7 @@ mod tests {
             },
         );
         assert!(
-            guest.contains("Cần đăng nhập để đánh giá.") && !guest.contains("<a "),
+            guest.contains("Cần đăng nhập để Thấm.") && !guest.contains("<a "),
             "no fake login: {guest}"
         );
         for kind in [EndorsementKind::Work, EndorsementKind::Comment] {

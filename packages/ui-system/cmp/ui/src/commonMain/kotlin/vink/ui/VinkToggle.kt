@@ -167,7 +167,7 @@ data class ToggleCopy(
 
     fun name(pressed: Boolean?): String = if (pressed == true) selectedName else label
 
-    /** Spoken with the name: "12 lượt đánh giá cao"; null when hidden. */
+    /** Spoken with the name: "12 lượt Thấm"; null when hidden. */
     fun countDescription(count: CountFact): String? = when (count) {
         CountFact.Hidden -> null
         CountFact.Unavailable -> "$countUnit: $countUnavailable"

@@ -78,6 +78,14 @@ pub enum SaveOutcome {
     NotFound,
 }
 
+pub trait AuthorWorkStore: Send + Sync {
+    fn search_author_works(
+        &self,
+        owner: PrincipalId,
+        search: &crate::domain::draft_query::DraftSearch,
+    ) -> impl Future<Output = Result<Vec<super::author_works::AuthorWorkSummary>, StoreError>> + Send;
+}
+
 pub trait DraftStore: Send + Sync {
     fn search_drafts(
         &self,

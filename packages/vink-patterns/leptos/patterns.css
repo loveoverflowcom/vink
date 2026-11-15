@@ -5,6 +5,8 @@
 .vk-work-byline .vk-ui-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
 .vk-work-byline .vk-ui-byline__text { grid-column: 2; grid-row: 1; align-self: end; }
 .vk-work-byline__date { grid-column: 2; grid-row: 2; align-self: start; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+/* Keep the semantic time element at the full date-track measure after localization. */
+.vk-work-byline__date > time { display: block; }
 /* At narrow relative measures, give the name and date the width occupied by the avatar track. */
 @container vk-work-byline (max-width: 14rem) {
   .vk-work-byline .vk-ui-avatar { grid-row: 1; margin-block-end: min(var(--vk-space-1), 4px); }
@@ -180,3 +182,18 @@
 .vk-feedback-composer--tonal .vk-ui-input--area { padding-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__label { margin-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__control:has(> .vk-ui-input:focus) { outline-offset: 4px; }
+
+/* #213: compact rows retain the full Unicode title and expand for deliberate inspection.
+   The link remains the sole target; touch follows it to the complete title in the editor. */
+.vk-draft-row__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+/* Author summaries preserve the compact row and let status/counts reflow at text 200%. */
+.vk-author-work { min-inline-size: 0; padding: var(--vk-space-3) var(--vk-space-4); }
+.vk-author-work > .vk-draft-row__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
+.vk-author-work .vk-draft-row__link { padding-block: 0; padding-inline: 0; min-block-size: 48px; }
+.vk-author-work__status, .vk-author-work__metrics, .vk-author-work__context { margin-block: var(--vk-space-1); overflow-wrap: anywhere; }
+.vk-author-work__status { display: block; }
+.vk-author-work__metrics { color: var(--vk-on-surface); font-size: var(--vk-type-label-size); }
+.vk-author-work__context { color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); }
+.vk-author-work__reader { display: inline-flex; align-items: center; min-block-size: 2.75rem; }

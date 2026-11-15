@@ -151,8 +151,8 @@ pub(crate) fn AppearanceChoices(prefix: &'static str) -> impl IntoView {
     }
 }
 
-// RadioGroup still owns the native inputs and checked state. The visible heading and glyph
-// let the same row lay out horizontally on Tôi and stack inside the narrower panel.
+// RadioGroup owns the accessible group name, native inputs and checked state.
+// The visible heading and glyph identify the group in both appearance surfaces.
 #[component]
 fn AppearanceRow(
     prefix: &'static str,

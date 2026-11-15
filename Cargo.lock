@@ -3295,7 +3295,9 @@ name = "vink-patterns"
 version = "0.1.0"
 dependencies = [
  "leptos",
+ "time",
  "vink-ui",
+ "wasm-bindgen",
 ]
 
 [[package]]

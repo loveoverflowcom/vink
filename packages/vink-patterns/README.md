@@ -14,13 +14,14 @@ fixture adapter → :patterns (CMP common) → :ui → semantic tokens
 
 | Composition | Trách nhiệm |
 | --- | --- |
-| `WorkCard`, `WorkByline`, `ReaderHeader` | Tiêu đề, tác giả được cấp, metadata UTC, đích đọc do host cấp |
-| `DraftResume`, `DraftRow` (Web), `DraftMetadata` | Tiêu đề/version/thời điểm từ card; không tải manuscript |
+| `WorkCard`, `WorkByline`, `ReaderHeader` | Tiêu đề, tác giả được cấp, thời gian tuyệt đối (Web: device zone sau hydrate, fallback UTC), đích đọc do host cấp |
+| `AuthorWorkRow` (Web) | Status/counters/title/scope và href do host cấp; không DTO/fetch/mutation; recipe `screen.desk` có specimen mẫu (#214) |
+| `DraftResume`, `DraftRow` (Web), `DraftMetadata` | Tiêu đề/thời điểm từ card; row Web bỏ version nhìn thấy (#213), DraftMetadata/resume specimen giữ version; không tải manuscript |
 | `EditorToolbar` | Slot trạng thái và hành động; không sở hữu body hay save state |
 | `FeedbackComposer` | Giá trị controlled; intent độc lập với comments mode; Closed giữ input và chặn gửi, Pending vẫn đúng trạng thái transport |
 | `FeedbackItem`/`FeedbackThread`, `ParticipantSummary` | Chỉ người được trả về, khử trùng theo key theo thứ tự đầu; không suy tổng số |
 | `DiscussionThread` | Root/neo + một danh sách replies phẳng; status/context được cấp; phát reply/remove intents, không quyết định authority. Slot Web tùy chọn `CommentEndorsements` (facts theo ID, `None` = không có đích) render `EndorsementAction` ở cuối hàng thao tác của từng gốc/phản hồi, không đổi thứ tự; CMP chưa có slot này |
-| `EndorsementAction` | Ghi nhận văn học (#73) cho một đích: `EndorsementKind::{Work, Comment}` chọn copy “Đánh giá cao”/“Hữu ích”, `EndorsementBlock` thành lý do bằng chữ; nhận `EndorsementFacts` (giá trị đã xác nhận, phase, số đếm của riêng đích) và phát trạng thái mong muốn qua `ToggleAction`. Không giữ `command_key`/order/session, không cộng số lên gốc/tác phẩm, glyph Pen Flight R2 A · Mềm (CHOICE-07) từ registry, trang trí 20px, giữ nguyên mọi phase và slot cuối riêng cho tiến trình/✓ |
+| `EndorsementAction` | Ghi nhận văn học (#73) cho một đích: `EndorsementKind::{Work, Comment}` chọn copy “Thấm”/“Hữu ích”, `EndorsementBlock` thành lý do bằng chữ; nhận `EndorsementFacts` (giá trị đã xác nhận, phase, số đếm của riêng đích) và phát trạng thái mong muốn qua `ToggleAction`. Không giữ `command_key`/order/session, không cộng số lên gốc/tác phẩm, glyph Pen Flight R2 A · Mềm (CHOICE-07) từ registry, trang trí 20px, giữ nguyên mọi phase và slot cuối riêng cho tiến trình/✓ |
 | `TagSelector`, `TagChip` | Thẻ tác phẩm (#99): nhóm “Dạng bài” (chip chọn một) và “Chủ đề” (chip có nút bỏ tên riêng, ô tìm giữ raw query qua composition, status polite, gợi ý có alias/mô tả, disclosure các chủ đề có sẵn). Thẻ ngừng dùng/bị từ chối ghi bằng chữ và “Thay bằng …” khi có kế nhiệm. Nhận `TagFacts`/`TagOptions`/`CatalogFacts` và phát intent; không fetch, không version, không lưu, không giới hạn thay server. Consumer: Bàn viết (`apps/vink-web/src/pages/work_info.rs`); #100 dùng lại cho bộ lọc |
 | `RecentFeedback` | Mẫu ghi rõ, không gọi là nhận xét mới nhất khi chưa có timestamp có thẩm quyền |
 
@@ -52,3 +53,8 @@ CSS composition ở [leptos/patterns.css](leptos/patterns.css), được build p
 CSS app chỉ giữ bố cục màn, host CodeMirror và hành vi sticky. Lệnh do
 [development guide](../../docs/development/README.md) sở hữu; kết quả và giới hạn ở
 [bằng chứng UIS-05](../../docs/development/ui-system-adoption-evidence.md).
+
+Delta #213: Desk Web và recipe `screen.desk` không mount `DraftResume`; pattern và
+`DraftMetadata` mặc định còn được giữ tương thích, không còn là bố cục Desk hiện hành.
+Recipe CMP chứa khối viết tiếp được ghi rõ là mẫu cũ, không đại diện Bàn viết native (chưa có).
+Row Web dùng thời gian local sau hydrate, fallback UTC ở SSR và không version nhìn thấy.

@@ -5,6 +5,8 @@
 //! the App's own migrations, so no other registry reaches the App database.
 
 mod abuse;
+mod author_works;
+pub use author_works::{AUTHOR_METRICS_SQL, author_page_sql};
 pub mod appeals;
 mod discovery;
 mod discussion;

@@ -237,7 +237,7 @@ fn random_key() -> Option<String> {
     Some(crate::endorsement_state::uuid_v4(random))
 }
 
-/// “Đánh giá cao” for the revision the reader shows, after the text. The count is the public
+/// “Thấm” for the revision the reader shows, after the text. The count is the public
 /// summary of that revision only; another revision's count is never shown for it.
 #[component]
 pub(crate) fn WorkEndorsement(
@@ -318,7 +318,7 @@ mod tests {
         let html = render(None, Some(summaries("r1", 1234)));
         assert!(html.contains("id=\"endorse-work\""), "{html}");
         assert!(html.contains("1.234"), "grouped public count: {html}");
-        assert!(html.contains("Cần đăng nhập để đánh giá."), "{html}");
+        assert!(html.contains("Cần đăng nhập để Thấm."), "{html}");
         assert!(html.contains("aria-disabled=\"true\""), "{html}");
         assert!(!html.contains("href"), "no fake login link: {html}");
         assert!(!html.contains("Kiểm tra lại"), "{html}");

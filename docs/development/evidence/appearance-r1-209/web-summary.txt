@@ -1,0 +1,29 @@
+cargo xtask verify web --scenario main
+after: 80a008f44b1005430aaeaa43124bad48b81eebcc (clean Web inputs)
+run: 1794755922045546000-40693; exit 0
+boundary: real App, PostgreSQL scratch, Chrome headless with LocalFixture
+
+  ok  changing the rail moves the open panel without moving radio focus
+  ok  Chrome AX exposes the named modal, actions and full native radio groups with checked state
+  ok  selection keeps each theme label in place
+  ok  forced-colors: selected keyboard perimeter contrasts with the filled face >=3:1 (19.04)
+  ok  834-360-compact-dark-text200: title and initial radio focus are present at the start of the panel
+  ok  834-360-compact-dark-text200: every radio hit target can be revealed in the scrollport
+  ok  834-360-compact-dark-text200: Shift+Tab reaches the final action and its hit target is exposed
+  ok  834-360-compact-dark-text200: Tab reveals the close action and its hit target
+  ok  light: selected keyboard perimeter contrasts with the filled face >=3:1 (4.63)
+  ok  dark: selected keyboard perimeter contrasts with the filled face >=3:1 (5.93)
+  ok  320px/200% dark: appearance choices keep whole labels and touch targets
+  ok  first paint and both native selections agree with the preference before hydration: []
+  ok  rail, text size and theme preserve EditorView, selection, text and dirty state
+  ok  utility changes sent no draft writes and retained the caret selection
+  ok  undo and redo in the same EditorView
+
+browser-smoke: PASS (main)
+
+verification summary
+  PASS  selected prerequisites
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags
+  PASS  server stops gracefully on SIGTERM

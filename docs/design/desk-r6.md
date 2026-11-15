@@ -1,5 +1,8 @@
 # Bàn viết R6 — Viết tiếp và danh sách nháp
 
+> Delta 15/11/2026: [#213 / LayoutSpec hiện hành](desk-server-pagination.md#delta-213--hàng-gọn-và-thời-gian)
+> thay resume/disclosure và version nhìn thấy ở row; phần dưới giữ nguyên lịch sử R6.
+
 Triển khai [#133](https://github.com/loveoverflowcom/vink/issues/133) trên
 `develop@e2294a2` sau PR #136. Kế thừa search R5.1 và full-title/single-link của #91.
 [Nguồn desktop R1.4](https://drive.google.com/file/d/1-SBgur-9EmDVKQ1CKLm7pyIMPJr_jDF7/view)

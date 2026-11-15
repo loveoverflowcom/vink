@@ -1,0 +1,91 @@
+{
+  "reference": "NO_APPROVED_REFERENCE; historical fixture input from issue #214",
+  "review": "self-review; actual Leptos hydration, explicitly fabricated author facts for state/geometry; no OS IME/screen-reader claim",
+  "run": "1794768507156240000-84545",
+  "captures": [
+    {
+      "file": "author-works-1440-light-100.png",
+      "sha256": "ef390a508522e284d59cbb878fc0249f16fb5f7936532fcb3808c5aa13cb9155",
+      "opened": true,
+      "route": "/ban-viet",
+      "width": 1440,
+      "layoutWidth": 1425,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 104,
+      "theme": "light",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "captured_at": "2026-11-15T18:50:32.184Z",
+      "evidence": {
+        "build": "5787cd1c81b3e5430129a9d293f92bc4aaf6571d",
+        "boundary": "fabricated-author-summary-real-hydration",
+        "scenario": "#214-states-reflow"
+      }
+    },
+    {
+      "file": "author-works-834-dark-100.png",
+      "sha256": "4db76f1680f2ec6cbce90a6a63c43d85e6f190bc230027460507aa0cb5ba3727",
+      "opened": true,
+      "route": "/ban-viet",
+      "width": 834,
+      "layoutWidth": 819,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 104,
+      "theme": "dark",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "captured_at": "2026-11-15T18:50:31.979Z",
+      "evidence": {
+        "build": "5787cd1c81b3e5430129a9d293f92bc4aaf6571d",
+        "boundary": "fabricated-author-summary-real-hydration",
+        "scenario": "#214-states-reflow"
+      }
+    },
+    {
+      "file": "author-works-320-light-200.png",
+      "sha256": "de6f961780875f73d04dac32cb4ecc7ade56fa2320bec5a9849b4518ce7981a7",
+      "opened": true,
+      "route": "/ban-viet",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 332,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "captured_at": "2026-11-15T18:50:31.118Z",
+      "evidence": {
+        "build": "5787cd1c81b3e5430129a9d293f92bc4aaf6571d",
+        "boundary": "fabricated-author-summary-real-hydration",
+        "scenario": "#214-states-reflow"
+      }
+    },
+    {
+      "file": "author-works-metrics-390-dark-200.png",
+      "sha256": "295e2d20c02abf27e8ebf617d6deed76a80720d3d85ffbf048b71329c00f8af6",
+      "opened": true,
+      "route": "/ban-viet",
+      "width": 390,
+      "layoutWidth": 375,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 633,
+      "theme": "dark",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "captured_at": "2026-11-15T18:50:32.536Z",
+      "evidence": {
+        "build": "5787cd1c81b3e5430129a9d293f92bc4aaf6571d",
+        "boundary": "fabricated-author-summary-real-hydration",
+        "scenario": "#214-readable-public-metrics"
+      }
+    }
+  ]
+}

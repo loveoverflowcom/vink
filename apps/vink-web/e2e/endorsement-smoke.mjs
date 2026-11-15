@@ -1,4 +1,4 @@
-// LVE #73 browser checks: the reader's “Đánh giá cao” and each comment's “Hữu ích” against the
+// LVE #73 browser checks: the reader's “Thấm” and each comment's “Hữu ích” against the
 // real App and scratch PostgreSQL, acting through the loopback LocalFixture. This is NOT
 // production auth (production writes answer 401 until D-05). Interception only holds or drops
 // real responses (a lost ACK after the commit) and answers one own-state read with 401 to show
@@ -44,14 +44,14 @@ export async function endorsementAsAuthor(page, { args, check }) {
   const reader = `${args.base}/tac-pham/${SAMPLE_WORK}`;
   const html = await (await fetch(reader)).text();
   const at = html.indexOf('id="endorse-work"');
-  check(at > html.indexOf(LAST_LINE) && at < html.indexOf('id="feedback-region"'), 'SSR renders “Đánh giá cao” after the published text and before the discussion');
+  check(at > html.indexOf(LAST_LINE) && at < html.indexOf('id="feedback-region"'), 'SSR renders “Thấm” after the published text and before the discussion');
   check(html.includes('data-icon="pen-flight"'), 'SSR contains the selected Pen Flight registry glyph');
   const workCount = ssrCount(html, 'endorse-work');
   check(workCount?.known && workCount.text === '0' && !html.includes('aria-pressed'), `SSR carries the public count of the current revision (${workCount?.text}), no aria-pressed`);
-  check(html.includes('data-pressed="unknown"') && !html.includes('Cần đăng nhập để đánh giá'), 'SSR never claims an own state before the browser reads it, and a fixture session is not a guest');
+  check(html.includes('data-pressed="unknown"') && !html.includes('Cần đăng nhập để Thấm'), 'SSR never claims an own state before the browser reads it, and a fixture session is not a guest');
   await page.goto(reader);
-  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && ${note('endorse-work')}.includes('chính mình')`, 'own-state read after hydration');
-  check(await page.eval(`(() => { const b = ${button('endorse-work')}; return b.getAttribute('aria-disabled')==='true' && b.dataset.state==='disabled' && b.getAttribute('aria-label')==='Đánh giá cao' && b.getAttribute('aria-describedby').includes('endorse-work-note'); })()`), 'the author reads a text reason (CHOICE-08 A); the action stays focusable and inert');
+  await page.waitFor(`document.documentElement.dataset.hydrated==='true' && ${note('endorse-work')}.includes('tự Thấm')`, 'own-state read after hydration');
+  check(await page.eval(`(() => { const b = ${button('endorse-work')}; return b.getAttribute('aria-disabled')==='true' && b.dataset.state==='disabled' && b.getAttribute('aria-label')==='Thấm' && b.getAttribute('aria-describedby').includes('endorse-work-note'); })()`), 'the author reads a text reason (CHOICE-08 A); the action stays focusable and inert');
   await page.click('#endorse-work');
   await sleep(300);
   check(await page.eval(`performance.getEntriesByType('resource').every(e => !e.name.includes('/endorsement/me'))`), 'pressing the blocked action sends no command');
@@ -149,7 +149,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     check(first.responseStatusCode === 200 && firstBody.expected_order === 1 && firstBody.endorsed === true && firstBody.revision_id === SAMPLE_REVISION && /^[0-9a-f]{8}-[0-9a-f]{4}-4/.test(firstBody.command_key), 'the command names the shown revision, the shown order and a UUID key');
     await gate.release(first);
     await page.waitFor(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`, 'confirmed selection');
-    check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ đánh giá cao' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ đánh giá cao” and the check mark');
+    check(await page.eval(`${button('endorse-work')}.getAttribute('aria-label')==='Bỏ Thấm' && !!document.querySelector('#endorse-work .vk-ui-toggle__mark svg, #endorse-work .vk-ui-toggle__mark .vk-ui-icon')`), 'after the ACK: accessible name “Bỏ Thấm” and the check mark');
 
     await glyphs('confirmed');
     check(await page.eval(`document.querySelector('#endorse-work .vk-ui-toggle__mark svg')?.dataset.icon === 'check'`), 'Pen Flight remains leading; confirmed check uses the trailing slot');
@@ -184,7 +184,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     const stale = await gate.next(4);
     check(stale.responseStatusCode === 409 && JSON.parse(stale.request.postData).expected_order === order3 - 2, 'the page sends the order it showed and the server answers 409');
     await gate.release(stale);
-    await page.waitFor(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Không thể đánh giá') && ${button('endorse-work')}.dataset.state==='enabled'`, 'conflict reconciled to the observed state');
+    await page.waitFor(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Không thể Thấm') && ${button('endorse-work')}.dataset.state==='enabled'`, 'conflict reconciled to the observed state');
     await sleep(300);
     check(gate.held.length === 4, 'the old intent is not resent with the new order');
     await page.click('#endorse-work');
@@ -235,7 +235,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
   await page.send('Fetch.enable', { patterns: [{ urlPattern: `${args.base}/api/v1/works/*/endorsements/me*`, requestStage: 'Request' }] });
   try {
     await page.reload();
-    await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để đánh giá.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để đánh dấu hữu ích.')`, 'signed-out reasons');
+    await page.waitFor(`${note('endorse-work')}.includes('Cần đăng nhập để Thấm.') && ${note(`endorse-comment-${reply}`)}.includes('Cần đăng nhập để đánh dấu hữu ích.')`, 'signed-out reasons');
     check(await page.eval(`${count('endorse-work')}.startsWith('1') && ${button('endorse-work')}.dataset.pressed==='unknown' && !document.querySelector('#work-endorsement a, #feedback-region a[href*="dang-nhap"]')`), 'public counts stay; no own state and no fake login');
     await page.capture('lve-signed-out-reason', { scenario: 'LVE-UC-01', boundary: 'real-local-postgresql-own-read-answered-401-by-interception' });
   } finally {

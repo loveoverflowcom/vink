@@ -82,14 +82,12 @@ a {
   }
 }
 
-/* R2.2 · Tôi and the rail utility share one appearance recipe on native RadioGroup.
-   R1 (#209): one gutter owner, 24px between groups, 8px label→choices, no rules, and a
-   selected primary-container fill with a check that does not compete with real actions. */
+/* Tôi and the rail utility share one appearance recipe on native RadioGroup. */
 :root[data-text="200"] { font-size: 200%; }
 
-.vk-profile-menu, .vk-appearance-card {
-  --vk-appearance-gutter: clamp(var(--vk-space-3), 7vw, var(--vk-space-6));
-  padding: var(--vk-appearance-gutter);
+.vk-profile-menu,
+.vk-appearance-card {
+  padding: clamp(var(--vk-space-3), 8vw, min(32px, var(--vk-space-6)));
   border-radius: var(--vk-radius-xl);
   background: var(--vk-surface-container-high);
   color: var(--vk-on-surface);
@@ -109,7 +107,7 @@ a {
   border: 0;
 }
 .vk-profile-menu::backdrop { background: var(--vk-scrim); }
-.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-4); }
+.vk-profile-menu[open] { display: flex; flex-direction: column; gap: var(--vk-space-6); }
 .vk-profile-menu > * { flex-shrink: 0; }
 .vk-profile-heading { display: flex; justify-content: space-between; align-items: center; gap: var(--vk-space-2); }
 .vk-profile-heading .vk-ui-icon-button { flex: none; min-inline-size: 48px; min-block-size: 48px; }
@@ -129,28 +127,23 @@ a {
 .vk-profile-heading .vk-appearance-title { gap: 8px; }
 .vk-profile-heading .vk-appearance-mark { inline-size: 32px; block-size: 32px; border-radius: var(--vk-radius-sm); }
 .vk-profile-heading .vk-appearance-mark > span { inline-size: 20px; block-size: 20px; }
-.vk-appearance-card { display: grid; gap: var(--vk-space-4); container: vk-appearance / inline-size; }
+.vk-appearance-card { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
 .vk-appearance-region { display: grid; gap: var(--vk-space-6); min-inline-size: 0; }
-.vk-appearance-row { display: grid; gap: var(--vk-space-2) var(--vk-space-4); align-content: start; min-inline-size: 0; }
+.vk-appearance-row { display: grid; gap: var(--vk-space-2); min-inline-size: 0; }
 .vk-appearance-row h3 {
-  display: flex; align-items: center; align-self: center; gap: var(--vk-space-3);
-  margin: 0; font: var(--vk-type-label-weight) var(--vk-type-body-size)/var(--vk-type-label-line-height) var(--vk-font-ui);
+  display: flex; align-items: center; gap: var(--vk-space-2);
+  margin: 0; font: var(--vk-type-label-weight) var(--vk-type-label-size)/var(--vk-type-label-line-height) var(--vk-font-ui);
 }
-.vk-appearance-row h3 > span { color: var(--vk-on-surface-variant); }
-.vk-profile-menu .vk-appearance-row h3 { gap: 8px; font-size: var(--vk-type-label-size); }
-.vk-profile-menu .vk-appearance-row h3 > span { inline-size: 18px; block-size: 18px; }
-@container vk-appearance (min-width: 42rem) {
-  .vk-appearance-row { grid-template-columns: 30% minmax(0, 1fr); }
-}
+.vk-appearance-row h3 > span { inline-size: 18px; block-size: 18px; color: var(--vk-on-surface-variant); }
 .vk-appearance-region__choices { min-inline-size: 0; }
-.vk-appearance-region .vk-ui-group { flex-flow: row wrap; gap: 8px; }
+.vk-appearance-region .vk-ui-group { flex-flow: row wrap; gap: var(--vk-space-2); }
 .vk-appearance-region .vk-ui-group > legend {
   position: absolute; inline-size: 1px; block-size: 1px; margin: -1px;
   padding: 0; border: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 .vk-appearance-region .vk-ui-choice__target {
-  position: relative; display: inline-grid; flex: 1 1 auto; grid-template-columns: 22px minmax(0, 1fr) 16px;
-  align-items: center; gap: 8px; min-inline-size: 0; max-inline-size: 100%;
+  position: relative; display: inline-grid; grid-template-columns: 22px minmax(0, 1fr) 16px;
+  align-items: center; gap: 8px; min-inline-size: 48px; max-inline-size: 100%;
   min-block-size: 48px; padding: 6px 12px; border: 0; border-radius: var(--vk-radius-full);
   background: var(--vk-surface-container-low); color: var(--vk-on-surface);
   font: var(--vk-type-label-weight) var(--vk-type-label-size)/1.35 var(--vk-font-ui);
@@ -190,7 +183,7 @@ a {
 .vk-appearance-region label:has(:checked) { background: var(--vk-primary-container); color: var(--vk-on-primary-container); }
 .vk-appearance-region label:has(:checked)::before { color: inherit; }
 .vk-appearance-region label:has(:checked)::after { opacity: 1; }
-.vk-appearance-region label:hover:not(:has(:checked, :disabled)) { background: var(--vk-surface-container); }
+.vk-appearance-region label:hover:not(:has(:checked, :disabled)) { background: var(--vk-surface-container-highest); }
 .vk-appearance-region label:has(:focus-visible) { outline: 2px solid var(--vk-focus); outline-offset: -2px; }
 .vk-appearance-region label:has(:checked):has(:focus-visible) { outline-color: var(--vk-on-primary-container); }
 .vk-appearance-rail-hint { display: none; margin: 8px 0 0; color: var(--vk-on-surface-variant); font-size: var(--vk-type-label-size); }
@@ -465,7 +458,6 @@ a {
 }
 .vk-desk-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-3); margin-block: var(--vk-space-4) var(--vk-space-6); }
 .vk-desk--index #desk-title { font-family: var(--vk-font-ui); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); }
-.vk-resume { margin-bottom: var(--vk-space-6); }
 .vk-draft-list { display: grid; gap: var(--vk-space-3); min-width: 0; }
 .vk-draft-list > .vk-ui-heading { font-family: var(--vk-font-ui); font-size: var(--vk-type-body-size); font-weight: var(--vk-type-title-weight); }
 .vk-draft-controls { display: grid; gap: var(--vk-space-3); min-inline-size: 0; }
