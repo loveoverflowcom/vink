@@ -1,23 +1,26 @@
 /* Vink feature composition geometry; primitive styles and tokens stay in vink-ui. */
-.vk-work-byline { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--vk-space-3); margin-bottom: var(--vk-space-2); }
-/* Keep AuthorByline's avatar/name primitives; date shares its text column, even when the name wraps. */
+.vk-work-byline { container: vk-work-byline / inline-size; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: var(--vk-space-3); margin-bottom: var(--vk-space-2); overflow-wrap: anywhere; }
+/* Keep AuthorByline's avatar/name primitives; date shares the name's track at comfortable measures. */
 .vk-work-byline > .vk-ui-byline { display: contents; }
 .vk-work-byline .vk-ui-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
 .vk-work-byline .vk-ui-byline__text { grid-column: 2; grid-row: 1; align-self: end; }
 .vk-work-byline__date { grid-column: 2; grid-row: 2; align-self: start; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+/* At narrow relative measures, give the name and date the width occupied by the avatar track. */
+@container vk-work-byline (max-width: 14rem) {
+  .vk-work-byline .vk-ui-avatar { grid-row: 1; margin-block-end: min(var(--vk-space-1), 4px); }
+  .vk-work-byline .vk-ui-byline__text { grid-column: 1 / -1; grid-row: 2; }
+  .vk-work-byline__date { grid-column: 1 / -1; grid-row: 3; }
+}
 /* Reader rhythm: context caption → title → byline, each step separated before the body. */
 .vk-reader__header { display: grid; justify-items: start; row-gap: var(--vk-space-2); }
 .vk-reader__header > .vk-ui-heading { margin: 0; overflow-wrap: anywhere; }
-.vk-reader__header > .vk-work-byline { margin: var(--vk-space-2) 0 0; }
+.vk-reader__header > .vk-work-byline { justify-self: stretch; margin: var(--vk-space-2) 0 0; }
 .vk-public-row__link { container: vk-work-card / inline-size; display: block; padding: var(--vk-space-4); border-radius: var(--vk-radius-lg); background: var(--vk-surface-container-low); text-align: start; color: var(--vk-on-surface); text-decoration: none; }
 .vk-public-row__link:hover { background: var(--vk-surface-container); }
 .vk-public-row__link:hover h3 { text-decoration: underline; }
-.vk-public-row__link > .vk-ui-heading { margin: 0; }
+.vk-public-row__link > .vk-ui-heading { margin: 0 0 var(--vk-space-2); font-family: var(--vk-font-reading); overflow-wrap: anywhere; }
 .vk-public-row__open { display: block; margin-top: var(--vk-space-2); color: var(--vk-primary); font-size: var(--vk-type-label-size); font-weight: var(--vk-type-label-weight); }
-/* Keep the avatar visible at enlarged text; names wrap in the remaining track. */
-.vk-public-row__link > .vk-ui-heading { margin-bottom: var(--vk-space-2); font-family: var(--vk-font-reading); }
 .vk-public-row__link .vk-work-byline { min-width: 0; }
-.vk-ui-byline__name { overflow-wrap: anywhere; }
 /* DraftRow owns equal horizontal insets; its host groups the flat rows on one surface. */
 .vk-draft-row__link { container: vk-draft-row / inline-size; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-width: 0; padding: var(--vk-space-3) var(--vk-space-4); border-radius: var(--vk-radius-md); background: transparent; color: var(--vk-on-surface); text-align: start; text-decoration: none; }
 .vk-draft-row__text { display: grid; gap: var(--vk-space-1); min-width: 0; }
@@ -69,6 +72,9 @@
 .vk-discussion-status { color: var(--vk-on-surface); font-weight: var(--vk-type-label-weight); }
 .vk-discussion-actions { display: flex; flex-wrap: wrap; gap: var(--vk-space-2); }
 @media (max-width: 759px) {
+  .vk-reader__header { row-gap: min(var(--vk-space-2), 8px); }
+  .vk-reader__header > .vk-work-byline { margin-block-start: min(var(--vk-space-2), 8px); }
+
   /* A complete literary title can be long: use the title hierarchy on narrow readers,
      retaining rem-based text enlargement and the same semantic H1. */
   .vk-reader__header > .vk-ui-heading {

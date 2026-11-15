@@ -34,6 +34,26 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(dock === (width>=1200 && scale===100), 'dock/dialog breakpoint ' + [theme,width,scale].join('/'));
 
     check(await page.eval("(() => { const row=document.querySelector('.vk-public-row'), t=row.querySelector('h3').getBoundingClientRect(), n=row.querySelector('.vk-ui-byline__name').getBoundingClientRect(), a=row.querySelector('.vk-ui-avatar').getBoundingClientRect(); return t.bottom<=n.top && Math.abs(a.width-32)<1 && Math.abs(a.height-32)<1; })()"), 'title first and avatar retained ' + [theme,width,scale].join('/'));
+    if (width === 320 && scale === 200) {
+      const card = await page.eval(`(() => {
+        const row = document.querySelector('.vk-public-row');
+        const box = selector => row.querySelector(selector).getBoundingClientRect();
+        const byline = box('.vk-work-byline'), name = box('.vk-ui-byline__name');
+        const date = box('time'), avatar = box('.vk-ui-avatar');
+        return {
+          nameWidth: name.width, dateWidth: date.width, bylineWidth: byline.width,
+          ordered: avatar.bottom <= name.top && name.bottom <= date.top,
+          font: getComputedStyle(row.querySelector('.vk-ui-byline__name')).fontSize,
+          overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        };
+      })()`);
+      check(
+        Math.abs(card.nameWidth - card.bylineWidth) <= 1 &&
+          Math.abs(card.dateWidth - card.bylineWidth) <= 1 && card.ordered &&
+          card.font === '32px' && card.overflow <= 1,
+        `320px / 200% ${theme}: the full-size byline uses the card measure below the avatar (${JSON.stringify(card)})`,
+      );
+    }
     if ([390,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
   }
   await page.viewport(390);
@@ -75,6 +95,20 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#reader-return').getAttribute('href').startsWith(" + JSON.stringify(returnPath) + ")"), 'reader return preserves applied query');
   check(await page.eval("Math.abs(document.querySelector('#reader-header .vk-ui-avatar').getBoundingClientRect().width-44)<1"), 'reader avatar is exactly 44px');
   await page.capture('discovery-reader', { boundary: 'real-public-api', scenario: 'reader-return' });
+  for (const width of [320, 390]) {
+    await page.viewport(width, 480);
+    const reader = await page.eval(`(async () => {
+      document.documentElement.style.fontSize = '200%';
+      await document.fonts.ready;
+      const header = document.querySelector('#reader-header'), body = document.querySelector('.vk-document');
+      return { gap: body.getBoundingClientRect().top - header.getBoundingClientRect().bottom,
+        font: getComputedStyle(body).fontSize, context: header.textContent.includes('Bản công khai') };
+    })()`);
+    check(reader.gap > 0 && reader.gap <= 25 && reader.font === '34px' && reader.context,
+      `${width}px / 200%: untagged Reader reaches the full-size text within the header spacing budget (${JSON.stringify(reader)})`);
+  }
+  await page.viewport(390);
+  await page.eval("document.documentElement.style.fontSize='100%'");
   await page.click('#reader-return');
   await page.waitFor("document.activeElement?.matches('.vk-public-row__link')", 'reader return focuses the opened result');
 
@@ -103,6 +137,16 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(unknown.status === 404 && (await unknown.text()).includes('Không tìm thấy thẻ này'), 'unknown tag has its own SSR 404');
   const invalid = await fetch(args.base + '/?cursor=broken');
   check(invalid.status === 422 && (await invalid.text()).includes('Thử từ trang đầu'), 'invalid cursor is recoverable SSR 422');
+  await page.viewport(320, 480);
+  await goto('/?cursor=broken');
+  check(await page.eval(`(async () => {
+    document.documentElement.style.fontSize = '200%';
+    await document.fonts.ready;
+    const restart = document.querySelector('#restart-public'), clear = restart.nextElementSibling;
+    return clear.matches('a[href="/"]') &&
+      clear.getBoundingClientRect().top - restart.getBoundingClientRect().bottom >= 7;
+  })()`), 'invalid cursor recovery links have distinct rows at 320px / 200%');
+  await page.viewport(1440);
 
   // Native browser GET, with page JS disabled and WASM preloads blocked.
   await page.send('Network.setBlockedURLs', { urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*'] });
