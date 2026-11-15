@@ -1167,7 +1167,7 @@ mod tests {
         let key = PublicKey::Publication("w1".into());
         let first = c.begin_reader_read(&key, 0.0);
         let second = c.begin_reader_read(&key, 0.0);
-        c.finish_reader(
+        let (reply, _) = c.finish_reader(
             key.clone(),
             second,
             Ok(reader_publication("r2")),
@@ -1175,6 +1175,7 @@ mod tests {
             0.0,
             true,
         );
+        assert_eq!(reply, Ok(reader_publication("r2")));
         c.follow_seed(key.clone(), sample_pub("w1", "r2"), 0.0, 30_000.0);
         assert_eq!(c.store.next_wake(30_000.0), Some(120_000.0));
         let (reply, _) = c.finish_reader(
@@ -1225,7 +1226,7 @@ mod tests {
         assert!(!c.store.has_in_flight(&key));
         let stale = c.begin_reader_read(&key, 3.0);
         let fresh = c.begin_reader_read(&key, 3.0);
-        c.finish_reader(
+        let (reply, _) = c.finish_reader(
             key.clone(),
             fresh,
             Ok(reader_publication("r3")),
@@ -1233,6 +1234,7 @@ mod tests {
             0.0,
             true,
         );
+        assert_eq!(reply, Ok(reader_publication("r3")));
         let (reply, _) =
             c.finish_reader(key.clone(), stale, Err(LoadError::NotFound), 5.0, 0.0, true);
         assert_eq!(reply, Err(LoadError::Unavailable));
