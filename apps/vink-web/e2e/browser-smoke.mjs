@@ -19,6 +19,7 @@ import { authWeb } from './auth-smoke.mjs';
 import { passwordAuth } from './auth-password-smoke.mjs';
 import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
+import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -672,8 +673,9 @@ async function downloaded(dir, before = []) {
   throw new Error(`no finished download; directory entries: ${JSON.stringify(readdirSync(dir))}`);
 }
 
-async function launchChrome() {
-  const profile = mkdtempSync(join(tmpdir(), 'vink-chrome-'));
+async function launchChrome(existingProfile) {
+  const profile = existingProfile ?? mkdtempSync(join(tmpdir(), 'vink-chrome-'));
+  if (existingProfile) rmSync(join(profile, 'DevToolsActivePort'), { force: true });
   const flags = [
     '--headless=new',
     '--remote-debugging-port=0',
@@ -1576,7 +1578,12 @@ async function accountAppearance(page) {
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM, { name: 'forced-colors', value: 'active' }, { name: 'prefers-reduced-motion', value: 'reduce' }] });
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
-  check(await page.eval(`(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
+  // CDP media/key acknowledgments do not guarantee style recalculation has settled.
+  // Keep every focus/check/motion condition, with a bounded wait and a second-frame check.
+  const forcedColorsReady = `(() => { const input = document.activeElement, face = input.closest('label'), style = getComputedStyle(face); return input.checked && input.matches(':focus-visible') && style.forcedColorAdjust === 'none' && style.outlineStyle === 'solid' && style.outlineWidth === '2px' && parseFloat(style.transitionDuration) <= 0.001 && getComputedStyle(face, '::after').opacity === '1' && [...document.querySelectorAll('#overlay-theme label')].every(el => getComputedStyle(el, '::before').forcedColorAdjust === 'none'); })()`;
+  await page.waitFor(forcedColorsReady, 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms', 2000);
+  await editorLayoutReady(page);
+  check(await page.eval(forcedColorsReady), 'forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms');
   await appearanceFocusContrast(page, 'forced-colors');
   await page.capture('appearance-forced-colors-reduced-motion');
   await page.send('Emulation.setEmulatedMedia', { features: [LIGHT_SYSTEM] });
@@ -3359,9 +3366,17 @@ async function editorChrome(page) {
   check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), 'short desktop leaves writing viewport clear');
   await page.capture('editor-short-desktop-1440');
   await page.viewport(390, 420);
+  // Finish the desktop→mobile reflow before issuing document/line movement. Otherwise
+  // Chrome's resize scroll anchoring can run after CodeMirror's keyboard scroll and undo it.
+  await editorLayoutReady(page);
   await page.typeInBody('');
   await page.lineStart();
-  check(await page.eval(`(() => { const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`), 'reduced mobile viewport keeps the active caret visible without fixed controls');
+  // CodeMirror schedules selection scrolling after resize. Observe the resulting geometry,
+  // without scrolling/focusing on the test's behalf or weakening the viewport bounds.
+  const mobileCaretReady = `(() => { if (!document.activeElement?.matches('.cm-content') || !getSelection()?.rangeCount) return false; const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`;
+  await page.waitFor(mobileCaretReady, 'reduced mobile viewport keeps the active caret visible without fixed controls', 2000);
+  await editorLayoutReady(page);
+  check(await page.eval(mobileCaretReady), 'reduced mobile viewport keeps the active caret visible without fixed controls');
   await page.capture('editor-short-mobile-390');
   await page.viewport(1440);
   await page.eval(`document.documentElement.dataset.theme = 'light'; document.querySelector('#draft-title').focus(); document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
@@ -4303,6 +4318,7 @@ try {
   else if (args.phase === 'select-chevron') await selectChevron(page);
   else if (args.phase === 'editor-chrome') await editorChrome(page);
   else if (args.phase === 'main') await mainPhase(page);
+  else if (args.phase === 'public-storage') { /* exercised below, with profile reopen */ }
   else if (args.phase === 'after-restart') await afterRestartPhase(page);
   else if (args.phase === 'endorsement') await endorsementAsReader(page, { args, check, captureMatrix: captureDiscussionMatrix });
   else if (args.phase === 'review-withdrawn') await reviewWithdrawnPage(page, { args, check });
@@ -4321,6 +4337,16 @@ try {
     await appearanceFirstPaint(page);
   }
   else throw new Error(`unknown phase ${args.phase}`);
+  if (args.phase === 'main' || args.phase === 'public-storage') {
+    const state = await publicStorage(page, { args, check, openPage: () => openPage(cdp) });
+    const stopped = new Promise(resolve => chrome.child.once('exit', resolve));
+    chrome.child.kill(); await stopped;
+    Object.assign(chrome, await launchChrome(chrome.profile));
+    const reopenedCdp = new Cdp(chrome.url); await reopenedCdp.open();
+    const reopened = await openPage(reopenedCdp); activePage = reopened;
+    await storageReopened(reopened, args, check, state);
+    check(reopened.errors.length === 0, 'reopened storage page has no console errors');
+  }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   console.log(`browser-smoke: PASS (${args.phase})`);
 } catch (error) {

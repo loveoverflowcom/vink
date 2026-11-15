@@ -17,7 +17,7 @@ use crate::freshness::Rejection;
 
 /// What a cached representation is: the endpoint and the parameter that selects it. No
 /// identity, cookie or token belongs here (public reads take none).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub enum PublicKey {
     Works(crate::discovery::ExploreQuery),
     Reader(String),
@@ -118,6 +118,13 @@ pub fn invalidate_publication(work_id: &str) {
     let _ = work_id;
 }
 
+/// Reserved for a policy-approved public-device-cache control; no private storage is touched.
+/// The boolean acknowledges only durable completion. No UI claims a save/clear yet.
+#[cfg(feature = "hydrate")]
+pub async fn clear_device_cache() -> bool {
+    browser::clear_device_cache().await
+}
+
 fn follow<T>(
     key: PublicKey,
     initial: T,
@@ -215,6 +222,7 @@ mod coordinator {
         pub fetches: Vec<(PublicKey, Ticket)>,
         pub notify_changed: bool,
         pub reschedule: bool,
+        pub purges: Vec<String>,
     }
 
     pub enum LoadStart {
@@ -236,6 +244,7 @@ mod coordinator {
         withdrawn: BTreeMap<String, WithdrawnFence>,
         next_waiter: u64,
         seq: u64,
+        seed_barrier: Millis,
     }
 
     impl Coordinator {
@@ -251,6 +260,7 @@ mod coordinator {
                 withdrawn: BTreeMap::new(),
                 next_waiter: 1,
                 seq: 0,
+                seed_barrier: Millis::NEG_INFINITY,
             }
         }
 
@@ -336,10 +346,18 @@ mod coordinator {
             at: Millis,
         ) {
             self.prune_withdrawn(at);
-            if self.store.is_removed_at(&key, rendered_at)
+            if (self.seed_barrier.is_finite() && rendered_at <= self.seed_barrier)
+                || self.store.is_removed_at(&key, rendered_at)
                 || matches!((&key, &initial), (PublicKey::Reader(id), Snapshot::Publication(_))
                     if self.withdrawn.get(id).is_some_and(|f| rendered_at <= f.at))
             {
+                if self.seed_barrier.is_finite()
+                    && rendered_at <= self.seed_barrier
+                    && !self.store.is_removed_at(&key, rendered_at)
+                    && self.store.status(&key).is_none_or(|s| s.data.is_none())
+                {
+                    self.store.remove_at(&key, at);
+                }
                 self.store.observe(&key, at);
                 return;
             }
@@ -516,6 +534,7 @@ mod coordinator {
             remove_entry: bool,
             effects: &mut Effects,
         ) {
+            effects.purges.push(work_id.to_owned());
             self.seq += 1;
             self.withdrawn
                 .insert(work_id.to_string(), WithdrawnFence { at, seq: self.seq });
@@ -694,7 +713,6 @@ mod coordinator {
             effects
         }
 
-        #[cfg(test)]
         pub fn clear(&mut self) -> Effects {
             let mut effects = Effects {
                 notify_changed: true,
@@ -709,6 +727,54 @@ mod coordinator {
             }
             self.store.clear();
             self.withdrawn.clear();
+            effects
+        }
+
+        /// Same owner accepts asynchronous restoration, with an independent local ticket.
+        pub fn restore(
+            &mut self,
+            key: &PublicKey,
+            ticket: Ticket,
+            snapshot: Snapshot,
+            age: Millis,
+            max_age: Option<Millis>,
+            at: Millis,
+        ) -> Effects {
+            let mut effects = Effects::default();
+            if valid_snapshot(key, &snapshot)
+                && self
+                    .store
+                    .restore(key, ticket, snapshot.clone(), age, max_age, at)
+            {
+                self.push_waiter_replies(key, &Ok(snapshot), &mut effects);
+                effects.notify_changed = true;
+                effects.reschedule = true;
+            }
+            effects
+        }
+
+        /// A durable epoch changed (including a missed broadcast discovered on resume).
+        /// Drop RAM before the next read; preserve mounted observers and supersede SSR seeds.
+        pub fn storage_barrier(&mut self, at: Millis, visible: bool) -> Effects {
+            let observed: Vec<_> = self
+                .store
+                .observed()
+                .into_iter()
+                .map(|key| {
+                    let n = self.store.observer_count(&key);
+                    (key, n)
+                })
+                .collect();
+            let mut effects = self.clear();
+            self.seed_barrier = at;
+            for (key, n) in observed {
+                self.store.remove_at(&key, at);
+                for _ in 0..n {
+                    self.store.observe(&key, at);
+                }
+                self.store.mutation_confirmed(&key);
+            }
+            self.wake_matching(|_| true, at, visible, &mut effects);
             effects
         }
 
@@ -740,6 +806,7 @@ mod browser {
         timer: Option<i32>,
         tick: Option<Closure<dyn FnMut()>>,
         listener: Option<u64>,
+        storage_lease: Option<crate::public_persistence::browser::Lease>,
     }
 
     thread_local! {
@@ -749,6 +816,7 @@ mod browser {
             timer: None,
             tick: None,
             listener: None,
+            storage_lease: None,
         });
         static CHANGED: ArcTrigger = ArcTrigger::new();
     }
@@ -807,6 +875,12 @@ mod browser {
     }
 
     fn apply_effects(effects: Effects) {
+        for id in &effects.purges {
+            let id = id.clone();
+            leptos::task::spawn_local(async move {
+                let _ = crate::public_persistence::browser::barrier(Some(id)).await;
+            });
+        }
         let deliveries: Vec<(oneshot::Sender<Reply>, Reply)> = if effects.replies.is_empty() {
             Vec::new()
         } else {
@@ -833,7 +907,14 @@ mod browser {
     }
 
     pub async fn load(key: PublicKey) -> Reply {
+        synchronize_storage().await;
         let at = now();
+        if crate::public_persistence::ENABLED {
+            let restore = with(|o| o.coord.store.begin_restore(&key, at));
+            if let Some(ticket) = restore {
+                spawn_restore(key.clone(), ticket);
+            }
+        }
         let (receive, mut guard) = {
             let (tx, rx) = oneshot::channel();
             let effects_to_run = with(|owner| match owner.coord.load(&key, at) {
@@ -918,6 +999,8 @@ mod browser {
 
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
         leptos::task::spawn_local(async move {
+            let mut lease = crate::public_persistence::browser::capture().await;
+            let started_wall = js_sys::Date::now() as u64;
             let outcome = match &key {
                 PublicKey::Works(_) => crate::api::fetch_public::<WorkList>(&key.path())
                     .await
@@ -929,7 +1012,95 @@ mod browser {
                     outcome.map(super::reader_snapshot)
                 }
             };
+            if let Some(current_lease) = &lease {
+                match crate::public_persistence::browser::current(current_lease).await {
+                    Some(false) => {
+                        let effects = with(|o| o.coord.storage_barrier(now(), visible()));
+                        apply_effects(effects);
+                        return;
+                    }
+                    None => lease = None, // storage failure cannot revoke an online response
+                    Some(true) => {}
+                }
+            }
+            // Keep storage writes below the authority fence. Clone only the accepted public
+            // representation; no private API, no SSR seed and no control response is admitted.
+            let persist = with(|o| o.coord.store.is_current(&key, ticket))
+                .then(|| match &outcome {
+                    Outcome::Fresh(snapshot) => crate::public_persistence::Envelope::from_origin(
+                        key.clone(),
+                        snapshot,
+                        window().location().origin().unwrap_or_default(),
+                        started_wall,
+                    ),
+                    _ => None,
+                })
+                .flatten();
             finish(key, ticket, outcome);
+            if let (Some(lease), Some(envelope)) = (lease, persist) {
+                let _ = crate::public_persistence::browser::write(&lease, &envelope).await;
+            }
+        });
+    }
+
+    async fn synchronize_storage() {
+        if !crate::public_persistence::ENABLED {
+            return;
+        }
+        let previous = with(|o| o.storage_lease.clone());
+        if let Some(previous) = previous {
+            match crate::public_persistence::browser::current(&previous).await {
+                Some(false) => {
+                    let effects = with(|o| {
+                        o.storage_lease = None;
+                        o.coord.storage_barrier(now(), visible())
+                    });
+                    apply_effects(effects);
+                }
+                // Keep the previous lease on failure for the next durable check. Replacing
+                // it with a newly captured epoch here could silently miss a concurrent clear.
+                Some(true) | None => return,
+            }
+        }
+        let lease = crate::public_persistence::browser::capture().await;
+        with(|o| {
+            // Another lifecycle task may have installed a lease while this capture awaited.
+            // Keep that reference so an epoch change cannot be silently acknowledged here.
+            if o.storage_lease.is_none() {
+                o.storage_lease = lease;
+            }
+        });
+    }
+
+    pub async fn clear_device_cache() -> bool {
+        let effects = with(|o| o.coord.storage_barrier(now(), visible()));
+        apply_effects(effects);
+        crate::public_persistence::browser::barrier(None).await
+    }
+
+    fn spawn_restore(key: PublicKey, ticket: Ticket) {
+        leptos::task::spawn_local(async move {
+            let Some(lease) = crate::public_persistence::browser::capture().await else {
+                return;
+            };
+            let origin = window().location().origin().unwrap_or_default();
+            let crate::public_persistence::browser::RestoreRead::Hit(envelope) =
+                crate::public_persistence::browser::read(&lease, &key, &origin).await
+            else {
+                return;
+            };
+            let Some(age) = envelope.age_ms(js_sys::Date::now() as u64) else {
+                return;
+            };
+            if crate::public_persistence::browser::current(&lease).await != Some(true) {
+                return;
+            }
+            // Display policy intentionally absent until POLICY-01/02 exact-revision signoff.
+            let effects = with(|o| {
+                o.coord
+                    .restore(&key, ticket, envelope.snapshot(), age as f64, None, now())
+            });
+            apply_effects(effects);
         });
     }
 
@@ -987,7 +1158,12 @@ mod browser {
             if owner.listener.is_some() {
                 return;
             }
+            crate::public_persistence::browser::listen(|| {
+                leptos::task::spawn_local(synchronize_storage());
+            });
+            leptos::task::spawn_local(synchronize_storage());
             let signal = crate::read_events::register(|| {
+                leptos::task::spawn_local(synchronize_storage());
                 let effects = with(|owner| owner.coord.signal_all(now(), visible()));
                 apply_effects(effects);
             });
@@ -1039,6 +1215,88 @@ mod tests {
             published_at: "2026-11-15T00:00:00Z".into(),
             tags: vec![],
         })
+    }
+
+    #[test]
+    fn restore_suite_memory_and_noop_keep_owner_authority() {
+        fn run<C: SnapshotCache<PublicKey, Snapshot>>(cache: C) {
+            let mut c = Coordinator::with_cache(Policy::V1, cache);
+            let k = PublicKey::Reader("w".into());
+            let r = c.store.begin_restore(&k, 1.0).unwrap();
+            let LoadStart::Wait { effects, .. } = c.load(&k, 2.0) else {
+                panic!()
+            };
+            let network = effects.fetches[0].1;
+            c.restore(&k, r, sample_pub("w", "cached"), 200.0, Some(1000.0), 3.0);
+            assert!(c.store.cached_unverified(&k));
+            c.finish(
+                k.clone(),
+                network,
+                Outcome::Fresh(sample_pub("w", "new")),
+                4.0,
+                0.0,
+                false,
+            );
+            assert!(!c.store.cached_unverified(&k));
+            assert!(
+                c.restore(&k, r, sample_pub("w", "old"), 1.0, Some(1000.0), 5.0)
+                    .replies
+                    .is_empty()
+            );
+            assert_eq!(c.status(&k).unwrap().data, Some(sample_pub("w", "new")));
+            c.storage_barrier(6.0, false);
+            c.follow_seed(k.clone(), sample_pub("w", "ssr"), 0.0, 7.0);
+            assert!(c.status(&k).is_none());
+            c.restore(&k, r, sample_pub("w", "old"), 1.0, Some(1000.0), 8.0);
+            assert!(c.status(&k).is_none());
+        }
+        run(InMemoryCache::default());
+        run(NoOpCache);
+    }
+
+    #[test]
+    fn pending_restore_loses_to_ssr_network_removal_scope_and_clear() {
+        for event in 0..6 {
+            let mut c = Coordinator::new(Policy::V1);
+            let k = PublicKey::Reader("w".into());
+            let r = c.store.begin_restore(&k, 0.0).unwrap();
+            match event {
+                0 => c.follow_seed(k.clone(), sample_pub("w", "ssr"), 1.0, 1.0),
+                1 => {
+                    let t = c.store.begin_external_read(&k, 1.0);
+                    c.finish(
+                        k.clone(),
+                        t,
+                        Outcome::Fresh(sample_pub("w", "net")),
+                        2.0,
+                        0.0,
+                        false,
+                    );
+                }
+                2 => {
+                    c.withdraw_publication("w", 2.0, false);
+                }
+                3 => {
+                    c.store.mark_stale(&k);
+                }
+                4 => {
+                    c.clear();
+                }
+                _ => {
+                    c.storage_barrier(2.0, false);
+                }
+            }
+            let before = c.status(&k);
+            c.restore(&k, r, sample_pub("w", "cached"), 10.0, Some(100.0), 3.0);
+            assert_eq!(c.status(&k), before, "event {event}");
+        }
+        let mut c = Coordinator::new(Policy::V1);
+        let k = PublicKey::Reader("w".into());
+        let r = c.store.begin_restore(&k, 0.0).unwrap();
+        c.restore(&k, r, sample_pub("w", "cached"), 10.0, None, 3.0);
+        assert!(c.status(&k).unwrap().data.is_none(), "policy gate");
+        c.restore(&k, r, sample_pub("w", "cached"), 100.0, Some(100.0), 3.0);
+        assert!(c.status(&k).unwrap().data.is_none(), "expired");
     }
 
     #[test]

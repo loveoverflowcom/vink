@@ -11,7 +11,7 @@
 
 Mục tiêu: có snapshot được phép thì hiển thị ngay, làm mới phía sau, không xóa nội dung đang đọc
 để hiện loading toàn màn; kiểm tra lại khoảng 2 phút khi màn đang hiển thị. Không thêm cache phía
-server, realtime, Service Worker hay lưu bền.
+server, realtime hay Service Worker. Adapter lưu bền #203 nằm dưới gate tắt; xem [IndexedDB](#indexeddb-203).
 
 ## HOW
 
@@ -83,10 +83,10 @@ Hằng số ở `freshness::Policy::V1`. Mọi mốc thời gian dùng `performa
 
 Ngoài phạm vi store: nháp riêng (`no-store`, CAS/409), editor CodeMirror và văn bản chưa lưu,
 discussion (`/discussion/public*` và `/discussion/me` dùng `discussion_reads::OwnState` không cache),
-endorsements, catalog thẻ, `vink-worker` outbox và màn Bàn viết/kiểm duyệt. Store chỉ ở bộ nhớ tab;
+endorsements, catalog thẻ, `vink-worker` outbox và màn Bàn viết/kiểm duyệt. Luồng sản phẩm đang bật vẫn chỉ ở bộ nhớ tab;
 đóng tab/kill process là mất. `Store::clear()` và `Coordinator::clear()` hiện chỉ có kiểm thử;
 chưa có caller reset cache công khai khi đổi tài khoản/phiên. Cache này không chứa dữ liệu riêng
-theo tài khoản. Không IndexedDB/HTTP disk policy riêng/Service Worker.
+theo tài khoản. #203 bổ sung adapter IndexedDB và seam clear bất đồng bộ dưới gate tắt; không có UI clear hay HTTP disk policy riêng/Service Worker.
 
 ### Chỗ còn cần quyết định sản phẩm
 
@@ -95,8 +95,8 @@ theo tài khoản. Không IndexedDB/HTTP disk policy riêng/Service Worker.
    15 phút cho lần mount mới. Giá trị 15 phút là giả định `OPEN` cần chủ sản phẩm chốt.
 2. **Rút bài đa thiết bị:** tab khác / thiết bị khác vẫn chỉ nhận ra bản bị gỡ ở lần revalidate/mở
    lại tiếp theo (404 / `reader`), trừ khi chính tab đó thực hiện mutation hoặc mở `/works/{id}`.
-3. **Offline full-text** và lưu bền: chưa làm; cần quyết định riêng (account clearing, thiết bị
-   dùng chung, migration schema).
+3. **Offline full-text:** chưa bật. Adapter lưu bền, migration và kiểm thử thuộc [#203](#indexeddb-203);
+   proposal 24 giờ đã ghi, còn policy account clearing/thiết bị dùng chung và UX hết hạn trước rollout.
 
 ## Ranh giới race và an toàn
 
@@ -406,3 +406,199 @@ Không đổi product signoff, `DESIGN_PROPOSED`, D-05 `Provisional` hoặc poli
 | Visual | **PASS** self-review các ảnh đã mở ở capture main: `reader-cached-unverified`, đủ 4 `reader-cache-{390,1440}-{100,200}`, `discussion-chain-restarted` và `discussion-chain-restarted-390-200` (sáng). State mới ở theme tối chưa mở riêng: **NOT_RUN**; không claim approved fidelity. |
 | Accessibility/Responsive | **PASS** keyboard/focus và reflow trong main; screen reader, mobile thật và OS IME thật **NOT_RUN**. |
 | Interaction | **PASS** explicit apply bản mới, reconnect không đổi selection/composition, failed append không advance cursor, restart giữ bản nháp; CDP không chứng minh suspend/resume thiết bị thật. |
+
+
+## IndexedDB #203
+
+**Phạm vi giao:** [#203](https://github.com/loveoverflowcom/vink/issues/203), một PR vào `develop`,
+base `f22815ec387bc02792a3cac44899152ff9f1f031` (đã có #202/#201). Không đổi API server.
+
+- **Sản phẩm:** chủ sản phẩm chọn **24 giờ** và “hết hạn sẽ có tín hiệu riêng để xử lý sau” trong
+  chat ngày 15/11/2026; nội dung ghi trong
+  [VDR-PUBLIC-OFFLINE-AGE@r1](../../decisions/proposals/VDR-PUBLIC-OFFLINE-AGE.r1.toml),
+  `PENDING`, SHA `72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa`.
+  Chưa có exact-revision signoff; không sửa record READ-02 đã nhập. POLICY-02 logout/account switch
+  còn **OPEN**; chủ sản phẩm yêu cầu giữ rollout tắt. Cách xử lý UX khi đang đọc mà hết hạn chưa chốt.
+- **Kiến trúc:** CHOICE-01 A và CHOICE-02 A là lựa chọn kỹ thuật trong #203, `DESIGN_PROPOSED`.
+  Query tại base giữ READ-02-CHOICE-01..04@r1 và READ-01-CHOICE-02@r1 `DESIGN_PROPOSED`,
+  O-17@r2 `PRODUCT_CONFIRMED`; registry snapshot
+  `f2f2e49cf0c079e71729722841b8e2f50b5d714dc8a87f209700dd47c0e4c1a8` trước proposal mới.
+- **Triển khai:** `web` adapter và seam owner đã có; `public_persistence::ENABLED = false` và
+  display policy `None`. App bình thường **không mở/ghi/restore IndexedDB**. Memory pilot hiện hành
+  giữ semantics v1; 24 giờ chưa thay ngưỡng 15 phút của memory pilot. CMP/native và cold offline
+  launch vẫn `NOT_IMPLEMENTED`; PR 4 không thay PR 5.
+- **Bằng chứng:** unit owner/envelope và Chrome IndexedDB được tách ở bảng AC dưới đây; không có
+  claim production rollout hoặc offline UI E2E khi gate còn tắt.
+
+### Chủ sở hữu và giao thức
+
+[`public_persistence.rs`](../../apps/vink-web/src/public_persistence.rs) chỉ xây `Envelope` từ
+`Snapshot::Works(WorkList)` hoặc `Snapshot::Publication(Publication)` đã được origin chấp nhận.
+`Control(Hidden/ReviewWithdrawn)`, SSR seed, private DTO, auth/capability, discussion, nháp, own,
+pending/rejected và moderation không có đường persist. Field envelope đóng, nested DTO được kiểm
+roundtrip; JS kiểm strict allowlist đệ quy trước write và khi đọc. Record tự khai provenance không
+chứng thực authority: mọi restore chỉ có thể là `CachedUnverified`.
+
+[`indexeddb.js`](../../apps/vink-web/public-cache/indexeddb.js) chứa I/O và bounded queue; không fetch,
+không quyết retry, không quản ETag. HTTP cache vẫn là owner validator duy nhất. API async
+`capture → read/restore/write/current` và `barrier(work | null)` độc lập với seam đồng bộ
+`SnapshotCache`; không giả `put()` là lưu bền. `restore` trả `hit`, `expired`, `miss`, `unavailable`;
+`expired` không kèm body/cursor. Kiểm lease phân biệt `true` (còn hiệu lực), `false` (barrier/known versionchange),
+và `null` (storage không khả dụng): lỗi storage không rút RAM hoặc bỏ response online; restore
+không có xác nhận lease thì bị bỏ. Đây là tín hiệu cho consumer UX tương lai, chưa có màn xử lý hết hạn.
+
+`Store::begin_restore/restore` dùng RequestId và hàng rào cùng owner hiện hữu: SSR seed, network
+completion, scope invalidation, remove/clear/release thắng restore cũ. Restore không đổi flight,
+retry/backoff hoặc gia hạn ngày xác nhận. Barrier storage làm rỗng RAM, giữ số observer và chặn SSR
+seed trước barrier; lifecycle resume/next load kiểm metadata để nhận ra broadcast bị mất. Không có
+cam kết rút chữ tức thì ở một tab đang bị suspend hoặc mất broadcast trước khi nó chạy lại/check.
+
+### CHOICE-01 A — envelope đầy đủ cho từng query/page
+
+Một row chứa schema `1`, origin chính xác, policy `public-snapshot-v1`, PublicKey (query, tags,
+input cursor hoặc work ID), provenance `origin_response`, wall-clock `validated_at_ms`, và payload
+đầy đủ (bao gồm `next_cursor`, filters, tags, revision/document). Không entity store hay reference
+rời; xóa/corruption/eviction loại cả trang, không phục hồi cursor thiếu data. Thẻ/body giữ Unicode.
+Đổi lại, card và publication có thể lặp giữa trang; hard budget đo trên JSON UTF-8 kể cả wrapper
+row, không dùng kích thước engine IndexedDB như một số đo có thể bảo đảm.
+
+### CHOICE-02 A — epoch trong transaction
+
+Database riêng `vink-public-snapshots`, IDB version `2`, stores `meta` + `snapshots`.
+Metadata chứa random `incarnation`, `epoch`, `sequence`, high-water wall time. `capture` cấp lease
+**trước** request/restore. Mọi operation kiểm lease trong cùng readwrite transaction với dữ liệu:
+
+- `clear` tăng epoch và xóa toàn public snapshots. `purge(work)` cũng tăng epoch, xóa publication
+  và **toàn trang** có card của work; giữ các row không liên quan. Epoch toàn cache vô hiệu mọi
+  writer/restore trước barrier, tránh ledger tombstone tăng vô hạn. Đánh đổi: request của work
+  không liên quan cũng phải lấy lease mới trước lần đọc origin tiếp theo.
+- Sequence ngăn response cũ ghi đè row đã được request mới ghi; queue không coalesce ngược một
+  ticket mới thành cũ. Database bị browser xóa rồi tạo lại nhận incarnation mới, nên epoch 0
+  không khớp ticket epoch 0 trước eviction. Metadata hỏng không được tự reset thành epoch 0.
+- Chỉ `transaction.oncomplete` ACK bền (yêu cầu `durability: strict`); abort sau request success,
+  quota, exception, timeout không ACK. Engine/browser không hỗ trợ option transaction sẽ fallback.
+  Không có chứng minh chống mất điện ở phần cứng.
+- BroadcastChannel chỉ là tín hiệu để owner đọc durable metadata. Hai tab không nghe broadcast
+  vẫn bị transaction fence chặn write/restore cũ ở boundary tiếp theo. Lỗi durable clear không
+  được báo thành công; UI clear tương lai phải xử lý `false`, không hứa đã xóa qua restart.
+
+Quy tắc transaction/upgrade được đối chiếu với
+[IndexedDB specification](https://w3c.github.io/IndexedDB/#transaction-lifecycle).
+
+### Giới hạn, tuổi, lỗi và migration
+
+| Trường hợp | Hành vi |
+| --- | --- |
+| Budget | Tối đa **32 row / 4 MiB logical UTF-8**, mỗi envelope ≤ **512 KiB**; loại row có thời điểm xác nhận cũ nhất, tie-break key. Đây là retention, không phải quyền hiển thị |
+| Queue | Tối đa **8 pending + 1 executing**, coalesce cùng key, trần nội dung khoảng 4.5 MiB; overflow trả false, không chặn mạng/editor |
+| Tuổi | Thời điểm tường lấy trước origin request; không ghi `performance.now`. Cache read không đổi `validated_at_ms`; tuổi ≥ 24 giờ trả expired khi còn record rồi bỏ toàn row. GC đã bỏ trước đó thì miss |
+| Đồng hồ | Timestamp không rõ/future/ngoài safe integer bị từ chối; rollback dưới high-water durable tăng epoch, xóa row và trả miss/failure. Không thể chứng minh tuổi thật nếu clock bị chỉnh mà chưa có high-water hoặc origin xác nhận; restore vẫn unverified và rollout tắt |
+| Đang observe | Eviction storage không rút active RAM; freshness owner vẫn quyết lifecycle. Chỉ authoritative removal/clear rút dữ liệu. UX expiry của nội dung đang mở là việc còn lại |
+| Open denied/blocked/error | Deadline 1.5 s, không treo; instance ngừng thử open sau failure. Request open tới muộn bị close hoặc abort upgrade, không reset vòng lặp |
+| Abort/quota/corruption | Không ACK, RAM/network vẫn dùng owner hiện hữu. Corrupt/không đầy đủ/unknown envelope schema bị bỏ toàn row. Không log payload |
+| Version 1 → 2 | Discard migration nguyên tử chỉ stores public `meta`/`snapshots` trong database riêng. Giữ store ngoài hai tên này; không xóa localStorage, CacheStorage, editor hoặc auth storage |
+| Upgrade/versionchange | Connection cũ đóng và instance disabled; app schema cũ gặp DB version mới hơn fallback, không downgrade/reset. Upgrade abort giữ schema cũ; blocked open không tự delete database |
+| NoOp/Memory | Cùng transition suite, nhưng **không bao giờ ACK durable write**. Runtime RAM là Store hiện hành; adapter lỗi không chuyển quyền/retry sang storage |
+
+### AC và bằng chứng #203
+
+Bộ browser [`public-storage-smoke.mjs`](../../apps/vink-web/e2e/public-storage-smoke.mjs) chạy cùng
+harness và app scratch của `cargo xtask verify web --scenario storage`; cũng nằm trong `main`.
+Không chạy hai lần khi chọn cả `main` và `storage`. Fixture toàn bộ tổng hợp, không thu bản thảo.
+
+| AC | Owner/assertion | Kết quả / giới hạn |
+| --- | --- | --- |
+| AC-01 | Envelope Rust + strict JS; reject nested token/private/control, origin/key mismatch; hydration bình thường không mở IDB | **PASS** unit/contract + Chrome `storage`; chỉ hai public representations, production gate tắt |
+| AC-02 | Whole-page transaction; abort thật sau request success giữ data/cursor trước đó và không ACK | **PASS** unit decode + transaction IndexedDB thật; ACK chỉ sau `oncomplete` |
+| AC-03 | Chrome quota override thật; injection `IDBFactory.open` ném SecurityError; corruption, blocked/versionchange/eviction | **PASS** Chrome `storage`; denial là API fault injection trong Chrome, không phải cấu hình policy OS; lỗi lease trả unavailable, không thu hồi online snapshot như một barrier |
+| AC-04 | Hai tab không BroadcastChannel, A frozen → B purge/clear → A active; old write/restore lease bị từ chối | **PASS** unit owner + Chrome `storage`; chỉ boundary chạy lại, không hứa immediate revocation offline |
+| AC-05 | Rust restore vs SSR/network/removal/clear, wall age/rollback; kill Chrome và mở lại cùng profile | **PASS** unit owner/age + Chrome `storage`; giữ nguyên envelope và `validated_at_ms` qua process restart |
+| AC-06 | Corpus 40 public envelopes; logical bytes/rows; queue overflow/coalesce; whole-page deletion | **PASS** Chrome `storage`: corpus nhỏ còn **32 row**; corpus lớn còn **18 row / 4.059.846 byte logical UTF-8**, dưới 4 MiB; queue tối đa 8 pending + 1 executing |
+| AC-07 | V1→V2 discard; abort upgrade rollback; blocked old connection; V3 làm old app đóng và fallback; sentinel namespace khác giữ nguyên | **PASS** Chrome `storage`; không downgrade/reset DB version mới hoặc xóa storage riêng |
+| AC-08 | Proposal 24h/tín hiệu expired đã ghi; POLICY-02 OPEN; ENABLED false, display policy None | **OPEN rollout**; chưa signoff revision, chưa UX expiry/logout |
+| AC-09 | Shared JS transitions Memory/NoOp/IndexedDB; Rust owner suite Memory/NoOp + browser IDB + build hydrate | **PASS** tại boundary adapter/owner; chưa bật composition persistent offline UI, chưa SW/cold launch |
+
+Không đổi visual/interaction UI; không thêm LayoutSpec hoặc CTA. Bằng chứng main là regression
+UI hiện hữu; không coi ảnh source baseline là approved reference. Không chạy GitHub CI.
+
+### Lần chạy cuối #203 — 15/11/2026
+
+Source triển khai chốt tại `4e68bd861b8b2a1bc090b3d6bf975597a1c227e7`, sau commit adapter
+`92d6dcbcb64e813d38ebc64c8e11ff3b1ffb6000`; cập nhật evidence sau đó chỉ sửa tài liệu.
+CWD `/Users/manhblue/projects/loveoverflow/vink`. Môi trường macOS, Rust 1.99.1,
+wasm-bindgen 0.2.129, Node 22.15.0, Chrome 157.0.8103.78, PostgreSQL 17.11 Homebrew.
+Mọi lệnh cargo dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`.
+Lệnh Web còn dùng `VINK_CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'`
+và `VINK_TEST_DATABASE_URL='postgres://vink@127.0.0.1:55441/postgres'`, cluster local tạm của
+phiên này; runner sở hữu App scratch. Fixture IDB hoàn toàn tổng hợp.
+
+| Command / source | Kết quả và boundary |
+| --- | --- |
+| `cargo xtask verify quick` tại `4e68bd8` | **PASS toàn lane**: fmt, clippy server/browser/preview, doctest, unit/contract (223 Web tests), repository checks. Log `target/issue203/quick-final.log`. |
+| `cargo xtask verify web --scenario storage` tại `4e68bd8` | **PASS toàn command được chọn**, gồm bundle hydrate, app thật, transaction/quota/2-tab/migration/kill-reopen Chrome và gate tắt. Log `target/issue203/storage-final.log`; artifacts `target/verify-web/1794751985141800000-49566`. Không phải full Web lane. |
+| `cargo xtask verify web --scenario main` tại `92d6dcb` | **FAIL** assertion `reduced mobile viewport keeps the active caret visible without fixed controls`. Đã mở `failure.png`; chưa xác định nguyên nhân, không claim lỗi có sẵn hoặc đã sửa. Log `target/issue203/main-first.log`; artifacts `target/verify-web/1794751243577030000-35249`. |
+| `cargo xtask verify web --scenario main` tại `4e68bd8` | **FAIL** assertion `forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms`. Không console errors; chưa xác định nguyên nhân. Log `target/issue203/main-final.log`; artifacts `target/verify-web/1794751830918526000-45421`. Các bước sau **NOT_RUN**. |
+
+Cả hai lần `main` dừng trước bộ storage ở cuối; kết quả storage đến từ command chọn riêng ở trên.
+Không đổi/bỏ assertion UI để làm xanh. Không sửa SQL/API; full `postgres`, full Web, OS IME thật
+và trình duyệt khác **NOT_RUN**. GitHub CI không đọc/chờ/poll/rerun. Trước bật rollout cần
+exact-revision signoff, chốt POLICY-02 và UX expired, sau đó kiểm composition persistent offline
+UI thực tế; issue #204 còn sở hữu app shell/cold launch. Lỗi `main` cần điều tra ở các assertion
+được nêu, không coi PASS của adapter thay cho regression UI.
+
+| Chiều UX | Kết quả và giới hạn #203 |
+| --- | --- |
+| Functional | **PASS** quick + storage tại boundary adapter; toàn scenario `main` **FAIL**, persistent offline UI **NOT_RUN** vì gate tắt. |
+| Geometry | **FAIL** assertion caret khi giảm viewport ở lần `main` đầu; chưa xác định nguyên nhân. |
+| Visual | Không đổi visual; ảnh `failure.png` lần đầu đã mở để chẩn đoán, không phải approved reference; fidelity mới **NOT_RUN**. |
+| Accessibility/Responsive | **FAIL** assertion gộp forced-colors/focus/reduced-motion ở lần `main` cuối; chưa tách nguyên nhân thành phần. Screen reader/OS IME **NOT_RUN**. |
+| Interaction | **PASS** hai tab và restart Chrome ở adapter; composition offline UI và suspend/resume thiết bị thật **NOT_RUN**. |
+
+
+### Đồng bộ regression `main` — PR #215, 15/11/2026
+
+Bản `5b418c48c8586c4b622684b6b6799283e0e0f21f` chỉ sửa harness, không đổi CSS,
+CodeMirror runtime, Rust, proposal hoặc rollout. Hai assertion trước đọc computed style/caret
+ngay sau CDP media/keyboard hoặc resize, trong khi style/layout và selection scroll có thể còn
+được lên lịch. Nay chờ **đúng toàn bộ predicate cũ, tối đa 2 giây**, rồi kiểm lại sau fonts/layout
+và hai animation frame. Ca caret còn yêu cầu focus ở `.cm-content` và selection tồn tại.
+Không gọi scroll/focus để ép kết quả, không nới viewport bounds hoặc bỏ điều kiện accessibility.
+
+Lần chẩn đoán trên `19e68a5` + hai dòng đo bổ sung **PASS toàn command main**; log
+`target/issue203/main-diagnostic-215.log`, artifacts `target/verify-web/1794752834358309000-64033`.
+Số đo forced-colors: checked/focus-visible đúng, outline solid 2px, opacity 1,
+transition `1e-05s`; caret mobile top 295,203125/bottom 320,203125 trong viewport 420px.
+Hai lỗi cũ không tái hiện trong lần này; đây là bằng chứng lỗi nhạy thời điểm quan sát,
+không chứng minh một hồi quy CSS/runtime hoặc xác định chính xác thành phần sai ở lần cũ.
+Giữ nguyên hai kết quả FAIL lịch sử ở trên.
+
+Lần `main` tại `5b418c4` **FAIL** sau timeout 2 giây ở caret mobile, dù forced-colors đã
+**PASS**. Log `target/issue203/main-wait-only-215.log`; artifacts
+`target/verify-web/1794753195584782000-69461`. Đã mở ảnh failure: viewport nằm dưới editor,
+không console errors. Chờ predicate sau phím chưa đủ; không tăng timeout để làm xanh.
+Bản `5bf229f` bổ sung chờ fonts/layout của viewport mobile trước khi gửi phím document-end/line-start,
+tránh gửi input trong lúc resize/reflow còn đang cập nhật vị trí cuộn. Giữ kiểm sau phím.
+
+`cargo xtask verify web --scenario main` tại **`5bf229f5cdb8af59c701ecff3055a6c6b46d1fc5`**
+**PASS toàn command được chọn**, gồm forced-colors/focus/reduced-motion, caret mobile,
+SSR/hydration/editor/save/conflict/leave guard và bộ IndexedDB ở cuối; không console errors.
+Môi trường và biến cargo/Chrome/DB như lần #203 ở trên. Log
+`target/issue203/main-reflow-215.log`; artifacts `target/verify-web/1794753567501336000-80206`.
+Trong lúc chạy chỉ cập nhật tài liệu, không sửa source kiểm thử. `node --check` cho harness,
+`git diff --check` và kiểm liên kết local tài liệu **PASS**. Không chạy lại quick vì Rust/runtime
+không đổi; evidence quick tại `4e68bd8` vẫn áp dụng cho phần ứng dụng đó.
+
+Self-review đã mở hai ảnh cuối `appearance-forced-colors-reduced-motion.png` (1440×900)
+và `editor-short-mobile-390.png` (390×420, tối), không nâng thành approved visual reference.
+
+| Chiều UX | Kết quả bản sửa kiểm thử #215 |
+| --- | --- |
+| Functional | **PASS** command main, gồm IndexedDB; gate production vẫn tắt. |
+| Geometry | **PASS** caret trong viewport mobile và toolbar static sau reflow, cùng ma trận main. |
+| Visual | **PASS** kiểm tra hai ảnh đã mở ở trên, giữ giao diện hiện hữu; fidelity mới **NOT_RUN**. |
+| Accessibility/Responsive | **PASS** forced-colors, focus, reduced-motion và ma trận 100/200% của main; screen reader/OS IME **NOT_RUN**. |
+| Interaction | **PASS** keyboard, selection, leave guard, save/conflict và storage restart trong Chrome/CDP; thiết bị mobile thật **NOT_RUN**. |
+
+Đây là PASS của scenario main, không phải toàn Web lane hay bảo đảm không còn flake trên mọi
+browser. Giữ AC-08 OPEN, rollout tắt, POLICY-02/UX expired chưa chốt. Không kiểm GitHub CI,
+không merge PR.

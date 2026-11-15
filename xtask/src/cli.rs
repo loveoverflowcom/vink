@@ -10,7 +10,7 @@ pub const HELP: &str = "Scoped workflows (PostgreSQL is attached, never started)
   verify preview [--plan]               Leptos preview browser regression
   doctor <scoped command above>         check only that command's prerequisites
 
-Web scenarios: main, discovery, restart, endorsement, review, auth, password, publication.
+Web scenarios: main, storage, discovery, restart, endorsement, review, auth, password, publication.
 No selector means full Web regression. restart depends on main. --plan performs no task I/O.
 Auth defaults to none, independent of .env. fixture requires explicit VINK_DEV_PRINCIPAL.
 identity uses native credentials and local mail outbox; no fixture fallback or SMTP.

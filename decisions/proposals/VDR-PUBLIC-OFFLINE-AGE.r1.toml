@@ -1,0 +1,21 @@
+version = 1
+id = "VDR-PUBLIC-OFFLINE-AGE"
+revision = 1
+
+[content]
+kind = "product"
+domain = "public-read"
+title = "Snapshot công khai qua restart: cửa sổ 24 giờ và tín hiệu hết hạn"
+resolution = """
+POLICY-01 của issue #203: tuổi tối đa của snapshot công khai dùng để đọc offline qua restart là 24 giờ kể từ lần origin xác nhận. Đọc lại storage không gia hạn thời điểm đó. Snapshot khôi phục luôn mang provenance CachedUnverified; khi chạm ngưỡng 24 giờ, storage trả tín hiệu expired riêng, không trả body/cursor như một cache hit. Phần UX xử lý tín hiệu hết hạn, đặc biệt với nội dung đang được đọc, sẽ được làm ở bước sau; proposal này không quyết định tự rút nội dung đang mở hoặc chỉ kiểm tại mount.
+POLICY-02 về giữ/xóa public device cache khi logout hoặc đổi tài khoản còn OPEN. Giữ rollout persistence/offline display tắt cho đến khi policy clearing và UX hết hạn được ghi, duyệt đúng revision và có kiểm chứng tương ứng. Issue #203 không triển khai Service Worker, HTML cache hay cold offline launch.
+"""
+rationale = """
+Chủ sản phẩm trả lời trong chat triển khai #203 ngày 15/11/2026: “24h nhé, hết hạn sẽ có tín hiệu riêng để xử lý sau, ghi vào”. Với POLICY-02: “Giữ rollout tắt; chốt policy ở bước sau”. Đây là nội dung được ghi theo lời chủ sản phẩm để review đúng revision; chưa tự tạo signoff cho payload mới. Khi thiết bị offline, không thể biết tức thì một tác phẩm đã bị rút trên server.
+"""
+requires = ["O-17@r2"]
+related_ids = [
+    "O-17",
+    "PUB-05",
+    "PUB-07",
+]

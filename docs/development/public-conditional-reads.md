@@ -75,6 +75,7 @@ endpoint này thu hồi từ xa; READ-02 xóa bản đã rút qua `invalidate_wi
 | Validator, thứ tự lỗi, 304, header cache của hai endpoint | READ-01 — `vink-app` `http/conditional.rs`, contract v1 |
 | Lưu byte và tự gửi `If-None-Match` | HTTP cache của trình duyệt (READ-02 gọi fetch với `cache: "no-cache"`). Web app **không** tự gửi `If-None-Match`; raw `304` không bao giờ được parse như JSON mà đổi thành đúng một request `reload` không điều kiện |
 | Giữ snapshot UI khi đang làm mới, nhịp 1–3 phút, lifecycle, offline | READ-02 — `apps/vink-web` `freshness.rs` + `public_reads.rs` (Web pilot, phương án A: [ghi chú](public-read-freshness.md)) |
+| Snapshot IndexedDB #203 (gate tắt) | [Adapter public](public-read-freshness.md#indexeddb-203) lưu envelope/cursor/tuổi; không lưu ETag, không là HTTP cache, không cache HTML/SW |
 | Nếu READ-02 tự quản validator | Phải tự xử lý `304` (dùng body đã giữ) và không đặt TTL HTTP riêng chồng lên `no-cache` |
 
 Không gọi một response cũ là kết quả GET mới đã được server xác nhận: với `no-cache`, trình

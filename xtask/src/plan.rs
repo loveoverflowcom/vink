@@ -74,6 +74,7 @@ pub enum Service {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Scenario {
     Main,
+    Storage,
     Discovery,
     Restart,
     Endorsement,
@@ -83,8 +84,9 @@ pub enum Scenario {
     Publication,
 }
 impl Scenario {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Main,
+        Self::Storage,
         Self::Discovery,
         Self::Restart,
         Self::Endorsement,
@@ -96,6 +98,7 @@ impl Scenario {
     pub fn name(self) -> &'static str {
         match self {
             Self::Main => "main",
+            Self::Storage => "storage",
             Self::Discovery => "discovery",
             Self::Restart => "restart",
             Self::Endorsement => "endorsement",

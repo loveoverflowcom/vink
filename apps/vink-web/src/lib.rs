@@ -23,6 +23,7 @@ pub mod freshness;
 pub mod navigation;
 mod pages;
 pub mod public_list;
+pub mod public_persistence;
 pub mod public_reads;
 pub mod publication_state;
 pub mod read_cache;
