@@ -7,7 +7,10 @@ mở tại một thời điểm, Back đóng lớp phủ trước, trả focus) 
 [navigation.md](navigation.md).
 
 UIS-05: Web `Dialog.title` là signal để bước xác nhận của `LeaveGuard` đổi tiêu đề mà không
-remount; `focus_title` dùng cho preview dài. Trả focus dùng prevent-scroll. Sự kiện `close`
+remount; `focus_title` dùng cho preview dài. Delta [#208](../../../docs/design/dialog-anatomy-r1-208.md)
+chuyển quyền sở hữu gutter (`--vk-overlay-gutter`), scroll (`overflow-y: auto; overscroll-behavior: contain;
+scroll-padding-block: var(--vk-size-hit-target)`), `context: Signal<String>` và opt-in `secondary_actions`
+về `Dialog` (`vink-ui`), bỏ divider và page CSS override khỏi app. Trả focus dùng prevent-scroll. Sự kiện `close`
 xếp hàng từ lần đóng trước không dismiss dialog đang mở lại: kiểm trạng thái DOM hiện tại
 trước khi phát `on_dismiss`. App vẫn sở hữu chữ, scroll, quyết định lưu/rời và request identity.
 
@@ -144,8 +147,9 @@ EdgeProgress #edge-progress    — thanh 4px ở mép trên vùng; role=progress
 StatusBadge #status            — Icon/arc + Label; tone từ ActionPhase, không chỉ bằng màu
 ListEnd #list-end              — Divider + "Đã hết danh sách"; không phải CTA, không announce
 Snackbar #toast                — một dòng ngắn + tối đa một action + nút đóng; đáy vùng, không che focus
-Dialog #dialog                 — Title → Context → Content slot → Actions (an toàn trước khi phá hủy);
-                                 Sheet: cùng anatomy, neo đáy ở màn hẹp
+Dialog #dialog                 — Title → Context(on-surface-variant) → Content slot → Actions → [SecondaryActions]
+                                 (divider-free: title–context `space-3`, trước actions và giữa nhóm `space-4`;
+                                  safe action trước trong DOM; một CTA Filled chính; Sheet: cùng anatomy, neo đáy ở màn hẹp)
 FormSummary (UIS-02)           — dùng làm FieldErrorSummary; không tạo bản thứ hai
 ```
 
@@ -169,7 +173,7 @@ Tên dùng chung; Leptos không tiền tố (`StatePanel`), CMP tiền tố `Vin
 | `StatusBadge` | `phase: ActionPhase`, `label` | — | Tự đổi phase |
 | `ListEnd` | `label` (mặc định "Đã hết danh sách") | — | Tải thêm |
 | `Snackbar` | `message: Option<SnackbarMessage { text, action? }>` (controlled) | `on_action`, `on_dismiss` | Hẹn giờ: adapter `use_snackbar_timeout` / `rememberSnackbarTimeout` |
-| `Dialog` | `open`, `title`, `context?`, `role: DialogRole` (Dialog/AlertDialog), `kind: DialogKind` (Dialog/Sheet), `dismiss: DismissPolicy` (Explicit/EscapeOnly/EscapeAndOutside), content + `actions` slot; Web `id` | `on_dismiss(DismissReason)` | Mở/đóng (controlled), coordinator (UIS-04). Web: `<dialog>` + `showModal()` (inert ngoài, Escape → `cancel`), lưu/trả focus; CMP: `Dialog` window + `DialogProperties`, `FocusRequester` |
+| `Dialog` | `open`, `title`, `context?` (Web nhận `Signal<String>`), `role: DialogRole` (Dialog/AlertDialog), `kind: DialogKind` (Dialog/Sheet), `dismiss: DismissPolicy` (Explicit/EscapeOnly/EscapeAndOutside), content + `actions` + optional `secondary_actions` slot; Web `id` | `on_dismiss(DismissReason)` | Mở/đóng (controlled), coordinator (UIS-04). Web: `<dialog>` + `showModal()` (inert ngoài, Escape → `cancel`), tự cuộn với `scroll-padding-block`, lưu/trả focus; `@container vk-overlay (max-width: 24rem)` xếp action 100%; CMP: `Dialog` window + `DialogProperties`, `FocusRequester`, `secondaryActions?` |
 
 Nút phá hủy trong `AlertDialog`: focus ban đầu vào lựa chọn an toàn (`initial_focus` = an toàn, mặc
 định phần tử đầu của actions). Trên Web, khi nội dung dài hơn scrollport, mặc định focus tiêu đề

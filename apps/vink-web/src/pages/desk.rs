@@ -1184,83 +1184,120 @@ fn Editor(draft: Draft) -> impl IntoView {
                 on_save=Callback::new(move |()| save())
                 is_composing=Callback::new(move |()| body.is_composing()) />
         </form>
-        <vink_ui::Dialog id="leave-editor" open=leave_open
-            title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ thay đổi và rời trang?" } else { "Rời trang khi còn thay đổi?" }.to_string())
-            dismiss=vink_ui::DismissPolicy::EscapeOnly on_dismiss=move |_| stay()
-            attr:data-testid="leave-editor">
-            <Show
-                when=move || stage() == Some(LeaveStage::ConfirmingDiscard)
-                fallback=move || {
-                    let saving = move || matches!(stage(), Some(LeaveStage::Saving { .. }));
-                    view! {
-                        <p id="leave-message" class="vk-dialog__body" data-testid="leave-message">
-                            {move || leave_message(stage(), status(), tag_status.get().as_ref(), session.with(|s| (s.text.has_unsaved_text(), s.tags.as_ref().is_some_and(|t| t.has_unsaved()))))}
-                        </p>
-                        <div class="vk-dialog__actions">
-                            <Button variant=ButtonVariant::Text
-                                id="leave-stay"
-                                button_ref=leave_stay
-                                on_press=move |_| stay()
-                            >
-                                "Ở lại"
-                            </Button>
-                            <Button variant=ButtonVariant::Filled
-                                id="leave-save"
-                                described_by="leave-message"
-                                state=Signal::derive(move || blocked(saving() || matches!(status(), SaveStatus::Conflict { .. }) || matches!(tag_status.get(), Some(TagStatus::Conflict { .. }))))
-                                on_press=move |_| save_and_leave()
-                            >
-                                {move || if saving() { "Đang lưu…" } else { "Lưu và rời trang" }}
-                            </Button>
-                        </div>
-                        <Show when=can_discard>
-                            <div class="vk-dialog__recovery" data-testid="leave-recovery">
-                                <Button variant=ButtonVariant::Tonal
-                                    id="leave-export"
-                                    on_press=move |_| export()
+        {
+            let confirming = move || stage() == Some(LeaveStage::ConfirmingDiscard);
+            let saving = move || matches!(stage(), Some(LeaveStage::Saving { .. }));
+            let conflict = move || {
+                matches!(status(), SaveStatus::Conflict { .. })
+                    || matches!(tag_status.get(), Some(TagStatus::Conflict { .. }))
+            };
+            let leave_title = Signal::derive(move || {
+                if confirming() {
+                    "Bỏ thay đổi và rời trang?"
+                } else {
+                    "Rời trang khi còn thay đổi?"
+                }
+                .to_string()
+            });
+            let leave_context = Signal::derive(move || {
+                if confirming() {
+                    "Bạn sẽ mất những chỉnh sửa chưa lưu trên trang này. Nếu đã tải tệp .txt, bản sao chữ vẫn nằm trên máy của bạn."
+                        .to_string()
+                } else {
+                    leave_message(
+                        stage(),
+                        status(),
+                        tag_status.get().as_ref(),
+                        session.with(|s| {
+                            (
+                                s.text.has_unsaved_text(),
+                                s.tags.as_ref().is_some_and(|t| t.has_unsaved()),
+                            )
+                        }),
+                    )
+                }
+            });
+            view! {
+                <vink_ui::Dialog id="leave-editor" open=leave_open
+                    title=leave_title
+                    context=leave_context
+                    dismiss=vink_ui::DismissPolicy::EscapeOnly on_dismiss=move |_| stay()
+                    actions=move || view! {
+                        <Show
+                            when=confirming
+                            fallback=move || view! {
+                                <Button
+                                    variant=Signal::derive(move || if conflict() { ButtonVariant::Filled } else { ButtonVariant::Text })
+                                    id="leave-stay"
+                                    button_ref=leave_stay
+                                    on_press=move |_| stay()
                                 >
-                                    "Tải bản đang viết (.txt)"
+                                    "Ở lại"
                                 </Button>
-                                <Button variant=ButtonVariant::Danger
-                                    id="leave-discard"
-                                    button_ref=leave_discard
-                                    on_press=move |_| ask_discard()
+                                <Button
+                                    variant=Signal::derive(move || if conflict() { ButtonVariant::Tonal } else { ButtonVariant::Filled })
+                                    id="leave-save"
+                                    described_by="leave-editor-context"
+                                    state=Signal::derive(move || blocked(saving() || conflict()))
+                                    on_press=move |_| save_and_leave()
                                 >
-                                    "Rời mà không lưu…"
+                                    {move || if saving() { "Đang lưu…" } else { "Lưu và rời trang" }}
                                 </Button>
-                            </div>
+                            }
+                        >
+                            <Button variant=ButtonVariant::Tonal
+                                id="discard-back"
+                                button_ref=keep_editing
+                                on_press=move |_| back_to_leave_choices()
+                            >
+                                "Quay lại"
+                            </Button>
+                            <Button variant=ButtonVariant::Danger
+                                id="discard-confirm"
+                                on_press=move |_| confirm_discard()
+                            >
+                                "Bỏ thay đổi và rời"
+                            </Button>
                         </Show>
                     }
-                }
-            >
-                <p class="vk-dialog__body">
-                    "Bạn sẽ mất những chỉnh sửa chưa lưu trên trang này. Nếu đã tải tệp .txt, bản sao chữ vẫn nằm trên máy của bạn."
-                </p>
-                <div class="vk-dialog__actions">
-                    <Button variant=ButtonVariant::Text
-                        id="discard-back"
-                        button_ref=keep_editing
-                        on_press=move |_| back_to_leave_choices()
-                    >
-                        "Quay lại"
-                    </Button>
-                    <Button variant=ButtonVariant::Danger
-                        id="discard-confirm"
-                        on_press=move |_| confirm_discard()
-                    >
-                        "Bỏ thay đổi và rời"
-                    </Button>
-                </div>
-            </Show>
-        </vink_ui::Dialog>
+                    secondary_actions=move || view! {
+                        <Show when=move || !confirming() && can_discard()>
+                            <Button variant=ButtonVariant::Tonal
+                                id="leave-export"
+                                on_press=move |_| export()
+                            >
+                                "Tải bản đang viết (.txt)"
+                            </Button>
+                            <Button variant=ButtonVariant::DangerText
+                                id="leave-discard"
+                                button_ref=leave_discard
+                                on_press=move |_| ask_discard()
+                            >
+                                "Rời mà không lưu…"
+                            </Button>
+                        </Show>
+                    }
+                    attr:data-testid="leave-editor" />
+            }
+        }
         <vink_ui::Dialog id="draft-preview" open=Signal::derive(move || preview.with(Option::is_some))
-            title="Xem trước bản nháp" focus_title=true
+            title="Xem trước bản nháp"
+            context="Dùng chữ đang có trên trang, kể cả phần chưa lưu. Chỉ bạn thấy; chưa gửi duyệt, chưa công khai."
+            focus_title=true
             dismiss=vink_ui::DismissPolicy::EscapeOnly
             on_dismiss=move |_| { preview.set(None); restore_scroll(page_scroll); }
+            actions=move || view! {
+                <Button variant=ButtonVariant::Tonal
+                    id="preview-close"
+                    on_press=move |_| {
+                        preview.set(None);
+                        restore_scroll(page_scroll);
+                    }
+                >
+                    "Đóng"
+                </Button>
+            }
             attr:data-testid="draft-preview">
-            <p class="vk-dialog__body vk-muted">
-                "Dùng chữ đang có trên trang, kể cả phần chưa lưu. Chỉ bạn thấy; chưa gửi duyệt, chưa công khai."
-            </p>
             {move || {
                 preview
                     .get()
@@ -1278,17 +1315,6 @@ fn Editor(draft: Draft) -> impl IntoView {
                         }
                     })
             }}
-            <div class="vk-dialog__actions">
-                <Button variant=ButtonVariant::Tonal
-                    id="preview-close"
-                    on_press=move |_| {
-                        preview.set(None);
-                        restore_scroll(page_scroll);
-                    }
-                >
-                    "Đóng"
-                </Button>
-            </div>
         </vink_ui::Dialog>
     }
 }

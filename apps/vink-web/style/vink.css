@@ -779,53 +779,14 @@ a {
   background: var(--vk-error);
 }
 
-/* Dialogs: native modal <dialog>; the page behind is inert and keeps its scroll and state. */
-
-.vk-dialog__body {
-  margin: 0 0 var(--vk-space-6);
+/* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css.
+   Only the manuscript preview sets a reading measure for its content. */
+#draft-preview {
+  inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-overlay-gutter)), calc(100% - 2 * var(--vk-overlay-margin)));
 }
-
-.vk-dialog__actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: var(--vk-space-2);
-}
-
-.vk-dialog__recovery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--vk-space-2);
-  margin-top: var(--vk-space-6);
-  padding-top: var(--vk-space-4);
-  border-top: 1px solid var(--vk-outline-variant);
-}
-
-.vk-preview {
-  margin: var(--vk-space-6) 0;
-}
-
-/* Page-owned dialog sizing; keep the shared modal, focus and dismiss policies. */
-#draft-preview { inline-size: min(calc(var(--vk-measure) + 2 * var(--vk-space-6)), calc(100% - 2 * var(--vk-space-3))); }
-#draft-preview .vk-preview { margin-block: var(--vk-space-4); }
-#draft-preview .vk-preview h2 { overflow-wrap: anywhere; }
-:is(#draft-preview, #leave-editor) .vk-dialog__body { margin-bottom: var(--vk-space-4); overflow-wrap: break-word; }
-:is(#draft-preview, #leave-editor) .vk-ui-dialog__panel { padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); }
-:is(#draft-preview, #leave-editor) .vk-ui-button__label { overflow-wrap: normal; }
-
-#leave-editor {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scroll-padding-block: var(--vk-size-hit-target);
-}
-#leave-editor .vk-ui-dialog__actions:empty { display: none; }
-#leave-editor .vk-dialog__recovery { margin-block-start: var(--vk-space-4); }
-
-@media (max-width: 40rem) {
-  #leave-editor .vk-ui-dialog__panel { padding: var(--vk-space-2); }
-  #leave-editor :is(.vk-dialog__actions, .vk-dialog__recovery) > .vk-ui-action { flex: 1 1 100%; min-width: 0; }
-  #leave-editor .vk-ui-button { width: 100%; padding-inline: var(--vk-space-2); }
-}
+.vk-preview { margin: var(--vk-space-1) 0 0; }
+.vk-preview .vk-block:last-child { margin-bottom: 0; }
+#draft-preview .vk-preview h2 { margin-top: 0; overflow-wrap: anywhere; }
 
 
 @media (min-width: 48rem) {

@@ -607,13 +607,14 @@ pub fn Dialog(
     #[prop(into)] id: String,
     #[prop(into)] open: Signal<bool>,
     #[prop(into)] title: Signal<String>,
-    #[prop(optional, into)] context: Option<String>,
+    #[prop(optional, into)] context: Option<Signal<String>>,
     #[prop(optional)] role: DialogRole,
     #[prop(optional)] focus_title: bool,
     #[prop(optional)] kind: DialogKind,
     #[prop(optional)] dismiss: DismissPolicy,
     #[prop(into)] on_dismiss: Callback<DismissReason>,
     #[prop(optional, into)] actions: ViewFn,
+    #[prop(optional, into)] secondary_actions: Option<ViewFn>,
     #[prop(optional)] children: Option<Children>,
 ) -> impl IntoView {
     let node = NodeRef::<leptos::html::Dialog>::new();
@@ -714,9 +715,10 @@ pub fn Dialog(
         >
             <div class="vk-ui-dialog__panel">
                 <h2 class="vk-ui-dialog__title" id=title_target tabindex="-1" autofocus=focus_title>{move || title.get()}</h2>
-                {context.map(|text| view! { <p class="vk-ui-dialog__context" id=context_target>{text}</p> })}
+                {context.map(|text| view! { <p class="vk-ui-dialog__context" id=context_target>{move || text.get()}</p> })}
                 {children.map(|children| view! { <div class="vk-ui-dialog__content">{children()}</div> })}
                 <div class="vk-ui-dialog__actions">{actions.run()}</div>
+                {secondary_actions.map(|secondary| view! { <div class="vk-ui-dialog__actions vk-ui-dialog__actions--secondary">{secondary.run()}</div> })}
             </div>
         </dialog>
     }
@@ -1076,5 +1078,27 @@ mod tests {
             "{html}"
         );
         assert!(html.contains("aria-labelledby=\"d-title\""), "{html}");
+        let html = render(|| {
+            let context = RwSignal::new("Bản nháp trên máy chủ đã đổi.".to_string());
+            view! {
+                <Dialog
+                    id="leave"
+                    open=false
+                    title="Rời trang?"
+                    context=context
+                    on_dismiss=|_| {}
+                    actions=|| view! { <crate::Button id="stay">"Ở lại"</crate::Button> }
+                    secondary_actions=|| view! { <crate::Button id="discard" variant=crate::ButtonVariant::DangerText>"Rời"</crate::Button> }
+                />
+            }
+            .into_any()
+        });
+        assert!(
+            html.contains("aria-describedby=\"leave-context\"")
+                && html.contains("id=\"leave-context\"")
+                && html.contains("vk-ui-dialog__actions--secondary")
+                && html.contains("vk-ui-button--danger-text"),
+            "{html}"
+        );
     }
 }

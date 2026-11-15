@@ -31,7 +31,7 @@ màu tiêu đề của `DraftRow` trong pattern, bỏ skin input trùng ở app;
 
 Light/dark cùng hierarchy, chữ 200%, title/tên Việt dài, thơ giữ khổ/thụt lề. Một cuộn chính;
 toolbar editor nằm trong flow trên mobile. Controls wrap; đổi rail/theme không remount editor.
-Dialog nhận focus, giữ Tab/Escape, trả focus không cuộn mất vị trí. Save chỉ được xác nhận bởi
+Dialog nhận focus, giữ Tab/Escape, trả focus không cuộn mất vị trí; từ [#208](../design/dialog-anatomy-r1-208.md), `Dialog` sở hữu luôn gutter/cuộn/nhóm hành động phụ của `#leave-editor` và `#draft-preview` (không còn `.vk-dialog__*` override trong `vink.css`). Save chỉ được xác nhận bởi
 `EditorSession`; dialog nhận intent từ `LeaveGuard`. Không thêm guard hay body authority khác.
 
 | Vùng | Trước → sau | Adapter/chủ trạng thái | Bất biến và đường kiểm |

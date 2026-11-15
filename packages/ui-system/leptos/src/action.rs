@@ -65,15 +65,17 @@ pub enum ButtonVariant {
     Outlined,
     Text,
     Danger,
+    DangerText,
 }
 
 impl ButtonVariant {
-    pub const ALL: [ButtonVariant; 5] = [
+    pub const ALL: [ButtonVariant; 6] = [
         Self::Filled,
         Self::Tonal,
         Self::Outlined,
         Self::Text,
         Self::Danger,
+        Self::DangerText,
     ];
 
     pub const fn id(self) -> &'static str {
@@ -83,6 +85,7 @@ impl ButtonVariant {
             Self::Outlined => "outlined",
             Self::Text => "text",
             Self::Danger => "danger",
+            Self::DangerText => "danger-text",
         }
     }
 }
@@ -122,7 +125,7 @@ fn press_handler(
 
 #[component]
 pub fn Button(
-    #[prop(optional)] variant: ButtonVariant,
+    #[prop(optional, into)] variant: Signal<ButtonVariant>,
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional)] kind: ButtonKind,
     #[prop(optional)] leading: Option<IconName>,
@@ -150,7 +153,7 @@ pub fn Button(
                     ButtonKind::Submit => "submit",
                 }
                 id=id
-                class=format!("vk-ui-button vk-ui-button--{}", variant.id())
+                class=move || format!("vk-ui-button vk-ui-button--{}", variant.get().id())
                 data-state=move || state.with(ActionState::id)
                 aria-disabled=move || (!state.with(ActionState::is_enabled)).then_some("true")
                 aria-busy=move || state.with(|s| matches!(s, ActionState::Pending { .. })).then_some("true")

@@ -42,6 +42,18 @@ chuyển focus khi người dùng còn đang nhập, trừ gửi form lỗi (foc
 Hộp thoại phá hủy: focus ban đầu vào lựa chọn an toàn; Escape/bấm ngoài theo chính sách; đóng thì
 trả focus về nút đã mở.
 
+### Anatomy và phân cấp hành động Dialog (R1, #208)
+
+`Dialog` dùng chung (`vink-ui`) sở hữu bề mặt, gutter ngoài (`--vk-overlay-gutter`, 24px ở 390px/desktop
+100%), cuộn dọc và khoảng cách vùng (`title` → `context` `--vk-space-3`, trước `actions` và giữa nhóm
+chính/phụ `--vk-space-4`, **không divider**):
+
+- Tối đa **một** CTA `Filled` chính trong một hộp thoại; khi `Lưu và rời` bị khóa do xung đột, lựa chọn an
+  toàn `Ở lại` giữ vai trò `Filled`, còn lý do vô hiệu gắn vào `#leave-editor-context` qua `aria-describedby`.
+- Nút phá hủy bước đầu (mở hộp thoại xác nhận) dùng `ButtonVariant::DangerText`; chỉ nút xác nhận không hoàn
+  tác cuối cùng mới dùng `ButtonVariant::Danger` đặc.
+- Lựa chọn an toàn luôn đứng đầu thứ tự DOM và giữ focus khởi đầu an toàn. Chi tiết: [R1 #208](dialog-anatomy-r1-208.md).
+
 ## Copy
 
 - Tiêu đề nói chuyện gì xảy ra, thông điệp nói chữ/dữ liệu nào còn an toàn, hành động là động từ
