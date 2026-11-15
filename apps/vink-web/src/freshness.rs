@@ -376,46 +376,18 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
             .is_some_and(|&removed_at| rendered_at <= removed_at)
     }
 
-    /// Clears any remembered removal fence for `key` (used when an authoritative re-publish mutation
-    /// or fresh origin read supersedes it).
-    pub fn clear_removal(&mut self, key: &K) {
-        self.removed.remove(key);
+    /// An out-of-band origin read shares the entry's ticket fence and request-start clock.
+    /// Its caller must complete it, including on cancellation.
+    pub fn begin_external_read(&mut self, key: &K, now: Millis) -> Ticket {
+        self.record_time(now);
+        self.start(key, now)
     }
 
-    /// Records an origin-confirmed representation obtained outside `begin` (such as
-    /// `/api/v1/works/{id}/reader` client navigation), fenced safely by `started_at`.
-    pub fn record_fresh(
-        &mut self,
-        key: &K,
-        data: V,
-        started_at: Millis,
-        now: Millis,
-        random: f64,
-    ) -> Applied {
-        self.record_time(now);
-        if self.is_removed_at(key, started_at) {
-            return Applied::Discarded;
-        }
-        if let Some(entry) = self.entries.get(key)
-            && (entry.data.is_some() || entry.in_flight.is_some())
-            && started_at < entry.validated_at
-        {
-            return Applied::Discarded;
-        }
-        self.removed.remove(key);
-        let policy = self.policy;
-        let entry = self.entry(key, now);
-        let changed = entry.data.as_ref() != Some(&data);
-        entry.data = Some(data);
-        entry.validated_at = started_at;
-        entry.stale = false;
-        entry.immediate_retry = false;
-        entry.rejected = None;
-        entry.failures = 0;
-        entry.retry_at = Millis::NEG_INFINITY;
-        entry.in_flight = None;
-        entry.spread = random.clamp(0.0, 1.0) * policy.jitter;
-        Applied::Fresh { changed }
+    pub fn is_current(&self, key: &K, ticket: Ticket) -> bool {
+        self.entries
+            .get(key)
+            .and_then(|e| e.in_flight)
+            .is_some_and(|(current, _)| current == ticket)
     }
 
     /// Starts a check if `trigger` warrants one; `None` coalesces with a running request or

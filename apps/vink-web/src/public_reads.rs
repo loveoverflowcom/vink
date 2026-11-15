@@ -101,19 +101,10 @@ pub fn invalidate_publication(work_id: &str) {
     let _ = work_id;
 }
 
-/// Allocates a monotonic causal sequence token before an out-of-band origin read
-/// (`/api/v1/works/{id}/reader`) so subsequent withdrawals fence stale arrivals even when
-/// `performance.now()` is quantized or frozen.
+/// A client reader request uses the same ticket fence as scheduled publication reads.
 #[cfg(feature = "hydrate")]
-pub fn begin_external_read() -> u64 {
-    browser::begin_external_read()
-}
-
-/// Records an origin-confirmed `ReaderResponse::Published` fetched client-side after
-/// `started_seq`, clearing any older removal fence without bypassing newer withdrawals.
-#[cfg(feature = "hydrate")]
-pub fn record_fresh_publication(publication: crate::contract::Publication, started_seq: u64) {
-    browser::record_fresh_publication(publication, started_seq);
+pub fn begin_reader_read(work_id: &str) -> browser::ReaderGuard {
+    browser::begin_reader_read(work_id)
 }
 
 fn follow<T>(
@@ -222,9 +213,8 @@ mod coordinator {
             }
         }
 
-        pub fn begin_external_read(&mut self) -> u64 {
-            self.seq += 1;
-            self.seq
+        pub fn begin_reader_read(&mut self, key: &PublicKey, at: Millis) -> Ticket {
+            self.store.begin_external_read(key, at)
         }
 
         fn alloc_waiter(&mut self) -> WaiterId {
@@ -335,6 +325,10 @@ mod coordinator {
         }
 
         pub fn status(&self, key: &PublicKey) -> Option<Status<Snapshot>> {
+            // Starting a new request creates an empty entry; it does not restore removed text.
+            if self.store.is_removed_at(key, Millis::NEG_INFINITY) {
+                return None;
+            }
             self.store.status(key)
         }
 
@@ -414,8 +408,6 @@ mod coordinator {
             visible: bool,
         ) -> Effects {
             let target = PublicKey::Publication(work_id.to_string());
-            self.withdrawn.remove(work_id);
-            self.store.clear_removal(&target);
             let mut effects = Effects {
                 notify_changed: true,
                 reschedule: true,
@@ -432,39 +424,31 @@ mod coordinator {
             effects
         }
 
-        pub fn record_fresh_publication(
+        pub fn finish_reader(
             &mut self,
-            publication: crate::contract::Publication,
-            started_seq: u64,
+            key: PublicKey,
+            ticket: Ticket,
+            result: Result<crate::contract::ReaderResponse, LoadError>,
             at: Millis,
             random: f64,
-        ) -> Effects {
-            self.prune_withdrawn(at);
-            if self
-                .withdrawn
-                .get(&publication.work_id)
-                .is_some_and(|w| started_seq <= w.seq)
-            {
-                return Effects::default();
+            visible: bool,
+        ) -> (Result<crate::contract::ReaderResponse, LoadError>, Effects) {
+            use crate::contract::ReaderResponse;
+            // Gate the resource result as well as the cache: a discarded body must never seed a view.
+            if !self.store.is_current(&key, ticket) {
+                return (Err(LoadError::Unavailable), Effects::default());
             }
-            let work_id = publication.work_id.clone();
-            let key = PublicKey::Publication(work_id.clone());
-            self.withdrawn.remove(&work_id);
-            self.store.clear_removal(&key);
-            let snapshot = Snapshot::Publication(publication);
-            let applied = self
-                .store
-                .record_fresh(&key, snapshot.clone(), at, at, random);
-            if applied == Applied::Discarded {
-                return Effects::default();
-            }
-            let mut effects = Effects {
-                notify_changed: true,
-                reschedule: true,
-                ..Effects::default()
+            let outcome = match &result {
+                Ok(ReaderResponse::Published(publication)) => {
+                    Outcome::Fresh(Snapshot::Publication(publication.clone()))
+                }
+                Ok(ReaderResponse::Hidden { .. } | ReaderResponse::ReviewWithdrawn { .. })
+                | Err(LoadError::NotFound) => Outcome::Removed,
+                Err(LoadError::Invalid(rejection)) => Outcome::Rejected(*rejection),
+                Err(LoadError::Unavailable) => Outcome::Temporary { retry_after: None },
             };
-            self.push_waiter_replies(&key, &Ok(snapshot), &mut effects);
-            effects
+            let effects = self.finish(key, ticket, outcome, at, random, visible);
+            (result, effects)
         }
 
         fn apply_withdrawal(
@@ -835,19 +819,61 @@ mod browser {
         apply_effects(effects);
     }
 
-    pub fn begin_external_read() -> u64 {
-        with(|owner| owner.coord.begin_external_read())
+    pub struct ReaderGuard {
+        key: PublicKey,
+        ticket: Ticket,
+        settled: bool,
     }
 
-    pub fn record_fresh_publication(publication: crate::contract::Publication, started_seq: u64) {
-        let at = now();
-        let random = js_sys::Math::random();
-        let effects = with(|owner| {
-            owner
-                .coord
-                .record_fresh_publication(publication, started_seq, at, random)
-        });
-        apply_effects(effects);
+    impl ReaderGuard {
+        pub fn finish(
+            mut self,
+            result: Result<crate::contract::ReaderResponse, LoadError>,
+        ) -> Result<crate::contract::ReaderResponse, LoadError> {
+            let (result, effects) = with(|owner| {
+                owner.coord.finish_reader(
+                    self.key.clone(),
+                    self.ticket,
+                    result,
+                    now(),
+                    js_sys::Math::random(),
+                    visible(),
+                )
+            });
+            self.settled = true;
+            apply_effects(effects);
+            result
+        }
+    }
+
+    impl Drop for ReaderGuard {
+        fn drop(&mut self) {
+            if !self.settled {
+                let (_, effects) = with(|owner| {
+                    owner.coord.finish_reader(
+                        self.key.clone(),
+                        self.ticket,
+                        Err(LoadError::Unavailable),
+                        now(),
+                        0.0,
+                        visible(),
+                    )
+                });
+                apply_effects(effects);
+            }
+        }
+    }
+
+    pub fn begin_reader_read(work_id: &str) -> ReaderGuard {
+        let key = PublicKey::Publication(work_id.to_string());
+        let ticket = with(|owner| owner.coord.begin_reader_read(&key, now()));
+        changed();
+        reschedule();
+        ReaderGuard {
+            key,
+            ticket,
+            settled: false,
+        }
     }
 
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
@@ -1081,28 +1107,136 @@ mod tests {
         assert_eq!(done.replies[0].0, waiter);
         assert!(matches!(done.replies[0].1, Ok(Snapshot::Publication(_))));
         assert!(c.status(&pub_k).is_some());
+    }
 
-        // SPA client navigation (`/reader`) started before a withdrawal cannot resurrect it,
-        // whereas one started afterwards clears the fence cleanly even on a frozen clock (`at == 70.0`).
-        let reader_before_withdraw = c.begin_external_read();
-        c.withdraw_publication("w1", 70.0, true);
-        assert_eq!(c.status(&pub_k), None);
-        let Snapshot::Publication(p_stale) = sample_pub("w1", "r2") else {
+    fn reader_publication(revision: &str) -> crate::contract::ReaderResponse {
+        let Snapshot::Publication(publication) = sample_pub("w1", revision) else {
             panic!()
         };
-        c.record_fresh_publication(p_stale, reader_before_withdraw, 75.0, 0.0);
-        assert_eq!(c.status(&pub_k), None);
+        crate::contract::ReaderResponse::Published(publication)
+    }
 
-        let reader_after_withdraw = c.begin_external_read();
-        let Snapshot::Publication(p_new) = sample_pub("w1", "r3") else {
+    #[test]
+    fn reader_ticket_survives_republication_and_private_pointer_invalidation() {
+        for republish in [false, true] {
+            let mut c = Coordinator::new(Policy::V1);
+            let key = PublicKey::Publication("w1".into());
+            let old = c.begin_reader_read(&key, 70.0);
+            c.withdraw_publication("w1", 70.0, true);
+            // The existing pointer observer signals both Some -> None and publication changes.
+            c.invalidate_publication("w1", 70.0, true);
+            if republish {
+                let new = c.begin_reader_read(&key, 70.0);
+                assert_eq!(
+                    c.status(&key),
+                    None,
+                    "pending re-publication must not expose the removed view"
+                );
+                let (reply, _) = c.finish_reader(
+                    key.clone(),
+                    new,
+                    Ok(reader_publication("r3")),
+                    70.0,
+                    0.0,
+                    true,
+                );
+                assert_eq!(reply, Ok(reader_publication("r3")));
+            }
+            // A frozen clock must not let the old read win after the new fence was cleared.
+            let (reply, _) = c.finish_reader(
+                key.clone(),
+                old,
+                Ok(reader_publication("r2")),
+                70.0,
+                0.0,
+                true,
+            );
+            assert_eq!(reply, Err(LoadError::Unavailable));
+            if republish {
+                assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r3")));
+            } else {
+                c.follow_seed(key.clone(), sample_pub("w1", "r2"), 0.0, 70.0);
+                assert_eq!(c.status(&key), None);
+            }
+        }
+    }
+
+    #[test]
+    fn reader_ticket_orders_cache_refreshes_and_records_request_start() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Publication("w1".into());
+        let first = c.begin_reader_read(&key, 0.0);
+        let second = c.begin_reader_read(&key, 0.0);
+        c.finish_reader(
+            key.clone(),
+            second,
+            Ok(reader_publication("r2")),
+            30_000.0,
+            0.0,
+            true,
+        );
+        c.follow_seed(key.clone(), sample_pub("w1", "r2"), 0.0, 30_000.0);
+        assert_eq!(c.store.next_wake(30_000.0), Some(120_000.0));
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            first,
+            Ok(reader_publication("r1")),
+            30_001.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r2")));
+
+        let pending = c.begin_reader_read(&key, 40_000.0);
+        c.invalidate_publication("w1", 40_001.0, true);
+        let (reply, _) = c.finish_reader(
+            key.clone(),
+            pending,
+            Ok(reader_publication("old")),
+            40_002.0,
+            0.0,
+            true,
+        );
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert!(
+            c.store.has_in_flight(&key),
+            "discarded reader must preserve the newer scheduled flight"
+        );
+    }
+
+    #[test]
+    fn cancelled_reader_settles_joined_waiter_and_late_denial_cannot_hide_newer_read() {
+        let mut c = Coordinator::new(Policy::V1);
+        let key = PublicKey::Publication("w1".into());
+        let cancelled = c.begin_reader_read(&key, 0.0);
+        let LoadStart::Wait { id, .. } = c.load(&key, 1.0) else {
             panic!()
         };
-        c.record_fresh_publication(p_new.clone(), reader_after_withdraw, 70.0, 0.0);
-        c.follow_seed(pub_k.clone(), Snapshot::Publication(p_new), 0.0, 70.0);
-        assert!(matches!(
-            c.status(&pub_k).and_then(|s| s.data),
-            Some(Snapshot::Publication(ref p)) if p.revision_id == "r3"
-        ));
+        let (_, effects) = c.finish_reader(
+            key.clone(),
+            cancelled,
+            Err(LoadError::Unavailable),
+            2.0,
+            0.0,
+            true,
+        );
+        assert_eq!(effects.replies, vec![(id, Err(LoadError::Unavailable))]);
+        assert!(!c.store.has_in_flight(&key));
+        let stale = c.begin_reader_read(&key, 3.0);
+        let fresh = c.begin_reader_read(&key, 3.0);
+        c.finish_reader(
+            key.clone(),
+            fresh,
+            Ok(reader_publication("r3")),
+            4.0,
+            0.0,
+            true,
+        );
+        let (reply, _) =
+            c.finish_reader(key.clone(), stale, Err(LoadError::NotFound), 5.0, 0.0, true);
+        assert_eq!(reply, Err(LoadError::Unavailable));
+        assert_eq!(c.status(&key).unwrap().data, Some(sample_pub("w1", "r3")));
     }
 
     #[test]

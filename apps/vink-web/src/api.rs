@@ -593,28 +593,11 @@ pub fn reader_resource(
             |id| {
                 browser(async move {
                     #[cfg(feature = "hydrate")]
-                    let started_seq = crate::public_reads::begin_external_read();
+                    let read = crate::public_reads::begin_reader_read(&id);
                     let result: Result<crate::contract::ReaderResponse, LoadError> =
                         public_get(format!("/api/v1/works/{id}/reader")).await;
                     #[cfg(feature = "hydrate")]
-                    match &result {
-                        Ok(crate::contract::ReaderResponse::Published(publication)) => {
-                            crate::public_reads::record_fresh_publication(
-                                publication.clone(),
-                                started_seq,
-                            );
-                        }
-                        Ok(
-                            crate::contract::ReaderResponse::ReviewWithdrawn { work_id, .. }
-                            | crate::contract::ReaderResponse::Hidden { work_id },
-                        ) => {
-                            crate::public_reads::invalidate_withdrawn(work_id);
-                        }
-                        Err(LoadError::NotFound) => {
-                            crate::public_reads::invalidate_withdrawn(&id);
-                        }
-                        _ => {}
-                    }
+                    let result = read.finish(result);
                     result
                 })
             },
@@ -670,7 +653,9 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
 pub(crate) async fn fetch_reader(
     work_id: &str,
 ) -> Result<crate::contract::ReaderResponse, LoadError> {
-    public_get(format!("/api/v1/works/{work_id}/reader")).await
+    let read = crate::public_reads::begin_reader_read(work_id);
+    let result = public_get(format!("/api/v1/works/{work_id}/reader")).await;
+    read.finish(result)
 }
 
 /// Browser public reads go through the tab's READ-02 owner (cache-first, single-flight).
