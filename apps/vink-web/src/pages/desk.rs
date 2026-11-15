@@ -55,70 +55,103 @@ pub fn DeskIndex() -> impl IntoView {
             listed_for.try_set_value(scope.clone());
         }
     };
-    // Reads run one after another, so the read for a new session can wait behind a slow answer
-    // for the old one (at most the request deadline). What is on screen must not wait with it.
-    Effect::new(move |_| forget_other(&session.scope.get()));
-    let drafts: LocalResource<Result<DraftList, ApiError>> = LocalResource::new(move || {
-        let known = session
-            .standing
-            .with(|s| *s != crate::session::Standing::Unknown);
-        let scope = session.scope.get();
-        async move {
-            if !known {
-                // The first session check has not answered; it always does, and wakes this read.
-                return Err(ApiError::Unavailable);
+    #[cfg(feature = "hydrate")]
+    let transport_owner = StoredValue::new(Owner::current().map(|o| o.downgrade()));
+    let reads = StoredValue::new(crate::read_lifecycle::ReadOwner::new(None::<String>));
+    let wake = StoredValue::new(crate::read_events::WakePolicy::default());
+    let read_list = Callback::new(move |intent: crate::read_lifecycle::Intent| {
+        #[cfg(feature = "hydrate")]
+        {
+            if creation.get_untracked() == CreateState::Pending {
+                return;
+            }
+            let scope = session.scope.get_untracked();
+            let Some(Some(ticket)) = reads.try_update_value(|r| r.begin(intent, None)) else {
+                return;
+            };
+            let Some(owner) = transport_owner.get_value().and_then(|o| o.upgrade()) else {
+                return;
+            };
+            wake.update_value(|w| w.started());
+            loading.set(true);
+            owner.with(|| {
+                leptos::task::spawn_local_scoped_with_cancellation(async move {
+                    let result = load_drafts().await;
+                    if session.scope.try_get_untracked() != Some(scope)
+                        || reads.try_update_value(|r| r.finish(&ticket)) != Some(true)
+                    {
+                        return;
+                    }
+                    wake.try_update_value(|w| w.settled(crate::read_events::now(), result.is_ok()));
+                    match result {
+                        Ok(list) => {
+                            creation.try_update(CreateState::reconciled);
+                            last_success.try_set(Some(list));
+                            load_error.try_set(None);
+                        }
+                        Err(error) => {
+                            if !matches!(error, ApiError::Network | ApiError::Unavailable) {
+                                last_success.try_set(None);
+                            }
+                            load_error.try_set(Some(error));
+                        }
+                    }
+                    loading.try_set(false);
+                    if recovery_focus.try_update(std::mem::take).unwrap_or(false) {
+                        super::focus_recovery(
+                            if last_success
+                                .get_untracked()
+                                .is_some_and(|list| !list.drafts.is_empty())
+                            {
+                                "draft-search"
+                            } else {
+                                "desk-title"
+                            },
+                        );
+                    }
+                })
+            });
+        }
+        #[cfg(not(feature = "hydrate"))]
+        let _ = intent;
+    });
+    #[cfg(feature = "hydrate")]
+    {
+        Effect::new(move |_| {
+            let scope = session.scope.get();
+            if session.standing.get() == crate::session::Standing::Unknown {
+                return;
             }
             forget_other(&scope);
-            let result = load_drafts().await;
-            if session.scope.try_get_untracked() != Some(scope) {
-                // Answered for a session that is no longer the tab's; the newer read decides.
-                return result;
+            reads.update_value(|r| r.change_scope(scope));
+            read_list.run(crate::read_lifecycle::Intent::Initial);
+        });
+        crate::read_events::observe(move || {
+            if crate::read_events::visible()
+                && wake.with_value(|w| w.due(crate::read_events::now()))
+            {
+                read_list.run(crate::read_lifecycle::Intent::Refresh);
             }
-            match &result {
-                Ok(list) => {
-                    creation.try_update(CreateState::reconciled);
-                    last_success.try_set(Some(list.clone()));
-                    load_error.try_set(None);
-                }
-                Err(error) => {
-                    // A temporary outage keeps the last loaded private list. A loss
-                    // of authority clears it; stale content must not bypass denial.
-                    if !matches!(error, ApiError::Network | ApiError::Unavailable) {
-                        last_success.try_set(None);
-                    }
-                    load_error.try_set(Some(error.clone()));
-                }
-            }
-            loading.try_update(|value| *value = false);
-            if recovery_focus.try_update(std::mem::take).unwrap_or(false) {
-                let target = if last_success
-                    .get_untracked()
-                    .is_some_and(|list| !list.drafts.is_empty())
-                {
-                    "draft-search"
-                } else {
-                    "desk-title"
-                };
-                super::focus_recovery(target);
-            }
-            result
-        }
-    });
+        });
+        on_cleanup(move || {
+            reads.try_update_value(|r| r.dispose());
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = (session, forget_other, reads, wake, recovery_focus);
     let refresh = Callback::new(move |()| {
-        if loading.get_untracked()
-            || creation.with_untracked(|state| *state == CreateState::Pending)
-        {
+        if loading.get_untracked() || creation.get_untracked() == CreateState::Pending {
             return;
         }
-        loading.set(true);
         recovery_focus.set(true);
-        drafts.refetch();
+        read_list.run(crate::read_lifecycle::Intent::Refresh);
     });
     let refresh_disabled =
         Signal::derive(move || loading.get() || creation.get() == CreateState::Pending);
     let can_create = Signal::derive(move || {
         !loading.get()
-            && drafts.get().is_some_and(|result| result.is_ok())
+            && last_success.get().is_some()
+            && load_error.get().is_none()
             && creation.with(CreateState::can_begin)
     });
     #[cfg(feature = "hydrate")]
@@ -160,7 +193,7 @@ pub fn DeskIndex() -> impl IntoView {
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
             <header id="heading" class="vk-desk-heading">
                 <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
-                <Show when=move || drafts.get().is_some_and(|result| result.is_ok_and(|list| !list.drafts.is_empty()))>
+                <Show when=move || last_success.get().is_some_and(|list| !list.drafts.is_empty())>
                     <CreateDraftButton creation can_create create />
                 </Show>
             </header>
@@ -191,15 +224,9 @@ pub fn DeskIndex() -> impl IntoView {
     }
 }
 
+#[cfg(feature = "hydrate")]
 async fn load_drafts() -> Result<DraftList, ApiError> {
-    #[cfg(feature = "hydrate")]
-    {
-        crate::api::list_drafts().await
-    }
-    #[cfg(not(feature = "hydrate"))]
-    {
-        Err(ApiError::Unavailable)
-    }
+    crate::api::list_drafts().await
 }
 
 #[component]

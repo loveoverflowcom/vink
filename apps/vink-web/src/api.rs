@@ -493,9 +493,10 @@ pub fn works_resource(
                     let result =
                         match public(crate::public_reads::PublicKey::Works(query.clone())).await {
                             Ok(crate::public_reads::Snapshot::Works(list)) => Ok(list),
-                            Ok(crate::public_reads::Snapshot::Publication(_)) => {
-                                Err(LoadError::Unavailable)
-                            }
+                            Ok(
+                                crate::public_reads::Snapshot::Publication(_)
+                                | crate::public_reads::Snapshot::Control(_),
+                            ) => Err(LoadError::Unavailable),
                             Err(error) => Err(error),
                         };
                     (query, result)
@@ -557,9 +558,10 @@ pub fn publication_resource(work_id: Memo<String>) -> Resource<Result<Publicatio
             move || work_id.get(),
             |id| {
                 browser(async move {
-                    match public(crate::public_reads::PublicKey::Publication(id)).await? {
+                    match public(crate::public_reads::PublicKey::Reader(id)).await? {
                         crate::public_reads::Snapshot::Publication(p) => Ok(p),
-                        crate::public_reads::Snapshot::Works(_) => Err(LoadError::Unavailable),
+                        crate::public_reads::Snapshot::Works(_)
+                        | crate::public_reads::Snapshot::Control(_) => Err(LoadError::Unavailable),
                     }
                 })
             },
@@ -592,13 +594,13 @@ pub fn reader_resource(
             move || work_id.get(),
             |id| {
                 browser(async move {
-                    #[cfg(feature = "hydrate")]
-                    let read = crate::public_reads::begin_reader_read(&id);
-                    let result: Result<crate::contract::ReaderResponse, LoadError> =
-                        public_get(format!("/api/v1/works/{id}/reader")).await;
-                    #[cfg(feature = "hydrate")]
-                    let result = read.finish(result);
-                    result
+                    match public(crate::public_reads::PublicKey::Reader(id)).await? {
+                        crate::public_reads::Snapshot::Publication(p) => {
+                            Ok(crate::contract::ReaderResponse::Published(p))
+                        }
+                        crate::public_reads::Snapshot::Control(control) => Ok(control),
+                        _ => Err(LoadError::Unavailable),
+                    }
                 })
             },
         )
@@ -647,15 +649,6 @@ async fn public_get<T: serde::de::DeserializeOwned>(path: String) -> Result<T, L
         let _ = path;
         Err(LoadError::Unavailable)
     }
-}
-
-#[cfg(feature = "hydrate")]
-pub(crate) async fn fetch_reader(
-    work_id: &str,
-) -> Result<crate::contract::ReaderResponse, LoadError> {
-    let read = crate::public_reads::begin_reader_read(work_id);
-    let result = public_get(format!("/api/v1/works/{work_id}/reader")).await;
-    read.finish(result)
 }
 
 /// Browser public reads go through the tab's READ-02 owner (cache-first, single-flight).

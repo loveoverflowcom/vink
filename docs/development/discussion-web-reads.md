@@ -105,3 +105,11 @@ Kết quả lệnh, SHA và giới hạn của lượt chạy được ghi trong
 - Lỗi riêng `503` trong ca Auth là fabricated và ghi nhãn, public GET vẫn thật.
 
 Không claim production authentication, mail thật, HTTPS/domain thật, OS IME hoặc screen reader.
+
+## Lifecycle bổ sung #202
+
+Public roots/own list dùng ticket và page-chain thuần trong `read_lifecycle`; replies giữ public
+epoch và kiểm input cursor/IDs trước khi cập nhật. Head refresh thành công bỏ tail, lỗi giữ
+trang/cursor đã chấp nhận. Lifecycle hints của owner đang mount qua `read_events`, không replay
+mutation hoặc remount composer. Session scope, private redaction và authority refusal ở trên
+vẫn thuộc discussion. Xem [conformance và seam](public-read-freshness.md#lifecycle-web-202).
