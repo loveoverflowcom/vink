@@ -5,16 +5,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub const LOOKUP_BATCH: usize = 20;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ReadTicket {
-    pub scope: Scope,
-    pub generation: u64,
-}
+pub type ReadTicket = crate::read_lifecycle::ReadTicket<Scope>;
+use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
 
 #[derive(Clone, Debug)]
 pub struct OwnState {
     pub scope: Scope,
-    generation: u64,
+    reads: ReadOwner<Scope>,
+    chain: PageChain,
     pub loading: bool,
     pub comments: BTreeMap<String, OwnComment>,
     /// Listing order belongs to the own cursor, independently of public pagination.
@@ -27,8 +25,9 @@ pub struct OwnState {
 impl OwnState {
     pub fn new(scope: Scope) -> Self {
         Self {
+            reads: ReadOwner::new(scope.clone()),
+            chain: PageChain::default(),
             scope,
-            generation: 0,
             loading: false,
             comments: BTreeMap::new(),
             listed: vec![],
@@ -39,30 +38,52 @@ impl OwnState {
         }
     }
     pub fn change_scope(&mut self, scope: Scope) {
-        let generation = self.generation + 1;
+        self.reads.change_scope(scope.clone());
+        let reads = self.reads.clone();
         *self = Self::new(scope);
-        self.generation = generation;
+        self.reads = reads;
     }
-    /// Supersede, never queue behind an obsolete read. Only this ticket can settle loading.
+    /// Explicit reconciliation supersedes a preceding read; event bursts use begin_page.
     pub fn begin(&mut self) -> Option<ReadTicket> {
+        self.reads.invalidate();
+        self.begin_page(false)
+    }
+    pub fn begin_page(&mut self, append: bool) -> Option<ReadTicket> {
         self.scope.session.as_ref()?;
-        self.generation += 1;
+        let ticket = self.reads.begin(
+            if append {
+                Intent::Append
+            } else {
+                Intent::Refresh
+            },
+            if append {
+                self.next_cursor.clone()
+            } else {
+                None
+            },
+        )?;
         self.loading = true;
         self.error = None;
-        Some(ReadTicket {
-            scope: self.scope.clone(),
-            generation: self.generation,
-        })
+        Some(ticket)
     }
     pub fn invalidate_reads(&mut self) {
-        self.generation += 1;
+        self.reads.invalidate();
         self.loading = false;
     }
     pub fn accepts(&self, ticket: &ReadTicket) -> bool {
-        self.scope == ticket.scope && self.generation == ticket.generation
+        self.reads.accepts(ticket)
     }
     pub fn apply_list(&mut self, ticket: &ReadTicket, page: OwnCommentList, append: bool) -> bool {
-        if !self.accepts(ticket) || page.work_id != self.scope.work_id {
+        if !self.accepts(ticket)
+            || page.work_id != self.scope.work_id
+            || append != (ticket.intent == Intent::Append)
+            || !self.reads.accept_page(
+                ticket,
+                &mut self.chain,
+                page.comments.iter().map(|c| c.comment_id.clone()),
+                page.next_cursor.clone(),
+            )
+        {
             return false;
         }
         if !append {
@@ -104,6 +125,7 @@ impl OwnState {
         if !self.accepts(ticket) {
             return;
         }
+        self.reads.finish(ticket);
         self.loading = false;
         if let Some(error) = error {
             self.author = false;

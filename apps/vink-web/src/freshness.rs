@@ -9,6 +9,7 @@
 //! bounds how old a snapshot may be to render instantly on a *new* visit. Data on screen is never
 //! removed by a temporary failure, only by an authoritative removal (`Outcome::Removed`).
 
+use crate::read_cache::{InMemoryCache, SnapshotCache};
 use std::collections::BTreeMap;
 
 /// Milliseconds on a monotonic process clock.
@@ -154,8 +155,7 @@ pub fn retry_after_ms(value: &str) -> Option<Millis> {
 }
 
 /// Identifies one physical request. Only the newest ticket of an entry may commit.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Ticket(u64);
+pub type Ticket = crate::read_lifecycle::RequestId;
 
 /// What a view should do on mount.
 #[derive(Clone, Debug, PartialEq)]
@@ -200,6 +200,7 @@ pub struct Status<V> {
 #[derive(Clone, Debug)]
 struct Entry<V> {
     data: Option<V>,
+    cached_unverified: bool,
     /// Start of the request that confirmed `data`: a conservative lower bound.
     validated_at: Millis,
     /// Cached snapshot may lag origin state (`mark_stale`): refreshes once due, without clearing backoff.
@@ -220,6 +221,7 @@ impl<V> Entry<V> {
     fn empty(now: Millis) -> Self {
         Self {
             data: None,
+            cached_unverified: false,
             validated_at: Millis::NEG_INFINITY,
             stale: false,
             immediate_retry: false,
@@ -235,7 +237,10 @@ impl<V> Entry<V> {
 
     /// When a scheduled or signalled check becomes due, if this entry is refreshable at all.
     fn check_at(&self, policy: &Policy, with_spread: bool) -> Option<Millis> {
-        if self.data.is_none() || self.in_flight.is_some() || self.rejected.is_some() {
+        if (self.data.is_none() && !self.immediate_retry)
+            || self.in_flight.is_some()
+            || self.rejected.is_some()
+        {
             return None;
         }
         Some(if self.immediate_retry {
@@ -251,27 +256,33 @@ impl<V> Entry<V> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Store<K, V> {
+pub struct Store<K, V, C = InMemoryCache<K, V>> {
+    cache: C,
+    reusable: fn(&V) -> bool,
     policy: Policy,
     entries: BTreeMap<K, Entry<V>>,
     /// Timestamp of authoritative `404` / `remove`: rejects older `seed` calls without creating
     /// a permanent tombstone against a new origin `Fresh` response on re-publication.
     removed: BTreeMap<K, Millis>,
     high_water: Millis,
-    next_ticket: u64,
 }
 
 impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     pub fn new(policy: Policy) -> Self {
+        Self::with_cache(policy, InMemoryCache::default(), |_| true)
+    }
+}
+impl<K: Ord + Clone, V: Clone + PartialEq, C: SnapshotCache<K, V>> Store<K, V, C> {
+    pub fn with_cache(policy: Policy, cache: C, reusable: fn(&V) -> bool) -> Self {
         Self {
             policy,
+            cache,
+            reusable,
             entries: BTreeMap::new(),
             removed: BTreeMap::new(),
             high_water: Millis::NEG_INFINITY,
-            next_ticket: 1,
         }
     }
-
     pub fn policy(&self) -> &Policy {
         &self.policy
     }
@@ -311,8 +322,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     }
 
     fn start(&mut self, key: &K, now: Millis) -> Ticket {
-        let ticket = Ticket(self.next_ticket);
-        self.next_ticket += 1;
+        let ticket = Ticket::allocate();
         let entry = self.entry(key, now);
         entry.immediate_retry = false;
         entry.rejected = None;
@@ -325,7 +335,12 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         self.record_time(now);
         self.collect(now);
         let max_age = self.policy.max_display_age;
+        let cached = self.cache.get(key);
+        let reusable = self.reusable;
         let entry = self.entry(key, now);
+        if entry.data.is_none() {
+            entry.data = cached;
+        }
         entry.last_seen = now;
         if let Some(rejection) = entry.rejected
             && entry.data.is_none()
@@ -333,8 +348,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
             return Load::Rejected(rejection);
         }
         if let Some(data) = &entry.data
+            && reusable(data)
             && now - entry.validated_at <= max_age
         {
+            entry.cached_unverified = true;
             return Load::Ready(data.clone());
         }
         if entry.in_flight.is_some() {
@@ -354,12 +371,17 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
             }
             self.removed.remove(key);
         }
+        let cached = self.cache.get(key);
         let entry = self.entry(key, now);
+        if entry.data.is_none() {
+            entry.data = cached;
+        }
         if entry.in_flight.is_none()
             && entry.rejected.is_none()
-            && (entry.data.is_none() || entry.validated_at < rendered_at)
+            && (entry.validated_at == Millis::NEG_INFINITY || entry.validated_at < rendered_at)
         {
             entry.data = Some(data);
+            entry.cached_unverified = false;
             entry.validated_at = rendered_at;
             entry.stale = false;
             entry.immediate_retry = false;
@@ -433,8 +455,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         match outcome {
             Outcome::Fresh(data) => {
                 self.removed.remove(key);
+                self.cache.remove(key);
                 let changed = entry.data.as_ref() != Some(&data);
                 entry.data = Some(data);
+                entry.cached_unverified = false;
                 entry.validated_at = started_at;
                 entry.stale = false;
                 entry.immediate_retry = false;
@@ -449,6 +473,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
                 Applied::Removed
             }
             Outcome::Rejected(rejection) => {
+                self.cache.remove(key);
                 entry.data = None;
                 entry.stale = false;
                 entry.immediate_retry = false;
@@ -519,6 +544,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     pub fn remove_at(&mut self, key: &K, now: Millis) {
         self.record_time(now);
         self.entries.remove(key);
+        self.cache.remove(key);
         let fence = if self.high_water.is_finite() {
             self.high_water.max(now)
         } else {
@@ -542,14 +568,21 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     /// Tickets keep increasing, so no earlier request can match a later entry.
     pub fn clear(&mut self) {
         self.entries.clear();
+        self.cache.clear();
         self.removed.clear();
     }
 
     /// Edits a held snapshot without confirming it (a derived preview of an authoritative
     /// removal elsewhere). Existing backoff deadlines remain intact.
     pub fn edit(&mut self, key: &K, edit: impl FnOnce(&mut V)) {
-        if let Some(data) = self.entries.get_mut(key).and_then(|e| e.data.as_mut()) {
-            edit(data);
+        if let Some(entry) = self.entries.get_mut(key) {
+            if entry.data.is_none() {
+                entry.data = self.cache.get(key);
+            }
+            self.cache.remove(key);
+            if let Some(data) = &mut entry.data {
+                edit(data);
+            }
         }
     }
 
@@ -557,6 +590,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
     /// retry backoff deadlines while marking changed entries stale.
     pub fn edit_all(&mut self, mut edit: impl FnMut(&K, &mut V)) {
         for (key, entry) in &mut self.entries {
+            if entry.data.is_none() {
+                entry.data = self.cache.get(key);
+            }
+            self.cache.remove(key);
             if let Some(data) = &mut entry.data {
                 let before = data.clone();
                 edit(key, data);
@@ -568,6 +605,10 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         }
     }
 
+    pub fn observer_count(&self, key: &K) -> u32 {
+        self.entries.get(key).map_or(0, |e| e.observers)
+    }
+
     pub fn observe(&mut self, key: &K, now: Millis) {
         self.record_time(now);
         let entry = self.entry(key, now);
@@ -575,13 +616,29 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         entry.last_seen = now;
     }
 
+    /// End an observation and fence its abandoned flight. Snapshot retention is optional;
+    /// the coordinator's rejection, age and removal facts do not belong to the cache.
     pub fn release(&mut self, key: &K, now: Millis) {
         self.record_time(now);
         if let Some(entry) = self.entries.get_mut(key) {
             entry.observers = entry.observers.saturating_sub(1);
             entry.last_seen = now;
+            if entry.observers == 0 {
+                entry.in_flight = None;
+                if let Some(data) = entry.data.take() {
+                    if (self.reusable)(&data) {
+                        self.cache.put(key.clone(), data);
+                    } else {
+                        self.cache.remove(key);
+                    }
+                }
+            }
         }
         self.collect(now);
+    }
+
+    pub fn cached_unverified(&self, key: &K) -> bool {
+        self.entries.get(key).is_some_and(|e| e.cached_unverified)
     }
 
     pub fn has_in_flight(&self, key: &K) -> bool {
@@ -607,7 +664,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
             refreshing: entry.data.is_some() && entry.in_flight.is_some(),
             failed: entry.data.is_some() && entry.failures > 0,
             rejected: entry.rejected,
-            data: entry.data.clone(),
+            data: entry.data.clone().or_else(|| self.cache.get(key)),
         })
     }
 
@@ -648,8 +705,13 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
         let retain = self.policy.retain_unobserved;
         self.removed.retain(|_, at| now - *at < retain);
         self.trim_removed();
-        self.entries
-            .retain(|_, e| e.observers > 0 || e.in_flight.is_some() || now - e.last_seen < retain);
+        self.entries.retain(|key, e| {
+            let keep = e.observers > 0 || e.in_flight.is_some() || now - e.last_seen < retain;
+            if !keep {
+                self.cache.remove(key);
+            }
+            keep
+        });
         while self.entries.len() > self.policy.max_entries {
             let oldest = self
                 .entries
@@ -660,6 +722,7 @@ impl<K: Ord + Clone, V: Clone + PartialEq> Store<K, V> {
             match oldest {
                 Some(key) => {
                     self.entries.remove(&key);
+                    self.cache.remove(&key);
                 }
                 None => break,
             }
