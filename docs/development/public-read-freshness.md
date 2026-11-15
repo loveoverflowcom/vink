@@ -340,3 +340,69 @@ Touch/pointer/Enter/Space dùng nút/link native; không gesture/ESC handler m�
 đặt focus, remount editor/composer hoặc ghi đè composition. Reduced motion giữ token hiện hành.
 Reference là source regression baseline, `NO_APPROVED_REFERENCE` cho fidelity mới; kiểm riêng
 390/1440 × chữ100/200 (root font-size, không browser zoom), keyboard/composition mô phỏng.
+
+### Evidence local và nghiệm thu #202 — 15/11/2026
+
+Worktree `/private/tmp/vink-issue202`, base `ebbde221583360b3b059b00aca696ad68b0595f8`.
+Mã Rust/UI tại `1855526ab2d8448c20c3f61285586e4cd206e1a4`; các commit sau chỉ điều chỉnh
+fixture browser và ghi evidence. Browser discovery/review tại `e53d146`, auth/publication
+tại `63bc070`, main cuối tại `86eb145` + diff evidence docs. Không đọc, chờ hay gọi lại GitHub CI.
+
+Môi trường: macOS, Chrome headless/CDP, Rust 1.99.1, wasm-bindgen 0.2.129, Node 22.15.0;
+PostgreSQL loopback `127.0.0.1:55439`, App và Identity scratch do runner sở hữu. Các lệnh cargo
+dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`. Browser còn
+dùng `VINK_CHROME` trỏ Chrome cục bộ, `VINK_TEST_DATABASE_URL` trỏ cluster trên và
+`npm_config_cache=/private/tmp/vink-issue202-npm-cache`. Không dừng cluster được chia sẻ.
+
+| Command / đầu vào | Kết quả và boundary |
+| --- | --- |
+| `cargo test -p vink-web --lib --features ssr` | **PASS**, 215 unit/contract; gồm cùng suite Memory/NoOp, freshness, page chain và private/session guards. Log `target/issue202/unit-web-final.log`; mã Rust trùng `1855526`. |
+| `cargo xtask verify unit app --filter review_withdrawn` | **PASS**, chọn đúng 2 test domain/application, không DB. Log `unit-app-final.log`. |
+| `rustc --edition=2024 --test apps/vink-web/src/read_lifecycle.rs` rồi chạy binary | **PASS**, 2 test. Mutant riêng trong `target/issue202` thay allocator bằng `RequestId(1)` **FAIL đúng dự kiến** (exit 101, ABA/remount); source thật không bị sửa. Logs `lifecycle-final.log`, `negative-control-final.log`. |
+| `cargo xtask verify web --scenario main --scenario discovery --scenario review --scenario publication --scenario auth` tại `e53d146` | **PASS các bước main, discovery, review**, gồm HTTP/SSR và PostgreSQL thật; toàn command **FAIL** ở auth vì assertion cũ đòi B chờ response A, publication **NOT_RUN** trong lần này. Log `web-final-5.log`, capture `target/verify-web/1794736668693159000-67229`. |
+| `cargo xtask verify web --scenario auth --scenario publication` tại `63bc070` | **PASS cả command** với Identity/App/PostgreSQL thật và local mail outbox. Auth giữ response A, chứng minh B hoàn tất trước khi nhả A; giữ riêng own/public intent để kiểm cả hai response muộn. Log `web-auth-publication-2.log`, capture `target/verify-web/1794737310681252000-80178`. |
+| `cargo xtask verify web --scenario main` tại `86eb145` + evidence docs | **PASS cả command**, thêm đo anchor đoạn văn ở scroll 265px/top 80,375px: giữ vị trí nhìn, article node và selection sau refresh. Log `web-main-repeat.log`, capture `target/verify-web/1794738228853075000-97295`. |
+| `cargo xtask verify quick` trên diff cuối (`63bc070` + evidence docs; trong lúc chạy chỉ thêm assertion browser ở `368a3ac`) | **PASS** tokens, manifest, fmt, cả 3 clippy, doctests, unit/contract; toàn command **FAIL** ở đúng 1 repository check có sẵn: password placeholder trong `test-vps-deployment-guide.md`. Log `quick-final.log`. |
+
+Tổng hợp trên bao phủ **5 scenario được chọn**, không phải full Web lane; `restart`, `endorsement`,
+`password` **NOT_SELECTED**. Không đổi SQL/transaction; kiểm provider PostgreSQL thuộc các scenario
+trên, không gọi đó là full `verify postgres`. Các log nằm trong `target/issue202/`.
+
+Baseline failure của quick được đối chiếu với `origin/develop@ebbde221`: blob tài liệu
+`4d8c6428e5add34b0580b17b541bf25f4dfe0455` và scanner `xtask/src/checks.rs`
+`35d9eb7e989710ccb0e0335a45282595223bd40e` giống hệt; không sửa file ngoài phạm vi để làm xanh lane.
+
+Các lần chạy sửa soạn còn lưu: scoped `verify unit web` không bật `ssr` vấp 4 test render SSR
+(đã dùng lệnh có feature và workspace quick); một lần Web bị resource lock khi unit lane còn
+giữ artifact; các lần browser trước vấp fixture cộng đồng hồ vượt retention và selector sai.
+Đã sửa bước chuẩn bị, không tăng retention hay bỏ assertion thu hồi. Auth cũ giả định đọc tuần
+tự và một nút khởi động đồng thời own/public; test mới giữ nguyên payload thật và kiểm response
+đảo thứ tự qua các intent thực tế. Không dùng những lần FAIL làm bằng chứng PASS toàn lane.
+Lần đầu chuẩn bị anchor chưa chờ layout đủ để cuộn; bản cuối chờ composer và đo vị trí nhìn
+thực tế. `web-anchor-final-2.log` đã qua anchor nhưng **FAIL** ở assertion caret editor khi thu
+viewport mobile; chạy lại **nguyên source và command**, không sửa/bỏ assertion, được **PASS**
+trong `web-main-repeat.log`. Đây là một failure không tái hiện, chưa xác định nguyên nhân;
+không claim đã sửa một lỗi editor.
+
+| Acceptance | Source / bằng chứng / kết luận |
+| --- | --- |
+| AC-01 | `ReadOwner`/`RequestId`, keyed `ReaderScope`, waiter cleanup; Memory/NoOp + negative control + main ABA + auth session/late response: **PASS**. |
+| AC-02 | `PageChain`, roots/own/replies; duplicate/cycle/cursor rejection trước commit, head thay tail; unit và main fail/retry cùng cursor + restart giữ draft: **PASS**. |
+| AC-03 | `read_events`, `WakePolicy`, coordinator; unit burst/timer/backoff, main public/Desk burst một GET, không mutation, hidden pause: **PASS** trên fake clock/CDP. |
+| AC-04 | Typed Reader cache entry; main held `/reader`, 503 và browser offline vẫn mở snapshot; unit empty/expired mount không dùng snapshot: **PASS** trong policy v1. Không offline sau restart. |
+| AC-05 | Một validator cho Published/control/404; unit late/seed + main Hidden/404/republish + review/publication thật kiểm replacement, metadata, no-store, comments và pointer: **PASS**. |
+| AC-06 | `memory_and_noop_share_authority_error_scope_and_single_flight_contract` chạy cùng contract, cache-hit khác biệt được kiểm riêng; **PASS**. |
+| AC-07 | Main/discovery SSR, GET search, link context, 304; review noindex/no-store; auth/publication không SSR private facts; seed/request fencing: **PASS**. |
+| AC-08 | Main giữ article node/selection/scroll, composer node/focus/chữ Việt khi reconnect; Desk search giữ focus; auth/publication giữ chữ cùng người và xóa dữ liệu khi đổi người: **PASS Chrome/CDP**. OS IME thật **NOT_RUN**. |
+| AC-09 | Conformance map và seam ở trên, ghi rõ #201/#205; **PASS** kiểm source/diff. IndexedDB/SW và CMP/native chưa triển khai trong lát này. |
+
+Self-review source/contract không còn finding cần sửa trong phạm vi #202; không phải review độc lập.
+Không đổi product signoff, `DESIGN_PROPOSED`, D-05 `Provisional` hoặc policy v1 còn `OPEN`.
+
+| Chiều UX | Kết quả và giới hạn |
+| --- | --- |
+| Functional | **PASS** 5 scenario được tổng hợp, gồm race, error, control và private isolation. |
+| Geometry | **PASS** assertion 390/1440 × chữ100/200 của Reader cache; chain restart 390/200 và các ma trận main hiện hữu. |
+| Visual | **PASS** self-review các ảnh đã mở ở capture main: `reader-cached-unverified`, đủ 4 `reader-cache-{390,1440}-{100,200}`, `discussion-chain-restarted` và `discussion-chain-restarted-390-200` (sáng). State mới ở theme tối chưa mở riêng: **NOT_RUN**; không claim approved fidelity. |
+| Accessibility/Responsive | **PASS** keyboard/focus và reflow trong main; screen reader, mobile thật và OS IME thật **NOT_RUN**. |
+| Interaction | **PASS** explicit apply bản mới, reconnect không đổi selection/composition, failed append không advance cursor, restart giữ bản nháp; CDP không chứng minh suspend/resume thiết bị thật. |
