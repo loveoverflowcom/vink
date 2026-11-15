@@ -105,6 +105,8 @@ pub enum ReaderResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DraftList {
     pub drafts: Vec<DraftCard>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -1667,6 +1669,23 @@ mod tests {
             "drafts.list.json",
             &DraftList {
                 drafts: vec![DraftCard::from(&card)],
+                next_cursor: None,
+            },
+        );
+        let search = crate::domain::draft_query::DraftSearch::parse(
+            crate::domain::ids::PrincipalId::parse("11111111-1111-4111-8111-111111111111").unwrap(),
+            "",
+            Some("title"),
+            Some("1"),
+            None,
+        )
+        .unwrap();
+        let page = search.page(vec![card.clone(), card.clone()]);
+        assert_matches(
+            "drafts.page.json",
+            &DraftList {
+                drafts: page.drafts.iter().map(DraftCard::from).collect(),
+                next_cursor: page.next_cursor,
             },
         );
         let saved = SavedDraft {

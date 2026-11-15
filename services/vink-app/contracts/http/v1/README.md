@@ -49,7 +49,7 @@ consumer yet and no native consumer exists.
 | `GET /api/v1/works?q=&tag=&tag=&limit=&cursor=` | `200` one page of current publications, newest first (default and home page: the first 12); `304` on a matching `If-None-Match` | `422` (`q`, `tag`, `limit`, `cursor`, `query`), `503` | [default](fixtures/works.list.json), [search](fixtures/works.search.json), [unmatched filters](fixtures/works.search.unmatched.json) |
 | `GET /api/v1/works/{work_id}/publication` | `200` the public snapshot (never the draft) with its public `tags`; `304` on a matching `If-None-Match` | `404`, `503` | [publication.get.json](fixtures/publication.get.json) |
 | `GET /api/v1/works/{work_id}/reader` | `200` `{"status":"published", …publication}` (conditional like `/publication`) or, after a moderator/admin rejected the public revision (`O-17@r2`), `{"status":"review_withdrawn","work_id","author_name"}` with `no-store` and no validator; a public work made private returns `{"status":"hidden","work_id"}` (PUB-07), also `no-store`, with no author, title, body or tags | `404` (never public, private without a hidden page, deleted or removed), `503` | — |
-| `GET /api/v1/drafts` | `200` the actor's drafts | `401`, `503` | [drafts.list.json](fixtures/drafts.list.json) |
+| `GET /api/v1/drafts` | `200` trang nháp của actor; `q`, `sort`, `limit`, `cursor` | `401`, `422`, `503` | [legacy/end](fixtures/drafts.list.json), [còn trang](fixtures/drafts.page.json) |
 | `POST /api/v1/drafts` | `201` a new empty draft at version 1 | `401`, `403`, `503` | [draft.get.json](fixtures/draft.get.json) (same shape) |
 | `GET /api/v1/drafts/{work_id}` | `200` the actor's draft | `401`, `404`, `503` | [draft.get.json](fixtures/draft.get.json) |
 | `PUT /api/v1/drafts/{work_id}` | `200` new version | `401`, `403`, `404`, `409`, `422`, `503` | [request](fixtures/draft.save.request.json), [response](fixtures/draft.save.response.json) |
@@ -57,6 +57,39 @@ consumer yet and no native consumer exists.
 | `POST /api/v1/works/{work_id}/snapshots` | `201` (`200` on replay) a revision frozen at exactly `expected_draft_version` + `expected_metadata_version`; a replay with the same `command_key` and versions returns the first revision even after the draft moved on | `401`, `403`, `404`, `409` `version_conflict` (`field`: `expected_draft_version` or `expected_metadata_version`, with `current_version`), `422` (`idempotency_key_reused`), `503` | [request](fixtures/snapshot.capture.request.json), [response](fixtures/snapshot.capture.response.json), [draft moved](fixtures/error.snapshot_draft_conflict.json), [tags moved](fixtures/error.snapshot_metadata_conflict.json) |
 | `POST /api/v1/works/{work_id}/publication/request-public` | `200` `submitted`/`waiting`/`published`/`reaffirmed` with the new `generation`; a replay (`replayed: true`) may omit `ticket_id`: read the state | `401`, `403`, `404` (`unknown_revision`), `409` (`version_conflict` with `field: expected_generation`, `revision_rejected`, `work_unavailable`), `422`, `503` | [request](fixtures/publication.request_public.request.json), [response](fixtures/publication.request_public.response.json), [replayed](fixtures/publication.request_public.response.replayed.json), [stale](fixtures/error.generation_conflict.json), [rejected](fixtures/error.revision_rejected.json), [unknown](fixtures/error.unknown_revision.json), [inactive](fixtures/error.work_unavailable.json), [key reused](fixtures/error.publication_key_reused.json) |
 | `POST /api/v1/works/{work_id}/publication/set-private` | `200` `made_private` with the new `generation` | as above | [request](fixtures/publication.set_private.request.json), [response](fixtures/publication.set_private.response.json) |
+
+### Danh sách nháp riêng (#201)
+
+`GET /api/v1/drafts` luôn xác thực actor từ session; không nhận owner từ URL/cursor.
+Mọi response API (kể cả lỗi) là `Cache-Control: no-store`, không có body bản thảo.
+Chỉ trả `work_id`, `title`, `version`, `updated_at` trong `drafts`; thêm `next_cursor`
+khi còn trang. Thiếu/null `next_cursor` là đã hết; không có tổng đếm. Decoder cũ bỏ qua
+field thêm, decoder mới nhận cả fixture cũ. Không tham số vẫn Recent, tối đa 100 nháp.
+
+- `q`: tối đa 200 ký tự sau NFC, 3200 byte UTF-8 thô, không NUL. Mặc định/rỗng là tất cả.
+  Tìm **chuỗi con nguyên văn** của tiêu đề hiển thị sau NFD, bỏ combining marks, lowercase
+  từng ký tự, Đ/đ → d, trim/gộp Unicode whitespace. Giữ dấu câu, `%` và `_` là ký tự thường.
+  Tiêu đề rỗng hiển thị “Chưa đặt tên”. Không tìm nội dung; không dùng semantics word-prefix
+  hoặc bỏ dấu câu của discovery công khai. Chuỗi tác giả lưu không bị thay bởi khóa so sánh.
+- `sort`: `recent` (mặc định): `updated_at DESC, work_id ASC`; `title`:
+  folded display-title ASC theo byte UTF-8 (`COLLATE "C"`), rồi `work_id ASC`.
+- `limit`: số nguyên ASCII `1..=100`, mặc định 100. Web mới gửi giới hạn tường minh.
+- `cursor`: chuyển nguyên `next_cursor` của trang trước. Lowercase hex v1, tối đa 6500 byte;
+  chứa vị trí và SHA-256 scope (principal, folded query, sort, limit), không chứa credential.
+  Một query có cùng khóa gập vẫn cùng scope; đổi owner/sort/limit/query-key phải bắt đầu lại.
+  Cursor không ký và không cấp quyền: sửa vị trí hợp lệ chỉ di chuyển trong corpus của actor.
+  Server không bảo đảm cursor là token đã phát hành. Version/scope/shape/UTF-8 sai bị từ chối.
+- Không chấp nhận field lạ hoặc tham số lặp, thiếu `=`, `%` hỏng/UTF-8 không hợp lệ;
+  raw query tối đa 32768 byte. Lỗi `422 validation_failed`, `field` là `query/q/sort/limit/cursor`.
+  Không echo dữ liệu đầu vào trong lỗi hoặc ghi query/cursor vào request trace. Thứ tự:
+  xác thực actor → decode URL → q → sort → limit → cursor → PostgreSQL.
+
+SQL filter owner + query + keyset và sort **trước** `LIMIT limit+1`, chỉ một statement,
+không đọc từng card riêng. Trang là snapshot của một statement; nhiều trang là **live keyset**,
+không snapshot toàn danh sách. Draft sửa tiêu đề/thời gian có thể di chuyển qua cursor;
+refresh bắt đầu chain mới, không ghép đầu mới với đuôi cũ. “Viết tiếp” đọc Recent của owner
+(`q` rỗng, `limit=1`) độc lập filter/sort đang xem. Đọc nháp không đi vào SSR payload,
+public cache hoặc READ-02. [Owner triển khai và query plan](../../../../../docs/development/desk-pagination.md).
 
 ### Public discovery (TAG-PR-04)
 

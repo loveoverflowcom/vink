@@ -72,7 +72,7 @@ cargo xtask secrets status --project cantos-a348b --account "$OPERATOR_EMAIL" --
 
 **Ánh xạ sang Vink.** `render-env` xuất cấu hình công khai cho Compose. Compose nạp
 `app-runtime.env` và `worker-runtime.env` riêng, mỗi tiến trình đọc `DATABASE_URL` khi load config.
-Giá trị minh họa cho App là `postgresql://vink_app_runtime:FAKE_PASSWORD@postgres:5432/vink`.
+Giá trị minh họa cho App là `postgresql://vink_app_runtime:<RUNTIME_PASSWORD>@postgres:5432/vink`.
 Identity đọc `VINK_IDENTITY_DATABASE_URL` từ `identity-runtime.env`. App và Identity migrator
 chỉ đọc `VINK_MIGRATE_DATABASE_URL` / `VINK_IDENTITY_MIGRATE_DATABASE_URL` trong file one-shot
 tương ứng. `provision.env` chỉ vào bước provision. Postgres đọc bootstrap password từ file qua

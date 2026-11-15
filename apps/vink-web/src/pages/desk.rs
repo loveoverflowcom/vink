@@ -181,7 +181,7 @@ pub fn DeskIndex() -> impl IntoView {
                     </div>
                 </Show>
                 <Show when=move || last_success.get().is_some_and(|list| !list.drafts.is_empty())>
-                    <DraftListView list=Signal::derive(move || last_success.get().unwrap_or(DraftList { drafts: vec![] })) query sort refresh refresh_disabled />
+                    <DraftListView list=Signal::derive(move || last_success.get().unwrap_or(DraftList { drafts: vec![], next_cursor: None })) query sort refresh refresh_disabled />
                 </Show>
             </div>
             <p class="vk-desk-privacy vk-muted">

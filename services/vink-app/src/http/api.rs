@@ -380,10 +380,16 @@ async fn get_reader(
 async fn list_drafts(
     State(state): State<AppState>,
     Actor(actor): Actor,
+    RawQuery(raw): RawQuery,
 ) -> Result<Json<DraftList>, ApiError> {
-    let drafts = state.vink.list_drafts(actor).await?;
+    let owner = actor.ok_or(ApiError::Unauthenticated)?;
+    let page = state
+        .vink
+        .search_drafts(Some(owner), super::drafts::query(raw.as_deref())?)
+        .await?;
     Ok(Json(DraftList {
-        drafts: drafts.iter().map(DraftCard::from).collect(),
+        drafts: page.drafts.iter().map(DraftCard::from).collect(),
+        next_cursor: page.next_cursor,
     }))
 }
 

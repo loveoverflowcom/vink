@@ -8,6 +8,7 @@ mod abuse;
 pub mod appeals;
 mod discovery;
 mod discussion;
+mod drafts;
 mod endorsement;
 pub mod evaluation;
 pub mod moderation;
@@ -27,6 +28,7 @@ pub use discovery::DISCOVERY_SEARCH_SQL;
 pub use discussion::{
     GrantOutcome, ModeratorRecord, active_moderators, grant_moderator, revoke_moderator,
 };
+pub use drafts::{DRAFT_RECENT_SQL, DRAFT_TITLE_SQL};
 pub use postgres::PgStore;
 pub use principal::{
     SuspensionOutcome, SuspensionRecord, active_suspensions, reinstate_principal, suspend_principal,

@@ -687,6 +687,55 @@ pub async fn list_drafts() -> Result<DraftList, ApiError> {
     http::get("/api/v1/drafts").await
 }
 
+/// Private summary search. Each value is encoded separately; it cannot add query parameters.
+pub fn drafts_path(
+    q: &str,
+    sort: crate::draft_list::DraftSort,
+    limit: usize,
+    cursor: Option<&str>,
+) -> String {
+    use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
+    let sort = match sort {
+        crate::draft_list::DraftSort::Recent => "recent",
+        crate::draft_list::DraftSort::Title => "title",
+    };
+    let mut path = format!(
+        "/api/v1/drafts?q={}&sort={sort}&limit={limit}",
+        utf8_percent_encode(q, NON_ALPHANUMERIC)
+    );
+    if let Some(cursor) = cursor {
+        path.push_str("&cursor=");
+        path.push_str(&utf8_percent_encode(cursor, NON_ALPHANUMERIC).to_string());
+    }
+    path
+}
+
+#[cfg(feature = "hydrate")]
+pub async fn search_drafts(
+    q: &str,
+    sort: crate::draft_list::DraftSort,
+    limit: usize,
+    cursor: Option<&str>,
+) -> Result<DraftList, ApiError> {
+    http::get(&drafts_path(q, sort, limit, cursor)).await
+}
+
+#[cfg(test)]
+mod private_draft_paths {
+    #[test]
+    fn query_and_cursor_cannot_add_an_owner_or_change_the_page_size() {
+        assert_eq!(
+            super::drafts_path(
+                "Đ &owner=x",
+                crate::draft_list::DraftSort::Title,
+                24,
+                Some("c&limit=100")
+            ),
+            "/api/v1/drafts?q=%C4%90%20%26owner%3Dx&sort=title&limit=24&cursor=c%26limit%3D100"
+        );
+    }
+}
+
 #[cfg(feature = "hydrate")]
 pub async fn create_draft() -> Result<Draft, ApiError> {
     http::send::<(), Draft>("POST", "/api/v1/drafts", None).await

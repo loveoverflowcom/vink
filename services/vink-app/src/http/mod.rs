@@ -5,6 +5,7 @@ mod appeals;
 mod auth;
 mod conditional;
 pub mod contract;
+mod drafts;
 mod error;
 mod health;
 mod ssr;
@@ -156,14 +157,20 @@ fn routes(state: &AppState) -> Router<AppState> {
 
 pub fn api_router(state: AppState) -> Router {
     routes(&state)
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+            // Private title queries/cursors must never enter request traces, even at DEBUG.
+            tracing::debug_span!("request", method = %request.method(), path = %request.uri().path())
+        }))
         .with_state(state)
 }
 
 pub fn router(state: AppState) -> Router {
     routes(&state)
         .merge(ssr::routes(&state))
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http().make_span_with(|request: &axum::http::Request<_>| {
+            // Private title queries/cursors must never enter request traces, even at DEBUG.
+            tracing::debug_span!("request", method = %request.method(), path = %request.uri().path())
+        }))
         .with_state(state)
 }
 

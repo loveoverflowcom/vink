@@ -63,6 +63,11 @@ list chung nền, full title/equal inset/exact IDs tại 320–1440/chữ100–2
 uncertain-create. [LayoutSpec R6](../design/desk-r6.md) thay phân cấp/list grouping
 của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-evidence.md).
 
+Backend phân trang nháp [#201](desk-pagination.md) mở rộng `/api/v1/drafts` bằng query/sort/cursor
+trên toàn corpus owner, giữ caller không tham số Recent/100. Provider/consumer fixtures và
+`tests/postgres/drafts.rs` sở hữu kiểm paging/isolation/Unicode/backfill/query plan. Consumer
+Web đang chờ tích hợp #202; các assertions loaded-list lịch sử ở trên chưa là evidence paging.
+
 Select Web R1.5 (#135) giữ native control ở Bàn viết và gallery. `selectChevron`
 trong cả hai browser runner dùng chung `select-geometry.mjs`: đo 18px/12px/8px,
 tâm dọc, vùng chữ bằng canvas, native type-ahead và disabled/invalid/forced-colors

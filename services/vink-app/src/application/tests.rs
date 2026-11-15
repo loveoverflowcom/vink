@@ -31,7 +31,11 @@ impl RecordingStore {
 }
 
 impl DraftStore for RecordingStore {
-    async fn list_drafts(&self, _: PrincipalId) -> Result<Vec<DraftSummary>, StoreError> {
+    async fn search_drafts(
+        &self,
+        _: PrincipalId,
+        _: &crate::domain::draft_query::DraftSearch,
+    ) -> Result<Vec<DraftSummary>, StoreError> {
         panic!("save must not list drafts")
     }
 

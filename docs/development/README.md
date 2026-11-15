@@ -30,6 +30,9 @@ chưa tích hợp composer/reaction/sticker persistence.
 
 [Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
 
+[Phân trang Bàn viết #201](desk-pagination.md): API query/sort/cursor trên toàn bộ nháp của owner;
+consumer Web đang chờ coordinator #202.
+
 ## Nền test-domain/container
 
 [Cloudflare test và cấu hình Google Cloud](cloudflare-test-evidence.md) ghi asset upload,

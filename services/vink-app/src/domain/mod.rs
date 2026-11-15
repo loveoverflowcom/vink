@@ -6,6 +6,7 @@ pub mod discovery;
 pub mod discussion;
 pub mod document;
 pub mod draft;
+pub mod draft_query;
 pub mod endorsement;
 pub mod ids;
 pub mod moderation;

@@ -328,7 +328,9 @@ impl Run<'_> {
             "must be a postgres://",
         )?;
         // A socket directory other users can enter is refused before binding.
-        let open = self.dir.join("open");
+        // Keep this negative fixture under the short socket directory too: a long checkout
+        // must test directory permissions, not hit the earlier 100-byte path validation.
+        let open = self.socket.with_file_name("open");
         std::fs::create_dir_all(&open).map_err(|e| e.to_string())?;
         std::fs::set_permissions(&open, std::fs::Permissions::from_mode(0o755))
             .map_err(|e| e.to_string())?;

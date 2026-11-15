@@ -79,9 +79,10 @@ pub enum SaveOutcome {
 }
 
 pub trait DraftStore: Send + Sync {
-    fn list_drafts(
+    fn search_drafts(
         &self,
         owner: PrincipalId,
+        search: &crate::domain::draft_query::DraftSearch,
     ) -> impl Future<Output = Result<Vec<DraftSummary>, StoreError>> + Send;
 
     /// Creates a work owned by `owner` with an empty working draft at version 1.
