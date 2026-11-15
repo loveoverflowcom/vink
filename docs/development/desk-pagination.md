@@ -47,7 +47,9 @@ không full-text search, không đưa nháp vào public cache.
 [DeskIndex](../../apps/vink-web/src/pages/desk.rs) tách input đang gõ khỏi query đã submit;
 scope gồm session-generation/query/sort/limit. Ticket cũ bị bỏ cả A→B→A. Mọi request đi qua
 transport `no-store`; chỉ summary nằm trong memory của route, không SSR/public cache/storage.
-Head read lấy page 24 rồi Recent/1 độc lập cho Viết tiếp, cùng ticket; append chỉ một GET.
+Delta [#213](https://github.com/loveoverflowcom/vink/issues/213): head và append mỗi intent chỉ một GET
+page 24; bỏ resume và Recent/1. First-use dựa trên head không lọc thành công rỗng; query miss
+không suy corpus rỗng. Search giữ node cả khi empty/loading/error; create không dựa vào resume.
 Không tải body theo card. Session đổi xóa dữ liệu cũ, còn lỗi tạm thời giữ kết quả cùng scope.
 
 [DraftPages](../../apps/vink-web/src/draft_list/paging.rs) là adapter DTO cho `accept_page`,

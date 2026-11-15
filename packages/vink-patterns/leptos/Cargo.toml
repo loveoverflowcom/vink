@@ -11,8 +11,12 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+time = { workspace = true, features = ["parsing"] }
 leptos.workspace = true
 vink-ui = { path = "../../ui-system/leptos" }
 
 [dev-dependencies]
 leptos = { workspace = true, features = ["ssr"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen.workspace = true

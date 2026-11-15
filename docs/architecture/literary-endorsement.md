@@ -193,7 +193,7 @@ bằng chứng: [UI evidence](../development/ui-system-endorsement-evidence.md).
 | Primitive | `ToggleAction` chung (Leptos/CMP) + `EndorsementAction` ở patterns giữ copy LVE | Bookmark/reaction sau này dùng lại được; không đưa `command_key`/order/DTO vào UI |
 | Hiển thị trạng thái | Chỉ giá trị owner đã xác nhận; pending/uncertain là ghi chú, dấu ✓ sau ACK/readback | Khớp hướng A của CHOICE-10; hướng B cần `toggle-contract-v2`. CHOICE-10 cấp sản phẩm vẫn chốt ở lát adapter |
 | Bấm | Phát trạng thái mong muốn (`!confirmed`), không phát khi pending/uncertain/chặn/chưa rõ | LVE-FR-03; uncertain → “Kiểm tra lại” (Reconcile), không replay mù |
-| Tên truy cập | Theo hành động: “Đánh giá cao”/“Bỏ đánh giá cao”, “Hữu ích”/“Bỏ đánh dấu hữu ích”; không `aria-pressed` | Copy khởi đầu #73; tránh đọc “Bỏ…, đã nhấn”; tên chứa nhãn (WCAG 2.5.3) |
+| Tên truy cập | Theo hành động: “Thấm”/“Bỏ Thấm”, “Hữu ích”/“Bỏ đánh dấu hữu ích”; không `aria-pressed` | Copy khởi đầu #73; tránh đọc “Bỏ…, đã nhấn”; tên chứa nhãn (WCAG 2.5.3) |
 | Số đếm | `CountFact::{Hidden, Unavailable, Known}`; unavailable “–”, không 0; mỗi đích riêng | LVE-FR-02, LVE-UC-03 |
 | Lý do chặn | Chữ hiển thị: tự đánh giá (CHOICE-08 A), không có quyền, chưa đăng nhập, không khả dụng | Không có nút đăng nhập giả khi chưa có auth |
 | Glyph | Pen Flight R2 A · Mềm (chốt 09/11/2026; tích hợp 10/11) | CHOICE-07: vector Vink-owned, 20px trang trí trong slot đầu; tiến trình/✓ giữ slot cuối. [Spec/nguồn](../design/pen-flight-r2.md) |
@@ -219,3 +219,12 @@ bằng chứng: [web evidence](../development/literary-endorsement-web-evidence.
 **Giữ OPEN:** CHOICE-06 ranking (không sắp xếp theo ghi nhận; replies
 giữ thứ tự provider), CHOICE-12 B ghi danh, OPEN-R4. Production vẫn `401` cho ghi (D-05); lệnh thật
 chỉ chạy với LocalFixture loopback, có nhãn trên trang.
+
+## Delta thuật ngữ 15/11/2026 — #213
+
+Chủ sản phẩm yêu cầu “bỏ từ đánh giá cao… thay thế thành ‘Thấm’… icon vẫn thế”,
+được chép trong [issue #213](https://github.com/loveoverflowcom/vink/issues/213).
+Work dùng nhãn ổn định “Thấm”, action name “Thấm”/“Bỏ Thấm”, count-unit “lượt Thấm”;
+không đổi “Hữu ích”, Pen Flight, authority, revision anchor, order/receipts hoặc policy ranking.
+Các trích dẫn/CHOICE và DecisionDelta lịch sử phía trên giữ nguyên thuật ngữ gốc.
+Đây là delta copy `web`/`cmp` patterns; không signoff một revision kiến trúc mới.

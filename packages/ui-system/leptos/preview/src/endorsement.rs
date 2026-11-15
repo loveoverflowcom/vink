@@ -487,7 +487,7 @@ mod tests {
         assert!(html.contains(">0<"), "a known zero on a reply: {html}");
         let html = Owner::new().with(|| endorsement("signed-out").to_html());
         assert!(
-            html.contains("Cần đăng nhập để đánh giá.")
+            html.contains("Cần đăng nhập để Thấm.")
                 && html.contains("Cần đăng nhập để đánh dấu hữu ích."),
             "{html}"
         );

@@ -44,7 +44,7 @@ pub enum IconName {
     MenuOpen,
     /// Link mở tab mới
     OpenInNew,
-    /// Đánh giá cao tác phẩm / Hữu ích nhận xét — Pen Flight R2 A · Mềm
+    /// Thấm tác phẩm / Hữu ích nhận xét — Pen Flight R2 A · Mềm
     PenFlight,
     /// Avatar/khung ảnh trung tính
     Person,

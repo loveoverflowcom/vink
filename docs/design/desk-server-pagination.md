@@ -9,7 +9,6 @@ Quiet Lavender và shared primitives. `fidelity: NO_APPROVED_REFERENCE`; không 
 ```text
 Screen #desk — tìm lại và viết tiếp
   Region #heading — Bàn viết, Tạo bản thảo
-  Region #resume — bản cập nhật gần nhất của owner; CTA Viết tiếp
   Region #drafts
     Region #draft-controls — tìm tiêu đề, Recent/Title, Tải lại
     Region #draft-scope — phạm vi toàn bộ bản thảo; số mục đang hiển thị
@@ -18,7 +17,8 @@ Screen #desk — tìm lại và viết tiếp
   Region #privacy — nháp riêng, giữ copy hiện hữu
 ```
 
-Viết tiếp luôn dựa vào Recent của owner, độc lập query/Title. Không tải manuscript để làm card.
+Delta #213 ngày 15/11/2026 thay phần resume của [R6](desk-r6.md): bỏ toàn bộ card và disclosure,
+không dựng hàng resume thay thế; controls nằm ngay sau header. Không tải manuscript để làm card.
 Tìm vẫn gập dấu/case/NFC–NFD/Đ/whitespace, giữ dấu câu và “Chưa đặt tên”; nhãn phạm vi mới
 chỉ được bật khi consumer dùng API server. Input đang gõ khác query đã áp dụng: Enter hoặc
 submit commit cùng intent, composition không commit. Clear xóa và áp query rỗng khi không
@@ -33,9 +33,9 @@ terminal chỉ khi server không còn cursor, không khi lỗi hoặc đạt gi�
 | State | Hiển thị và phục hồi |
 | --- | --- |
 | First loading | Khung Bàn viết, trạng thái “Đang mở Bàn viết…”; chưa claim rỗng |
-| First-use empty | Không có recent owner và kết quả rỗng: tạo bản thảo đầu tiên |
+| First-use empty | Head không lọc đã tải thành công và rỗng: một CTA tạo bản thảo đầu tiên; search vẫn có mặt |
 | Search pending | Controls/input giữ node; vùng kết quả báo đang tìm đúng query đã commit |
-| No results | Giữ Viết tiếp/controls; không có kết quả cho query, không đổi thành first-use |
+| No results | Giữ Tạo bản thảo/controls; không có kết quả cho query, không đổi thành first-use |
 | Refresh | Giữ dữ liệu/focus khi chờ; thành công thay toàn chain, thông báo tải lại từ đầu |
 | Append | Giữ hàng hiện tại; nút có trạng thái “Đang tải…”; không gọi trùng |
 | Append lỗi | Giữ items/cursor; thông báo và “Thử tải thêm”; không thông báo hết |
@@ -48,7 +48,7 @@ dedup để che thiếu mục. Đọc reconnect/focus chỉ dùng lifecycle #202
 và không remount editor. Create uncertain giữ đường GET đối chiếu và intent tạo thêm có sẵn.
 
 Interaction: touch/pointer/Tab/Enter dùng cùng controls; không overlay hay vùng cuộn riêng.
-DOM/focus: heading → Viết tiếp → tìm → sort/refresh → hàng → continuation. Background response
+DOM/focus: heading → Tạo bản thảo → tìm → sort/refresh → hàng → continuation. Background response
 không cướp focus; input giữ caret/IME/selection. Append giữ hàng/key và anchor, không tự cuộn.
 Nếu cursor lỗi thay nút Tải thêm đang giữ focus, chuyển focus sang Tải lại từ đầu sau render;
 Enter phục hồi đưa về ô tìm. Nếu người dùng đã chuyển sang control khác, giữ focus ở đó.
@@ -68,3 +68,31 @@ OS IME/screen-reader ghi `NOT_RUN` nếu chưa chạy. Tối đa hai vòng sửa
 Hiện trạng: UI target đã nối ReadOwner/PageChain sau merge #212/#202; kiểm browser và
 nghiệm thu cuối được ghi tại [owner #201](../development/desk-pagination.md).
 Fixture giả lập timing chỉ kiểm race; corpus PostgreSQL và browser API thật kiểm boundary khác.
+
+## Delta #213 — hàng gọn và thời gian
+
+Nguồn yêu cầu: [#213](https://github.com/loveoverflowcom/vink/issues/213), base
+`97b29c30a87b5403759b2219ab0cdc710fb64cbd`. `fidelity: NO_APPROVED_REFERENCE`;
+ảnh R6 là historical regression input, không golden được duyệt.
+
+- Hierarchy: header → search/scope/sort/refresh → results → continuation. Tiêu đề
+  “Bản thảo” vẫn là heading cho phục hồi focus; không thêm card hoặc badge.
+- Một row = một href editor theo work ID, full Unicode title trong DOM và tên truy cập.
+  Mặc định tối đa hai dòng; focus/hover mở đủ chữ ngay tại row, touch mở editor để đọc tên đầy đủ.
+  Không nested target, không tooltip là đường đọc duy nhất. Metadata chỉ “Cập nhật” + thời gian;
+  version vẫn nằm trong DTO, editor/recovery và CAS.
+- CHOICE-01 A: giờ/ngày tuyệt đối theo timezone thiết bị, locale `vi-VN`, gồm giờ và zone.
+  SSR và lần hydrate đầu dùng fallback UTC ghi rõ zone; effect sau hydration mới đổi sang local.
+  Không timer/clock tương đối, future vẫn là instant tuyệt đối; invalid hiện fallback rõ nghĩa.
+  `datetime` và title giữ instant nguồn. Cùng formatter dùng cho draft/byline/comment Web.
+- CHOICE-02 B: DraftRow compose metadata thời gian riêng, reuse formatter của DraftMetadata;
+  DraftMetadata mặc định vẫn có version cho editor/specimen/resume pattern ngoài Desk.
+- First-use chỉ khi query đã áp dụng gập thành rỗng + head thành công rỗng, không dùng
+  loaded length làm tổng corpus. Filter miss có NoResults + clear và tạo nháp ở header.
+  Không GET Recent/1 hoặc total-count để phân biệt. Lỗi đầu/refresh giữ boundary lỗi hiện hữu.
+- Interaction: Enter/submit search chờ composition kết thúc, clear giữ node/focus; refresh
+  giữ chữ/selection/anchor theo #201/#202. Create uncertain chỉ GET reconcile, không replay POST.
+  Pending Thấm khóa intent lặp; check/count chỉ sau ACK, unknown không giả Off.
+- Reflow: 320/390/834/1440, light/dark, root text100/200; header/toolbar/nav được xuống dòng,
+  không giảm font/target. Đo chung trục header/search/list và last target trên bottom nav.
+  Before/after cùng fixture, mở ảnh; tối đa hai vòng render/fix, kết quả năm chiều tách riêng.

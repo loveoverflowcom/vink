@@ -11,9 +11,14 @@ Nguồn: [SVG R2](https://drive.google.com/file/d/1KeBVl1G0HwP8T91z2L38ELpgngLai
 [ảnh mẫu sáng/tối](https://drive.google.com/file/d/1gcxDRPZcWMHVzqDjHsVU6Zz_HWCpa7Iz/view).
 Ảnh mẫu đã mở để đối chiếu; dữ liệu hư cấu không là bằng chứng ghi thật.
 
+Delta copy 15/11/2026 ([#213](https://github.com/loveoverflowcom/vink/issues/213)): tác phẩm dùng
+“Thấm”, tên truy cập “Thấm”/“Bỏ Thấm”, count-unit “lượt Thấm”; nhãn luôn ổn định.
+Icon, phase, count/order/session và “Hữu ích” giữ nguyên. Bằng chứng R2 bên dưới là lịch sử,
+không tự trở thành bằng chứng cho delta mới.
+
 ```text
 #reader-body → #work-endorsement
-  Pen Flight · Đánh giá cao · số của revision · slot tiến trình/✓
+  Pen Flight · Thấm · số của revision · slot tiến trình/✓
 #discussion root / flat reply → hàng thao tác
   Trả lời · [Pen Flight · Hữu ích · số của comment · slot tiến trình/✓]
 #composer → Gửi (mũi tên ngang hiện hành)

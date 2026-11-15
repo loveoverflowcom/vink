@@ -55,7 +55,7 @@ tonal full-row links có gap thay divider/ListEnd. `quietListSurfaces` kiểm re
 surfaces trong matrix, `draftDashboard` kiểm một settled result status và named refresh
 tooltip; preview `components` kiểm shared tooltip hover/focus/Escape và native details
 keyboard/no-JS. Source assertions không tự là bằng chứng chạy; xem [run R5.1](search-r5-evidence.md).
-Bàn viết R6 (#133), trên nền `e2294a2`, giữ thứ tự resume trước search;
+Bằng chứng lịch sử Bàn viết R6 (#133), trên nền `e2294a2`, giữ thứ tự resume trước search;
 `draftR6Hierarchy` kiểm fixture ba nháp NFD, khối resume ≤250px và search lên ≥48px
 ở 390/100, một scope/kết quả, primary link/disclosure focus thường + forced-colors,
 list chung nền, full title/equal inset/exact IDs tại 320–1440/chữ100–200.
@@ -123,7 +123,7 @@ Xem ảnh `brand-before-hydration-*`, `rail-r1-*` và `explore-real-*` từ runn
 | Đọc tác phẩm | /tac-pham/:id?q=…&tag=…&cursor=…&from_tag=… | Giữ toàn bộ ngữ cảnh discovery/trang thẻ và focus hàng; nếu hàng mất thì focus heading. Canonical reader bỏ query; metadata thẻ lấy từ snapshot công khai. | [pages/mod.rs](../../apps/vink-web/src/pages/mod.rs), [discovery UI](discovery-ui.md) |
 | Điều hướng thích ứng | Rail: Khám phá → Bàn viết, Tôi ở chân; mobile: Khám phá → Bàn viết → Tôi | `/` vẫn là mặc định. Desktop 220px; tablet/editor 96px; thu/mở nhớ trên thiết bị và ghi đè ngữ cảnh. Mobile ẩn bar khi viết. Route lạ (`/ban-vietnam`, `/tac-pham/a/b`) là 404, không sáng đích. Back/Forward khi Tôi mở chỉ đóng Tôi, kể cả lịch sử fragment nội trang ([UI-REVIEW-20](../design/ui-review-20.md)) | [shell.rs](../../apps/vink-web/src/shell.rs) (`Destination`), primitive [vink-ui navigation](../../packages/ui-system/leptos/src/navigation.rs), [spec shell](../design/README.md#shell-thích-ứng-7) |
 | Tôi và chọn giao diện | Rail: Tôi mở panel Giao diện; Mở trang Tôi tới `/toi`; mobile: Tôi tới `/toi` | `/toi` và panel dùng chung lựa chọn màu, cỡ chữ 100%/200% và chế độ rail. Cả ba áp dụng trước hydration và lưu trên thiết bị nếu có storage. Thẻ Tài khoản và điều hướng dùng avatar trung tính trên SSR; sau hydration, avatar chữ lấy từ bút danh của principal qua `GET /api/v1/auth/session/account` (`no-store`). Chuyển route dùng guard của editor | [appearance.rs](../../apps/vink-web/src/appearance.rs), [me.rs](../../apps/vink-web/src/pages/me.rs), [NavigationGuard](../../apps/vink-web/src/navigation.rs) |
-| Tìm và viết tiếp | “Bàn viết” → `/ban-viet` → “Viết tiếp” hoặc “Mở bản thảo” → `/ban-viet/{id}` | Resume là nháp mới cập nhật nhất theo API; row có title/version/updated_at. Tiêu đề resume dài hơn 60 Unicode scalar hiển thị tối đa ba dòng khi thẻ hẹp, nút mở/thu gọn giữ nguyên chữ; thẻ rộng hiện toàn bộ title và CTA bên cạnh. Tìm có/không dấu, Đ/đ và NFC/NFD trên toàn bộ nháp phía server; mỗi trang 24 mục, tối đa 240 mục/phần rồi xem phần tiếp; đổi sort/tìm không đổi resume. Loading, rỗng, không kết quả, lỗi, 401 và 403 riêng; query/sort giữ qua tải lại/retry | `DeskIndex`, `DraftListView` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs), `DraftResume` trong [vink-patterns](../../packages/vink-patterns/leptos/src/lib.rs) |
+| Tìm và viết tiếp | “Bàn viết” → `/ban-viet` → hàng bản thảo → `/ban-viet/{id}` | #213 bỏ resume/Recent/1; row có full title (mặc định hai dòng, focus/hover mở đủ) + thời gian cập nhật thật, không version nhìn thấy. Tìm có/không dấu, Đ/đ và NFC/NFD toàn corpus; 24 mục/trang, 240 mục/phần rồi xem phần tiếp. Unfiltered empty, query miss, loading, lỗi, 401/403 tách riêng; query/sort/input giữ qua refresh/retry. | `DeskIndex`, `DraftListView` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [draft_list.rs](../../apps/vink-web/src/draft_list.rs), `DraftRow` trong [vink-patterns](../../packages/vink-patterns/leptos/src/lib.rs) |
 | Tạo và đối chiếu kết quả | Heading “Tạo bản thảo”; khi rỗng “Viết bản thảo đầu tiên” → editor. Mất phản hồi → “Tải lại danh sách” → mở nháp tìm thấy hoặc chủ động “Tạo thêm bản thảo” | Một POST đang bay; lỗi 401/403/validation tách khỏi outcome chưa rõ (network, 503, bất thường). Không tự retry POST. Chỉ GET thành công mới mở khóa tạo thêm; GET không chứng minh POST nào đã ghi. Phản hồi muộn sau khi rời dashboard không điều hướng | `CreateDraftButton`, `CreateNotice`, `DeskIndex`; `CreateState` trong [draft_list.rs](../../apps/vink-web/src/draft_list.rs) |
 | Viết và lưu nháp | `/ban-viet/{id}` → sửa “Tiêu đề”, “Nội dung” (CodeMirror 6) → “Lưu nháp”; có Enter ở tiêu đề và Ctrl/Cmd+S trong form (chờ IME commit) | `unsaved` → `saving` → `saved` khi server xác nhận; `failed`/outcome chưa rõ có chữ, retry/export; `conflict` giữ nội dung. Mọi lần thử lưu từ Failed đọc lại version trước: GET lỗi không PUT, version khác mở conflict, cùng version mới gửi PUT có CAS. Toolbar wrap, sticky chỉ khi editor đủ rộng/cửa sổ đủ cao; hướng dẫn ngắt dòng trong details. Lưu thủ công, chưa autosave | `DraftEditor`, `Editor` trong [desk.rs](../../apps/vink-web/src/pages/desk.rs), [API client](../../apps/vink-web/src/api.rs), [EditorSession](../../apps/vink-web/src/desk_state.rs), [BodyEditor](../../apps/vink-web/src/editor.rs), [runtime](../../apps/vink-web/editor/README.md), [UI-REPAIR-05](../design/ui-repair-05.md) |
 | Xử lý xung đột | Mở cùng nháp ở hai tab, tab B lưu trước, tab A lưu bản cũ → “Lưu đè bằng nội dung đang viết” khi muốn giữ bản A | Save cũ nhận `409`, không ghi; bản A còn trong editor. Lưu đè dùng version được báo và vẫn có thể xung đột lần nữa. Muốn mở bản server thì “Tải bản đang viết” trước khi reload | `Editor`, `EditorSession`; owner/version được kiểm trong [PgStore](../../services/vink-app/src/persistence/postgres.rs) |
@@ -436,7 +436,7 @@ trạng thái riêng.
 
 ## LVE Web adapter (#73, WP-04)
 
-Reader `/tac-pham/{id}`: “Đánh giá cao” sau văn bản và “Hữu ích” trên từng bình luận gốc/phản hồi
+Reader `/tac-pham/{id}`: “Thấm” sau văn bản và “Hữu ích” trên từng bình luận gốc/phản hồi
 phẳng công khai. Owner, bảng ánh xạ lỗi và CHOICE-10 A: [runtime](literary-endorsement-runtime.md#web-adapter-wp-04);
 kết quả chạy: [web evidence](literary-endorsement-web-evidence.md). Production trả `401`; ghi thật chỉ
 qua LocalFixture loopback.
@@ -562,3 +562,10 @@ mode; source/test presence không thay bằng chứng PostgreSQL/process/browser
 chỉ chạy coverage được chọn và dependency khai báo; `restart` kéo `main`. `verify preview` là
 alias có plan cho Leptos preview hiện hữu; CMP/native không đổi. Evidence theo lượt nằm trong
 [registry triển khai](scoped-workflows-evidence.md), không coi selected PASS là full PASS.
+
+Delta [#213](https://github.com/loveoverflowcom/vink/issues/213): Desk bỏ resume/Recent/1 và
+version nhìn thấy trên row, giữ full title/href và CAS facts. Current LayoutSpec:
+[desk-server-pagination](../design/desk-server-pagination.md). Thời gian Web dùng instant tuyệt đối
+`vi-VN` theo device zone sau hydrate, SSR fallback UTC; Web/CMP patterns dùng Thấm/Bỏ Thấm.
+Coverage mới nằm trong `draftDashboard`/`draftR6Hierarchy`, pagination smoke, timestamp unit và
+endorsement smoke; kết quả thực ghi tại [evidence #213](desk-compact-tham.md).
