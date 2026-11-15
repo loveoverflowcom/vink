@@ -530,6 +530,7 @@ a {
   @container vk-editor-page (min-width: 44rem) {
     .vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; }
     .vk-editor-toolbar:has(.vk-ui-supporting-details[open]) { position: static; }
+    .vk-editor > .vk-editor-recovery { scroll-margin-block-start: 6rem; }
   }
 }
 
@@ -574,6 +575,11 @@ a {
 .vk-editor-recovery .vk-ui-supporting-details__content { background: transparent; padding: 0; }
 .vk-editor-recovery .vk-ui-supporting-details__content > p { margin: 0; overflow-wrap: break-word; }
 .vk-editor-recovery .vk-ui-supporting-details__content > p + p { margin-block-start: var(--vk-space-2); }
+
+.vk-editor > .vk-editor-recovery { padding: var(--vk-space-3); }
+.vk-editor > .vk-editor-recovery .vk-ui-notice__icon { display: none; }
+.vk-editor > .vk-editor-recovery :is(.vk-ui-button, summary) { padding-inline: var(--vk-space-2); }
+.vk-editor > .vk-editor-recovery .vk-ui-button { padding-block: var(--vk-space-1); }
 
 /* Thông tin tác phẩm (TAG-PR-05): a secondary sheet after the manuscript, same measure and
    tonal family as the paper; the selector composition owns its own geometry. */
@@ -762,10 +768,18 @@ a {
 :is(#draft-preview, #leave-editor) .vk-ui-dialog__panel { padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6)); }
 :is(#draft-preview, #leave-editor) .vk-ui-button__label { overflow-wrap: normal; }
 
+#leave-editor {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: var(--vk-size-hit-target);
+}
+#leave-editor .vk-ui-dialog__actions:empty { display: none; }
+#leave-editor .vk-dialog__recovery { margin-block-start: var(--vk-space-4); }
+
 @media (max-width: 40rem) {
-  #leave-editor { inline-size: calc(100% - 2 * var(--vk-space-3)); }
+  #leave-editor .vk-ui-dialog__panel { padding: var(--vk-space-2); }
   #leave-editor :is(.vk-dialog__actions, .vk-dialog__recovery) > .vk-ui-action { flex: 1 1 100%; min-width: 0; }
-  #leave-editor .vk-ui-button { width: 100%; }
+  #leave-editor .vk-ui-button { width: 100%; padding-inline: var(--vk-space-2); }
 }
 
 
@@ -782,7 +796,10 @@ a {
   /* No sticky or fixed controls over the text on a phone; the toolbar wraps in the flow. */
   .vk-editor-toolbar {
     position: static;
+    padding-inline: var(--vk-space-2);
   }
+
+  .vk-editor-toolbar__status > details > summary { padding-inline: 0; justify-content: center; }
 
   .vk-editor-toolbar__actions {
     width: 100%;

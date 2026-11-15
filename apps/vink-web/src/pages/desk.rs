@@ -714,8 +714,10 @@ fn Editor(draft: Draft) -> impl IntoView {
         leave_open.set(false);
         restore_scroll(page_scroll);
         request_animation_frame(move || {
-            focus_last_field();
-            restore_scroll(page_scroll);
+            if leave_open.try_get_untracked() == Some(false) {
+                focus_last_field();
+                restore_scroll(page_scroll);
+            }
         });
     };
     let save_and_leave = move || {
@@ -732,7 +734,10 @@ fn Editor(draft: Draft) -> impl IntoView {
     let ask_discard = move || {
         leave.update(|g| session.with_untracked(|s| g.ask_discard(s)));
         request_animation_frame(move || {
-            if let Some(button) = keep_editing.get_untracked() {
+            if let Some(button) = keep_editing
+                .get_untracked()
+                .filter(|button| button.is_connected())
+            {
                 let _ = button.focus();
             }
         });
@@ -792,7 +797,9 @@ fn Editor(draft: Draft) -> impl IntoView {
                 })
                 .unwrap_or(false);
             if held {
-                remember_scroll(page_scroll);
+                if !leave_open.get_untracked() {
+                    remember_scroll(page_scroll);
+                }
                 leave_open.set(true);
             }
             held
@@ -891,8 +898,8 @@ fn Editor(draft: Draft) -> impl IntoView {
                     {move || view! { <InlineNotice tone=Tone::Error announce=Announce::Off
                         title=status_text(status()) message="Tải bản sao trước khi rời trang." /> }}
                     <div class="vk-notice__actions">
-                        <Button variant=ButtonVariant::Text id="retry-save" leading=IconName::Refresh on_press=move |_| save()>"Thử lại"</Button>
-                        <Button variant=ButtonVariant::Text leading=IconName::Download on_press=move |_| export()>"Tải .txt"</Button>
+                        <Button variant=ButtonVariant::Text id="retry-save" on_press=move |_| save()>"Thử lại"</Button>
+                        <Button variant=ButtonVariant::Text id="export-failed" on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
                     <SupportingDetails id="save-failure-details" summary="Chi tiết">
                         <p>{move || match status() {
@@ -912,7 +919,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                                 session.update(|s| s.text.keep_local_text());
                                 save();
                             }>"Lưu đè bằng nội dung đang viết"</Button>
-                        <Button variant=ButtonVariant::Text leading=IconName::Download on_press=move |_| export()>"Tải .txt"</Button>
+                        <Button variant=ButtonVariant::Text id="export-conflict" on_press=move |_| export()>"Tải .txt"</Button>
                     </div>
                     <SupportingDetails id="save-conflict-details" summary="Chi tiết">
                         <p>{move || status_detail(status())}</p>
@@ -966,7 +973,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 is_composing=Callback::new(move |()| body.is_composing()) />
         </form>
         <vink_ui::Dialog id="leave-editor" open=leave_open
-            title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ chữ chưa lưu và rời trang?" } else { "Rời trang khi còn chữ chưa lưu?" }.to_string())
+            title=Signal::derive(move || if stage() == Some(LeaveStage::ConfirmingDiscard) { "Bỏ thay đổi và rời trang?" } else { "Rời trang khi còn thay đổi?" }.to_string())
             dismiss=vink_ui::DismissPolicy::EscapeOnly on_dismiss=move |_| stay()
             attr:data-testid="leave-editor">
             <Show
@@ -974,7 +981,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 fallback=move || {
                     let saving = move || matches!(stage(), Some(LeaveStage::Saving { .. }));
                     view! {
-                        <p class="vk-dialog__body" data-testid="leave-message">
+                        <p id="leave-message" class="vk-dialog__body" data-testid="leave-message">
                             {move || leave_message(stage(), status(), tag_status.get().as_ref(), session.with(|s| (s.text.has_unsaved_text(), s.tags.as_ref().is_some_and(|t| t.has_unsaved()))))}
                         </p>
                         <div class="vk-dialog__actions">
@@ -987,6 +994,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                             </Button>
                             <Button variant=ButtonVariant::Filled
                                 id="leave-save"
+                                described_by="leave-message"
                                 state=Signal::derive(move || blocked(saving() || matches!(status(), SaveStatus::Conflict { .. }) || matches!(tag_status.get(), Some(TagStatus::Conflict { .. }))))
                                 on_press=move |_| save_and_leave()
                             >
@@ -1014,7 +1022,7 @@ fn Editor(draft: Draft) -> impl IntoView {
                 }
             >
                 <p class="vk-dialog__body">
-                    "Chữ chưa được máy chủ xác nhận sẽ mất khỏi trang này. Tệp .txt đã tải (nếu có) chỉ nằm trên máy của bạn, không phải bản lưu trên máy chủ."
+                    "Bạn sẽ mất những chỉnh sửa chưa lưu trên trang này. Nếu đã tải tệp .txt, bản sao chữ vẫn nằm trên máy của bạn."
                 </p>
                 <div class="vk-dialog__actions">
                     <Button variant=ButtonVariant::Text
@@ -1179,7 +1187,7 @@ fn leave_message(
 ) -> String {
     let tags_not_saved = match tags {
         Some(TagStatus::Conflict { .. }) => Some(
-            "Thẻ đã được lưu khác ở nơi khác, nên không lưu đè từ đây. Ở lại để chọn thẻ nào được giữ."
+            "Thẻ đã đổi ở nơi khác. Không thể lưu đè từ đây. Ở lại để chọn thẻ cần giữ."
                 .to_string(),
         ),
         Some(TagStatus::Refused(_)) => Some(
@@ -1192,9 +1200,9 @@ fn leave_message(
         _ => None,
     };
     let not_saved = match status {
-        SaveStatus::Conflict { server_version } => format!(
-            "Bản nháp đã được lưu ở nơi khác (phiên bản {server_version}), nên không lưu đè từ đây. Ở lại để chọn lưu đè, hoặc tải bản đang viết."
-        ),
+        SaveStatus::Conflict { .. } => {
+            "Có bản mới trên máy chủ. Ở lại để xử lý xung đột hoặc tải bản đang viết.".into()
+        }
         SaveStatus::Failed(failure) => format!(
             "Chưa lưu được. {} Chữ vẫn còn trên trang này.",
             failure_reason(failure)
@@ -1417,7 +1425,7 @@ mod editor_presentation_tests {
                 }),
                 (false, true)
             )
-            .contains("không lưu đè từ đây")
+            .contains("Không thể lưu đè từ đây.")
         );
     }
 

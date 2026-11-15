@@ -10,6 +10,7 @@
 // headless Chrome is used at desktop/tablet/mobile CSS viewport sizes. Save responses are held or failed with the Fetch domain.
 
 import { execFileSync, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { checkSelectGeometry, selectCharacter } from '../../../packages/ui-system/leptos/preview/e2e/select-geometry.mjs';
 import { discoveryReading, discoveryCorpus } from './discovery-smoke.mjs';
 import { expressionPilot } from './expressions-smoke.mjs';
@@ -335,7 +336,8 @@ class Page {
     const { data } = await this.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     const dir = join(dirname(args.state), 'screenshots');
     mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, `${name}.png`), Buffer.from(data, 'base64'));
+    const png = Buffer.from(data, 'base64');
+    writeFileSync(join(dir, `${name}.png`), png);
     const context = await this.eval(`(() => {
       const geometry = selector => {
         const el = document.querySelector(selector);
@@ -388,6 +390,11 @@ class Page {
     })()`);
     const manifest = join(dir, 'contexts.json');
     const contexts = readdirSync(dir).includes('contexts.json') ? JSON.parse(readFileSync(manifest, 'utf8')) : {};
+    if (evidence.editorScene) {
+      const pixels = { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+      validateEditorCapture(name, evidence.editorScene, context, pixels);
+      context.png = { ...pixels, sha256: createHash('sha256').update(png).digest('hex') };
+    }
     contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, ...evidence } };
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
     return context;
@@ -491,6 +498,16 @@ class Page {
 
   async draft(workId) {
     return this.eval(`fetch('/api/v1/drafts/${workId}').then((r) => r.json())`);
+  }
+}
+
+function validateEditorCapture(name, scene, actual, pixels) {
+  const { width, height, scale, theme } = scene;
+  if (!name.endsWith(`-${width}x${height}-${scale}-${theme}`) ||
+      actual.width !== width || actual.height !== height || actual.theme !== theme ||
+      actual.fontSize !== `${16 * scale / 100}px` ||
+      pixels.width !== width * actual.dpr || pixels.height !== height * actual.dpr) {
+    throw new Error(`editor capture dimensions or appearance disagree: ${name} ${JSON.stringify({ scene, pixels, actual: [actual.width, actual.height, actual.theme, actual.fontSize, actual.dpr] })}`);
   }
 }
 
@@ -2461,6 +2478,200 @@ async function nativeExploreSearch(page) {
 
 async function publicReading(page) { await discoveryReading(page, { args, check, textContrast }); }
 
+// The border box must fit the viewport AND every clipping ancestor. A successful .focus()
+// or unchanged window.scrollX is compatible with a clipped or covered action.
+function editorTargetGeometry(selector) {
+  const el = document.querySelector(selector);
+  const root = document.documentElement;
+  const page = { scrollX, scrollY, scrollWidth: root.scrollWidth, clientWidth: root.clientWidth };
+  if (!el?.checkVisibility({ visibilityProperty: true, opacityProperty: true })) {
+    return { selector, present: Boolean(el), full: false, hit: false, page };
+  }
+  const rect = el.getBoundingClientRect();
+  const clip = { left: 0, right: root.clientWidth, top: 0, bottom: innerHeight };
+  let owner = document.scrollingElement;
+  for (let node = el.parentElement; node && node !== root; node = node.parentElement) {
+    const css = getComputedStyle(node);
+    const bounds = node.getBoundingClientRect();
+    const left = bounds.left + node.clientLeft;
+    const top = bounds.top + node.clientTop;
+    if (css.overflowX !== 'visible') {
+      clip.left = Math.max(clip.left, left);
+      clip.right = Math.min(clip.right, left + node.clientWidth);
+    }
+    if (css.overflowY !== 'visible') {
+      clip.top = Math.max(clip.top, top);
+      clip.bottom = Math.min(clip.bottom, top + node.clientHeight);
+    }
+    if (owner === document.scrollingElement && /auto|scroll/.test(css.overflowY)) owner = node;
+  }
+  const full = rect.width > 0 && rect.height > 0 &&
+    rect.left >= clip.left - 1 && rect.right <= clip.right + 1 &&
+    rect.top >= clip.top - 1 && rect.bottom <= clip.bottom + 1;
+  const x = (rect.left + rect.right) / 2;
+  const inset = Math.min(6, rect.height / 4);
+  const hit = full && [rect.top + inset, (rect.top + rect.bottom) / 2, rect.bottom - inset]
+    .every(y => el.contains(document.elementFromPoint(x, y)));
+  const style = getComputedStyle(el);
+  const label = el.querySelector('.vk-ui-button__label') ?? el;
+  return {
+    selector, present: true, full, hit, rect: rect.toJSON(), clip, page,
+    focused: el === document.activeElement,
+    focusRing: el.matches(':focus-visible') && parseFloat(style.outlineWidth) > 0,
+    labelFits: label.scrollWidth <= label.clientWidth + 1,
+    disabled: el.matches(':disabled,[aria-disabled=true]'),
+    description: el.getAttribute('aria-describedby')?.split(/\s+/)
+      .map(id => document.getElementById(id)?.textContent.trim()).join(' ') ?? null,
+    owner: { id: owner.id || owner.tagName, scrollTop: owner.scrollTop,
+      scrollHeight: owner.scrollHeight, clientHeight: owner.clientHeight,
+      scrollWidth: owner.scrollWidth, clientWidth: owner.clientWidth },
+    scrollWidth: el.scrollWidth, clientWidth: el.clientWidth,
+  };
+}
+
+const editorTarget = (page, selector) => page.eval(`(${editorTargetGeometry})(${JSON.stringify(selector)})`);
+const fitsEditorAction = m => m.full && m.hit && m.labelFits && m.rect.width >= 44 && m.rect.height >= 44 &&
+  m.page.scrollWidth <= m.page.clientWidth + 1 && m.owner.scrollWidth <= m.owner.clientWidth + 1;
+const editorLayoutReady = page => page.eval(`document.fonts.ready.then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))`);
+const editorSceneName = (stem, { width, height, scale, theme }) => `${stem}-${width}x${height}-${scale}-${theme}`;
+const captureEditorScene = (page, stem, editorScene, evidence) =>
+  page.capture(editorSceneName(stem, editorScene), { editorScene, boundary: 'CDP root font override; synthetic LocalFixture', ...evidence });
+
+async function editorRecoveryScene(page, selector, scene, stem) {
+  const actions = selector.includes('save-failed')
+    ? ['#retry-save', '#export-failed', '#save-failure-details > summary']
+    : ['#keep-mine', '#export-conflict', '#save-conflict-details > summary'];
+  await page.eval(`scrollTo(0, 0)`);
+  await editorLayoutReady(page);
+  const before = await editorTarget(page, selector);
+  check(before.present, `${stem}: recovery target exists before scrolling`);
+  await page.eval(`document.querySelector('${selector}').scrollIntoView({block:'start',behavior:'instant'})`);
+  await editorLayoutReady(page);
+  const recovery = await editorTarget(page, selector);
+  const warning = await editorTarget(page, `${selector} .vk-ui-notice__message`);
+  check(warning.full && warning.hit && recovery.scrollWidth <= recovery.clientWidth + 1,
+    `${stem}: warning is visible and recovery fits horizontally ${JSON.stringify({ recovery, warning })}`);
+  if ([320, 390].includes(scene.width)) {
+    await captureEditorScene(page, `${stem}-warning`, scene, { before, recovery, warning });
+  }
+  for (const action of actions) {
+    await page.eval(`document.querySelector(${JSON.stringify(action)}).scrollIntoView({block:'center',behavior:'instant'})`);
+    await editorLayoutReady(page);
+    const revealed = await editorTarget(page, action);
+    check(fitsEditorAction(revealed), `${stem}: ${action} is visible and hit-testable ${JSON.stringify(revealed)}`);
+    if ([320, 390].includes(scene.width)) {
+      await captureEditorScene(page, `${stem}-${action.split(' ')[0].slice(1)}`, scene,
+        { recovery: await editorTarget(page, selector), action: revealed });
+    }
+  }
+  await page.eval(`document.querySelector(${JSON.stringify(actions[0])}).focus()`);
+  for (const action of actions.slice(1)) {
+    await page.key('Tab');
+    const focused = await editorTarget(page, action);
+    check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
+      `${stem}: Tab reveals ${action} ${JSON.stringify(focused)}`);
+  }
+  for (const action of actions.slice(0, -1).reverse()) {
+    await page.key('Tab', SHIFT);
+    const focused = await editorTarget(page, action);
+    check(fitsEditorAction(focused) && focused.focused && focused.focusRing,
+      `${stem}: Shift+Tab reveals ${action} ${JSON.stringify(focused)}`);
+  }
+}
+
+async function leaveActionScene(page, scene, stage, expected, disabled = []) {
+  const dialog = '#leave-editor';
+  const title = `${dialog} .vk-ui-dialog__title`;
+  const stem = `editor-leave-${stage}`;
+  const name = editorSceneName(stem, scene);
+  const read = () => Promise.all(expected.map(id => editorTarget(page, `#${id}`)));
+  await editorLayoutReady(page);
+  const inventory = await page.eval(`[...document.querySelectorAll('${dialog} button')].map(b => b.id)`);
+  check(inventory.join() === expected.join(), `${name}: exact action inventory ${JSON.stringify(inventory)}`);
+  await page.eval(`document.querySelector('${title}').focus({preventScroll:true}); document.querySelector('${dialog}').scrollTop = 0`);
+  const top = await read();
+  const dialogRect = await page.eval(`document.querySelector('${dialog}').getBoundingClientRect().toJSON()`);
+  const scrollBefore = top[0].page.scrollY;
+  await captureEditorScene(page, `${stem}-top`, scene, { stage, actions: top });
+
+  // Scroll inside the dialog with wheel events. The last action must be wholly visible at
+  // the actual end, including when some controls above it are now outside the scrollport.
+  for (let i = 0; i < 2; i++) {
+    await page.send('Input.dispatchMouseEvent', { type: 'mouseWheel', deltaX: 0, deltaY: 2400,
+      x: dialogRect.x + dialogRect.width / 2, y: dialogRect.y + dialogRect.height / 2 });
+    await editorLayoutReady(page);
+  }
+  const bottom = await read();
+  const last = bottom.at(-1);
+  check(fitsEditorAction(last) && last.owner.id === 'leave-editor' && last.page.scrollY === scrollBefore &&
+      Math.abs(last.owner.scrollHeight - last.owner.clientHeight - last.owner.scrollTop) <= 1,
+    `${name}: wheel to the end reveals the last action without scrolling the page ${JSON.stringify(last)}`);
+  await captureEditorScene(page, `${stem}-bottom`, scene, { stage, actions: bottom });
+
+  await page.eval(`document.querySelector('${title}').focus({preventScroll:true}); document.querySelector('${dialog}').scrollTop = 0`);
+  for (const id of expected) {
+    await page.key('Tab');
+    // In confirmation, the negative tabindex heading still precedes both buttons.
+    const m = await editorTarget(page, `#${id}`);
+    check(fitsEditorAction(m) && m.focused && m.focusRing && m.disabled === disabled.includes(id) &&
+        (!m.disabled || m.description) && m.page.scrollY === scrollBefore,
+      `${name}: Tab reveals ${id} with its expected state ${JSON.stringify(m)}`);
+    await captureEditorScene(page, `${stem}-focus-${id}`, scene, { stage, action: m });
+  }
+  for (const id of expected.slice(0, -1).reverse()) {
+    await page.key('Tab', SHIFT);
+    const m = await editorTarget(page, `#${id}`);
+    check(fitsEditorAction(m) && m.focused && m.focusRing,
+      `${name}: Shift+Tab reveals ${id} ${JSON.stringify(m)}`);
+  }
+}
+
+async function editorEvidenceNegativeControls(page, scene) {
+  const last = '#leave-discard';
+  await page.eval(`document.querySelector('${last}').scrollIntoView({block:'center',behavior:'instant'})`);
+  const original = await editorTarget(page, last);
+  check(fitsEditorAction(original), 'negative control starts with a reachable last action');
+  try {
+    await page.eval(`(() => {
+      const dialog = document.querySelector('#leave-editor');
+      dialog.style.overflowX = 'hidden';
+      const overflow = document.createElement('span');
+      overflow.id = 'editor-overflow-fixture';
+      overflow.style.cssText = 'position:absolute;top:0;left:0;width:200vw;height:1px;pointer-events:none';
+      dialog.append(overflow);
+    })()`);
+    const overflow = await editorTarget(page, last);
+    check(!fitsEditorAction(overflow) && overflow.owner.scrollWidth > overflow.owner.clientWidth &&
+      overflow.page.scrollX === original.page.scrollX, 'oracle rejects horizontally overflowing content inside a clipped scroll owner');
+    await page.eval(`document.querySelector('#editor-overflow-fixture').remove(); document.querySelector('#leave-editor').style.overflowX=''`);
+    await page.eval(`document.querySelector('${last}').style.transform='translateX(-200vw)'`);
+    const clipped = await editorTarget(page, last);
+    check(!fitsEditorAction(clipped) && clipped.page.scrollX === original.page.scrollX &&
+      clipped.page.scrollWidth === original.page.scrollWidth, 'oracle rejects a clipped action even with unchanged page scrollX and scrollWidth');
+    await page.eval(`document.querySelector('${last}').id='missing-last-action'`);
+    check(!(await editorTarget(page, last)).present, 'oracle reports a missing last action, distinct from clipping');
+  } finally {
+    await page.eval(`const el = document.querySelector('#missing-last-action,${last}'); el.id='leave-discard'; el.style.transform=''`);
+    await page.eval(`document.querySelector('#editor-overflow-fixture')?.remove(); document.querySelector('#leave-editor').style.overflowX=''`);
+  }
+  const { width, height, scale, theme } = scene;
+  const actual = { width, height, fontSize: `${16 * scale / 100}px`, theme, dpr: 1 };
+  let rejected = false;
+  try {
+    validateEditorCapture(editorSceneName('editor-negative', { ...scene, height: height + 100 }),
+      scene, actual, { width, height });
+  } catch (error) {
+    rejected = error.message.includes('dimensions or appearance disagree');
+  }
+  check(rejected, 'oracle rejects a screenshot filename with the wrong viewport height');
+}
+
+async function setEditorScene(page, { width, height, scale, theme }) {
+  await page.viewport(width, height);
+  await page.eval(`document.documentElement.style.fontSize='${scale}%'; document.documentElement.dataset.theme='${theme}'`);
+  await editorLayoutReady(page);
+}
+
 async function editorChrome(page) {
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
@@ -2643,6 +2854,16 @@ async function editorChrome(page) {
   await gate.fail(await gate.next());
   await page.waitStatus('failed');
   await geometry('failed');
+  for (const scene of [
+    { width: 320, height: 900, scale: 200, theme: 'light' },
+    { width: 320, height: 800, scale: 200, theme: 'dark' },
+    { width: 390, height: 420, scale: 200, theme: 'light' },
+    { width: 1440, height: 900, scale: 100, theme: 'dark' },
+  ]) {
+    await setEditorScene(page, scene);
+    await editorRecoveryScene(page, '[data-testid=save-failed]', scene, 'editor-failed');
+  }
+  await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
   check(await page.eval(`document.querySelector('[data-testid=save-failed]').textContent.includes('chưa rõ') && document.querySelector('[data-testid=save-failed] .vk-ui-notice__message').textContent === 'Tải bản sao trước khi rời trang.' && !document.querySelector('#save-failure-details').open && !document.querySelector('#save-failure-details').contains(document.querySelector('#retry-save'))`), 'unconfirmed notice keeps backup reminder and recovery actions outside optional detail');
   await page.click('#save-failure-details > summary');
   check(await page.eval(`document.querySelector('#save-failure-details').open && document.querySelector('#save-failure-details').textContent.includes('chưa có bản khôi phục tự động') && ${live}`), 'pointer opens truthful native failure detail without remounting the editor');
@@ -2665,6 +2886,21 @@ async function editorChrome(page) {
   await gate.release(await gate.next());
   await page.waitStatus('saved');
   check((await page.draft(workId)).document.blocks.at(-1).lines.at(-1).endsWith('Gõ tiếp khi chờ.'), 'deliberate retry saves the current text after reconciliation');
+  const savedBeforeUnavailable = (await page.draft(workId)).version;
+  await page.typeInBody(' Gõ lúc máy chủ tạm nghỉ.');
+  await page.click('#save');
+  await page.send('Fetch.fulfillRequest', {
+    requestId: await gate.next(), responseCode: 503,
+    responseHeaders: [{ name: 'content-type', value: 'application/json' }],
+    body: Buffer.from(JSON.stringify({ error: { code: 'dependency_unavailable', message: 'CDP fixture' } })).toString('base64'),
+  });
+  await page.waitStatus('failed');
+  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa xác nhận lưu.' &&
+    document.querySelector('#save-failure-details').textContent.includes('Máy chủ tạm không phục vụ')`) &&
+    (await page.draft(workId)).version === savedBeforeUnavailable, 'injected 503 leaves text unconfirmed and identifies the unavailable server');
+  await page.click('#retry-save');
+  await gate.release(await gate.next());
+  await page.waitStatus('saved');
   await gate.disable();
 
   // Response stage: server has really committed. A retry must GET and enter conflict, with
@@ -2693,6 +2929,7 @@ async function editorChrome(page) {
   await page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts/*', requestStage: 'Request' }] });
   await page.click('#retry-save');
   await page.waitFor(`document.querySelector('[data-testid=save-failed]')?.textContent.includes('bị từ chối')`, 'failed reconciliation remains visible');
+  check(await page.eval(`document.querySelector('[data-testid=save-status]').textContent === 'Chưa lưu được.'`), 'rejected write is distinguishable from an unconfirmed response');
   check(writes === 0, 'failed reconciliation cannot write');
   await page.typeInBody(' Chữ còn trên trang.');
   await page.click('#retry-save');
@@ -2702,6 +2939,14 @@ async function editorChrome(page) {
   page.cdp.listeners = page.cdp.listeners.filter(item => item !== listener);
   await geometry('conflict');
   check((await page.draft(workId)).version === committed.version, 'unknown outcome never blindly replays an already committed save');
+  for (const scene of [
+    { width: 320, height: 800, scale: 200, theme: 'light' },
+    { width: 390, height: 844, scale: 200, theme: 'dark' },
+  ]) {
+    await setEditorScene(page, scene);
+    await editorRecoveryScene(page, '[data-testid=conflict]', scene, 'editor-conflict');
+  }
+  await setEditorScene(page, { width: 1440, height: 900, scale: 100, theme: 'light' });
 
   // Dialogs use current unsaved text and retain focus/scroll/body through close and reopen.
   for (const kind of ['preview', 'leave']) {
@@ -2734,6 +2979,73 @@ async function editorChrome(page) {
     await page.key('Escape');
     await page.waitFor(`!document.querySelector('${dialog}').open`, `${kind} closed`);
   }
+  const conflictChoices = ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'];
+  const discardChoices = ['discard-back', 'discard-confirm'];
+  const shortScene = { width: 390, height: 420, scale: 200, theme: 'dark' };
+  const conflictScenes = [320, 390, 1440].flatMap(width =>
+    [100, 200].flatMap(scale => ['light', 'dark'].map(theme =>
+      ({ width, height: width === 320 ? 800 : width === 390 ? 844 : 900, scale, theme }))));
+  conflictScenes.push(shortScene, { width: 320, height: 900, scale: 200, theme: 'dark' });
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'reopened conflict choices');
+  for (const scene of conflictScenes) {
+    await setEditorScene(page, scene);
+    await leaveActionScene(page, scene, 'text-conflict', conflictChoices, ['leave-save']);
+  }
+  await setEditorScene(page, shortScene);
+  await editorEvidenceNegativeControls(page, shortScene);
+  const { nodes } = await page.send('Accessibility.getFullAXTree');
+  for (const label of ['Ở lại', 'Lưu và rời trang', 'Tải bản đang viết (.txt)', 'Rời mà không lưu…']) {
+    const action = nodes.find(node => node.role.value === 'button' && node.name?.value === label);
+    check(action && (label !== 'Lưu và rời trang' || action.properties?.some(p => p.name === 'disabled' && p.value.value)),
+      `Chrome AX exposes ${label} with the expected state`);
+  }
+  await page.eval(`document.querySelector('#leave-stay').focus()`);
+  await page.key('Tab');
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('#leave-editor').open && location.pathname.endsWith('${workId}')`) &&
+    (await page.draft(workId)).version === committed.version, 'activating disabled Save keeps the text conflict and stored version');
+  await page.key('Tab');
+  check((await editorTarget(page, '#leave-export')).focused, 'keyboard reaches export after disabled Save');
+  const downloads = mkdtempSync(join(tmpdir(), 'vink-editor-194-download-'));
+  try {
+    await page.cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: downloads, eventsEnabled: true });
+    await page.key('Enter');
+    const file = await downloaded(downloads);
+    check(file.name.endsWith('.txt') && file.text.startsWith(`${title.trim()}\n\n`) &&
+      file.text.endsWith(' Chữ còn trên trang.\n') && await page.eval(`document.querySelector('#leave-editor').open`),
+      'keyboard export downloads the live title and unsaved text without leaving');
+  } finally {
+    rmSync(downloads, { recursive: true, force: true });
+  }
+  await page.key('Tab');
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement.id === 'discard-back'`, 'confirmation focuses the safe action');
+  await leaveActionScene(page, shortScene, 'confirm', discardChoices);
+  await page.key('Enter');
+  await page.waitFor(`document.activeElement.id === 'leave-discard'`, 'keyboard returns to the original discard control');
+  const returned = await editorTarget(page, '#leave-discard');
+  check(fitsEditorAction(returned), 'cancel returns to the revealed discard control');
+  await captureEditorScene(page, 'editor-leave-confirm-return', shortScene, { action: returned });
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#leave-editor').open && document.activeElement.matches('.cm-content') && ${live}`, 'Escape restores the writing field and editor instance');
+  await page.typeInBody('');
+  await page.key('ArrowLeft', SHIFT);
+  const caret = `(() => { const s = getSelection(); return { text: s.toString(), anchor: s.anchorOffset, focus: s.focusOffset }; })()`;
+  const writingPosition = `({ caret: ${caret}, y: scrollY })`;
+  const beforeBack = await page.eval(writingPosition);
+  check(beforeBack.caret.text.length > 0 && beforeBack.y > 0, 'Back cancellation starts with writing selected below the fold');
+  await page.eval(`history.back()`);
+  await page.waitFor(`location.pathname.endsWith('${workId}') && document.querySelector('#leave-editor').open`, 'Back is held at the editor while in conflict');
+  await page.click('#leave-stay');
+  // The native dialog closes before the next-frame focus restoration and CodeMirror's
+  // selection synchronization. Observe the restored state after those have both settled.
+  const restored = `!document.querySelector('#leave-editor').open && document.activeElement.matches('.cm-content') &&
+    JSON.stringify(${writingPosition}) === ${JSON.stringify(JSON.stringify(beforeBack))} && ${live}`;
+  await page.waitFor(restored, 'Stay restores the original selection, caret and page scroll after Back');
+  await editorLayoutReady(page);
+  check(await page.eval(restored), 'restored selection, caret and scroll remain stable after the next layout');
+
   await page.viewport(1440, 360);
   await page.eval(`document.documentElement.style.fontSize=''; scrollTo(0,0)`);
   check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), 'short desktop leaves writing viewport clear');
@@ -2794,7 +3106,11 @@ async function editorChrome(page) {
   await page.click('#leave-save');
   await page.click('#leave-discard');
   await page.waitFor(`document.activeElement.id === 'discard-back'`, 'safe discard confirmation during reconciliation');
-  await page.click('#discard-confirm');
+  await setEditorScene(page, shortScene);
+  await page.key('Tab');
+  check(fitsEditorAction(await editorTarget(page, '#discard-confirm')) &&
+    (await editorTarget(page, '#discard-confirm')).focused, 'Tab reveals confirmation before a destructive activation');
+  await page.key('Enter');
   await page.waitFor(`location.pathname === '/ban-viet' && document.querySelector('#create-draft')`, 'discard left the editor');
   await page.send('Fetch.continueRequest', { requestId: heldRead });
   await sleep(700);
@@ -2808,21 +3124,30 @@ async function editorChrome(page) {
   await page.waitFor(EDITOR_READY, 'draft for confirmation focus after ACK');
   await page.typeInBody('Chữ đang chờ xác nhận.');
   await gate.enable();
-  await page.click('#save');
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave while unsaved');
+  const openLeave = `document.querySelector('#leave-editor').open`;
+  await leaveActionScene(page, shortScene, 'unsaved', conflictChoices.slice(0, 2));
+  await page.key('Tab');
+  await page.key('Enter');
   const pendingAck = await gate.next();
   await page.waitStatus('saving');
-  await page.click('.vk-editor-heading__back');
-  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave while save is pending');
+  check(await page.eval(`${openLeave} && document.querySelector('#leave-save').textContent.trim() === 'Đang lưu…'`), 'save-and-leave waits inside the dialog');
+  await leaveActionScene(page, shortScene, 'saving', conflictChoices, ['leave-save']);
   await page.click('#leave-discard');
   await page.waitFor(`document.activeElement.id === 'discard-back'`, 'confirmation before ACK');
   await gate.release(pendingAck);
   await page.waitStatus('saved');
+  check(await page.eval(`${openLeave} && Boolean(document.querySelector('#discard-confirm'))`), 'ACK cannot navigate from discard confirmation');
   await page.key('Enter');
   await page.waitFor(`document.activeElement.id === 'leave-stay'`, 'focus falls back to Stay after ACK removes discard');
   check(await page.eval(`!document.querySelector('#leave-discard')`), 'settled save removes the discard action');
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('#leave-editor').open`, 'stay after ACK');
   await gate.disable();
+  // The rest of mainPhase uses the desktop rail after opening a fresh reader document.
+  await page.viewport(1440);
+  await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
 }
 
 async function mainPhase(page) {
@@ -3250,6 +3575,23 @@ async function draftTags(page, workId) {
   stored = await draftTagsOf(page, workId);
   check(stored.version === 3 && stored.themes.map((t) => t.label).join() === 'Mùa', 'the stale tag save wrote nothing');
   check((await chipLabels(page)).join() === 'Đô thị', 'the conflict keeps the author\'s selection on the page');
+  const tagConflictScene = { width: 320, height: 800, scale: 200, theme: 'dark' };
+  const beforeScene = await page.eval(`({width:innerWidth,height:innerHeight,font:document.documentElement.style.fontSize,theme:document.documentElement.dataset.theme ?? null})`);
+  await setEditorScene(page, tagConflictScene);
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with tag conflict');
+  await leaveActionScene(page, tagConflictScene, 'tag-conflict',
+    ['leave-stay', 'leave-save', 'leave-export', 'leave-discard'], ['leave-save']);
+  check(await page.eval(`document.querySelector('#leave-message').textContent.includes('Thẻ đã đổi ở nơi khác')`), 'leave prompt explains the tag conflict');
+  await page.key('Tab');
+  await page.key('Enter');
+  check(await page.eval(`document.querySelector('#leave-editor').open`) && (await draftTagsOf(page, workId)).version === 3,
+    'disabled save-and-leave preserves tag conflict and stored version');
+  await page.key('Escape');
+  await page.waitFor(`!document.querySelector('#leave-editor').open && document.activeElement.id === 'work-tags-query'`, 'Escape returns from tag conflict to its writing context');
+  await page.viewport(beforeScene.width, beforeScene.height);
+  await page.eval(`document.documentElement.style.fontSize=${JSON.stringify(beforeScene.font)};
+    ${beforeScene.theme ? 'document.documentElement.dataset.theme=' + JSON.stringify(beforeScene.theme) : 'delete document.documentElement.dataset.theme'}`);
   await page.click('#work-tags-edit > summary');
   check(await page.eval(`!document.querySelector('#work-tags-edit').open && !document.querySelector('#work-tags-edit').contains(document.querySelector('[data-testid=tag-conflict]')) && document.querySelector('#tags-keep-mine').getClientRects().length>0`), 'tag conflict and deliberate recovery stay visible outside the closed disclosure');
   await page.click('#tags-keep-mine');
