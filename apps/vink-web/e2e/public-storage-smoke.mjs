@@ -85,6 +85,21 @@ export async function publicStorage(page, { args, check, openPage }) {
     return success && ack !== true && await s.run({kind:'read',ticket:t,key}) === text;
   })()`), 'strict allowlist; actual transaction abort AFTER request success preserves entire prior page/cursor and never ACKs');
 
+  check(await page.eval(`(async () => {
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(...args) {
+      const request = original.apply(this,args);
+      if(this.name === 'meta') request.addEventListener('success', () => this.transaction.abort(), {once:true});
+      return request;
+    };
+    let unavailable;
+    try { unavailable = await s.run({kind:'current',ticket:t}); }
+    finally { IDBObjectStore.prototype.put = original; }
+    const changed = await s.run({kind:'current',ticket:{...t,epoch:t.epoch+1}});
+    const valid = await s.run({kind:'current',ticket:t});
+    return unavailable === null && changed === false && valid === true;
+  })()`), 'lease check distinguishes storage failure from durable barrier; only the latter revokes RAM');
+
   // Set quota BEFORE opening this separate origin's IDB bucket. Chrome caches an existing
   // bucket's space grant; changing quota after opening it is not a reliable exhaustion test.
   const quotaPage = await openPage();
@@ -134,9 +149,13 @@ export async function publicStorage(page, { args, check, openPage }) {
   check(await page.eval(`(async () => {
     await s.run({kind:'barrier',work:null});
     const newer = [];
+    for (let i=0;i<40;i++) { const ticket = await s.run({kind:'capture'}); await s.run({kind:'write',ticket,text:fixture('small-'+i,null,0)}); }
+    const small = await raw((tx,done) => { const q=tx.objectStore('snapshots').count(); q.onsuccess=()=>done(q.result); });
+    if (small !== pc.LIMITS.entries) return false;
+    await s.run({kind:'barrier',work:null});
     for (let i=0;i<40;i++) { const ticket = await s.run({kind:'capture'}); await s.run({kind:'write',ticket,text:fixture('budget-'+i,null,45000)}); }
     const rows = await raw((tx,done) => { const q = tx.objectStore('snapshots').getAll(); q.onsuccess = () => done(q.result); });
-    window.storageMeasurement = { entries:rows.length, logical_bytes: rows.reduce((n,r)=>n+new TextEncoder().encode(JSON.stringify(r)).length,0) };
+    window.storageMeasurement = { small_corpus_entries:small, entries:rows.length, logical_bytes: rows.reduce((n,r)=>n+new TextEncoder().encode(JSON.stringify(r)).length,0) };
     if (rows.length > pc.LIMITS.entries || storageMeasurement.logical_bytes > pc.LIMITS.bytes) return false;
     for (const row of rows) if (!pc.decode(row.text)) return false;
     const q = new pc.WriteQueue({run:() => new Promise(resolve => newer.push(resolve))});

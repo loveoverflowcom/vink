@@ -180,12 +180,8 @@ pub mod browser {
         let token = js_capture().await.ok()?;
         (!token.is_null() && !token.is_undefined()).then_some(Lease(token))
     }
-    pub async fn current(lease: &Lease) -> bool {
-        js_current(&lease.0)
-            .await
-            .ok()
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
+    pub async fn current(lease: &Lease) -> Option<bool> {
+        js_current(&lease.0).await.ok().and_then(|v| v.as_bool())
     }
     /// Expired is deliberately distinct from missing/unavailable; its UX is a later slice.
     pub enum RestoreRead {

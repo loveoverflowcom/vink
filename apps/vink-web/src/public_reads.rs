@@ -999,7 +999,7 @@ mod browser {
 
     fn spawn_fetch(key: PublicKey, ticket: Ticket) {
         leptos::task::spawn_local(async move {
-            let lease = crate::public_persistence::browser::capture().await;
+            let mut lease = crate::public_persistence::browser::capture().await;
             let started_wall = js_sys::Date::now() as u64;
             let outcome = match &key {
                 PublicKey::Works(_) => crate::api::fetch_public::<WorkList>(&key.path())
@@ -1012,12 +1012,16 @@ mod browser {
                     outcome.map(super::reader_snapshot)
                 }
             };
-            if let Some(lease) = &lease
-                && !crate::public_persistence::browser::current(lease).await
-            {
-                let effects = with(|o| o.coord.storage_barrier(now(), visible()));
-                apply_effects(effects);
-                return;
+            if let Some(current_lease) = &lease {
+                match crate::public_persistence::browser::current(current_lease).await {
+                    Some(false) => {
+                        let effects = with(|o| o.coord.storage_barrier(now(), visible()));
+                        apply_effects(effects);
+                        return;
+                    }
+                    None => lease = None, // storage failure cannot revoke an online response
+                    Some(true) => {}
+                }
             }
             // Keep storage writes below the authority fence. Clone only the accepted public
             // representation; no private API, no SSR seed and no control response is admitted.
@@ -1044,17 +1048,28 @@ mod browser {
             return;
         }
         let previous = with(|o| o.storage_lease.clone());
-        if let Some(previous) = previous
-            && !crate::public_persistence::browser::current(&previous).await
-        {
-            let effects = with(|o| {
-                o.storage_lease = None;
-                o.coord.storage_barrier(now(), visible())
-            });
-            apply_effects(effects);
+        if let Some(previous) = previous {
+            match crate::public_persistence::browser::current(&previous).await {
+                Some(false) => {
+                    let effects = with(|o| {
+                        o.storage_lease = None;
+                        o.coord.storage_barrier(now(), visible())
+                    });
+                    apply_effects(effects);
+                }
+                // Keep the previous lease on failure for the next durable check. Replacing
+                // it with a newly captured epoch here could silently miss a concurrent clear.
+                Some(true) | None => return,
+            }
         }
         let lease = crate::public_persistence::browser::capture().await;
-        with(|o| o.storage_lease = lease);
+        with(|o| {
+            // Another lifecycle task may have installed a lease while this capture awaited.
+            // Keep that reference so an epoch change cannot be silently acknowledged here.
+            if o.storage_lease.is_none() {
+                o.storage_lease = lease;
+            }
+        });
     }
 
     pub async fn clear_device_cache() -> bool {
@@ -1077,7 +1092,7 @@ mod browser {
             let Some(age) = envelope.age_ms(js_sys::Date::now() as u64) else {
                 return;
             };
-            if !crate::public_persistence::browser::current(&lease).await {
+            if crate::public_persistence::browser::current(&lease).await != Some(true) {
                 return;
             }
             // Display policy intentionally absent until POLICY-01/02 exact-revision signoff.

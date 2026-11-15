@@ -71,7 +71,7 @@ export function transition(meta, rows, op, now, origin) {
   if (now < meta.seen_at_ms) {
     // A known wall-clock rollback must not rejuvenate data. Keep the high-water clock and
     // fence every outstanding ticket; do not claim a successful capture/read/write.
-    return { meta: { ...meta, epoch: meta.epoch + 1 }, rows: [], result: null, reset: true };
+    return { meta: { ...meta, epoch: meta.epoch + 1 }, rows: [], result: op.kind === 'current' ? false : null, reset: true };
   }
   meta = { ...meta, seen_at_ms: now };
   const alive = rows.filter(row => {
@@ -79,7 +79,7 @@ export function transition(meta, rows, op, now, origin) {
     return e && row.key === keyOf(e.key) && Number.isSafeInteger(row.sequence)
       && age(e, now) !== null;
   });
-  let result = null;
+  let result = op.kind === 'current' ? false : null;
   if (op.kind === 'capture') {
     meta = { ...meta, sequence: meta.sequence + 1 };
     result = { ...meta };
@@ -133,7 +133,7 @@ export class NoOpStorage extends MemoryStorage {
 }
 
 export class IndexedDbStorage {
-  constructor() { this.opening = null; this.db = null; this.failed = false; }
+  constructor() { this.opening = null; this.db = null; this.failed = false; this.invalidated = false; }
   async open() {
     if (this.failed) return null;
     if (this.db) return this.db;
@@ -158,7 +158,7 @@ export class IndexedDbStorage {
       };
       request.onsuccess = () => {
         const db = request.result;
-        db.onversionchange = () => { this.failed = true; this.db = null; db.close(); };
+        db.onversionchange = () => { this.invalidated = true; this.failed = true; this.db = null; db.close(); };
         db.onclose = () => { this.failed = true; this.db = null; };
         finish(db);
       };
@@ -166,6 +166,7 @@ export class IndexedDbStorage {
     return this.opening;
   }
   async run(op) {
+    if (this.invalidated && op.kind === 'current') return false;
     const db = await this.open();
     if (!db || this.failed) return null;
     return new Promise(resolve => {
@@ -252,7 +253,9 @@ export async function restore(ticket, key) {
   return JSON.stringify(result || { state: 'unavailable' });
 }
 export const write = (ticket, text) => queue.write(ticket, text);
-export const current = ticket => storage.run({ kind: 'current', ticket }).then(v => v === true);
+// null = storage unavailable, false = a known durable barrier. The owner must not confuse
+// a quota/open failure with authoritative removal of the active online snapshot.
+export const current = ticket => storage.run({ kind: 'current', ticket });
 let channel;
 let listener;
 export function listen(callback) {

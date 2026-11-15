@@ -443,7 +443,9 @@ chứng thực authority: mọi restore chỉ có thể là `CachedUnverified`.
 không quyết retry, không quản ETag. HTTP cache vẫn là owner validator duy nhất. API async
 `capture → read/restore/write/current` và `barrier(work | null)` độc lập với seam đồng bộ
 `SnapshotCache`; không giả `put()` là lưu bền. `restore` trả `hit`, `expired`, `miss`, `unavailable`;
-`expired` không kèm body/cursor. Đây là tín hiệu cho consumer UX tương lai, chưa có màn xử lý hết hạn.
+`expired` không kèm body/cursor. Kiểm lease phân biệt `true` (còn hiệu lực), `false` (barrier/known versionchange),
+và `null` (storage không khả dụng): lỗi storage không rút RAM hoặc bỏ response online; restore
+không có xác nhận lease thì bị bỏ. Đây là tín hiệu cho consumer UX tương lai, chưa có màn xử lý hết hạn.
 
 `Store::begin_restore/restore` dùng RequestId và hàng rào cùng owner hiện hữu: SSR seed, network
 completion, scope invalidation, remove/clear/release thắng restore cũ. Restore không đổi flight,
