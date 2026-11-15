@@ -317,3 +317,20 @@ Lượt trước hoàn tất ma trận Giao diện và dừng ở timeout caret 
 
 `NOT_RUN` trên IME của hệ điều hành, zoom trình duyệt, thiết bị và bàn phím mobile thật,
 screen reader có tên, Safari/Firefox và CMP/native. Chữ 200% trong ma trận là tùy chọn Web.
+
+### Kiểm lại sau review PR #219
+
+Chrome headless với App và PostgreSQL scratch tái hiện lỗi trên `cf102c9`.
+Ở 834 × 320, chế độ tối, rail thu gọn và chữ 200%, focus vào radio “Tối”
+làm panel tự cuộn 36 CSS px và cắt tiêu đề. Ở 834 × 280, panel tự cuộn
+159 CSS px, tiêu đề và nút Đóng đều khuất.
+
+Trên `f5299514bafd20e53fd1445449df09b11bd44eef`, kiểm hồi quy tại cả hai
+kích thước ghi `scrollTop = 0` khi mở, với tiêu đề và focus ở nút Đóng trong
+vùng nhìn. Mở bằng Enter hiện vòng focus. Tab đưa radio “Tối” vào vùng nhìn
+và tới được bằng hit-test. Escape trả focus về Tôi. Ca 834 × 360 giữ focus
+ban đầu trên radio màu đang chọn. Các ảnh ca màn thấp đã được mở kiểm cục bộ.
+
+`cargo xtask verify web --scenario main` hoàn tất với exit 0 trên worktree #209
+sạch tại SHA trên. Run `1794756892184575000-68533` chạy lại ma trận Giao diện,
+các ca màn thấp và hồi quy editor trên cùng môi trường Chrome/PostgreSQL.
