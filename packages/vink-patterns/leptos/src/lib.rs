@@ -136,6 +136,42 @@ pub fn DraftRow(draft: DraftSummary) -> impl IntoView {
     }
 }
 
+/// Read-only facts supplied by the host; no DTO, request or endorsement command.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AuthorWorkSummary {
+    pub title: String,
+    pub updated_at: String,
+    pub editor_href: Option<String>,
+    pub status: String,
+    pub metrics: Option<String>,
+    pub public_context: Option<String>,
+    pub reader_href: Option<String>,
+}
+#[component]
+pub fn AuthorWorkRow(#[prop(into)] work: Signal<AuthorWorkSummary>) -> impl IntoView {
+    view! {
+        <div class="vk-author-work">
+            <Show when=move || work.with(|w| w.editor_href.is_some())
+                fallback=move || view! { <span class="vk-draft-row__title">{move || work.get().title}</span> }>
+                <Link href=Signal::derive(move || work.get().editor_href.unwrap_or_default()) attr:class="vk-draft-row__link" variant=LinkVariant::Standalone>
+                    <span class="vk-draft-row__title">{move || work.get().title}</span>
+                    <span class="vk-draft-row__open" aria-hidden="true"><Icon name=IconName::ArrowBack /></span>
+                </Link>
+            </Show>
+            <p class="vk-draft-meta vk-author-work__status">{move || work.get().status}<span>" · Cập nhật " {move || view! { <Timestamp instant=work.get().updated_at /> }}</span></p>
+            <Show when=move || work.with(|w| w.metrics.is_some())>
+                <p class="vk-author-work__metrics" data-testid="author-work-metrics">{move || work.get().metrics}</p>
+            </Show>
+            <Show when=move || work.with(|w| w.public_context.is_some())>
+                <p class="vk-author-work__context">{move || work.get().public_context}</p>
+            </Show>
+            <Show when=move || work.with(|w| w.reader_href.is_some())>
+                <Link href=Signal::derive(move || work.get().reader_href.unwrap_or_default()) variant=LinkVariant::Inline attr:class="vk-author-work__reader">"Đọc bản công khai"<span class="vk-ui-visually-hidden">{move || format!(" của {}",work.get().title)}</span></Link>
+            </Show>
+        </div>
+    }
+}
+
 /// A toolbar slot keeps the save authority in EditorSession and the body in CodeMirror.
 #[component]
 pub fn EditorToolbar(

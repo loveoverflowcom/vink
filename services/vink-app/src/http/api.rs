@@ -43,6 +43,7 @@ use time::OffsetDateTime;
 pub fn routes(state: AppState) -> Router<AppState> {
     let drafts = Router::new()
         .route("/drafts", get(list_drafts).post(create_draft))
+        .route("/author/works", get(list_author_works))
         .route("/drafts/{work_id}", get(get_draft).put(save_draft))
         // Draft tags (TAG-PR-03): a resource of its own with its own version (#96 CHOICE-02 B),
         // so a text save never carries, needs or clears tags.
@@ -375,6 +376,19 @@ async fn get_reader(
             Ok(response)
         }
     }
+}
+
+async fn list_author_works(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    RawQuery(raw): RawQuery,
+) -> Result<Json<super::author_works::AuthorWorkList>, ApiError> {
+    let owner = actor.ok_or(ApiError::Unauthenticated)?;
+    let page = state
+        .vink
+        .search_author_works(Some(owner), super::drafts::query(raw.as_deref())?)
+        .await?;
+    Ok(Json(page.into()))
 }
 
 async fn list_drafts(

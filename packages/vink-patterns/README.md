@@ -15,6 +15,7 @@ fixture adapter → :patterns (CMP common) → :ui → semantic tokens
 | Composition | Trách nhiệm |
 | --- | --- |
 | `WorkCard`, `WorkByline`, `ReaderHeader` | Tiêu đề, tác giả được cấp, thời gian tuyệt đối (Web: device zone sau hydrate, fallback UTC), đích đọc do host cấp |
+| `AuthorWorkRow` (Web) | Status/counters/title/scope và href do host cấp; không DTO/fetch/mutation; recipe `screen.desk` có specimen mẫu (#214) |
 | `DraftResume`, `DraftRow` (Web), `DraftMetadata` | Tiêu đề/thời điểm từ card; row Web bỏ version nhìn thấy (#213), DraftMetadata/resume specimen giữ version; không tải manuscript |
 | `EditorToolbar` | Slot trạng thái và hành động; không sở hữu body hay save state |
 | `FeedbackComposer` | Giá trị controlled; intent độc lập với comments mode; Closed giữ input và chặn gửi, Pending vẫn đúng trạng thái transport |

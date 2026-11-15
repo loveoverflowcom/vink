@@ -21,6 +21,7 @@ import { publicationAuthor } from './publication-author-smoke.mjs';
 import { reviewWithdrawnPage } from './review-withdrawn-smoke.mjs';
 import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
+import { authorWorks } from './author-works-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -637,6 +638,8 @@ class DraftGate {
       { urlPattern: `${args.base}/api/v1/drafts`, requestStage: 'Response' },
       { urlPattern: `${args.base}/api/v1/drafts?*`, requestStage: 'Request' },
       { urlPattern: `${args.base}/api/v1/drafts?*`, requestStage: 'Response' },
+      { urlPattern: `${args.base}/api/v1/author/works*`, requestStage: 'Request' },
+      { urlPattern: `${args.base}/api/v1/author/works*`, requestStage: 'Response' },
     ] });
   }
 
@@ -667,6 +670,10 @@ class DraftGate {
   }
 
   fulfill(requestId, status, body) {
+    if (body?.drafts) body = { works: body.drafts.map(d => ({ ...d, draft_version: d.version,
+      publication: d.publication ?? { audience:'private', lifecycle:'active', generation:1,
+        intent_revision_id:null, intent_moderation:null, latest_revision_id:null, latest_moderation:null,
+        review_withdrawn:false, has_draft_changes:null, current_public:null } })), next_cursor: body.next_cursor ?? null };
     return this.page.send('Fetch.fulfillRequest', {
       requestId, responseCode: status,
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
@@ -2452,7 +2459,7 @@ async function draftR6Hierarchy(page) {
   }));
   const gate = new DraftGate(page); gate.list = {body:{drafts:cards}}; await gate.enable();
   await page.goto(`${args.base}/ban-viet`);
-  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent==='Đã tải 3 bản thảo.'`, 'compact R6 fixture');
+  await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length===3 && document.querySelector('#draft-scope').textContent==='Đã tải 3 tác phẩm.'`, 'compact R6 fixture');
   for (const [width, scale, theme] of [[390,100,'light'], [320,200,'dark'], [1440,100,'light'], [1280,100,'light'], [1440,200,'dark'], [1280,200,'dark']]) {
     await page.viewport(width);
     await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
@@ -2522,7 +2529,7 @@ async function draftDashboard(page) {
   const firstHref = `/ban-viet/${cards[0].work_id}`;
   check(await page.eval(`!document.querySelector('#resume, #resume-title-toggle, [data-testid=draft-resume]') && document.querySelector('.vk-draft-row__link').getAttribute('href')===${JSON.stringify(firstHref)}`), 'removed resume has no replacement or disclosure; first row opens the authorized work');
   check(gate.requests.length===2 && gate.requests.every(u=>new URL(u).searchParams.get('limit')==='24'), 'failed initial read and retry each use only the page read');
-  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Đã tải 24 bản thảo') && document.querySelector('#draft-search-help').textContent === 'Trong toàn bộ bản thảo của bạn'`), '24 loaded rows are not claimed as a global total');
+  check(await page.eval(`document.querySelector('#draft-scope').textContent.includes('Đã tải 24 tác phẩm') && document.querySelector('#draft-search-help').textContent === 'Theo tên bản thảo; gồm cả tác phẩm đã đăng'`), '24 loaded rows are not claimed as a global total');
   check(await page.eval(`[...document.querySelectorAll('[data-testid=draft-row]')].every((row, i) => row.querySelector('a').getAttribute('href') === '/ban-viet/' + ${JSON.stringify(cards)}[i].work_id && !row.textContent.includes('Phiên bản') && row.querySelector('time').dateTime === '2026-11-01T08:30:00Z')`), 'every row keeps the provider work_id and raw update instant, with no visible version');
   check(manuscriptRequests === 0, 'list never fetches full manuscripts (no N+1)');
   check(await page.eval(`!document.querySelector('#desk').textContent.match(/Chưa đăng|Đã đăng|góp ý|thể loại|D-05|VINK_DEV_PRINCIPAL/)`), 'no invented publication/profile/feedback state or implementation copy');
@@ -2540,7 +2547,7 @@ async function draftDashboard(page) {
   check(await page.eval(`document.querySelector('#refresh-drafts-tooltip').hidden && document.activeElement.id === 'refresh-drafts'`), 'Escape dismisses only the tooltip and keeps trigger focus');
   await page.viewport(390);
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
-  check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm bản thảo'), 'searchbox retains its native label');
+  check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm tác phẩm'), 'searchbox retains its native label');
   check(deskAX.some(node=>node.role?.value==='link' && node.name?.value.includes(cards[0].title)) && !deskAX.some(node=>node.role?.value==='button' && node.name?.value==='Xem đủ tên bản thảo'), 'accessibility tree retains the full clamped title without resume disclosure');
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);
@@ -2549,8 +2556,8 @@ async function draftDashboard(page) {
     await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     await page.capture(`desk-long-${width}-${scale}-${theme}`);
     check(await page.eval(`(() => {
-      const row=document.querySelector('.vk-draft-row__link'), title=row.querySelector('.vk-draft-row__title'), meta=row.querySelector('.vk-draft-meta');
-      const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=row.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
+      const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
+      const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=work.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
       return !document.querySelector('#resume') && document.documentElement.scrollWidth<=innerWidth &&
         title.textContent===${JSON.stringify(cards[0].title)} && getComputedStyle(title).webkitLineClamp==='2' &&
         t.height<=2*parseFloat(getComputedStyle(title).lineHeight)+1 && m.top>=t.bottom-1 && m.bottom<=r.bottom &&
@@ -2610,7 +2617,7 @@ async function draftDashboard(page) {
   await search('không có tên này');
   await page.waitFor(`document.querySelector('[data-testid=draft-no-results]')`, 'no results');
   check(await page.eval(`document.activeElement.id==='draft-search'`), 'submitting a server query preserves focus');
-  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='Đã tải 0 bản thảo.'`, 'one settled no-result announcement');
+  await page.waitFor(`document.querySelector('[data-testid=draft-result-count]').textContent==='Đã tải 0 tác phẩm.'`, 'one settled no-result announcement');
   check(await page.eval(`window.__resultAnnouncements.length>=3 && document.querySelectorAll('#drafts [role=status]').length===1`), 'one live result status reports each completed server query');
   await page.eval(`window.__resultObserver.disconnect()`);
   check(await page.eval(`!document.querySelector('[data-testid=draft-empty]') && !!document.querySelector('#create-draft') && !!document.querySelector('#draft-search')`), 'filtered miss is not first-use; create and search remain reachable');
@@ -3584,6 +3591,7 @@ async function mainPhase(page) {
   await discussionReadingAndWrites(page);
   await endorsementAsAuthor(page, { args, check });
   await adaptiveShell(page);
+  await authorWorks(page, {args,check,DraftGate,sleep});
   await draftDashboard(page);
   await draftR6Hierarchy(page);
   await timestampPresentation(page);
@@ -4432,6 +4440,7 @@ try {
   else if (args.phase === 'discovery-corpus') await discoveryCorpus(page, { args, check });
   else if (args.phase === 'public-search') await publicReading(page);
   else if (args.phase === 'public-cache') await cacheFirstPublicReads(page);
+  else if (args.phase === 'author-works') await authorWorks(page, {args,check,DraftGate,sleep});
   else if (args.phase === 'desk-layout') { await draftDashboard(page); await draftR6Hierarchy(page); await timestampPresentation(page); await publicReading(page); }
   else if (args.phase === 'bottom-navigation') await bottomNavigationRegression(page);
   else if (args.phase === 'appearance') await adaptiveShell(page);

@@ -1,5 +1,9 @@
 # Bàn viết: tìm toàn bộ nháp và phân trang (#201)
 
+Từ #214, consumer Bàn viết dùng [author-work read-model](desk-author-feedback.md) để gồm cả
+tác phẩm không có draft và trạng thái/counters công khai. API `/drafts` và bằng chứng lịch sử
+#201 dưới đây giữ nguyên phạm vi; không dùng chúng thay bằng chứng #214.
+
 Owner yêu cầu: [UX-03, WR-01/03](../../prd/requirements.md),
 [issue #201](https://github.com/loveoverflowcom/vink/issues/201),
 [contract API](../../services/vink-app/contracts/http/v1/README.md#danh-sách-nháp-riêng-201).

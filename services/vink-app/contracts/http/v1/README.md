@@ -599,3 +599,18 @@ A receipt is history of one command, never the work's state: after every command
 fixtures above on its side (`contract/publication.rs`).
 
 Owner publication state includes `can_appeal` and `decision_reason` per revision. These are display facts; the appeal command rechecks owner, standing, audience, provenance and decision version at commit. Case queue rows include the submitted `title`; case detail includes `viewer_is_admin` for rendering controls.
+
+
+## Author work summaries (#214)
+
+`GET /api/v1/author/works?q=&sort=recent|title&limit=1..100&cursor=…` là read-model riêng tư
+của session hiện hành; query/parser/cursor kế thừa `/drafts` (owner/query/sort/limit scoped),
+`Cache-Control: no-store` cả lỗi. Không nhận owner ID từ client. `/drafts` cũ không đổi.
+Response `works` + `next_cursor` (null ở cuối); [fixture](fixtures/author.works.page.json).
+Mỗi work có title, draft_version nullable, updated_at và publication summary nullable (unknown).
+Summary giữ audience/lifecycle/generation, intent/latest revision + moderation,
+review_withdrawn, has_draft_changes nullable và current_public nullable.
+Current public có revision_id/title và hai số `tham`, `comments` nullable: zero thật khác
+unavailable/null. Không phải tổng Thấm lịch sử, không Hữu ích comment, không manuscript/voter IDs.
+Hai truy vấn batch cùng read snapshot; metric failure có thể giữ title/status với counters null.
+Chi tiết semantics, fallback work không draft và giới hạn: [registry](../../../../../docs/development/desk-author-feedback.md).

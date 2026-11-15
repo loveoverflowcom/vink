@@ -22,7 +22,7 @@ use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
 use crate::tag_state::{TagStatus, TagTicket};
-use crate::ui::{adapters, patterns::DraftRow};
+use crate::ui::{adapters, patterns::AuthorWorkRow};
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
 
@@ -86,7 +86,7 @@ pub fn DeskIndex() -> impl IntoView {
             }
             owner.with(|| {
                 leptos::task::spawn_local_scoped_with_cancellation(async move {
-                    let result = crate::api::search_drafts(
+                    let result = crate::api::search_author_works(
                         &ticket.scope.1,
                         ticket.scope.2,
                         ticket.scope.3,
@@ -325,7 +325,7 @@ pub fn DeskIndex() -> impl IntoView {
                 <DraftListView pages query sort composing loading appending page_error load_error restarted
                     first_use creation can_create create submit clear more refresh refresh_disabled />
             </div>
-            <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Lưu nháp không gửi duyệt hay công khai."</p>
+            <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Số Thấm và Nhận xét thuộc bản đang công khai; lưu nháp không gửi duyệt hay công khai."</p>
         </section>
     }
 }
@@ -456,22 +456,22 @@ fn DraftListView(
     let invalid_page = move || page_error.with(|e| matches!(e, Some(ApiError::Invalid { .. })));
     view! {
         <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
-            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Bản thảo"</Heading>
+            <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Tác phẩm của bạn"</Heading>
             <div class="vk-draft-controls">
                 <div class="vk-draft-search-group">
                     <form role="search" class="vk-draft-search" on:submit=move |event| {
                         event.prevent_default(); submit.run(());
                     }>
-                        <SearchField id="draft-search" label="Tìm bản thảo" value=query variant=SearchVariant::Bar
-                            help="Trong toàn bộ bản thảo của bạn" on_clear=clear
+                        <SearchField id="draft-search" label="Tìm tác phẩm" value=query variant=SearchVariant::Bar
+                            help="Theo tên bản thảo; gồm cả tác phẩm đã đăng" on_clear=clear
                             on_input=move |input: vink_ui::TextInput| {
                                 composing.set(input.composing); query.set(input.value);
                             } />
                     </form>
                     <p id="draft-scope" class="vk-muted" role="status" aria-atomic="true" data-testid="draft-result-count">
-                        {move || if loading.get() && !appending.get() { "Đang tìm bản thảo…".into() }
+                        {move || if loading.get() && !appending.get() { "Đang tìm tác phẩm…".into() }
                             else if load_error.get().is_some() && !pages.with(|p| p.loaded) { "Chưa tải được kết quả.".into() }
-                            else { format!("Đã tải {} bản thảo.", pages.with(|p| p.drafts.len())) }}
+                            else { format!("Đã tải {} tác phẩm.", pages.with(|p| p.drafts.len())) }}
                     </p>
                 </div>
                 <div id="draft-tools" class="vk-draft-tools">
@@ -487,7 +487,7 @@ fn DraftListView(
                 </div>
             </div>
             <Show when=move || restarted.get()>
-                <p class="vk-muted" data-testid="draft-chain-restarted">"Đã tải lại từ đầu. Bạn có thể tải tiếp các bản thảo phía sau."</p>
+                <p class="vk-muted" data-testid="draft-chain-restarted">"Đã tải lại từ đầu. Bạn có thể tải tiếp các tác phẩm phía sau."</p>
             </Show>
             <Show when=move || first_use.get()>
                 <div class="vk-desk-empty" data-testid="draft-empty">
@@ -498,24 +498,33 @@ fn DraftListView(
             </Show>
             <Show when=move || !loading.get() && !first_use.get() && load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())>
                 <div data-testid="draft-no-results">
-                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy bản thảo.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
-                        <Button variant=ButtonVariant::Filled id="clear-draft-search" on_press=move |_| clear.run(())>"Xem tất cả bản thảo"</Button>
+                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy tác phẩm.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
+                        <Button variant=ButtonVariant::Filled id="clear-draft-search" on_press=move |_| clear.run(())>"Xem tất cả tác phẩm"</Button>
                     </StatePanel>
                 </div>
             </Show>
-            <ul id="draft-results" class="vk-draft-rows" aria-label="Bản thảo đã tải" role="list">
+            <Show when=move || pages.with(|p| p.loaded) && (load_error.get().is_some() || page_error.get().is_some() || loading.get())>
+                <p class="vk-muted" data-testid="author-work-stale" role="status">"Trạng thái và số liệu đã tải trước đó; có thể đã thay đổi."</p>
+            </Show>
+            <ul id="draft-results" class="vk-draft-rows" aria-label="Tác phẩm đã tải" role="list">
                 <For each=move || pages.with(|p| p.drafts.clone())
-                    key=|draft| (draft.work_id.clone(), draft.version, draft.updated_at.clone(), draft.title.clone())
-                    children=move |draft| view! {
-                        <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row" data-testid="draft-row">
-                            <DraftRow draft=adapters::draft_summary(&draft) />
-                        </li>
+                    key=|draft| draft.work_id.clone()
+                    children=move |draft| {
+                        let id = draft.work_id.clone();
+                        let fallback = adapters::author_work_summary(&draft);
+                        let work = Signal::derive(move || pages.with(|p| p.drafts.iter().find(|d| d.work_id == id)
+                            .map(adapters::author_work_summary).unwrap_or_else(|| fallback.clone())));
+                        view! {
+                            <li id=format!("draft-row-{}", draft.work_id) class="vk-draft-row" data-testid="draft-row">
+                                <AuthorWorkRow work />
+                            </li>
+                        }
                     } />
             </ul>
             <div id="draft-continuation" class="vk-draft-continuation">
                 <Show when=move || page_error.get().is_some()>
                     <div id="draft-page-error" role="alert">
-                        <StatePanel content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: if invalid_page() { "Danh sách đã thay đổi." } else { "Chưa tải được phần tiếp theo." }.into(), message: if invalid_page() { "Các bản thảo đã tải vẫn ở đây. Hãy tải lại từ đầu để tiếp tục." } else { "Các bản thảo đã tải vẫn ở đây. Bạn có thể thử tải thêm." }.into(), actions: vec![], code: None }>
+                        <StatePanel content=PanelContent { kind: PanelKind::Error(ProblemKind::Unavailable), title: if invalid_page() { "Danh sách đã thay đổi." } else { "Chưa tải được phần tiếp theo." }.into(), message: if invalid_page() { "Các tác phẩm đã tải vẫn ở đây. Hãy tải lại từ đầu để tiếp tục." } else { "Các tác phẩm đã tải vẫn ở đây. Bạn có thể thử tải thêm." }.into(), actions: vec![], code: None }>
                             <Show when=invalid_page>
                                 <Button variant=ButtonVariant::Filled id="restart-drafts" on_press=move |_| refresh.run(()) state=Signal::derive(move || blocked(refresh_disabled.get()))>"Tải lại từ đầu"</Button>
                             </Show>
@@ -535,7 +544,7 @@ fn DraftListView(
                     <p class="vk-muted">{move || format!("Đang xem phần {}. Chọn Tải lại để về đầu danh sách.", pages.with(|p| p.part))}</p>
                 </Show>
                 <Show when=move || pages.with(|p| p.loaded && !p.drafts.is_empty())>
-                    <p class="vk-muted">"Bản thảo có thể đổi vị trí khi được sửa. Tải lại để xem các cập nhật mới nhất."</p>
+                    <p class="vk-muted">"Tác phẩm có thể đổi vị trí khi bản nháp được sửa. Tải lại để xem các cập nhật mới nhất."</p>
                 </Show>
             </div>
         </section>

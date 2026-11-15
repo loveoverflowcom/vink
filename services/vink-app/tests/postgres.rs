@@ -30,6 +30,8 @@ const ORIGIN: &str = "http://127.0.0.1:3000";
 
 #[path = "postgres/abuse.rs"]
 mod abuse;
+#[path = "postgres/author_works.rs"]
+mod author_works;
 #[path = "postgres/commit_fence.rs"]
 mod commit_fence;
 #[path = "postgres/conditional_reads.rs"]

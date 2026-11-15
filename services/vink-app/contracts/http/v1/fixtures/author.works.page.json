@@ -1,0 +1,28 @@
+{
+  "works": [
+    {
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "title": "Bản nháp riêng ỹ ỷ",
+      "draft_version": 3,
+      "updated_at": "2026-11-15T12:00:00Z",
+      "publication": {
+        "audience": "public",
+        "lifecycle": "active",
+        "generation": 3,
+        "intent_revision_id": "44444444-4444-4444-8444-444444444445",
+        "intent_moderation": "pending",
+        "latest_revision_id": "44444444-4444-4444-8444-444444444445",
+        "latest_moderation": "pending",
+        "review_withdrawn": false,
+        "has_draft_changes": true,
+        "current_public": {
+          "revision_id": "44444444-4444-4444-8444-444444444444",
+          "title": "Tên bản đang công khai",
+          "tham": 0,
+          "comments": 12
+        }
+      }
+    }
+  ],
+  "next_cursor": null
+}
