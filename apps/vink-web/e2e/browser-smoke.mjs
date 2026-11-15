@@ -1459,6 +1459,36 @@ function appearanceRows(page, prefix) {
   })()`);
 }
 
+// R1 (#209): one gutter owner, 24px between groups, 8px label→choices, no rules between rows and a
+// selected primary-container fill that differs from the idle fill. Measured in computed CSS px.
+async function appearanceRecipe(page, prefix) {
+  // Fill changes transition; measure the settled recipe, not a frame in between.
+  await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
+  return page.eval(`(() => {
+    const scope = document.querySelector(${JSON.stringify(prefix === 'page' ? '.vk-appearance-card' : '#profile-menu')});
+    const root = getComputedStyle(document.documentElement), rem = parseFloat(root.fontSize), near = (a, b) => Math.abs(a - b) <= 1;
+    const paint = name => { const probe = document.createElement('i'); probe.style.background = 'var(' + name + ')'; document.body.append(probe); const color = getComputedStyle(probe).backgroundColor; probe.remove(); return color; };
+    const s = getComputedStyle(scope), gutter = Math.min(Math.max(innerWidth * .07, rem * .75), rem * 1.5);
+    const rows = [...scope.querySelectorAll('.vk-appearance-row')];
+    const single = rows.every(row => getComputedStyle(row).gridTemplateColumns.split(' ').length === 1);
+    const rects = rows.map(row => row.getBoundingClientRect());
+    const selected = [...scope.querySelectorAll('label:has(:checked)')], idle = [...scope.querySelectorAll('label:not(:has(:checked))')];
+    return {
+      gutter: [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].every(v => near(parseFloat(v), gutter)),
+      surface: s.backgroundColor === paint('--vk-surface-container-high') && s.borderTopWidth === '0px',
+      groupGap: rects.slice(1).every((r, i) => near(r.top - rects[i].bottom, rem * 1.5)),
+      labelGap: !single || rows.every(row => near(row.querySelector('fieldset').getBoundingClientRect().top - row.querySelector('h3').getBoundingClientRect().bottom, rem * .5)),
+      rules: rows.every(row => getComputedStyle(row).borderTopWidth === '0px' && getComputedStyle(row).borderBottomWidth === '0px') && !scope.querySelector('hr'),
+      selected: selected.length === rows.length && selected.every(el => getComputedStyle(el).backgroundColor === paint('--vk-primary-container') && getComputedStyle(el).color === paint('--vk-on-primary-container')),
+      idle: idle.every(el => getComputedStyle(el).backgroundColor === paint(el.matches(':hover') ? '--vk-surface-container' : '--vk-surface-container-low')),
+      controlGap: rows.every(row => { const l = [...row.querySelectorAll('label')].map(el => el.getBoundingClientRect()); return l.every((r, i) => i === 0 || l[i - 1].top !== r.top || near(r.left - l[i - 1].right, 8)); }),
+    };
+  })()`).then(result => {
+    for (const [name, ok] of Object.entries(result)) check(ok, `${prefix}: appearance recipe ${name}`);
+    return Object.values(result).every(Boolean);
+  });
+}
+
 async function appearanceFocusContrast(page, scenario) {
   await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect?.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
   const contrast = await page.eval(`(() => {
@@ -1481,6 +1511,7 @@ async function preferenceSurfaces(page) {
     await appearanceFocusContrast(page, theme);
     await page.capture(`r22-me-${theme}-selected-focus`);
     check(await appearanceRows(page, 'page'), `${theme}: page uses three compact native groups with icons and selection checks`);
+    await appearanceRecipe(page, 'page');
     check(await page.eval(`document.querySelectorAll('#build-info').length === 1 &&
       document.querySelector('#page-account h2').textContent === 'Tài khoản' &&
       document.querySelector('#page-account p').textContent === 'Tác giả mẫu (dữ liệu phát triển)' &&
@@ -1562,6 +1593,7 @@ async function accountAppearance(page) {
     document.querySelector('#navigation-primary a[href="/ban-viet"]').getAttribute('aria-current') === 'page' &&
     !document.querySelector('#profile-menu .vk-account-status') && document.querySelector('#open-me')`), 'compact appearance dialog identifies its purpose and preserves the active route');
   check(await appearanceRows(page, 'overlay'), 'panel uses the same three native groups, glyphs and selection checks');
+  await appearanceRecipe(page, 'overlay');
   await chooseTheme(page, 'system');
   await page.eval(`document.querySelector('#overlay-theme input:checked').focus()`);
   await page.key('ArrowRight');
@@ -1631,6 +1663,7 @@ async function accountAppearance(page) {
         })()`), `${scenario}: Tab reveals the close action at the start`);
         await page.eval(`document.querySelector('#profile-menu').scrollTop = 0`);
         check(await appearanceRows(page, 'overlay'), `${scenario}: compact panel groups keep whole labels and touch targets`);
+        await appearanceRecipe(page, 'overlay');
         accountLayoutGeometry(await page.capture(`account-overlay-${scenario}`), scenario);
         await page.key('Escape');
         check(await page.eval(`!${PROFILE_OPEN} && document.activeElement?.id === 'profile-trigger'`), `${scenario}: Escape restores the account utility focus`);
@@ -1971,6 +2004,7 @@ async function adaptiveShell(page) {
         accountLayoutGeometry(await page.capture(`${width}-me-${theme}-text${scale}`), `${width}px/${scale}% ${theme}`);
         check(await page.eval(`document.documentElement.scrollWidth <= innerWidth`), `${width}px/${scale}% ${theme}: no horizontal overflow`);
         check(await appearanceRows(page, 'page'), `${width}px/${scale}% ${theme}: appearance choices keep whole labels and touch targets`);
+        await appearanceRecipe(page, 'page');
         if (width < 760 && scale === 200) {
           await page.eval(`document.querySelector('#page-theme-title').scrollIntoView({ block: 'start' })`);
           await page.capture(`${width}-me-${theme}-text${scale}-appearance`);

@@ -43,6 +43,7 @@ Placement, GET/IME/private scope và phần chưa được thay thế giữ cont
 | Nguồn | Dùng cho |
 | --- | --- |
 | [Quiet Lavender R1 / #66](https://github.com/loveoverflowcom/vink/issues/66), [Expressive Lavender R2 / #67](https://github.com/loveoverflowcom/vink/issues/67), [LayoutSpec R2](https://drive.google.com/file/d/1ChFchoWsrc9XFtkW5BvP5XUfr6GAAbKy/view) | Yêu cầu thiết kế hiện hành: R1 cho shared fields/actions/search/Explore/Desk/editor (PR #74, #76); R2 cho appearance/account (PR #77). Giữ phân biệt giữa tham chiếu thiết kế và dữ liệu/quyền thật trên runtime |
+| [Giao diện R1 / #209](https://github.com/loveoverflowcom/vink/issues/209), [spec](appearance-panel-r1-209.md) | PR 2/2 sau Dialog #208: một recipe cho panel và thẻ Tôi (gutter một owner, nhóm cách `space-6`, không divider), selected `primary-container` + check. `NO_APPROVED_REFERENCE`; `web` |
 | [Current design 02/11](https://drive.google.com/file/d/1cNYQh-iukYP-nP0cphLOGdywROAmtkSr/view), [amendment v4](https://drive.google.com/file/d/1PQeLmEbwkNiFquI-Qgb6gaEV3i0OZWSn/view) | Tham chiếu thị giác Khám phá hiện hành; phạm vi dữ liệu thật và đối chiếu vùng ở [UI-REPAIR-02](ui-repair-02.md) |
 | [LayoutSpec Khám phá v3](https://drive.google.com/file/d/1F2tieZPb2-PsR7Tn3vD0xvIlEwBQf2Ne/view), cập nhật [#9](https://github.com/loveoverflowcom/vink/issues/9#issuecomment-6556317033) / [#14](https://github.com/loveoverflowcom/vink/issues/14) | Khám phá và reader thay bố cục spotlight v2.3; capability delta ở [spec lớp đọc](public-reading.md) |
 | [Design index v2.3](https://drive.google.com/file/d/16OqseJ0uCdbEtF2H3XZyNzfG33QLLFZC/view), [tokens/typography](https://drive.google.com/file/d/1JiIH3GCsLxCJf766hN7RBU_doQ8xui9K/view), [handoff](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view) | Palette Lavender sáng/tối, Be Vietnam Pro + Literata, shape/motion, owner map |
@@ -231,7 +232,9 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 - Web R2.2 dùng cùng ba nhóm radio ở `/toi` và panel **Giao diện**. Nhãn có icon và lựa chọn
   bo tròn có dấu ✓. Trang có thẻ **Tài khoản** và minh họa sách–bút. Khi đủ rộng, tên nhóm đứng
   cạnh các lựa chọn. Màn hẹp và chữ lớn cho phép các lựa chọn xuống dòng. Mobile dùng đích Tôi
-  trên thanh dưới để tới `/toi`.
+  trên thanh dưới để tới `/toi`. Từ [#209](appearance-panel-r1-209.md), panel và thẻ Tôi dùng một recipe:
+  gutter một owner, nhóm cách 24px, nhãn→lựa chọn 8px, không divider, selected `primary-container` + dấu ✓
+  thay cho `primary` đặc; thanh chọn vẫn là native radio.
 - Rail, thanh dưới và thẻ **Tài khoản** dùng chữ viết tắt của bút danh từ phiên hiện tại. Sau
   hydration, Web gọi `GET /api/v1/auth/session/account` (`no-store`) và kiểm lại khi cửa sổ nhận
   focus. SSR và phiên chưa có bút danh dùng dấu gạch trung tính. Bút danh của LocalFixture thuộc

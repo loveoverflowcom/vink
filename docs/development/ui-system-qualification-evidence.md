@@ -1,6 +1,7 @@
 # UIS-06 — quality gates, replay và diagnostic hosts
 
 Bổ sung hiện hành sau UIS-06:
+- [#209 — Panel Giao diện và Tôi R1](../design/appearance-panel-r1-209.md) chỉ đổi recipe CSS/test của `apps/vink-web` (không đổi primitive, token hay CMP); bằng chứng là `verify web --scenario main` và ảnh trong [evidence/appearance-r1-209](evidence/appearance-r1-209/); native/CMP, OS/AT/thiết bị thật `NOT_RUN`.
 - [#208 — Chuẩn hóa anatomy/gutter và phân cấp hành động Dialog Editor (R1)](../design/dialog-anatomy-r1-208.md) bổ sung `ButtonVariant::DangerText`, `Dialog` `context: Option<Signal<String>>` / `secondary_actions` và xóa CSS vá dialog ở app; chỉ chạy kiểm Web (`verify web --scenario main`, `ui-preview leptos verify`, `verify quick` không tính pre-existing check trên `test-vps-deployment-guide.md`), còn runtime native CMP/Android/iOS là `NOT_RUN`.
 [UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi requalification của optional
 StatePanel action slot (common/Desktop + native compile/runtime), capture focus
