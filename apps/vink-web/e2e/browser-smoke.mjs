@@ -2547,7 +2547,7 @@ async function draftDashboard(page) {
   check(await page.eval(`document.querySelector('#refresh-drafts-tooltip').hidden && document.activeElement.id === 'refresh-drafts'`), 'Escape dismisses only the tooltip and keeps trigger focus');
   await page.viewport(390);
   const { nodes: deskAX } = await page.send('Accessibility.getFullAXTree');
-  check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm bản thảo'), 'searchbox retains its native label');
+  check(deskAX.some(node=>node.role?.value==='searchbox' && node.name?.value==='Tìm tác phẩm'), 'searchbox retains its native label');
   check(deskAX.some(node=>node.role?.value==='link' && node.name?.value.includes(cards[0].title)) && !deskAX.some(node=>node.role?.value==='button' && node.name?.value==='Xem đủ tên bản thảo'), 'accessibility tree retains the full clamped title without resume disclosure');
   for (const theme of ['light','dark']) for (const scale of [100,200]) for (const width of [1536,1440,1280,1024,834,390,320]) {
     await page.viewport(width);

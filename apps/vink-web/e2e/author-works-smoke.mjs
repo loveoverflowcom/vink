@@ -16,7 +16,7 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
   const title='Những ngày mưa ở khuỷu đường cũ, nơi người trở về vẫn nhớ tiếng Việt và những khổ thơ chưa kịp đặt tên'.normalize('NFD');
   const state={audience:'public',lifecycle:'active',generation:3,intent_revision_id:'r2',intent_moderation:'pending',latest_revision_id:'r2',latest_moderation:'pending',review_withdrawn:false,has_draft_changes:true,current_public:{revision_id:'r1',title:'Tên của bản đang công khai',tham:0,comments:123456789}};
   const card=(i,publication=state)=>({work_id:`88888888-8888-4888-8888-${String(i).padStart(12,'0')}`,title:i===0?title:`[214] Tác phẩm ${i}`,draft_version:3,updated_at:'2026-11-15T12:00:00Z',publication});
-  const works=[card(0),card(1,{...state,audience:'private',current_public:null,intent_revision_id:null,latest_revision_id:null,generation:1}),card(2,{...state,intent_moderation:'rejected',latest_moderation:'rejected'}),card(3,{...state,audience:'future'}),card(4,{...state,current_public:{...state.current_public,tham:null,comments:null}})];
+  const works=[card(0),card(1,{...state,audience:'private',current_public:null,intent_revision_id:null,intent_moderation:null,latest_revision_id:null,latest_moderation:null,generation:1}),card(2,{...state,intent_moderation:'rejected',latest_moderation:'rejected'}),card(3,{...state,audience:'future'}),card(4,{...state,current_public:{...state.current_public,tham:null,comments:null}})];
   const gate=new DraftGate(page); gate.list={raw:true,body:{works,next_cursor:null}};await gate.enable();
   const settled=()=>page.waitFor(`document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy')==='false'`,'author summary settles');
   try {
@@ -27,11 +27,16 @@ export async function authorWorks(page, {args,check,DraftGate,sleep}) {
     check(await page.eval(`document.querySelectorAll('#draft-results a a, #draft-results a button, #draft-results button').length===0`), 'readonly counters offer no endorsement mutation or nested targets');
     for (const width of [320,390,834,1440]) for (const theme of ['light','dark']) for (const scale of [100,200]) {
       await page.viewport(width);
+      await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:0,y:0});
       await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#drafts').scrollIntoView({block:'start'})`);
       await page.eval(`document.fonts.ready`);
       check(await page.eval(`document.documentElement.scrollWidth<=innerWidth && [...document.querySelectorAll('.vk-author-work')].every(e=>e.getBoundingClientRect().right<=innerWidth+1)`), `author rows reflow ${width}/${theme}/text${scale}`);
       await page.capture(`author-works-${width}-${theme}-${scale}`,{boundary:'fabricated-author-summary-real-hydration',scenario:'#214-states-reflow'});
     }
+    await page.viewport(390);await page.eval(`document.documentElement.dataset.theme='dark';document.documentElement.style.fontSize='200%';document.querySelector('[data-testid=author-work-metrics]').scrollIntoView({block:'center'})`);
+    await page.capture('author-works-metrics-390-dark-200',{boundary:'fabricated-author-summary-real-hydration',scenario:'#214-readable-public-metrics'});
+    await page.eval(`[...document.querySelectorAll('.vk-author-work__reader')].at(-1).focus();[...document.querySelectorAll('.vk-author-work__reader')].at(-1).scrollIntoView({block:'center'})`);
+    check(await page.eval(`(()=>{const r=document.activeElement.getBoundingClientRect(),bar=document.querySelector('.vk-ui-bottom-nav');return r.height>=44&&r.top>=0&&r.bottom<=(bar?.getClientRects().length?bar.getBoundingClientRect().top:innerHeight)&&r.right<=innerWidth;})()`),'last public-reader target is reachable above bottom navigation at 390/text200');
     await page.viewport(390);await page.eval(`document.documentElement.style.fontSize='100%';document.querySelector('#draft-search').focus();document.querySelector('#draft-search').setSelectionRange(0,0);window.__authorInput=document.querySelector('#draft-search');window.__authorEditor=document.querySelector('.vk-draft-row__link')`);
     gate.list={raw:true,body:{works:[{...works[0],publication:{...state,current_public:{revision_id:'r2',title:'Bản mới công khai',tham:8,comments:2},has_draft_changes:false,intent_revision_id:'r2',intent_moderation:'approved'}}],next_cursor:null}};
     await page.eval(`document.querySelector('#refresh-drafts').click()`);await settled();
