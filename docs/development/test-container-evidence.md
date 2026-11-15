@@ -1,5 +1,8 @@
 # Bằng chứng test-domain/container
 
+Lượt tiếp theo: [phân phối frontend qua Cloudflare và cấu hình GCS](cloudflare-test-evidence.md)
+giữ backend/DB ở VPS, ghi riêng URL cuối, image/config pins và reader trên máy thứ hai.
+
 ## Triển khai thực trên VPS ngày 15/11/2026
 
 Triển khai thử `test.vink.forum` trên VPS đang chạy Cantos. Vink dùng source

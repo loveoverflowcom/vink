@@ -32,6 +32,10 @@ chưa tích hợp composer/reaction/sticker persistence.
 
 ## Nền test-domain/container
 
+[Cloudflare test và cấu hình Google Cloud](cloudflare-test-evidence.md) ghi asset upload,
+origin/DNS, GCS generation và bằng chứng reader trên máy thứ hai;
+[runbook](../../infra/cloudflare/README.md) giữ cách đóng gói, triển khai và rollback.
+
 [Runbook và lệnh infra](../../infra/test/README.md) tách build image, publish GHCR,
 DNS plan và deploy; không thay các workflow local. Mẫu cần facts target thật, chưa phải test online.
 
