@@ -3366,6 +3366,9 @@ async function editorChrome(page) {
   check(await page.eval(`getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static'`), 'short desktop leaves writing viewport clear');
   await page.capture('editor-short-desktop-1440');
   await page.viewport(390, 420);
+  // Finish the desktop→mobile reflow before issuing document/line movement. Otherwise
+  // Chrome's resize scroll anchoring can run after CodeMirror's keyboard scroll and undo it.
+  await editorLayoutReady(page);
   await page.typeInBody('');
   await page.lineStart();
   // CodeMirror schedules selection scrolling after resize. Observe the resulting geometry,
