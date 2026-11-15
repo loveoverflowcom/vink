@@ -31,7 +31,7 @@ chưa tích hợp composer/reaction/sticker persistence.
 [Discovery Web](discovery-ui.md) (#100): GET/SSR tìm toàn thư viện, bộ lọc thẻ, trang thẻ và reader return.
 
 [Phân trang Bàn viết #201](desk-pagination.md): API query/sort/cursor trên toàn bộ nháp của owner;
-consumer Web đang chờ coordinator #202.
+consumer Web dùng ReadOwner/PageChain của #202; evidence phân trang và giới hạn ghi ở owner này.
 
 ## Nền test-domain/container
 
@@ -60,7 +60,8 @@ Google Cloud, APK Firebase, DNS/TLS và OCI trước khi diễn tập trên VPS 
   từ server; chỉ đọc snapshot qua `publications`, không bao giờ đọc `working_drafts`.
 - Dashboard `/ban-viet` ([#8](https://github.com/loveoverflowcom/vink/issues/8)): Viết tiếp mở
   nháp mới cập nhật nhất có quyền; danh sách hiện title/version/updated_at, tìm tiêu đề có/không
-  dấu (cả Đ/đ, NFC/NFD), sort trong tối đa 100 nháp đã tải và ghi rõ phạm vi. Tách loading/rỗng/
+  dấu (cả Đ/đ, NFC/NFD), query/sort phía server trên toàn bộ nháp, từng trang 24 mục;
+  phần hiển thị tối đa 240 rồi chuyển phần tiếp. Tách loading/rỗng/
   không kết quả/401/lỗi; không tải toàn bộ manuscript cho thẻ. Tạo khóa một POST đang bay,
   không tự retry kết quả chưa rõ; tải lại danh sách thành công rồi mới cho chủ động tạo thêm.
   Phản hồi tạo muộn sau khi rời dashboard không điều hướng. Xem [spec/delta](../design/README.md#dashboard-bàn-viết-8).

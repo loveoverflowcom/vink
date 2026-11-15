@@ -50,6 +50,8 @@ và không remount editor. Create uncertain giữ đường GET đối chiếu v
 Interaction: touch/pointer/Tab/Enter dùng cùng controls; không overlay hay vùng cuộn riêng.
 DOM/focus: heading → Viết tiếp → tìm → sort/refresh → hàng → continuation. Background response
 không cướp focus; input giữ caret/IME/selection. Append giữ hàng/key và anchor, không tự cuộn.
+Nếu cursor lỗi thay nút Tải thêm đang giữ focus, chuyển focus sang Tải lại từ đầu sau render;
+Enter phục hồi đưa về ô tìm. Nếu người dùng đã chuyển sang control khác, giữ focus ở đó.
 Chuyển phần là intent rõ; đưa ngữ cảnh về kết quả mới bằng thông báo/anchor thay vì trông như
 đã hết. Refresh giữ anchor khả dụng, nói rõ phải tải lại phần sau. Không motion mới; reduced
 motion của shared primitives giữ nguyên.
@@ -63,5 +65,6 @@ regression. Kiểm Functional, Geometry, Visual, Accessibility/Responsive và In
 mở ảnh trước kết luận thị giác; keyboard và composition giả lập cần thao tác, không suy từ PNG.
 OS IME/screen-reader ghi `NOT_RUN` nếu chưa chạy. Tối đa hai vòng sửa có render.
 
-Hiện trạng lúc viết: backend/contract đã có trong nhánh #201; UI target chờ #202 merge.
+Hiện trạng: UI target đã nối ReadOwner/PageChain sau merge #212/#202; kiểm browser và
+nghiệm thu cuối được ghi tại [owner #201](../development/desk-pagination.md).
 Fixture giả lập timing chỉ kiểm race; corpus PostgreSQL và browser API thật kiểm boundary khác.
