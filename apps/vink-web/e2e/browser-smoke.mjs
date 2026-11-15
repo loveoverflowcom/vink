@@ -2556,8 +2556,8 @@ async function draftDashboard(page) {
     await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
     await page.capture(`desk-long-${width}-${scale}-${theme}`);
     check(await page.eval(`(() => {
-      const row=document.querySelector('.vk-draft-row__link'), title=row.querySelector('.vk-draft-row__title'), meta=row.querySelector('.vk-draft-meta');
-      const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=row.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
+      const row=document.querySelector('.vk-draft-row__link'), work=row.closest('.vk-author-work'), title=row.querySelector('.vk-draft-row__title'), meta=work.querySelector('.vk-draft-meta');
+      const t=title.getBoundingClientRect(), m=meta.getBoundingClientRect(), r=work.getBoundingClientRect(), h=document.querySelector('#heading').getBoundingClientRect();
       return !document.querySelector('#resume') && document.documentElement.scrollWidth<=innerWidth &&
         title.textContent===${JSON.stringify(cards[0].title)} && getComputedStyle(title).webkitLineClamp==='2' &&
         t.height<=2*parseFloat(getComputedStyle(title).lineHeight)+1 && m.top>=t.bottom-1 && m.bottom<=r.bottom &&

@@ -537,6 +537,14 @@ async fn author_work_statement_count_measurement(pool: PgPool) {
     seeded(&pool).await;
     sqlx::query("INSERT INTO works(id,owner_id,created_at) SELECT md5('batch-'||n)::uuid,$1,'2020-01-01' FROM generate_series(1,120) n")
         .bind(dev_seed::SAMPLE_AUTHOR).execute(&pool).await.unwrap();
+    // Vary the number of PUBLIC anchors with page size, so a per-public-card query loop
+    // would be observable (not just one public work surrounded by private rows).
+    sqlx::query("INSERT INTO revisions(id,work_id,title,document,content_hash,created_by) SELECT md5('batch-revision-'||n)::uuid,md5('batch-'||n)::uuid,'Batch public '||n,'{\"schema_version\":1,\"blocks\":[]}',repeat('a',64),$1 FROM generate_series(1,120) n")
+        .bind(dev_seed::SAMPLE_AUTHOR).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO work_publications(work_id,audience,lifecycle,generation,intent_revision_id,intent_generation,pointer_revision_id,pointer_intent_generation) SELECT md5('batch-'||n)::uuid,'public','active',2,md5('batch-revision-'||n)::uuid,2,md5('batch-revision-'||n)::uuid,2 FROM generate_series(1,120) n")
+        .execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO publications(work_id,revision_id,generation,published_at) SELECT md5('batch-'||n)::uuid,md5('batch-revision-'||n)::uuid,2,'2020-01-01' FROM generate_series(1,120) n")
+        .execute(&pool).await.unwrap();
     let logged = PgPoolOptions::new()
         .max_connections(1)
         .connect_with((*pool.connect_options()).clone())
@@ -565,6 +573,12 @@ async fn author_work_statement_count_measurement(pool: PgPool) {
             .await
             .unwrap();
         assert_eq!(result.works.len(), size);
+        assert!(
+            result
+                .works
+                .iter()
+                .all(|w| w.publication.as_ref().unwrap().current_public.is_some())
+        );
         let end = format!("SELECT 'VINK214_END_{size}'");
         sqlx::query(sqlx::AssertSqlSafe(end))
             .execute(&logged)
