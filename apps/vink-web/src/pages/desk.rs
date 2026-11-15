@@ -146,6 +146,11 @@ pub fn DeskIndex() -> impl IntoView {
                         return;
                     }
                     let success = result.is_ok();
+                    let cursor_recovery = intent == Intent::Append
+                        && matches!(&result, Err(ApiError::Invalid { .. }))
+                        && document()
+                            .active_element()
+                            .is_some_and(|element| element.id() == "load-more-drafts");
                     wake.try_update_value(|w| w.settled(crate::read_events::now(), success));
                     match result {
                         Ok(()) => {
@@ -179,7 +184,9 @@ pub fn DeskIndex() -> impl IntoView {
                     loading.try_set(false);
                     appending.try_set(false);
                     let recover = recovery_focus.try_update(std::mem::take).unwrap_or(false);
-                    if success {
+                    if cursor_recovery {
+                        super::focus_recovery("restart-drafts");
+                    } else if success {
                         if next_part {
                             super::focus_recovery("draft-list-title");
                         } else if recover {

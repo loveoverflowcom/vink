@@ -3740,6 +3740,12 @@ async function mainPhase(page) {
     await page.click('#discard-confirm');
     await page.waitFor(`location.pathname === '/'`, 'left without saving');
     await page.click('#navigation-primary a[href="/ban-viet"]');
+    await page.waitFor(`document.querySelector('#draft-search') && document.querySelector('[data-testid=draft-content]')?.getAttribute('aria-busy') === 'false'`, 'desk first page');
+    // Other tests create more than one page. Find the intended draft through the real query.
+    const otherDraft = await page.draft(SAMPLE_WORK);
+    await page.eval(`document.querySelector('#draft-search').focus(); document.querySelector('#draft-search').select()`);
+    await page.send('Input.insertText', { text: otherDraft.title });
+    await page.key('Enter');
     await page.waitFor(`document.querySelector('a[href="/ban-viet/${SAMPLE_WORK}"]')`, 'desk list');
     await page.click(`a[href="/ban-viet/${SAMPLE_WORK}"]`);
     await page.waitFor(`location.pathname === '/ban-viet/${SAMPLE_WORK}' && ${EDITOR_READY}`, 'another draft');

@@ -120,20 +120,27 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
 
     await search('[Paging201]');
     // Cursor validation failure is a restart action, without advancing or discarding the data.
-    gate.holdGets = true; await page.click('#load-more-drafts');
+    gate.holdGets = true;
+    await page.eval(`document.querySelector('#load-more-drafts').focus()`);
+    await page.key('Enter');
     const invalid = await gate.next('gets');
     await gate.fulfill(invalid, 422, { error: { code: 'validation', field: 'cursor' } }); await settled();
     check(await page.eval(`!!document.querySelector('#restart-drafts') && document.querySelectorAll('[data-testid=draft-row]').length===24`), 'invalid cursor retains cards and offers restart');
-    for (const width of [390,1440]) for (const scale of [100,200]) {
+    await page.waitFor(`document.activeElement?.id==='restart-drafts'`, 'removed load-more transfers keyboard focus to restart');
+    for (const width of [1440,390]) for (const scale of [100,200]) {
       await page.viewport(width);
-      await page.eval(`document.documentElement.style.fontSize='${scale}%'; document.querySelector('#draft-page-error').scrollIntoView({block:'center'})`);
+      await page.eval(`document.documentElement.style.fontSize='${scale}%'; document.querySelector('#restart-drafts').blur(); document.querySelector('#restart-drafts').focus()`);
       check(await page.eval(`document.documentElement.scrollWidth<=innerWidth`), `paging recovery fits ${width}px at text ${scale}%`);
+      check(await page.eval(`(() => {
+        const button=document.querySelector('#restart-drafts'), r=button.getBoundingClientRect();
+        const bar=document.querySelector('.vk-ui-bottom-nav'), bottom=bar.getClientRects().length ? bar.getBoundingClientRect().top : innerHeight;
+        return r.top>=0 && r.bottom<=bottom && r.height>=44 && r.left>=0 && r.right<=innerWidth && button.scrollWidth<=button.clientWidth && button.scrollHeight<=button.clientHeight;
+      })()`), `focused restart is fully reachable above navigation at ${width}px/text ${scale}%`);
       await page.capture(`desk-paging-${width}-${scale}`, { boundary: 'real-corpus-delayed-transport', scenario: '#201-cursor-restart' });
     }
     gate.holdGets = false;
-    await page.eval(`document.documentElement.style.fontSize=''; document.querySelector('#restart-drafts').focus()`);
     await page.key('Enter'); await settled();
-    check(await page.eval(`!document.querySelector('#draft-page-error') && document.activeElement.id==='draft-search'`), 'keyboard restart recovers and focuses search');
+    check(await page.eval(`!document.querySelector('#draft-page-error') && document.activeElement.id==='draft-search'`), 'keyboard restart at 390px/text 200% recovers and focuses search');
   } finally {
     await gate.disable();
     await page.viewport(1440);
