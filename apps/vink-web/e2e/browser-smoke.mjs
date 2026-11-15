@@ -400,7 +400,7 @@ class Page {
     return context;
   }
 
-  async click(selector) {
+  async click(selector, modifiers = 0) {
     // A committed CodeMirror input can still have a queued selection scroll. Resolve a fresh
     // node and hit-test after layout; retry geometry only, never dispatch a second activation.
     let point;
@@ -421,7 +421,7 @@ class Page {
     }
     if (!point) throw new Error(`click target stayed outside the pointer hit area: ${selector}`);
     for (const type of ['mousePressed', 'mouseReleased']) {
-      await this.send('Input.dispatchMouseEvent', { type, x: point.x, y: point.y, button: 'left', clickCount: 1 });
+      await this.send('Input.dispatchMouseEvent', { type, x: point.x, y: point.y, button: 'left', clickCount: 1, modifiers });
     }
   }
 
@@ -1992,7 +1992,7 @@ async function selectChevron(page) {
   console.log('Select #135: shared geometry and native keyboard in the desk:');
   await page.goto(`${args.base}/ban-viet`);
   await page.waitFor(`document.documentElement.dataset.hydrated==='true' && document.querySelector('#draft-sort')`, 'native sort');
-  for (const theme of ['light','dark']) for (const width of [320,390,1440]) for (const scale of [100,200]) {
+  for (const theme of ['light','dark']) for (const width of [320,390,834,1440,1536]) for (const scale of [100,200]) {
     await page.viewport(width);
     await page.eval(`document.documentElement.dataset.theme='${theme}';document.documentElement.style.fontSize='${scale}%';document.querySelector('#draft-sort').scrollIntoView({block:'center'})`);
     await page.eval('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');
@@ -2121,7 +2121,7 @@ async function draftDashboard(page) {
   check(await page.eval(`document.activeElement?.id === 'draft-search' && document.activeElement.matches(':focus-visible')`), 'keyboard continues to the stable search input with visible focus');
   await page.key('Tab');
   check(await page.eval(`document.activeElement?.id === 'draft-sort'`), 'empty search has no clear target; sort follows in keyboard order');
-  await page.eval(`document.querySelector('#refresh-drafts').focus()`);
+  await page.key('Tab');
   await page.waitFor(`!document.querySelector('#refresh-drafts-tooltip').hidden`, 'refresh tooltip on keyboard focus');
   check(await page.eval(`document.activeElement.id === 'refresh-drafts' && document.querySelector('#refresh-drafts').getAttribute('aria-label') === 'Tải lại' && !document.querySelector('#refresh-drafts-tooltip :is(button,a,input,[tabindex])')`), 'refresh has its own name and the shared tooltip never takes focus');
   await page.key('Escape');
@@ -2143,7 +2143,7 @@ async function draftDashboard(page) {
     await textContrast(page, theme, 'desk');
     for (const scale of [100, 200]) {
       await page.eval(`document.documentElement.style.fontSize = '${scale}%'`);
-      for (const width of [1440, 1280, 1024, 834, 390, 320]) {
+      for (const width of [1536, 1440, 1280, 1024, 834, 390, 320]) {
         await page.viewport(width);
         await page.eval(`scrollTo(0, 0)`);
         await page.capture(`desk-long-${width}-${scale}-${theme}`);
@@ -2151,7 +2151,12 @@ async function draftDashboard(page) {
           const title = document.querySelector('#resume h2'), cta = document.querySelector('[data-testid=resume-draft]');
           const t = title.getBoundingClientRect(), c = cta.getBoundingClientRect();
           const stacked = getComputedStyle(title).webkitLineClamp === '3';
-          return document.documentElement.scrollWidth <= innerWidth && (!stacked || t.height <= parseFloat(getComputedStyle(title).lineHeight) * 3 + 1) &&
+          const layoutWidth = document.documentElement.clientWidth;
+          const card = cta.closest('.vk-ui-surface');
+          const enlargedPhone = ${width <= 390 && scale === 200};
+          return document.documentElement.scrollWidth <= layoutWidth &&
+            (!enlargedPhone || (t.width >= layoutWidth - ${width === 320 ? 48 : 64} - 1 && parseFloat(getComputedStyle(card).paddingBlockStart) <= 16)) &&
+            (!stacked || t.height <= parseFloat(getComputedStyle(title).lineHeight) * 3 + 1) &&
             c.width >= 48 && c.height >= 48 && c.left >= 0 && c.right <= innerWidth && (c.top >= t.bottom || c.left >= t.right) &&
             c.bottom <= document.querySelector('#drafts').getBoundingClientRect().top && cta.textContent === 'Viết tiếp' &&
             document.querySelector('#resume h2').textContent === ${JSON.stringify(cards[0].title)};
@@ -2166,11 +2171,10 @@ async function draftDashboard(page) {
         if (width === 320 && scale === 200) {
           await page.eval(`document.querySelector('.vk-draft-row__title').scrollIntoView({block:'start'})`);
           await page.capture(`desk-row-start-${width}-${scale}-${theme}`);
-          await page.eval(`document.querySelector('.vk-draft-row__open').scrollIntoView({block:'center'})`);
+          await page.eval(`document.querySelector('.vk-draft-row__link .vk-draft-meta').scrollIntoView({block:'center'})`);
           await page.capture(`desk-row-end-${width}-${scale}-${theme}`);
           await page.eval(`document.querySelector('#drafts').scrollIntoView({block:'start'})`);
         }
-        check(await page.eval(`['#draft-search', '#draft-sort', '#refresh-drafts'].every(s => { const r = document.querySelector(s).getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.right <= innerWidth; })`), `${theme} ${width}px / ${scale}%: search, sort and refresh reflow within the viewport`);
         check(await page.eval(`(() => {
           const row = document.querySelector('.vk-draft-row__link'), title = row.querySelector('.vk-draft-row__title');
           const t = title.getBoundingClientRect(), r = row.getBoundingClientRect(), meta = row.querySelector('.vk-draft-meta').getBoundingClientRect();
@@ -2180,24 +2184,56 @@ async function draftDashboard(page) {
             meta.top >= t.bottom && meta.bottom <= r.bottom && row.getAttribute('href') === ${JSON.stringify(resumeHref)} &&
             row.querySelectorAll('button, input, a').length === 0;
         })()`), `${theme} ${width}px / ${scale}%: recent row keeps every title line, metadata and one navigation target`);
-        if (width <= 390) {
-          check(await page.eval(`(() => {
-            const row = document.querySelector('.vk-draft-row__link'), r = row.getBoundingClientRect(), style = getComputedStyle(row);
-            const text = row.querySelector('.vk-draft-row__text').getBoundingClientRect(), open = row.querySelector('.vk-draft-row__open').getBoundingClientRect();
-            const available = r.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-            return text.width >= available - 1 && open.top >= text.bottom && open.left >= text.left - 1 && open.right <= text.right + 1 &&
-              row.querySelector('.vk-draft-row__open').getAttribute('aria-hidden') === 'true' && row.querySelector('.vk-draft-row__open .vk-ui-icon').getBoundingClientRect().width >= 18 && !row.textContent.includes('Mở bản thảo');
-          })()`), `${theme} ${width}px / ${scale}%: recent title uses the whole inner measure, with a readable open affordance below`);
-        }
+        check(await page.eval(`(() => {
+          const row = document.querySelector('.vk-draft-row__link'), style = getComputedStyle(row);
+          const bounds = row.getBoundingClientRect(), text = row.querySelector('.vk-draft-row__text').getBoundingClientRect();
+          const arrow = row.querySelector('.vk-draft-row__open'), open = arrow.getBoundingClientRect();
+          const available = bounds.width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+          const narrow = ${width <= 390 || (width === 834 && scale === 200)};
+          return arrow.getAttribute('aria-hidden') === 'true' && !row.textContent.includes('Mở bản thảo') &&
+            (narrow ? !arrow.getClientRects().length && text.width >= available - 1 :
+              !arrow.getClientRects().length || (open.left >= text.right && open.right <= bounds.right &&
+                Math.abs(open.top + open.bottom - text.top - text.bottom) < 2));
+        })()`), `${theme} ${width}px / ${scale}%: narrow row gives text the full measure; any arrow stays in the same row`);
         check(await page.eval(`(() => {
           const rect = s => document.querySelector(s).getBoundingClientRect();
           const heading = rect('#heading'), resume = rect('#resume'), list = rect('#drafts'), controls = rect('.vk-draft-controls'), scope = rect('#draft-scope'), results = rect('#draft-results');
-          const search = rect('.vk-draft-search .vk-ui-search__shell'), sort = rect('#draft-sort'), reload = rect('#refresh-drafts');
+          const search = rect('.vk-draft-search .vk-ui-search__shell'), sort = rect('#draft-sort'), reload = rect('#refresh-drafts'), label = rect('#draft-sort-label');
+          const range = document.createRange(); range.selectNodeContents(document.querySelector('#draft-sort-label'));
+          const layoutWidth = document.documentElement.clientWidth;
+          const labelFits = [...range.getClientRects()].every(r => r.left >= label.left - 1 && r.right <= label.right + 1 &&
+            r.top >= label.top - 1 && r.bottom <= label.bottom + 1);
+          const sideBySide = label.left >= search.right && sort.top < search.bottom && search.top < sort.bottom;
+          const stacked = Math.min(label.top, sort.top, reload.top) >= scope.bottom;
           return [resume, list, controls, scope, results, search].every(r => Math.abs(r.left - heading.left) < 1) &&
             Math.abs(resume.right - list.right) < 1 && Math.abs(results.right - controls.right) < 1 &&
-            ((sort.left >= search.right && Math.abs(sort.bottom - reload.bottom) < 1) ||
-             (sort.top >= search.bottom && Math.abs(sort.bottom - reload.bottom) < 1) || reload.top >= sort.bottom);
-        })()`), `${theme} ${width}px / ${scale}%: heading, resume, search, scope and list share an axis; tools align or stack`);
+            [search, label, sort, reload].every(r => r.width > 0 && r.left >= 0 && r.right <= layoutWidth) &&
+            labelFits && (label.right <= sort.left || label.bottom <= sort.top) &&
+            sort.right <= reload.left && Math.abs(sort.top + sort.bottom - reload.top - reload.bottom) < 2 &&
+            sort.height >= 48 && reload.width >= 48 && reload.height >= 48 &&
+            (${width >= 1440 && scale === 100} ? sideBySide : ${width <= 834} ? stacked : sideBySide || stacked);
+        })()`), `${theme} ${width}px / ${scale}%: common axis, full label and reload centered on the actual Select body`);
+        if (width <= 834 && scale === 200) {
+          await page.click('#draft-search');
+          await page.send('Input.insertText', { text: 'duong ve' });
+          await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'search at 200% text');
+          await searchBarGeometry(page, '#draft-search', `Desk with clear ${width}/${scale}/${theme}`);
+          await page.capture(`desk-clear-${width}-${scale}-${theme}`);
+          await page.click('#draft-search-clear');
+          await page.waitFor(`document.activeElement?.id === 'draft-search' && document.querySelectorAll('[data-testid=draft-row]').length === 100`, 'clear at 200% restores both focus and inventory');
+          await page.eval(`document.activeElement.blur()`);
+          check(await page.eval(`(async () => {
+            for (const selector of ['#draft-sort', '#refresh-drafts']) {
+              const el = document.querySelector(selector);
+              el.scrollIntoView({block:'center', behavior:'instant'});
+              await new Promise(resolve => requestAnimationFrame(resolve));
+              const r = el.getBoundingClientRect();
+              const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+              if (!el.contains(hit)) return false;
+            }
+            return true;
+          })()`), `${theme} ${width}px / 200%: Select and reload are reachable pointer targets`);
+        }
       }
     }
     const wholeWords = await page.eval(`(() => {
@@ -2412,6 +2448,17 @@ async function draftDashboard(page) {
   await page.send('Emulation.setTouchEmulationEnabled', { enabled: false });
   await page.click('.vk-editor-heading__back');
   await page.waitFor(`document.querySelector(${JSON.stringify(realRow)})`, 'return after touch navigation');
+  const rowUrl = `${args.base}/ban-viet/${created[0]}`;
+  const priorTargets = (await page.cdp.send('Target.getTargets')).targetInfos.map(target => target.targetId);
+  await page.click(realRow, page.mod);
+  let opened;
+  for (let attempt = 0; attempt < 50 && !opened; attempt++) {
+    const { targetInfos } = await page.cdp.send('Target.getTargets');
+    opened = targetInfos.find(target => target.type === 'page' && target.url === rowUrl && !priorTargets.includes(target.targetId));
+    if (!opened) await sleep(100);
+  }
+  check(opened && await page.eval(`location.pathname === '/ban-viet'`), 'modifier-click opens the same draft in a new tab, leaving the Desk in place');
+  await page.cdp.send('Target.closeTarget', { targetId: opened.targetId });
   await page.viewport(1440);
   await page.click('#create-draft');
   const late = await gate.next('posts');
