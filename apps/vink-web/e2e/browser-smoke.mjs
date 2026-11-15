@@ -3145,6 +3145,9 @@ async function editorChrome(page) {
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('#leave-editor').open`, 'stay after ACK');
   await gate.disable();
+  // The rest of mainPhase uses the desktop rail after opening a fresh reader document.
+  await page.viewport(1440);
+  await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
 }
 
 async function mainPhase(page) {
