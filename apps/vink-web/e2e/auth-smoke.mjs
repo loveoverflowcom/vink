@@ -331,12 +331,13 @@ export async function authWeb(page, { args, check, openPage }) {
   await other.waitFor(`${STANDING} === 'active'`, 'B active');
   const second = await account(other);
   check(second.body.principal_id !== principalA && second.body.display_name === PEN_NAME_B, 'B is another principal');
-  // Reads are serial: B's list waits behind A's held answer. Nothing of A may show meanwhile.
-  await desk.waitFor(`${q('[data-testid=draft-loading]')} && !${q('[data-testid=draft-row]')}`, 'the waiting tab shows loading for the new session');
-  check(await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)})`) && gate.passed === 0, "A's list leaves the screen as soon as the session changes, before A's late answer arrives");
+  // #202: a new scope does not wait for the abandoned old scope's transport. Only B's
+  // real provider response may populate this desk, even while A's response remains held.
+  await desk.waitFor(`${q('[data-testid=draft-empty]')} && ${q('#create-draft')}`, "B's own empty desk arrives without releasing A's old answer");
+  check(gate.passed >= 1 && await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)}) && !${q('[data-testid=draft-row]')}`), "B's list commits independently; no A title or row survives the session change");
   await gate.release();
-  await desk.waitFor(`${q('[data-testid=draft-empty]')} && ${q('#create-draft')}`, "B's own empty desk in the tab that was waiting");
-  check(gate.passed >= 1 && await desk.eval(`!document.body.textContent.includes(${JSON.stringify(TITLE_A)}) && !${q('[data-testid=draft-row]')}`), "A's late list reply is dropped; the tab asks again and shows B's empty desk");
+  await sleep(150);
+  check(await desk.eval(`${q('[data-testid=draft-empty]')} && !document.body.textContent.includes(${JSON.stringify(TITLE_A)}) && !${q('[data-testid=draft-row]')}`), "A's late real 200 cannot replace B's already accepted desk");
   await gate.disable();
   await page.waitFor(`!document.body.textContent.includes(${JSON.stringify(UNSAVED_LINE)}) && !${q('#draft-title')}?.value`, "A's editor let go of A's text");
   check(await page.eval(`!document.body.textContent.includes('Dòng đầu viết sau khi đăng nhập') && !document.body.textContent.includes(${JSON.stringify(TITLE_A)})`), "the editor tab holds none of A's title or text once B is confirmed");
