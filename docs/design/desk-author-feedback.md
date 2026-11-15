@@ -25,6 +25,8 @@ Screen #desk — Bàn viết
 Tên > trạng thái/thời điểm > số liệu/phạm vi. Không resume, hero, pill hoặc tổng “tương tác”.
 Bản công khai và bản sửa cùng tồn tại; pending/rejected mới không thay nhãn bản đang đọc.
 Không có draft: hiện đủ tên, ghi rõ không có bản nháp để sửa; không tạo editor link giả.
+Work riêng tư chưa có draft/revision hiện “Chỉ mình tôi”, không gắn nhãn “Bản nháp”
+chỉ từ generation ban đầu; trạng thái nháp cần có draft thật.
 Nháp/private/unknown không hiện zero giả. Public zero là `0`; unavailable là `—` kèm lý do.
 
 320/390/834/1440 CSS px dùng cùng cấu trúc, metadata/số dài wrap, cuộn chính toàn trang;

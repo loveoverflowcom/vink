@@ -98,6 +98,14 @@ mod tests {
         assert!(facts.status.contains("Chỉ mình tôi") && facts.status.contains("không được duyệt"));
         assert!(facts.metrics.is_none());
         w.draft_version = None;
+        let p = w.publication.as_mut().unwrap();
+        p.generation = 1;
+        p.latest_revision_id = None;
+        p.latest_moderation = None;
+        let facts = crate::ui::adapters::author_work_summary(w);
+        assert!(facts.status.starts_with("Chỉ mình tôi"));
+        assert!(facts.status.contains("Không có bản nháp để sửa"));
+        assert!(facts.editor_href.is_none() && facts.metrics.is_none());
         w.publication = None;
         let facts = crate::ui::adapters::author_work_summary(w);
         assert!(facts.editor_href.is_none() && facts.metrics.is_none());

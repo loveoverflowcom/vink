@@ -397,7 +397,10 @@ pub fn author_work_summary(
                     } else if p.review_withdrawn {
                         "Đã ẩn sau kiểm duyệt"
                     } else if p.audience == Audience::Private {
-                        if p.generation == 1 && p.latest_revision_id.is_none() {
+                        if work.draft_version.is_some()
+                            && p.generation == 1
+                            && p.latest_revision_id.is_none()
+                        {
                             "Bản nháp"
                         } else {
                             "Chỉ mình tôi"
