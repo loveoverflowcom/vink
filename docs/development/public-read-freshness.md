@@ -553,3 +553,52 @@ UI thực tế; issue #204 còn sở hữu app shell/cold launch. Lỗi `main` c
 | Visual | Không đổi visual; ảnh `failure.png` lần đầu đã mở để chẩn đoán, không phải approved reference; fidelity mới **NOT_RUN**. |
 | Accessibility/Responsive | **FAIL** assertion gộp forced-colors/focus/reduced-motion ở lần `main` cuối; chưa tách nguyên nhân thành phần. Screen reader/OS IME **NOT_RUN**. |
 | Interaction | **PASS** hai tab và restart Chrome ở adapter; composition offline UI và suspend/resume thiết bị thật **NOT_RUN**. |
+
+
+### Đồng bộ regression `main` — PR #215, 15/11/2026
+
+Bản `5b418c48c8586c4b622684b6b6799283e0e0f21f` chỉ sửa harness, không đổi CSS,
+CodeMirror runtime, Rust, proposal hoặc rollout. Hai assertion trước đọc computed style/caret
+ngay sau CDP media/keyboard hoặc resize, trong khi style/layout và selection scroll có thể còn
+được lên lịch. Nay chờ **đúng toàn bộ predicate cũ, tối đa 2 giây**, rồi kiểm lại sau fonts/layout
+và hai animation frame. Ca caret còn yêu cầu focus ở `.cm-content` và selection tồn tại.
+Không gọi scroll/focus để ép kết quả, không nới viewport bounds hoặc bỏ điều kiện accessibility.
+
+Lần chẩn đoán trên `19e68a5` + hai dòng đo bổ sung **PASS toàn command main**; log
+`target/issue203/main-diagnostic-215.log`, artifacts `target/verify-web/1794752834358309000-64033`.
+Số đo forced-colors: checked/focus-visible đúng, outline solid 2px, opacity 1,
+transition `1e-05s`; caret mobile top 295,203125/bottom 320,203125 trong viewport 420px.
+Hai lỗi cũ không tái hiện trong lần này; đây là bằng chứng lỗi nhạy thời điểm quan sát,
+không chứng minh một hồi quy CSS/runtime hoặc xác định chính xác thành phần sai ở lần cũ.
+Giữ nguyên hai kết quả FAIL lịch sử ở trên.
+
+Lần `main` tại `5b418c4` **FAIL** sau timeout 2 giây ở caret mobile, dù forced-colors đã
+**PASS**. Log `target/issue203/main-wait-only-215.log`; artifacts
+`target/verify-web/1794753195584782000-69461`. Đã mở ảnh failure: viewport nằm dưới editor,
+không console errors. Chờ predicate sau phím chưa đủ; không tăng timeout để làm xanh.
+Bản `5bf229f` bổ sung chờ fonts/layout của viewport mobile trước khi gửi phím document-end/line-start,
+tránh gửi input trong lúc resize/reflow còn đang cập nhật vị trí cuộn. Giữ kiểm sau phím.
+
+`cargo xtask verify web --scenario main` tại **`5bf229f5cdb8af59c701ecff3055a6c6b46d1fc5`**
+**PASS toàn command được chọn**, gồm forced-colors/focus/reduced-motion, caret mobile,
+SSR/hydration/editor/save/conflict/leave guard và bộ IndexedDB ở cuối; không console errors.
+Môi trường và biến cargo/Chrome/DB như lần #203 ở trên. Log
+`target/issue203/main-reflow-215.log`; artifacts `target/verify-web/1794753567501336000-80206`.
+Trong lúc chạy chỉ cập nhật tài liệu, không sửa source kiểm thử. `node --check` cho harness,
+`git diff --check` và kiểm liên kết local tài liệu **PASS**. Không chạy lại quick vì Rust/runtime
+không đổi; evidence quick tại `4e68bd8` vẫn áp dụng cho phần ứng dụng đó.
+
+Self-review đã mở hai ảnh cuối `appearance-forced-colors-reduced-motion.png` (1440×900)
+và `editor-short-mobile-390.png` (390×420, tối), không nâng thành approved visual reference.
+
+| Chiều UX | Kết quả bản sửa kiểm thử #215 |
+| --- | --- |
+| Functional | **PASS** command main, gồm IndexedDB; gate production vẫn tắt. |
+| Geometry | **PASS** caret trong viewport mobile và toolbar static sau reflow, cùng ma trận main. |
+| Visual | **PASS** kiểm tra hai ảnh đã mở ở trên, giữ giao diện hiện hữu; fidelity mới **NOT_RUN**. |
+| Accessibility/Responsive | **PASS** forced-colors, focus, reduced-motion và ma trận 100/200% của main; screen reader/OS IME **NOT_RUN**. |
+| Interaction | **PASS** keyboard, selection, leave guard, save/conflict và storage restart trong Chrome/CDP; thiết bị mobile thật **NOT_RUN**. |
+
+Đây là PASS của scenario main, không phải toàn Web lane hay bảo đảm không còn flake trên mọi
+browser. Giữ AC-08 OPEN, rollout tắt, POLICY-02/UX expired chưa chốt. Không kiểm GitHub CI,
+không merge PR.
