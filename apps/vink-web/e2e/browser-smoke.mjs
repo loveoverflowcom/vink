@@ -1016,12 +1016,16 @@ async function cacheFirstPublicReads(page) {
     await settled('#reader-freshness', 'reader revalidation on mount');
     const updated = { ...original, revision_id: '[mẫu-kiểm-tra]-revision', title: '[Mẫu kiểm tra] Mưa trên phố cũ (bản cập nhật)', document: { schema_version: 1, blocks: [{ lines: ['Khổ thay thế chỉ có trong fixture kiểm tra.'] }] } };
     fixtures.set(publicationPath, { status: 200, body: { ...updated, status: "published" } });
-    await page.eval(`window.__readingArticle = document.querySelector('#reader-paper'); const r = document.createRange(); r.selectNodeContents(document.querySelector('.vk-document')); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(r); window.__readingSelection = selection.toString(); window.__readingY = scrollY`);
+    await page.eval(`window.__readingArticle = document.querySelector('#reader-paper'); window.__readingAnchor = document.querySelector('.vk-document'); const r = document.createRange(); r.selectNodeContents(window.__readingAnchor); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(r); window.__readingSelection = selection.toString(); scrollTo({top:scrollY + window.__readingAnchor.getBoundingClientRect().top - 80, behavior:'instant'})`);
+    await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    await page.eval(`window.__readingAnchorY = window.__readingAnchor.getBoundingClientRect().top`);
+    check(await page.eval(`scrollY > 0 && Math.abs(window.__readingAnchorY - 80) <= 1`), 'anchor test starts inside the article, away from scroll position zero');
     await advance(121);
     await signals(['focus']);
     await page.waitFor(`document.querySelector('[data-testid=reader-update]')`, 'new version notice');
     check(await page.eval(`document.querySelector('.vk-reader').dataset.revision === '${original.revision_id}' && document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'a changed publication is offered without replacing the text being read');
-    check(await page.eval(`document.querySelector('#reader-paper') === window.__readingArticle && getSelection().toString() === window.__readingSelection && Math.abs(scrollY - window.__readingY) <= 1`), 'background Reader update keeps article identity, selection and scroll anchor');
+    await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    check(await page.eval(`document.querySelector('#reader-paper') === window.__readingArticle && getSelection().toString() === window.__readingSelection && Math.abs(window.__readingAnchor.getBoundingClientRect().top - window.__readingAnchorY) <= 1`), 'background Reader update keeps article identity, selection and the visible paragraph anchor');
     await page.eval(`getSelection().removeAllRanges()`);
     await page.waitFor(`document.querySelector('#root-composer')`, 'composer ready for reconnect');
     await page.typeAtEnd('#root-composer', 'Chữ đang soạn chưa gửi');
