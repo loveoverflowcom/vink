@@ -73,6 +73,13 @@ impl ResponseStatus {
 pub fn Reader() -> impl IntoView {
     let params = use_params_map();
     let work_id = Memo::new(move |_| params.read().get("id").unwrap_or_default());
+    view! { <For each=move || vec![work_id.get()] key=|id| id.clone()
+    children=move |id| view! { <ReaderScope id /> } /> }
+}
+
+#[component]
+fn ReaderScope(id: String) -> impl IntoView {
+    let work_id = Memo::new(move |_| id.clone());
     let context = discovery::reader_context();
     let return_href = Memo::new(move |_| context.get().href(Some(&work_id.get())));
     let reader = api::reader_resource(work_id);
@@ -83,29 +90,12 @@ pub fn Reader() -> impl IntoView {
                 let status = status.clone();
                 Suspend::new(async move {
                     match reader.await {
-                        Ok(crate::contract::ReaderResponse::Published(publication)) => {
-                            let wid = publication.work_id.clone();
-                            view! { <PublicationView publication reader_work_id=wid /> }.into_any()
-                        }
-                        Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
-                            status.set(200);
-                            status.set_no_store();
-                            view! { <ReplacementView work_id author_name=None return_href=return_href.get_untracked() /> }.into_any()
-                        }
-                        Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
-                            work_id,
-                            author_name,
-                        }) => {
-                            status.set(200);
-                            status.set_no_store();
-                            view! {
-                                <ReplacementView
-                                    work_id=work_id
-                                    author_name=Some(author_name)
-                                    return_href=return_href.get_untracked()
-                                />
+                        Ok(reader) => {
+                            if !matches!(reader, crate::contract::ReaderResponse::Published(_)) {
+                                status.set(200);
+                                status.set_no_store();
                             }
-                            .into_any()
+                            view! { <ReaderLoaded initial=reader return_href=return_href.get_untracked() /> }.into_any()
                         }
                         Err(LoadError::NotFound) => {
                             status.set(404);
@@ -125,74 +115,81 @@ pub fn Reader() -> impl IntoView {
     }
 }
 
-/// READ-02: the reader never swaps text under the reader's eyes. A changed snapshot is offered
-/// ("Xem bản mới") and applied on request; an authoritative 404 removes the text at once.
+/// Control transitions replace the whole private-safe projection; publication changes keep
+/// the mounted reading/composer owner until the reader explicitly applies the new revision.
 #[component]
-fn PublicationView(publication: Publication, reader_work_id: String) -> impl IntoView {
-    let live = public_reads::follow_publication(publication.clone());
-    let latest = live.data;
+fn ReaderLoaded(initial: crate::contract::ReaderResponse, return_href: String) -> impl IntoView {
+    use crate::contract::ReaderResponse;
+    let id = match &initial {
+        ReaderResponse::Published(p) => p.work_id.clone(),
+        ReaderResponse::Hidden { work_id } | ReaderResponse::ReviewWithdrawn { work_id, .. } => {
+            work_id.clone()
+        }
+    };
+    let live = public_reads::follow_reader(id, initial);
+    let data = live.data;
     let removed = live.removed;
     let rejected = live.rejected;
-    let shown = RwSignal::new(publication);
-    let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
-    let context = discovery::reader_context();
-    let not_found_href = move || {
-        context
-            .get_untracked()
-            .href(Some(&shown.with_untracked(|p| p.work_id.clone())))
-    };
-    let withdrawn_state = RwSignal::new(None::<(String, Option<String>)>);
-    #[cfg(feature = "hydrate")]
-    {
-        let id = reader_work_id.clone();
-        Effect::new(move |_| {
-            if removed.get() {
-                let id = id.clone();
-                leptos::task::spawn_local(async move {
-                    let replacement = match crate::api::fetch_reader(&id).await {
-                        Ok(crate::contract::ReaderResponse::ReviewWithdrawn {
-                            work_id,
-                            author_name,
-                        }) => Some((work_id, Some(author_name))),
-                        Ok(crate::contract::ReaderResponse::Hidden { work_id }) => {
-                            Some((work_id, None))
-                        }
-                        Ok(crate::contract::ReaderResponse::Published(publication)) => {
-                            // The old body was already removed; recovery may show only the newly
-                            // authorized snapshot, never the previous `shown` value.
-                            shown.try_set(publication);
-                            None
-                        }
-                        _ => None,
-                    };
-                    if let Some((work_id, author_name)) = replacement {
-                        withdrawn_state.try_set(Some((work_id, author_name)));
-                    }
-                });
-            }
-        });
-    }
-    #[cfg(not(feature = "hydrate"))]
-    let _ = reader_work_id;
+    // Published revision identity is deliberately absent: background updates cannot remount
+    // the article, endorsement state or composer and cannot replace a text selection.
+    let control = Memo::new(move |_| {
+        if removed.get() {
+            return (3, None);
+        }
+        if rejected.get().is_some() {
+            return (4, None);
+        }
+        match data.get() {
+            ReaderResponse::Published(_) => (0, None),
+            ReaderResponse::Hidden { work_id } => (1, Some((work_id, None))),
+            ReaderResponse::ReviewWithdrawn {
+                work_id,
+                author_name,
+            } => (2, Some((work_id, Some(author_name)))),
+        }
+    });
     move || {
-        if let Some((work_id, author_name)) = withdrawn_state.get() {
-            view! {
-                <ReplacementView
-                    work_id=work_id
-                    author_name=author_name
-                    return_href=not_found_href()
-                />
+        let (kind, replacement) = control.get();
+        match kind {
+            0 => {
+                let ReaderResponse::Published(publication) = data.get_untracked() else {
+                    unreachable!()
+                };
+                let fallback = publication.clone();
+                let publication_live = public_reads::Live {
+                    data: Signal::derive(move || match data.get() {
+                        ReaderResponse::Published(p) => p,
+                        _ => fallback.clone(),
+                    }),
+                    cached_unverified: live.cached_unverified,
+                    refreshing: live.refreshing,
+                    failed: live.failed,
+                    removed: live.removed,
+                    rejected: live.rejected,
+                    key: live.key.clone(),
+                };
+                view! { <PublicationView publication live=publication_live /> }.into_any()
             }
-            .into_any()
-        } else if removed.get() {
-            view! { <NotFoundContent return_href=not_found_href() /> }.into_any()
-        } else if rejected.get().is_some() {
-            view! { <Unavailable /> }.into_any()
-        } else {
-            let live = live.clone();
-            view! { <PublicationContent publication=shown.get() live update shown /> }.into_any()
+            1 | 2 => {
+                let (work_id, author_name) = replacement.unwrap();
+                view! { <ReplacementView work_id author_name return_href=return_href.clone() /> }
+                    .into_any()
+            }
+            3 => view! { <NotFoundContent return_href=return_href.clone() /> }.into_any(),
+            _ => view! { <Unavailable return_href=return_href.clone() /> }.into_any(),
         }
     }
+}
+
+#[component]
+fn PublicationView(
+    publication: Publication,
+    live: public_reads::Live<Publication>,
+) -> impl IntoView {
+    let latest = live.data;
+    let shown = RwSignal::new(publication);
+    let update = Memo::new(move |_| latest.with(|l| shown.with(|s| l != s)));
+    move || view! { <PublicationContent publication=shown.get() live=live.clone() update shown /> }
 }
 
 /// O-17@r2: the old URL after a moderator or admin rejected the public revision. Only the
@@ -246,6 +243,7 @@ fn PublicationContent(
     let latest = live.data;
     let failed = live.failed;
     let refreshing = live.refreshing;
+    let cached = live.cached_unverified;
     let author = adapters::publication_author(&publication);
     let context = discovery::reader_context();
     let id = publication.work_id.clone();
@@ -280,6 +278,9 @@ fn PublicationContent(
             <Icon name=IconName::ArrowBack /> "Khám phá"
         </vink_ui::Link>
         <div id="reader-freshness" class="vk-reader-freshness" data-refreshing=move || refreshing.get().to_string()>
+            <Show when=move || cached.get() && !failed.get() && !update.get()>
+                <p class="vk-muted" data-testid="reader-cached" role="status">"Đang đọc bản đã tải trước đó."</p>
+            </Show>
             <Show when=move || update.get()>
                 <div data-testid="reader-update">
                     <InlineNotice tone=Tone::Info title="Tác phẩm vừa có bản cập nhật."

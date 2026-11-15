@@ -73,11 +73,19 @@ fn cancel_private() {
 #[derive(Clone)]
 struct ViewState {
     page: DiscussionPage,
+    roots_read: crate::read_lifecycle::ReadOwner<Scope>,
+    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    roots_chain: crate::read_lifecycle::PageChain,
+    restarted_tail: bool,
+    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    wake: crate::read_events::WakePolicy,
     own: OwnState,
     /// IDs of previously public rows fenced by a current private observation.
     redacted: BTreeSet<String>,
     replies: BTreeMap<String, ReplyList>,
     reply_loading: BTreeMap<String, bool>,
+    #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
+    reply_chains: BTreeMap<String, crate::read_lifecycle::PageChain>,
     reply_errors: BTreeMap<String, String>,
     loading: bool,
     #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
@@ -96,6 +104,7 @@ struct ViewState {
 #[cfg_attr(not(any(feature = "hydrate", test)), allow(dead_code))]
 impl ViewState {
     fn change_session(&mut self, scope: Scope) {
+        self.roots_read.change_scope(scope.clone());
         self.own.change_scope(scope);
         // The public page is already scrubbed. Old reads are fenced below; discard even
         // ID-only private reconciliation knowledge before another principal starts.
@@ -174,6 +183,7 @@ impl ViewState {
         if self.loading || self.mutation_busy || self.mutation_needs_refresh || self.unavailable {
             return false;
         }
+        self.roots_read.invalidate();
         self.own.invalidate_reads();
         self.epoch += 1; // Fence every pre-mutation root/reply read, including delayed responses.
         self.reply_loading.clear();
@@ -201,6 +211,19 @@ impl ViewState {
             self.error = Some(crate::discussion_state::read_error_message(error, false).into());
         }
     }
+}
+
+fn initial_chain(page: &DiscussionPage) -> crate::read_lifecycle::PageChain {
+    use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
+    let mut owner = ReadOwner::new(());
+    let ticket = owner.begin(Intent::Initial, None).unwrap();
+    let mut chain = PageChain::default();
+    chain.accept(
+        &ticket,
+        page.roots.iter().map(|r| adapters::root_id(r).to_owned()),
+        page.next_cursor.clone(),
+    );
+    chain
 }
 
 fn comments_mode_message(unavailable: bool, comments_open: bool) -> &'static str {
@@ -284,12 +307,21 @@ fn DiscussionLoaded(
     controller.update_untracked(|c| c.sign_in_open = api::sign_in_open());
     #[cfg(feature = "hydrate")]
     let work_id = page.work_id.clone();
+    #[cfg(feature = "hydrate")]
+    let wake = crate::read_events::WakePolicy::confirmed(crate::read_events::now());
+    #[cfg(not(feature = "hydrate"))]
+    let wake = crate::read_events::WakePolicy::confirmed(0.0);
     let state = RwSignal::new(ViewState {
         own: OwnState::new(controller.get_untracked().scope),
+        roots_read: crate::read_lifecycle::ReadOwner::new(controller.get_untracked().scope),
+        roots_chain: initial_chain(&page),
+        restarted_tail: false,
+        wake,
         redacted: BTreeSet::new(),
         page,
         replies: BTreeMap::new(),
         reply_loading: BTreeMap::new(),
+        reply_chains: BTreeMap::new(),
         reply_errors: BTreeMap::new(),
         loading: false,
         refresh_queued: false,
@@ -303,7 +335,20 @@ fn DiscussionLoaded(
     });
     let refresh = Callback::new(move |()| {
         read_roots(state, controller, lve, false);
-        read_private(state, controller, false);
+    });
+    #[cfg(feature = "hydrate")]
+    crate::read_events::observe(move || {
+        if crate::read_events::visible()
+            && state.try_with_untracked(|s| {
+                s.wake.due(crate::read_events::now())
+                    && !s.mutation_busy
+                    && (!s.loading
+                        || s.roots_read.in_flight_intent()
+                            == Some(crate::read_lifecycle::Intent::Append))
+            }) == Some(true)
+        {
+            read_roots(state, controller, lve, false);
+        }
     });
     // Viewer-private projections only arrive after hydration through the no-store API.
     #[cfg(feature = "hydrate")]
@@ -375,6 +420,9 @@ fn DiscussionLoaded(
         <Show when=move || !state.read().unavailable>
             <Show when=move || state.read().page.roots.is_empty()>
                 <p>"Chưa có nhận xét nào được hiển thị."</p>
+            </Show>
+            <Show when=move || state.read().restarted_tail>
+                <p role="status" class="vk-muted" data-testid="discussion-chain-restarted">"Đã làm mới nhận xét. Các trang sau cần được tải lại."</p>
             </Show>
             <div id="root-list">
                 <For each=move || { state.read().page.roots.iter().map(|root| adapters::root_id(root).to_owned()).collect::<Vec<_>>() } key=|id| id.clone()
@@ -523,7 +571,7 @@ fn read_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionControlle
         if append && (cursor.is_none() || state.read_untracked().own.loading) {
             return;
         }
-        let Some(Some(ticket)) = state.try_update(|s| s.own.begin()) else {
+        let Some(Some(ticket)) = state.try_update(|s| s.own.begin_page(append)) else {
             return;
         };
         spawn_private(false, async move {
@@ -540,7 +588,13 @@ fn read_own(state: RwSignal<ViewState>, controller: RwSignal<DiscussionControlle
             match result {
                 Ok(page) => {
                     state.update(|s| {
-                        s.own.apply_list(&ticket, page, append);
+                        if !s.own.apply_list(&ticket, page, append) {
+                            s.own.finish(
+                                &ticket,
+                                Some(crate::contract::ApiError::Unexpected { status: 200 }),
+                            );
+                            return;
+                        }
                         s.redact();
                         revalidate_targets(s, controller);
                     });
@@ -825,12 +879,6 @@ fn read_roots(
         if state.read_untracked().mutation_busy {
             return;
         }
-        if state.read_untracked().loading {
-            if !append {
-                state.update(|s| s.refresh_queued = true);
-            }
-            return;
-        }
         let scope = controller.get_untracked().scope;
         let cursor = if append {
             state.get_untracked().page.next_cursor
@@ -840,8 +888,23 @@ fn read_roots(
         if append && cursor.is_none() {
             return;
         }
+        let Some(Some(ticket)) = state.try_update(|s| {
+            s.roots_read.begin(
+                if append {
+                    crate::read_lifecycle::Intent::Append
+                } else {
+                    crate::read_lifecycle::Intent::Refresh
+                },
+                cursor.clone(),
+            )
+        }) else {
+            return;
+        };
         let mut epoch = 0;
         state.update(|s| {
+            if !append {
+                s.wake.started();
+            }
             s.loading = true;
             s.refresh_queued = false;
             s.reply_loading.clear();
@@ -861,14 +924,24 @@ fn read_roots(
             let mut refresh_again = false;
             let mut endorsable = None;
             state.try_update(|s| {
-                if !s.accepts_read(epoch) {
+                if !s.accepts_read(epoch) || !s.roots_read.finish(&ticket) {
                     return;
                 }
                 s.loading = false;
                 refresh_again = s.refresh_queued;
                 s.refresh_queued = false;
+                let had_tail =
+                    s.roots_chain.pages > 1 || s.reply_chains.values().any(|chain| chain.pages > 1);
                 match result {
-                    Ok(page) if page.work_id == scope.work_id => {
+                    Ok(page)
+                        if page.work_id == scope.work_id
+                            && s.roots_chain.accept(
+                                &ticket,
+                                page.roots.iter().map(|r| adapters::root_id(r).to_owned()),
+                                page.next_cursor.clone(),
+                            ) =>
+                    {
+                        s.restarted_tail = !append && had_tail;
                         endorsable = Some(page_targets(&page));
                         controller.update(|c| c.settings = page.settings.clone());
                         s.unavailable = false;
@@ -876,25 +949,14 @@ fn read_roots(
                         // Invalidate old per-root reads and context projections on a refresh.
                         s.reply_loading.clear();
                         if append {
-                            for thread in page.roots {
-                                let id = adapters::root_id(&thread);
-                                if let Some(old) = s
-                                    .page
-                                    .roots
-                                    .iter_mut()
-                                    .find(|old| adapters::root_id(old) == id)
-                                {
-                                    *old = thread;
-                                } else {
-                                    s.page.roots.push(thread);
-                                }
-                            }
+                            s.page.roots.extend(page.roots);
                             s.page.next_cursor = page.next_cursor;
                             s.page.viewer_is_work_author = page.viewer_is_work_author;
                             s.page.settings = page.settings;
                         } else {
                             s.page = page;
                             s.replies.clear();
+                            s.reply_chains.clear();
                             s.reply_errors.clear();
                         }
                         s.redact();
@@ -915,14 +977,18 @@ fn read_roots(
                         }
                     }
                 }
+                if !append {
+                    s.wake
+                        .settled(crate::read_events::now(), endorsable.is_some());
+                }
             });
             // Fresh counts and own states for the comments this read returned.
             let public_loaded = endorsable.is_some();
             if let (Some(lve), Some(targets)) = (lve, endorsable) {
                 lve.read(targets, true);
             }
-            if public_loaded {
-                read_own(state, controller, false);
+            if public_loaded || state.try_with_untracked(|s| s.accepts_read(epoch)) == Some(true) {
+                read_private(state, controller, false);
             }
             if refresh_again {
                 read_roots(state, controller, lve, false);
@@ -953,7 +1019,28 @@ fn read_replies(
         };
         let epoch = before.epoch;
         let scope = controller.get_untracked().scope;
+        // Per-root single-flight is guarded by reply_loading; the page ticket additionally
+        // binds the input cursor and scope, while epoch fences a head refresh or mutation.
+        let mut read = crate::read_lifecycle::ReadOwner::new((scope.clone(), root.clone()));
+        let ticket = read
+            .begin(crate::read_lifecycle::Intent::Append, Some(cursor.clone()))
+            .unwrap();
         state.update(|s| {
+            s.reply_chains.entry(root.clone()).or_insert_with(|| {
+                let mut chain = crate::read_lifecycle::PageChain::default();
+                let head = crate::read_lifecycle::ReadOwner::new(())
+                    .begin(crate::read_lifecycle::Intent::Initial, None)
+                    .unwrap();
+                let ids = s
+                    .page
+                    .roots
+                    .iter()
+                    .find(|r| adapters::root_id(r) == root)
+                    .into_iter()
+                    .flat_map(|r| r.preview.iter().map(|c| c.comment_id.clone()));
+                chain.accept(&head, ids, Some(cursor.clone()));
+                chain
+            });
             s.reply_loading.insert(root.clone(), true);
             s.reply_errors.remove(&root);
         });
@@ -973,6 +1060,19 @@ fn read_replies(
                 s.reply_loading.insert(root.clone(), false);
                 match result {
                     Ok(page) => {
+                        if !s.reply_chains.get_mut(&root).is_some_and(|chain| {
+                            chain.accept(
+                                &ticket,
+                                page.replies.iter().map(|c| c.comment_id.clone()),
+                                page.next_cursor.clone(),
+                            )
+                        }) {
+                            s.reply_errors.insert(
+                                root.clone(),
+                                "Phản hồi trang tiếp không hợp lệ. Hãy tải lại nhận xét.".into(),
+                            );
+                            return;
+                        }
                         endorsable = Some(public_targets(&page.replies));
                         let initial = s
                             .page
@@ -1274,10 +1374,18 @@ mod tests {
                 work_id: page.work_id.clone(),
                 session: None,
             }),
+            roots_read: crate::read_lifecycle::ReadOwner::new(Scope {
+                work_id: page.work_id.clone(),
+                session: None,
+            }),
+            roots_chain: initial_chain(&page),
+            restarted_tail: false,
+            wake: crate::read_events::WakePolicy::default(),
             redacted: BTreeSet::new(),
             page,
             replies: BTreeMap::new(),
             reply_loading: BTreeMap::new(),
+            reply_chains: BTreeMap::new(),
             reply_errors: BTreeMap::new(),
             loading: false,
             refresh_queued: false,
@@ -1348,10 +1456,18 @@ mod tests {
                 work_id: page.work_id.clone(),
                 session: None,
             }),
+            roots_read: crate::read_lifecycle::ReadOwner::new(Scope {
+                work_id: page.work_id.clone(),
+                session: None,
+            }),
+            roots_chain: initial_chain(&page),
+            restarted_tail: false,
+            wake: crate::read_events::WakePolicy::default(),
             redacted: BTreeSet::new(),
             page,
             replies: BTreeMap::new(),
             reply_loading: BTreeMap::new(),
+            reply_chains: BTreeMap::new(),
             reply_errors: BTreeMap::new(),
             loading: false,
             refresh_queued: false,
@@ -1421,10 +1537,18 @@ mod separated_read_regressions {
                 work_id: public.work_id.clone(),
                 session: Some("a/0".into()),
             }),
+            roots_read: crate::read_lifecycle::ReadOwner::new(Scope {
+                work_id: public.work_id.clone(),
+                session: Some("a/0".into()),
+            }),
+            roots_chain: initial_chain(&public.clone().into()),
+            restarted_tail: false,
+            wake: crate::read_events::WakePolicy::default(),
             redacted: BTreeSet::new(),
             page: public.into(),
             replies: BTreeMap::new(),
             reply_loading: BTreeMap::new(),
+            reply_chains: BTreeMap::new(),
             reply_errors: BTreeMap::new(),
             loading: false,
             refresh_queued: false,

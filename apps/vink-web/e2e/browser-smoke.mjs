@@ -767,7 +767,7 @@ async function conditionalPublicReads(page) {
 async function cacheFirstPublicReads(page) {
   console.log('cache-first public reads (READ-02): snapshot first, lifecycle revalidation, failure and removal:');
   const worksPath = '/api/v1/works';
-  const publicationPath = `/api/v1/works/${SAMPLE_WORK}/publication`;
+  const publicationPath = `/api/v1/works/${SAMPLE_WORK}/reader`;
   const original = await (await fetch(`${args.base}${publicationPath}`)).json();
   const seen = [];
   // ExtraInfo events may arrive before or after requestWillBeSent: merge by request id.
@@ -937,22 +937,123 @@ async function cacheFirstPublicReads(page) {
     await clientNavigate('/');
     await page.waitFor(`location.pathname === '/' && location.search === '' && document.querySelector('#public-collection')`, 'return to Explore before reader checks');
 
+    // #202 transport fixture: route ABA and disposal must fence a delayed Published A.
+    const raceA = '77777777-7777-4777-8777-777777777701';
+    const raceB = '77777777-7777-4777-8777-777777777702';
+    const racePathA = `/api/v1/works/${raceA}/reader`;
+    const racePathB = `/api/v1/works/${raceB}/reader`;
+    fixtures.set(racePathA, 'hold');
+    fixtures.set(racePathB, { status: 200, body: { ...original, status: 'published', work_id: raceB, revision_id: 'race-b', title: '[Fixture] B' } });
+    await clientNavigate(`/tac-pham/${raceA}`);
+    const raceDeadline = Date.now() + 10000;
+    while (!held.length && Date.now() < raceDeadline) await sleep(20);
+    check(held.length === 1, 'first A read is deferred');
+    const oldA = held.pop();
+    await clientNavigate(`/tac-pham/${raceB}`);
+    await page.waitFor(`document.querySelector('#reader-paper')?.dataset.revision === 'race-b'`, 'B completes before A');
+    fixtures.set(racePathA, { status: 200, body: { status: 'hidden', work_id: raceA } });
+    await clientNavigate(`/tac-pham/${raceA}`);
+    await page.waitFor(`document.querySelector('[data-testid=reader-hidden]')`, 'new A receives authoritative Hidden instead of joining disposed A');
+    await page.send('Fetch.fulfillRequest', { requestId: oldA, responseCode: 200,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify({ ...original, status: 'published', work_id: raceA, revision_id: 'old-a', title: '[Fixture] Obsolete A' })).toString('base64') }).catch(() => {});
+    await sleep(150);
+    check(await page.eval(`!!document.querySelector('[data-testid=reader-hidden]') && !document.querySelector('.vk-document') && !document.title.includes('Obsolete A') && !document.querySelector('link[rel=canonical]')`), 'late Published after Hidden cannot revive body/title/metadata across A→B→A');
+    fixtures.set(racePathA, { status: 200, body: { ...original, status: 'published', work_id: raceA, revision_id: 'new-a', title: '[Fixture] New A' } });
+    await clientNavigate(`/tac-pham/${raceB}`);
+    await page.waitFor(`document.querySelector('#reader-paper')?.dataset.revision === 'race-b'`, 'leave hidden A');
+    await clientNavigate(`/tac-pham/${raceA}`);
+    await page.waitFor(`document.querySelector('#reader-paper')?.dataset.revision === 'new-a'`, 'new authoritative publication replaces control without retained no-store state');
+    fixtures.delete(racePathA); fixtures.delete(racePathB);
+    await clientNavigate('/');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'return after ABA fixture');
+
+    // #202: reopen offline within the mount-age window without a successful /reader gate.
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'prime cached Reader');
+    await settled('#reader-freshness', 'prime Reader checked');
+    await page.click('#reader-return');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'leave primed Reader');
+    await advance(121);
+    fixtures.set(publicationPath, 'hold');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}' && document.querySelector('[data-testid=reader-cached]')`, 'cached Reader opens before control verification');
+    await page.capture('reader-cached-unverified', { scenario: '#202-cached-before-network', boundary: 'held-reader-response' });
+    const pendingControlDeadline = Date.now() + 10000;
+    while (!held.length && Date.now() < pendingControlDeadline) await sleep(20);
+    check(held.length === 1, 'cached Reader has one pending control verification');
+    await page.send('Fetch.fulfillRequest', { requestId: held.pop(), responseCode: 503,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, { name: 'Cache-Control', value: 'no-store' }],
+      body: Buffer.from(JSON.stringify({ error: { code: 'unavailable' } })).toString('base64') });
+    fixtures.set(publicationPath, { status: 503, body: { error: { code: 'unavailable' } } });
+    check(await page.eval(`!!document.querySelector('.vk-document') && !document.querySelector('[data-testid=public-unavailable]')`), 'offline revisit renders the retained full snapshot before /reader succeeds');
+    await page.waitFor(`document.querySelector('[data-testid=reader-refresh-failed]')`, 'cached Reader reports failed verification');
+    for (const width of [390, 1440]) for (const text of [100, 200]) {
+      await page.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await page.eval(`document.documentElement.style.fontSize = '${text}%'`);
+      await page.capture(`reader-cache-${width}-${text}`, { scenario: '#202-cached-unverified', viewport: { width, height: 900 }, textScale: text, boundary: 'Chrome-CDP-delayed-transport' });
+      check(await page.eval(`document.documentElement.scrollWidth <= innerWidth + 1`), `cached Reader reflows at ${width}px / text ${text}%`);
+    }
+    await page.eval(`document.documentElement.style.fontSize = ''`);
+    await page.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await page.click('#reader-return');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'leave Reader before true offline revisit');
+    await page.send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'Reader snapshot opens with browser transport offline');
+    check(await page.eval(`document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'browser offline revisit needs no successful /reader response');
+    await page.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
+    fixtures.delete(publicationPath);
+    await page.click('[data-testid=reader-refresh-failed] button');
+    await settled('#reader-freshness', 'Reader restored online');
+    await page.click('#reader-return');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'back to Explore');
+    await settled('#public-collection', 'Explore snapshot confirmed before the removal race');
+
     // Reader: a changed representation is offered, never swapped mid-reading; a 404 removes it.
     await page.click('.vk-public-row__link');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${original.revision_id}'`, 'reader again');
     await settled('#reader-freshness', 'reader revalidation on mount');
     const updated = { ...original, revision_id: '[mẫu-kiểm-tra]-revision', title: '[Mẫu kiểm tra] Mưa trên phố cũ (bản cập nhật)', document: { schema_version: 1, blocks: [{ lines: ['Khổ thay thế chỉ có trong fixture kiểm tra.'] }] } };
-    fixtures.set(publicationPath, { status: 200, body: updated });
+    fixtures.set(publicationPath, { status: 200, body: { ...updated, status: "published" } });
+    await page.waitFor(`document.querySelector('#root-composer')`, 'Reader layout loaded before choosing a reading anchor');
+    await page.eval(`window.__readingArticle = document.querySelector('#reader-paper'); window.__readingAnchor = document.querySelector('.vk-document'); const r = document.createRange(); r.selectNodeContents(window.__readingAnchor); const selection = getSelection(); selection.removeAllRanges(); selection.addRange(r); window.__readingSelection = selection.toString(); scrollTo({top:scrollY + window.__readingAnchor.getBoundingClientRect().top - 80, behavior:'instant'})`);
+    await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    await page.eval(`window.__readingAnchorY = window.__readingAnchor.getBoundingClientRect().top`);
+    const anchorStart = await page.eval(`({scroll:scrollY, top:window.__readingAnchorY, height:innerHeight})`);
+    check(anchorStart.scroll > 0 && anchorStart.top >= 0 && anchorStart.top < anchorStart.height / 2, `anchor test starts inside the article, away from scroll position zero: ${JSON.stringify(anchorStart)}`);
     await advance(121);
     await signals(['focus']);
     await page.waitFor(`document.querySelector('[data-testid=reader-update]')`, 'new version notice');
     check(await page.eval(`document.querySelector('.vk-reader').dataset.revision === '${original.revision_id}' && document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'a changed publication is offered without replacing the text being read');
+    await page.eval(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    check(await page.eval(`document.querySelector('#reader-paper') === window.__readingArticle && getSelection().toString() === window.__readingSelection && Math.abs(window.__readingAnchor.getBoundingClientRect().top - window.__readingAnchorY) <= 1`), 'background Reader update keeps article identity, selection and the visible paragraph anchor');
+    await page.eval(`getSelection().removeAllRanges()`);
+    await page.waitFor(`document.querySelector('#root-composer')`, 'composer ready for reconnect');
+    await page.typeAtEnd('#root-composer', 'Chữ đang soạn chưa gửi');
+    await page.send('Input.imeSetComposition', { text: 'đ', selectionStart: 1, selectionEnd: 1 });
+    await page.eval(`window.__keptComposer = document.querySelector('#root-composer')`);
+    await advance(121);
+    const beforeBurst = count(publicationPath);
+    await signals(['online', 'focus', 'visibilitychange', 'pageshow']);
+    await settled('#reader-freshness', 'reconnect during simulated composition');
+    check(count(publicationPath) === beforeBurst + 1, 'Reader lifecycle burst makes one logical flight');
+    check(await page.eval(`document.querySelector('#root-composer') === window.__keptComposer && document.activeElement === window.__keptComposer && window.__keptComposer.value.includes('Chữ đang soạn chưa gửi')`), 'reconnect keeps composer node, focus and unsent Vietnamese input (CDP composition, not OS IME)');
+    await page.send('Input.insertText', { text: 'đ' });
     await page.capture('reader-update-available');
     await page.click('[data-testid=reader-update] button');
     await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${updated.revision_id}' && !document.querySelector('[data-testid=reader-update]')`, 'applied new version');
     check(await page.eval(`document.querySelectorAll('.vk-reader').length === 1 && document.querySelector('.vk-document').textContent.includes('Khổ thay thế') && !document.querySelector('.vk-document').textContent.includes(${JSON.stringify(PUBLISHED_LINE)})`), 'the reader applies the new version only on request, replacing the whole text once');
     await page.waitFor(`document.activeElement?.id === 'noi-dung'`, 'focus moves to the content start after applying');
 
+    // The update/composition checks advance more than the 5-minute unobserved retention
+    // before the next 404 signal. Confirm a new list snapshot for the separate purge race.
+    await page.click('#reader-return');
+    await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'prime list for card revocation');
+    await signals(['focus']);
+    await settled('#public-collection', 'list confirmed for card revocation');
+    await page.click('.vk-public-row__link');
+    await page.waitFor(`document.querySelector('.vk-reader')?.dataset.revision === '${updated.revision_id}'`, 'return to updated Reader before revocation');
     fixtures.set(publicationPath, { status: 404, body: { error: { code: 'not_found' } } });
     // Both public projections must agree while removed. A fresh Published /reader response
     // is authoritative recovery, so do not leave that route serving the real published fixture.
@@ -1021,6 +1122,7 @@ async function cacheFirstPublicReads(page) {
     await page.click('[data-testid=public-invalid] + a');
     await page.waitFor(`location.pathname === '/' && location.search === '' && document.querySelector('#public-collection')`, 'return cleanly to unfiltered Explore');
   } finally {
+    await page.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 }).catch(() => {});
     await page.eval(`if (window.__vinkClock) { performance.now = window.__vinkClock.realNow; delete window.__vinkClock; }`).catch(() => {});
     await page.send('Fetch.disable').catch(() => {});
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== network && item !== gate);
@@ -2465,6 +2567,19 @@ async function draftDashboard(page) {
   await page.click('#retry-drafts');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 2`, 'retry with preserved query');
   check(await page.eval(`document.querySelector('#draft-search').value === 'duong ve' && document.querySelector('#draft-sort').value === 'title'`), 'query and sort survive failed refresh and retry');
+  await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'retry settled before lifecycle hints');
+  gate.holdGets = true;
+  const beforeReconnectPosts = gate.postCount;
+  await page.eval(`window.__deskNow = performance.now.bind(performance); performance.now = () => window.__deskNow() + 121000; document.querySelector('#draft-search').focus(); for (const name of ['online','focus','visibilitychange','pageshow']) (name === 'visibilitychange' ? document : window).dispatchEvent(new Event(name))`);
+  const backgroundList = await gate.next('gets');
+  await sleep(150);
+  check(gate.gets.length === 0 && gate.postCount === beforeReconnectPosts, 'Desk reconnect burst coalesces one GET and sends no mutation');
+  check(await page.eval(`document.activeElement === window.__draftSearchInput && window.__draftSearchInput === document.querySelector('#draft-search') && window.__draftSearchInput.value === 'duong ve'`), 'background Desk refresh keeps the focused search node and private query');
+  gate.holdGets = false;
+  await gate.answerGet(backgroundList);
+  await page.waitFor(`document.querySelector('[data-testid=draft-content]').getAttribute('aria-busy') === 'false'`, 'background Desk refresh accepted');
+  check(await page.eval(`document.activeElement === window.__draftSearchInput`), 'background completion does not move focus');
+  await page.eval(`performance.now = window.__deskNow; delete window.__deskNow`);
   gate.list = { status: 403, body: { error: { code: 'forbidden', message: 'test fixture' } } };
   await page.click('#refresh-drafts');
   await page.waitFor(`document.querySelector('[data-testid=desk-error]')?.textContent.includes('không có quyền')`, 'forbidden dashboard');
@@ -4026,6 +4141,15 @@ async function discussionReadingAndWrites(page) {
     await page.waitFor(`document.querySelector('#comment-${nextRootId}') && !document.querySelector('#root-pagination') && document.querySelector('#discussion-refresh')?.getAttribute('aria-disabled')!=='true'`, 'retry appends the returned page and reaches the authoritative end');
     check(JSON.stringify(readCursors.slice(beforePaging)) === JSON.stringify(['next-root-cursor', 'next-root-cursor']), 'failed page and its retry each issue one GET with the same cursor');
     check(await page.eval(`!!document.querySelector('#comment-${rootId}') && document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'successful paging keeps prior comments and draft');
+    await page.click('#discussion-refresh');
+    await page.waitFor(`!document.querySelector('#comment-${nextRootId}') && document.querySelector('[data-testid=discussion-chain-restarted]') && document.querySelector('#root-pagination button')`, 'head refresh discards the previous tail and restarts continuation');
+    check(await page.eval(`document.querySelector('#reply-composer-${rootId}')?.value.includes('Giữ nguyên')`), 'chain restart keeps the unsent reply draft');
+    await page.eval(`document.querySelector('[data-testid=discussion-chain-restarted]').scrollIntoView({ block: 'center' })`);
+    await page.capture('discussion-chain-restarted', { scenario: '#202-head-refresh', boundary: 'intercepted-provider-contract-fixture-no-persistence' });
+    await page.viewport(390);
+    await page.eval(`document.documentElement.style.fontSize='200%'; document.querySelector('[data-testid=discussion-chain-restarted]').scrollIntoView({block:'center'})`);
+    check(await page.eval(`document.documentElement.scrollWidth <= innerWidth + 1`), 'chain restart notice reflows at 390px / text 200%');
+    await page.capture('discussion-chain-restarted-390-200', { scenario: '#202-head-refresh', viewport: {width:390}, textScale:200, boundary: 'intercepted-provider-contract-fixture-no-persistence' });
   } finally {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(item => item !== fixtureListener);
