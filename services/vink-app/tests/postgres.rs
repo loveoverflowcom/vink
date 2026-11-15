@@ -38,6 +38,8 @@ mod conditional_reads;
 mod discovery;
 #[path = "postgres/discussion.rs"]
 mod discussion;
+#[path = "postgres/drafts.rs"]
+mod drafts;
 #[path = "postgres/endorsement.rs"]
 mod endorsement;
 #[path = "postgres/outbox.rs"]

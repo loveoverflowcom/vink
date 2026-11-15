@@ -6,7 +6,7 @@ use uuid::Uuid;
 use super::principal::require_active;
 use crate::application::ports::{DraftStore, SaveOutcome, StoreError};
 use crate::domain::document::{Document, DocumentData, Title};
-use crate::domain::draft::{DraftChange, DraftSummary, DraftVersion, WorkingDraft};
+use crate::domain::draft::{DraftChange, DraftVersion, WorkingDraft};
 use crate::domain::ids::{PrincipalId, WorkId};
 
 #[derive(Debug, Clone)]
@@ -105,29 +105,12 @@ impl TryFrom<DraftRow> for WorkingDraft {
 }
 
 impl DraftStore for PgStore {
-    async fn list_drafts(&self, owner: PrincipalId) -> Result<Vec<DraftSummary>, StoreError> {
-        let rows: Vec<(Uuid, i64, String, OffsetDateTime)> = sqlx::query_as(
-            "SELECT d.work_id, d.version, d.title, d.updated_at
-               FROM working_drafts d
-               JOIN works w ON w.id = d.work_id
-              WHERE w.owner_id = $1
-              ORDER BY d.updated_at DESC, d.work_id
-              LIMIT 100",
-        )
-        .bind(owner.as_uuid())
-        .fetch_all(&self.pool)
-        .await
-        .map_err(classify)?;
-        rows.into_iter()
-            .map(|(work_id, raw_version, raw_title, updated_at)| {
-                Ok(DraftSummary {
-                    work_id: WorkId::from_uuid(work_id),
-                    version: version(raw_version)?,
-                    title: title(&raw_title)?,
-                    updated_at,
-                })
-            })
-            .collect()
+    async fn search_drafts(
+        &self,
+        owner: PrincipalId,
+        search: &crate::domain::draft_query::DraftSearch,
+    ) -> Result<Vec<crate::domain::draft::DraftSummary>, StoreError> {
+        super::drafts::search(&self.pool, owner, search).await
     }
 
     async fn create_draft(

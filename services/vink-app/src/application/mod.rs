@@ -6,6 +6,7 @@ pub mod account;
 pub mod catalog;
 pub mod discovery;
 pub mod discussion;
+pub mod drafts;
 pub mod endorsement;
 pub mod moderation;
 pub mod ports;
@@ -109,6 +110,8 @@ pub enum DraftError {
     /// No authenticated Vink principal for this request.
     #[error("unauthenticated")]
     Unauthenticated,
+    #[error("invalid search: {0}")]
+    Query(crate::domain::draft_query::DraftQueryError),
     /// Suspended by Vink at the write's commit (standing fence); nothing was written.
     #[error("principal suspended")]
     Suspended,
@@ -173,7 +176,10 @@ where
         actor: Option<PrincipalId>,
     ) -> Result<Vec<DraftSummary>, DraftError> {
         let owner = actor.ok_or(DraftError::Unauthenticated)?;
-        Ok(self.store.list_drafts(owner).await?)
+        Ok(self
+            .search_drafts(Some(owner), drafts::SearchDrafts::default())
+            .await?
+            .drafts)
     }
 
     pub async fn create_draft(

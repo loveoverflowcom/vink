@@ -1085,7 +1085,10 @@ async fn schema_provenance_atomicity_history_and_upgrade_backout(pool: PgPool) {
 
     // Upgrade to 20261119000000: old row is preserved with authority_kind = 'legacy_grant'.
     let report = migrate(&pool).await.unwrap();
-    assert_eq!(report.applied, vec![COMMENT_GOVERNANCE_MIGRATION]);
+    assert_eq!(
+        report.applied,
+        vec![COMMENT_GOVERNANCE_MIGRATION, 20261120000000]
+    );
     assert_eq!(
         decision_provenance(&pool, legacy_comment, 2).await,
         (

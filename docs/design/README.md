@@ -281,6 +281,10 @@ Navigation chỉ phủ một phần UX-01/UX-03; utility Tôi chưa hoàn tất 
 
 ## Dashboard Bàn viết #8
 
+Phần dưới giữ lịch sử lát #8. Cơ chế đọc/tìm/sort hiện hành được thay bởi
+[phân trang server #201](desk-server-pagination.md), dùng coordinator #202;
+[owner và bằng chứng](../development/desk-pagination.md) ghi giới hạn và trạng thái mới.
+
 LayoutSpec r1, trình bày trước sửa UI ngày 01/11/2026; nền `develop@cfad6a2`.
 Kế thừa hướng A Lavender trong [v2.3](https://drive.google.com/file/d/1IlLVGiPHIg9DBohATdwd-38Gdy7z4U5g/view)
 và [bàn giao](https://drive.google.com/file/d/1anrbq2AsNhNIXFCfO72B1yKddgQrVAep/view);

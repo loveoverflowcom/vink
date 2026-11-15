@@ -504,6 +504,10 @@ impl From<DraftError> for ApiError {
     fn from(error: DraftError) -> Self {
         match error {
             DraftError::Unauthenticated => Self::Unauthenticated,
+            DraftError::Query(error) => Self::Validation {
+                field: error.field(),
+                message: error.to_string(),
+            },
             DraftError::Suspended => Self::PrincipalSuspended,
             DraftError::NotFound => Self::NotFound,
             DraftError::VersionConflict { current } => Self::VersionConflict {

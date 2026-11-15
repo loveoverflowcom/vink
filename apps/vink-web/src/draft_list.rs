@@ -1,5 +1,7 @@
 //! Presentation rules for the loaded private draft list; no authority or manuscript reads.
 
+pub mod paging;
+
 use crate::contract::{ApiError, DraftCard};
 pub use crate::search::search_key;
 

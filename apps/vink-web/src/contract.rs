@@ -108,6 +108,8 @@ pub enum ReaderResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DraftList {
     pub drafts: Vec<DraftCard>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub next_cursor: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1010,7 +1012,19 @@ mod tests {
         );
         let request: SaveDraftRequest = round_trip("draft.save.request.json");
         assert!(request.expected_version >= 1);
-        let _: DraftList = round_trip("drafts.list.json");
+        let legacy: DraftList = round_trip("drafts.list.json");
+        assert!(legacy.next_cursor.is_none());
+        let paged: DraftList = round_trip("drafts.page.json");
+        assert!(paged.next_cursor.is_some());
+        #[derive(Deserialize)]
+        struct OldList {
+            drafts: Vec<DraftCard>,
+        }
+        let old: OldList = serde_json::from_str(include_str!(
+            "../../../services/vink-app/contracts/http/v1/fixtures/drafts.page.json"
+        ))
+        .unwrap();
+        assert_eq!(old.drafts, paged.drafts);
         let _: Draft = round_trip("draft.get.json");
         let _: SavedDraft = round_trip("draft.save.response.json");
     }

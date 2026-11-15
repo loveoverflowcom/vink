@@ -305,7 +305,7 @@ native, IndexedDB, Service Worker hay replay mutation.
 | Reader (`ReaderScope`, `ReaderLoaded`) | SSR in-process; browser cache-first `/reader`; refresh giữ bản đang đọc, apply rõ bằng nút | Keyed route owner; một validator cho Memory/NoOp; control no-store thay body; Published đổi chỉ báo bản mới | Không mở rộng cửa sổ 15 phút hoặc giữ full-text qua restart |
 | Public discussion (`ViewState`) | SSR public; lifecycle/manual refresh head; roots/replies continuation; refresh bỏ tail | `ReadOwner<Scope>`/`PageChain`, public epoch và mutation guard; stable composers, public DTO | Không cache discussion |
 | Own discussion (`OwnState`) | Browser only; head rồi lookup bounded; cursor riêng | Session scope + ticket; page accept trước cursor; lookup thắng listing; 401/403/404 bỏ private facts | Không authority từ public cache |
-| Desk list (`DeskIndex`) | Browser only, scoped read; reconnect head giữ last success, không chờ phiên cũ | `ReadOwner<Option<String>>`, Session principal/generation, WakePolicy; route disposal; editor độc lập | **#201** sở hữu query/sort/cursor server và UI continuation; dùng seam dưới đây |
+| Desk list (`DeskIndex`) | Browser only, scoped server query; reconnect head giữ last success, append/đổi phần có giới hạn | `ReadOwner` scope session/query/sort/limit, `DraftPages` dùng `PageChain`; WakePolicy; route disposal; editor độc lập | [#201](desk-pagination.md) sở hữu API/continuation, Recent/1 riêng cho Viết tiếp và evidence của consumer |
 | Moderation (`pages/moderation.rs`) | Existing LocalResource cho queue/case/appeal/author status; manual reload | Existing session scope + target ID/command guards, không SSR private payload | **#205** nối pagination/query và lifecycle; chưa migrate, không claim reconnect ở đây |
 
 ### Seam cho #201 / #205
@@ -316,7 +316,7 @@ Owner dispose gọi `dispose`; cancellation transport chỉ best effort. Ví d�
 
 ```rust,ignore
 let ticket = reads.begin(Intent::Append, chain.next_cursor.clone())?;
-let page = api::list_drafts(query, ticket.cursor.clone()).await;
+let page = api::search_drafts(query, sort, limit, ticket.cursor.as_deref()).await?;
 // Kiểm DTO đúng endpoint/scope trước accept_page. Không advance cursor từ lỗi transport.
 if reads.accept_page(&ticket, &mut chain,
     page.drafts.iter().map(|d| d.work_id.clone()), page.next_cursor.clone()) {
