@@ -26,12 +26,15 @@
 .vk-draft-row__open .vk-ui-icon { margin: 0; transform: scaleX(-1); }
 .vk-draft-row__link:hover .vk-draft-row__title { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
 @container vk-draft-row (max-width: 30rem) {
-  .vk-draft-row__text, .vk-draft-row__open { grid-column: 1 / -1; }
-  .vk-draft-row__open { justify-self: start; margin: var(--vk-space-1) 0 0; }
+  .vk-draft-row__text { grid-column: 1 / -1; }
+  .vk-draft-row__open { display: none; }
 }
 .vk-draft-meta { display: flex; flex-wrap: wrap; gap: var(--vk-space-1); color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); font-weight: var(--vk-type-caption-weight); }
-.vk-draft-resume { container-type: inline-size; min-width: 0; }
+.vk-draft-resume { container: vk-draft-resume / inline-size; min-width: 0; }
 .vk-draft-resume > .vk-ui-surface, .vk-draft-resume__content { display: grid; justify-items: start; gap: var(--vk-space-2); min-width: 0; }
+@container vk-draft-resume (max-width: 480px) {
+  .vk-draft-resume > .vk-ui-surface { padding: min(var(--vk-space-4), 16px); }
+}
 .vk-draft-resume__title { min-width: 0; overflow-wrap: anywhere; }
 /* Keep the full heading in the accessibility tree; disclosure removes only the clamp. */
 .vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
@@ -40,7 +43,7 @@
 .vk-draft-resume__continue { justify-content: center; min-block-size: 48px; max-width: 100%; padding: var(--vk-density-control-padding) var(--vk-space-6); border-radius: var(--vk-radius-full); background: var(--vk-action-primary-container); color: var(--vk-action-primary-content); }
 .vk-draft-resume__continue:hover { background: color-mix(in srgb, var(--vk-action-primary-content) 8%, var(--vk-action-primary-container)); }
 /* The rem threshold follows enlarged text and the actual pattern width, including galleries. */
-@container (min-width: 38rem) {
+@container vk-draft-resume (min-width: 38rem) {
   .vk-draft-resume > .vk-ui-surface { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--vk-space-6); }
   .vk-draft-resume__disclosure { display: none; }
   .vk-draft-resume:has(button[aria-expanded="false"]) .vk-draft-resume__title { display: block; overflow: visible; -webkit-line-clamp: unset; }
