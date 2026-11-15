@@ -1,4 +1,5 @@
 /target/
+/.wrangler/
 /decisions/.tmp-*
 /decisions/proposals/.tmp-*
 /decisions/signoffs/.tmp-*

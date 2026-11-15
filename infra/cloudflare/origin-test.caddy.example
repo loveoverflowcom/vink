@@ -1,0 +1,9 @@
+# Requires the separately approved origin-test DNS record and a verified TLS certificate.
+# Import into the existing edge; do not start a second 80/443 listener.
+origin-test.vink.forum {
+    header X-Robots-Tag "noindex, nofollow"
+    encode /pkg/* zstd gzip
+    reverse_proxy vink-test-web:3000 {
+        header_up Host test.vink.forum
+    }
+}
