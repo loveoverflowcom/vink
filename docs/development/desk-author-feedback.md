@@ -171,3 +171,88 @@ Logs/captures trước được giữ, kể cả lỗi hết dung lượng và s
 đầu; chỉ debug artifacts có thể tái tạo được làm mới, không xóa evidence/worktree khác. Không CI
 GitHub, merge, deploy, tick/close issue hoặc signoff sản phẩm trong lượt này. Reviewer độc lập
 đối chiếu AC với source/evidence, giữ giới hạn main/OS IME và POLICY-01 B/C trước quyết định merge.
+
+## Review độc lập PR #222 — 15/11/2026 UTC
+
+Đầu vào được fetch và kiểm lại: `origin/develop@b28e4bdd42eb84c1f45a7ebff4b983cfbc9f9567`,
+PR head `26b81df698433d2b0f81319fee4104dadab4148d`; issue #214 và PR chưa có comments.
+Reviewer đọc diff, callers, predicate public discussion/endorsement, publication owner và
+registry hiện hành; không lấy PASS của tác giả làm kết quả chạy mới. Registry lookup khớp
+snapshot đã ghi ở trên: `O-07@r1` vẫn **OPEN**, anchor LVE vẫn `DESIGN_PROPOSED`.
+Không có signoff B/C hoặc thay đổi luật tích lũy.
+
+**F-01 — P3, fixed:** work riêng tư hợp lệ không có working draft/revision bị chiếu thành
+“Bản nháp · Không có bản nháp để sửa”. Mapping ở `ui::adapters::author_work_summary` trước
+đó chỉ xét generation/latest revision. Commit sửa
+`194e986d0a10204db5e0b14b5adc3f82313df71c` đòi có draft thật trước khi dùng nhãn “Bản nháp”;
+ca không có draft hiện “Chỉ mình tôi”, không link sửa hoặc metrics. Regression thêm vào
+contract test **FAIL trước sửa**, **PASS 2/2 sau sửa**; browser bổ sung ca thứ sáu và assertion
+nhãn/không có target giả. Không bỏ hoặc nới assertion cũ. Bản sửa nhỏ do reviewer tự kiểm
+(`self-review`); review mã đầu vào là độc lập với chat triển khai.
+
+Không còn finding mới chặn merge trong phạm vi #214. SQL chọn page trước aggregate, owner
+filter, snapshot hai SELECT, revision anchor, nullable metrics, public visibility và session
+fencing phù hợp baseline A. SQL/App/provider contract không đổi sau các kiểm PostgreSQL dưới
+đây; bản sửa reviewer chỉ chạm Web mapping, regression và LayoutSpec. Việc merge không phải
+nghiệm thu toàn bộ issue hoặc chốt policy/architecture.
+
+### Kiểm mới của reviewer
+
+Cùng máy macOS aarch64, Rust 1.99.1, PostgreSQL 17.11, Node 22.15.0 và Chrome 157 headless.
+Các lệnh Cargo dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`.
+Cluster local riêng `127.0.0.1:55514`; không database production. Logs mới ở `target/review222/`.
+
+| Lệnh / source / boundary | Kết quả mới |
+| --- | --- |
+| `cargo xtask verify quick`, đầu vào và mã sửa cuối `194e986` | **PASS** toàn lane cả hai lượt; `quick.log`, `quick-final.log` |
+| `DATABASE_URL=<scratch> VINK_PG_QUERY_LOG=<server-log> cargo test --locked -p vink-app --test postgres author_work -- --include-ignored --nocapture --test-threads=1`, `26b81df` | **PASS 5/5** trên PostgreSQL thật; corpus/cursor/privacy, recount, snapshot race, metric failure và statement log; `postgres-focused.log` |
+| `cargo test --locked -p vink-web --lib --features ssr author_work` | **FAIL** ca no-draft trước sửa, **PASS 2/2** sau sửa; `no-draft-red.log`, `no-draft-green.log`; full quick cuối cũng chạy regression |
+| `cargo xtask verify web --scenario main`, baseline `b28e4bdd` | **FAIL** caret 390×420; run `1794770057833834000-47453`, `baseline-main.log` |
+| Cùng nguyên selector `main`, head đầu vào `26b81df`, build lại SSR + WASM đúng checkout | **FAIL** đúng caret trên; run `1794770812943449000-78802`, `head-main-final.log`. #214, Desk/R6, search/paging 250 và composition simulation đã PASS trước điểm dừng |
+| `cargo xtask verify web --scenario auth --scenario publication --scenario endorsement --scenario storage`, mã cuối `194e986` | **PASS** cả 4 selector trên App/Identity/PG thật; run `1794771703042773000-13941`, `web-boundaries-final.log` |
+| `node apps/vink-web/e2e/browser-smoke.mjs --base http://127.0.0.1:55522 --chrome <Chrome> --state target/review222/author-final/state.json --phase author-works`, mã cuối `194e986` | **PASS**, gồm ca no-draft mới và 16 cấu hình. App/bundle từ build cuối ở trên, seed DB riêng `vink_review222_author`, runtime role hạn chế riêng; `author-final/browser.log`, setup/logs cùng thư mục, orchestration `/tmp/vink-review222-author.py` |
+
+PostgreSQL log mới xác nhận page size/public anchors 1/24/100 đều **1 page SELECT + 1 metrics
+SELECT**. EXPLAIN SQL production: owner 10.001 work Recent/Title 6,319 / 6,679 ms; owner nhỏ
+0,869 / 0,777 ms; aggregate 10.000 comments 4,862 ms. Đây là số đo local một lượt, không SLO;
+query vẫn scan/sort corpus và đọc count rows thật. Toàn lane PostgreSQL không chạy lại trong
+phiên review (**NOT_RUN**); 5 focused tests là bằng chứng mới, full-lane PASS phía trên là lịch
+sử của chat triển khai. Không có thay đổi SQL/provider giữa mốc PG và bản sửa cuối.
+
+**Lỗi editor có sẵn, chưa sửa:** baseline và head đều có caret top `-118.71875`, bottom
+`-93.71875` CSS px ở viewport height 420, toolbar `static`, không console error. Cả hai dừng
+ở nguyên assertion “reduced mobile viewport keeps the active caret visible without fixed
+controls”; ảnh hai lượt đã mở và lưu trong [metadata review](evidence/desk-author-feedback/review222/screenshots.json).
+Không chạy lại toàn `main` sau bản sửa nhãn; final-source UI được kiểm bằng phase #214 và bốn
+selector ở trên. Phần sau điểm dừng main vẫn **NOT_RUN**, không nhận full Web PASS. Không sửa
+editor hoặc khởi động hàng đợi UI cũ; lệnh tiếp tục nghiệm thu là nguyên selector `main`.
+
+Một lượt head đầu đã **FAIL do lẫn artifact baseline** khi reviewer dùng chung `target` giữa
+worktree; không dùng làm bằng chứng source. Lượt clean host tiếp theo được dừng trước browser
+vì WASM target chưa được clean. Reviewer gỡ symlink baseline, clean riêng host/WASM packages rồi
+dựng lại đúng checkout; logs `head-main.log`, `head-main-rebuilt.log` vẫn giữ. Các lượt hợp lệ
+được pin riêng ở bảng trên. Worktree baseline tạm đã dọn; DB, evidence và worktree có sẵn giữ lại.
+
+### Kết quả UI sau sửa
+
+Năm ảnh source cuối đã mở, dữ liệu trạng thái có nhãn fixture trong app Leptos thật; không
+thay bằng chứng PostgreSQL. [Metadata/hash](evidence/desk-author-feedback/review222/screenshots.json)
+pin `194e986`; text200 là root font-size, không browser zoom. `NO_APPROVED_REFERENCE`.
+
+| Chiều | Kết quả / giới hạn |
+| --- | --- |
+| Functional | **PASS** scoped #214 trên mã cuối, regression no-draft, Reader/Desk anchor/count và real auth/publication/endorsement/storage. **FAIL** main trước sửa nhãn ở lỗi editor baseline |
+| Geometry | **PASS** 320/390/834/1440 × light/dark × text100/200, không tràn ngang; target đọc cuối tới được trên bottom nav |
+| Visual | **PASS** scoped, 5 ảnh cuối đã mở: title/status/count/scope rõ, private no-draft không mâu thuẫn. Bản sửa là self-review; không pixel-fidelity/design approval claim |
+| Accessibility/Responsive | **PASS** reflow, native AX name/focus và targets trong các kiểm Chrome. OS screen reader, browser zoom và physical touch **NOT_RUN** |
+| Interaction | **PASS** refresh giữ input/link/focus, stale/403 clear, readonly, late session reply; composition chỉ mô phỏng. Caret resize **FAIL** trên baseline/head đầu vào; OS IME **NOT_RUN** |
+
+Ảnh cuối: [1440 sáng](evidence/desk-author-feedback/review222/author-works-1440-light-100.png),
+[320 text200](evidence/desk-author-feedback/review222/author-works-320-light-200.png),
+[834 tối](evidence/desk-author-feedback/review222/author-works-834-dark-100.png),
+[metrics 390 text200](evidence/desk-author-feedback/review222/author-works-metrics-390-dark-200.png),
+[không có draft](evidence/desk-author-feedback/review222/author-works-no-draft-390-dark-200.png).
+
+Giữ issue #214 mở: AC-09/10 còn giới hạn full main/host nêu trên; POLICY-01 B/C và O-07 vẫn
+**OPEN**, không đánh dấu tích lũy đã triển khai. Không tick/close issue, không xem/chờ/poll/rerun
+hoặc chủ động kích hoạt GitHub CI, không deploy hoặc xử lý PR #220 trong phiên này.
