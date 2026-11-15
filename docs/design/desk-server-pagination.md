@@ -35,7 +35,7 @@ terminal chỉ khi server không còn cursor, không khi lỗi hoặc đạt gi�
 | First loading | Khung Bàn viết, trạng thái “Đang mở Bàn viết…”; chưa claim rỗng |
 | First-use empty | Head không lọc đã tải thành công và rỗng: một CTA tạo bản thảo đầu tiên; search vẫn có mặt |
 | Search pending | Controls/input giữ node; vùng kết quả báo đang tìm đúng query đã commit |
-| No results | Giữ Viết tiếp/controls; không có kết quả cho query, không đổi thành first-use |
+| No results | Giữ Tạo bản thảo/controls; không có kết quả cho query, không đổi thành first-use |
 | Refresh | Giữ dữ liệu/focus khi chờ; thành công thay toàn chain, thông báo tải lại từ đầu |
 | Append | Giữ hàng hiện tại; nút có trạng thái “Đang tải…”; không gọi trùng |
 | Append lỗi | Giữ items/cursor; thông báo và “Thử tải thêm”; không thông báo hết |
@@ -48,7 +48,7 @@ dedup để che thiếu mục. Đọc reconnect/focus chỉ dùng lifecycle #202
 và không remount editor. Create uncertain giữ đường GET đối chiếu và intent tạo thêm có sẵn.
 
 Interaction: touch/pointer/Tab/Enter dùng cùng controls; không overlay hay vùng cuộn riêng.
-DOM/focus: heading → Viết tiếp → tìm → sort/refresh → hàng → continuation. Background response
+DOM/focus: heading → Tạo bản thảo → tìm → sort/refresh → hàng → continuation. Background response
 không cướp focus; input giữ caret/IME/selection. Append giữ hàng/key và anchor, không tự cuộn.
 Nếu cursor lỗi thay nút Tải thêm đang giữ focus, chuyển focus sang Tải lại từ đầu sau render;
 Enter phục hồi đưa về ô tìm. Nếu người dùng đã chuyển sang control khác, giữ focus ở đó.

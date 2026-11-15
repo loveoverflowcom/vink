@@ -209,3 +209,61 @@ Kết thúc: đã dừng các App/Identity/Python fixture servers và cluster Po
 source, data test, outbox, logs và captures được giữ. Source code cuối `f537b4c`; source runtime
 App/Rust giống `d4f5038`, JS phases ghim `ddf95a4`, CSS hash đã xác nhận ở trên. Native diagnostics
 compile tại source cuối; báo cáo này là delta documentation cuối cùng.
+
+## Review độc lập PR #221 — 15/11/2026
+
+Reviewer khác với agent triển khai; ghim diff `97b29c30a87b5403759b2219ab0cdc710fb64cbd`
+→ `c52ffdddfb80b1ac8e2323f9654079fa6bc9a5c4`. Fresh-fetch xác nhận base/head này;
+issue #213 và PR không có comment/review bổ sung tại lần đọc. Không đọc hoặc chờ GitHub CI.
+
+Không tìm thấy regression hành vi cần sửa trong phạm vi #213. Đã sửa hai dòng LayoutSpec
+còn nhắc CTA “Viết tiếp” trong trạng thái NoResults và thứ tự focus: CTA hiện hành là
+“Tạo bản thảo”. Không đổi runtime hoặc assertion để tránh lỗi caret.
+
+Đã trace first-use/query/error/create gates, ReadOwner/PageChain, consumers timestamp,
+SSR/hydration và contract Thấm/unknown/pending/uncertain; không đổi DTO/CAS, authority,
+receipts/order/session hoặc glyph. Tra lại `LVE-PR-01-CHOICE-02/08@r1` giữ `DESIGN_PROPOSED`,
+snapshot registry vẫn `cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2`.
+
+Các lệnh Rust dùng cùng cấu hình debug/build-jobs ở mục môi trường. Runtime dùng lại binary
+đã build ở `d4f5038`: `git diff d4f5038 c52ffdd --` trên bốn owner Rust App/Web/patterns/UI
+không có delta. Bundle CSS bằng đúng bốn nguồn/thứ tự hiện hành, hash
+`b15479560e070e13caa2135cf7fd82e74ffbeb43bfaa839b58b87fb33031a554`.
+Đây là focused runtime evidence, không nhận full main/Web PASS; lượt canonical bên dưới
+build lại selected artifacts từ source hiện hành và PASS.
+
+| Kiểm độc lập | Kết quả và bằng chứng local |
+| --- | --- |
+| `cargo xtask verify quick` | PASS toàn lane; `/tmp/vink213-review-quick-2.log`. Lượt sandbox đầu FAIL 9 Identity tests vì không mở được Unix socket (`PermissionDenied`), sau đó chạy nguyên lane với quyền local socket; không sửa test |
+| `node apps/vink-web/e2e/browser-smoke.mjs --base http://127.0.0.1:3024 --chrome <Chrome> --state target/issue213/independent-desk/state.json --phase desk-layout` | PASS 569 assertions, 250 screenshot contexts; `/tmp/vink213-review-desk.log` |
+| Hàm `draftPagination` hiện hữu | PASS 61 assertions, corpus PostgreSQL thật 250 nháp; `/tmp/vink213-review-pagination.log`. Driver tạm `/tmp/vink213-review-pagination.mjs` chỉ resolve imports và thêm dispatch phase, không đổi hàm/assertion; không thêm runner vào repo |
+| `cargo xtask verify web --scenario auth --scenario endorsement` với `VINK_TEST_DATABASE_URL` trỏ cluster scratch 55439 và `VINK_CHROME=<Chrome>` | PASS selected prerequisites/artifacts, bundle scan, endorsement và auth; `/tmp/vink213-review-auth-endorsement-2.log`, browser run `target/verify-web/1794765238473382000-53764/`. Lượt đầu `/tmp/vink213-review-auth-endorsement.log` FAIL ENOSPC ở build WASM, browser NOT_RUN; chạy lại sau khi dọn riêng ảnh generic mới và dừng preview |
+| Cùng browser runner, `--phase editor-chrome`, output `target/issue213/independent-editor/` | FAIL caret 390×420/text100 sau 998 assertions thành công; `/tmp/vink213-review-editor.log`; phần sau điểm dừng NOT_RUN |
+| `JAVA_HOME=<Temurin24> ./gradlew :patterns:desktopTest --tests vink.patterns.EndorsementTest --rerun :ui:desktopTest --tests vink.ui.VinkToggleTest --rerun --no-daemon` | PASS 1 + 3 tests thực thi lại (XML timestamp mới), `/tmp/vink213-review-cmp-rerun.log`; JVM, không native render |
+| Preview smoke hiện hữu qua HTTP loopback, output `target/issue213/independent-preview/` | FAIL ENOSPC khi ghi capture sau 657 assertions chức năng/overflow/font đã qua; `/tmp/vink213-review-preview.log`. Không full preview PASS. Giữ 50 ảnh affected, hash inventory toàn lượt tại `/tmp/vink213-review-preview-retention.json`; đã xóa riêng 582 ảnh generic của lượt review này để phục hồi dung lượng, không xóa evidence gốc |
+
+Đã đối chiếu hash đủ 32 ảnh gốc và mở độc lập 8 cặp: 320/100/light, 320/200/dark,
+390/100/light, 390/200/light, 834/100/dark, 834/200/dark, 1440/100/light,
+1440/200/dark. Đã mở thêm ảnh title focus 320/200, hai ảnh Desk từ lượt độc lập,
+preview Endorsement/Toggle và ảnh caret baseline/head/lượt độc lập. Không nhận đã mở cả
+16 cặp trong review này. `fidelity: NO_APPROVED_REFERENCE`.
+
+Caret là gap có sẵn: ảnh baseline và lượt độc lập đều ở vùng metadata thay vì caret;
+metadata `editor-short-desktop-1440` trước resize trùng width/height/font/editor geometry,
+và lượt mới vẫn có range y `−118,71875…−93,71875`, scrollY `1865`, toolbar `static`.
+PR không đổi Editor/bridge/chrome CSS; diff CSS App chỉ bỏ margin của resume đã xóa.
+Lỗi ảnh hưởng khả năng thấy caret khi resize trong scenario này, không có bằng chứng mất chữ
+hoặc regression do #213. Giữ FAIL và phần sau NOT_RUN; không mở việc UI cũ trong lượt review.
+
+| Chiều | Kết quả review độc lập |
+| --- | --- |
+| Functional | PASS scoped Desk, pagination, auth/endorsement chuẩn, unit/contracts và CMP copy; không full Web PASS |
+| Geometry | PASS list/search/title/targets/last row/public byline; FAIL caret resize có sẵn |
+| Visual | PASS ảnh đã mở theo scope trên: không resume, row gọn, phân cấp/Unicode giữ; không approved anchor |
+| Accessibility/Responsive | PASS Chrome AX/focus/contrast và root text100/200 trong scoped Desk/Editor trước điểm dừng; OS screen reader, browser zoom, native và OS IME NOT_RUN |
+| Interaction | PASS scoped search/create/CAS/recovery, Thấm ACK/replay/session và Editor trước điểm dừng; FAIL caret resize, phần sau NOT_RUN |
+
+Kết luận merge: đủ an toàn trong phạm vi delta #213, với gap caret kế thừa và full-preview
+capture còn công khai ở trên; UX quality pilot không biến gap thành PASS hoặc tự tạo gate merge.
+Không tick/close issue #213, không triển khai #214, không khởi động hàng đợi UI cũ hoặc deploy.
+Sau các lượt kiểm trên, delta reviewer chỉ có tài liệu; kiểm diff/relative links riêng trước commit.
