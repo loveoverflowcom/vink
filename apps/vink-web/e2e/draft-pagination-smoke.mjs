@@ -31,10 +31,9 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
   await page.goto(args.base + '/ban-viet');
   await page.waitFor(`document.querySelectorAll('[data-testid=draft-row]').length === 24`, 'first real page is bounded');
   await settled();
-  const resume = await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href')`);
   await search('  Đường  về xa  '.normalize('NFD'));
   check(JSON.stringify(await rows()) === JSON.stringify([corpus[0].work_id]), 'browser finds the old draft without loading intermediate pages');
-  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resume)}`), 'filtered results do not redefine Viết tiếp');
+  check(await page.eval(`!document.querySelector('#resume') && !!document.querySelector('#create-draft')`), 'filtered result keeps create available with no resume');
   await search('[Paging201]');
   for (const width of [390,1440]) for (const scale of [100,200]) {
     await page.viewport(width);
@@ -63,7 +62,7 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
     check(seen.size === 250 && corpus.every(d => seen.has(d.work_id)), `${sort}: static traversal has no missing/duplicate IDs`);
     check(await page.eval(`!!document.querySelector('#draft-end') && !document.querySelector('#load-more-drafts')`), 'exhaustion is distinct from unavailable');
   }
-  check(await page.eval(`document.querySelector('[data-testid=resume-draft]').getAttribute('href') === ${JSON.stringify(resume)}`), 'Title ordering retains the owner recent resume');
+  check(await page.eval(`!document.querySelector('#resume') && !document.querySelector('#draft-results').textContent.includes('Phiên bản')`), 'Title traversal retains the compact list contract');
 
   await page.click('#refresh-drafts'); await settled();
   const gate = new DraftGate(page); gate.holdWhen = url => new URL(url).searchParams.get('limit') === '24';
@@ -141,6 +140,15 @@ export async function draftPagination(page, { args, check, DraftGate, sleep }) {
     gate.holdGets = false;
     await page.key('Enter'); await settled();
     check(await page.eval(`!document.querySelector('#draft-page-error') && document.activeElement.id==='draft-search'`), 'keyboard restart at 390px/text 200% recovers and focuses search');
+    // The next part can become empty after concurrent changes; loaded length is not corpus size.
+    gate.list={body:{drafts:Array.from({length:241},(_,i)=>({work_id:`99999999-9999-4999-8999-${String(i).padStart(12,'0')}`,title:'[EmptyPart213] '+String(i).padStart(3,'0'),version:1,updated_at:'2026-11-01T08:30:00Z'}))}};
+    await search('');
+    for (let i=1;i<10;i++) {await page.click('#load-more-drafts'); await settled();}
+    check((await rows()).length===240, 'empty-part fixture reaches the actual part boundary');
+    gate.holdGets=true; await page.click('#load-more-drafts');
+    const emptyPart=await gate.next('gets');
+    await gate.fulfill(emptyPart,200,{drafts:[]}); await settled();
+    check(await page.eval(`!document.querySelector('[data-testid=draft-empty], [data-testid=draft-no-results]') && !!document.querySelector('#draft-end') && !!document.querySelector('#create-draft')`), 'empty next part is terminal, never first-use or a filtered miss');
   } finally {
     await gate.disable();
     await page.viewport(1440);

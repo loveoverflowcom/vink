@@ -8,14 +8,20 @@ import kotlin.test.assertTrue
 class EndorsementTest {
     @Test
     fun copyNamesItsTargetAndTheSelectedNameContainsTheLabel() {
-        assertEquals("Đánh giá cao", EndorsementKind.Work.copy.label)
-        assertEquals("Bỏ đánh giá cao", EndorsementKind.Work.copy.selectedName)
+        assertEquals("Thấm", EndorsementKind.Work.copy.label)
+        assertEquals("Bỏ Thấm", EndorsementKind.Work.copy.selectedName)
+        assertEquals("lượt Thấm", EndorsementKind.Work.copy.countUnit)
+        assertEquals("Đang gửi Thấm…", EndorsementKind.Work.copy.pendingOn)
+        assertEquals("Đang bỏ Thấm…", EndorsementKind.Work.copy.pendingOff)
+        assertEquals("Không thể Thấm lúc này.", EndorsementKind.Work.copy.failed)
+        assertEquals("Chưa rõ bạn đã Thấm chưa.", EndorsementKind.Work.copy.unknown)
+        assertEquals("Bạn không thể tự Thấm tác phẩm của mình.", EndorsementKind.Work.reason(EndorsementBlock.OwnContent))
         assertEquals("Hữu ích", EndorsementKind.Comment.copy.label)
         assertEquals("Bỏ đánh dấu hữu ích", EndorsementKind.Comment.copy.selectedName)
         for (kind in EndorsementKind.entries) {
             assertTrue(kind.copy.selectedName.lowercase().contains(kind.copy.label.lowercase()), kind.id)
             for (block in EndorsementBlock.entries) assertTrue(kind.reason(block).isNotBlank(), "$kind $block")
         }
-        assertEquals("Cần đăng nhập để đánh giá.", EndorsementKind.Work.reason(EndorsementBlock.SignedOut))
+        assertEquals("Cần đăng nhập để Thấm.", EndorsementKind.Work.reason(EndorsementBlock.SignedOut))
     }
 }

@@ -22,10 +22,7 @@ use crate::draft_list::{CreateState, DraftSort, display_title as untitled};
 use crate::editor::{BODY_HINT_ID, BODY_LABEL_ID, BodyEditor, BodySource, BodyState, TOOLBAR_ID};
 use crate::navigation::NavigationGuard;
 use crate::tag_state::{TagStatus, TagTicket};
-use crate::ui::{
-    adapters,
-    patterns::{DraftResume, DraftRow},
-};
+use crate::ui::{adapters, patterns::DraftRow};
 
 const DESK_UNAVAILABLE_SSR: &str = "Bàn viết cần JavaScript để mở bản nháp riêng.";
 
@@ -43,7 +40,6 @@ pub fn DeskIndex() -> impl IntoView {
     let recovery_focus = RwSignal::new(false);
     let ready = RwSignal::new(false);
     let pages = RwSignal::new(DraftPages::default());
-    let resume = RwSignal::new(None::<crate::contract::DraftCard>);
     let load_error = RwSignal::new(None::<ApiError>);
     let page_error = RwSignal::new(None::<ApiError>);
     let restarted = RwSignal::new(false);
@@ -102,43 +98,19 @@ pub fn DeskIndex() -> impl IntoView {
                     {
                         return;
                     }
-                    // Resume is a separate bounded owner read, never the first filtered/Title row.
-                    // Do not issue it for a superseded scope or once per appended card/page.
-                    let result = match result {
-                        Ok(page) if intent != Intent::Append => {
-                            crate::api::search_drafts("", DraftSort::Recent, 1, None)
-                                .await
-                                .and_then(|recent| {
-                                    if recent.drafts.len() > 1 {
-                                        return Err(ApiError::Unavailable);
-                                    }
-                                    Ok((page, Some(recent.drafts.into_iter().next())))
-                                })
-                        }
-                        Ok(page) => Ok((page, None)),
-                        Err(error) => Err(error),
-                    };
-                    if reads.try_with_value(|r| r.accepts(&ticket)) != Some(true)
-                        || session.scope.try_get_untracked() != Some(ticket.scope.0.clone())
-                    {
-                        return;
-                    }
                     let next_part =
                         intent == Intent::Append && pages.with_untracked(DraftPages::next_part);
                     let old_tail = pages.with_untracked(|p| p.chain.pages > 1 || p.part > 1);
                     let anchor = (intent == Intent::Refresh)
                         .then(capture_desk_anchor)
                         .flatten();
-                    let result = result.and_then(|(page, recent)| {
+                    let result = result.and_then(|page| {
                         if pages.try_update(|p| reads.with_value(|r| p.accept(r, &ticket, page)))
                             != Some(true)
                         {
                             return Err(ApiError::Invalid {
                                 field: Some("cursor".into()),
                             });
-                        }
-                        if let Some(recent) = recent {
-                            resume.try_set(recent);
                         }
                         Ok(())
                     });
@@ -170,7 +142,6 @@ pub fn DeskIndex() -> impl IntoView {
                                     | ApiError::NotFound
                             ) {
                                 pages.try_set(DraftPages::default());
-                                resume.try_set(None);
                                 ready.try_set(false);
                                 page_error.try_set(None);
                                 load_error.try_set(Some(error));
@@ -190,11 +161,7 @@ pub fn DeskIndex() -> impl IntoView {
                         if next_part {
                             super::focus_recovery("draft-list-title");
                         } else if recover {
-                            super::focus_recovery(if resume.get_untracked().is_some() {
-                                "draft-search"
-                            } else {
-                                "desk-title"
-                            });
+                            super::focus_recovery("draft-search");
                         } else if let Some(anchor) = anchor {
                             restore_desk_anchor(anchor);
                         }
@@ -218,7 +185,6 @@ pub fn DeskIndex() -> impl IntoView {
                 applied.set(String::new());
                 sort.set(DraftSort::Recent);
                 composing.set(false);
-                resume.set(None);
                 ready.set(false);
                 creation.set(CreateState::Ready);
             }
@@ -328,13 +294,21 @@ pub fn DeskIndex() -> impl IntoView {
             });
         }
     });
+    // Only an authoritative, unfiltered head can describe an empty corpus. A filtered
+    // miss (or a failed first read) says nothing about whether this owner has drafts.
+    let first_use = Signal::derive(move || {
+        ready.get()
+            && load_error.get().is_none()
+            && crate::draft_list::search_key(&applied.get()).is_empty()
+            && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())
+    });
     view! {
         <Title text="Bàn viết — Vink" />
         <Meta name="robots" content="noindex" />
         <section id="desk" class="vk-desk vk-desk--index" aria-labelledby="desk-title">
             <header id="heading" class="vk-desk-heading">
                 <Heading level=HeadingLevel::H1 id="desk-title" attr:tabindex="-1">"Bàn viết"</Heading>
-                <Show when=move || ready.get() && resume.get().is_some()>
+                <Show when=move || ready.get() && !first_use.get()>
                     <CreateDraftButton creation can_create create />
                 </Show>
             </header>
@@ -347,17 +321,9 @@ pub fn DeskIndex() -> impl IntoView {
                 {move || load_error.get().map(|error| view! {
                     <DeskError error refresh retry_disabled=refresh_disabled retained=pages.with(|p| p.loaded) />
                 })}
-                <Show when=move || ready.get() && resume.get().is_none() && pages.with(|p| p.loaded && p.drafts.is_empty())>
-                    <div class="vk-desk-empty" data-testid="draft-empty">
-                        <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
-                            <CreateDraftButton creation can_create create first=true />
-                        </StatePanel>
-                    </div>
-                </Show>
-                // Retain this owner across query/empty/loading transitions: input never remounts.
-                <Show when=move || ready.get() && resume.get().is_some()>
-                    <DraftListView pages resume query sort composing loading appending page_error load_error restarted submit clear more refresh refresh_disabled />
-                </Show>
+                // The tools/input retain one owner through loading, empty, query and error.
+                <DraftListView pages query sort composing loading appending page_error load_error restarted
+                    first_use creation can_create create submit clear more refresh refresh_disabled />
             </div>
             <p class="vk-desk-privacy vk-muted">"Bản nháp chỉ bạn đọc được. Lưu nháp không gửi duyệt hay công khai."</p>
         </section>
@@ -469,7 +435,10 @@ fn CreateNotice(
 #[component]
 fn DraftListView(
     pages: RwSignal<crate::draft_list::paging::DraftPages>,
-    resume: RwSignal<Option<crate::contract::DraftCard>>,
+    first_use: Signal<bool>,
+    creation: RwSignal<CreateState>,
+    can_create: Signal<bool>,
+    create: Callback<()>,
     query: RwSignal<String>,
     sort: RwSignal<DraftSort>,
     composing: RwSignal<bool>,
@@ -486,9 +455,6 @@ fn DraftListView(
 ) -> impl IntoView {
     let invalid_page = move || page_error.with(|e| matches!(e, Some(ApiError::Invalid { .. })));
     view! {
-        <section id="resume" class="vk-resume" aria-labelledby="resume-label" data-testid="draft-resume">
-            {move || resume.get().map(|newest| view! { <DraftResume draft=adapters::draft_summary(&newest) /> })}
-        </section>
         <section id="drafts" class="vk-draft-list" aria-labelledby="draft-list-title">
             <Heading id="draft-list-title" level=HeadingLevel::H2 role=TypeRole::Title attr:tabindex="-1">"Bản thảo"</Heading>
             <div class="vk-draft-controls">
@@ -523,7 +489,14 @@ fn DraftListView(
             <Show when=move || restarted.get()>
                 <p class="vk-muted" data-testid="draft-chain-restarted">"Đã tải lại từ đầu. Bạn có thể tải tiếp các bản thảo phía sau."</p>
             </Show>
-            <Show when=move || !loading.get() && load_error.get().is_none() && pages.with(|p| p.loaded && p.drafts.is_empty())>
+            <Show when=move || first_use.get()>
+                <div class="vk-desk-empty" data-testid="draft-empty">
+                    <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::FirstUse), title: "Bắt đầu một bản thảo".into(), message: "Một trang dành riêng cho những điều bạn muốn viết.".into(), actions: vec![], code: None }>
+                        <CreateDraftButton creation can_create create first=true />
+                    </StatePanel>
+                </div>
+            </Show>
+            <Show when=move || !loading.get() && !first_use.get() && load_error.get().is_none() && pages.with(|p| p.loaded && p.part == 1 && p.drafts.is_empty())>
                 <div data-testid="draft-no-results">
                     <StatePanel content=PanelContent { kind: PanelKind::Empty(EmptyKind::NoResults), title: "Không tìm thấy bản thảo.".into(), message: "Thử tiêu đề khác hoặc xóa tìm kiếm.".into(), actions: vec![], code: None }>
                         <Button variant=ButtonVariant::Filled id="clear-draft-search" on_press=move |_| clear.run(())>"Xem tất cả bản thảo"</Button>
@@ -555,7 +528,7 @@ fn DraftListView(
                         {move || if appending.get() { "Đang tải…" } else if page_error.get().is_some() { "Thử tải thêm" } else if pages.with(|p| p.next_part()) { "Xem phần tiếp theo" } else { "Tải thêm" }}
                     </Button>
                 </Show>
-                <Show when=move || pages.with(|p| p.loaded && p.chain.next_cursor.is_none() && !p.drafts.is_empty()) && !loading.get() && load_error.get().is_none()>
+                <Show when=move || pages.with(|p| p.loaded && p.chain.next_cursor.is_none() && (!p.drafts.is_empty() || p.part > 1)) && !loading.get() && load_error.get().is_none()>
                     <p id="draft-end" class="vk-muted">"Đã xem hết kết quả."</p>
                 </Show>
                 <Show when=move || pages.with(|p| p.part > 1)>

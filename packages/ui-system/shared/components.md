@@ -183,8 +183,8 @@ chặn/chưa rõ, phát lại đúng trạng thái đang hiện, hoặc uncertai
 - **Dấu chọn chỉ sau xác nhận.** Không có chữ “Đã ghi nhận” sau click; ✓ + container tonal chỉ khi
   owner trả `On`. Hai cue (hình dấu + màu), forced-colors giữ viền và dấu.
 - **Tên truy cập theo hành động** (theo copy #73): `label` khi chưa bật/chưa rõ, `selected_name`
-  (ví dụ “Bỏ đánh giá cao”) khi đã xác nhận Bật; tên phải chứa chữ của nhãn (WCAG 2.5.3). Không
-  dùng thêm `aria-pressed` để tránh đọc “Bỏ đánh giá cao, đã nhấn”. Web: `aria-label` + `aria-describedby`
+  (ví dụ “Bỏ Thấm”) khi đã xác nhận Bật; tên phải chứa chữ của nhãn (WCAG 2.5.3). Không
+  dùng thêm `aria-pressed` để tránh đọc “Bỏ Thấm, đã nhấn”. Web: `aria-label` + `aria-describedby`
   tới `{id}-count {id}-note`; `aria-disabled`/`aria-busy` giữ focus. CMP: một node `Role.Button`,
   `contentDescription` = tên + số đếm, `stateDescription` = ghi chú; chặn dùng `enabled = false`.
 - **Quiet, borderless:** recipe `action.toggle.content` trên nền trong suốt, `selected-container`/

@@ -457,7 +457,6 @@ a {
 }
 .vk-desk-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vk-space-3); margin-block: var(--vk-space-4) var(--vk-space-6); }
 .vk-desk--index #desk-title { font-family: var(--vk-font-ui); font-size: var(--vk-type-headline-size); font-weight: var(--vk-type-headline-weight); }
-.vk-resume { margin-bottom: var(--vk-space-6); }
 .vk-draft-list { display: grid; gap: var(--vk-space-3); min-width: 0; }
 .vk-draft-list > .vk-ui-heading { font-family: var(--vk-font-ui); font-size: var(--vk-type-body-size); font-weight: var(--vk-type-title-weight); }
 .vk-draft-controls { display: grid; gap: var(--vk-space-3); min-inline-size: 0; }

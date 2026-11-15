@@ -58,12 +58,12 @@ class VinkToggleTest {
 
     @Test
     fun copyNamesFollowTheConfirmedValueAndBlankReasonsShowNothing() {
-        val copy = ToggleCopy("Đánh giá cao", "Bỏ đánh giá cao", countUnit = "lượt đánh giá cao")
-        assertEquals("Đánh giá cao", copy.name(false))
-        assertEquals("Đánh giá cao", copy.name(null))
-        assertEquals("Bỏ đánh giá cao", copy.name(true))
-        assertEquals("1.234 lượt đánh giá cao", copy.countDescription(CountFact.Known(1234)))
-        assertEquals("lượt đánh giá cao: chưa có số liệu", copy.countDescription(CountFact.Unavailable))
+        val copy = ToggleCopy("Thấm", "Bỏ Thấm", countUnit = "lượt Thấm")
+        assertEquals("Thấm", copy.name(false))
+        assertEquals("Thấm", copy.name(null))
+        assertEquals("Bỏ Thấm", copy.name(true))
+        assertEquals("1.234 lượt Thấm", copy.countDescription(CountFact.Known(1234)))
+        assertEquals("lượt Thấm: chưa có số liệu", copy.countDescription(CountFact.Unavailable))
         assertNull(copy.countDescription(CountFact.Hidden))
         assertNull(copy.note(ToggleNote.Blocked, "  "))
         assertEquals("Lý do", copy.note(ToggleNote.Blocked, "Lý do"))

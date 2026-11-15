@@ -43,7 +43,7 @@ those registries rather than duplicating long status narratives across skills.
   with accepted-order fencing, exact receipts, checked counts, Quint (`verify discussion`) and Kani
   harnesses ([policy](docs/architecture/literary-endorsement.md),
   [core registry](docs/development/endorsement-core.md)); PostgreSQL/HTTP API v1 and Web reader
-  adapter (“Đánh giá cao” / “Hữu ích”, Pen Flight R2 A · Mềm, no optimistic state) are implemented
+  adapter (“Thấm” / “Hữu ích”, Pen Flight R2 A · Mềm, no optimistic state) are implemented
   ([runtime](docs/development/literary-endorsement-runtime.md)). No native consumer, voter list or
   live ranking exists.
 - **Work taxonomy and discovery (`domain::taxonomy`, `domain::discovery`, #95–#100):** curated

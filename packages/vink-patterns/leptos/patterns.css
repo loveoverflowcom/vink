@@ -180,3 +180,8 @@
 .vk-feedback-composer--tonal .vk-ui-input--area { padding-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__label { margin-inline: 0; }
 .vk-feedback-composer--tonal .vk-ui-field__control:has(> .vk-ui-input:focus) { outline-offset: 4px; }
+
+/* #213: compact rows retain the full Unicode title and expand for deliberate inspection.
+   The link remains the sole target; touch follows it to the complete title in the editor. */
+.vk-draft-row__title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.vk-draft-row__link:is(:focus, :hover) .vk-draft-row__title { display: block; -webkit-line-clamp: unset; overflow: visible; }
