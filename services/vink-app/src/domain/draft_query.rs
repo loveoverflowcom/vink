@@ -94,6 +94,34 @@ impl DraftSearch {
         limit: Option<&str>,
         cursor: Option<&str>,
     ) -> Result<Self, DraftQueryError> {
+        Self::parse_scoped(owner, query, sort, limit, cursor, b"vink-private-drafts-v1")
+    }
+
+    pub fn parse_author_works(
+        owner: PrincipalId,
+        query: &str,
+        sort: Option<&str>,
+        limit: Option<&str>,
+        cursor: Option<&str>,
+    ) -> Result<Self, DraftQueryError> {
+        Self::parse_scoped(
+            owner,
+            query,
+            sort,
+            limit,
+            cursor,
+            b"vink-private-author-works-v1",
+        )
+    }
+
+    fn parse_scoped(
+        owner: PrincipalId,
+        query: &str,
+        sort: Option<&str>,
+        limit: Option<&str>,
+        cursor: Option<&str>,
+        namespace: &[u8],
+    ) -> Result<Self, DraftQueryError> {
         if query.len() > MAX_QUERY_BYTES
             || query.contains('\0')
             || query.nfc().count() > MAX_QUERY_CHARS
@@ -116,7 +144,7 @@ impl DraftSearch {
             _ => return Err(DraftQueryError::Limit),
         };
         let mut digest = Sha256::new();
-        digest.update(b"vink-private-drafts-v1");
+        digest.update(namespace);
         digest.update(owner.as_uuid().as_bytes());
         digest.update([sort as u8, size as u8]);
         digest.update(query_key.as_bytes());
@@ -201,15 +229,19 @@ impl DraftSearch {
     }
 
     fn cursor(&self, last: &DraftSummary) -> String {
+        self.cursor_after(last.work_id, last.title.as_str(), last.updated_at)
+    }
+
+    pub fn cursor_after(&self, work_id: WorkId, title: &str, updated_at: OffsetDateTime) -> String {
         let mut bytes = vec![1];
         bytes.extend_from_slice(&self.scope);
-        bytes.extend_from_slice(last.work_id.as_uuid().as_bytes());
+        bytes.extend_from_slice(work_id.as_uuid().as_bytes());
         bytes.push(self.sort as u8);
         match self.sort {
             DraftSort::Recent => bytes.extend_from_slice(
-                &((last.updated_at.unix_timestamp_nanos() / 1000) as i64).to_be_bytes(),
+                &((updated_at.unix_timestamp_nanos() / 1000) as i64).to_be_bytes(),
             ),
-            DraftSort::Title => bytes.extend_from_slice(title_key(last.title.as_str()).as_bytes()),
+            DraftSort::Title => bytes.extend_from_slice(title_key(title).as_bytes()),
         }
         bytes.iter().map(|b| format!("{b:02x}")).collect()
     }

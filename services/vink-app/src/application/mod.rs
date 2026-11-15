@@ -3,6 +3,7 @@
 
 pub mod abuse;
 pub mod account;
+pub mod author_works;
 pub mod catalog;
 pub mod discovery;
 pub mod discussion;

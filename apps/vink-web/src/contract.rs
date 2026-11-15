@@ -6,6 +6,7 @@
 //! strings: the browser displays and echoes them, it does not interpret them.
 
 use serde::{Deserialize, Serialize};
+pub mod author_works;
 pub mod moderation;
 pub mod publication;
 

@@ -134,7 +134,7 @@ class ListGate {
     this.listener = (message) => {
       if (message.sessionId !== page.sessionId || message.method !== 'Fetch.requestPaused') return;
       const { requestId, request, responseStatusCode } = message.params;
-      const list = request.method === 'GET' && new URL(request.url).pathname === '/api/v1/drafts';
+      const list = request.method === 'GET' && new URL(request.url).pathname === '/api/v1/author/works';
       if (list && !this.first) this.first = { requestId, status: responseStatusCode };
       else {
         if (list) this.passed += 1;
@@ -145,7 +145,7 @@ class ListGate {
 
   async enable() {
     this.page.cdp.listeners.push(this.listener);
-    await this.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/drafts*', requestStage: 'Response' }] });
+    await this.page.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/author/works*', requestStage: 'Response' }] });
   }
 
   async held() {
