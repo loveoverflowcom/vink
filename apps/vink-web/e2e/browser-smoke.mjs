@@ -1008,7 +1008,7 @@ async function cacheFirstPublicReads(page) {
     await settled('#reader-freshness', 'Reader restored online');
     await page.click('#reader-return');
     await page.waitFor(`location.pathname === '/' && document.querySelector('.vk-public-row__link')`, 'back to Explore');
-    await settled('#public-freshness', 'Explore snapshot confirmed before the removal race');
+    await settled('#public-collection', 'Explore snapshot confirmed before the removal race');
 
     // Reader: a changed representation is offered, never swapped mid-reading; a 404 removes it.
     await page.click('.vk-public-row__link');
