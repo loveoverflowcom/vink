@@ -3468,7 +3468,16 @@ async function editorChrome(page) {
   // CodeMirror schedules selection scrolling after resize. Observe the resulting geometry,
   // without scrolling/focusing on the test's behalf or weakening the viewport bounds.
   const mobileCaretReady = `(() => { if (!document.activeElement?.matches('.cm-content') || !getSelection()?.rangeCount) return false; const r = getSelection().getRangeAt(0).getBoundingClientRect(); return getComputedStyle(document.querySelector('#editor-toolbar')).position === 'static' && r.top >= 0 && r.bottom <= innerHeight; })()`;
-  await page.waitFor(mobileCaretReady, 'reduced mobile viewport keeps the active caret visible without fixed controls', 2000);
+  try {
+    await page.waitFor(mobileCaretReady, 'reduced mobile viewport keeps the active caret visible without fixed controls', 2000);
+  } catch (error) {
+    console.error('mobile caret geometry:', await page.eval(`(() => {
+      const selection=getSelection(), range=selection?.rangeCount ? selection.getRangeAt(0).getBoundingClientRect() : null;
+      return {active:document.activeElement?.className, range:range?.toJSON(), height:innerHeight, scrollY, toolbar:getComputedStyle(document.querySelector('#editor-toolbar')).position};
+    })()`));
+    await page.capture('editor-short-mobile-caret-failed', {scenario:'existing-editor-resize-caret-regression',boundary:'Chrome-CDP-geometry'});
+    throw error;
+  }
   await editorLayoutReady(page);
   check(await page.eval(mobileCaretReady), 'reduced mobile viewport keeps the active caret visible without fixed controls');
   await page.capture('editor-short-mobile-390');
