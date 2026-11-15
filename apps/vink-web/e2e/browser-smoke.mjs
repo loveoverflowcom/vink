@@ -1565,6 +1565,39 @@ async function preferenceSurfaces(page) {
   await page.waitFor(`document.documentElement.dataset.hydrated === 'true'`, 'hydration restored after the native build detail');
 }
 
+async function shortAppearanceStart(page) {
+  for (const height of [320, 280]) {
+    await page.viewport(834, height);
+    await openProfile(page);
+    const opened = await page.eval(`(() => {
+      const panel = document.querySelector('#profile-menu');
+      const { top, bottom } = panel.getBoundingClientRect();
+      const visible = selector => {
+        const r = panel.querySelector(selector).getBoundingClientRect();
+        return r.top >= top && r.bottom <= bottom;
+      };
+      return { scrollTop: panel.scrollTop, title: visible('#profile-title'),
+        close: visible('#profile-close'), focused: document.activeElement.id };
+    })()`);
+    check(opened.scrollTop <= 1 && opened.title && opened.close && opened.focused === 'profile-close',
+      `834×${height}/200%: opening keeps the title and focused Close visible ${JSON.stringify(opened)}`);
+    await page.capture(`account-overlay-834-${height}-compact-dark-text200-start`);
+    await page.key('Tab');
+    check(await page.eval(`(() => {
+      const choice = document.querySelector('#overlay-theme input[value=dark]:checked');
+      if (document.activeElement !== choice) return false;
+      const r = choice.getBoundingClientRect();
+      const panel = document.querySelector('#profile-menu').getBoundingClientRect();
+      return r.top >= panel.top && r.bottom <= panel.bottom &&
+        choice === document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    })()`), `834×${height}/200%: Tab reveals and focuses the selected radio`);
+    await page.key('Escape');
+    check(await page.eval(`!${PROFILE_OPEN} && document.activeElement.id === 'profile-trigger'`),
+      `834×${height}/200%: Escape returns focus to Tôi`);
+  }
+  await page.viewport(834, 360);
+}
+
 async function accountAppearance(page) {
   console.log('shared account presentation and bounded appearance overlay:');
   await page.viewport(1440);
@@ -1737,6 +1770,8 @@ async function accountAppearance(page) {
       }
     }
   }
+  // The matrix ends on the compact rail, dark theme and 200% text.
+  await shortAppearanceStart(page);
   await openProfile(page);
   await chooseTextSize(page, 100, 'overlay-text');
   await page.key('Escape');
