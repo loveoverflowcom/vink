@@ -424,8 +424,11 @@ async function discussionSessionRaces(other, ctx, mailA, mailB, openPage, check)
     await reader.send('Fetch.enable', {patterns:[{urlPattern:`*${endpoint}/me*`, requestStage:'Response'},{urlPattern:`*${endpoint}/public*`, requestStage:'Response'}]});
   };
   await gate.enable();
-  await reader.click('#discussion-refresh');
+  // Own refresh is an independent intent. Hold it first, then the public refresh whose
+  // successful head normally schedules own reconciliation against the new public IDs.
+  await reader.click('#own-comments-refresh');
   await gate.held();
+  await reader.click('#discussion-refresh');
   const publicDeadline = Date.now()+10000;
   while (!gate.publicFirst) { if (Date.now()>publicDeadline) throw new Error('held public response missing'); await sleep(30); }
   await select(cookieB); // Direct A → B; no anonymous observation in between.
