@@ -954,6 +954,10 @@ async function cacheFirstPublicReads(page) {
     await page.waitFor(`document.activeElement?.id === 'noi-dung'`, 'focus moves to the content start after applying');
 
     fixtures.set(publicationPath, { status: 404, body: { error: { code: 'not_found' } } });
+    // Both public projections must agree while removed. A fresh Published /reader response
+    // is authoritative recovery, so do not leave that route serving the real published fixture.
+    const readerPath = `/api/v1/works/${SAMPLE_WORK}/reader`;
+    fixtures.set(readerPath, { status: 404, body: { error: { code: 'not_found' } } });
     await advance(121);
     await signals(['focus']);
     await page.waitFor(`document.querySelector('h1')?.textContent === 'Không tìm thấy trang này.'`, 'authoritative removal');
@@ -967,6 +971,7 @@ async function cacheFirstPublicReads(page) {
     check(held.length === 1, 'returning with a stale list sends one revalidation');
     fixtures.delete(worksPath);
     fixtures.delete(publicationPath);
+    fixtures.delete(readerPath);
     await page.send('Fetch.continueRequest', { requestId: held.pop() });
     await page.waitFor(`document.querySelector('a[href^="/tac-pham/${SAMPLE_WORK}"]')`, 'origin list restores the card');
     check(true, 'the origin’s list, not the derived preview, decides membership once it answers');
