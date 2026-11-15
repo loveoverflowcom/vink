@@ -5,6 +5,8 @@
 .vk-work-byline .vk-ui-avatar { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
 .vk-work-byline .vk-ui-byline__text { grid-column: 2; grid-row: 1; align-self: end; }
 .vk-work-byline__date { grid-column: 2; grid-row: 2; align-self: start; color: var(--vk-on-surface-variant); font-size: var(--vk-type-caption-size); line-height: var(--vk-type-caption-line-height); }
+/* Keep the semantic time element at the full date-track measure after localization. */
+.vk-work-byline__date > time { display: block; }
 /* At narrow relative measures, give the name and date the width occupied by the avatar track. */
 @container vk-work-byline (max-width: 14rem) {
   .vk-work-byline .vk-ui-avatar { grid-row: 1; margin-block-end: min(var(--vk-space-1), 4px); }
