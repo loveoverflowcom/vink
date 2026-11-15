@@ -95,8 +95,8 @@ theo tài khoản. #203 bổ sung adapter IndexedDB và seam clear bất đồng
    15 phút cho lần mount mới. Giá trị 15 phút là giả định `OPEN` cần chủ sản phẩm chốt.
 2. **Rút bài đa thiết bị:** tab khác / thiết bị khác vẫn chỉ nhận ra bản bị gỡ ở lần revalidate/mở
    lại tiếp theo (404 / `reader`), trừ khi chính tab đó thực hiện mutation hoặc mở `/works/{id}`.
-3. **Offline full-text** và lưu bền: chưa làm; cần quyết định riêng (account clearing, thiết bị
-   dùng chung, migration schema).
+3. **Offline full-text:** chưa bật. Adapter lưu bền, migration và kiểm thử thuộc [#203](#indexeddb-203);
+   proposal 24 giờ đã ghi, còn policy account clearing/thiết bị dùng chung và UX hết hạn trước rollout.
 
 ## Ranh giới race và an toàn
 
@@ -508,15 +508,48 @@ Không chạy hai lần khi chọn cả `main` và `storage`. Fixture toàn bộ
 
 | AC | Owner/assertion | Kết quả / giới hạn |
 | --- | --- | --- |
-| AC-01 | Envelope Rust + strict JS; reject nested token/private/control, origin/key mismatch; hydration bình thường không mở IDB | Chờ ghi kết quả final |
-| AC-02 | Whole-page transaction; abort thật sau request success giữ data/cursor trước đó và không ACK | Chờ ghi kết quả final |
-| AC-03 | Chrome quota override thật; injection `IDBFactory.open` ném SecurityError; corruption, blocked/versionchange/eviction | Chờ ghi kết quả final; denial là API fault injection trong Chrome, không phải cấu hình policy OS |
-| AC-04 | Hai tab không BroadcastChannel, A frozen → B purge/clear → A active; old write/restore lease bị từ chối | Chờ ghi kết quả final; chỉ boundary chạy lại, không hứa immediate revocation offline |
-| AC-05 | Rust restore vs SSR/network/removal/clear, wall age/rollback; kill Chrome và mở lại cùng profile | Chờ ghi kết quả final |
-| AC-06 | Corpus 40 public envelopes; logical bytes/rows; queue overflow/coalesce; whole-page deletion | Chờ số đo final |
-| AC-07 | V1→V2 discard; abort upgrade rollback; blocked old connection; V3 làm old app đóng và fallback; sentinel namespace khác giữ nguyên | Chờ ghi kết quả final |
+| AC-01 | Envelope Rust + strict JS; reject nested token/private/control, origin/key mismatch; hydration bình thường không mở IDB | **PASS** unit/contract + Chrome `storage`; chỉ hai public representations, production gate tắt |
+| AC-02 | Whole-page transaction; abort thật sau request success giữ data/cursor trước đó và không ACK | **PASS** unit decode + transaction IndexedDB thật; ACK chỉ sau `oncomplete` |
+| AC-03 | Chrome quota override thật; injection `IDBFactory.open` ném SecurityError; corruption, blocked/versionchange/eviction | **PASS** Chrome `storage`; denial là API fault injection trong Chrome, không phải cấu hình policy OS; lỗi lease trả unavailable, không thu hồi online snapshot như một barrier |
+| AC-04 | Hai tab không BroadcastChannel, A frozen → B purge/clear → A active; old write/restore lease bị từ chối | **PASS** unit owner + Chrome `storage`; chỉ boundary chạy lại, không hứa immediate revocation offline |
+| AC-05 | Rust restore vs SSR/network/removal/clear, wall age/rollback; kill Chrome và mở lại cùng profile | **PASS** unit owner/age + Chrome `storage`; giữ nguyên envelope và `validated_at_ms` qua process restart |
+| AC-06 | Corpus 40 public envelopes; logical bytes/rows; queue overflow/coalesce; whole-page deletion | **PASS** Chrome `storage`: corpus nhỏ còn **32 row**; corpus lớn còn **18 row / 4.059.846 byte logical UTF-8**, dưới 4 MiB; queue tối đa 8 pending + 1 executing |
+| AC-07 | V1→V2 discard; abort upgrade rollback; blocked old connection; V3 làm old app đóng và fallback; sentinel namespace khác giữ nguyên | **PASS** Chrome `storage`; không downgrade/reset DB version mới hoặc xóa storage riêng |
 | AC-08 | Proposal 24h/tín hiệu expired đã ghi; POLICY-02 OPEN; ENABLED false, display policy None | **OPEN rollout**; chưa signoff revision, chưa UX expiry/logout |
-| AC-09 | Shared JS transitions Memory/NoOp/IndexedDB; Rust owner suite Memory/NoOp + browser IDB + build hydrate | Chờ ghi kết quả final; chưa bật composition persistent offline UI, chưa SW/cold launch |
+| AC-09 | Shared JS transitions Memory/NoOp/IndexedDB; Rust owner suite Memory/NoOp + browser IDB + build hydrate | **PASS** tại boundary adapter/owner; chưa bật composition persistent offline UI, chưa SW/cold launch |
 
 Không đổi visual/interaction UI; không thêm LayoutSpec hoặc CTA. Bằng chứng main là regression
 UI hiện hữu; không coi ảnh source baseline là approved reference. Không chạy GitHub CI.
+
+### Lần chạy cuối #203 — 15/11/2026
+
+Source triển khai chốt tại `4e68bd861b8b2a1bc090b3d6bf975597a1c227e7`, sau commit adapter
+`92d6dcbcb64e813d38ebc64c8e11ff3b1ffb6000`; cập nhật evidence sau đó chỉ sửa tài liệu.
+CWD `/Users/manhblue/projects/loveoverflow/vink`. Môi trường macOS, Rust 1.99.1,
+wasm-bindgen 0.2.129, Node 22.15.0, Chrome 157.0.8103.78, PostgreSQL 17.11 Homebrew.
+Mọi lệnh cargo dùng `CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0`.
+Lệnh Web còn dùng `VINK_CHROME='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'`
+và `VINK_TEST_DATABASE_URL='postgres://vink@127.0.0.1:55441/postgres'`, cluster local tạm của
+phiên này; runner sở hữu App scratch. Fixture IDB hoàn toàn tổng hợp.
+
+| Command / source | Kết quả và boundary |
+| --- | --- |
+| `cargo xtask verify quick` tại `4e68bd8` | **PASS toàn lane**: fmt, clippy server/browser/preview, doctest, unit/contract (223 Web tests), repository checks. Log `target/issue203/quick-final.log`. |
+| `cargo xtask verify web --scenario storage` tại `4e68bd8` | **PASS toàn command được chọn**, gồm bundle hydrate, app thật, transaction/quota/2-tab/migration/kill-reopen Chrome và gate tắt. Log `target/issue203/storage-final.log`; artifacts `target/verify-web/1794751985141800000-49566`. Không phải full Web lane. |
+| `cargo xtask verify web --scenario main` tại `92d6dcb` | **FAIL** assertion `reduced mobile viewport keeps the active caret visible without fixed controls`. Đã mở `failure.png`; chưa xác định nguyên nhân, không claim lỗi có sẵn hoặc đã sửa. Log `target/issue203/main-first.log`; artifacts `target/verify-web/1794751243577030000-35249`. |
+| `cargo xtask verify web --scenario main` tại `4e68bd8` | **FAIL** assertion `forced-colors retains selected check and keyboard focus; reduced-motion reduces transitions below 1ms`. Không console errors; chưa xác định nguyên nhân. Log `target/issue203/main-final.log`; artifacts `target/verify-web/1794751830918526000-45421`. Các bước sau **NOT_RUN**. |
+
+Cả hai lần `main` dừng trước bộ storage ở cuối; kết quả storage đến từ command chọn riêng ở trên.
+Không đổi/bỏ assertion UI để làm xanh. Không sửa SQL/API; full `postgres`, full Web, OS IME thật
+và trình duyệt khác **NOT_RUN**. GitHub CI không đọc/chờ/poll/rerun. Trước bật rollout cần
+exact-revision signoff, chốt POLICY-02 và UX expired, sau đó kiểm composition persistent offline
+UI thực tế; issue #204 còn sở hữu app shell/cold launch. Lỗi `main` cần điều tra ở các assertion
+được nêu, không coi PASS của adapter thay cho regression UI.
+
+| Chiều UX | Kết quả và giới hạn #203 |
+| --- | --- |
+| Functional | **PASS** quick + storage tại boundary adapter; toàn scenario `main` **FAIL**, persistent offline UI **NOT_RUN** vì gate tắt. |
+| Geometry | **FAIL** assertion caret khi giảm viewport ở lần `main` đầu; chưa xác định nguyên nhân. |
+| Visual | Không đổi visual; ảnh `failure.png` lần đầu đã mở để chẩn đoán, không phải approved reference; fidelity mới **NOT_RUN**. |
+| Accessibility/Responsive | **FAIL** assertion gộp forced-colors/focus/reduced-motion ở lần `main` cuối; chưa tách nguyên nhân thành phần. Screen reader/OS IME **NOT_RUN**. |
+| Interaction | **PASS** hai tab và restart Chrome ở adapter; composition offline UI và suspend/resume thiết bị thật **NOT_RUN**. |
