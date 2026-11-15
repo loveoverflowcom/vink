@@ -121,7 +121,9 @@ pub(crate) fn AdaptiveShell(children: Children) -> impl IntoView {
         {
             page_scroll.set_value(window().scroll_y().unwrap_or_default());
             if dialog.show_modal().is_ok() {
-                // Focus the selected appearance choice, not an unrelated action.
+                // A previous session may have scrolled to the destination action.
+                dialog.set_scroll_top(0);
+                // Start keyboard traversal at the selected appearance choice.
                 use wasm_bindgen::JsCast;
                 if let Ok(Some(input)) = dialog.query_selector("input:checked")
                     && let Ok(input) = input.dyn_into::<web_sys::HtmlElement>()

@@ -228,10 +228,10 @@ dấu câu đứng riêng); không có tên thật thì trả dấu trung tính.
 - Dưới 760px rail ẩn và bottom bar có ba đích. Editor ẩn bottom bar,
   giữ đường Về Bàn viết hiện có. `ResizeObserver` đo chiều cao bar (gồm safe area) để dành đáy,
   cả khi tăng chữ 200%; không dùng chiều cao cứng làm khoảng bù.
-- Web R2.2 dùng cùng ba nhóm radio ở `/toi` và panel **Giao diện**. Nhãn có icon và lựa chọn
-  bo tròn có dấu ✓. Trang có thẻ **Tài khoản** và minh họa sách–bút. Khi đủ rộng, tên nhóm đứng
-  cạnh các lựa chọn. Màn hẹp và chữ lớn cho phép các lựa chọn xuống dòng. Mobile dùng đích Tôi
-  trên thanh dưới để tới `/toi`.
+- [Giao diện R1 (#209)](me-preferences-r1-209.md) dùng cùng ba nhóm radio ở `/toi` và panel
+  **Giao diện**. Tên nhóm đứng trên lựa chọn. Các lựa chọn tự xuống dòng theo độ rộng nhãn,
+  với nền tonal và dấu check cho mục đã chọn. Trang có thẻ **Tài khoản** và minh họa sách–bút.
+  Mobile dùng đích Tôi trên thanh dưới để tới `/toi`.
 - Rail, thanh dưới và thẻ **Tài khoản** dùng chữ viết tắt của bút danh từ phiên hiện tại. Sau
   hydration, Web gọi `GET /api/v1/auth/session/account` (`no-store`) và kiểm lại khi cửa sổ nhận
   focus. SSR và phiên chưa có bút danh dùng dấu gạch trung tính. Bút danh của LocalFixture thuộc

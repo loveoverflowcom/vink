@@ -12,6 +12,15 @@ Ngày 03/11/2026 (UTC+07), nền `develop@204d319` (UIS-05/#36 đã merge), nhá
 `codex/ui-system-qualification`. Phạm vi #24; requirement liên quan UX-01/UX-03, WR-01/WR-03
 chỉ được giữ qua regressions hiện có, không nghiệm thu toàn MVP hay D-xx.
 
+
+## Giao diện R1 cho panel và trang Tôi
+
+[#209](https://github.com/loveoverflowcom/vink/issues/209) áp dụng
+[LayoutSpec R1](../design/me-preferences-r1-209.md) cho hai consumer Web của
+`AppearanceChoices`. Môi trường là macOS arm64, Chrome 157.0.8103.78 headless,
+DPR 1, font Be Vietnam Pro tự host và PostgreSQL 17 scratch. Dữ liệu LocalFixture
+thuộc repository.
+
 ## Owner và delta
 
 `shared/tokens.json` 0.4.0 không đổi giá trị; catalog 0.5.1 thêm lý do Web không có diagnostic
