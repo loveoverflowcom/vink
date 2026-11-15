@@ -23,7 +23,8 @@ Screen /toi — đích Tôi của thanh điều hướng mobile
 - Hai bề mặt dùng cùng CSS trong [vink.css](../../apps/vink-web/style/vink.css)
   và cùng [AppearanceChoices](../../apps/vink-web/src/appearance.rs). Nền chính
   `surface-container-high`, radius 28 px, một gutter 24 px ở 100% và tối đa 32 px ở
-  200% để dành vùng nhìn cho tiêu đề và radio đầu tiên. Gap giữa nhóm 24 px, từ nhãn tới lựa chọn và giữa lựa chọn 8 px ở 100%.
+  200% để dành vùng nhìn cho tiêu đề và radio màu đang chọn. Gap giữa nhóm 24 px,
+  từ nhãn tới lựa chọn và giữa lựa chọn 8 px ở 100%.
   Khoảng giữa nhóm do gap sở hữu. Vùng chạm tối thiểu 48 × 48 CSS px, cao theo chữ.
 - Lựa chọn idle dùng `surface-container-low/on-surface`. Checked dùng
   `primary-container/on-primary-container` và dấu check có chỗ dành sẵn.

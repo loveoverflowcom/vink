@@ -1,6 +1,7 @@
 # UIS-06 — quality gates, replay và diagnostic hosts
 
 Bổ sung hiện hành sau UIS-06:
+- [#209 — Giao diện R1 cho panel và trang Tôi](#giao-diện-r1-cho-panel-và-trang-tôi) đo và chụp ma trận Web của hai nơi đổi tùy chọn.
 - [#208 — Chuẩn hóa anatomy/gutter và phân cấp hành động Dialog Editor (R1)](../design/dialog-anatomy-r1-208.md) bổ sung `ButtonVariant::DangerText`, `Dialog` `context: Option<Signal<String>>` / `secondary_actions` và xóa CSS vá dialog ở app; chỉ chạy kiểm Web (`verify web --scenario main`, `ui-preview leptos verify`, `verify quick` không tính pre-existing check trên `test-vps-deployment-guide.md`), còn runtime native CMP/Android/iOS là `NOT_RUN`.
 [UI-REPAIR-06/07](../design/ui-repair-06-07.md) ghi requalification của optional
 StatePanel action slot (common/Desktop + native compile/runtime), capture focus
@@ -11,15 +12,6 @@ sử theo revision đã ghi; không thay chúng bằng PASS của lượt mới.
 Ngày 03/11/2026 (UTC+07), nền `develop@204d319` (UIS-05/#36 đã merge), nhánh
 `codex/ui-system-qualification`. Phạm vi #24; requirement liên quan UX-01/UX-03, WR-01/WR-03
 chỉ được giữ qua regressions hiện có, không nghiệm thu toàn MVP hay D-xx.
-
-
-## Giao diện R1 cho panel và trang Tôi
-
-[#209](https://github.com/loveoverflowcom/vink/issues/209) áp dụng
-[LayoutSpec R1](../design/me-preferences-r1-209.md) cho hai consumer Web của
-`AppearanceChoices`. Môi trường là macOS arm64, Chrome 157.0.8103.78 headless,
-DPR 1, font Be Vietnam Pro tự host và PostgreSQL 17 scratch. Dữ liệu LocalFixture
-thuộc repository.
 
 ## Owner và delta
 
@@ -287,3 +279,41 @@ Pilot ghi nhận hai giới hạn của bằng chứng hiện có, thuộc phạ
 chưa chụp lớp phủ đang mở ở viewport thật hay ở chữ 200%, và sidecar CMP chưa có bounds theo anchor
 hay vị trí con trỏ. PASS của hai lane không bao phủ finding F-01 (dialog Web ở chữ 200% mở ra với
 tiêu đề ngoài vùng nhìn), vốn mới được đo bằng thăm dò thủ công.
+
+## Giao diện R1 cho panel và trang Tôi
+
+[#209](https://github.com/loveoverflowcom/vink/issues/209) áp dụng
+[LayoutSpec R1](../design/me-preferences-r1-209.md) cho hai nơi dùng
+`AppearanceChoices`. Self-review, fidelity `NO_APPROVED_REFERENCE`.
+
+`cargo xtask verify web --scenario main` chạy từ worktree #209 trên macOS 15.6 arm64,
+Chrome 157.0.8103.78 headless/DPR 1, font Be Vietnam Pro tự host, App với LocalFixture
+và PostgreSQL 17.11 scratch. Cùng cấu hình cho build trước sửa
+`ef7da9d1981ef9c0864af8d9c26a8c5b6d919aa3` (source Web sạch) và build sau sửa
+`80a008f44b1005430aaeaa43124bad48b81eebcc` (working tree sạch khi build).
+Build dùng `CARGO_PROFILE_DEV_DEBUG=0`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=6`
+và `VINK_CHROME` trỏ tới Chrome đã ghi. Lượt sau sửa trả exit 0.
+[Số đo, SHA-256 ảnh và run ID](evidence/appearance-r1-209/measurements.json).
+[Trích kết quả của runner](evidence/appearance-r1-209/web-summary.txt).
+
+| Chiều | Bằng chứng trên Chrome cục bộ |
+| --- | --- |
+| Functional | Radio áp dụng ba tùy chọn từ cả hai nơi, nhớ qua reload, theo màu hệ thống và dùng state trong phiên khi storage từ chối. Kiểm bootstrap sáng/tối/hệ thống, radio trước hydration và snapshot rail/text khi storage đổi giữa bootstrap và hydration. |
+| Geometry | 54 ca panel (834/1024/1440, rail thu gọn/mở rộng theo ma trận, cao 360/900) và 36 ca Tôi (320/390/834/1024/1280/1440), chữ 100/200% và sáng/tối/hệ thống. Gutter và khoảng giữa nhóm 24 px, từ nhãn tới lựa chọn và giữa lựa chọn 8 px ở 100%. Gutter 25,6–32 px ở 200%. Vùng chạm đo được tối thiểu 95,25 × 48 CSS px. Kiểm mép vùng trong với dung sai 1 CSS px. |
+| Visual | Đã mở các ảnh trước/sau bên dưới. Cùng thứ tự nhóm, nền chọn dịu hơn và có dấu check. Khoảng trắng thay các divider trên Tôi. Ở 200%, cuộn dọc đưa nút cuối hoặc tùy chọn cuối vào vùng nhìn. |
+| Accessibility/Responsive | AX Chrome thấy tên modal, nút đóng, ba nhóm và tám radio với checked state. Nhãn đủ ở 100/200%. Tương phản chữ đo trong panel tối thiểu 10,84:1 sáng và 8,23:1 tối. Các cặp đo trên Tôi tối thiểu 6,28:1 và 8,23:1. Vòng focus trên nền checked đạt 4,63:1 sáng, 5,93:1 tối và 19,04:1 ở forced colors. |
+| Interaction | Arrow/Space/Tab, Escape, bấm ngoài, Back, đổi route và đổi rail. Tiêu đề thấy ngay khi mở tại 834 × 360/chữ 200%, kiểm hit-test của tám radio, nút đóng và hành động cuối. Trên editor còn chữ chưa lưu, đổi tùy chọn giữ EditorView, Unicode, trạng thái dirty, vùng chọn và undo/redo. Không phát sinh draft write. |
+
+| Ca đã mở kiểm | Trước | Sau |
+| --- | --- | --- |
+| Panel 1440 × 900, rail mở rộng, sáng 100% | [PNG](evidence/appearance-r1-209/before-panel-1440-light-100.png) | [PNG](evidence/appearance-r1-209/after-panel-1440-light-100.png) |
+| Panel 834 × 360, rail thu gọn, tối 200% | [Đầu](evidence/appearance-r1-209/before-panel-834-dark-200.png), [cuối](evidence/appearance-r1-209/before-panel-834-dark-200-end.png) | [Lúc mở](evidence/appearance-r1-209/after-panel-834-dark-200.png), [nút cuối](evidence/appearance-r1-209/after-panel-834-dark-200-end.png), [focus Đóng](evidence/appearance-r1-209/after-panel-834-dark-200-close.png) |
+| Tôi 320 × 900, tối 200% | [PNG](evidence/appearance-r1-209/before-toi-320-dark-200.png) | [PNG](evidence/appearance-r1-209/after-toi-320-dark-200.png) |
+| Tôi 390 × 844 | | [Focus ở sáng 100%](evidence/appearance-r1-209/after-toi-390-light-100-focus.png), [cuối trang ở tối 200%](evidence/appearance-r1-209/after-toi-390-dark-200-end.png) |
+
+Ảnh trước dùng đặt root font qua CDP nên radio cỡ chữ có thể vẫn hiện 100%.
+Ảnh sau của ma trận dùng radio để áp dụng cỡ chữ, rồi mới đo khi transition kết thúc.
+Lượt trước hoàn tất ma trận Giao diện và dừng ở timeout caret mobile trong `editorChrome`.
+
+`NOT_RUN` trên IME của hệ điều hành, zoom trình duyệt, thiết bị và bàn phím mobile thật,
+screen reader có tên, Safari/Firefox và CMP/native. Chữ 200% trong ma trận là tùy chọn Web.
