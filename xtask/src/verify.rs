@@ -104,6 +104,12 @@ fn quick(report: &mut Report) -> bool {
     }) {
         return false;
     }
+    if !report.step(
+        "visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests",
+        || web::visual_evidence_unit_tests(&root),
+    ) {
+        return false;
+    }
     for (name, args) in steps {
         let mut command = cargo(&root);
         command.args(args);
