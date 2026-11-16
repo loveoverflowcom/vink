@@ -467,6 +467,14 @@ qua LocalFixture loopback.
 | Trình duyệt, người đọc (`endorsement`) | `endorsementAsReader` với server thứ ba (principal mẫu thứ hai + grant kiểm duyệt): duyệt gốc + phản hồi, SSR “Hữu ích”, chạm đúp/pending/xác nhận sau ACK, mất ACK sau commit → replay `replayed`, tab khác → `409` hiện trạng thái quan sát, Enter/Space trên phản hồi giữ focus, không cascade, không đổi thứ tự, số trong PostgreSQL, ma trận 320–1440 sáng/tối + 200%, own read `401` → lý do đăng nhập | Interception chỉ giữ/bỏ phản hồi thật và trả `401` cho own read; không auth production, screen reader thật, native |
 
 
+Delta chuẩn bị #226 (baseline `a81333c`, review trên `11c6a9c`): [LayoutSpec và dependency](../design/action-surfaces-reader-discussion-226.md).
+[reader_actions.rs](../../packages/vink-patterns/leptos/tests/reader_actions.rs) kiểm composition
+giữ confirmed value/count qua phase, lý do block và capability matrix root/reply.
+`endorsementAsReader` bổ sung DOM identity/focus, count không optimistic khi pending/uncertain và
+count không có target con. Đây là coverage baseline; kết quả thực ở
+[evidence #226](evidence/action-surfaces-226/README.md). Contract surface #224 đã có trên develop qua #228; reply glyph vẫn thiếu.
+Presentation #226 (kể cả AC-10 self-view và AC-11 header) chưa triển khai; không suy PASS UI mới từ regression.
+
 ## TAG-PR-01/02/03 — taxonomy core, PostgreSQL và API (#95/#96/#97, 08/11/2026)
 
 Điểm vào là HTTP v1 (đọc catalog công khai; thẻ nháp riêng tư, production `401` tới D-05) và lệnh operator

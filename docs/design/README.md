@@ -42,6 +42,9 @@ Bổ sung [#217 — hợp nhất trạng thái–hành động lưu Bàn viết 
 unified `#save-slot` trong `EditorToolbar`, giữ sự thật hai phần chữ/thẻ, `CHOICE-01 B` (focus
 handoff trong `#save-slot`) và seam bàn giao cho PR 2/2 (#218).
 
+Bổ sung [#226 — Reader/Nhận xét action surfaces](action-surfaces-reader-discussion-226.md):
+LayoutSpec, owner map Web/CMP và seam tiếp tục sau #224; presentation mới chưa triển khai.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |
