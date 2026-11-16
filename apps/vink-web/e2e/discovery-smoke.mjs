@@ -28,6 +28,14 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.viewport(width);
     await page.eval("document.documentElement.dataset.theme=" + JSON.stringify(theme) + "; document.documentElement.style.fontSize=" + JSON.stringify(scale + '%') + "; scrollTo(0,0); document.fonts.ready");
     check(await page.eval("document.documentElement.scrollWidth <= innerWidth"), 'Explore reflows ' + [theme,width,scale].join('/'));
+    if ([320,390,834,1440].includes(width) && !await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0")) {
+      check(await page.eval(`(() => {
+        const button=document.querySelector('#open-tag-filters'), r=button.getBoundingClientRect();
+        return button.type==='button' && button.textContent==='Thẻ' &&
+          !button.hasAttribute('aria-pressed') && !button.querySelector('button,a,input') &&
+          r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth;
+      })()`), '#225 filter launcher keeps one named native target >=48px '+[theme,width,scale].join('/'));
+    }
     check(await page.eval("(() => { const heading=document.querySelector('#explore-heading h1'), walker=document.createTreeWalker(heading,NodeFilter.SHOW_TEXT); for(let node=walker.nextNode();node;node=walker.nextNode()) for(const word of node.textContent.matchAll(/\\S+/g)) { const range=document.createRange(); range.setStart(node,word.index); range.setEnd(node,word.index+word[0].length); const rects=[...range.getClientRects()]; if(rects.some(r=>Math.abs(r.top-rects[0].top)>1)) return false; } return true; })()"), 'Vietnamese heading words remain intact '+[theme,width,scale].join('/'));
 
     const dock = await page.eval("document.querySelector('#tag-dock').getBoundingClientRect().width>0");
@@ -54,22 +62,71 @@ export async function discoveryReading(page, { args, check, textContrast }) {
         `320px / 200% ${theme}: the full-size byline uses the card measure below the avatar (${JSON.stringify(card)})`,
       );
     }
-    if ([390,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
+    if ([320,390,834,1440].includes(width)) await page.capture('discovery-' + [theme,width,scale].join('-'), { boundary: 'real-public-api', scenario: 'TAG-PR-06' });
   }
   await page.viewport(390);
   await page.eval("document.documentElement.style.fontSize='100%'");
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker')?.open && document.querySelector('#modal-tag-form input[type=checkbox]')", 'tag picker');
   const before = await page.eval('location.href');
-  await page.click('#modal-tag-form .vk-discovery-option');
+  check(await page.eval(`(() => {
+    const form=document.querySelector('#modal-tag-form'), apply=form.querySelector('button[type=submit]');
+    return form.method==='get' && form.querySelectorAll('button[type=submit]').length===1 &&
+      apply.textContent==='Áp dụng' && apply.classList.contains('vk-ui-button--tonal') &&
+      !apply.querySelector('button,a,input') && !form.querySelector('[name=cursor]') &&
+      [...form.querySelectorAll('input[type=checkbox]')].every(i=>i.name==='tag' && !!i.labels?.length);
+  })()`), '#225 unchanged Apply stays Tonal; one native GET submit, labelled checkbox choices and no cursor');
+  // Count outside the page: a native GET may replace its Window and erase page globals.
+  let applySubmits = 0;
+  await page.send('Runtime.addBinding', {name:'action225Submit'});
+  const countApply = message => {
+    if (message.sessionId===page.sessionId && message.method==='Runtime.bindingCalled' &&
+        message.params.name==='action225Submit') applySubmits++;
+  };
+  page.cdp.listeners.push(countApply);
+  const choices = await page.eval(`(() => {
+    const form=document.querySelector('#modal-tag-form');
+    window.__action225Choice=form.querySelector('input[type=checkbox]');
+    window.__action225Changes=0; window.__action225Submits=0;
+    form.addEventListener('change',()=>window.__action225Changes++);
+    document.addEventListener('submit',e=>{if(e.target.id==='modal-tag-form'){window.__action225Submits++;window.action225Submit('apply')}},true);
+    return [...form.querySelectorAll('input[type=checkbox]')].slice(0,4).map(i=>i.id);
+  })()`);
+  await page.eval('window.__action225Choice.focus()');
+  await page.key('Space');
+  check(await page.eval(`window.__action225Changes===1 && window.__action225Submits===0 &&
+    window.__action225Choice===document.getElementById(${JSON.stringify(choices[0])}) &&
+    document.querySelector('#modal-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')`),
+    '#225 one Space changes one stable checkbox, never submits; changed Apply is Filled');
   check(await page.eval('location.href') === before, 'draft selection does not change applied URL');
+  check(choices.length===4, '#225 catalog has at least four real choices for the max4 browser check');
+  for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
+  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===4 &&
+    document.querySelectorAll('#modal-tag-form input[type=checkbox]:not(:checked)').length>0 &&
+    [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:not(:checked)')].every(i=>i.disabled) &&
+    [...document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked')].every(i=>!i.disabled)`),
+    '#225 max4 blocks extra choices while selected choices remain removable');
+  for (const id of choices.slice(1)) await page.click('label:has(#'+id+')');
+  await page.click('label:has(#'+choices[0]+')');
+  check(await page.eval(`document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===0 &&
+    document.querySelector('#modal-tag-form button[type=submit]').classList.contains('vk-ui-button--tonal')`),
+    '#225 reverting to the applied set restores Tonal without a submit');
+  await page.click('label:has(#'+choices[0]+')');
   await page.key('Escape');
   await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id === 'open-tag-filters'", 'Escape restores filter trigger');
   await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker').open", 'reopen picker');
-  await page.click('#modal-tag-form button[type=submit]');
+  await page.waitFor("document.querySelector('#tag-picker').open && document.querySelectorAll('#modal-tag-form input[type=checkbox]:checked').length===1 && document.querySelector('#modal-tag-form button[type=submit]')?.classList.contains('vk-ui-button--filled')", 'reopen picker with the refreshed catalog and draft choice ready');
+  await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
+  await page.key('Enter');
   await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('#public-results') && !document.querySelector('#tag-picker').open", 'Apply changes the URL');
+  check(applySubmits===1, '#225 Enter on Apply submits exactly once, including native GET navigation (observed '+applySubmits+')');
+  page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==countApply);
+  await page.send('Runtime.removeBinding', {name:'action225Submit'});
   check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1"), 'applied filter is visible and removable');
+  await page.click('#open-tag-filters');
+  await page.waitFor("document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form button[type=submit]')?.classList.contains('vk-ui-button--tonal')", '#225 applied set is unchanged after navigation');
+  await page.key('Escape');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#225 unchanged filter dismiss restores trigger');
   await page.click('#applied-filters .vk-applied-tag');
   await page.waitFor("!new URL(location.href).searchParams.has('tag') && document.querySelector('.vk-public-row')", 'remove filter');
 
@@ -158,6 +215,14 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const point = await page.eval("(() => { const b=document.querySelector('#public-search button[type=submit]'); b.scrollIntoView(); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
     for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent', {type,...point,button:'left',clickCount:1});
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && document.querySelector('[data-testid=public-no-results]')", 'native GET result');
+    // page.click waits for animation frames; those callbacks do not run with page JS disabled.
+    // Use the same native pointer path as the no-JS search above, without a JS click fallback.
+    for (const selector of ['#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
+      const target = await page.eval(`(() => { const el=document.querySelector(${JSON.stringify(selector)}); el.scrollIntoView(); const r=el.getBoundingClientRect(); const x=r.x+r.width/2,y=r.y+r.height/2; return {x,y,hit:el.contains(document.elementFromPoint(x,y))}; })()`);
+      check(target.hit, '#225 no-JS pointer hits the native filter target '+selector);
+      for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent',{type,x:target.x,y:target.y,button:'left',clickCount:1});
+    }
+    await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && new URL(location.href).searchParams.getAll('tag').length===1 && !new URL(location.href).searchParams.has('cursor')", '#225 no-JS checkbox + Apply preserves q/tag through native GET and resets cursor');
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled',{value:false});
     await page.send('Network.setBlockedURLs',{urls:[]});
@@ -180,6 +245,11 @@ export async function discoveryCorpus(page, { args, check }) {
   await page.click('#public-next');
   await page.waitFor("new URL(location.href).searchParams.has('cursor') && document.querySelectorAll('.vk-public-row').length===2", 'next real page');
   const context = await page.eval('location.pathname+location.search');
+  check(await page.eval("document.querySelector('#public-next')===null && [...document.querySelectorAll('.vk-public-row__link')].every(a=>a.hasAttribute('href'))"), '#225 continuation ends honestly and results remain native links');
+  await page.eval('history.back()');
+  await page.waitFor("!new URL(location.href).searchParams.has('cursor') && document.querySelectorAll('.vk-public-row').length===12", '#225 Back restores filtered first page');
+  await page.eval('history.forward()');
+  await page.waitFor("location.pathname+location.search==="+JSON.stringify(context)+" && document.querySelectorAll('.vk-public-row').length===2", '#225 Forward restores q/tags/cursor and second-page results');
   await page.click('.vk-public-row__link');
   await page.waitFor("document.querySelector('#reader-paper')", 'real fixture reader');
   check(await page.eval("document.querySelector('#reader-return').getAttribute('href').startsWith("+JSON.stringify(context)+")"), 'reader retains query, both tags and opaque cursor');
@@ -189,6 +259,16 @@ export async function discoveryCorpus(page, { args, check }) {
   await page.reload();
   check(await page.eval('location.pathname+location.search')===context, 'reload preserves filtered second-page URL');
   await page.capture('discovery-real-second-page', {boundary:'real-api+SQL-publication-fixture',scenario:'query-tags-pagination-reader-return'});
+  await page.viewport(1440);
+  await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]:checked')", '#225 dock with applied real tags');
+  const appliedChoice = '#dock-tag-form label:has(input[value='+JSON.stringify(form.slug)+'])';
+  await page.click(appliedChoice);
+  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--filled')"), '#225 removing an applied choice makes Apply Filled');
+  await page.click(appliedChoice);
+  check(await page.eval("document.querySelector('#dock-tag-form button[type=submit]').classList.contains('vk-ui-button--tonal') && location.pathname+location.search==="+JSON.stringify(context)), '#225 the same applied set in a different selection order is Tonal without URL mutation');
+  await page.click(appliedChoice);
+  await page.click('#dock-tag-form button[type=submit]');
+  await page.waitFor("!new URL(location.href).searchParams.has('cursor') && new URL(location.href).searchParams.get('q')==='kiem thu' && new URL(location.href).searchParams.getAll('tag').length===1 && document.querySelector('#public-results')", '#225 changed Apply resets second-page cursor and keeps q plus remaining tag');
 
   const tagContext='/the/'+encodeURIComponent(form.slug)+'?q=kiem%20thu&tag='+encodeURIComponent(theme.slug);
   await page.goto(args.base+tagContext);

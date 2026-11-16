@@ -1,0 +1,151 @@
+  ok  search explicitly names the whole public library
+  ok  no-results offers query recovery
+  ok  light explore text contrast >= 4.5 (min 6.28; disabled controls exempt)
+  ok  dark explore text contrast >= 4.5 (min 10.00; disabled controls exempt)
+  ok  Explore reflows light/320/100
+  ok  #225 filter launcher keeps one named native target >=48px light/320/100
+  ok  Vietnamese heading words remain intact light/320/100
+  ok  dock/dialog breakpoint light/320/100
+  ok  title first and avatar retained light/320/100
+  ok  Explore reflows light/320/200
+  ok  #225 filter launcher keeps one named native target >=48px light/320/200
+  ok  Vietnamese heading words remain intact light/320/200
+  ok  dock/dialog breakpoint light/320/200
+  ok  title first and avatar retained light/320/200
+  ok  320px / 200% light: the full-size byline uses the card measure below the avatar ({"nameWidth":249,"dateWidth":249,"bylineWidth":249,"ordered":true,"font":"32px","overflow":0})
+  ok  Explore reflows light/390/100
+  ok  #225 filter launcher keeps one named native target >=48px light/390/100
+  ok  Vietnamese heading words remain intact light/390/100
+  ok  dock/dialog breakpoint light/390/100
+  ok  title first and avatar retained light/390/100
+  ok  Explore reflows light/390/200
+  ok  #225 filter launcher keeps one named native target >=48px light/390/200
+  ok  Vietnamese heading words remain intact light/390/200
+  ok  dock/dialog breakpoint light/390/200
+  ok  title first and avatar retained light/390/200
+  ok  Explore reflows light/834/100
+  ok  #225 filter launcher keeps one named native target >=48px light/834/100
+  ok  Vietnamese heading words remain intact light/834/100
+  ok  dock/dialog breakpoint light/834/100
+  ok  title first and avatar retained light/834/100
+  ok  Explore reflows light/834/200
+  ok  #225 filter launcher keeps one named native target >=48px light/834/200
+  ok  Vietnamese heading words remain intact light/834/200
+  ok  dock/dialog breakpoint light/834/200
+  ok  title first and avatar retained light/834/200
+  ok  Explore reflows light/1024/100
+  ok  Vietnamese heading words remain intact light/1024/100
+  ok  dock/dialog breakpoint light/1024/100
+  ok  title first and avatar retained light/1024/100
+  ok  Explore reflows light/1024/200
+  ok  Vietnamese heading words remain intact light/1024/200
+  ok  dock/dialog breakpoint light/1024/200
+  ok  title first and avatar retained light/1024/200
+  ok  Explore reflows light/1200/100
+  ok  Vietnamese heading words remain intact light/1200/100
+  ok  dock/dialog breakpoint light/1200/100
+  ok  title first and avatar retained light/1200/100
+  ok  Explore reflows light/1200/200
+  ok  Vietnamese heading words remain intact light/1200/200
+  ok  dock/dialog breakpoint light/1200/200
+  ok  title first and avatar retained light/1200/200
+  ok  Explore reflows light/1440/100
+  ok  Vietnamese heading words remain intact light/1440/100
+  ok  dock/dialog breakpoint light/1440/100
+  ok  title first and avatar retained light/1440/100
+  ok  Explore reflows light/1440/200
+  ok  #225 filter launcher keeps one named native target >=48px light/1440/200
+  ok  Vietnamese heading words remain intact light/1440/200
+  ok  dock/dialog breakpoint light/1440/200
+  ok  title first and avatar retained light/1440/200
+  ok  Explore reflows dark/320/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/320/100
+  ok  Vietnamese heading words remain intact dark/320/100
+  ok  dock/dialog breakpoint dark/320/100
+  ok  title first and avatar retained dark/320/100
+  ok  Explore reflows dark/320/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/320/200
+  ok  Vietnamese heading words remain intact dark/320/200
+  ok  dock/dialog breakpoint dark/320/200
+  ok  title first and avatar retained dark/320/200
+  ok  320px / 200% dark: the full-size byline uses the card measure below the avatar ({"nameWidth":249,"dateWidth":249,"bylineWidth":249,"ordered":true,"font":"32px","overflow":0})
+  ok  Explore reflows dark/390/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/390/100
+  ok  Vietnamese heading words remain intact dark/390/100
+  ok  dock/dialog breakpoint dark/390/100
+  ok  title first and avatar retained dark/390/100
+  ok  Explore reflows dark/390/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/390/200
+  ok  Vietnamese heading words remain intact dark/390/200
+  ok  dock/dialog breakpoint dark/390/200
+  ok  title first and avatar retained dark/390/200
+  ok  Explore reflows dark/834/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/834/100
+  ok  Vietnamese heading words remain intact dark/834/100
+  ok  dock/dialog breakpoint dark/834/100
+  ok  title first and avatar retained dark/834/100
+  ok  Explore reflows dark/834/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/834/200
+  ok  Vietnamese heading words remain intact dark/834/200
+  ok  dock/dialog breakpoint dark/834/200
+  ok  title first and avatar retained dark/834/200
+  ok  Explore reflows dark/1024/100
+  ok  Vietnamese heading words remain intact dark/1024/100
+  ok  dock/dialog breakpoint dark/1024/100
+  ok  title first and avatar retained dark/1024/100
+  ok  Explore reflows dark/1024/200
+  ok  Vietnamese heading words remain intact dark/1024/200
+  ok  dock/dialog breakpoint dark/1024/200
+  ok  title first and avatar retained dark/1024/200
+  ok  Explore reflows dark/1200/100
+  ok  Vietnamese heading words remain intact dark/1200/100
+  ok  dock/dialog breakpoint dark/1200/100
+  ok  title first and avatar retained dark/1200/100
+  ok  Explore reflows dark/1200/200
+  ok  Vietnamese heading words remain intact dark/1200/200
+  ok  dock/dialog breakpoint dark/1200/200
+  ok  title first and avatar retained dark/1200/200
+  ok  Explore reflows dark/1440/100
+  ok  Vietnamese heading words remain intact dark/1440/100
+  ok  dock/dialog breakpoint dark/1440/100
+  ok  title first and avatar retained dark/1440/100
+  ok  Explore reflows dark/1440/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/1440/200
+  ok  Vietnamese heading words remain intact dark/1440/200
+  ok  dock/dialog breakpoint dark/1440/200
+  ok  title first and avatar retained dark/1440/200
+  ok  #225 unchanged Apply stays Tonal; one native GET submit, labelled checkbox choices and no cursor
+  ok  #225 one Space changes one stable checkbox, never submits; changed Apply is Filled
+  ok  draft selection does not change applied URL
+  ok  #225 catalog has at least four real choices for the max4 browser check
+  ok  #225 max4 blocks extra choices while selected choices remain removable
+  ok  #225 reverting to the applied set restores Tonal without a submit
+  ok  #225 Enter on Apply submits exactly once, including native GET navigation (observed 1)
+  ok  applied filter is visible and removable
+  ok  a trusted Enter while composing does not commit a partial search
+  ok  after the commit the same Enter applies the search (the guard only holds composition)
+  ok  reader return preserves applied query
+  ok  reader avatar is exactly 44px
+  ok  320px / 200%: untagged Reader reaches the full-size text within the header spacing budget ({"gap":24,"font":"34px","context":true})
+  ok  390px / 200%: untagged Reader reaches the full-size text within the header spacing budget ({"gap":24,"font":"34px","context":true})
+  ok  tag detail SSR uses canonical catalog name and description
+  ok  tag detail belongs to Explore
+  ok  tag detail reflow light/390
+  ok  tag detail reflow light/1440
+  ok  tag detail reflow dark/390
+  ok  tag detail reflow dark/1440
+  ok  alias tag route redirects using server canonical identity
+  ok  uppercase/NFD uses the provider canonical tag URL
+  ok  uppercase/NFD uses the provider canonical tag URL
+  ok  unknown tag has its own SSR 404
+  ok  invalid cursor is recoverable SSR 422
+  ok  invalid cursor recovery links have distinct rows at 320px / 200%
+  ok  no-JS SSR supplies contextual reader links
+browser context: {
+  path: '/',
+  preferences: {},
+  active: { tag: 'BODY', id: '' },
+  selectionLength: 0,
+  errors: []
+}
+browser-smoke: FAIL Runtime.evaluate: no DevTools response within 30s

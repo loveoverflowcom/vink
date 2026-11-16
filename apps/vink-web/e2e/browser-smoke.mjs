@@ -2581,6 +2581,18 @@ async function draftDashboard(page) {
       const targets=['#draft-sort','#refresh-drafts'].map(s=>document.querySelector(s).getBoundingClientRect());
       return arrow.getAttribute('aria-hidden')==='true' && targets.every(r=>r.left>=0 && r.right<=innerWidth && r.width>=48 && r.height>=48);
     })()`), `#213 ${width}/${scale}: sort/refresh targets fit without shrinking`);
+    check(await page.eval(`(() => {
+      const create=document.querySelector('#create-draft'), refresh=document.querySelector('#refresh-drafts');
+      const r=create.getBoundingClientRect(), label=create.querySelector('.vk-ui-button__label');
+      const range=document.createRange(); range.selectNodeContents(label);
+      return document.querySelectorAll('#create-draft').length===1 && create.type==='button' &&
+        create.textContent==='Tạo bản thảo' && create.querySelectorAll('svg').length===1 &&
+        r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth &&
+        [...range.getClientRects()].every(t=>t.left>=r.left-1 && t.right<=r.right+1 && t.top>=r.top-1 && t.bottom<=r.bottom+1) &&
+        refresh.type==='button' && refresh.getAttribute('aria-label')==='Tải lại' &&
+        !refresh.hasAttribute('aria-pressed') && !create.querySelector('button,a,input') &&
+        document.querySelector('#draft-sort').tagName==='SELECT';
+    })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select/refresh and no fake pressed`);
     if (width<=390 && scale===200) {
       await page.eval(`document.querySelector('.vk-draft-row__link').focus()`); await page.key('Tab'); await page.key('Tab',SHIFT);
       check(await page.eval(`getComputedStyle(document.querySelector('.vk-draft-row__title')).overflow==='visible' && document.activeElement.matches('.vk-draft-row__link:focus-visible')`), 'keyboard reveals the entire title at 200%');
@@ -2730,6 +2742,9 @@ async function draftDashboard(page) {
   const lost = await gate.next('posts');
   const postsBefore = gate.postCount;
   await page.eval(`for (let i = 0; i < 5; i++) document.querySelector('#create-draft').click()`);
+  await page.eval(`document.querySelector('#create-draft').focus()`);
+  await page.key('Enter'); await page.key('Space');
+  check(gate.postCount===postsBefore, '#225 pending native Enter/Space cannot dispatch another create POST');
   check(await page.eval(`document.querySelector('#create-draft').getAttribute('aria-disabled') === 'true' && document.querySelector('#refresh-drafts').getAttribute('aria-disabled') === 'true'`), 'create and refresh are disabled during the single POST');
   gate.dropAck = true;
   await page.send('Fetch.continueRequest', { requestId: lost });
