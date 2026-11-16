@@ -22,7 +22,7 @@ không gọi các kết quả browser cũ ở dưới là PASS của HEAD này. 
 tài liệu này giữ hiện trạng READ-02, không thay PRD hoặc kho quyết định.
 
 Đối soát lại khi rebase lên `develop@a81333c71faf6033014a00ec26c9f7b90109d1d9` (PR #232) và merge
-`develop@6e07806` (PR #228, PR #240): `apps/vink-web/src/`, `services/vink-app/`, `decisions/`
+`develop@6e07806` (PR #228, PR #240): `apps/vink-web/src/`, `services/vink-app/src/`, `decisions/`
 và `xtask/src/cli.rs` không đổi so với pin trên (#228 chỉ sửa UI system/previews; #240 thêm
 assertions E2E Desk/Discovery và tài liệu thiết kế/bằng chứng).
 Chạy lại `decision validate`/`refs`: cùng 118 revisions và snapshot digest; 79 declared
@@ -30,6 +30,17 @@ references (thêm `USER-09@r1` trong report #229), không có problems.
 [#229 đã có corpus và report](long-document-budget.md); dùng lại source/fixtures đó cho #234,
 không dựng corpus cạnh tranh. Số đo ở report có SHA/profile riêng, không là benchmark tự chạy
 của #233 hoặc baseline release cho toàn hành trình.
+
+Review PR #241 trên `develop@313175370d29a03dd0096ece3e6a5933a74ddbea`:
+#244 đã đổi presentation Bàn viết/Khám phá, còn #245 thêm LayoutSpec và regression cho #226.
+Các owner `read_lifecycle.rs`, `public_reads.rs`, `freshness.rs`, `read_cache.rs`,
+`read_events.rs`, `public_persistence.rs`, `services/vink-app/src/`, `decisions/` và
+`xtask/src/cli.rs` không đổi từ `6e07806`; không mở rộng kết luận đó ra toàn bộ Web source
+hoặc test App. Hiện trạng và evidence UI #225 nằm ở [registry riêng](action-surfaces-225.md);
+#226 vẫn [chưa triển khai presentation mới](../design/action-surfaces-reader-discussion-226.md).
+Kiểm tra của lượt review này: `decision validate` và `decision refs` PASS với cùng snapshot
+118 revisions/79 refs ở dưới; `git diff --check` và relative file links của hai tài liệu
+thay đổi PASS. Không chạy lại model, PostgreSQL, browser hoặc CMP cho delta docs-only này.
 
 ### Luồng và lifetime hiện hành
 
@@ -73,7 +84,7 @@ PR #232 là 78; từ #232 tới `develop@6e07806` là 79), không có problems.
 | D-04, D-05 | r1 / r1 | `DESIGN_PROPOSED`, `PROVISIONAL` tương ứng, [D-log import](../../decisions/decision-log-20261111.toml) |
 | VDR-PUBLIC-OFFLINE-AGE | không current / r1 | `pending_only`, proposal `PENDING`, digest `72bb815fc75137819c252cc7cc632a17503389d7bbd0e9fbcf866f3c4900d2aa`; chưa signoff |
 
-Không tạo proposal mới chỉ để ghi lại implementation đã có; recommendations trong Epic là
+Lát docs-only #233 không tạo proposal mới; recommendations trong Epic là
 câu hỏi kỹ thuật có điều kiện. Thay policy/contract phải qua owner và revision đúng phạm vi.
 
 ### Rule → seam → phép kiểm

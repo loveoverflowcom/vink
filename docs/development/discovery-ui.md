@@ -4,12 +4,11 @@ Baseline develop@bc926a8befd4c1ca2a19dece4bee9e782177ca22, 09/11/2026.
 Scope UX-01/02, PUB-02/03. [LayoutSpec](../design/tag-discovery.md) được xuất trước code.
 Không triển khai auth, publish/moderation hoặc app native; không deploy.
 
-**Chuẩn bị action surfaces #225 (16/11/2026):** [LayoutSpec và seams còn thiếu](../design/action-surfaces-desk-discovery-225.md)
-đối chiếu `develop@69f71f0`. Chỉ thêm kiểm hồi quy GET/checkbox/Apply/history vào runner hiện hữu;
-chưa đổi UI consumer. Khi chuẩn bị, contract #224 và glyph lọc/thẻ chưa có; sau rebase lên
-`develop@2c55c26`, contract #228 đã có, glyph lọc/thẻ vẫn thiếu.
-[Evidence local](evidence/action-surfaces-225/README.md) tách PASS của hành vi hiện hành khỏi
-presentation còn chờ; Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
+**Action surfaces #225 r2 (16/11/2026):** [LayoutSpec](../design/action-surfaces-desk-discovery-225.md)
+và [registry triển khai](action-surfaces-225.md): launcher Tonal + FilterList, helper luôn hiện
+“Khớp tất cả thẻ · Tối đa 4”, status “Trang này: N tác phẩm”. Giữ native GET/no-JS,
+draft-vs-applied selection và Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
+[Evidence chuẩn bị #240](evidence/action-surfaces-225/README.md) là baseline lịch sử riêng.
 
 ## HOW / WHY / TEACH
 

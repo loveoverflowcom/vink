@@ -183,7 +183,7 @@ fn DiscoveryChrome(
                             } />
                     </Form>
                     <div id="applied-filters" class="vk-applied-filters">
-                        {(!is_tag).then(|| view! { <span class="vk-tag-launcher"><Button id="open-tag-filters" variant=ButtonVariant::Tonal expanded=Signal::from(open)
+                        {(!is_tag).then(|| view! { <span class="vk-tag-launcher"><Button id="open-tag-filters" variant=ButtonVariant::Tonal leading=IconName::FilterList expanded=Signal::from(open)
                             on_press=move |_| { catalog_epoch.update(|n| *n += 1); open.set(true); }>"Thẻ"</Button></span> })}
                         <Suspense fallback=|| ()>
                             {move || {
@@ -370,11 +370,11 @@ fn FilterForm(
     initial.sort();
     view! {
         <Form method="get" action noscroll=true on_form_data=Arc::new(drop_unnamed_submitter)
-            attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form")
+            attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")
             on:submit=move |_| { focus.set(Some("works-title")); open.set(false); }>
             <HiddenField name="q" value=Signal::stored(q) />
             <h2>"Bộ lọc thẻ"</h2>
-            <p>"Kết quả cần khớp tất cả thẻ đã chọn. Tối đa 4 thẻ."</p>
+            <p id=format!("{id}-tag-help")>"Khớp tất cả thẻ · Tối đa 4"</p>
             <Suspense fallback=|| view! { <p role="status">"Đang tải danh mục thẻ…"</p> }>
             {move || catalog.get().map(|catalog| match catalog {
                 Err(_) => view! { <p role="alert">"Chưa tải được danh mục thẻ. Tải lại trang để thử lại; bộ lọc đang áp dụng vẫn được giữ."</p>
@@ -423,7 +423,6 @@ fn FilterForm(
 
 #[component]
 fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) -> AnyView {
-    let applied_query = context.query.q.clone();
     let data = live.data;
     let refreshing = live.refreshing;
     let failed = live.failed;
@@ -443,7 +442,6 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
         } else if removed.get() {
             view! { <DiscoveryFailure context=removed_context.clone() error=LoadError::NotFound /> }.into_any()
         } else {
-            let applied_query = applied_query.clone();
             let list_context = list_context.clone();
             let page_context = page_context.clone();
             let empty_context = empty_context.clone();
@@ -458,7 +456,7 @@ fn PublicResults(context: ExploreContext, live: public_reads::Live<WorkList>) ->
                             on_recover={ let live = live.clone(); move |_| live.refresh() } /></div>
                     </Show>
                     <div id="public-results">
-                        <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">{move || if applied_query.is_empty() { format!("{} tác phẩm trên trang này.", works.read().len()) } else { format!("{} tác phẩm trên trang này cho “{}”.", works.read().len(), applied_query) }}</p>
+                        <p class="vk-muted vk-public-scope" role="status" aria-atomic="true">{move || format!("Trang này: {} tác phẩm", works.read().len())}</p>
                         {move || if works.read().is_empty() {
                             let filtered = !empty_context.query.tags.is_empty() || !empty_context.query.q.is_empty();
                             let mut no_tags = empty_context.clone(); no_tags.query.tags.clear(); no_tags.query.cursor = None; no_tags.tag_page = None;

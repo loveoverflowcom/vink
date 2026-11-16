@@ -66,9 +66,10 @@ của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-ev
 Chuẩn bị [action surfaces #225](../design/action-surfaces-desk-discovery-225.md) trên
 `develop@69f71f0`: `draftDashboard` thêm native create/Select/Refresh và pending keys;
 `discoveryReading` thêm Apply/checkbox/max4/no-JS, `discoveryCorpus` thêm history/set equality/
-cursor reset. Đây là coverage của tests hiện hữu được mở rộng, chưa triển khai delta UI.
-Sau rebase lên `develop@2c55c26`, shared contract #228 đã có; glyph lọc/thẻ vẫn thiếu.
-[Kết quả local và gap](evidence/action-surfaces-225/README.md) giữ riêng baseline lịch sử.
+cursor reset. [R2](action-surfaces-225.md) dùng Filled + Add cho create, Tonal cho Refresh,
+FilterList cho launcher và copy AND/max4/page-count gọn. Tests thêm kiểm container/glyph,
+0/1/4 thẻ, vượt giới hạn, catalog lỗi và status của trang cuối; giữ guard và native GET hiện có.
+[Evidence chuẩn bị](evidence/action-surfaces-225/README.md) giữ riêng baseline lịch sử.
 
 Phân trang nháp [#201](desk-pagination.md) mở rộng `/api/v1/drafts` bằng query/sort/cursor
 trên toàn corpus owner, giữ caller không tham số Recent/100. Provider/consumer fixtures và
@@ -465,6 +466,14 @@ qua LocalFixture loopback.
 | Trình duyệt, tác giả (`main`) | `endorsementAsAuthor` ([endorsement-smoke.mjs](../../apps/vink-web/e2e/endorsement-smoke.mjs)): vị trí sau văn bản trong SSR, tổng số SSR, `Unknown` trước own read, lý do “chính mình” sau hydration, bấm không gửi lệnh, `403 self_endorsement` | LocalFixture = tác giả |
 | Trình duyệt, người đọc (`endorsement`) | `endorsementAsReader` với server thứ ba (principal mẫu thứ hai + grant kiểm duyệt): duyệt gốc + phản hồi, SSR “Hữu ích”, chạm đúp/pending/xác nhận sau ACK, mất ACK sau commit → replay `replayed`, tab khác → `409` hiện trạng thái quan sát, Enter/Space trên phản hồi giữ focus, không cascade, không đổi thứ tự, số trong PostgreSQL, ma trận 320–1440 sáng/tối + 200%, own read `401` → lý do đăng nhập | Interception chỉ giữ/bỏ phản hồi thật và trả `401` cho own read; không auth production, screen reader thật, native |
 
+
+Delta chuẩn bị #226 (baseline `a81333c`, review trên `11c6a9c`): [LayoutSpec và dependency](../design/action-surfaces-reader-discussion-226.md).
+[reader_actions.rs](../../packages/vink-patterns/leptos/tests/reader_actions.rs) kiểm composition
+giữ confirmed value/count qua phase, lý do block và capability matrix root/reply.
+`endorsementAsReader` bổ sung DOM identity/focus, count không optimistic khi pending/uncertain và
+count không có target con. Đây là coverage baseline; kết quả thực ở
+[evidence #226](evidence/action-surfaces-226/README.md). Contract surface #224 đã có trên develop qua #228; reply glyph vẫn thiếu.
+Presentation #226 (kể cả AC-10 self-view và AC-11 header) chưa triển khai; không suy PASS UI mới từ regression.
 
 ## TAG-PR-01/02/03 — taxonomy core, PostgreSQL và API (#95/#96/#97, 08/11/2026)
 
