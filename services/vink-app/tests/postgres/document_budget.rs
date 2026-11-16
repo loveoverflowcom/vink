@@ -508,7 +508,7 @@ async fn long_document_budget(pool: PgPool) {
             write_json(
                 &out,
                 "postgres.json",
-                &json!({"source_base_sha":String::from_utf8_lossy(&source.stdout).trim(),
+                &json!({"source_sha":String::from_utf8_lossy(&source.stdout).trim(),
                 "seed":corpus::SEED,"build_profile":"dev","samples":5,"environment":environment,"cases":cases}),
             );
         }
@@ -539,7 +539,7 @@ async fn long_document_budget(pool: PgPool) {
             &origin,
             &root.join("target/site"),
         ));
-        // SQLx tests use a current-thread runtime. Serve on the same two-worker style as the
+        // SQLx tests use a current-thread runtime. Use a bounded multithread executor like the
         // App, so a large owner-state decode cannot block all unrelated HTTP requests in the
         // test harness merely because they share its one executor thread.
         let server_runtime = tokio::runtime::Builder::new_multi_thread()
