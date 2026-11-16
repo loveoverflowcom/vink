@@ -77,6 +77,120 @@ async fn wal_since(pool: &PgPool, start: &str) -> i64 {
         .unwrap()
 }
 
+fn assert_sample_transition(before: &DocumentData, submitted: &DocumentData, changed: bool) {
+    assert_eq!(
+        before != submitted,
+        changed,
+        "mislabeled content transition"
+    );
+}
+
+// Restore outside every timed/WAL window. Repeating the same edited payload otherwise turns
+// samples 2..5 into content no-ops, even though the optimistic version still advances.
+async fn app_save_samples(
+    pool: &PgPool,
+    vink: &Vink<PgStore>,
+    work: WorkId,
+    mut version: i64,
+    title: &str,
+    baseline: &DocumentData,
+) -> (Vec<f64>, Vec<Value>, i64) {
+    let size: usize = baseline
+        .blocks
+        .iter()
+        .flat_map(|b| &b.lines)
+        .map(|s| s.chars().count())
+        .sum();
+    let title_value = Title::parse(title).unwrap();
+    let before_hash = ContentHash::of(&title_value, &Document::parse(baseline.clone()).unwrap());
+    let mut reads = Vec::new();
+    let mut saves = Vec::new();
+    for (kind, at) in [
+        ("noop", None),
+        ("begin", Some(0)),
+        ("middle", Some(size / 2)),
+        ("end", Some(size - 1)),
+    ] {
+        let mut edited = baseline.clone();
+        if let Some(at) = at {
+            corpus::edit(&mut edited, at);
+        }
+        let after_hash = ContentHash::of(&title_value, &Document::parse(edited.clone()).unwrap());
+        for sample in 0..5 {
+            let restored = vink
+                .save_draft(author(), save(work, version, title, baseline.clone()))
+                .await
+                .unwrap();
+            version = restored.version.get();
+            let start = Instant::now();
+            let loaded = vink.load_draft(author(), work).await.unwrap();
+            reads.push(start.elapsed().as_secs_f64() * 1000.);
+            assert_eq!(loaded.version.get(), version);
+            assert_eq!(loaded.document.to_data(), *baseline);
+            assert_sample_transition(&loaded.document.to_data(), &edited, at.is_some());
+            // Client-side input cloning, reset and verification are outside app/commit timing.
+            let input = save(work, version, title, edited.clone());
+            let wal = wal_position(pool).await;
+            let start = Instant::now();
+            let saved = vink.save_draft(author(), input).await.unwrap();
+            let elapsed = start.elapsed().as_secs_f64() * 1000.;
+            let wal_bytes = wal_since(pool, &wal).await;
+            assert_eq!(saved.version.get(), version + 1);
+            version = saved.version.get();
+            let durable = vink.load_draft(author(), work).await.unwrap();
+            assert_eq!(durable.version.get(), version);
+            assert_eq!(durable.title, title_value);
+            assert_eq!(durable.document.to_data(), edited);
+            saves.push(
+                json!({"kind":kind,"sample":sample,"ms":elapsed,"wal_bytes":wal_bytes,
+                "before_hash_v1":before_hash.as_str(),"after_hash_v1":after_hash.as_str(),
+                "durable_exact_match":true}),
+            );
+        }
+    }
+    (reads, saves, version)
+}
+
+#[test]
+#[should_panic(expected = "mislabeled content transition")]
+fn long_document_sample_rejects_repeated_edit_labeled_as_change() {
+    let mut edited = corpus::corpus("poem_tabs", 30_000);
+    corpus::edit(&mut edited, 15_000);
+    assert_sample_transition(&edited, &edited, true);
+}
+
+#[test]
+#[should_panic(expected = "mislabeled content transition")]
+fn long_document_sample_rejects_change_labeled_as_noop() {
+    let baseline = corpus::corpus("poem_tabs", 30_000);
+    let mut edited = baseline.clone();
+    corpus::edit(&mut edited, 15_000);
+    assert_sample_transition(&baseline, &edited, false);
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn long_document_samples_are_independent_durable_transitions(pool: PgPool) {
+    let vink = seeded(&pool).await;
+    for shape in ["poem_tabs", "tiny_blocks"] {
+        let draft = vink.create_draft(author()).await.unwrap();
+        let baseline = Document::parse(corpus::corpus(shape, 30_000))
+            .unwrap()
+            .to_data();
+        let (reads, saves, version) =
+            app_save_samples(&pool, &vink, draft.work_id, 1, "[Mẫu #229]", &baseline).await;
+        assert_eq!(reads.len(), 20);
+        assert_eq!(saves.len(), 20);
+        assert_eq!(version, 41); // one unmeasured reset + one measured save per sample
+        for sample in saves {
+            assert_eq!(
+                sample["before_hash_v1"] == sample["after_hash_v1"],
+                sample["kind"] == "noop"
+            );
+            assert_eq!(sample["durable_exact_match"], true);
+        }
+    }
+}
+
 async fn relations(pool: &PgPool) -> Value {
     // Heap excludes TOAST and all indexes. Table includes TOAST; total includes every index.
     let rows: Vec<(String, i64, i64, i64, i64, i64)> = sqlx::query_as(
@@ -370,37 +484,8 @@ async fn long_document_budget(pool: PgPool) {
             let initial_save_ms = start.elapsed().as_secs_f64() * 1000.;
             let initial_wal = wal_since(&pool, &wal).await;
             let plans = plan(&pool, work, &doc).await;
-            let mut reads = Vec::new();
-            let mut saves = Vec::new();
-            let mut version = 2;
-            for (kind, at) in [
-                ("noop", None),
-                ("begin", Some(0)),
-                ("middle", Some(size / 2)),
-                ("end", Some(size - 1)),
-            ] {
-                let mut edited = doc.clone();
-                if let Some(at) = at {
-                    corpus::edit(&mut edited, at);
-                }
-                for _ in 0..5 {
-                    let start = Instant::now();
-                    let loaded = vink.load_draft(author(), work).await.unwrap();
-                    reads.push(start.elapsed().as_secs_f64() * 1000.);
-                    assert_eq!(loaded.version.get(), version);
-                    let wal = wal_position(&pool).await;
-                    let start = Instant::now();
-                    let saved = vink
-                        .save_draft(author(), save(work, version, &title, edited.clone()))
-                        .await
-                        .unwrap();
-                    let elapsed = start.elapsed().as_secs_f64() * 1000.;
-                    saves.push(
-                        json!({"kind":kind,"ms":elapsed,"wal_bytes":wal_since(&pool,&wal).await}),
-                    );
-                    version = saved.version.get();
-                }
-            }
+            let (reads, saves, mut version) =
+                app_save_samples(&pool, &vink, work, 2, &title, &doc).await;
             // Restore original corpus, then measure immutable snapshot history using the actual
             // capture use case (including metadata binding and receipts), not a fake INSERT loop.
             vink.save_draft(author(), save(work, version, &title, doc.clone()))
@@ -509,7 +594,11 @@ async fn long_document_budget(pool: PgPool) {
                 &out,
                 "postgres.json",
                 &json!({"source_sha":String::from_utf8_lossy(&source.stdout).trim(),
-                "seed":corpus::SEED,"build_profile":"dev","samples":5,"environment":environment,"cases":cases}),
+                "seed":corpus::SEED,"build_profile":"dev","samples":5,"environment":environment,
+                "measurement_version":2,
+                "save_boundary":"App validation + PgStore commit; input clone, baseline reset and exact readback excluded",
+                "cache_state":"warm process/PG; baseline reset before every sample, no OS cache eviction",
+                "cases":cases}),
             );
         }
     }

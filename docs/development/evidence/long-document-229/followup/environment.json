@@ -1,0 +1,37 @@
+{
+  "source_sha": "4f2883630ff27f36c7549e036e6b554166a86692",
+  "base_sha": "ca9369653a516715fea95ca71fbd818d54c15b0a",
+  "source_dirty_paths": "M docs/development/long-document-budget.md",
+  "seed": 229,
+  "samples": 5,
+  "profile": "dev/test, debug=0, incremental=0, jobs=3",
+  "macos": "15.6",
+  "cpu": "Apple M4",
+  "memory_bytes": "25769803776",
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "node": "v22.15.0",
+  "postgres_client": "psql (PostgreSQL) 17.11 (Homebrew)",
+  "scratch_cluster": "task-owned PostgreSQL on loopback port 55629; max_connections=40, shared_buffers=128MB; no production access",
+  "cache_definition": "warm process/PG after untimed baseline reset before each sample; first Chrome navigation is fresh profile/cold bundle; not OS/PG cold",
+  "boundaries": "synthetic corpus, application/PgStore commit, router SSR, Chrome CDP V8/DOM proxies; not production latency, total RSS/WASM peak or physical mobile",
+  "measurement_version": 2,
+  "initial_environment_failures": [
+    "initdb blocked by sandbox shared-memory syscall; reran escalated successfully",
+    "first PG focused invocation omitted DATABASE_URL; reran with task-owned URL successfully",
+    "cargo benchmark invocation failed linking the vink-app binary: errno=28 (disk full), before test execution; current postgres integration executable was built successfully and run directly"
+  ],
+  "benchmark_command": "DATABASE_URL=<task scratch URL> VINK_DOCUMENT_BUDGET_OUTPUT=/tmp/vink-229-followup/run VINK_CHROME=<Chrome binary> target/debug/deps/postgres-17b64a22f9443168 document_budget::long_document_budget --ignored --exact --nocapture --test-threads=1",
+  "compile_command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=3 cargo test --offline --locked -p vink-app --test postgres document_budget::long_document_budget -- --ignored --exact --nocapture --test-threads=1",
+  "benchmark_executable_sha256": "f12758e0ff7772df00eaead035ed11b5321f63d3d49cfc5242e2ceec7bf5a38f",
+  "benchmark_result": "PASS 1/1; 570.45 seconds. SQLx cleanup warning: database still in use. After executable exit, ordinary DROP of the exact task database succeeded (scratch-cleanup.log); no FORCE.",
+  "noise": "Three read-only progress queries to scratch pg_stat_activity/aggregate revision counts during the slow history checkpoint. No other task test/build was run concurrently. Low-disk host; no inference of production percentiles.",
+  "quick": {
+    "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=1 cargo xtask verify quick",
+    "status": "PASS",
+    "raw": "quick.log",
+    "initial_failure": "jobs=3 hit archive errno28; raw quick-initial.log retained; retry after task-owned completed artifact/scratch cleanup"
+  },
+  "scratch_final_state": "Task database dropped normally; own cluster stopped; own pg-data removed for disk space after measurements. Logs and raw output retained.",
+  "resume_provenance": "Resumed on the original Mac checkout after temporary handoff. Dot drafts were not imported. No production/test code changes after measurement commit; only docs/evidence finalized."
+}

@@ -1,0 +1,17 @@
+{
+  "original_source_sha256": "4d64e9ca4728428234652b6ecf53878010cfa3b944fa79091c845b47def42c71",
+  "mutated_source_sha256": "05646239a3007855e7d121fdb7debff73bdb1f97c406a0400b4ca0686823d096",
+  "mutation": "Keep the first baseline setup; skip all later baseline restores with if saves.is_empty().",
+  "build_exit_code": 0,
+  "executable_sha256": "3a6311f01116c1e872a19f2dc32b95a57e7de8de4224fa9ff6642b767e23ff14",
+  "command": [
+    "target/debug/deps/postgres-05ea2833a56d8306",
+    "document_budget::long_document_samples_are_independent_durable_transitions",
+    "--exact",
+    "--test-threads=1"
+  ],
+  "test_exit_code": 101,
+  "full_log_sha256": "712cae367d8ab43c3373fc604f947722d31e09421395c0d6beb9c7b043d0a429",
+  "expected_failure_observed": true,
+  "source_restored": true
+}

@@ -259,6 +259,9 @@ serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regress
 `services/vink-app/tests/document_budget.rs`; biên HTTP và benchmark opt-in ở
 `tests/postgres/document_budget.rs`; browser ở `apps/vink-web/e2e/document-budget.mjs`.
 Đo scalar/UTF-8/JSON/TOAST/HTML/DOM riêng, history 1/10/100 và pglz/LZ4 trong database scratch.
+Measurement v2 restore baseline trước từng app-save sample; regression PostgreSQL không ignored
+kiểm full content/version sau commit và hai negative controls bắt nhầm changed/no-op. Raw v1
+vẫn được giữ, với giới hạn workload ghi ở [đối soát follow-up](long-document-budget.md#đối-soát-follow-up-229).
 Đây là coverage phép đo, không thêm chương, autosave hay persistence rollout; kết quả thực thi,
 ngưỡng đề xuất và giới hạn host nằm ở báo cáo #229.
 
