@@ -1,0 +1,101 @@
+{
+  "operation": "rstrip line-end whitespace and EOF, retain one final LF; raw logs remain under review-266/",
+  "logs": {
+    "corpus-capture.log": {
+      "raw_sha256": "06f0b7cb2edfe69543ff68900ccbbcac067e5964019c5be66ef2c3ca97812fbd",
+      "committed_sha256": "06f0b7cb2edfe69543ff68900ccbbcac067e5964019c5be66ef2c3ca97812fbd",
+      "raw_bytes": 77,
+      "committed_bytes": 77
+    },
+    "public-search-fixed.log": {
+      "raw_sha256": "3782d74e4a26cd70668a074baa0a6dfc8c0f1714fa474e62ec50a977b76f3937",
+      "committed_sha256": "3782d74e4a26cd70668a074baa0a6dfc8c0f1714fa474e62ec50a977b76f3937",
+      "raw_bytes": 14994,
+      "committed_bytes": 14994
+    },
+    "before-build.log": {
+      "raw_sha256": "21af9e444bf9c53de7c2fcdf9cd4614c70dc080a93988b71de9a0146f80654a9",
+      "committed_sha256": "21af9e444bf9c53de7c2fcdf9cd4614c70dc080a93988b71de9a0146f80654a9",
+      "raw_bytes": 3946,
+      "committed_bytes": 3946
+    },
+    "before-capture-catalog-fail.log": {
+      "raw_sha256": "bc6bd1bfedba4aa6e57c3dbe98cca4599a88ed6a48a399e8f9ccf8903db6f824",
+      "committed_sha256": "bc6bd1bfedba4aa6e57c3dbe98cca4599a88ed6a48a399e8f9ccf8903db6f824",
+      "raw_bytes": 391,
+      "committed_bytes": 391
+    },
+    "public-search-cache-fixture-fail.log": {
+      "raw_sha256": "376b2c2fef16f25d6d8489a573d596e8fcc11276498dacbc94ba2ad509731192",
+      "committed_sha256": "376b2c2fef16f25d6d8489a573d596e8fcc11276498dacbc94ba2ad509731192",
+      "raw_bytes": 15837,
+      "committed_bytes": 15837
+    },
+    "before-capture.log": {
+      "raw_sha256": "2531e8574dfba5ad68c38b82e1a4110d86aa9cc0c8e154380d6711701ab6de12",
+      "committed_sha256": "2531e8574dfba5ad68c38b82e1a4110d86aa9cc0c8e154380d6711701ab6de12",
+      "raw_bytes": 77,
+      "committed_bytes": 77
+    },
+    "quick-debug-interrupted.log": {
+      "raw_sha256": "9dad5b10ad07cbe47279f0b7f70347d9db2fdca8d3b639f41229ccb10d08d52f",
+      "committed_sha256": "9dad5b10ad07cbe47279f0b7f70347d9db2fdca8d3b639f41229ccb10d08d52f",
+      "raw_bytes": 20204,
+      "committed_bytes": 20204
+    },
+    "assets.log": {
+      "raw_sha256": "82c5295214ea3b9387dcec37eb1b12173e64a3aee0fcce8c815c8f975a5ce10d",
+      "committed_sha256": "82c5295214ea3b9387dcec37eb1b12173e64a3aee0fcce8c815c8f975a5ce10d",
+      "raw_bytes": 1100,
+      "committed_bytes": 1100
+    },
+    "before-capture-setup-fail.log": {
+      "raw_sha256": "d372b0603e6b2b51d7206b45dea8133f26e18577e04f089484ddac79023df127",
+      "committed_sha256": "d372b0603e6b2b51d7206b45dea8133f26e18577e04f089484ddac79023df127",
+      "raw_bytes": 611,
+      "committed_bytes": 611
+    },
+    "quick.log": {
+      "raw_sha256": "e2ae6928308168aa737f4eb3e51f137dc2c40f3a436a3179e3edefb59958bcbb",
+      "committed_sha256": "e2ae6928308168aa737f4eb3e51f137dc2c40f3a436a3179e3edefb59958bcbb",
+      "raw_bytes": 92282,
+      "committed_bytes": 92282
+    },
+    "web-negative.log": {
+      "raw_sha256": "c9005f8b59bf3d23a7c676f64b3b2682f4dbc79bf4d64d3f9561333c585c7b49",
+      "committed_sha256": "c9005f8b59bf3d23a7c676f64b3b2682f4dbc79bf4d64d3f9561333c585c7b49",
+      "raw_bytes": 467865,
+      "committed_bytes": 467865
+    },
+    "quick-fixed.log": {
+      "raw_sha256": "e65b06661af3fe81a86b9fe6a6baf738d6962140261ad49dbd2e7f0ee2ff84c5",
+      "committed_sha256": "e65b06661af3fe81a86b9fe6a6baf738d6962140261ad49dbd2e7f0ee2ff84c5",
+      "raw_bytes": 90072,
+      "committed_bytes": 90072
+    },
+    "after-capture.log": {
+      "raw_sha256": "b325a1c00615d73c80e1765e90467d4984541856bf3555f65a2dea7cb41c1abb",
+      "committed_sha256": "b325a1c00615d73c80e1765e90467d4984541856bf3555f65a2dea7cb41c1abb",
+      "raw_bytes": 77,
+      "committed_bytes": 77
+    },
+    "after-capture-initial.log": {
+      "raw_sha256": "57e9a04de8bd590177fc0f6280c370a9448068a4f2dad5ebf7d705d964a362e9",
+      "committed_sha256": "57e9a04de8bd590177fc0f6280c370a9448068a4f2dad5ebf7d705d964a362e9",
+      "raw_bytes": 44,
+      "committed_bytes": 44
+    },
+    "full-decode.log": {
+      "raw_sha256": "d62041095794b0cb469d40ad3877ca861f2e9f883c47e8ab6caf342af9dbcecc",
+      "committed_sha256": "d62041095794b0cb469d40ad3877ca861f2e9f883c47e8ab6caf342af9dbcecc",
+      "raw_bytes": 543,
+      "committed_bytes": 543
+    },
+    "fixed-build.log": {
+      "raw_sha256": "aca61eb23e30e931eaaad41f5f4b6a38f59328fa4d3710686c40b59226ac137d",
+      "committed_sha256": "aca61eb23e30e931eaaad41f5f4b6a38f59328fa4d3710686c40b59226ac137d",
+      "raw_bytes": 3328,
+      "committed_bytes": 3328
+    }
+  }
+}

@@ -360,6 +360,43 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 missing reader-return row focuses the named results landmark');
   check(await page.eval("document.activeElement.getAttribute('aria-label')==='Tác phẩm khám phá' && document.activeElement.getClientRects().length>0"), '#258 reader-return fallback is a visible, named target');
   await goto('/');
+  await submittedReadKeepsTyping(page, {args, check});
+  await goto('/');
+}
+
+async function submittedReadKeepsTyping(page, {args, check}) {
+  const query='pending-submit-258', draft='chữ đang gõ trong lúc tìm kiếm';
+  const response=await (await fetch(args.base+'/api/v1/works?q='+query)).json();
+  const held=[];
+  const gate=({sessionId,method,params})=>{
+    if(sessionId!==page.sessionId || method!=='Fetch.requestPaused') return;
+    if(new URL(params.request.url).searchParams.get('q')===query) held.push(params.requestId);
+    else page.send('Fetch.continueRequest',{requestId:params.requestId}).catch(()=>{});
+  };
+  page.cdp.listeners.push(gate);
+  await page.send('Fetch.enable',{patterns:[{urlPattern:args.base+'/api/v1/works*',requestStage:'Request'}]});
+  try {
+    await page.eval("document.querySelector('#public-query').focus(); document.querySelector('#public-query').select()");
+    await page.send('Input.insertText',{text:query});
+    await page.click('#public-search button[type=submit]');
+    const deadline=Date.now()+10000;
+    while(!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
+    check(held.length===1,'#258 submitted search response is actually held');
+    await page.waitFor("new URL(location.href).searchParams.get('q')==='pending-submit-258' && document.querySelector('#public-query')",'#258 submitted scope mounts while its read is pending');
+    await page.eval("window.__pending258Input=document.querySelector('#public-query'); window.__pending258Input.focus(); window.__pending258Input.select()");
+    await page.send('Input.insertText',{text:draft});
+    await page.send('Fetch.fulfillRequest',{requestId:held.shift(),responseCode:200,
+      responseHeaders:[{name:'Content-Type',value:'application/json'}],body:Buffer.from(JSON.stringify(response)).toString('base64')});
+    await page.waitFor("document.querySelector('[data-testid=public-no-results]')",'#258 submitted search resolves while a new query is being typed');
+    await page.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+    check(await page.eval(`document.activeElement===window.__pending258Input && document.querySelector('#public-query')===window.__pending258Input && window.__pending258Input.value===${JSON.stringify(draft)} && window.__pending258Input.selectionStart===${draft.length}`),
+      '#258 a submitted read finishing cannot steal focus/caret from a newer unapplied query');
+  } finally {
+    for(const requestId of held) await page.send('Fetch.failRequest',{requestId,errorReason:'Aborted'}).catch(()=>{});
+    await page.send('Fetch.disable');
+    page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==gate);
+    await page.eval('delete window.__pending258Input');
+  }
 }
 
 // Revalidation changes freshness text, not the identity of focused recovery controls.
