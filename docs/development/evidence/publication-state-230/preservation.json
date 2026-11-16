@@ -15,5 +15,18 @@
     "removed": "6832 files, 3.8 GiB",
     "prior_checks": "no cargo/rustc/rust-analyzer process and no lsof entries beneath target/debug",
     "preserved": "site/ui-preview evidence and entire #204 checkout/data/processes; no signal to old PostgreSQL or Chrome"
-  }
+  },
+  "scratch_230": {
+    "status": "stopped via pg_ctl -D /tmp/vink-230-pg-data -m fast stop",
+    "data_and_logs_retained": true
+  },
+  "old_processes": {
+    "postgres_pids": [
+      39387,
+      88089
+    ],
+    "chrome_204_pid": 25654,
+    "verified_running_after_scratch_stop": true
+  },
+  "final_recheck": "PASS: same HEAD/status and all 30 changed-file hashes before push"
 }

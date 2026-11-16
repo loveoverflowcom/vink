@@ -13,6 +13,8 @@ Owner, caller/integrity map, commands and acceptance:
 - [known-policy-rereview.json](known-policy-rereview.json) và [reproducer](known-policy-rereview.rs.txt):
   additional old-approval policy re-review flow FAIL; unchanged source mismatch, outside projection.
 - [checks.json](checks.json): exact commands/status/verification boundaries and initial failures.
+  Final [quick.log](quick.log), [postgres.log](postgres.log),
+  [benchmark-before.log](benchmark-before.log), [benchmark-after.log](benchmark-after.log).
 - [preservation.json](preservation.json): before/after #204 inventory digest and local cleanup boundary.
 
 Each measurement case retains first/warm arrays, response bytes, stored/logical document bytes,

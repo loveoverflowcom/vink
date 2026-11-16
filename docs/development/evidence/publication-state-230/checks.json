@@ -1,1 +1,111 @@
-{"verification_in_progress":true}
+{
+  "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-4/vink",
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "3"
+  },
+  "integration_base_sha": "ca9369653a516715fea95ca71fbd818d54c15b0a",
+  "postgres_source_sha": "66a0f0318009579c79b0ce37999d94b11bc02b93",
+  "postgres_reuse_after_merge": "git diff 66a0f03..fd24a7f -- services packages Cargo.toml Cargo.lock apps/vink-web/src was empty; upstream touched e2e/docs/xtask only",
+  "runs": [
+    {
+      "command": "cargo xtask verify quick",
+      "status": "PASS",
+      "source_sha": "fd24a7f0ccc32ba2032e4604a4a18c8876ee2018",
+      "scope": "latest ca936965 merged, including new visual-evidence Node oracle unit step, native/wasm clippy, lawful-twin doctests, unit/contracts and repository checks",
+      "log": "quick.log"
+    },
+    {
+      "command": "cargo xtask verify quick",
+      "source_sha": "6bf05ed76714152ae0e7b35fa6df4e4060916b63",
+      "status": "PASS",
+      "scope": "pre-upstream refresh: native/wasm clippy, doctests, unit/contracts, repository checks"
+    },
+    {
+      "command": "VINK_TEST_DATABASE_URL=postgres://manhblue@127.0.0.1:55530/postgres RUST_TEST_THREADS=2 cargo xtask verify postgres",
+      "status": "PASS",
+      "scope": "real PostgreSQL, Store 6/6, App 200 PASS + 5 opt-in measurements ignored, Identity 48/48, binaries/config/provision/standing/worker/restarts/backup/restore",
+      "log": "postgres.log"
+    },
+    {
+      "command": "DATABASE_URL=postgres://manhblue@127.0.0.1:55530/postgres cargo test --locked -p vink-app --test postgres publication_state:: -- --test-threads=1",
+      "status": "PASS",
+      "scope": "6 new owner-read, metadata, integrity and concurrency regressions; also included in full App suite"
+    },
+    {
+      "command": "VINK_PUBLICATION_STATE_OUTPUT=/tmp/vink-230-evidence/{before,after} DATABASE_URL=postgres://manhblue@127.0.0.1:55530/postgres cargo test --locked -p vink-app --test postgres publication_state_budget::publication_state_budget -- --ignored --exact --nocapture --test-threads=1",
+      "status": "PASS",
+      "scope": "one opt-in test per source; 13 checkpoints, one first + three warm samples each; measurements at 20ed13e+benchmark and 0147bda",
+      "logs": [
+        "benchmark-before.log",
+        "benchmark-after.log"
+      ]
+    },
+    {
+      "command": "git diff --check; Python local-link/JSON/source-hash/preservation validation",
+      "status": "PASS",
+      "scope": "517 relative links in changed owning docs; every evidence JSON; benchmark source hash matches 0147bda; HEAD/status/all 30 changed file hashes in #204 unchanged"
+    }
+  ],
+  "intermediate_failures": [
+    {
+      "status": "FAIL",
+      "step": "early compile iterations",
+      "reason": "SQLx query string needed static lifetime and content loader needed mutable row borrow; corrected before implementation commit"
+    },
+    {
+      "status": "FAIL",
+      "step": "first focused PostgreSQL run",
+      "reason": "fixture expected 105 legacy-null rows rather than 106; cross-work intent hit existing CHECK before FK",
+      "resolution": "corrected fixture count and isolated FK statement; four then six focused tests PASS"
+    },
+    {
+      "status": "FAIL",
+      "step": "first quick",
+      "reason": "clippy duplicate_mod from importing corpus twice",
+      "resolution": "single document_corpus module reused by both probes"
+    },
+    {
+      "status": "FAIL",
+      "step": "parallel initial postgres orchestration",
+      "reason": "xtask artifact lock owned by quick; PostgreSQL steps NOT_RUN",
+      "resolution": "ran lanes sequentially; no lock file deletion"
+    },
+    {
+      "status": "FAIL",
+      "step": "additional full PostgreSQL attempt at 77f177e",
+      "reason": "missing tag catalog in new metadata fixture; extra approved-old-policy rereview hits pre-existing constraint mismatch",
+      "resolution": "native catalog fixture added; scoped stale-policy/late-result guard PASS; the broader rereview failure remains explicitly recorded in known-policy-rereview.json"
+    }
+  ],
+  "not_run": [
+    {
+      "status": "NOT_RUN",
+      "scope": "browser/Web full lane and OS IME",
+      "reason": "no UI/DTO change; no new browser evidence claimed"
+    },
+    {
+      "status": "NOT_RUN",
+      "scope": "Quint/Kani lanes",
+      "reason": "transition and authority unchanged; shared restore refactor covered by domain oracles and real DB tests"
+    },
+    {
+      "status": "NOT_RUN",
+      "scope": "production latency / wire bytes / RSS",
+      "reason": "local dev synthetic corpus; logical bytes and app timings only"
+    },
+    {
+      "status": "NOT_RUN",
+      "scope": "GitHub CI/Actions/status/log",
+      "reason": "explicit request; no read/wait/poll/rerun"
+    },
+    {
+      "status": "NOT_RUN",
+      "scope": "other four opt-in PG measurements in full App lane",
+      "reason": "out of #230 scope; current benchmark was run explicitly"
+    }
+  ],
+  "known_failure": "known-policy-rereview.json; FAIL outside projection; original baseline full-flow NOT_RUN, pre-existing attribution source-based"
+}

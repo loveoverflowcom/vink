@@ -9,8 +9,10 @@ chủ tác phẩm; **không phải bằng chứng toàn vẹn body hoặc quyề
 - Kiến trúc: không đổi trạng thái ADR, authority hoặc hash v1. Không thêm cache/schema/index.
 - Triển khai: `persistence-api`; Web dùng DTO hiện hành, không đổi UI. Các command/worker giữ
   loader nội dung đầy đủ. Đây không phải batch `GET /api/v1/author/works` (#214/#222).
-- Base được fetch và đối chiếu `ls-remote`: `develop@20ed13e160150c86f82ed5a185f73777441c3a4b`,
-  không giả định HEAD từ tên PR #246. Source đo sau: `0147bda43ea3821cec17b1cbbde2a9539e7d3805`.
+- Base đầu phiên được fetch/đối chiếu `ls-remote`: `develop@20ed13e160150c86f82ed5a185f73777441c3a4b`.
+  Trước push đã fetch lại và nhập **`develop@ca9369653a516715fea95ca71fbd818d54c15b0a`** (#247)
+  tại `fd24a7f0ccc32ba2032e4604a4a18c8876ee2018`; không giả định #246 vẫn là head.
+  Source đo sau: `0147bda43ea3821cec17b1cbbde2a9539e7d3805`, runtime backend không đổi sau đó.
 
 <!-- vdr: active USER-02@r1 -->
 <!-- vdr: active ADM-06@r1 -->
@@ -147,7 +149,27 @@ vô hạn đã được tối ưu hoặc chọn pagination mới từ ba mẫu.
 
 ## Verification và acceptance
 
-<!-- CHECK_RESULTS -->
+- **PASS** `cargo xtask verify quick` tại `fd24a7f` trên base mới `ca936965`, gồm oracle Node mới
+  của #247, clippy native/wasm, doctest có lawful twin, unit/contract và repository checks.
+- **PASS** `cargo xtask verify postgres` trên source code của `66a0f03`: Store 6/6, App **200 PASS,
+  5 phép đo opt-in ignored**, Identity 48/48; build/config, provision split roles, worker/SIGTERM,
+  Identity restart/outage/authority, enrollment, backup/restore và cleanup scratch roles/databases.
+  `git diff 66a0f03..fd24a7f -- services packages Cargo.toml Cargo.lock apps/vink-web/src` rỗng:
+  evidence PostgreSQL dùng lại sau merge, không gán cho backend chưa kiểm.
+- **PASS** sáu regression `publication_state::` trên PG thật (cũng nằm trong 200 test): quyền SELECT
+  column/history/ties/legacy; metadata-only binding; corrupt body/schema/conditional `If-None-Match:*`
+  không trả 304 và command rollback; cross-work FK/job digest; snapshot race; stale-policy pending
+  job và private/late approval.
+- **PASS** benchmark opt-in trước/sau: 13 checkpoint mỗi source, first + 3 warm samples; source,
+  commands, raw arrays/byte/plans/SQL và giới hạn ở evidence. Benchmark khác không được coi đã chạy.
+- **FAIL còn giữ riêng** approved-old-policy re-review: xem finding bên dưới; không phải PASS
+  nhờ bỏ test hoặc nới constraint. Các lỗi fixture/clippy và lock trước đó cùng cách xử lý được ghi
+  ở [checks.json](evidence/publication-state-230/checks.json).
+
+Raw output: [quick.log](evidence/publication-state-230/quick.log),
+[postgres.log](evidence/publication-state-230/postgres.log),
+[benchmark trước](evidence/publication-state-230/benchmark-before.log) /
+[sau](evidence/publication-state-230/benchmark-after.log).
 
 Boundary Web/browser/OS IME và production latency: **NOT_RUN**; không đổi UI/DTO, không có claim
 browser mới. Model/Kani riêng: **NOT_RUN**; không đổi transition/authority, domain/DB regressions

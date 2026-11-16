@@ -28,7 +28,8 @@
     "logging": {
       "log_statement": "all for test role",
       "log_parameter_max_length": 0
-    }
+    },
+    "status": "stopped; data/logs retained"
   },
   "corpus_seed": 229,
   "corpus_source_sha256": "4d5d36971ef4041bb15b4ae928b11e19318098b456e2b9afa74e8c93a6bdf678",
@@ -37,5 +38,8 @@
   "noise": "During parts of baseline, other focused builds/tests ran on host. No other builds/tests during after measurement; absolute/timing ratios descriptive only.",
   "decision_snapshot_sha256": "6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b",
   "response_byte_difference": "Random IDs fixed width; timestamp fractional seconds have variable serialized length. Same rows/fields, no truncation; raw before/after bytes retained.",
-  "final_code_note": "Later commits only share the corpus module, add regressions/lawful twin and correct republish fixtures; production runtime implementation measured at 0147bda is unchanged."
+  "final_code_note": "Later commits only share the corpus module, add regressions/lawful twin and correct republish fixtures; production runtime implementation measured at 0147bda is unchanged.",
+  "final_integration_base_sha": "ca9369653a516715fea95ca71fbd818d54c15b0a",
+  "postmerge_sha": "fd24a7f0ccc32ba2032e4604a4a18c8876ee2018",
+  "postmerge_backend_diff": "empty: services, packages, Cargo.toml, Cargo.lock, apps/vink-web/src; fresh quick includes upstream new oracle step"
 }
