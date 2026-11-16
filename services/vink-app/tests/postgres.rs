@@ -42,6 +42,8 @@ mod discovery;
 mod discussion;
 #[path = "postgres/document_budget.rs"]
 mod document_budget;
+#[path = "support/document_budget.rs"]
+mod document_corpus;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]
@@ -56,6 +58,10 @@ mod post_review;
 mod principal;
 #[path = "postgres/publication.rs"]
 mod publication;
+#[path = "postgres/publication_state.rs"]
+mod publication_state;
+#[path = "postgres/publication_state_budget.rs"]
+mod publication_state_budget;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]

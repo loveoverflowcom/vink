@@ -49,6 +49,14 @@ Tất cả các endpoint tác giả trả về header `Cache-Control: no-store`,
 - Backout: [`20261116000000_work_publication_persistence.down.sql`](../../services/vink-app/migrations-rollback/20261116000000_work_publication_persistence.down.sql) chỉ dùng khi schema chưa được dùng. Có receipt, ticket hay quyết định không phải `legacy_bootstrap` thì script từ chối: giữ dữ liệu và roll forward. `publications.generation` giữ ≥ 2, schema cũ chấp nhận.
 - Lỗi `409 version_conflict` của snapshot nêu đúng trường đã đổi: `expected_draft_version` (kèm `current_version` của nháp) hoặc `expected_metadata_version` (kèm version metadata hiện tại).
 
+## Đọc trạng thái không materialize history body (#230)
+
+Owner-state dùng typed metadata projection và cùng restore invariants, giữ đủ history/HTTP v1;
+command, moderation, worker và appeals vẫn dùng paired loader kiểm hash nội dung đầy đủ.
+Public body kiểm hash v1 của revision đang được trỏ trước response/ETag. Xem
+[caller/integrity map, compatibility và số đo PostgreSQL trước/sau](publication-state-read.md).
+Không thêm schema hoặc đổi authority/standing/receipt/visibility.
+
 ## 5. Verification Evidence
 
 Lần chạy 11/11/2026 trên nhánh `codex/publication-persistence-api` (PostgreSQL 17 cục bộ):

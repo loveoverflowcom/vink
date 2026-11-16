@@ -97,15 +97,15 @@ impl IntentGeneration {
 /// Immutable content binding. Reuses the canonical v1 hash; metadata remains a separate
 /// binding to be captured and bound beside this one in the future publication transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Snapshot {
+pub struct Snapshot<C = RevisionContent> {
     pub work: WorkId,
     pub revision: RevisionId,
-    pub content: RevisionContent,
+    pub content: C,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RevisionFacts {
-    pub snapshot: Snapshot,
+pub struct RevisionFacts<C = RevisionContent> {
+    pub snapshot: Snapshot<C>,
     pub moderation: Moderation,
 }
 
@@ -149,7 +149,7 @@ pub struct PublicPointer {
 
 /// Untrusted row-loading shape: not itself a publication. No Deserialize bypass for Publication.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PublicationFacts {
+pub struct PublicationFacts<C = RevisionContent> {
     pub work: WorkId,
     pub owner: PrincipalId,
     pub audience: Audience,
@@ -166,7 +166,175 @@ pub struct PublicationFacts {
     /// MOD-15: revisions that were readable by others at some point, in first-read order.
     pub ever_public: Vec<RevisionId>,
     pub public_epoch: PublicEpoch,
-    pub revisions: Vec<RevisionFacts>,
+    pub revisions: Vec<RevisionFacts<C>>,
+}
+
+/// Validated metadata for owner reads. A stored hash is a binding, not proof that a body
+/// matches it. This type has no author/review/promotion methods and cannot become Publication.
+/// ```compile_fail
+/// use vink_app::domain::publication::{Publication, PublicationState};
+/// fn authority(read: PublicationState) -> Publication { read }
+/// ```
+/// Lawful twin:
+/// ```
+/// use vink_app::domain::publication::{Publication, PublicationFacts, PublicationState};
+/// use vink_app::domain::revision::ContentHash;
+/// fn inspect(read: &PublicationState) -> &PublicationFacts<ContentHash> { read.facts() }
+/// fn authority(full: Publication) -> Publication { full }
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PublicationState(PublicationFacts<ContentHash>);
+
+impl PublicationState {
+    pub fn restore(facts: PublicationFacts<ContentHash>) -> Result<Self, PublicationError> {
+        facts.validate()?;
+        Ok(Self(facts))
+    }
+
+    pub fn facts(&self) -> &PublicationFacts<ContentHash> {
+        &self.0
+    }
+}
+
+impl<C> PublicationFacts<C> {
+    fn revision(&self, id: RevisionId) -> Result<&RevisionFacts<C>, PublicationError> {
+        self.revisions
+            .iter()
+            .find(|r| r.snapshot.revision == id)
+            .ok_or(PublicationError::UnknownRevision)
+    }
+
+    fn map_content<D>(&self, map: impl Fn(&C) -> D) -> PublicationFacts<D> {
+        PublicationFacts {
+            work: self.work,
+            owner: self.owner,
+            audience: self.audience,
+            lifecycle: self.lifecycle,
+            generation: self.generation,
+            intent: self.intent,
+            pointer: self.pointer,
+            hidden: self.hidden,
+            review_withdrawn: self.review_withdrawn,
+            ever_public: self.ever_public.clone(),
+            public_epoch: self.public_epoch,
+            revisions: self
+                .revisions
+                .iter()
+                .map(|r| RevisionFacts {
+                    snapshot: Snapshot {
+                        work: r.snapshot.work,
+                        revision: r.snapshot.revision,
+                        content: map(&r.snapshot.content),
+                    },
+                    moderation: r.moderation,
+                })
+                .collect(),
+        }
+    }
+
+    fn validate(&self) -> Result<(), PublicationError> {
+        for (i, revision) in self.revisions.iter().enumerate() {
+            if revision.snapshot.work != self.work
+                || self.revisions[..i]
+                    .iter()
+                    .any(|r| r.snapshot.revision == revision.snapshot.revision)
+            {
+                return Err(PublicationError::InvalidFacts);
+            }
+        }
+        if self.lifecycle != Lifecycle::Active && (self.intent.is_some() || self.pointer.is_some())
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        match self.lifecycle {
+            Lifecycle::Active => {}
+            Lifecycle::AuthorDeleted(provenance) => {
+                if self.audience != Audience::Private {
+                    return Err(PublicationError::InvalidFacts);
+                }
+                match provenance {
+                    DeletionProvenance::PublicTombstone(pointer) => {
+                        if pointer.intent_generation <= IntentGeneration::FIRST
+                            || pointer.intent_generation >= self.generation
+                            || self.revision(pointer.revision).is_err()
+                            || !self.ever_public.contains(&pointer.revision)
+                        {
+                            return Err(PublicationError::InvalidFacts);
+                        }
+                    }
+                    DeletionProvenance::Hidden => {}
+                }
+            }
+            Lifecycle::Removed => {}
+        }
+        if self.generation == IntentGeneration::FIRST
+            && self
+                .revisions
+                .iter()
+                .any(|r| r.moderation != Moderation::Unsubmitted)
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if (self.audience == Audience::Private && self.intent.is_some())
+            || (self.audience == Audience::Public
+                && self.lifecycle == Lifecycle::Active
+                && self.intent.is_none())
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if let Some(intent) = self.intent
+            && (intent.generation != self.generation
+                || intent.generation <= IntentGeneration::FIRST
+                || !self
+                    .revision(intent.revision)
+                    .is_ok_and(|r| r.moderation != Moderation::Unsubmitted))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        for (i, revision) in self.ever_public.iter().enumerate() {
+            if self.revision(*revision).is_err() || self.ever_public[..i].contains(revision) {
+                return Err(PublicationError::InvalidFacts);
+            }
+        }
+        if self.ever_public.is_empty() != (self.public_epoch == PublicEpoch::NEVER) {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if let Some(hidden) = self.hidden
+            && (self.lifecycle != Lifecycle::Active
+                || self.pointer.is_some()
+                || hidden.intent_generation <= IntentGeneration::FIRST
+                || hidden.intent_generation >= self.generation
+                || !self.ever_public.contains(&hidden.revision))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if let Some(withdrawn) = self.review_withdrawn
+            && (self.lifecycle != Lifecycle::Active
+                || self.audience != Audience::Public
+                || self.pointer.is_some()
+                || self.hidden.is_some()
+                || withdrawn.intent_generation <= IntentGeneration::FIRST
+                || withdrawn.intent_generation > self.generation
+                || !self.ever_public.contains(&withdrawn.revision))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        if let Some(pointer) = self.pointer
+            && (self.lifecycle != Lifecycle::Active
+                || !self.ever_public.contains(&pointer.revision)
+                || self.audience != Audience::Public
+                || pointer.intent_generation <= IntentGeneration::FIRST
+                || pointer.intent_generation > self.generation
+                || !self
+                    .revision(pointer.revision)
+                    .is_ok_and(|r| r.moderation == Moderation::Approved)
+                || (pointer.intent_generation == self.generation
+                    && self.intent.map(|i| i.revision) != Some(pointer.revision)))
+        {
+            return Err(PublicationError::InvalidFacts);
+        }
+        Ok(())
+    }
 }
 
 /// Validated aggregate, with no writable fields or deserialization bypass.
@@ -389,110 +557,12 @@ impl Publication {
     }
 
     pub fn restore(facts: PublicationFacts) -> Result<Self, PublicationError> {
-        let state = Self(facts);
-        for (i, revision) in state.0.revisions.iter().enumerate() {
-            if revision.snapshot.work != state.0.work
-                || state.0.revisions[..i]
-                    .iter()
-                    .any(|r| r.snapshot.revision == revision.snapshot.revision)
-            {
-                return Err(PublicationError::InvalidFacts);
-            }
-        }
-        if state.0.lifecycle != Lifecycle::Active
-            && (state.0.intent.is_some() || state.0.pointer.is_some())
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        match state.0.lifecycle {
-            Lifecycle::Active => {}
-            Lifecycle::AuthorDeleted(provenance) => {
-                if state.0.audience != Audience::Private {
-                    return Err(PublicationError::InvalidFacts);
-                }
-                match provenance {
-                    DeletionProvenance::PublicTombstone(pointer) => {
-                        if pointer.intent_generation <= IntentGeneration::FIRST
-                            || pointer.intent_generation >= state.0.generation
-                            || state.revision(pointer.revision).is_err()
-                            || !state.0.ever_public.contains(&pointer.revision)
-                        {
-                            return Err(PublicationError::InvalidFacts);
-                        }
-                    }
-                    DeletionProvenance::Hidden => {}
-                }
-            }
-            Lifecycle::Removed => {}
-        }
-        if state.0.generation == IntentGeneration::FIRST
-            && state
-                .0
-                .revisions
-                .iter()
-                .any(|r| r.moderation != Moderation::Unsubmitted)
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        if (state.0.audience == Audience::Private && state.0.intent.is_some())
-            || (state.0.audience == Audience::Public
-                && state.0.lifecycle == Lifecycle::Active
-                && state.0.intent.is_none())
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        if let Some(intent) = state.0.intent
-            && (intent.generation != state.0.generation
-                || intent.generation <= IntentGeneration::FIRST
-                || !state
-                    .revision(intent.revision)
-                    .is_ok_and(|r| r.moderation != Moderation::Unsubmitted))
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        for (i, revision) in state.0.ever_public.iter().enumerate() {
-            if state.revision(*revision).is_err() || state.0.ever_public[..i].contains(revision) {
-                return Err(PublicationError::InvalidFacts);
-            }
-        }
-        if state.0.ever_public.is_empty() != (state.0.public_epoch == PublicEpoch::NEVER) {
-            return Err(PublicationError::InvalidFacts);
-        }
-        if let Some(hidden) = state.0.hidden
-            && (state.0.lifecycle != Lifecycle::Active
-                || state.0.pointer.is_some()
-                || hidden.intent_generation <= IntentGeneration::FIRST
-                || hidden.intent_generation >= state.0.generation
-                || !state.0.ever_public.contains(&hidden.revision))
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        if let Some(withdrawn) = state.0.review_withdrawn
-            && (state.0.lifecycle != Lifecycle::Active
-                || state.0.audience != Audience::Public
-                || state.0.pointer.is_some()
-                || state.0.hidden.is_some()
-                || withdrawn.intent_generation <= IntentGeneration::FIRST
-                || withdrawn.intent_generation > state.0.generation
-                || !state.0.ever_public.contains(&withdrawn.revision))
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        if let Some(pointer) = state.0.pointer
-            && (state.0.lifecycle != Lifecycle::Active
-                || !state.0.ever_public.contains(&pointer.revision)
-                || state.0.audience != Audience::Public
-                || pointer.intent_generation <= IntentGeneration::FIRST
-                || pointer.intent_generation > state.0.generation
-                || !state
-                    .revision(pointer.revision)
-                    .is_ok_and(|r| r.moderation == Moderation::Approved)
-                || (pointer.intent_generation == state.0.generation
-                    && state.0.intent.map(|i| i.revision) != Some(pointer.revision)))
-        {
-            return Err(PublicationError::InvalidFacts);
-        }
-        Ok(state)
+        facts.validate()?;
+        Ok(Self(facts))
+    }
+
+    pub(crate) fn binding_facts(&self) -> PublicationFacts<ContentHash> {
+        self.0.map_content(|content| content.hash().clone())
     }
 
     pub fn facts(&self) -> &PublicationFacts {

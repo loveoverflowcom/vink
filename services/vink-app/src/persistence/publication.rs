@@ -64,18 +64,79 @@ fn receipt_generation(raw: Option<i64>) -> Result<IntentGeneration, StoreError> 
         .ok_or_else(|| integrity("receipt generation", raw.unwrap_or_default()))
 }
 
+type RevisionMetadata = Vec<(RevisionId, String, Option<Uuid>, OffsetDateTime)>;
+type PairedFacts<C> = (PublicationFacts<C>, WorkModerationFacts, RevisionMetadata);
+
+#[derive(sqlx::FromRow)]
+struct RevRow {
+    id: Uuid,
+    title: String,
+    document: Option<Json<DocumentData>>,
+    content_hash: String,
+    metadata_snapshot_id: Option<Uuid>,
+    created_at: OffsetDateTime,
+}
+
+// The read SQL never references revisions.document; NULL is a typed decoder placeholder.
+const STATE_REVISIONS_SQL: &str =
+    "SELECT id, title, NULL::jsonb AS document, content_hash, metadata_snapshot_id, created_at
+    FROM revisions WHERE work_id = $1 ORDER BY created_at ASC, id ASC";
+const CONTENT_REVISIONS_SQL: &str =
+    "SELECT id, title, document, content_hash, metadata_snapshot_id, created_at
+    FROM revisions WHERE work_id = $1 ORDER BY created_at ASC, id ASC";
+
+fn revision_binding(rev: &RevRow) -> Result<ContentHash, StoreError> {
+    let title = Title::parse(&rev.title).map_err(|e| integrity("revision title", e))?;
+    if title.is_empty() {
+        return Err(integrity("revision title missing", rev.id));
+    }
+    ContentHash::parse(&rev.content_hash)
+        .filter(|hash| hash.as_str() == rev.content_hash)
+        .ok_or_else(|| integrity("revision content hash invalid", rev.id))
+}
+
+fn revision_content(rev: &mut RevRow) -> Result<RevisionContent, StoreError> {
+    let title = Title::parse(&rev.title).map_err(|e| integrity("revision title", e))?;
+    let raw = rev
+        .document
+        .take()
+        .ok_or_else(|| integrity("revision body missing", rev.id))?;
+    let doc = Document::parse(raw.0).map_err(|e| integrity("revision document", e))?;
+    let content = RevisionContent::new(title, doc).map_err(|e| integrity("revision content", e))?;
+    if content.hash().as_str() != rev.content_hash {
+        return Err(integrity("revision content hash mismatch", rev.id));
+    }
+    Ok(content)
+}
+
+/// Commands/worker always load and validate full content, under their existing commit locks.
 pub(crate) async fn load_paired_state(
     conn: &mut PgConnection,
     actor: PrincipalId,
     work_id: WorkId,
-) -> Result<
-    (
-        Publication,
-        WorkModeration,
-        Vec<(RevisionId, String, Option<Uuid>, OffsetDateTime)>,
-    ),
-    StoreError,
-> {
+) -> Result<(Publication, WorkModeration, RevisionMetadata), StoreError> {
+    let (p, m, metadata) = load_paired_facts(
+        conn,
+        actor,
+        work_id,
+        CONTENT_REVISIONS_SQL,
+        revision_content,
+    )
+    .await?;
+    let publication =
+        Publication::restore(p).map_err(|e| integrity("publication facts restore failed", e))?;
+    let moderation = WorkModeration::restore(&publication, m)
+        .map_err(|e| integrity("work moderation facts restore failed", e))?;
+    Ok((publication, moderation, metadata))
+}
+
+async fn load_paired_facts<C>(
+    conn: &mut PgConnection,
+    actor: PrincipalId,
+    work_id: WorkId,
+    revision_sql: &'static str,
+    restore: fn(&mut RevRow) -> Result<C, StoreError>,
+) -> Result<PairedFacts<C>, StoreError> {
     #[derive(sqlx::FromRow)]
     struct PubRow {
         audience: String,
@@ -133,26 +194,11 @@ pub(crate) async fn load_paired_state(
         policy_version: 1,
     });
 
-    #[derive(sqlx::FromRow)]
-    struct RevRow {
-        id: Uuid,
-        title: String,
-        document: Json<DocumentData>,
-        content_hash: String,
-        metadata_snapshot_id: Option<Uuid>,
-        created_at: OffsetDateTime,
-    }
-
-    let rev_rows: Vec<RevRow> = query_as(
-        "SELECT id, title, document, content_hash, metadata_snapshot_id, created_at
-           FROM revisions
-          WHERE work_id = $1
-          ORDER BY created_at ASC, id ASC",
-    )
-    .bind(work_id.as_uuid())
-    .fetch_all(&mut *conn)
-    .await
-    .map_err(classify)?;
+    let rev_rows: Vec<RevRow> = query_as(revision_sql)
+        .bind(work_id.as_uuid())
+        .fetch_all(&mut *conn)
+        .await
+        .map_err(classify)?;
 
     #[derive(sqlx::FromRow)]
     struct ModRow {
@@ -205,18 +251,10 @@ pub(crate) async fn load_paired_state(
     let mut mod_revisions = Vec::new();
     let mut metadata_list = Vec::with_capacity(rev_rows.len());
 
-    for rev in rev_rows {
+    for mut rev in rev_rows {
         let rev_id = RevisionId::from_uuid(rev.id);
-        let title = Title::parse(&rev.title).map_err(|e| integrity("revision title", e))?;
-        let doc = Document::parse(rev.document.0).map_err(|e| integrity("revision document", e))?;
-        let content =
-            RevisionContent::new(title, doc).map_err(|e| integrity("revision content", e))?;
-        if content.hash().as_str() != rev.content_hash {
-            return Err(integrity(
-                "revision content hash mismatch",
-                content.hash().as_str(),
-            ));
-        }
+        let digest = revision_binding(&rev)?;
+        let content = restore(&mut rev)?;
 
         let mod_row = mod_rows.iter().find(|m| m.revision_id == rev.id);
         let (moderation, decision_facts) = match mod_row {
@@ -317,7 +355,7 @@ pub(crate) async fn load_paired_state(
                     mod_status,
                     Some(RevisionDecisionFacts {
                         revision: rev_id,
-                        digest: content.hash().clone(),
+                        digest: digest.clone(),
                         version: dec_version,
                         policy: PolicyVersion::new(m.policy_version).ok_or_else(|| {
                             integrity("moderation policy version invalid", m.policy_version)
@@ -476,9 +514,6 @@ pub(crate) async fn load_paired_state(
         revisions: pub_revisions,
     };
 
-    let publication = Publication::restore(publication_facts)
-        .map_err(|e| integrity("publication facts restore failed", format!("{e:?}")))?;
-
     let mod_policy = PolicyVersion::new(pub_row.policy_version)
         .ok_or_else(|| integrity("moderation policy version invalid", pub_row.policy_version))?;
 
@@ -489,10 +524,7 @@ pub(crate) async fn load_paired_state(
         jobs: mod_jobs,
     };
 
-    let moderation = WorkModeration::restore(&publication, mod_facts)
-        .map_err(|e| integrity("work moderation facts restore failed", format!("{e:?}")))?;
-
-    Ok((publication, moderation, metadata_list))
+    Ok((publication_facts, mod_facts, metadata_list))
 }
 
 impl AuthorPublicationStore for PgStore {
@@ -502,6 +534,11 @@ impl AuthorPublicationStore for PgStore {
         work_id: WorkId,
     ) -> Result<Option<AuthorPublicationStateFacts>, StoreError> {
         let mut tx = self.pool().begin().await.map_err(classify)?;
+        // All facts belong to one snapshot, without locking a writer or granting authority.
+        query("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY")
+            .execute(&mut *tx)
+            .await
+            .map_err(classify)?;
         let owner: Option<Uuid> = query_scalar("SELECT owner_id FROM works WHERE id = $1")
             .bind(work_id.as_uuid())
             .fetch_optional(&mut *tx)
@@ -518,8 +555,15 @@ impl AuthorPublicationStore for PgStore {
             return Ok(None);
         }
 
-        let (publication, moderation, revision_metadata) =
-            load_paired_state(&mut tx, actor, work_id).await?;
+        let (p, m, revision_metadata) =
+            load_paired_facts(&mut tx, actor, work_id, STATE_REVISIONS_SQL, |rev| {
+                revision_binding(rev)
+            })
+            .await?;
+        let publication = crate::domain::publication::PublicationState::restore(p)
+            .map_err(|e| integrity("publication state restore failed", e))?;
+        let moderation = crate::domain::moderation::ModerationState::restore(&publication, m)
+            .map_err(|e| integrity("moderation state restore failed", e))?;
         tx.commit().await.map_err(classify)?;
 
         Ok(Some(AuthorPublicationStateFacts {

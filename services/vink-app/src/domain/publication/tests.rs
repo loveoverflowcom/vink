@@ -603,3 +603,48 @@ fn rejecting_currently_public_revision_sets_review_withdrawn_access_plan() {
     assert_eq!(private.facts().review_withdrawn, None);
     assert_eq!(private.access_plan(), WorkAccessPlan::Unavailable);
 }
+
+#[test]
+fn read_projection_uses_the_same_publication_invariants_as_full_content() {
+    // Independent domain transitions are the oracle, including r1 still public while r2 waits.
+    let initial = Publication::new(work(1), owner());
+    let r1 = save(&initial, 1);
+    let pending = request(&r1, 1).next;
+    let public = review(&pending, 1, ReviewOutcome::Approved).next;
+    let r2 = request(&save(&public, 2), 2).next;
+    let rejected = review(&r2, 2, ReviewOutcome::Rejected).next;
+    let withdrawn = review(&rejected, 1, ReviewOutcome::Rejected).next;
+    let hidden = private(&r2).next;
+    let deleted = hidden
+        .decide_author(
+            owner(),
+            AuthorCommand::Delete {
+                expected: Some(hidden.facts().generation),
+            },
+        )
+        .unwrap()
+        .next;
+    for state in [
+        initial, r1, pending, public, r2, rejected, withdrawn, hidden, deleted,
+    ] {
+        let bindings = state.binding_facts();
+        let read = PublicationState::restore(bindings.clone()).unwrap();
+        assert_eq!(read.facts(), &bindings);
+        for mutation in 0..6 {
+            let mut full = state.facts().clone();
+            match mutation {
+                0 => full.generation = generation(1),
+                1 => full.audience = Audience::Private,
+                2 => full.lifecycle = Lifecycle::Removed,
+                3 => full.revisions.clear(),
+                4 => full.ever_public.clear(),
+                _ => full.intent = None,
+            }
+            let projected = full.map_content(|c| c.hash().clone());
+            assert_eq!(
+                Publication::restore(full).is_ok(),
+                PublicationState::restore(projected).is_ok()
+            );
+        }
+    }
+}
