@@ -239,6 +239,14 @@ Chọn lệnh chạy từ hướng dẫn phát triển, không chạy thao tác 
 
 ## Công cụ và bằng chứng ngoài smoke
 
+Ngân sách document lớn [#229](long-document-budget.md): corpus tổng hợp seeded qua validator,
+serializer, `Vink<PgStore>`, router SSR và phase CDP `document-budget`. Regression thuần ở
+`services/vink-app/tests/document_budget.rs`; biên HTTP và benchmark opt-in ở
+`tests/postgres/document_budget.rs`; browser ở `apps/vink-web/e2e/document-budget.mjs`.
+Đo scalar/UTF-8/JSON/TOAST/HTML/DOM riêng, history 1/10/100 và pglz/LZ4 trong database scratch.
+Đây là coverage phép đo, không thêm chương, autosave hay persistence rollout; kết quả thực thi,
+ngưỡng đề xuất và giới hạn host nằm ở báo cáo #229.
+
 Web runner chuẩn bị database thử, server và Chrome; khi chạy tới bước tương ứng, nó ghi
 `target/verify-web/<run-id>/server.log` và `smoke-state.json`. Mỗi lượt có thư mục riêng; không xóa bằng chứng lượt trước. `adaptiveShell`, `publicReading`, `editorChrome`
 và `shellWithDirtyEditor` ghi PNG tại `target/verify-web/<run-id>/screenshots/` (1440/1024/834/390/320px,
