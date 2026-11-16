@@ -4368,7 +4368,15 @@ async function mainPhase(page) {
   await page.eval(`localStorage.removeItem('vink.ui.theme'); document.documentElement.style.fontSize=''; delete document.documentElement.dataset.theme; scrollTo(0, 0)`);
   await authorWorks(page, {args,check,DraftGate,sleep});
   await draftDashboard(page);
-  await deskEmptyState(page, {args,check,DraftGate,textContrast});
+  // Session-generation fixtures must not broadcast into subsequent real Desk scenarios.
+  const { browserContextId: emptyContext } = await page.cdp.send('Target.createBrowserContext');
+  try {
+    const emptyPage = await openPage(page.cdp, emptyContext);
+    await deskEmptyState(emptyPage, {args,check,DraftGate,textContrast});
+    check(emptyPage.errors.length === 0, '#259 isolated empty-state context has no console errors');
+  } finally {
+    await page.cdp.send('Target.disposeBrowserContext', { browserContextId: emptyContext });
+  }
   await draftR6Hierarchy(page);
   await timestampPresentation(page);
   await draftPagination(page, { args, check, DraftGate, sleep });
