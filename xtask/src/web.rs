@@ -519,6 +519,14 @@ fn drop_identity_scratch(admin_url: &str) {
     }
 }
 
+pub fn visual_evidence_unit_tests(root: &Path) -> Result<(), String> {
+    crate::doctor::node_version()?;
+    let mut node = Command::new("node");
+    node.current_dir(root)
+        .args(["--test", "apps/vink-web/e2e/visual-evidence.test.mjs"]);
+    crate::process::run(&mut node, "visual evidence oracle unit tests")
+}
+
 pub fn verify(report: &mut Report, env: &Env) -> bool {
     let plan = crate::cli::parse(&["verify", "web"])
         .expect("valid command")
@@ -533,6 +541,12 @@ pub fn verify(report: &mut Report, env: &Env) -> bool {
 pub fn verify_selected(report: &mut Report, env: &Env, plan: &Plan) -> bool {
     let root = root();
     if !report.step("selected prerequisites", || doctor::scoped(plan, env)) {
+        return false;
+    }
+    if !report.step(
+        "visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests",
+        || visual_evidence_unit_tests(&root),
+    ) {
         return false;
     }
     let url = env

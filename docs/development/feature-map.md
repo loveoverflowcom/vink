@@ -197,7 +197,11 @@ Bảng ghi các phần đã có điểm vào và các phần đang chờ. Nguồ
 
 ## Assertion hiện có và phần còn thiếu
 
-Nguồn kiểm trình duyệt là [browser-smoke.mjs](../../apps/vink-web/e2e/browser-smoke.mjs);
+Nguồn kiểm trình duyệt là [browser-smoke.mjs](../../apps/vink-web/e2e/browser-smoke.mjs) cùng
+[visual-evidence.mjs](../../apps/vink-web/e2e/visual-evidence.mjs) (manifest v2 kèm `sourceSHA`/`dirtyInputs`/PNG SHA-256,
+kiểm tra overflow không lộ `scrollX`, AX Chrome riêng với DOM `textContent`, nhánh modal/recovery và phân tách lane
+`app-appearance-control` vs `dom-override-geometry-only` vs `NOT_RUN`, kiểm đơn vị bởi
+[visual-evidence.test.mjs](../../apps/vink-web/e2e/visual-evidence.test.mjs));
 `serverHtml`, `conditionalPublicReads`, `cacheFirstPublicReads`, `brandAssets`, `adaptiveShell` (gọi
 `shellFragmentHistory`), `accountAppearance`, `appearanceFirstPaint`, `shellWithDirtyEditor`,
 `draftDashboard`, `nativeExploreSearch`, `publicReading`, `editorChrome`, `mainPhase` (gọi
