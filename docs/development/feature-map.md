@@ -543,7 +543,6 @@ body, 106 revision/ties/legacy, corruption/command rollback/public read, job dig
 concurrent snapshot. Command/worker giữ content validation; public read kiểm hash đúng body trả ra.
 Coverage này không tự là PASS; kết quả thực chạy ở báo cáo/evidence liên kết.
 
-
 | Phần | Assertion hiện có | Khoảng trống |
 | --- | --- | --- |
 | Migration `20261116000000_work_publication_persistence` + [down script](../../services/vink-app/migrations-rollback/20261116000000_work_publication_persistence.down.sql) | [tests/postgres/publication.rs](../../services/vink-app/tests/postgres/publication.rs) (`postgres`): `upgrade_backfills_paired_state_for_old_pointers` chạy migration thật trên con trỏ cũ (generation 1 → 2, `legacy_bootstrap`, work không con trỏ thành `private`), seed lại không tạo lại con trỏ đã thu hồi; `backout_refuses_after_an_author_command_and_drops_unused_schema`; chuỗi rollback newest-first trong `abuse.rs`/`outbox.rs` | Không có dữ liệu production để đo backfill |

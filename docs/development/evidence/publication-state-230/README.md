@@ -15,6 +15,7 @@ Owner, caller/integrity map, commands and acceptance:
 - [checks.json](checks.json): exact commands/status/verification boundaries and initial failures.
   Final [quick.log](quick.log), [postgres.log](postgres.log),
   [benchmark-before.log](benchmark-before.log), [benchmark-after.log](benchmark-after.log).
+- [review-248.md](review-248.md): independent PR #248 review, findings and fresh quick/PostgreSQL checks.
 - [preservation.json](preservation.json): before/after #204 inventory digest and local cleanup boundary.
 
 Each measurement case retains first/warm arrays, response bytes, stored/logical document bytes,

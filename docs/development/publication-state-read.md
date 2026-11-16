@@ -87,10 +87,10 @@ Không fixture public giả, evaluator, browser hay dữ liệu manuscript riên
 initdb -D /tmp/vink-230-pg-data -A trust --no-locale --encoding=UTF8
 pg_ctl -D /tmp/vink-230-pg-data -l /tmp/vink-230-pg.log \
   -o '-h 127.0.0.1 -p 55530 -k /tmp -c shared_buffers=128MB -c max_connections=60' start
-export DATABASE_URL='postgres://manhblue@127.0.0.1:55530/postgres'
+export DATABASE_URL="postgres://$USER@127.0.0.1:55530/postgres"
 export VINK_TEST_DATABASE_URL="$DATABASE_URL"
 # Chỉ trong cluster scratch, ghi SQL không ghi parameter values.
-psql "$DATABASE_URL" -c "ALTER ROLE manhblue SET log_statement='all'" \
+psql "$DATABASE_URL" -c "ALTER ROLE \"$USER\" SET log_statement='all'" \
   -c "ALTER SYSTEM SET log_parameter_max_length=0" -c 'SELECT pg_reload_conf()'
 export CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=3
 export VINK_PUBLICATION_STATE_OUTPUT=/tmp/vink-230-evidence/after
@@ -165,6 +165,9 @@ vô hạn đã được tối ưu hoặc chọn pagination mới từ ba mẫu.
 - **FAIL còn giữ riêng** approved-old-policy re-review: xem finding bên dưới; không phải PASS
   nhờ bỏ test hoặc nới constraint. Các lỗi fixture/clippy và lock trước đó cùng cách xử lý được ghi
   ở [checks.json](evidence/publication-state-230/checks.json).
+
+Review độc lập PR #248 (không có finding P0–P2; quick + PostgreSQL chạy lại PASS):
+[review-248.md](evidence/publication-state-230/review-248.md).
 
 Raw output: [quick.log](evidence/publication-state-230/quick.log),
 [postgres.log](evidence/publication-state-230/postgres.log),
