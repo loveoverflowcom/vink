@@ -3,8 +3,7 @@ use super::*;
 use sqlx::types::Json;
 use std::path::PathBuf;
 
-#[path = "../support/document_budget.rs"]
-mod corpus;
+use super::document_corpus as corpus;
 
 #[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
 #[ignore = "opt-in PostgreSQL measurement; VINK_PUBLICATION_STATE_OUTPUT required"]

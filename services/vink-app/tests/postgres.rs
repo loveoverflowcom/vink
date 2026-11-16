@@ -42,6 +42,8 @@ mod discovery;
 mod discussion;
 #[path = "postgres/document_budget.rs"]
 mod document_budget;
+#[path = "support/document_budget.rs"]
+mod document_corpus;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]

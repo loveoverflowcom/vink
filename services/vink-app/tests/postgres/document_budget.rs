@@ -10,8 +10,7 @@ use vink_app::domain::revision::ContentHash;
 use vink_web::public_persistence::Envelope;
 use vink_web::public_reads::{PublicKey, Snapshot};
 
-#[path = "../support/document_budget.rs"]
-mod corpus;
+use super::document_corpus as corpus;
 
 fn measured<T>(f: impl FnOnce() -> T) -> (T, f64) {
     let start = Instant::now();

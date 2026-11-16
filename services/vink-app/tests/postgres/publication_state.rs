@@ -157,6 +157,22 @@ async fn state_is_not_a_body_integrity_or_publication_capability(pool: PgPool) {
             .0,
             StatusCode::INTERNAL_SERVER_ERROR
         );
+        let conditional = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri(&path)
+                    .header(header::IF_NONE_MATCH, "*")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(
+            conditional.status(),
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "corruption must be checked before even wildcard 304"
+        );
         let generation: i64 =
             sqlx::query_scalar("SELECT generation FROM work_publications WHERE work_id=$1")
                 .bind(dev_seed::SAMPLE_WORK)
@@ -299,5 +315,102 @@ async fn state_reads_one_snapshot_across_a_concurrent_moderation_commit(pool: Pg
     assert_eq!(
         after.publication.facts().revisions[0].moderation,
         vink_app::domain::publication::Moderation::Rejected
+    );
+}
+
+#[sqlx::test(migrator = "vink_app::persistence::MIGRATOR")]
+async fn state_observes_policy_rereview_and_private_fences_late_approval(pool: PgPool) {
+    use vink_app::domain::moderation::{EvaluationRefusal, EvaluatorOutcome};
+    use vink_app::domain::publication::Moderation;
+    use vink_app::persistence::evaluation::{JobOutcome, claim_job, finish_job};
+    let vink = seeded(&pool).await;
+    let work = vink.create_draft(author()).await.unwrap().work_id;
+    vink.save_draft(
+        author(),
+        save(work, 1, "Theo policy", doc(&[&["Bản cần kiểm lại"]])),
+    )
+    .await
+    .unwrap();
+    let revision = vink
+        .capture_snapshot(author(), work, "policy-snapshot-230", 2, 1)
+        .await
+        .unwrap()
+        .revision_id;
+    vink.request_public(author(), work, "policy-public-230", revision, 1)
+        .await
+        .unwrap();
+    let worker = "state-policy-230";
+    let claim = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
+    assert!(matches!(
+        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
+            .await
+            .unwrap(),
+        JobOutcome::Applied(_)
+    ));
+    vink.set_private(author(), work, "policy-private-230", 2)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE work_publications SET policy_version=2 WHERE work_id=$1")
+        .bind(work.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    vink.request_public(author(), work, "policy-rereview-230", revision, 3)
+        .await
+        .unwrap();
+    let state = vink
+        .load_author_publication_state(author(), work)
+        .await
+        .unwrap();
+    assert!(state.publication.facts().pointer.is_none());
+    assert_eq!(
+        state.publication.facts().revisions[0].moderation,
+        Moderation::Pending
+    );
+    let claim = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
+    assert_eq!(claim.policy_version, 2);
+    // Policy changes again after the claim; an old policy result cannot approve.
+    sqlx::query("UPDATE work_publications SET policy_version=3 WHERE work_id=$1")
+        .bind(work.as_uuid())
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        finish_job(&pool, worker, &claim, Some(EvaluatorOutcome::Approve), 0)
+            .await
+            .unwrap(),
+        JobOutcome::Refused(EvaluationRefusal::StalePolicy)
+    );
+    // A fresh policy-3 job is then withdrawn by the author before its result returns.
+    vink.request_public(author(), work, "policy-fresh-230", revision, 4)
+        .await
+        .unwrap();
+    let late = claim_job(&pool, worker, 60, None).await.unwrap().unwrap();
+    assert_eq!(late.policy_version, 3);
+    vink.set_private(author(), work, "policy-final-private-230", 5)
+        .await
+        .unwrap();
+    assert_eq!(
+        finish_job(&pool, worker, &late, Some(EvaluatorOutcome::Approve), 0)
+            .await
+            .unwrap(),
+        JobOutcome::Stale
+    );
+    let state = vink
+        .load_author_publication_state(author(), work)
+        .await
+        .unwrap();
+    assert_eq!(
+        state.publication.facts().audience,
+        vink_app::domain::publication::Audience::Private
+    );
+    assert!(state.publication.facts().pointer.is_none());
+    assert!(
+        state
+            .moderation
+            .facts()
+            .jobs
+            .iter()
+            .all(|j| j.state != vink_app::domain::moderation::JobState::Open)
     );
 }

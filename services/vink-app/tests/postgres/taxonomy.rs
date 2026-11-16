@@ -171,15 +171,27 @@ async fn rows(pool: &PgPool, table: &str) -> i64 {
 /// FIXTURE: a new immutable revision of the sample work (what a future submission creates).
 async fn new_revision(conn: &mut PgConnection) -> Uuid {
     let id = Uuid::now_v7();
+    // A republished fixture must carry the canonical hash of its changed title/body.
+    let (raw_title, raw_document): (String, sqlx::types::Json<DocumentData>) =
+        sqlx::query_as("SELECT title,document FROM revisions WHERE id=$1")
+            .bind(dev_seed::SAMPLE_REVISION)
+            .fetch_one(&mut *conn)
+            .await
+            .unwrap();
+    let content = RevisionContent::new(
+        Title::parse(&format!("{raw_title} (bản sửa)")).unwrap(),
+        Document::parse(raw_document.0).unwrap(),
+    )
+    .unwrap();
     sqlx::query(
         "INSERT INTO revisions (id, work_id, title, document, content_hash, created_by)
-         SELECT $1, work_id, title || ' (bản sửa)', document,
-                md5(random()::text) || md5(random()::text), created_by
+         SELECT $1, work_id, title || ' (bản sửa)', document, $3, created_by
            FROM revisions WHERE id = $2",
     )
     .bind(id)
     .bind(dev_seed::SAMPLE_REVISION)
-    .execute(conn)
+    .bind(content.hash().as_str())
+    .execute(&mut *conn)
     .await
     .unwrap();
     id
