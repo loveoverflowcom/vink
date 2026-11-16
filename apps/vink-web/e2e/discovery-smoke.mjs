@@ -28,6 +28,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       performance.getEntriesByType('resource').filter(r => r.name.includes('/pkg/empty/')).length === 1;
   })()`), '#258 actual WebP decode, one image request, HTML status and named focus landmark');
   await page.waitFor("document.activeElement?.id==='community-stream'", '#258 submitted search focuses the named landmark');
+  await page.key('Tab');
+  check(await page.eval(`(() => {
+    const link=document.querySelector('#clear-public-results'), style=getComputedStyle(link);
+    return document.activeElement===link && link.matches(':focus-visible') &&
+      style.outlineStyle!=='none' && parseFloat(style.outlineWidth)>0;
+  })()`), '#258 keyboard reaches recovery after the landmark with a visible focus ring');
   const emptyMatrix = async surface => {
   for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,200]) {
     await page.viewport(width);
