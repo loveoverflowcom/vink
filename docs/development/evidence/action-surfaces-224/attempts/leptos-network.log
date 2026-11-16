@@ -1,0 +1,92 @@
+==> ui tokens: 15 generated files match
+==> ui tokens: 15 generated files match
+==> build preview bundle (vink-ui-preview, csr)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s
+==> wasm-bindgen → target/ui-preview/leptos/pkg
+==> preview ready in target/ui-preview/leptos
+==> render the preview media hydration fixture as HTML
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running `target/debug/examples/media_hydration /Users/manhblue/projects/loveoverflow/vink/target/ui-preview/leptos/media-hydration.html`
+==> build the preview media hydration bundle
+   Compiling web-sys v0.3.106
+   Compiling hydration_context v0.3.2
+   Compiling tachys v0.2.19
+   Compiling leptos_macro v0.8.19
+   Compiling leptos v0.8.22
+   Compiling reactive_graph v0.2.16
+   Compiling gloo-utils v0.2.0
+   Compiling gloo-net v0.6.0
+   Compiling wasm-streams v0.5.0
+   Compiling reactive_stores v0.4.4
+   Compiling server_fn v0.8.13
+   Compiling leptos_dom v0.8.8
+   Compiling leptos_server v0.8.8
+   Compiling vink-ui v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/packages/ui-system/leptos)
+   Compiling vink-patterns v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/packages/vink-patterns/leptos)
+   Compiling vink-ui-preview v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/packages/ui-system/leptos/preview)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 36.50s
+==> wasm-bindgen → preview media hydration fixture
+==> focused specimen and overlay geometry regressions
+TAP version 13
+# Subtest: fractional specimen bounds retain every edge, pad and clamp to the real document
+ok 1 - fractional specimen bounds retain every edge, pad and clamp to the real document
+  ---
+  duration_ms: 0.536667
+  type: 'test'
+  ...
+# Subtest: a specimen beyond the old 6000px raw cap is fully tiled at original scale
+ok 2 - a specimen beyond the old 6000px raw cap is fully tiled at original scale
+  ---
+  duration_ms: 0.096292
+  type: 'test'
+  ...
+# Subtest: nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+ok 3 - nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+  ---
+  duration_ms: 0.098542
+  type: 'test'
+  ...
+# Subtest: viewport-sized tiles balance the final part and cover the heading through the last pixel
+ok 4 - viewport-sized tiles balance the final part and cover the heading through the last pixel
+  ---
+  duration_ms: 0.092584
+  type: 'test'
+  ...
+# Subtest: opening invariants reject the measured F-01 scroll and clipped title
+ok 5 - opening invariants reject the measured F-01 scroll and clipped title
+  ---
+  duration_ms: 0.585792
+  type: 'test'
+  ...
+# Subtest: missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+ok 6 - missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+  ---
+  duration_ms: 0.077292
+  type: 'test'
+  ...
+# Subtest: F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+ok 7 - F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+  ---
+  duration_ms: 0.130083
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 34.85075
+==> preview smoke (Chrome DevTools Protocol)
+preview-smoke: FAIL evaluate failed: TypeError: WebAssembly compilation aborted: Network error: error
+xtask: Leptos preview: headless Chrome scenarios and captures: preview smoke (Chrome DevTools Protocol): exited with exit status: 1
+
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: build media hydration fixture
+  FAIL  Leptos preview: headless Chrome scenarios and captures: preview smoke (Chrome DevTools Protocol): exited with exit status: 1
+  (later steps NOT_RUN)

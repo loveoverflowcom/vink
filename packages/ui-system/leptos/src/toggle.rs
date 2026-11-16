@@ -255,6 +255,9 @@ impl ToggleCopy {
 /// the same frame is ignored.
 #[component]
 pub fn ToggleAction(
+    /// Independent of the confirmed value, phase and availability.
+    #[prop(optional, into)]
+    surface: Signal<crate::ActionSurface>,
     /// Stable, unique: `{id}-count` and `{id}-note` are derived from it for SSR/hydration.
     #[prop(into)]
     id: String,
@@ -323,6 +326,7 @@ pub fn ToggleAction(
                 type="button"
                 id=id
                 class="vk-ui-toggle__control"
+                data-surface=move || surface.get().id()
                 aria-label=move || copy.with_value(|c| c.name(view.get().pressed).to_string())
                 aria-describedby=described
                 aria-disabled=move || view.get().dispatch.is_none().then_some("true")

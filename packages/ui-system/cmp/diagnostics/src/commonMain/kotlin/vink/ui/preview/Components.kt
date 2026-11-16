@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import vink.ui.ActionSurface
 import vink.ui.ActionState
 import vink.ui.AspectRatio
 import vink.ui.AvatarKind
@@ -323,6 +324,23 @@ private fun ActionButton(scenario: String) {
 private fun ActionIconButton(scenario: String) {
     val log = LocalPreviewLog.current
     when (scenario) {
+        "surfaces" -> {
+            var state by remember { mutableStateOf<ActionState>(ActionState.Enabled) }
+            var presses by remember { mutableStateOf(0) }
+            VinkStack(gap = Space.S3) {
+                VinkText("Mẫu · Standard / Tonal / Off / On / Disabled / Pending", role = TypeRole.Caption)
+                VinkStack(direction = Direction.Row, gap = Space.S3, wrap = true) {
+                    VinkIconButton(IconName.Edit, "Sửa tiêu đề (Standard)", {}, Modifier.testTag("surface-standard"))
+                    VinkIconButton(IconName.Edit, "Sửa tiêu đề (Tonal)", { presses++; state = ActionState.Pending("Đang xử lý…") }, Modifier.testTag("surface-tonal"), state = state, surface = ActionSurface.Tonal)
+                    VinkIconButton(IconName.Visibility, "Xem trước (tắt)", {}, Modifier.testTag("surface-off"), pressed = false, surface = ActionSurface.Tonal)
+                    VinkIconButton(IconName.Visibility, "Xem trước (bật)", {}, Modifier.testTag("surface-on"), pressed = true, surface = ActionSurface.Tonal)
+                    VinkIconButton(IconName.Edit, "Sửa tiêu đề (không khả dụng)", { presses++ }, Modifier.testTag("surface-disabled"), state = ActionState.Disabled("Mẫu · Chưa có quyền sửa."), surface = ActionSurface.Tonal)
+                    VinkIconButton(IconName.Refresh, "Tải lại", { presses++ }, Modifier.testTag("surface-pending"), state = ActionState.Pending("Đang tải…"), surface = ActionSurface.Tonal)
+                }
+                VinkText("Mẫu · Số lệnh: $presses")
+            }
+        }
+
         "disabled" -> VinkIconButton(IconName.Edit, "Sửa tiêu đề", { log("icon-button → Sửa (không được gọi)") }, Modifier.testTag("icon-disabled"), ActionState.Disabled("Bản đã gửi không sửa được"))
         "selected" -> {
             var on by remember { mutableStateOf(true) }

@@ -2852,11 +2852,11 @@ mod tests {
         let root = crate::root();
         let (tokens, catalog, fixtures) = sources();
         let (icons, identity) = asset_sources();
-        let assets = generate_assets("0.5.0", &icons, &identity, |_| true).unwrap();
+        let assets = generate_assets("0.6.0", &icons, &identity, |_| true).unwrap();
         let version = parse_tokens(&tokens).ok().map(|s| s.version);
         assert_eq!(
             version.as_deref(),
-            Some("0.5.0"),
+            Some("0.6.0"),
             "update the asset version above"
         );
         let states = std::fs::read_to_string(root.join(crate::ui_states::STATES)).unwrap();
@@ -2865,12 +2865,12 @@ mod tests {
             min_visible: 500,
             slow: 8000,
         };
-        let states = crate::ui_states::generate("0.5.0", &states, policy).unwrap();
+        let states = crate::ui_states::generate("0.6.0", &states, policy).unwrap();
         let navigation =
             std::fs::read_to_string(root.join(crate::ui_navigation::NAVIGATION)).unwrap();
-        let navigation = crate::ui_navigation::generate("0.5.0", &navigation).unwrap();
+        let navigation = crate::ui_navigation::generate("0.6.0", &navigation).unwrap();
         let toggle = std::fs::read_to_string(root.join(crate::ui_toggle::TOGGLE)).unwrap();
-        let toggle = crate::ui_toggle::generate("0.5.0", &toggle).unwrap();
+        let toggle = crate::ui_toggle::generate("0.6.0", &toggle).unwrap();
         for (path, text) in generate(&tokens, &catalog, &fixtures)
             .unwrap()
             .into_iter()
@@ -3051,7 +3051,7 @@ mod tests {
             "--vk-space-4: 1rem;",
             "--vk-radius-md: 12px;",
             "--vk-loop-iterations: 0;",
-            ":root,\n.vk-scope {\n  --vk-action-primary-container: var(--vk-primary);",
+            ":root,\n.vk-scope {\n  --vk-action-neutral-container: var(--vk-surface-container-high);\n  --vk-action-neutral-content: var(--vk-on-surface-variant);\n  --vk-action-primary-container: var(--vk-primary);",
         ] {
             assert!(css.contains(needle), "missing {needle}");
         }

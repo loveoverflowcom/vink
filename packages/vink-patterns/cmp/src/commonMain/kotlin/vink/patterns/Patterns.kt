@@ -212,10 +212,10 @@ fun EndorsementAction(
     onSet: (Boolean) -> Unit,
     onRecover: (RecoveryIntent) -> Unit,
     modifier: Modifier = Modifier,
+    surface: ActionSurface = ActionSurface.Standard,
 ) {
     VinkToggleAction(
         copy = kind.copy,
-        icon = IconName.PenFlight,
         value = facts.value,
         onSet = onSet,
         onRecover = onRecover,
@@ -223,5 +223,7 @@ fun EndorsementAction(
         phase = facts.phase,
         count = facts.count,
         blocked = facts.block?.let(kind::reason),
+        icon = IconName.PenFlight,
+        surface = surface,
     )
 }

@@ -98,7 +98,7 @@ dùng tonal surface và gap thay rules; ListEnd bỏ pseudo rules. [Delta hiện
 Web support API chung: `PlainTooltip { id, text, children }` chứa text thuần; trigger
 giữ tên riêng và tham chiếu ID bằng `aria-describedby`. Hover/focus duy trì (focus tự cuộn được đặt lại vị trí; Escape không tự mở lại), tooltip chỉ nhận pointer sau khi đã đặt đúng vị trí để không chặn click action. Pointer
 có thể đi vào tooltip, Escape đóng tooltip mà không chuyển focus hoặc đóng panel cha.
-`TooltipIconButton { id, icon, label, tooltip?, state?, pressed?, on_press? }` ghép
+`TooltipIconButton { id, icon, label, tooltip?, surface?, state?, pressed?, on_press? }` ghép
 IconButton cùng tooltip `{id}-tooltip`; disabled/pending vẫn chặn action và giữ note.
 `SupportingDetails { id, summary, compact?, children }` dùng native details/summary
 trong flow; compact chỉ ẩn chữ summary bằng visually-hidden. Native toggle, keyboard,
@@ -214,10 +214,10 @@ Tên dùng chung; Leptos viết `snake_case` và component không tiền tố (`
 | `Grid` | `min: GridMin`, `gap: Space` | — | Masonry, cột cố định |
 | `Divider` | `decorative: bool` | — | — |
 | `Button` | `variant: ButtonVariant` (Filled/Tonal/Outlined/Text/Danger/DangerText; Web nhận `Signal<ButtonVariant>`), `state: ActionState`, `leading: IconName?`; Web: `kind: ButtonKind` (Button mặc định / Submit), `id?`, `described_by?` liên kết mô tả vào native target và nối note của state | `on_press` ×1 | Fetch, retry, permission, spinner (UIS-03). CMP: không có Submit |
-| `IconButton` | `icon`, `label` (bắt buộc), `state`, `pressed: bool?`; Web: `id?` | `on_press` ×1 | Tooltip hover-only |
+| `IconButton` | `icon`, `label` (bắt buộc), `surface: ActionSurface`, `state`, `pressed: bool?`; Web: `id?`, `described_by?` | `on_press` ×1 | Tooltip hover-only |
 | `Link` | `href`, `variant: LinkVariant` (Inline/Standalone); Web: `target: LinkTarget` (SameTab/NewTab); CMP: `external`, `onNavigate` | Web: trình duyệt điều hướng, giữ modifier-click; CMP: `onNavigate(href)` | Router. URL ngoài allow-list hiện như chữ ở cả hai |
 | `FilterChip` | `label`, `selected`, `state`; Web: `id?` | `on_toggle(bool)` ×1 | Danh sách lọc, query |
-| `ToggleAction` | `id` (bắt buộc), `copy: ToggleCopy` (label, selected_name, count_unit, ghi chú, “Kiểm tra lại”), `value: ToggleValue`, `phase: TogglePhase`, `count: CountFact`, `blocked: Option<String>`, `icon: IconName?`; Web: `blocked_description: Option<String>` opt-in tham chiếu lý do chung đang hiển thị, chỉ khi blocked/Idle (không đổi gate hoặc count) | `on_set(desired: bool)` ×1 khi được phép; `on_recover(Reconcile)` | Request, order/ticket, session, đếm lại. CMP: `blocked` dùng `enabled = false`, tên + số trong `contentDescription` |
+| `ToggleAction` | `id` (bắt buộc), `surface: ActionSurface`, `copy: ToggleCopy` (label, selected_name, count_unit, ghi chú, “Kiểm tra lại”), `value: ToggleValue`, `phase: TogglePhase`, `count: CountFact`, `blocked: Option<String>`, `icon: IconName?`; Web: `blocked_description: Option<String>` opt-in tham chiếu lý do chung đang hiển thị, chỉ khi blocked/Idle (không đổi gate hoặc count) | `on_set(desired: bool)` ×1 khi được phép; `on_recover(Reconcile)` | Request, order/ticket, session, đếm lại. CMP: `blocked` dùng `enabled = false`, tên + số trong `contentDescription` |
 | `TextField` / `TextArea` | `label`, `value`, `help?`, `error?`, `required`, `mode: FieldMode` (Editable/ReadOnly/Disabled), `kind: TextKind` (Text/Email/Url/Tel), `rows` (TextArea); Web: `id`, `autocomplete?` | Web: `on_input(TextInput { value, composing })`, phát thêm khi `compositionend`; CMP: `onValueChange(TextFieldValue)` | Trim/normalize/parse, validate, save |
 | `SearchField` | như TextField + nút xóa khi có chữ | `on_input`; `on_submit(String)` (Web: Enter ngoài composition; CMP: hành động Search của IME) | Tìm kiếm, debounce |
 | `Checkbox` / `Switch` | `label`, `checked`, `help?`, `error?` (Checkbox); Web: `id`, `disabled`; CMP: `enabled` | `on_change(bool)` ×1 | Read-only (không có trên choice native) |
@@ -306,3 +306,56 @@ IME chuẩn. Search giữ Search/onSubmit, clear phát empty một lần rồi f
 normalize hay round-trip TextFieldValue. FilterChip đổi màu bằng effects token, semantics selected
 và callback cập nhật ngay; reduced/inactive snap, không scale vùng chạm.
 [LayoutSpec, target-specific API và evidence](../../../docs/design/ui-interaction-foundation.md).
+
+## Phân cấp hành động và surface opt-in (#224)
+
+Contract trình bày `ActionSurface::{Standard,Tonal}` (CMP: `ActionSurface.Standard/Tonal`)
+áp dụng cho `IconButton`/`VinkIconButton`, `TooltipIconButton` và
+`ToggleAction`/`VinkToggleAction`; shared pattern `EndorsementAction` chuyển tiếp cùng prop
+để consumer giữ copy/Pen Flight. Default `Standard` giữ giao diện cũ. `ButtonVariant` không đổi.
+Surface không cấp quyền, không gửi request, không đổi pressed/value/phase, không xác nhận một ghi nhận.
+
+| Vai trò trong nhóm và ngữ cảnh | Variant/surface | Leading icon |
+| --- | --- | --- |
+| Việc cần nhấn mạnh, ví dụ lưu bản nháp | Button Filled | Khi giúp nhận ra hành động, ví dụ Edit/Add |
+| Việc quan trọng vừa, ví dụ xem trước | Button Tonal | Visibility khi có ích |
+| Việc phụ, hủy hoặc kiểm tra lại | Button Text; icon Standard vẫn hợp lệ | Không bắt buộc |
+| Utility icon cần container rõ trên surface cha | IconButton Tonal | Icon là nội dung; accessible name bắt buộc, tooltip chỉ bổ trợ |
+| Toggle cần container khi Off/Unknown | ToggleAction Tonal | Có chọn lọc, glyph giữ cùng label; chỉ confirmed On có check |
+| Điều hướng trong nội dung | Link thật | Chỉ thêm khi cung cấp nghĩa, như mở ngoài |
+| Choice/lọc | FilterChip/checkbox/radio theo semantics | Không dùng surface để giả selected |
+| Phá hủy | Danger/DangerText và confirmation của consumer | Không đổi semantics vì màu |
+
+Không đặt quy tắc một Filled cho toàn trang; chọn độ nhấn theo nhóm hành động và tác vụ.
+Không chuyển global Text thành Tonal, không thêm icon cho mọi label hoặc pill con quanh leading.
+
+`Tonal` ở icon/toggle dùng `action.neutral.container/content` (alias
+`color.surface-container-high`/`color.on-surface-variant`). Đây là nền trung tính, khác nền
+selected `secondary-container` hiện có. On tiếp tục dùng pressed của icon hoặc check + action
+name của ToggleAction; Unknown không có pressed claim. Disabled Tonal dùng disabled roles;
+pending giữ confirmed value, container, native target và focus, có note. Hover/press dùng state
+layer hiện hành; forced-colors và reduced-motion giữ contract cũ. Chỉ container có chủ ý đổi,
+không đổi palette, font, authority hay recipe ACK-only.
+
+CHOICE-01 **B**: hai family cần cùng vocabulary Standard/Tonal; một enum hai giá trị tránh
+mapping hai enum tương đương, không tạo action framework hoặc tổ hợp Button không hợp lệ.
+CHOICE-02 **B**: cùng neutral role dùng cho hai family để idle không trùng selected; tái dùng
+palette qua alias, không thêm màu nguyên thủy. `action.tonal` của Button vẫn giữ nguyên.
+Token contract 0.6.0, catalog 0.9.0, API coverage 0.5.0; đây là lựa chọn kỹ thuật trong #224,
+không là owner signoff cho một quyết định sản phẩm/kiến trúc mới.
+
+LayoutSpec rút gọn: vùng specimen có caption Mẫu → nhóm hành động → trạng thái/lý do;
+nhãn tiếng Việt dài xuống dòng, leading/label/count/status có chỗ riêng, không fixed-height.
+Tonal toggle đặt count dưới label trong cột co giãn, glyph và status ở hai bên; góc bo RadiusXl
+giữ nhãn nhiều dòng trong vùng vẽ. Standard toggle giữ hàng cũ. CMP Button dành constraint
+riêng cho leading/label/status; khi label có nhiều dòng dùng RadiusXl để shape không clip chữ,
+nút một dòng vẫn RadiusFull. Đây là sửa reflow, không đổi variant mặc định hay typography.
+Một native target, utility type=button; Link vẫn là link. Click/Enter/Space dispatch một lần,
+pending/disabled/uncertain/unknown giữ guard; Reconcile là một Text action riêng.
+Mục tiêu Web ≥48 CSS px mặc định (compact ≥44), CMP ≥48dp; focus một perimeter, không cướp focus.
+Light/dark ở 100% và text200; text200 là multiplier preview, không phải OS/browser zoom.
+`fidelity: NO_APPROVED_REFERENCE`; nguồn/ảnh cũ chỉ dùng kiểm hồi quy, self-review tối đa hai vòng.
+
+Specimens mới: `action.icon-button/surfaces`, `action.toggle-action/surfaces`,
+`action.toggle-action/tonal-lifecycle`, `action.toggle-action/tonal-long-label` ở cả renderer.
+Các app consumer vẫn Standard; #225/#226 sẽ opt-in trong PR riêng.

@@ -17,6 +17,8 @@ import vink.patterns.EndorsementAction
 import vink.patterns.EndorsementBlock
 import vink.patterns.EndorsementFacts
 import vink.patterns.EndorsementKind
+import vink.ui.ActionSurface
+import vink.ui.IconName
 import vink.ui.ActionState
 import vink.ui.ButtonVariant
 import vink.ui.CountFact
@@ -43,7 +45,12 @@ import vink.ui.VinkToggleAction
 @Composable
 fun EndorsementSpecimen(id: String, scenario: String): Boolean {
     when (id) {
-        "action.toggle-action" -> if (scenario == "lifecycle") ToggleLifecycle() else ToggleSample(scenario)
+        "action.toggle-action" -> when (scenario) {
+            "lifecycle" -> ToggleLifecycle()
+            "tonal-lifecycle" -> ToggleLifecycle(ActionSurface.Tonal)
+            "surfaces" -> ToggleSurfaces()
+            else -> ToggleSample(scenario)
+        }
         "composition.endorsement" -> EndorsementSample(scenario)
         else -> return false
     }
@@ -64,8 +71,8 @@ private fun ToggleSample(scenario: String) {
         "unknown" -> Facts(ToggleValue.Unknown, TogglePhase.Idle, CountFact.Known(12))
         "disabled" -> Facts(ToggleValue.Off, TogglePhase.Idle, CountFact.Known(12), "Mẫu · Lý do do caller cấp, hiển thị thành chữ.")
         "count-unavailable" -> Facts(ToggleValue.Off, TogglePhase.Idle, CountFact.Unavailable)
-        "long-label" -> Facts(
-            ToggleValue.On, TogglePhase.Idle, CountFact.Known(1_234_567),
+        "long-label", "tonal-long-label" -> Facts(
+            ToggleValue.On, if (scenario == "tonal-long-label") TogglePhase.Pending(false) else TogglePhase.Idle, CountFact.Known(1_234_567),
             copy = ToggleCopy(
                 "Ghi nhận giá trị văn chương của truyện ngắn nhiều chương này",
                 "Bỏ ghi nhận giá trị văn chương của truyện ngắn nhiều chương này",
@@ -77,6 +84,8 @@ private fun ToggleSample(scenario: String) {
     Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space3)) {
         VinkToggleAction(
             f.copy, f.value,
+            surface = if (scenario == "tonal-long-label") ActionSurface.Tonal else ActionSurface.Standard,
+            icon = IconName.PenFlight,
             onSet = { log("toggle-action → muốn ${if (it) "bật" else "tắt"} (caller giữ phase)") },
             onRecover = { log("toggle-action → ${it.id}") },
             modifier = Modifier.testTag("toggle-sample"),
@@ -88,7 +97,7 @@ private fun ToggleSample(scenario: String) {
 
 /** A sample owner: the press only asks; a step button decides what the "owner" did. */
 @Composable
-private fun ToggleLifecycle() {
+private fun ToggleLifecycle(surface: ActionSurface = ActionSurface.Standard) {
     val log = LocalPreviewLog.current
     var value by remember { mutableStateOf(ToggleValue.Off) }
     var phase by remember { mutableStateOf<TogglePhase>(TogglePhase.Idle) }
@@ -118,6 +127,7 @@ private fun ToggleLifecycle() {
             },
             onRecover = { intent -> read(); log("toggle-action → ${intent.id} → owner đang ${if (ownerOn) "bật" else "tắt"}") },
             modifier = Modifier.testTag("toggle-lifecycle"),
+            surface = surface,
             phase = phase, count = CountFact.Known(count),
         )
         VinkSurface(Modifier.fillMaxWidth(), SurfaceTone.Container, Radius.Md, Space.S3) {
@@ -186,5 +196,28 @@ private fun EndorsementSample(scenario: String) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ToggleSurfaces() {
+    data class Facts(val value: ToggleValue, val phase: TogglePhase, val blocked: String? = null)
+    VinkStack(gap = Space.S3) {
+        VinkText("Mẫu · Off / On / Unknown / Pending / Disabled / Failed / Uncertain", role = TypeRole.Caption)
+        listOf(
+            Facts(ToggleValue.Off, TogglePhase.Idle),
+            Facts(ToggleValue.On, TogglePhase.Idle),
+            Facts(ToggleValue.Unknown, TogglePhase.Idle),
+            Facts(ToggleValue.Off, TogglePhase.Pending(true)),
+            Facts(ToggleValue.On, TogglePhase.Idle, "Mẫu · Không khả dụng."),
+            Facts(ToggleValue.Off, TogglePhase.Failed),
+            Facts(ToggleValue.On, TogglePhase.Uncertain(false)),
+        ).forEachIndexed { i, f ->
+            VinkToggleAction(sampleCopy, f.value, {}, {}, Modifier.testTag("surface-toggle-$i"),
+                phase = f.phase, count = CountFact.Known(12), blocked = f.blocked,
+                icon = IconName.PenFlight, surface = ActionSurface.Tonal)
+        }
+        EndorsementAction(EndorsementKind.Work, EndorsementFacts(), {}, {},
+            Modifier.testTag("surface-endorsement"), surface = ActionSurface.Tonal)
     }
 }

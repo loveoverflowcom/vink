@@ -3,7 +3,7 @@
 
 use leptos::prelude::*;
 
-use crate::{ActionState, Icon, IconButton, IconName};
+use crate::{ActionState, ActionSurface, Icon, IconButton, IconName};
 
 /// A hoverable, persistent plain tooltip. The trigger keeps its own accessible name and
 /// references `id` with `aria-describedby`. Escape dismisses only this tooltip, without moving
@@ -120,6 +120,7 @@ pub fn TooltipIconButton(
     icon: IconName,
     #[prop(into)] label: String,
     #[prop(optional, into)] tooltip: Option<String>,
+    #[prop(optional, into)] surface: Signal<ActionSurface>,
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional, into)] pressed: Option<Signal<bool>>,
     #[prop(optional, into)] on_press: Option<Callback<()>>,
@@ -130,6 +131,7 @@ pub fn TooltipIconButton(
         .id(id)
         .icon(icon)
         .label(label)
+        .surface(surface)
         .state(state)
         .described_by(tip_id.clone())
         .build();
@@ -196,5 +198,30 @@ mod tests {
             !html.contains("tabindex"),
             "tooltip creates no extra focus target: {html}"
         );
+    }
+    #[test]
+    fn tooltip_passes_surface_and_state_to_its_only_native_target() {
+        let html = render(|| {
+            view! {
+            <TooltipIconButton id="tonal-tip" icon=IconName::Edit label="Sửa tiêu đề"
+                surface=ActionSurface::Tonal pressed=false state=ActionState::pending("Đang lưu…") />
+        }.into_any()
+        });
+        let target = html
+            .split("<button")
+            .nth(1)
+            .unwrap()
+            .split('>')
+            .next()
+            .unwrap();
+        for attr in [
+            "data-surface=\"tonal\"",
+            "aria-pressed=\"false\"",
+            "aria-busy=\"true\"",
+            "aria-describedby=\"tonal-tip-tooltip tonal-tip-note\"",
+        ] {
+            assert!(target.contains(attr), "{html}");
+        }
+        assert_eq!(html.matches("<button").count(), 1, "{html}");
     }
 }
