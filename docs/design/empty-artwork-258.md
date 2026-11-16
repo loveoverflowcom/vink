@@ -23,7 +23,7 @@ Screen #explore — tìm tác phẩm công khai / trang thẻ
 Hierarchy: không heading “Kết quả”, H3, đoạn giải thích hay count 0 lặp lại. Nonempty vẫn có
 “Trang này: N tác phẩm”, danh sách và phân trang; không suy N là tổng thư viện.
 Image → câu → actions; app background, không nested panel/hero/border/glow. UI font hiện hữu
-400, body 1rem/1.5, semantic `on-surface-variant`. Spacing theo token hiện hành.
+400, body 1rem/1.6 theo body tokens hiện hữu, semantic `on-surface-variant`. Spacing theo token hiện hành.
 Ảnh `min(240px, 100%)`; viewport <760px là `min(192px, 100%)`, height auto + ratio/intrinsic size.
 200% chỉ tăng chữ và spacing theo token, không nhân đôi artwork. Cột/controls wrap tự nhiên,
 cuộn theo trang và giữ bottom inset của shell; không overlay/cuộn riêng mới.

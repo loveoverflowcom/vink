@@ -994,7 +994,7 @@ a {
   margin: 0;
   max-inline-size: 36ch;
   color: var(--vk-on-surface-variant);
-  font: 400 1rem/1.5 var(--vk-font-ui);
+  font: var(--vk-type-body-weight) var(--vk-type-body-size)/var(--vk-type-body-line-height) var(--vk-type-body-font);
   overflow-wrap: anywhere;
 }
 .vk-empty-state__actions {
