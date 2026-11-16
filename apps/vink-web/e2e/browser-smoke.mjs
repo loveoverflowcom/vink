@@ -3601,6 +3601,18 @@ async function editorChrome(page) {
   await page.waitStatus('saved');
   await page.waitFor(`document.activeElement?.matches('#editor-save-details > summary')`, 'focus moves cleanly to save details summary when #save hides on clean');
   check(await page.eval(`document.querySelector('#save') === null && document.activeElement?.matches('#editor-save-details > summary') && document.activeElement.checkVisibility() && !document.querySelector('#editor-save-details').open`), 'keyboard save dirty -> pending -> saved hands focus to visible closed tools');
+  // Reflow can move the destination to a new row: check actual clipping/hit testing,
+  // not only activeElement, in a narrow enlarged-text short viewport.
+  await setEditorScene(page, {width:320,height:420,scale:200,theme:'dark'});
+  await page.typeInBody(' Lưu trên cửa sổ hẹp.');
+  await page.click('#save');
+  const narrowAck = await gate.next();
+  await gate.release(narrowAck); await page.waitStatus('saved');
+  await page.waitFor(`document.activeElement.matches('#editor-save-details > summary')`, 'narrow ACK destination');
+  const narrowFocus = await editorTarget(page, '#editor-save-details > summary');
+  check(fitsEditorAction(narrowFocus) && narrowFocus.focused && !await page.eval(`document.querySelector('#editor-save-details').open`), '320x420/text200 ACK hands off to a fully visible closed tools trigger');
+  await captureEditorScene(page, 'paper-ack-focus', {width:320,height:420,scale:200,theme:'dark'}, {action:narrowFocus});
+  await setEditorScene(page, {width:1440,height:900,scale:100,theme:'light'});
   // An already open native disclosure remains open through ACK; the same visible
   // summary is safe in both states. No auto-open or hidden nested focus destination.
   await page.key('Space');
