@@ -4,6 +4,8 @@
 
 **Web Perf #234 · baseline opt-in:** [cách đo và giới hạn](web-perf-baseline.md) sử dụng catalog `xtask` + `browser-smoke.mjs`, fixture 200 works/1.000 comments và 10 vòng cold/warm. Baseline debug lab PASS tại `997d97d` ([raw](evidence/web-perf-234/README.md)); release profile, negative transport và go/no-go còn `NOT_RUN`/`PENDING`, không đổi SSR/cache policy.
 
+**Web Perf #235 · SSR Reader:** [owner, lựa chọn A/B/C và regression](reader-ssr-boundary.md) giữ Async; thêm test Leptos/Axum ở port tổng hợp và kiểm blocked/delayed bootstrap trong scenario `main`. Kết quả theo boundary ở [evidence #235](evidence/reader-ssr-235/README.md), không suy PASS từ merge #234.
+
 Với thay đổi liên quan đến quyết định ngày 10/11, tra ID và revision tại
 [kho quyết định TOML](../../decisions/README.md). Phạm vi và kiểm chứng của công cụ nằm trong
 [bàn giao #164](decision-registry-rollout.md).

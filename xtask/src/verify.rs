@@ -36,7 +36,7 @@ pub fn verify(lanes: &[Lane], env: &env::Env) -> ExitCode {
 
 fn quick(report: &mut Report) -> bool {
     let root = root();
-    let steps: [(&str, &[&str]); 6] = [
+    let steps: [(&str, &[&str]); 7] = [
         ("fmt", &["fmt", "--all", "--", "--check"]),
         (
             "clippy server (workspace, ssr)",
@@ -87,6 +87,17 @@ fn quick(report: &mut Report) -> bool {
         (
             "literary core type-boundary doctests",
             &["test", "--locked", "-p", "vink-app", "--doc"],
+        ),
+        (
+            "Reader SSR boundary (isolated public-read fixture, no database)",
+            &[
+                "test",
+                "--locked",
+                "-p",
+                "vink-app",
+                "--test",
+                "ssr_boundary",
+            ],
         ),
         (
             "unit + contract tests (no database)",

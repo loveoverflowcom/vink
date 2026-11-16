@@ -1,0 +1,19 @@
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-16/task-6/vink/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 10.72s
+     Running tests/ssr_boundary.rs (target/debug/deps/ssr_boundary-bd6bf69b24ad2577)
+
+running 1 test
+
+thread 'reader_ssr_boundary' (90012861) panicked at services/vink-app/tests/ssr_boundary.rs:156:9:
+client-only retry must be unavailable before hydration:  type="button" id="discussion-load-retry" data-state="enabled" class="vk-ui-button vk-ui-button--tonal"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test reader_ssr_boundary ... FAILED
+
+failures:
+
+failures:
+    reader_ssr_boundary
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p vink-app --test ssr_boundary`
