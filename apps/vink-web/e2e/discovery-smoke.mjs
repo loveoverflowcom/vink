@@ -348,6 +348,9 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     await page.send('Fetch.disable');
     page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==catalogFailure);
   }
+  await goto('/?q=missing-return-258#work-00000000-0000-4000-8000-000000000258');
+  await page.waitFor("document.activeElement?.id==='community-stream'", '#258 missing reader-return row focuses the named results landmark');
+  check(await page.eval("document.activeElement.getAttribute('aria-label')==='Tác phẩm khám phá' && document.activeElement.getClientRects().length>0"), '#258 reader-return fallback is a visible, named target');
   await goto('/');
 }
 
