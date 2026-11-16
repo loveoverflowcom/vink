@@ -1,0 +1,55 @@
+{
+  "method": "Lossless one-record-per-line JSON; same keys, values, schema and capture records. PNG files untouched. Pretty raw JSON retained locally.",
+  "files": [
+    {
+      "published": "docs/development/evidence/empty-webp-259/focused-final/screenshots/contexts.json",
+      "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/context-json-originals/focused-final/screenshots/contexts.json",
+      "raw_sha256": "47b7e1d308073b89468e5ed93c373e0681f56b16e1d2813b6a73768a5b5b7f05",
+      "published_sha256": "3ff0447b88780d0f216a6817552eb146184b39a61d09775aabe4d9cbaaf8c363",
+      "records": 42,
+      "json_values_identical": true,
+      "raw_lines": 17131,
+      "published_lines": 44
+    },
+    {
+      "published": "docs/development/evidence/empty-webp-259/after-initial/screenshots/contexts.json",
+      "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/context-json-originals/after-initial/screenshots/contexts.json",
+      "raw_sha256": "bb6a7c17ebdd642e78849d861cdd5b49cb13c86cf07343e1115d29afc0adee40",
+      "published_sha256": "3487d9947100e28eb782d6bf319f3c2a0a2a2a3f4ebb44684d815f7e7589b60d",
+      "records": 4,
+      "json_values_identical": true,
+      "raw_lines": 1613,
+      "published_lines": 6
+    },
+    {
+      "published": "docs/development/evidence/empty-webp-259/browser-main-r3/screenshots/contexts.json",
+      "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/context-json-originals/browser-main-r3/screenshots/contexts.json",
+      "raw_sha256": "4c826f8a686c4b93b13d0d05e7e84ca269819848a12cc0db5b2aa231eb8520fd",
+      "published_sha256": "952242c7d4bb5da55883ae02ab1a56735192f272016b3ebb54f6e9d450f6e341",
+      "records": 50,
+      "json_values_identical": true,
+      "raw_lines": 21612,
+      "published_lines": 52
+    },
+    {
+      "published": "docs/development/evidence/empty-webp-259/before/screenshots/contexts.json",
+      "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/context-json-originals/before/screenshots/contexts.json",
+      "raw_sha256": "0e7578c492fef1d765eba51bcdc1db910576f27595602a650b6a796b0e85fc5f",
+      "published_sha256": "f0f7e0966d11e2354b471cfa9ab89a4f23c8adf61a9af334f9dfd3bdfc204b87",
+      "records": 40,
+      "json_values_identical": true,
+      "raw_lines": 16697,
+      "published_lines": 42
+    },
+    {
+      "published": "docs/development/evidence/empty-webp-259/after/screenshots/contexts.json",
+      "raw_local": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/context-json-originals/after/screenshots/contexts.json",
+      "raw_sha256": "a1d87bd567e36f001f98d59ff4b7239fd3bca34e4f1c58c1bb420380084b9e3f",
+      "published_sha256": "60be37716e65c16b0e34a8ab187b1ed04272e1b9844fa92d75117401929bb7a6",
+      "records": 42,
+      "json_values_identical": true,
+      "raw_lines": 17131,
+      "published_lines": 44
+    }
+  ]
+}

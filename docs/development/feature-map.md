@@ -284,10 +284,21 @@ môi trường và quan sát cụ thể. Không tự đổi chúng thành `PASS`
 
 UI-REPAIR-06/07 bổ sung `StatePanel` action slot ở hai renderer. `feedback` SSR và
 `VinkPanelTest` kiểm typed recovery cùng callback/link của caller; `publicReading`
-và `draftDashboard` kiểm action nằm trong panel, clear trả focus về search,
+và `draftDashboard` kiểm action thuộc đúng state owner, clear trả focus về search,
 GET retry giữ query/hash và reload document thật, 401/403/503 cùng uncertain-create
 vẫn riêng. `captureRecovery` ghi 220 ảnh theo 11 state × 5 width × hai theme ×
 text100/200; input chương trình và cỡ chữ CSS không là OS IME/browser zoom.
+
+Desk #259 thay hai empty panels bằng composition WebP chung #258, giữ panel ở error/uncertain.
+`deskEmptyState` trong `e2e/desk-empty-smoke.mjs`, được gọi bởi `main` và phase `desk-empty`
+của runner hiện hữu, kiểm loading/first-use/search miss/clear, node/caret/composition, request
+ảnh theo state, HTTP MIME/hash/decode, blocked/corrupt, stale/error và empty continuation
+rejection. Ma trận 320/390/834/1440 × light/dark × root text100/200 kiểm art sizing, CTA/privacy
+clearance; [evidence và giới hạn](evidence/empty-webp-259/README.md) tách fixtures với real
+create/paging trong `draftDashboard`/`draftPagination`. Không đổi Editor hoặc read/create model.
+Trong `main`, fixture empty/session chạy trong browser context riêng để BroadcastChannel không
+ảnh hưởng ca kế tiếp. Network evidence chỉ tính current document, cho phép decoded-cache reuse
+và kiểm đổi theme/viewport/text scale không tải thêm artwork.
 
 `focusedCaptures` trong preview smoke opt-in qua development guide: 36 selected
 records liên kết raw ↔ các tile specimen; geometry tests gồm tọa độ phân số,

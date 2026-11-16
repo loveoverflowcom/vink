@@ -294,6 +294,8 @@ Navigation chỉ phủ một phần UX-01/UX-03; utility Tôi chưa hoàn tất 
 Phần dưới giữ lịch sử lát #8. Cơ chế đọc/tìm/sort hiện hành được thay bởi
 [phân trang server #201](desk-server-pagination.md), dùng coordinator #202;
 [owner và bằng chứng](../development/desk-pagination.md) ghi giới hạn và trạng thái mới.
+Empty slots hiện dùng [composition WebP chung #259](empty-artwork-desk-259.md), thay riêng
+panel/heading trong first-use và search miss; privacy và create/reconciliation không đổi.
 
 LayoutSpec r1, trình bày trước sửa UI ngày 01/11/2026; nền `develop@cfad6a2`.
 Kế thừa hướng A Lavender trong [v2.3](https://drive.google.com/file/d/1IlLVGiPHIg9DBohATdwd-38Gdy7z4U5g/view)
