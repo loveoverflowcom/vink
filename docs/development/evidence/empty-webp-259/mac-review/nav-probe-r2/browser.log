@@ -1,0 +1,545 @@
+REVIEW-THEME before dark { width: 320, scale: '', selection: 'system' }
+REVIEW-THEME after dark { theme: 'dark', selection: 'dark', active: 'dark' }
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  nav-toi-320-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-320-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-100-dark: keyboard order and visible focus
+  ok  nav-toi-320-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-320-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-100-dark: focus preserves geometry
+  ok  nav-toi-320-100-dark: measured content clearance follows the bar
+  ok  nav-explore-320-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-320-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-100-dark: selected route preserves geometry
+  ok  nav-explore-320-100-dark: keyboard order and visible focus
+  ok  nav-explore-320-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-320-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-100-dark: focus preserves geometry
+  ok  nav-explore-320-100-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-320-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-320-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-100-dark: selected route preserves geometry
+  ok  nav-ban-viet-320-100-dark: keyboard order and visible focus
+  ok  nav-ban-viet-320-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-320-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-100-dark: focus preserves geometry
+  ok  nav-ban-viet-320-100-dark: measured content clearance follows the bar
+  ok  nav-toi-320-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-320-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-200-dark: keyboard order and visible focus
+  ok  nav-toi-320-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-320-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-200-dark: focus preserves geometry
+  ok  nav-toi-320-200-dark: measured content clearance follows the bar
+  ok  nav-explore-320-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-320-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-200-dark: selected route preserves geometry
+  ok  nav-explore-320-200-dark: keyboard order and visible focus
+  ok  nav-explore-320-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-320-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-200-dark: focus preserves geometry
+  ok  nav-explore-320-200-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-320-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-200-dark: selected route preserves geometry
+  ok  nav-ban-viet-320-200-dark: keyboard order and visible focus
+  ok  nav-ban-viet-320-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-200-dark: focus preserves geometry
+  ok  nav-ban-viet-320-200-dark: measured content clearance follows the bar
+  ok  nav-toi-360-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-360-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-100-dark: keyboard order and visible focus
+  ok  nav-toi-360-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-360-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-100-dark: focus preserves geometry
+  ok  nav-toi-360-100-dark: measured content clearance follows the bar
+  ok  nav-explore-360-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-360-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-100-dark: selected route preserves geometry
+  ok  nav-explore-360-100-dark: keyboard order and visible focus
+  ok  nav-explore-360-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-360-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-100-dark: focus preserves geometry
+  ok  nav-explore-360-100-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-360-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-360-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-100-dark: selected route preserves geometry
+  ok  nav-ban-viet-360-100-dark: keyboard order and visible focus
+  ok  nav-ban-viet-360-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-360-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-100-dark: focus preserves geometry
+  ok  nav-ban-viet-360-100-dark: measured content clearance follows the bar
+  ok  nav-toi-360-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-200-dark: keyboard order and visible focus
+  ok  nav-toi-360-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-200-dark: focus preserves geometry
+  ok  nav-toi-360-200-dark: measured content clearance follows the bar
+  ok  nav-explore-360-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-360-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-200-dark: selected route preserves geometry
+  ok  nav-explore-360-200-dark: keyboard order and visible focus
+  ok  nav-explore-360-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-360-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-200-dark: focus preserves geometry
+  ok  nav-explore-360-200-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-360-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-200-dark: selected route preserves geometry
+  ok  nav-ban-viet-360-200-dark: keyboard order and visible focus
+  ok  nav-ban-viet-360-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-200-dark: focus preserves geometry
+  ok  nav-ban-viet-360-200-dark: measured content clearance follows the bar
+  ok  nav-toi-390-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-390-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-100-dark: keyboard order and visible focus
+  ok  nav-toi-390-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-390-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-100-dark: focus preserves geometry
+  ok  nav-toi-390-100-dark: measured content clearance follows the bar
+  ok  nav-explore-390-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-390-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-100-dark: selected route preserves geometry
+  ok  nav-explore-390-100-dark: keyboard order and visible focus
+  ok  nav-explore-390-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-390-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-100-dark: focus preserves geometry
+  ok  nav-explore-390-100-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-390-100-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-100-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-100-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-390-100-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-100-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-100-dark: selected route preserves geometry
+  ok  nav-ban-viet-390-100-dark: keyboard order and visible focus
+  ok  nav-ban-viet-390-100-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-100-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-100-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-390-100-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-100-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-100-dark: focus preserves geometry
+  ok  nav-ban-viet-390-100-dark: measured content clearance follows the bar
+  ok  nav-toi-390-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-toi-390-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-200-dark: keyboard order and visible focus
+  ok  nav-toi-390-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-toi-390-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-200-dark: focus preserves geometry
+  ok  nav-toi-390-200-dark: measured content clearance follows the bar
+  ok  nav-explore-390-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-explore-390-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-200-dark: selected route preserves geometry
+  ok  nav-explore-390-200-dark: keyboard order and visible focus
+  ok  nav-explore-390-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-explore-390-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-200-dark: focus preserves geometry
+  ok  nav-explore-390-200-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-390-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-200-dark: selected route preserves geometry
+  ok  nav-ban-viet-390-200-dark: keyboard order and visible focus
+  ok  nav-ban-viet-390-200-dark focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-200-dark focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-200-dark focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390-200-dark focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-200-dark focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-200-dark: focus preserves geometry
+  ok  nav-ban-viet-390-200-dark: measured content clearance follows the bar
+  ok  nav-ban-viet-320x800-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320x800-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320x800-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320x800-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320x800-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360x800-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360x800-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360x800-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360x800-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360x800-200-dark: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390x800-200-dark: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390x800-200-dark: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390x800-200-dark: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390x800-200-dark: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390x800-200-dark: bottom bar and page have no unintended/hidden overflow
+REVIEW-THEME before light { width: 320, scale: '', theme: 'dark', selection: 'dark' }
+REVIEW-THEME after light { theme: 'light', selection: 'light', active: 'light' }
+  ok  brand appears once in the Explore tools, links home, and is absent on other routes
+  ok  nav-toi-320-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-320-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-100-light: keyboard order and visible focus
+  ok  nav-toi-320-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-320-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-100-light: focus preserves geometry
+  ok  nav-toi-320-100-light: measured content clearance follows the bar
+  ok  nav-explore-320-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-320-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-100-light: selected route preserves geometry
+  ok  nav-explore-320-100-light: keyboard order and visible focus
+  ok  nav-explore-320-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-320-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-100-light: focus preserves geometry
+  ok  nav-explore-320-100-light: measured content clearance follows the bar
+  ok  nav-ban-viet-320-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-320-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-100-light: selected route preserves geometry
+  ok  nav-ban-viet-320-100-light: keyboard order and visible focus
+  ok  nav-ban-viet-320-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-320-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-100-light: focus preserves geometry
+  ok  nav-ban-viet-320-100-light: measured content clearance follows the bar
+  ok  nav-toi-320-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-320-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-200-light: keyboard order and visible focus
+  ok  nav-toi-320-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-320-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-320-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-320-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-320-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-320-200-light: focus preserves geometry
+  ok  nav-toi-320-200-light: measured content clearance follows the bar
+  ok  nav-explore-320-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-320-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-200-light: selected route preserves geometry
+  ok  nav-explore-320-200-light: keyboard order and visible focus
+  ok  nav-explore-320-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-320-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-320-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-320-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-320-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-320-200-light: focus preserves geometry
+  ok  nav-explore-320-200-light: measured content clearance follows the bar
+  ok  nav-ban-viet-320-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-200-light: selected route preserves geometry
+  ok  nav-ban-viet-320-200-light: keyboard order and visible focus
+  ok  nav-ban-viet-320-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-320-200-light: focus preserves geometry
+  ok  nav-ban-viet-320-200-light: measured content clearance follows the bar
+  ok  nav-toi-360-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-360-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-100-light: keyboard order and visible focus
+  ok  nav-toi-360-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-360-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-100-light: focus preserves geometry
+  ok  nav-toi-360-100-light: measured content clearance follows the bar
+  ok  nav-explore-360-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-360-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-100-light: selected route preserves geometry
+  ok  nav-explore-360-100-light: keyboard order and visible focus
+  ok  nav-explore-360-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-360-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-100-light: focus preserves geometry
+  ok  nav-explore-360-100-light: measured content clearance follows the bar
+  ok  nav-ban-viet-360-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-360-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-100-light: selected route preserves geometry
+  ok  nav-ban-viet-360-100-light: keyboard order and visible focus
+  ok  nav-ban-viet-360-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-360-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-100-light: focus preserves geometry
+  ok  nav-ban-viet-360-100-light: measured content clearance follows the bar
+  ok  nav-toi-360-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-200-light: keyboard order and visible focus
+  ok  nav-toi-360-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360-200-light: focus preserves geometry
+  ok  nav-toi-360-200-light: measured content clearance follows the bar
+  ok  nav-explore-360-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-360-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-200-light: selected route preserves geometry
+  ok  nav-explore-360-200-light: keyboard order and visible focus
+  ok  nav-explore-360-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-360-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-360-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-explore-360-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-360-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-360-200-light: focus preserves geometry
+  ok  nav-explore-360-200-light: measured content clearance follows the bar
+  ok  nav-ban-viet-360-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-200-light: selected route preserves geometry
+  ok  nav-ban-viet-360-200-light: keyboard order and visible focus
+  ok  nav-ban-viet-360-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360-200-light: focus preserves geometry
+  ok  nav-ban-viet-360-200-light: measured content clearance follows the bar
+  ok  nav-toi-390-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-390-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-100-light: keyboard order and visible focus
+  ok  nav-toi-390-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-toi-390-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-100-light: focus preserves geometry
+  ok  nav-toi-390-100-light: measured content clearance follows the bar
+  ok  nav-explore-390-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-390-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-100-light: selected route preserves geometry
+  ok  nav-explore-390-100-light: keyboard order and visible focus
+  ok  nav-explore-390-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-explore-390-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-100-light: focus preserves geometry
+  ok  nav-explore-390-100-light: measured content clearance follows the bar
+  ok  nav-ban-viet-390-100-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-100-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-100-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-390-100-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-100-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-100-light: selected route preserves geometry
+  ok  nav-ban-viet-390-100-light: keyboard order and visible focus
+  ok  nav-ban-viet-390-100-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-100-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-100-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[1,1,1]}
+  ok  nav-ban-viet-390-100-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-100-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-100-light: focus preserves geometry
+  ok  nav-ban-viet-390-100-light: measured content clearance follows the bar
+  ok  nav-toi-390-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-toi-390-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-200-light: keyboard order and visible focus
+  ok  nav-toi-390-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-390-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-390-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-toi-390-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-390-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-390-200-light: focus preserves geometry
+  ok  nav-toi-390-200-light: measured content clearance follows the bar
+  ok  nav-explore-390-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-explore-390-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-200-light: selected route preserves geometry
+  ok  nav-explore-390-200-light: keyboard order and visible focus
+  ok  nav-explore-390-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-explore-390-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-explore-390-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-explore-390-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-explore-390-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-explore-390-200-light: focus preserves geometry
+  ok  nav-explore-390-200-light: measured content clearance follows the bar
+  ok  nav-ban-viet-390-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-200-light: selected route preserves geometry
+  ok  nav-ban-viet-390-200-light: keyboard order and visible focus
+  ok  nav-ban-viet-390-200-light focused: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390-200-light focused: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390-200-light focused: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390-200-light focused: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390-200-light focused: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390-200-light: focus preserves geometry
+  ok  nav-ban-viet-390-200-light: measured content clearance follows the bar
+  ok  nav-ban-viet-320x800-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-320x800-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-320x800-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-320x800-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-320x800-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-360x800-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-360x800-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-360x800-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-ban-viet-360x800-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-360x800-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-ban-viet-390x800-200-light: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-ban-viet-390x800-200-light: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-ban-viet-390x800-200-light: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,1,1]}
+  ok  nav-ban-viet-390x800-200-light: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":null})
+  ok  nav-ban-viet-390x800-200-light: bottom bar and page have no unintended/hidden overflow
+  ok  nav-toi-360x800-200-before-hydration: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360x800-200-before-hydration: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360x800-200-before-hydration: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360x800-200-before-hydration: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"—Tôi","ariaCurrent":"page"})
+  ok  nav-toi-360x800-200-before-hydration: bottom bar and page have no unintended/hidden overflow
+  ok  before-hydration nav check produces only expected blocked imports: ["TypeError: Failed to fetch dynamically imported module: http://127.0.0.1:52567/pkg/vink.js"]
+  ok  nav-toi-360x800-200-after-hydration: all three labels fit in at most two lines inside targets >=44px
+  ok  nav-toi-360x800-200-after-hydration: bottom navigation leaves at least 82% of viewport height for the page
+  ok  nav-toi-360x800-200-after-hydration: equal targets, icon centres, first label lines and label font align within 1px: {"iconDelta":0,"firstLineDelta":0,"lineCounts":[2,2,1]}
+  ok  nav-toi-360x800-200-after-hydration: Tôi AX name excludes decorative initials ({"axName":"Tôi","rawText":"TTTôi","ariaCurrent":"page"})
+  ok  nav-toi-360x800-200-after-hydration: bottom bar and page have no unintended/hidden overflow
+  ok  negative control: browser oracle rejects misaligned nav first line
+  ok  negative control: Chrome AX oracle catches altered accessible name (TT Tôi)
+  ok  834px keeps the rail and hides the bottom bar
+  ok  mobile editor still hides the bottom bar
+  ok  no console errors or exceptions
+browser-smoke: PASS (bottom-navigation)

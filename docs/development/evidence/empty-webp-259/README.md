@@ -79,7 +79,8 @@ mobile200 cuối đã mở riêng: [đối chiếu main](visual-equivalence-main
 
 Historical attachment capture `8424a39...`, 2/66 INTERRUPTED trong issue vẫn là provenance partial;
 không nâng nó thành full PASS. Ma trận mới này là run riêng trên Mac.
-Independent work-chat review chưa chạy; PR phải giữ draft và không merge.
+Các kết quả trên là self-review của tác giả. [Review độc lập trên Mac](mac-review/README.md)
+ghi source integrity, runtime mới, lịch sử failure và kết luận tiếp theo.
 
 ## Lịch sử FAIL / interruption
 
