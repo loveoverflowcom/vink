@@ -211,3 +211,37 @@ CLI `vink-app admin add|list|remove` nhả connection trước khi đóng pool; 
 - Kết quả chạy, SHA và CI của phần hoàn thiện ở [PR #171](https://github.com/loveoverflowcom/vink/pull/171).
   Danh sách trên là phạm vi suite; chỉ kết quả trên đúng SHA mới là bằng chứng PASS. CI merge #170
   (`25dc464`) bị hủy ở Web sau CLI cấp ghế admin, không phải bằng chứng smoke reader đã qua.
+
+## 10. Hai queue hữu hạn (#205)
+
+Mức triển khai `persistence-api` + `web`; không thay quyết định sản phẩm hay nhận ADR Accepted.
+`ADM-01@r1 PRODUCT_CONFIRMED`, `O-18@r1 OPEN`; snapshot registry tại base `6de515d`:
+`cef5662c19d3db1219bab14d197b5413f203aa816c99eaa11e8f2c31688091c2`.
+
+- Ca tác phẩm `/api/v1/moderation/works/queue/page` và admin open appeals
+  `/api/v1/moderation/appeals/page` trả `items`, `next_cursor`, `authority_key`.
+  Mặc định 50, tối đa 100; oldest-first `(created_at,id)`; lookahead chỉ từ tập được phép.
+- CHOICE-01 A: envelope trên route `/page`; route cũ giữ array hữu hạn và `Link rel=next`.
+  Server mới phục vụ được bundle cũ; phục vụ bundle mới sau server mới. Không fallback lỗi thành
+  empty. [Contract/fixtures](../../services/vink-app/contracts/http/v1/README.md#workappeal-queue-continuation-205).
+- CHOICE-02 B: transaction repeatable-read read-only; directory chỉ tải facts liên quan actor,
+  `ModerationDirectory::capability_scope` tạo projection global/work IDs và SQL lọc trước limit.
+  Admin/standing/expiry và rows cùng snapshot; tự né chủ nội dung/chủ tác phẩm, public-active.
+  Không load tất cả ca hoặc N+1 từng ca. Phạm vi quyền đổi giữa trang có fingerprint mới; Web bỏ
+  chuỗi private cũ kể cả khi actor vẫn được 200 nhờ grant khác. Cursor không giữ quyền.
+- QueuePanel có owner/ticket/PageChain riêng mỗi vùng, session generation và disposal fence.
+  Refresh supersede append, reset chain minh bạch; lỗi tạm giữ trang/cursor, invalid cursor cho
+  restart, 401/403/404 xóa dữ liệu. Lifecycle hints chỉ đọc có backoff, không chạy lại lệnh.
+  Automation/reason không remount theo paging. Detail/command vẫn có authority/version fence riêng.
+- Sau đo global 6.000 ca thấy sort toàn hàng (~3,966 ms ở corpus local), migration mới
+  `20261121000000_moderation_queue_order.sql` thêm partial index `(created_at,id)` cho open work cases.
+  Sparse grants dùng index work/revision hiện có; appeal dùng `work_appeals_open`. Backout chỉ bỏ
+  derived index, không xóa queue/audit. Plan/timing là dữ liệu local, không SLA production.
+
+Inventory: hàng bình luận đã có PageCursor/PageLimit và không bị thay ở lát này. Author appeal
+history `/works/{work}/appeals`, revision/decision history và ghi chú chi tiết vẫn theo contract
+hiện có, chưa được phân trang trong #205. Không có private durable cache, SSR private payload,
+offline moderation, native consumer hay thay luật grant/expiry/recusal/admin.
+
+[LayoutSpec](../design/moderation-queue-pagination.md). Bằng chứng final code và giới hạn được ghi
+trong [evidence #205](evidence/moderation-queue-205/README.md).

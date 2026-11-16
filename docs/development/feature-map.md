@@ -545,6 +545,13 @@ Owner, DecisionMap, khóa, retry/deadline, kill switch, backout và giới hạn
 | Trang ẩn không lộ metadata, giữ bình luận và chặn ghi mới; công khai lại | `hidden_reader_retains_only_discussion_and_republication_restores_body` (`postgres`); phase `review-withdrawn` (`web`) | Chưa có tombstone/xóa bài |
 | Phản đối duy nhất mỗi quyết định, admin final, riêng tư đóng hồ sơ, ý định mới thắng approval cũ | Nhóm `work_appeal*`, `private_closes*`, `appeal_on_old_revision*` trong `work_moderation.rs`; tác giả gửi/admin đảo qua UI trong phase `review-withdrawn` | Không có thông báo, comment appeals hoặc điều tra |
 
+Queue work/admin appeals #205: routes `/moderation/works/queue/page`, `/moderation/appeals/page`,
+`QueuePanel` độc lập dùng ReadOwner/PageChain + authority fingerprint; regression
+`postgres::moderation_queue`, provider/Web fixtures và `moderationQueues` trong scenario `review`.
+[Registry](moderation-runtime.md#10-hai-queue-hữu-hạn-205),
+[LayoutSpec paging](../design/moderation-queue-pagination.md). Comment queue đã paging;
+author appeal/revision history ngoài lát này.
+
 LayoutSpec UI: [moderation-workspace](../design/moderation-workspace.md). Trạng thái chạy và SHA
 nằm tại [moderation-runtime](moderation-runtime.md#9-bằng-chứng-và-giới-hạn).
 

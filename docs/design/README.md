@@ -439,3 +439,5 @@ không suy ra PASS từ sự tồn tại của assertions.
 [#102 — LayoutSpec R1 và ảnh trước/sau](evidence/navigation-rail-102/README.md).
 
 [#135 — Select Web R1.5: geometry và native states](select-r15.md).
+
+- [Hai hàng chờ kiểm duyệt hữu hạn #205](moderation-queue-pagination.md): state/continuation/recovery riêng, giữ form lý do và session fence.
