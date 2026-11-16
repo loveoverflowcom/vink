@@ -498,7 +498,9 @@ a {
 .vk-desk-empty { max-width: none; }
 .vk-desk-empty #create-draft > .vk-ui-icon { display: none; }
 
-/* Editor: heading, sticky toolbar, notices, then the paper (title + CodeMirror body). */
+/* Paper First (#218): quiet context/tools in flow; the manuscript owns the surface. */
+
+.vk-ui-scaffold:has(.vk-desk--editor) { background: var(--vk-surface-container-low); }
 
 .vk-desk--editor { max-width: calc(var(--vk-measure) + 2 * var(--vk-space-6)); margin-inline: auto; container: vk-editor-page / inline-size; }
 
@@ -507,10 +509,13 @@ a {
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--vk-space-1) var(--vk-space-3);
-  margin: 0 0 var(--vk-space-4);
+  margin: 0;
 }
 
 .vk-editor-heading__back {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 48px;
   margin-inline-start: calc(-1 * var(--vk-space-3));
   padding: var(--vk-space-2) var(--vk-space-3);
   border-radius: var(--vk-radius-full);
@@ -536,20 +541,9 @@ a {
   gap: var(--vk-space-6);
 }
 
-/* Stick only where there is room for a single row and the writing viewport remains useful.
-   rem breakpoints also release the toolbar when text is enlarged. CodeMirror measures the
-   actual sticky height; narrow/short windows keep all controls in the document flow. */
-@media (min-height: 40rem) {
-  @container vk-editor-page (min-width: 44rem) {
-    .vk-editor-toolbar { position: sticky; top: var(--vk-space-2); z-index: 2; }
-    .vk-editor-toolbar:has(.vk-ui-supporting-details[open]) { position: static; }
-    .vk-editor > .vk-editor-recovery { scroll-margin-block-start: 6rem; }
-  }
-}
-
-/* Focus moved by keyboard is not hidden under the sticky toolbar. */
+/* Nothing floats above the text, even with enlarged text or a short writing viewport. */
 .vk-editor :is(input, button, summary) {
-  scroll-margin-top: 6rem;
+  scroll-margin-top: var(--vk-space-3);
 }
 
 .vk-editor-paper {
@@ -559,7 +553,7 @@ a {
   min-inline-size: 0;
   padding: clamp(var(--vk-space-3), 3vw, var(--vk-space-6));
   border-radius: var(--vk-radius-lg);
-  background: var(--vk-surface-container-low);
+  background: var(--vk-surface);
 }
 
 .vk-editor-paper > .vk-ui-field { margin: 0; }
@@ -827,19 +821,6 @@ a {
 }
 
 @media (max-width: 30rem) {
-  /* No sticky or fixed controls over the text on a phone; the toolbar wraps in the flow. */
-  .vk-editor-toolbar {
-    position: static;
-    padding-inline: var(--vk-space-2);
-  }
-
-  .vk-editor-toolbar__status > details > summary { padding-inline: 0; justify-content: center; }
-
-  .vk-editor-toolbar__actions {
-    width: 100%;
-  }
-
-
   /* Enlarged text needs the width more than the inner margin. */
   .vk-editor-body .cm-editor .cm-content {
     padding: var(--vk-space-4) var(--vk-space-3);

@@ -134,7 +134,9 @@ export async function editorWriting(page, { args, check, setEditorScene, capture
     const downloads=mkdtempSync(join(tmpdir(),'vink-title-export-'));
     try {
       await page.cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloads,eventsEnabled:true});
+      await page.click('#editor-save-details > summary');
       await page.click('#export');
+      await page.click('#editor-save-details > summary');
       const file=await downloaded(downloads);
       check(file.text===nfd+'\n\n'+beforeRaw+'\n','export reads the same unnormalized title and exact live raw body');
     } finally { rmSync(downloads,{recursive:true,force:true}); }
