@@ -191,6 +191,9 @@ export async function webPerfBaseline(page, { args, check }) {
     for (let i = 0; i < ITERATIONS; i++) {
       phase.current = 'cold-' + i;
       results.intended_reads.push({ phase: phase.current, reason: 'cold_ssr', representation: 'discovery-filtered' });
+      // Do not navigate to the same URL while the old hydrated DOM is still present:
+      // Page.goto's readyState predicate could otherwise observe the previous document.
+      await page.goto('about:blank');
       await page.send('Network.clearBrowserCache');
       const start = performance.now();
       await page.goto(args.base + QUERY);
@@ -206,11 +209,14 @@ export async function webPerfBaseline(page, { args, check }) {
     for (let i = 0; i < ITERATIONS; i++) {
       phase.current = 'warm-' + i;
       results.intended_reads.push({ phase: phase.current, reason: 'warm_reader_navigation', representation: 'reader' });
+      const timeOrigin = await page.eval('performance.timeOrigin');
       const before = await page.eval('performance.now()');
       await page.click('.vk-public-row__link');
       await page.waitFor(READER, 'reader after warm navigation #' + i, 120000);
       const readerTime = (await page.eval('performance.now()')) - before;
       const reader = await browserSnapshot(page);
+      check(await page.eval('performance.timeOrigin') === timeOrigin,
+        '#234 warm Reader uses client navigation without a full-document reload #' + i);
       check(reader.body_characters > 0, '#234 real App Reader body stays available #' + i);
       // Only a limited page may be mounted, never all 1,000 comments from the hot thread.
       check(reader.comment_nodes < 1000, '#234 comment rendering remains bounded by pagination');
@@ -220,6 +226,8 @@ export async function webPerfBaseline(page, { args, check }) {
       await page.waitFor(LIST + ' && location.pathname==="/"', 'return to filtered discovery #' + i, 120000);
       const returnTime = (await page.eval('performance.now()')) - beforeReturn;
       const back = await browserSnapshot(page);
+      check(await page.eval('performance.timeOrigin') === timeOrigin,
+        '#234 warm Reader return stays in the same hydrated document #' + i);
       check(back.row_count <= 24 && back.row_count > 0,
         '#234 real bounded public page after return #' + i);
       results.warm.push({ iteration: i, reader_ms: readerTime, return_ms: returnTime,
