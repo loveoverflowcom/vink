@@ -3,6 +3,7 @@ package vink.ui.preview
 import androidx.compose.ui.graphics.ImageBitmapConfig
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.unit.IntSize
+import kotlin.coroutines.CoroutineContext
 import kotlin.io.encoding.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,7 +12,8 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import vink.ui.VinkIdentityVectors
@@ -67,12 +69,35 @@ class ContentImagesTest {
 
     @Test
     fun cancelledConsumerCannotPublishACompletedDecode() = runBlocking {
-        var published = false
-        val request = launch(start = CoroutineStart.UNDISPATCHED) {
-            decodeContentImage(DETAIL_WEBP_BASE64, IntSize(192, 108))
-            published = true
+        // Check both lawful delivery and cancellation after decode, before delivery. An
+        // UNDISPATCHED launch against Default can finish before cancel on a fast worker.
+        for (cancelBeforeDelivery in listOf(false, true)) {
+            val worker = QueuedDispatcher()
+            val consumer = QueuedDispatcher()
+            var published = false
+            val request = launch(consumer, start = CoroutineStart.UNDISPATCHED) {
+                assertNotNull(decodeContentImage(DETAIL_WEBP_BASE64, IntSize(192, 108), worker))
+                published = true
+            }
+            worker.runOne() // Real codec completes; its result is queued for the consumer.
+            assertFalse(published)
+            if (cancelBeforeDelivery) request.cancel()
+            consumer.runOne()
+            assertTrue(request.isCompleted)
+            assertEquals(cancelBeforeDelivery, request.isCancelled)
+            assertEquals(!cancelBeforeDelivery, published)
         }
-        request.cancelAndJoin()
-        assertFalse(published)
+    }
+
+    private class QueuedDispatcher : CoroutineDispatcher() {
+        private val tasks = ArrayDeque<Runnable>()
+        override fun dispatch(context: CoroutineContext, block: Runnable) {
+            tasks.addLast(block)
+        }
+        fun runOne() {
+            assertEquals(1, tasks.size, "expected exactly one queued continuation")
+            tasks.removeFirst().run()
+            assertTrue(tasks.isEmpty(), "continuation must finish in one dispatch")
+        }
     }
 }
