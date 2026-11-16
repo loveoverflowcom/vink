@@ -1,0 +1,233 @@
+==> ui tokens: 15 generated files match
+==> Android diagnostic: gradlew :androidDiagnostic:connectedDebugAndroidTest
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.14.3/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :androidDiagnostic:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :androidDiagnostic:preBuild UP-TO-DATE
+> Task :androidDiagnostic:preDebugBuild UP-TO-DATE
+> Task :diagnostics:preBuild UP-TO-DATE
+> Task :diagnostics:preDebugBuild UP-TO-DATE
+> Task :diagnostics:writeDebugAarMetadata UP-TO-DATE
+> Task :patterns:preBuild UP-TO-DATE
+> Task :patterns:preDebugBuild UP-TO-DATE
+> Task :patterns:writeDebugAarMetadata UP-TO-DATE
+> Task :ui:preBuild UP-TO-DATE
+> Task :ui:preDebugBuild UP-TO-DATE
+> Task :ui:writeDebugAarMetadata UP-TO-DATE
+> Task :androidDiagnostic:checkDebugAarMetadata UP-TO-DATE
+> Task :androidDiagnostic:generateDebugResValues UP-TO-DATE
+> Task :diagnostics:generateDebugResValues UP-TO-DATE
+> Task :diagnostics:generateDebugResources UP-TO-DATE
+> Task :diagnostics:packageDebugResources UP-TO-DATE
+> Task :patterns:generateDebugResValues UP-TO-DATE
+> Task :patterns:generateDebugResources UP-TO-DATE
+> Task :patterns:packageDebugResources UP-TO-DATE
+> Task :ui:generateDebugResValues UP-TO-DATE
+> Task :ui:generateDebugResources UP-TO-DATE
+> Task :ui:packageDebugResources UP-TO-DATE
+> Task :androidDiagnostic:mapDebugSourceSetPaths UP-TO-DATE
+> Task :androidDiagnostic:generateDebugResources UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugResources UP-TO-DATE
+> Task :androidDiagnostic:packageDebugResources UP-TO-DATE
+> Task :androidDiagnostic:parseDebugLocalResources UP-TO-DATE
+> Task :androidDiagnostic:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :androidDiagnostic:extractDeepLinksDebug UP-TO-DATE
+> Task :diagnostics:extractDeepLinksDebug UP-TO-DATE
+> Task :diagnostics:processDebugManifest UP-TO-DATE
+> Task :patterns:extractDeepLinksDebug UP-TO-DATE
+> Task :patterns:processDebugManifest UP-TO-DATE
+> Task :ui:extractDeepLinksDebug UP-TO-DATE
+> Task :ui:processDebugManifest UP-TO-DATE
+> Task :androidDiagnostic:processDebugMainManifest UP-TO-DATE
+> Task :androidDiagnostic:processDebugManifest UP-TO-DATE
+> Task :androidDiagnostic:processDebugManifestForPackage UP-TO-DATE
+> Task :diagnostics:compileDebugLibraryResources UP-TO-DATE
+> Task :diagnostics:parseDebugLocalResources UP-TO-DATE
+> Task :diagnostics:generateDebugRFile UP-TO-DATE
+> Task :patterns:compileDebugLibraryResources UP-TO-DATE
+> Task :patterns:parseDebugLocalResources UP-TO-DATE
+> Task :patterns:generateDebugRFile UP-TO-DATE
+> Task :ui:compileDebugLibraryResources UP-TO-DATE
+> Task :ui:parseDebugLocalResources UP-TO-DATE
+> Task :ui:generateDebugRFile UP-TO-DATE
+> Task :androidDiagnostic:processDebugResources UP-TO-DATE
+> Task :diagnostics:kmpPartiallyResolvedDependenciesChecker
+> Task :diagnostics:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :diagnostics:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :diagnostics:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :diagnostics:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :diagnostics:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :diagnostics:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :diagnostics:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :diagnostics:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :diagnostics:generateResourceAccessorsForCommonMain SKIPPED
+> Task :diagnostics:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :diagnostics:generateComposeResClass SKIPPED
+> Task :diagnostics:generateEmptyArtwork UP-TO-DATE
+> Task :diagnostics:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :diagnostics:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :diagnostics:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :diagnostics:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :diagnostics:generateResourceAccessorsForAndroidDebug SKIPPED
+> Task :patterns:kmpPartiallyResolvedDependenciesChecker
+> Task :patterns:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :patterns:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :patterns:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :patterns:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :patterns:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :patterns:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :patterns:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :patterns:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :patterns:generateResourceAccessorsForCommonMain SKIPPED
+> Task :patterns:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :patterns:generateComposeResClass SKIPPED
+> Task :patterns:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :patterns:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :patterns:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :patterns:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :patterns:generateResourceAccessorsForAndroidDebug SKIPPED
+> Task :ui:kmpPartiallyResolvedDependenciesChecker
+> Task :ui:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :ui:convertXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidMain NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidMain SKIPPED
+> Task :ui:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :ui:generateResourceAccessorsForCommonMain SKIPPED
+> Task :ui:generateActualResourceCollectorsForAndroidMain SKIPPED
+> Task :ui:generateComposeResClass SKIPPED
+> Task :ui:generateExpectResourceCollectorsForCommonMain SKIPPED
+> Task :ui:convertXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :ui:copyNonXmlValueResourcesForAndroidDebug NO-SOURCE
+> Task :ui:prepareComposeResourcesTaskForAndroidDebug NO-SOURCE
+> Task :ui:generateResourceAccessorsForAndroidDebug SKIPPED
+> Task :ui:compileDebugKotlinAndroid UP-TO-DATE
+> Task :ui:javaPreCompileDebug UP-TO-DATE
+> Task :ui:compileDebugJavaWithJavac NO-SOURCE
+> Task :ui:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :patterns:compileDebugKotlinAndroid UP-TO-DATE
+> Task :patterns:javaPreCompileDebug UP-TO-DATE
+> Task :patterns:compileDebugJavaWithJavac NO-SOURCE
+> Task :patterns:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :diagnostics:compileDebugKotlinAndroid UP-TO-DATE
+> Task :diagnostics:javaPreCompileDebug UP-TO-DATE
+> Task :diagnostics:compileDebugJavaWithJavac NO-SOURCE
+> Task :diagnostics:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :androidDiagnostic:compileDebugKotlin UP-TO-DATE
+> Task :androidDiagnostic:javaPreCompileDebug UP-TO-DATE
+> Task :androidDiagnostic:compileDebugJavaWithJavac NO-SOURCE
+> Task :androidDiagnostic:preDebugAndroidTestBuild SKIPPED
+> Task :androidDiagnostic:bundleDebugClassesToCompileJar
+> Task :androidDiagnostic:generateDebugAndroidTestResValues
+> Task :androidDiagnostic:checkDebugAndroidTestAarMetadata
+> Task :androidDiagnostic:mapDebugAndroidTestSourceSetPaths
+> Task :androidDiagnostic:generateDebugAndroidTestResources
+> Task :androidDiagnostic:mergeDebugAndroidTestResources
+> Task :androidDiagnostic:processDebugAndroidTestManifest
+> Task :androidDiagnostic:javaPreCompileDebugAndroidTest
+> Task :androidDiagnostic:mergeDebugShaders UP-TO-DATE
+> Task :androidDiagnostic:compileDebugShaders NO-SOURCE
+> Task :androidDiagnostic:generateDebugAssets UP-TO-DATE
+> Task :diagnostics:mergeDebugShaders UP-TO-DATE
+> Task :diagnostics:compileDebugShaders NO-SOURCE
+> Task :diagnostics:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :diagnostics:debugAssetsCopyForAGP NO-SOURCE
+> Task :diagnostics:generateDebugAssets UP-TO-DATE
+> Task :diagnostics:mergeDebugAssets UP-TO-DATE
+> Task :patterns:mergeDebugShaders UP-TO-DATE
+> Task :patterns:compileDebugShaders NO-SOURCE
+> Task :patterns:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :patterns:debugAssetsCopyForAGP NO-SOURCE
+> Task :patterns:generateDebugAssets UP-TO-DATE
+> Task :patterns:mergeDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugShaders UP-TO-DATE
+> Task :ui:compileDebugShaders NO-SOURCE
+> Task :ui:copyDebugComposeResourcesToAndroidAssets UP-TO-DATE
+> Task :ui:debugAssetsCopyForAGP NO-SOURCE
+> Task :ui:generateDebugAssets UP-TO-DATE
+> Task :ui:mergeDebugAssets UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugAssets UP-TO-DATE
+> Task :androidDiagnostic:compressDebugAssets UP-TO-DATE
+> Task :diagnostics:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :patterns:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :ui:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :androidDiagnostic:desugarDebugFileDependencies UP-TO-DATE
+> Task :androidDiagnostic:dexBuilderDebug UP-TO-DATE
+> Task :androidDiagnostic:processDebugAndroidTestResources
+> Task :androidDiagnostic:mergeDebugGlobalSynthetics UP-TO-DATE
+> Task :androidDiagnostic:processDebugJavaRes UP-TO-DATE
+> Task :diagnostics:processDebugJavaRes UP-TO-DATE
+> Task :patterns:processDebugJavaRes UP-TO-DATE
+> Task :ui:processDebugJavaRes UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugJavaResource UP-TO-DATE
+> Task :androidDiagnostic:checkDebugDuplicateClasses UP-TO-DATE
+> Task :androidDiagnostic:mergeExtDexDebug UP-TO-DATE
+> Task :diagnostics:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :patterns:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :ui:bundleLibRuntimeToDirDebug UP-TO-DATE
+> Task :androidDiagnostic:mergeLibDexDebug UP-TO-DATE
+> Task :androidDiagnostic:mergeProjectDexDebug UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugJniLibFolders UP-TO-DATE
+> Task :diagnostics:mergeDebugJniLibFolders UP-TO-DATE
+> Task :diagnostics:mergeDebugNativeLibs NO-SOURCE
+> Task :diagnostics:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :patterns:mergeDebugJniLibFolders UP-TO-DATE
+> Task :patterns:mergeDebugNativeLibs NO-SOURCE
+> Task :patterns:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :ui:mergeDebugJniLibFolders UP-TO-DATE
+> Task :ui:mergeDebugNativeLibs NO-SOURCE
+> Task :ui:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugNativeLibs UP-TO-DATE
+> Task :androidDiagnostic:stripDebugDebugSymbols UP-TO-DATE
+> Task :androidDiagnostic:validateSigningDebug UP-TO-DATE
+> Task :androidDiagnostic:writeDebugAppMetadata UP-TO-DATE
+> Task :androidDiagnostic:writeDebugSigningConfigVersions UP-TO-DATE
+> Task :androidDiagnostic:packageDebug UP-TO-DATE
+> Task :androidDiagnostic:createDebugApkListingFileRedirect UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugAndroidTestShaders
+> Task :androidDiagnostic:compileDebugAndroidTestShaders NO-SOURCE
+> Task :androidDiagnostic:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :androidDiagnostic:mergeDebugAndroidTestAssets
+> Task :androidDiagnostic:compressDebugAndroidTestAssets
+> Task :androidDiagnostic:desugarDebugAndroidTestFileDependencies
+> Task :androidDiagnostic:checkDebugAndroidTestDuplicateClasses
+> Task :androidDiagnostic:compileDebugAndroidTestKotlin
+> Task :androidDiagnostic:compileDebugAndroidTestJavaWithJavac NO-SOURCE
+> Task :androidDiagnostic:dexBuilderDebugAndroidTest
+> Task :androidDiagnostic:mergeDebugAndroidTestGlobalSynthetics
+> Task :androidDiagnostic:mergeExtDexDebugAndroidTest
+> Task :androidDiagnostic:processDebugAndroidTestJavaRes
+> Task :androidDiagnostic:mergeLibDexDebugAndroidTest
+> Task :androidDiagnostic:mergeProjectDexDebugAndroidTest
+> Task :androidDiagnostic:mergeDebugAndroidTestJniLibFolders
+> Task :androidDiagnostic:mergeDebugAndroidTestNativeLibs NO-SOURCE
+> Task :androidDiagnostic:stripDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :androidDiagnostic:validateSigningDebugAndroidTest
+> Task :androidDiagnostic:writeDebugAndroidTestSigningConfigVersions
+> Task :androidDiagnostic:mergeDebugAndroidTestJavaResource
+> Task :androidDiagnostic:packageDebugAndroidTest
+> Task :androidDiagnostic:createDebugAndroidTestApkListingFileRedirect
+> Task :androidDiagnostic:connectedDebugAndroidTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':androidDiagnostic:connectedDebugAndroidTest'.
+> com.android.builder.testing.api.DeviceException: No connected devices!
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 53s
+127 actionable tasks: 31 executed, 96 up-to-date
+xtask: android: diagnostic runtime: Android diagnostic: gradlew :androidDiagnostic:connectedDebugAndroidTest: exited with exit status: 1
+
+verification summary
+  PASS  ui tokens: generated files match
+  FAIL  android: diagnostic runtime: Android diagnostic: gradlew :androidDiagnostic:connectedDebugAndroidTest: exited with exit status: 1
+  (later steps NOT_RUN)

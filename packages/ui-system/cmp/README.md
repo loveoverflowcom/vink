@@ -71,3 +71,13 @@ EMO-01A: `NotoExpressions.kt` và `NotoExpressionTest.kt` được sinh từ
 [manifest biểu cảm](../../expressions/README.md), không phải catalog viết tay thứ hai.
 Module `:ui` chỉ hỗ trợ contract lookup và Unicode fallback; poster file là reference tương đối
 cho host tương lai. Không có dotLottie Web/native renderer, Rust FFI hoặc product app native.
+
+### Empty artwork diagnostic #261
+
+Các scenario catalog `screen.explore/{empty,no-results}` và `screen.desk/{empty,no-results}`
+dùng alpha WebP chung với Web. `:diagnostics:generateEmptyArtwork` kiểm size/SHA theo manifest
+canonical `apps/vink-web/assets/empty/asset-manifest.json`, rồi sinh dữ liệu build; không cần
+Drive/network lúc chạy. Closed enum `EmptyArtwork` đi qua adapter riêng, giữ nguyên opaque
+admission của `decodeContentImage` và hai content fixtures Android API24–27.
+[Spec/copy](../../../docs/design/empty-artwork-cmp-261.md) ·
+[evidence và lệnh tiếp tục native](../../../docs/development/evidence/empty-webp-cmp-261/README.md).

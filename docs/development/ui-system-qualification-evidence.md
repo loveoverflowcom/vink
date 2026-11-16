@@ -344,3 +344,11 @@ catalog 0.9.0; phạm vi chỉ Web/CMP primitives/pattern wrapper và diagnostic
 Lựa chọn, local checks, self-review năm chiều và ranh giới native nằm trong
 [báo cáo #224](evidence/action-surfaces-224/README.md). Không coi preview là native product app,
 owner design signoff, ADR Accepted hoặc production acceptance.
+
+## Empty artwork diagnostic #261 · 16/11/2026
+
+`screen.explore`/`screen.desk` tiếp nhận đúng ba alpha WebP canonical của #258/#259 qua
+closed diagnostic decode path; opaque content-image policy không đổi. Đây là `cmp` diagnostic,
+không native product app hay approved golden. [LayoutSpec](../design/empty-artwork-cmp-261.md)
+và [evidence, source pin, commands, pixels, before/after và native gaps](evidence/empty-webp-cmp-261/README.md)
+sở hữu kết quả của lượt này; không thay thế kết quả lịch sử #116.

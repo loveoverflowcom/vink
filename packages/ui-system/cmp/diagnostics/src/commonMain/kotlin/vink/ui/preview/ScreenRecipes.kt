@@ -32,7 +32,28 @@ fun ScreenRecipe(id: String, scenario: String) {
     val submit = { message = "Mẫu · Intent gửi nhận xét, chưa gửi hoặc lưu."; log("feedback → submit intent (sample)") }
     Column(Modifier.fillMaxWidth().testTag("screen:$id:$scenario"), verticalArrangement = Arrangement.spacedBy(VinkDimens.Space4)) {
         VinkText("Mẫu · Dữ liệu cố định · Không kết nối dịch vụ", role = TypeRole.Caption, tone = TextTone.Muted)
-        if (scenario == "loading") {
+        val artworkScreen = id in listOf("screen.explore", "screen.desk")
+        if (artworkScreen) {
+            VinkHeading(if (id == "screen.explore") "Khám phá" else "Bàn viết", HeadingLevel.H1)
+            // One input call site across region and theme changes; no IME remount for artwork.
+            VinkSearchField("Tìm trong danh sách mẫu", query, { query = it })
+        }
+        if (artworkScreen && scenario in listOf("empty", "no-results")) {
+            val noResults = scenario == "no-results"
+            val desk = id == "screen.desk"
+            val artwork = if (noResults) EmptyArtwork.NoResults else if (desk) EmptyArtwork.FirstDraft else EmptyArtwork.NoPublicWorks
+            val text = if (noResults) {
+                if (desk) "Chưa có tác phẩm trong kết quả này." else "Chưa có tác phẩm phù hợp."
+            } else if (desk) "Một trang dành riêng cho những điều bạn muốn viết." else "Chưa có tác phẩm công khai."
+            val label = if (noResults) "Xóa tìm kiếm" else if (desk) "Viết bản thảo đầu tiên" else "Bắt đầu viết"
+            ArtworkEmptyState(artwork, text, label) {
+                if (noResults) {
+                    query = TextFieldValue("")
+                    message = "Mẫu · Đã xóa tìm kiếm; không gọi dịch vụ."
+                    log("screen → clear search (sample)")
+                } else navigate("#screen.editor/dirty")
+            }
+        } else if (scenario == "loading") {
             VinkText("Đang tải…")
             VinkSkeleton(shape = SkeletonShape.Card)
         } else if (scenario in listOf("empty", "no-results", "not-found", "auth-required", "forbidden") && id !in listOf("composition.feedback", "screen.me")) {
@@ -58,9 +79,7 @@ fun ScreenRecipe(id: String, scenario: String) {
                 Column(verticalArrangement = Arrangement.spacedBy(VinkDimens.Space4)) {
                     when (id) {
                         "screen.explore" -> {
-                            VinkHeading("Khám phá", HeadingLevel.H1)
                             VinkText("Đọc một câu chuyện, góp một ý hay, rồi viết tiếp.")
-                            VinkSearchField("Tìm trong danh sách mẫu", query, { query = it })
                             VinkText("Mẫu · Chỉ tìm title/tác giả trong danh sách đã tải, tối đa 12 ở app.", role = TypeRole.Caption)
                             WorkCard(title.text, author, "#screen.reader/default", navigate, narrow)
                             VinkSurface(tone = SurfaceTone.Primary, radius = Radius.Lg, padding = Space.S6) {
@@ -81,9 +100,7 @@ fun ScreenRecipe(id: String, scenario: String) {
                             }
                         }
                         "screen.desk" -> {
-                            VinkHeading("Bàn viết", HeadingLevel.H1)
                             DraftResume(draft, navigate)
-                            VinkSearchField("Ô tìm kiếm — mẫu", query, { query = it })
                             VinkText("Mẫu khối viết tiếp cũ · Không phải bố cục Bàn viết Web hiện tại. Chưa nối tìm kiếm hay phân trang.", role = TypeRole.Caption)
                             VinkLink(draft.title, draft.href, navigate)
                         }

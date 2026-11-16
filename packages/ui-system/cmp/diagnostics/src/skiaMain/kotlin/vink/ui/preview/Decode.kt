@@ -31,3 +31,7 @@ internal actual fun decodeWebp(bytes: ByteArray, source: IntSize, output: IntSiz
         data.close()
     }
 }
+
+// The closed artwork set uses alpha; content-image admission remains opaque-only.
+internal actual fun decodeBundledArtwork(artwork: EmptyArtwork, output: IntSize): ImageBitmap? =
+    decodeWebp(artwork.bytes(), EmptyArtworkSourceSize, output)

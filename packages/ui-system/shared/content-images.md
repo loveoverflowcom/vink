@@ -16,6 +16,10 @@ cập. `safe_image_src`/`safeImageSrc` lọc cú pháp URL. Đuôi URL và MIME 
 không xác nhận codec. Primitive nhận trạng thái và hiển thị ảnh hoặc fallback.
 [Hợp đồng component](components.md)
 
+Minh họa UI alpha của CMP #261 là closed bundled set riêng trong diagnostics, không đi qua
+`decodeContentImage` hay mở admission opaque này. Nguồn/hash vẫn do asset manifest #258 sở hữu.
+[LayoutSpec và đường decode](../../../docs/design/empty-artwork-cmp-261.md).
+
 ## Phạm vi đã đối chiếu
 
 Tại base `21b10a1`, hỗ trợ AVIF đang hoạt động là mục data URL trong allow-list
