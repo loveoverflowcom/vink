@@ -1,0 +1,101 @@
+  ok  #259 loading requests no artwork and claims no empty corpus
+  ok  #259 loading-to-empty preserves the input node, unapplied query, focus and caret
+  ok  #259 no-results 320/light/100: no horizontal overflow
+  ok  #259 no-results 320/light/100: recovery reachable above navigation
+  ok  #259 no-results 320/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 320/light/200: no horizontal overflow
+  ok  #259 no-results 320/light/200: recovery reachable above navigation
+  ok  #259 no-results 320/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 320/dark/100: no horizontal overflow
+  ok  #259 no-results 320/dark/100: recovery reachable above navigation
+  ok  #259 no-results 320/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 320/dark/200: no horizontal overflow
+  ok  #259 no-results 320/dark/200: recovery reachable above navigation
+  ok  #259 no-results 320/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 390/light/100: no horizontal overflow
+  ok  #259 no-results 390/light/100: recovery reachable above navigation
+  ok  #259 no-results 390/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 390/light/200: no horizontal overflow
+  ok  #259 no-results 390/light/200: recovery reachable above navigation
+  ok  #259 no-results 390/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 390/dark/100: no horizontal overflow
+  ok  #259 no-results 390/dark/100: recovery reachable above navigation
+  ok  #259 no-results 390/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 390/dark/200: no horizontal overflow
+  ok  #259 no-results 390/dark/200: recovery reachable above navigation
+  ok  #259 no-results 390/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 834/light/100: no horizontal overflow
+  ok  #259 no-results 834/light/100: recovery reachable above navigation
+  ok  #259 no-results 834/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 834/light/200: no horizontal overflow
+  ok  #259 no-results 834/light/200: recovery reachable above navigation
+  ok  #259 no-results 834/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 834/dark/100: no horizontal overflow
+  ok  #259 no-results 834/dark/100: recovery reachable above navigation
+  ok  #259 no-results 834/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 834/dark/200: no horizontal overflow
+  ok  #259 no-results 834/dark/200: recovery reachable above navigation
+  ok  #259 no-results 834/dark/200: privacy copy reachable above navigation
+  ok  #259 no-results 1440/light/100: no horizontal overflow
+  ok  #259 no-results 1440/light/100: recovery reachable above navigation
+  ok  #259 no-results 1440/light/100: privacy copy reachable above navigation
+  ok  #259 no-results 1440/light/200: no horizontal overflow
+  ok  #259 no-results 1440/light/200: recovery reachable above navigation
+  ok  #259 no-results 1440/light/200: privacy copy reachable above navigation
+  ok  #259 no-results 1440/dark/100: no horizontal overflow
+  ok  #259 no-results 1440/dark/100: recovery reachable above navigation
+  ok  #259 no-results 1440/dark/100: privacy copy reachable above navigation
+  ok  #259 no-results 1440/dark/200: no horizontal overflow
+  ok  #259 no-results 1440/dark/200: recovery reachable above navigation
+  ok  #259 no-results 1440/dark/200: privacy copy reachable above navigation
+  ok  #259 clear keeps input identity and restores search focus
+  ok  #259 first-draft 320/light/100: no horizontal overflow
+  ok  #259 first-draft 320/light/100: recovery reachable above navigation
+  ok  #259 first-draft 320/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 320/light/200: no horizontal overflow
+  ok  #259 first-draft 320/light/200: recovery reachable above navigation
+  ok  #259 first-draft 320/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 320/dark/100: no horizontal overflow
+  ok  #259 first-draft 320/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 320/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 320/dark/200: no horizontal overflow
+  ok  #259 first-draft 320/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 320/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 390/light/100: no horizontal overflow
+  ok  #259 first-draft 390/light/100: recovery reachable above navigation
+  ok  #259 first-draft 390/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 390/light/200: no horizontal overflow
+  ok  #259 first-draft 390/light/200: recovery reachable above navigation
+  ok  #259 first-draft 390/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 390/dark/100: no horizontal overflow
+  ok  #259 first-draft 390/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 390/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 390/dark/200: no horizontal overflow
+  ok  #259 first-draft 390/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 390/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 834/light/100: no horizontal overflow
+  ok  #259 first-draft 834/light/100: recovery reachable above navigation
+  ok  #259 first-draft 834/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 834/light/200: no horizontal overflow
+  ok  #259 first-draft 834/light/200: recovery reachable above navigation
+  ok  #259 first-draft 834/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 834/dark/100: no horizontal overflow
+  ok  #259 first-draft 834/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 834/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 834/dark/200: no horizontal overflow
+  ok  #259 first-draft 834/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 834/dark/200: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/light/100: no horizontal overflow
+  ok  #259 first-draft 1440/light/100: recovery reachable above navigation
+  ok  #259 first-draft 1440/light/100: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/light/200: no horizontal overflow
+  ok  #259 first-draft 1440/light/200: recovery reachable above navigation
+  ok  #259 first-draft 1440/light/200: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/dark/100: no horizontal overflow
+  ok  #259 first-draft 1440/dark/100: recovery reachable above navigation
+  ok  #259 first-draft 1440/dark/100: privacy copy reachable above navigation
+  ok  #259 first-draft 1440/dark/200: no horizontal overflow
+  ok  #259 first-draft 1440/dark/200: recovery reachable above navigation
+  ok  #259 first-draft 1440/dark/200: privacy copy reachable above navigation
+  ok  no console errors or exceptions
+browser-smoke: PASS (desk-empty)

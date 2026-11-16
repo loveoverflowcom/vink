@@ -1,0 +1,384 @@
+{
+  "failure": {
+    "schemaVersion": 2,
+    "scenarioId": "failure",
+    "captureStatus": "CAPTURED",
+    "targetError": null,
+    "state": "failure-capture",
+    "viewport": {
+      "width": 390,
+      "height": 900,
+      "layoutWidth": 375,
+      "clientWidth": 375,
+      "clientHeight": 900,
+      "dpr": 1
+    },
+    "requestedScene": null,
+    "textScaleLane": "default-100",
+    "boundary": null,
+    "source": {
+      "sourceSHA": "ed87f38d5df353ba09b61432802a1fbc85fbd514",
+      "dirty": false,
+      "dirtyInputs": [],
+      "sourceFingerprint": "0454b96f93ab9bf296502d369b88466cf6229563215c680a7e220533e9d81fcb"
+    },
+    "png": {
+      "width": 390,
+      "height": 900,
+      "byteSize": 57488,
+      "sha256": "106f23a25852a94d87b5d2d9b82e84e5b5eeaa9408693d8322ee11f8b881296d"
+    },
+    "route": "/ban-viet",
+    "width": 390,
+    "layoutWidth": 375,
+    "clientWidth": 375,
+    "clientHeight": 900,
+    "height": 900,
+    "dpr": 1,
+    "scrollX": 0,
+    "scrollY": 0,
+    "documentScrollWidth": 375,
+    "documentScrollHeight": 989,
+    "hydrated": true,
+    "theme": "system",
+    "requestedTheme": "system",
+    "effectiveTheme": "light",
+    "osTheme": "light",
+    "fontSize": "16px",
+    "rootInlineFontSize": "",
+    "dataText": null,
+    "textScale": 100,
+    "media": {
+      "forcedColors": false,
+      "reducedMotion": false,
+      "prefersColorScheme": "light"
+    },
+    "fonts": {
+      "body": "\"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "required": [
+        {
+          "face": "16px \"Be Vietnam Pro\"",
+          "ready": true
+        },
+        {
+          "face": "16px \"Literata\"",
+          "ready": false
+        }
+      ]
+    },
+    "scrollOwner": {
+      "selector": "html",
+      "id": null,
+      "tagName": "HTML",
+      "scrollTop": 0,
+      "scrollLeft": 0,
+      "scrollHeight": 989,
+      "clientHeight": 900,
+      "scrollWidth": 375,
+      "clientWidth": 375,
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "appearance": {
+      "effectiveTheme": "light",
+      "osTheme": "light",
+      "hydrated": true,
+      "rail": null,
+      "railScrollWidth": 0,
+      "railClientWidth": 0,
+      "overlayChoice": "system",
+      "overlayOpen": false,
+      "overlayScroll": 0,
+      "overlay": null,
+      "account": null,
+      "themeGroup": null
+    },
+    "mePanel": null,
+    "desk": {
+      "heading": {
+        "x": 16,
+        "y": 32,
+        "width": 343,
+        "height": 33.59375,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "resume": null,
+      "title": null,
+      "disclosure": null,
+      "metadata": null,
+      "cta": null,
+      "list": {
+        "x": 16,
+        "y": 89.59375,
+        "width": 343,
+        "height": 534.296875,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "tools": {
+        "x": 16,
+        "y": 212.578125,
+        "width": 343,
+        "height": 48,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "search": {
+        "x": 76,
+        "y": 126.390625,
+        "width": 275,
+        "height": 48,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "sort": {
+        "x": 80.5625,
+        "y": 212.578125,
+        "width": 218.4375,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "refresh": {
+        "x": 311,
+        "y": 212.578125,
+        "width": 48,
+        "height": 48,
+        "fontSize": "14px",
+        "lineHeight": "19.6px"
+      },
+      "scope": {
+        "x": 16,
+        "y": 182.390625,
+        "width": 343,
+        "height": 18.1875,
+        "fontSize": "13px",
+        "lineHeight": "18.2px"
+      },
+      "firstRow": null,
+      "rowLink": null,
+      "rowTitle": null,
+      "rowTitleLines": null,
+      "rowMetadata": null,
+      "rowOpen": null,
+      "results": null,
+      "listHeading": {
+        "x": 16,
+        "y": 89.59375,
+        "width": 343,
+        "height": 20.796875,
+        "fontSize": "16px",
+        "lineHeight": "20.8px"
+      },
+      "searchField": {
+        "x": 16,
+        "y": 122.390625,
+        "width": 343,
+        "height": 56,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "sortField": null
+    },
+    "reader": {
+      "title": null,
+      "header": null,
+      "body": null
+    },
+    "editor": {
+      "toolbar": null,
+      "statusReadout": null,
+      "save": null,
+      "tools": null,
+      "paper": null,
+      "title": null,
+      "body": null,
+      "firstLine": null,
+      "fonts": {
+        "ui": true,
+        "reading": false
+      },
+      "colors": {
+        ".vk-ui-scaffold": {
+          "color": "rgb(36, 29, 45)",
+          "background": "rgba(0, 0, 0, 0)"
+        }
+      },
+      "preview": null,
+      "leave": null
+    },
+    "explore": {
+      "heading": null,
+      "tools": null,
+      "brand": null,
+      "search": null,
+      "input": null,
+      "label": null,
+      "shell": null,
+      "clear": null,
+      "submit": null,
+      "stream": null,
+      "firstRow": null,
+      "byline": null,
+      "author": null,
+      "date": null,
+      "title": null,
+      "context": null
+    },
+    "navigation": {
+      "bar": {
+        "x": 0,
+        "y": 820,
+        "width": 375,
+        "height": 80,
+        "fontSize": "16px",
+        "lineHeight": "25.6px"
+      },
+      "barHeightObserver": {
+        "cssVarHeight": 80,
+        "measuredHeight": 80,
+        "delta": 0
+      },
+      "labels": [
+        {
+          "label": "Kh\u00e1m ph\u00e1",
+          "labelText": "Kh\u00e1m ph\u00e1",
+          "rawTextContent": "Kh\u00e1m ph\u00e1",
+          "href": "/",
+          "ariaCurrent": null,
+          "target": {
+            "x": 8,
+            "y": 824,
+            "width": 117,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 54.5,
+            "y": 828,
+            "width": 24,
+            "height": 24
+          },
+          "iconCenterY": 840,
+          "text": {
+            "x": 34,
+            "y": 856,
+            "width": 65,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 34,
+            "y": 857,
+            "width": 65,
+            "height": 16
+          },
+          "lineCount": 1,
+          "labelFont": "600 13px / 18.2px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "labelFontSize": "13px",
+          "labelLineHeight": "18.2px",
+          "containerFont": "16px / 25.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif"
+        },
+        {
+          "label": "B\u00e0n vi\u1ebft",
+          "labelText": "B\u00e0n vi\u1ebft",
+          "rawTextContent": "B\u00e0n vi\u1ebft",
+          "href": "/ban-viet",
+          "ariaCurrent": "page",
+          "target": {
+            "x": 129,
+            "y": 824,
+            "width": 117,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 175.5,
+            "y": 828,
+            "width": 24,
+            "height": 24
+          },
+          "iconCenterY": 840,
+          "text": {
+            "x": 160.890625,
+            "y": 856,
+            "width": 53.203125,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 160.890625,
+            "y": 857,
+            "width": 53.203125,
+            "height": 16
+          },
+          "lineCount": 1,
+          "labelFont": "600 13px / 18.2px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "labelFontSize": "13px",
+          "labelLineHeight": "18.2px",
+          "containerFont": "16px / 25.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif"
+        },
+        {
+          "label": "TTT\u00f4i",
+          "labelText": "T\u00f4i",
+          "rawTextContent": "TTT\u00f4i",
+          "href": "/toi",
+          "ariaCurrent": null,
+          "target": {
+            "x": 250,
+            "y": 824,
+            "width": 117,
+            "height": 72,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "icon": {
+            "x": 296.5,
+            "y": 828,
+            "width": 24,
+            "height": 24
+          },
+          "iconCenterY": 840,
+          "text": {
+            "x": 298.625,
+            "y": 856,
+            "width": 19.734375,
+            "height": 18.1875,
+            "fontSize": "13px",
+            "lineHeight": "18.2px"
+          },
+          "firstLine": {
+            "x": 298.625,
+            "y": 857,
+            "width": 19.734375,
+            "height": 16
+          },
+          "lineCount": 1,
+          "labelFont": "600 13px / 18.2px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+          "labelFontSize": "13px",
+          "labelLineHeight": "18.2px",
+          "containerFont": "16px / 25.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif"
+        }
+      ],
+      "rail": []
+    },
+    "targets": {
+      "required": []
+    },
+    "captured_at": "2026-11-16T21:16:21.263Z",
+    "evidence": {
+      "build": "ed87f38d5df353ba09b61432802a1fbc85fbd514",
+      "dirty": "?? docs/development/evidence/empty-webp-259/",
+      "textScaleLane": "default-100",
+      "allowIncomplete": true,
+      "skipSceneValidation": true,
+      "state": "failure-capture"
+    }
+  }
+}

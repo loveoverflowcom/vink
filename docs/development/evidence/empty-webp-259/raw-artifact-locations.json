@@ -1,0 +1,15 @@
+{
+  "browser-main-network-attempt": {
+    "raw": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/browser-main-attempt-network",
+    "retained": "Complete raw browser captures remain local; selected failure/log/result are in the PR evidence bundle."
+  },
+  "browser-main-session-context-attempt": {
+    "raw": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/browser-main-attempt-session-context",
+    "retained": "Complete raw run kept local; logs/result, passed #259 measurements/network and subsequent R6 failure retained in PR evidence."
+  },
+  "browser-main-final": {
+    "raw": "/Users/manhblue/Documents/Codex/2026-11-17/task-2/vink/target/verify-web/browser-main-final-17fb74f",
+    "selected_png_count": 50,
+    "retained": "Full raw run remains local; selected #259 and mobile text200 recovery captures plus logs/results/measurements in PR."
+  }
+}

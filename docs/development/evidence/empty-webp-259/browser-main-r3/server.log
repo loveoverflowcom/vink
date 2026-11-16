@@ -1,0 +1,4 @@
+2026-11-16T21:26:36.059751Z  WARN vink_app: local identity fixture enabled: loopback requests act as VINK_DEV_PRINCIPAL; this is not authentication
+2026-11-16T21:26:36.059947Z  INFO vink_app: vink-app listening bind=127.0.0.1:52559 origin=http://127.0.0.1:52559 profile=Local sign_in="disabled" trusted_proxies=false
+2026-11-16T21:35:43.529746Z  INFO vink_app::runtime: shutdown requested signal="SIGTERM"
+2026-11-16T21:35:43.530347Z  INFO vink_app: vink-app stopped

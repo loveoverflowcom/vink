@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 2,
+  "phase": "desk-empty",
+  "fullWebVerify": "NOT_RUN",
+  "captureCounts": {
+    "total": 42,
+    "captured": 42,
+    "incomplete": 0
+  },
+  "incomplete": [],
+  "negativeControls": {},
+  "lanes": {
+    "appAppearanceControl": "NOT_RUN",
+    "domOverrideGeometryOnly": "PASS",
+    "browserZoom": {
+      "status": "NOT_RUN",
+      "prerequisite": "explicit browser page zoom / Page.setPageScaleFactor lane"
+    },
+    "textOnlyResize": {
+      "status": "NOT_RUN",
+      "prerequisite": "browser text-only resize setting separate from CSS root fontSize override"
+    },
+    "osTextScaleAndIme": {
+      "status": "NOT_RUN",
+      "prerequisite": "real OS font scale and real macOS/Android/iOS Telex/VNI IME"
+    },
+    "screenReader": {
+      "status": "NOT_RUN",
+      "prerequisite": "real VoiceOver / NVDA / TalkBack; Chrome AX tree covers structural AX names only"
+    },
+    "realDevice": {
+      "status": "NOT_RUN",
+      "prerequisite": "physical mobile device or native host"
+    }
+  }
+}

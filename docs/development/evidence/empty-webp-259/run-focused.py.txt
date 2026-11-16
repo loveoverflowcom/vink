@@ -1,0 +1,36 @@
+import os, pathlib, subprocess, sys, time, urllib.request
+
+root = pathlib.Path(__file__).parent / 'vink'
+mode = sys.argv[1]
+out = root / 'docs/development/evidence/empty-webp-259' / mode
+out.mkdir(parents=True, exist_ok=True)
+env = dict(os.environ, DATABASE_URL='postgres://vink259@127.0.0.1:55559/vink259_before',
+           VINK_MIGRATE_DATABASE_URL='postgres://vink259@127.0.0.1:55559/vink259_before',
+           VINK_PROFILE='local', VINK_DEV_PRINCIPAL='11111111-1111-4111-8111-111111111111',
+           VINK_AUTH_SIGN_IN='disabled', VINK_BIND='127.0.0.1:52559',
+           VINK_PUBLIC_ORIGIN='http://127.0.0.1:52559', VINK_SITE_ROOT=str(root/'target/site'))
+binary = str(root/'target/debug/vink-app')
+with (out/'setup.log').open('w') as log:
+    for arg in ['migrate','dev-seed']:
+        subprocess.run([binary,arg],cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
+with (out/'server.log').open('w') as log:
+    server = subprocess.Popen([binary,'serve'],cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT)
+    try:
+        for _ in range(100):
+            if server.poll() is not None: raise RuntimeError('server exited before readiness')
+            try:
+                with urllib.request.urlopen('http://127.0.0.1:52559/ban-viet', timeout=2) as response:
+                    if response.status==200: break
+            except Exception: time.sleep(.1)
+        else: raise RuntimeError('server readiness timed out')
+        command=['node','apps/vink-web/e2e/browser-smoke.mjs','--base','http://127.0.0.1:52559',
+                 '--chrome','/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+                 '--state',str(out/'smoke-state.json'),'--phase','desk-empty']
+        if mode=='before': command+=['--empty-baseline','true']
+        with (out/'browser.log').open('w') as browserlog:
+            result=subprocess.run(command,cwd=root,env=env,stdout=browserlog,stderr=subprocess.STDOUT)
+        sys.exit(result.returncode)
+    finally:
+        server.terminate()
+        try: server.wait(timeout=15)
+        except subprocess.TimeoutExpired: server.kill(); server.wait()

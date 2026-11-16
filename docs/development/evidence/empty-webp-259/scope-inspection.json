@@ -1,0 +1,6 @@
+{
+  "editor_body_byte_identical_to_base": true,
+  "editor_sha256": "87f8ece1ec7a11b584b98c94dbfad07c412bcc796b2f7c9bd04b7a6bf53b8274",
+  "shared_composition_css_asset_diff": "",
+  "quint": "NOT_APPLICABLE; only empty view composition and explicit no-continuation presentation guard; ReadOwner/PageChain/create transitions unchanged"
+}
