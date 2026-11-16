@@ -106,9 +106,11 @@ không diễn giải UPDATE là ghi đè tại chỗ, cũng không coi ALTER pol
 
 Ngày 16/11/2026, Mac Apple M4/24 GiB, macOS 15.6, Rust/Cargo 1.99.1, Node 22.15.0,
 PostgreSQL 17.11 Homebrew (`default_toast_compression=pglz`, shared buffers 128 MB),
-Chrome 157.0.8103.78. Lượt cuối pin source `5833624`; full SHA và build flags nằm trong
-[environment.json](evidence/long-document-229/environment.json). Source application/test/browser
-không đổi sau pin đó; các commit bàn giao tiếp theo chỉ ghi tài liệu/evidence.
+Chrome 157.0.8103.78. Lượt baseline đầy đủ pin source `5833624`; full SHA và build flags nằm trong
+[environment.json](evidence/long-document-229/environment.json). Baseline này trên integration base
+`a3e6536`. Trong lúc đo, `develop` merge #227 thành `69f71f0`; branch nhập base đó tại `3d05fa6`
+và kiểm tương thích riêng bên dưới. Không gán số đo baseline cho UI lưu sau #227. Domain,
+serializer, PostgreSQL persistence và Reader source không thay đổi trong delta upstream đó.
 
 Raw [PostgreSQL + CPU](evidence/long-document-229/postgres.json),
 [compression](evidence/long-document-229/compression.json),
@@ -298,3 +300,24 @@ compact. Evidence UI #224 (2,3 GiB) được chuyển tạm và phục hồi v�
 scratch #229 đã dừng, data/evidence còn giữ; hai PostgreSQL cũ vẫn chạy. PID Node #204 ban đầu
 94236 không còn ở lần kiểm cuối, nguyên nhân `UNKNOWN`; task không gửi signal tới PID đó hay
 khởi động lại. [environment.json](evidence/long-document-229/environment.json) ghi rõ boundary này.
+
+### Tương thích sau khi develop merge #227
+
+Sau baseline, fetch thấy `develop@69f71f0cb61228dbe5ceea775b3c34c237705922` đã merge #227.
+Nhập base bằng merge commit `3d05fa601e8bf02b5a00e33612cdcd703cd9f600`, không rewrite các SHA
+đã đo. `cargo xtask build` và `verify quick` trên source sau merge **PASS**. Chạy lại
+`cargo test --locked -p vink-app --test document_budget --test postgres long_document -- --test-threads=1`
+**PASS 3 pure + 1 PG/HTTP, 1 benchmark ignored**.
+
+[Post-merge browser smoke](evidence/long-document-229/postmerge-browser.json) **PASS** trên ba case
+`vi_nfd-30000`, `poem_tabs-200000`, `tiny_blocks-200000`: 9 Reader + 12 editor scenes, API thật,
+snapshot/hash thật, save ACK/rejection, conflict và exact buffer/selection. Dataset scratch có
+một revision mỗi work; không dùng smoke này để cập nhật bảng latency/history phía trên. Có hoạt
+động build/test khác cùng thời gian; số timing trong raw smoke không phải benchmark so sánh.
+
+Lượt setup smoke đầu để draft ở version 1 nên request “stale 1” vẫn hợp lệ; assertion FAIL đúng
+vì fixture sai tiền đề. Đã khôi phục corpus và tăng version đơn điệu để kiểm stale thật rồi PASS;
+không sửa runtime để làm test xanh. Quick từng bị artifact lock khi build chưa xong; đợi build
+nhả lock rồi chạy tuần tự đã PASS. Các log lỗi vẫn giữ trong `/tmp/vink-229-evidence`.
+Server và PostgreSQL scratch sau merge đã dừng, data còn giữ. Baseline đầy đủ 21 case vẫn thuộc
+`5833624`/base `a3e6536`; không khẳng định đã đo lại toàn bộ hiệu năng UI sau #227.

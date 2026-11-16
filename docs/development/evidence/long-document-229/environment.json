@@ -56,5 +56,25 @@
       "cause": "UNKNOWN; task sent no signal and did not restart the old queue"
     },
     "old_branch_codex_action_surfaces_shared": "64d732aef1b0be6a5f72271eebdfe80a2bc636c0 preserved"
+  },
+  "postmerge": {
+    "integration_base_sha": "69f71f0cb61228dbe5ceea775b3c34c237705922",
+    "source_sha": "3d05fa601e8bf02b5a00e33612cdcd703cd9f600",
+    "scope": "functional compatibility only; not a replacement performance baseline",
+    "cases": [
+      "vi_nfd-30000",
+      "poem_tabs-200000",
+      "tiny_blocks-200000"
+    ],
+    "fixture_history": 1,
+    "reader_scenes": 9,
+    "editor_scenes": 12,
+    "quick": "PASS",
+    "pure_regressions": "PASS 3/3",
+    "postgres_boundary": "PASS 1/1",
+    "browser": "PASS",
+    "fixture_setup": "scratch migrated/seeded by real binaries; canonical corpus imported, snapshots captured via real API, SQL public pointers; versions advanced so expected_version=1 is stale",
+    "initial_smoke": "FAIL fixture setup: tiny draft version 1 was not stale; restored original corpus and advanced versions, then PASS",
+    "cleanup": "postmerge App and scratch PostgreSQL stopped, data retained"
   }
 }

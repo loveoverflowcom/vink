@@ -3,6 +3,8 @@
 Owner và cách chạy: [ngân sách document](../../long-document-budget.md).
 Ngày 16/11/2026, source `5833624d8f77259a22f65abedfb47b691dffd791`, integration base
 `a3e65360e316d27e5d029a43aef8b3083f622fb7`. Đây là corpus tổng hợp, không có manuscript cá nhân.
+Smoke tương thích sau merge dùng source `3d05fa601e8bf02b5a00e33612cdcd703cd9f600` trên base
+`69f71f0cb61228dbe5ceea775b3c34c237705922`; số timing của smoke không thay baseline.
 
 | File | Nội dung |
 | --- | --- |
@@ -10,6 +12,7 @@ Ngày 16/11/2026, source `5833624d8f77259a22f65abedfb47b691dffd791`, integration
 | [postgres.json](postgres.json) | 21 case; raw CPU/app read/save/WAL samples, EXPLAIN plans, history và relation sizes |
 | [compression.json](compression.json) | Fresh default/pglz/LZ4, từng sample, WAL/heap/TOAST/index và old/new compression |
 | [browser.json](browser.json) | 42 Reader + 84 editor scenes, network/hydration payload, DOM/heap, snapshot/save/conflict và oversized cache |
+| [postmerge-browser.json](postmerge-browser.json) | PASS tương thích UI #227: 3 case, 9 Reader + 12 editor scenes; không dùng để so sánh performance |
 | [repeat.json](repeat.json) | Đối chiếu 21 case hai lượt; exact byte/hash equality và read medians; raw SHA lượt đầu được giữ để kiểm lại |
 | [manifest.json](manifest.json) | SHA-256 của các evidence file được commit |
 

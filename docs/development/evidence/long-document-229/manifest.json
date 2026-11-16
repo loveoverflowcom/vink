@@ -8,8 +8,9 @@
     "budget-reader-390-200.png": "0c07414cd4d656d7cb7fe9a9839e15573db002223e43fa8cd27dfd76e16c7112",
     "compression.json": "b27c7d9ebb35b6519bc4f8c47e356122ebd80a32465cd22b4d5021eeff694ab7",
     "contexts.json": "e89a86d9b80126ee2bf4cc086a43dd44f5c15919861e7b1aded43d6a3e829303",
-    "environment.json": "b930a7995d74d682ab42f9c084f4e6ccc36bc73fd8edfbedf50e8b40e27fe793",
+    "environment.json": "e9c89cf94b3a04c52b4ad3df3a065dcd08530248a7d2066bce5c10e270ddf353",
     "postgres.json": "4160197a2cd061d44051ced0e8df3b3c9fec19e4d098d82a83072b950e7c6421",
+    "postmerge-browser.json": "5cf1925a99f714874ca38d186eccc79a8f6ae1a180761c7e52e20ae2ea4eeb35",
     "repeat.json": "5578a3cbf8461023d74cdc6a86cd9034a74062d681cf51d572c17979130cb158"
   }
 }
