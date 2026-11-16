@@ -5,7 +5,16 @@ LayoutSpec r1 · 16/11/2026 · `DESIGN_PROPOSED` · `NO_APPROVED_REFERENCE`.
 chưa triển khai delta giao diện. Chủ sản phẩm đã giao thực thi; dependency thiếu thì làm spec/tests
 độc lập, không nhập toàn bộ PR khác hoặc fork primitive.
 
-## Baseline và dependency thật
+## Trạng thái sau rebase để review PR #240
+
+Đối chiếu `develop@2c55c2678729b4db39fadd9ce1bcfedfb4175770` ngày 16/11/2026:
+PR #228 đã merge; `ActionSurface::{Standard,Tonal}` và prop `surface` của
+`TooltipIconButton` đã có trong shared owner. Registry vẫn có 23 glyph và chưa có glyph lọc/thẻ.
+Phạm vi PR #240 vẫn là spec/tests độc lập; chưa đổi các consumer hoặc hoàn thành #225.
+Khi tiếp tục, dùng API shared hiện hành và xử lý glyph ở shared owner; không cần chờ lại #228.
+Các lựa chọn presentation bên dưới vẫn dự kiến. Baseline và evidence cũ giữ nguyên SHA lúc chạy.
+
+## Baseline và dependency tại lượt chuẩn bị `69f71f0`
 
 - Branch `codex/action-surfaces-desk-discovery`, base `origin/develop` =
   `69f71f0cb61228dbe5ceea775b3c34c237705922`. Issue #225 và #224 chưa có comment khi đọc.

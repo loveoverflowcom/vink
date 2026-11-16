@@ -66,8 +66,9 @@ của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-ev
 Chuẩn bị [action surfaces #225](../design/action-surfaces-desk-discovery-225.md) trên
 `develop@69f71f0`: `draftDashboard` thêm native create/Select/Refresh và pending keys;
 `discoveryReading` thêm Apply/checkbox/max4/no-JS, `discoveryCorpus` thêm history/set equality/
-cursor reset. Đây là coverage của tests hiện hữu được mở rộng, chưa triển khai delta UI vì
-shared contract/glyph còn thiếu. [Kết quả local và gap](evidence/action-surfaces-225/README.md).
+cursor reset. Đây là coverage của tests hiện hữu được mở rộng, chưa triển khai delta UI.
+Sau rebase lên `develop@2c55c26`, shared contract #228 đã có; glyph lọc/thẻ vẫn thiếu.
+[Kết quả local và gap](evidence/action-surfaces-225/README.md) giữ riêng baseline lịch sử.
 
 Phân trang nháp [#201](desk-pagination.md) mở rộng `/api/v1/drafts` bằng query/sort/cursor
 trên toàn corpus owner, giữ caller không tham số Recent/100. Provider/consumer fixtures và

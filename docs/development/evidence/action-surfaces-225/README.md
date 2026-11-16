@@ -5,6 +5,12 @@ Ngày 16/11/2026, Mac arm64. Branch `codex/action-surfaces-desk-discovery` từ
 [LayoutSpec r1 và inventory trước/sau dự kiến](../../../design/action-surfaces-desk-discovery-225.md).
 Không có delta UI runtime trong lượt này; không nhận hoàn thành #225.
 
+**Cập nhật review/rebase PR #240 (16/11/2026):** trên
+`develop@2c55c2678729b4db39fadd9ce1bcfedfb4175770`, #228 đã merge và shared
+`ActionSurface`/prop `TooltipIconButton.surface` đã có; glyph lọc/thẻ vẫn thiếu.
+Các log, capture, hash và trạng thái dependency bên dưới thuộc lượt chuẩn bị trên `69f71f0`;
+không dùng chúng làm kết quả kiểm thử của head sau rebase. Phạm vi vẫn chỉ spec/tests.
+
 ## Phụ thuộc và source
 
 Đã fetch/pull fast-forward develop mới nhất trước tạo branch. Kiểm trực tiếp `action.rs`,
@@ -137,6 +143,7 @@ Self-review: diff chỉ tests/docs, assertion bảo vệ hành vi quan sát đư
 primitive, không sửa fields/focus/row geometry hoặc dựng API giả. Hai theme và text200 đã mở
 pixels; kiểm geometry không được dùng thay kết luận hierarchy của UI chưa triển khai.
 
-Blocker chính: shared surface + wrapper/glyph chưa trên develop. Sau khi có: đối chiếu API mới,
+Blocker tại lượt chuẩn bị: shared surface + wrapper/glyph chưa trên develop. Sau rebase, chỉ
+glyph còn thiếu; shared surface/wrapper đã có theo ghi chú đầu trang. Khi tiếp tục: đối chiếu API mới,
 triển khai đúng hunk consumer, thêm assertion background/icon, chụp/mở paired before/after cùng
 fixture/state/theme/scale, chạy quick và Web. Không tự merge dependency hoặc tự đóng issue.
