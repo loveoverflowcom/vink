@@ -37,13 +37,16 @@ fn query_from(params: &leptos_router::params::ParamsMap) -> ExploreQuery {
 }
 
 /// A submit owns one focus intent, not subsequent typing or an async read completion.
-fn focus_submitted_results(data: &web_sys::FormData) {
+fn focus_submitted_results(data: &leptos::web_sys::FormData) {
     #[cfg(feature = "hydrate")]
     {
         use wasm_bindgen::JsCast;
         let path = window().location().pathname().ok();
         let query = data.get("q").as_string().unwrap_or_default();
         let origin = document().active_element();
+        let picker_submit = origin
+            .as_ref()
+            .is_some_and(|element| element.closest("#tag-picker").ok().flatten().is_some());
         let Some(input) = document()
             .get_element_by_id("public-query")
             .and_then(|input| input.dyn_into::<web_sys::HtmlInputElement>().ok())
@@ -63,6 +66,8 @@ fn focus_submitted_results(data: &web_sys::FormData) {
                 Some(element) != origin.as_ref()
                     && element.tag_name() != "BODY"
                     && element.id() != "community-stream"
+                    // Closing this submitted picker restores its trigger before our frame.
+                    && !(picker_submit && element.id() == "open-tag-filters")
             });
             let moved_caret = origin
                 .as_ref()

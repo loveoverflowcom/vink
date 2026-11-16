@@ -195,6 +195,11 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1"), 'applied filter is visible and removable');
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form button[type=submit]')?.classList.contains('vk-ui-button--tonal')", '#225 applied set is unchanged after navigation');
+  await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
+  await page.key('Enter');
+  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement?.id==='community-stream'", '#258 unchanged Apply focuses results after its own trigger restoration');
+  await page.click('#open-tag-filters');
+  await page.waitFor("document.querySelector('#tag-picker').open", '#258 reopen unchanged picker for cancellation');
   await page.key('Escape');
   await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement.id==='open-tag-filters'", '#225 unchanged filter dismiss restores trigger');
   await page.click('#applied-filters .vk-applied-tag');
