@@ -40,6 +40,8 @@ mod conditional_reads;
 mod discovery;
 #[path = "postgres/discussion.rs"]
 mod discussion;
+#[path = "postgres/document_budget.rs"]
+mod document_budget;
 #[path = "postgres/drafts.rs"]
 mod drafts;
 #[path = "postgres/endorsement.rs"]
