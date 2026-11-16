@@ -448,3 +448,14 @@ F1/F3 vẫn là product gaps đã được báo trong acceptance baseline, khôn
 screen reader, release/production load, cold OS/PG page cache, total process RSS/WASM peak và
 Quint/Kani/CMP. Browser dùng CSS viewport 390/1440 và root font 100/200, input CDP;
 V8/DOM counters chỉ là proxy, không suy SLA mobile. Không dùng GitHub CI làm evidence.
+
+### Review trước merge #249
+
+Review HEAD `233804451f2abb4a2b041c4406a549ed080b8153` trên base/merge-base
+`ca9369653a516715fea95ca71fbd818d54c15b0a` không tìm thấy regression mới do delta này.
+[Bundle review](evidence/long-document-229/review-249/README.md) ghi kiểm checksum/source,
+tính lại raw summary và regression PostgreSQL mới: 4 PASS, probe opt-in ignored.
+Mutation chỉ giữ lần restore đầu đã làm regression FAIL tại assertion baseline; hoàn nguyên
+source byte-identical, build lại và 4 checks PASS. Gap mutation được nêu trong audit trước
+đã được kiểm, không sửa lại evidence lịch sử hoặc coi đây là lần đo hiệu năng mới.
+Commit review chỉ bổ sung docs/evidence; Quick và full probe dùng lại kết quả source không đổi.
