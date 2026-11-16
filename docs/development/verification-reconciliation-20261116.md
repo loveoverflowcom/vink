@@ -102,3 +102,20 @@ chỉ bỏ log biên dịch/từng test để gọn. Môi trường macOS arm64,
 Snapshot TOML cuối: `6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b`.
 Các kết quả cũ trong từng owner giữ nguyên SHA, FAIL/NOT_RUN và môi trường ban đầu.
 Model/replay mới không làm mới bằng chứng runtime hoặc chốt quyết định sản phẩm.
+
+## Evidence review bổ sung
+
+[Output review](evidence/verification-20261116/review-checks.txt) tách khỏi evidence ban đầu:
+
+| Đầu vào / boundary | Kết quả |
+| --- | --- |
+| `a78d4ca43074085152a5c0f0de859095d02f4801` — `cargo xtask verify quick` | **PASS** toàn lane, gồm repository links/skills/decisions |
+| Cùng commit — `cargo xtask verify discussion` | **PASS** toàn lane; 107 App tests + 4 Web lifecycle tests, fixture drift và negative controls |
+| `d31fa40` của #241 — test PostgreSQL/SSR `server_html_has_public_content_and_never_private_drafts` | **FAIL** được tái hiện local: còn chờ count copy cũ sau UI #244, trùng [CI](https://github.com/loveoverflowcom/vink/actions/runs/43836039923) |
+| `914d303` của #241, rồi bản tích hợp `1300d8774bf67becabbe53b39bac036347b30126` — cùng test với `--exact` | **PASS 1/1**, 197 filtered; PostgreSQL 17.11 riêng. Assertion đổi theo LayoutSpec #225; giữ kiểm tra private text, chưa publish và 404 |
+| Registry/fingerprints/diff/JS syntax | **PASS**; cùng snapshot 125 revisions/79 refs, bảy proposal PENDING và tám source fingerprints ban đầu |
+| Full local PostgreSQL/browser/CMP/Kani/Apalache/deployment | **NOT_RUN** trong review; CI được đọc riêng theo head, không tính là local PASS |
+
+Từ `a78d4ca` tới `1300d877`, chỉ thêm assertion/comment PostgreSQL và ghi chú READ-02 của #241;
+runtime/model/replay/runner không đổi. Commit evidence sau đó chỉ sửa tài liệu. Không gọi lần chạy
+`quick`/`discussion` trên `a78d4ca` là lần chạy trên SHA khác hoặc là bằng chứng browser/SQL toàn lane.
