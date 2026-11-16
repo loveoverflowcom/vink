@@ -1,5 +1,6 @@
 // TAG-PR-06. Real server reads unless a case explicitly says transport fixture.
 // SQL publications in the dedicated phase qualify public reading, never author publication.
+import { discoveryChipGeometry } from './discovery-chip-geometry.mjs';
 export async function discoveryReading(page, { args, check, textContrast }) {
   const ready = async () => page.waitFor("document.documentElement.dataset.hydrated === 'true' && document.querySelector('#public-query')", 'discovery hydration');
   const goto = async path => { await page.goto(args.base + path); await ready(); };
@@ -473,6 +474,7 @@ async function emptyRefreshFocus(page, {args, check}) {
 }
 
 export async function discoveryCorpus(page, { args, check }) {
+  await discoveryChipGeometry(page, { args, check });
   const load = async path => (await fetch(args.base+path)).json();
   const catalog = await load('/api/v1/tags');
   const form = catalog.tags.find(t=>t.label==='Thơ'), theme = catalog.tags.find(t=>t.label==='Ký ức');

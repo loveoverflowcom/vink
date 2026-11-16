@@ -553,6 +553,13 @@ Consumer Web của thẻ nháp; component dùng chung cho #100. Luồng HOW/WHY/
 [LayoutSpec](../design/tag-discovery.md) và [HOW/WHY/TEACH + evidence](discovery-ui.md).
 Browser assertions ở [discovery-smoke.mjs](../../apps/vink-web/e2e/discovery-smoke.mjs): GET/no-JS, Apply, query/tag/page, canonical/unknown tag, reader return và matrix reflow; phase discovery-corpus dùng SQL publication fixture có nhãn để tìm ngoài 12 bài, AND/pagination và race đảo thứ tự response. READ-02 cache dùng query/filter/cursor làm key; 404 reader gỡ khỏi mọi snapshot và fence response đang bay.
 
+Hồi quy #260 ở [discovery-chip-geometry.mjs](../../apps/vink-web/e2e/discovery-chip-geometry.mjs),
+được gọi từ `discovery-corpus` và phase tập trung `discovery-chip-geometry`: đo tâm nhãn/rect
+trên native Checkbox thật, 0/1/4 selection/max4/deselect, long NFC/NFD, hai theme/text100/200,
+320×900 / 390×844 / 834×1112 / 1440×900, keyboard/forced-colors/accessibility tree.
+[Evidence](evidence/discovery-chip-260/README.md) tách baseline FAIL và kết quả sau sửa;
+coverage source không tự là runtime PASS.
+
 ## PUB-RUNTIME-01 — publication persistence và API tác giả (#158, 11/11/2026)
 
 #230 tách [owner-state metadata projection](publication-state-read.md): shared restore invariants,

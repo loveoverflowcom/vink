@@ -882,10 +882,12 @@ a {
 .vk-discovery-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--vk-space-2); }
 
 .vk-discovery-option { min-width: 0; }
-.vk-discovery-option .vk-ui-choice__target { display:flex; justify-content:center; width:100%; min-block-size:3rem; gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-full); background:var(--vk-surface-container-high); }
+/* Equal fixed mark/end tracks center the label itself, independent of checked state. */
+.vk-discovery-option .vk-ui-choice__target { display:grid; grid-template-columns:1em minmax(0,1fr) 1em; width:100%; min-block-size:3rem; gap:var(--vk-space-1); padding:var(--vk-space-2); border-radius:var(--vk-radius-full); background:var(--vk-surface-container-high); }
 .vk-discovery-option .vk-ui-choice__input { position:absolute; inline-size:1px; block-size:1px; opacity:0; }
-.vk-discovery-option .vk-ui-choice__label { overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
-.vk-discovery-option .vk-ui-choice__target::before { content:"✓"; inline-size:1em; flex:0 0 1em; visibility:hidden; }
+.vk-discovery-option .vk-ui-choice__label { min-width:0; text-align:center; overflow-wrap:anywhere; font-weight:var(--vk-type-label-weight); }
+.vk-discovery-option .vk-ui-choice__target::before { content:"✓" / ""; inline-size:1em; visibility:hidden; }
+.vk-discovery-option .vk-ui-choice__target::after { content:""; inline-size:1em; }
 .vk-discovery-option .vk-ui-choice__target:has(input:checked) { background:var(--vk-primary); color:var(--vk-on-primary); }
 .vk-discovery-option .vk-ui-choice__target:has(input:checked)::before { visibility:visible; }
 .vk-discovery-option .vk-ui-choice__target:has(input:focus-visible) { outline:var(--vk-size-focus-ring) solid var(--vk-focus-ring); outline-offset:var(--vk-size-focus-offset); }

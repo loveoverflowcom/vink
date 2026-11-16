@@ -1,0 +1,30 @@
+{
+  "cwd": "/Users/manhblue/Documents/Codex/2026-11-17/task-4/vink",
+  "server_pid": 25604,
+  "site": "/tmp/vink260/baseline-site",
+  "started": 1794869191.137007,
+  "source_sha256": {
+    "apps/vink-web/style/vink.css": "5ad9b107b961b0d02196f186fa725fd923adcb0c6ff4b0b62249a829e192440f",
+    "apps/vink-web/e2e/discovery-chip-geometry.mjs": "7722b8b85248cfef1b1310c0a4044482acec47f291c095689dbeb92fd2677b92"
+  },
+  "runtime_sha256": {
+    "/Users/manhblue/Documents/Codex/2026-11-17/task-4/vink/target/debug/vink-app": "adb29ce6190ec91027491091385492a3e941196a9a4e5bd634e72e0ce748aa3b",
+    "/tmp/vink260/baseline-site/pkg/vink.css": "7c0f581259b5dd8681d7d35f30e170957f33ce9f850ea297be2ea037359950e3",
+    "/tmp/vink260/baseline-site/pkg/vink_bg.wasm": "a4e18385a1a4442e1efd8ac4e7648c464f43b362552ffa48feabddf6c86ba85f"
+  },
+  "browser_command": [
+    "node",
+    "/tmp/vink260/baseline-probe.mjs",
+    "--base",
+    "http://127.0.0.1:30561",
+    "--chrome",
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "--state",
+    "/tmp/vink260/before-final/state.json",
+    "--phase",
+    "discovery-chip-geometry"
+  ],
+  "browser_exit": 1,
+  "server_exit": 0,
+  "finished": 1794869219.796758
+}
