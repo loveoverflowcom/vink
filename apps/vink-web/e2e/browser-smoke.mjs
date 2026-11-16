@@ -24,6 +24,7 @@ import { publicStorage, storageReopened } from './public-storage-smoke.mjs';
 import { draftPagination } from './draft-pagination-smoke.mjs';
 import { authorWorks } from './author-works-smoke.mjs';
 import { editorWriting } from './editor-writing-smoke.mjs';
+import { editorPaperFirst } from './editor-paper-first-smoke.mjs';
 import { documentBudget } from './document-budget.mjs';
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -31,6 +32,7 @@ import { dirname, join } from 'node:path';
 
 const SAMPLE_WORK = '33333333-3333-4333-8333-333333333333';
 const BUILD_SHA = process.env.GITHUB_SHA ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const BUILD_DIRTY = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim();
 const PUBLISHED_LINE = 'Phố cũ mưa giăng sợi mỏng,';
 const INDENTED_LINE = '    đã theo mưa về rất lâu.';
 const DRAFT_ONLY_LINE = 'Khổ đang viết dở — chưa công khai.';
@@ -416,7 +418,13 @@ class Page {
         })(),
         desk: { heading: geometry('#heading'), resume: geometry('#resume'), title: geometry('#resume h2'), disclosure: geometry('#resume-title-toggle'), metadata: geometry('#resume .vk-draft-meta'), cta: geometry('[data-testid=resume-draft]'), list: geometry('#drafts'), tools: geometry('#draft-tools'), search: geometry('#draft-search'), sort: geometry('#draft-sort'), refresh: geometry('#refresh-drafts'), scope: geometry('#draft-scope'), firstRow: geometry('[data-testid=draft-row]'), rowLink: geometry('.vk-draft-row__link'), rowTitle: geometry('.vk-draft-row__title'), rowTitleLines: titleLines, rowMetadata: geometry('.vk-draft-row .vk-draft-meta'), rowOpen: geometry('.vk-draft-row__open'), results: geometry('#draft-results'), listHeading: geometry('#draft-list-title'), searchField: geometry('.vk-draft-search > .vk-ui-field'), sortField: geometry('#draft-tools > .vk-ui-field:nth-child(2)') },
         reader: { title: geometry('#reader-header h1'), header: geometry('#reader-header'), body: geometry('.vk-reader .vk-document') },
-        editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, toolbar: geometry('#editor-toolbar'), save: geometry('#save'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
+        editor: { status: document.querySelector('[data-testid=save-status]')?.dataset.status, textSetting: document.documentElement.dataset.text,
+          toolbar: geometry('#editor-toolbar'), statusReadout: geometry('[data-testid=save-status]'), save: geometry('#save'), tools: geometry('#editor-save-details > summary'),
+          paper: geometry('.vk-editor-paper'), title: geometry('#draft-title'), body: geometry('[data-testid=editor-body]'), firstLine: geometry('.cm-line'),
+          fonts: { ui: document.fonts.check('16px "Be Vietnam Pro"'), reading: document.fonts.check('16px Literata') },
+          colors: Object.fromEntries(['.vk-ui-scaffold','.vk-editor-paper','#editor-toolbar','[data-testid=save-status]','#editor-save-details > summary'].flatMap(selector => {
+            const el=document.querySelector(selector); if (!el) return []; const s=getComputedStyle(el); return [[selector,{color:s.color,background:s.backgroundColor}]];
+          })), preview: geometry('#draft-preview[open]'), leave: geometry('#leave-editor[open]') },
         explore: { heading: geometry('#explore-heading'), tools: geometry('#discovery-tools'), brand: geometry('.vk-brand'), search: geometry('#public-search'), input: geometry('#public-query'), label: geometry('#public-query-label'), shell: geometry('#public-search .vk-ui-search__shell'), clear: geometry('#clear-public-search'), submit: geometry('#public-search button[type=submit]'), stream: geometry('#community-stream'), firstRow: geometry('.vk-public-row'), byline: geometry('.vk-public-row .vk-work-byline'), author: geometry('.vk-public-row .vk-ui-byline__name'), date: geometry('.vk-public-row time'), title: geometry('.vk-public-row h3'), context: geometry('#context') },
         navigation: { bar: geometry('.vk-ui-bottom-nav'), labels: [...document.querySelectorAll('.vk-ui-bottom-nav a')].map(a => ({ label: a.textContent, target: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"]'), icon: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-icon'), text: geometry('#bottom-navigation a[href="' + a.getAttribute('href') + '"] .vk-ui-nav-item__label'), firstLine: (() => { const range = document.createRange(); range.selectNodeContents(a.querySelector('.vk-ui-nav-item__label')); const r = [...range.getClientRects()].find(r => r.width > 0 && r.height > 0); return r ? { x: r.x, y: r.y, width: r.width, height: r.height } : null; })() })) },
       };
@@ -428,7 +436,7 @@ class Page {
       validateEditorCapture(name, evidence.editorScene, context, pixels);
       context.png = { ...pixels, sha256: createHash('sha256').update(png).digest('hex') };
     }
-    contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, ...evidence } };
+    contexts[name] = { ...context, captured_at: new Date().toISOString(), evidence: { build: BUILD_SHA, dirty: BUILD_DIRTY, ...evidence } };
     writeFileSync(manifest, JSON.stringify(contexts, null, 2));
     return context;
   }
@@ -1409,7 +1417,7 @@ async function brandAssets(page) {
 
 async function textContrast(page, theme, surface = 'shell') {
   const selectors = surface.startsWith('editor-') ? (() => {
-    const list = ['[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#export', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]', '.vk-editor-help'];
+    const list = ['[data-testid=save-status]', '#editor-save-details > summary', '#preview', '#draft-title', '#editor-body-label', '#editor-body-hint', '[data-testid=editor-body]', '.vk-editor-help'];
     if (surface === 'editor-dirty' || surface === 'editor-saving' || surface === 'editor-failed') list.push('#save');
     if (surface === 'editor-conflict') list.push('#save-recovery-jump');
     return list;
@@ -3112,6 +3120,7 @@ async function setEditorScene(page, { width, height, scale, theme }) {
 }
 
 async function editorChrome(page) {
+  await editorPaperFirst(page, { args, check, openProfile, chooseTheme, editorTarget, fitsEditorAction, downloaded });
   await editorWriting(page, { args, check, setEditorScene, captureEditorScene, editorTarget, fitsEditorAction, downloaded });
   console.log('editor chrome: reflow, save races and recovery:');
   await page.viewport(1440);
@@ -3159,7 +3168,7 @@ async function editorChrome(page) {
           check(await page.eval(`document.documentElement.scrollWidth <= innerWidth && ${live}`), `${scenario}: no overflow and one live EditorView`);
           check(await page.eval(`(() => {
             const toolbar = document.querySelector('#editor-toolbar'), t = toolbar.getBoundingClientRect();
-            return [...toolbar.querySelectorAll('button')].every(button => {
+            return [...toolbar.querySelectorAll('button,summary')].filter(el=>el.checkVisibility()).every(button => {
               const r = button.getBoundingClientRect(), label = button.querySelector('.vk-ui-button__label');
               return r.width >= 48 && r.height >= 48 && r.left >= t.left && r.right <= t.right && r.top >= t.top && r.bottom <= t.bottom && (!label || label.scrollWidth <= label.clientWidth + 1);
             }) && document.querySelector('[data-testid=save-status]').textContent.trim().length > 0;
@@ -3229,7 +3238,7 @@ async function editorChrome(page) {
   await geometry('clean');
   await page.eval(`document.querySelector('#editor-save-details > summary').focus()`);
   await page.key('Enter');
-  check(await page.eval(`document.querySelector('#editor-save-details').open && document.querySelector('#editor-save-details').textContent.includes('phiên bản 2') && document.querySelector('#editor-save-details').textContent.includes('trên máy chủ') && !document.querySelector('#editor-save-details').textContent.includes('Đã lưu trên máy') && !document.querySelector('#editor-save-details').textContent.includes('tự động') && getComputedStyle(document.querySelector('#editor-toolbar')).position==='static' && ${live}`), 'expanded save detail releases sticky positioning and states server truth without device/autosave claims');
+  check(await page.eval(`document.querySelector('#editor-save-details').open && document.querySelector('#editor-save-details').textContent.includes('phiên bản 2') && document.querySelector('#editor-save-details').textContent.includes('trên máy chủ') && !document.querySelector('#editor-save-details').textContent.includes('Đã lưu trên máy') && !document.querySelector('#editor-save-details').textContent.includes('tự động') && getComputedStyle(document.querySelector('#editor-toolbar')).position==='static' && ${live}`), 'native tools expand in document flow and state server truth without device/autosave claims');
   await page.key('Enter');
   // Clean activation, clean Ctrl/Cmd+S and clean title Enter must never issue a redundant PUT.
   let cleanWrites = 0;
@@ -3244,13 +3253,13 @@ async function editorChrome(page) {
   await sleep(200);
   page.cdp.listeners = page.cdp.listeners.filter((item) => item !== cleanPutListener);
   check(cleanWrites === 0 && (await page.status()) === 'saved', 'clean save slot, clean Ctrl/Cmd+S and clean title Enter issue zero PUT writes');
-  // Clean Tab order follows save details, secondary actions, then title.
-  await page.eval(`document.querySelector('#editor-save-details > summary').focus()`);
-  for (const id of ['preview', 'export', 'draft-title']) {
-    await page.key('Tab');
-    check(await page.eval(`document.activeElement.id === '${id}'`), `clean editor Tab reaches ${id}`);
-  }
-  for (const id of ['preview', 'export']) {
+  // Closed tools skip their hidden utilities. Preview is direct and precedes More.
+  await page.eval(`document.querySelector('#preview').focus()`);
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'clean Tab reaches the visible tools trigger');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.id === 'draft-title'`), 'closed tools skip hidden export and reach the native title');
+  for (const id of ['preview']) {
     await page.eval(`document.querySelector('#${id}').focus()`);
     await page.waitFor(`!document.querySelector('#${id}-tooltip').hidden && getComputedStyle(document.querySelector('#${id}-tooltip')).visibility === 'visible'`, `${id} focus tooltip`);
     check(await page.eval(`document.querySelector('#${id}').getAttribute('aria-describedby').includes('${id}-tooltip') && document.querySelector('#${id}-tooltip').getAttribute('role') === 'tooltip' && document.activeElement.id === '${id}'`), `${id} has its own native description and focus tooltip`);
@@ -3291,14 +3300,14 @@ async function editorChrome(page) {
   check(await page.eval(`document.querySelector('.vk-editor-help').open && ${live}`), 'keyboard opens writing help without remounting the text');
   await page.key('Enter');
   check(await page.eval(`!document.querySelector('.vk-editor-help').open`), 'keyboard closes optional writing help');
-  // Native Tab order follows unified Save slot (#save -> details), secondary actions (#preview -> #export), title, full-title disclosure, then body.
+  // Save -> direct preview -> visible native tools -> title, full-title disclosure, body.
   await page.eval(`document.querySelector('#save').focus()`);
   await page.key('Tab');
-  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary')`), 'dirty editor Tab reaches save details summary from #save');
-  for (const id of ['preview', 'export', 'draft-title']) {
-    await page.key('Tab');
-    check(await page.eval(`document.activeElement.id === '${id}'`), `editor Tab reaches ${id}`);
-  }
+  check(await page.eval(`document.activeElement.id==='preview'`), 'dirty editor Tab reaches direct preview after Save');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.matches('#editor-save-details > summary') && document.activeElement.checkVisibility()`), 'dirty editor Tab reaches visible tools');
+  await page.key('Tab');
+  check(await page.eval(`document.activeElement.id==='draft-title'`), 'closed tools skip hidden export from dirty state');
   await page.key('Tab');
   check(await page.eval(`document.activeElement.matches('#draft-title-details > summary') && !document.querySelector('#draft-title-details').open`), 'editor Tab reaches the collapsed full-title disclosure');
   await page.key('Tab');
@@ -3558,7 +3567,7 @@ async function editorChrome(page) {
   await page.capture('editor-short-mobile-390');
   await page.viewport(1440);
   await page.eval(`document.documentElement.dataset.theme = 'light'; document.querySelector('#draft-title').focus(); document.querySelector('#draft-title').scrollIntoView({block:'start'})`);
-  check(await page.eval(`document.querySelector('#draft-title').getBoundingClientRect().top >= document.querySelector('#editor-toolbar').getBoundingClientRect().bottom`), 'sticky toolbar does not hide the focused title');
+  check(await page.eval(`document.querySelector('#draft-title').getBoundingClientRect().top >= document.querySelector('#editor-toolbar').getBoundingClientRect().bottom`), 'document-flow tools do not cover the focused title');
   await page.capture('editor-sticky-title-1440');
   await page.click('#keep-mine');
   await page.waitStatus('saved');
@@ -3591,7 +3600,18 @@ async function editorChrome(page) {
   await gate.release(handoffReq);
   await page.waitStatus('saved');
   await page.waitFor(`document.activeElement?.matches('#editor-save-details > summary')`, 'focus moves cleanly to save details summary when #save hides on clean');
-  check(await page.eval(`document.querySelector('#save') === null && document.activeElement?.matches('#editor-save-details > summary')`), 'keyboard save dirty -> pending -> saved hands focus safely inside #save-slot');
+  check(await page.eval(`document.querySelector('#save') === null && document.activeElement?.matches('#editor-save-details > summary') && document.activeElement.checkVisibility() && !document.querySelector('#editor-save-details').open`), 'keyboard save dirty -> pending -> saved hands focus to visible closed tools');
+  // An already open native disclosure remains open through ACK; the same visible
+  // summary is safe in both states. No auto-open or hidden nested focus destination.
+  await page.key('Space');
+  await page.typeInBody(' Lưu khi công cụ còn mở.');
+  await page.eval(`document.querySelector('#save').focus()`);
+  await page.key('Enter');
+  await gate.release(await gate.next());
+  await page.waitStatus('saved');
+  await page.waitFor(`document.activeElement.matches('#editor-save-details > summary')`, 'open-tools ACK focus');
+  check(await page.eval(`document.querySelector('#editor-save-details').open && document.activeElement.checkVisibility()`), 'save ACK retains open tools and focuses its live summary');
+  await page.key('Space');
   await page.eval(`document.querySelector('.cm-content').focus()`);
   await page.typeInBody(' Giữ con trỏ.');
   await page.waitStatus('unsaved');
@@ -3670,6 +3690,26 @@ async function editorChrome(page) {
   await page.key('Escape');
   await page.waitFor(`!document.querySelector('#leave-editor').open`, 'stay after ACK');
   await gate.disable();
+  // A committed response delivered after disposal cannot move focus in a new draft.
+  const disposedGate = new SaveGate(page, 'Response');
+  await disposedGate.enable();
+  const disposedWork = await page.eval(`location.pathname.split('/').pop()`);
+  await page.typeInBody(' ACK sau khi rời bản cũ.');
+  await page.eval(`document.querySelector('#save').focus()`); await page.key('Enter');
+  const disposedAck = await disposedGate.next();
+  await page.click('.vk-editor-heading__back');
+  await page.waitFor(`document.querySelector('#leave-editor').open`, 'leave with committed response held');
+  await page.click('#leave-discard');
+  await page.waitFor(`document.querySelector('#discard-confirm')`, 'explicit discard confirmation before disposal');
+  await page.click('#discard-confirm');
+  await page.waitFor(`location.pathname==='/ban-viet' && document.querySelector('#create-draft')`, 'disposed old editor');
+  await page.click('#create-draft'); await page.waitFor(EDITOR_READY, 'new draft before old ACK');
+  const nextWork = await page.eval(`location.pathname.split('/').pop()`);
+  await page.eval(`document.querySelector('#draft-title').focus(); window.__newDraftTitle=document.activeElement`);
+  await disposedGate.release(disposedAck);
+  await sleep(700);
+  check(nextWork!==disposedWork && await page.eval(`location.pathname==='/ban-viet/${nextWork}' && document.activeElement===__newDraftTitle && document.activeElement.checkVisibility() && !document.querySelector('#editor-save-details').open`), 'disposed draft late ACK cannot steal title focus or open tools in a new draft');
+  await disposedGate.disable();
   // The rest of mainPhase uses the desktop rail after opening a fresh reader document.
   await page.viewport(1440);
   await page.eval(`document.documentElement.style.fontSize=''; document.documentElement.dataset.theme='light'`);
@@ -4531,6 +4571,7 @@ async function afterRestartPhase(page) {
     await page.typeInBody(STANZA);
     const current = await page.body();
     check(current === state.text + STANZA, 'unsaved stanza typed after the restart');
+    await page.click('#editor-save-details > summary');
     await page.click('#export');
     const file = await downloaded(downloads);
     // HFS+ returns decomposed file names; only the name comparison is canonicalized.

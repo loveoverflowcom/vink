@@ -45,6 +45,9 @@ handoff trong `#save-slot`) và seam bàn giao cho PR 2/2 (#218).
 Bổ sung [#226 — Reader/Nhận xét action surfaces](action-surfaces-reader-discussion-226.md):
 LayoutSpec, owner map Web/CMP và seam tiếp tục sau #224; presentation mới chưa triển khai.
 
+Bổ sung [#218 — Editor Paper First](ui-editor-paper-first-218.md): công cụ không container,
+Thêm native trong flow, paper/canvas scoped và giữ save/recovery/focus của #217.
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |

@@ -180,11 +180,15 @@ pub fn EditorToolbar(
     #[prop(optional, into)] status_problem: Option<Signal<Option<String>>>,
     #[prop(optional, into)] status_detail: Option<Signal<String>>,
     #[prop(optional)] save_action: Option<ChildrenFn>,
+    /// Opt-in quiet composition. The default toolbar and its consumers keep their anatomy.
+    #[prop(default = false)]
+    paper_first: bool,
+    #[prop(optional)] utilities: Option<ChildrenFn>,
     children: Children,
 ) -> impl IntoView {
     let problem = move || status_problem.and_then(|value| value.get());
     view! {
-        <div class="vk-editor-toolbar">
+        <div class="vk-editor-toolbar" class:vk-editor-toolbar--paper-first=paper_first>
             <div
                 id="save-slot"
                 class="vk-editor-toolbar__status vk-save-slot"
@@ -227,13 +231,29 @@ pub fn EditorToolbar(
                     </p>
                 </span>
                 {save_action.map(|action| view! { <div class="vk-save-slot__action">{action()}</div> })}
-                {status_detail.map(|detail| view! {
+                {status_detail.filter(|_| !paper_first).map(|detail| view! {
                     <SupportingDetails id="editor-save-details" summary="Chi tiết trạng thái lưu" compact=true>
                         <p>{move || detail.get()}</p>
                     </SupportingDetails>
                 })}
             </div>
-            <div class="vk-editor-toolbar__actions">{children()}</div>
+            <div class="vk-editor-toolbar__actions">
+                {children()}
+                {paper_first.then(|| view! {
+                    // Native disclosure, not an ARIA menu/overlay: Enter/Space toggle, Tab
+                    // reaches ordinary actions, Escape leaves it open. Its summary is always
+                    // visible, including when a focused Save disappears after an ACK (#217).
+                    <details id="editor-save-details" class="vk-editor-tools">
+                        <summary>"Thêm"<Icon name=IconName::ExpandMore size=IconSize::Small /></summary>
+                        <div class="vk-editor-tools__content">
+                            {utilities.map(|actions| actions())}
+                            {status_detail.map(|detail| view! {
+                                <p><strong>"Trạng thái lưu. "</strong>{move || detail.get()}</p>
+                            })}
+                        </div>
+                    </details>
+                })}
+            </div>
         </div>
     }
 }

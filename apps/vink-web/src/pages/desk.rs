@@ -8,7 +8,7 @@ use leptos_router::hooks::use_params_map;
 
 use vink_ui::{
     ActionState, ActionSurface, Announce, Button, ButtonKind, ButtonVariant, ChoiceOption,
-    EmptyKind, FieldVariant, Heading, HeadingLevel, IconName, InlineNotice, PanelContent,
+    EmptyKind, FieldVariant, Heading, HeadingLevel, Icon, IconName, InlineNotice, PanelContent,
     PanelKind, PlainTooltip, ProblemKind, SearchField, SearchVariant, Select, StatePanel,
     SupportingDetails, TextField, Tone, TooltipIconButton, TypeRole,
 };
@@ -980,6 +980,12 @@ fn Editor(draft: Draft) -> impl IntoView {
         }
     };
     let open_preview = move || {
+        // Close the in-flow tools before opening the modal. Preview stays a direct, live
+        // trigger, so Dialog never restores focus into a collapsed disclosure.
+        #[cfg(feature = "hydrate")]
+        if let Some(tools) = document().get_element_by_id("editor-save-details") {
+            let _ = tools.remove_attribute("open");
+        }
         let document = crate::document::text_to_document(&body.snapshot());
         preview.set(Some((title.get_untracked(), document)));
         remember_scroll(page_scroll);
@@ -1116,6 +1122,7 @@ fn Editor(draft: Draft) -> impl IntoView {
             }
         >
             <crate::ui::patterns::EditorToolbar attr:id=TOOLBAR_ID attr:data-testid="editor-toolbar"
+                paper_first=true
                 status=Signal::derive(move || status_label.get())
                 status_token=Signal::derive(move || status_token.get())
                 status_problem=Signal::derive(move || status_problem.get())
@@ -1163,11 +1170,14 @@ fn Editor(draft: Draft) -> impl IntoView {
                             </Button>
                         </Show>
                     </>
+                }.into_any())
+                utilities=std::sync::Arc::new(move || view! {
+                    <Button variant=ButtonVariant::Text id="export" on_press=move |_| export()>
+                        <Icon name=IconName::Download />"Tải bản thảo (.txt)"
+                    </Button>
                 }.into_any())>
                     <TooltipIconButton id="preview" icon=IconName::Visibility label="Xem trước"
                         on_press=move |_| open_preview() />
-                    <TooltipIconButton id="export" icon=IconName::Download label="Tải bản thảo (.txt)"
-                        on_press=move |_| export() />
             </crate::ui::patterns::EditorToolbar>
             <Show when=move || matches!(status(), SaveStatus::Failed(_))>
                 <section class="vk-editor-recovery" data-testid="save-failed" data-tone="error" aria-label="Phục hồi lưu nháp">
