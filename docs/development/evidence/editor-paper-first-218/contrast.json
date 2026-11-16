@@ -1,0 +1,590 @@
+[
+  {
+    "theme": "light",
+    "state": "clean",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.328499436450278
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "state": "dirty",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 14.772111841868492
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.328499436450278
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(255, 255, 255)",
+        "background": "rgb(104, 70, 165)",
+        "ratio": 6.981389262795559
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "state": "saving",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.328499436450278
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(255, 255, 255)",
+        "background": "rgb(104, 70, 165)",
+        "ratio": 6.981389262795559
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "state": "failed",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(81, 66, 24)",
+        "background": "rgb(247, 237, 203)",
+        "ratio": 8.369751153353075
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.328499436450278
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(49, 35, 61)",
+        "background": "rgb(234, 220, 243)",
+        "ratio": 11.144384039944544
+      }
+    ]
+  },
+  {
+    "theme": "light",
+    "state": "conflict",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(81, 66, 24)",
+        "background": "rgb(247, 237, 203)",
+        "ratio": 8.369751153353075
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(104, 70, 165)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.328499436450278
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(247, 242, 250)",
+        "ratio": 6.28254016084079
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(36, 29, 45)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 15.807405960005134
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(95, 86, 107)",
+        "background": "rgb(255, 250, 255)",
+        "ratio": 6.722848015608086
+      },
+      {
+        "selector": "#save-recovery-jump",
+        "foreground": "rgb(49, 35, 61)",
+        "background": "rgb(234, 220, 243)",
+        "ratio": 11.144384039944544
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "state": "clean",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 9.853964501580567
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "state": "dirty",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 13.954092199867386
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 9.853964501580567
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(56, 28, 99)",
+        "background": "rgb(212, 187, 255)",
+        "ratio": 8.155939339697696
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "state": "saving",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 9.853964501580567
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(56, 28, 99)",
+        "background": "rgb(212, 187, 255)",
+        "ratio": 8.155939339697696
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "state": "failed",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(244, 229, 175)",
+        "background": "rgb(78, 66, 35)",
+        "ratio": 7.837087928808949
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 9.853964501580567
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#save",
+        "foreground": "rgb(242, 218, 255)",
+        "background": "rgb(73, 60, 86)",
+        "ratio": 7.872044358416814
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "state": "conflict",
+    "pairs": [
+      {
+        "selector": "[data-testid=save-status]",
+        "foreground": "rgb(244, 229, 175)",
+        "background": "rgb(78, 66, 35)",
+        "ratio": 7.837087928808949
+      },
+      {
+        "selector": "#editor-save-details > summary",
+        "foreground": "rgb(212, 187, 255)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 9.853964501580567
+      },
+      {
+        "selector": "#preview",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(33, 27, 41)",
+        "ratio": 10.00431641879527
+      },
+      {
+        "selector": "#draft-title",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "#editor-body-label",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#editor-body-hint",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": "[data-testid=editor-body]",
+        "foreground": "rgb(240, 231, 248)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 15.333518122767964
+      },
+      {
+        "selector": ".vk-editor-help",
+        "foreground": "rgb(209, 195, 219)",
+        "background": "rgb(23, 18, 29)",
+        "ratio": 10.993288915989838
+      },
+      {
+        "selector": "#save-recovery-jump",
+        "foreground": "rgb(242, 218, 255)",
+        "background": "rgb(73, 60, 86)",
+        "ratio": 7.872044358416814
+      }
+    ]
+  }
+]
