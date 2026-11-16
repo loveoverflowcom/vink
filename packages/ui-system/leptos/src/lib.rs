@@ -38,8 +38,8 @@ pub mod tokens;
 pub mod values;
 
 pub use action::{
-    ActionState, Button, ButtonKind, ButtonVariant, FilterChip, IconButton, Link, LinkTarget,
-    LinkVariant,
+    ActionState, ActionSurface, Button, ButtonKind, ButtonVariant, FilterChip, IconButton, Link,
+    LinkTarget, LinkVariant,
 };
 pub use feedback::{
     Banner, Clock, ContentRegion, Dialog, EdgeProgress, GateView, InlineNotice, ListEnd,

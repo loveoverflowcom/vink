@@ -632,6 +632,9 @@ fn uniform_endorsement_block(
 /// the same decorative Pen Flight R2 in every phase; confirmation keeps its own trailing slot.
 #[component]
 pub fn EndorsementAction(
+    /// Presentation only; confirmed facts and authority remain with the adapter.
+    #[prop(optional, into)]
+    surface: Signal<vink_ui::ActionSurface>,
     #[prop(into)] id: String,
     kind: EndorsementKind,
     #[prop(into)] facts: Signal<EndorsementFacts>,
@@ -647,6 +650,7 @@ pub fn EndorsementAction(
     view! {
         <span class="vk-endorsement" data-kind=kind_id>
             <ToggleAction
+                surface
                 id
                 copy=kind.copy()
                 icon=IconName::PenFlight
@@ -980,5 +984,26 @@ mod tests {
             "no target, no action: {html}"
         );
         assert_eq!(html.matches("vk-ui-toggle__label").count(), 3, "{html}");
+    }
+    #[test]
+    fn endorsement_forwards_surface_without_selecting_an_unknown_value() {
+        let html = Owner::new().with(|| {
+            view! {
+                <EndorsementAction id="tonal-endorse" kind=EndorsementKind::Work
+                    surface=vink_ui::ActionSurface::Tonal facts=EndorsementFacts::default()
+                    on_set=|_: bool| {} on_recover=|_: RecoveryIntent| {} />
+            }
+            .to_html()
+        });
+        assert!(
+            html.contains("data-surface=\"tonal\"") && html.contains("data-pressed=\"unknown\""),
+            "{html}"
+        );
+        assert!(
+            html.contains("aria-label=\"Thấm\"")
+                && html.contains("pen-flight")
+                && html.contains("Kiểm tra lại"),
+            "{html}"
+        );
     }
 }

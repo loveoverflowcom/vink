@@ -5,13 +5,13 @@ use leptos::prelude::*;
 use vink_ui::catalog::fixture;
 use vink_ui::identity_vectors::{BROKEN_WEBP_BASE64, PEOPLE, SAMPLE_WEBP_BASE64};
 use vink_ui::{
-    ActionState, Align, AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind, AvatarSize,
-    Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction, Divider,
-    FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading, HeadingLevel,
-    HiddenField, Icon, IconButton, IconName, ImageFrame, ImageState, Link, LinkTarget, LinkVariant,
-    Measure, Person, RadioGroup, Radius, SearchField, Select, Space, Stack, Surface, SurfaceTone,
-    Switch, Text, TextArea, TextField, TextInput, TextKind, TextTag, TextTone, ThemePreference,
-    ThemeScope, TypeRole,
+    ActionState, ActionSurface, Align, AspectRatio, AuthorByline, Avatar, AvatarGroup, AvatarKind,
+    AvatarSize, Button, ButtonKind, ButtonVariant, Checkbox, ChoiceOption, Container, Direction,
+    Divider, FieldMode, FieldVariant, FilterChip, FormSummary, Grid, GridMin, Heading,
+    HeadingLevel, HiddenField, Icon, IconButton, IconName, ImageFrame, ImageState, Link,
+    LinkTarget, LinkVariant, Measure, Person, RadioGroup, Radius, SearchField, Select, Space,
+    Stack, Surface, SurfaceTone, Switch, Text, TextArea, TextField, TextInput, TextKind, TextTag,
+    TextTone, ThemePreference, ThemeScope, TypeRole,
 };
 
 /// The preview's event log; absent when a specimen is rendered in a unit test.
@@ -363,6 +363,26 @@ fn action_button(scenario: &str) -> AnyView {
 
 fn action_icon_button(scenario: &str) -> AnyView {
     match scenario {
+        "surfaces" => {
+            let state = RwSignal::new(ActionState::Enabled);
+            let presses = RwSignal::new(0_u32);
+            view! {
+                <Stack gap=Space::S3>
+                    <Text role=TypeRole::Caption>"Mẫu · Standard / Tonal / Off / On / Disabled / Pending"</Text>
+                    <Stack direction=Direction::Row gap=Space::S3 wrap=true align=Align::Start>
+                        <IconButton id="surface-standard" icon=IconName::Edit label="Sửa tiêu đề (Standard)" />
+                        <vink_ui::TooltipIconButton id="surface-tonal" icon=IconName::Edit label="Sửa tiêu đề (Tonal)" surface=ActionSurface::Tonal state=state
+                            on_press=move |_| { presses.update(|n| *n += 1); state.set(ActionState::pending("Đang xử lý…")); } />
+                        <IconButton id="surface-off" icon=IconName::Visibility label="Xem trước (tắt)" surface=ActionSurface::Tonal pressed=false />
+                        <IconButton id="surface-on" icon=IconName::Visibility label="Xem trước (bật)" surface=ActionSurface::Tonal pressed=true />
+                        <IconButton id="surface-disabled" icon=IconName::Edit label="Sửa tiêu đề (không khả dụng)" surface=ActionSurface::Tonal state=ActionState::disabled("Mẫu · Chưa có quyền sửa.") on_press=move |_| presses.update(|n| *n += 1) />
+                        <IconButton id="surface-pending" icon=IconName::Refresh label="Tải lại" surface=ActionSurface::Tonal state=ActionState::pending("Đang tải…") on_press=move |_| presses.update(|n| *n += 1) />
+                    </Stack>
+                    <Text tag=TextTag::Span>{move || format!("Mẫu · Số lệnh: {}", presses.get())}</Text>
+                </Stack>
+            }.into_any()
+        }
+
         "disabled" => view! {
             <Stack direction=Direction::Row gap=Space::S4 wrap=true align=Align::Start>
                 <IconButton id="icon-disabled" icon=IconName::Edit label="Sửa tiêu đề" state=ActionState::disabled("Bản đã gửi không sửa được") on_press=|_| log("icon-button → Sửa (không được gọi)") />

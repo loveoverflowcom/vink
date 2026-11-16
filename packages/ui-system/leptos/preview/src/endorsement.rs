@@ -5,9 +5,9 @@
 use leptos::prelude::*;
 use vink_patterns::{EndorsementAction, EndorsementBlock, EndorsementFacts, EndorsementKind};
 use vink_ui::{
-    Align, Button, ButtonVariant, CountFact, Direction, RecoveryIntent, Space, Stack, Surface,
-    SurfaceTone, Text, TextTag, TextTone, ToggleAction, ToggleCopy, TogglePhase, ToggleValue,
-    TypeRole,
+    ActionSurface, Align, Button, ButtonVariant, CountFact, Direction, RecoveryIntent, Space,
+    Stack, Surface, SurfaceTone, Text, TextTag, TextTone, ToggleAction, ToggleCopy, TogglePhase,
+    ToggleValue, TypeRole,
 };
 
 use crate::components::log;
@@ -41,8 +41,34 @@ fn logged_recover(what: &'static str) -> Callback<RecoveryIntent> {
 }
 
 fn toggle(scenario: &str) -> AnyView {
-    if scenario == "lifecycle" {
-        return view! { <Lifecycle /> }.into_any();
+    if scenario == "lifecycle" || scenario == "tonal-lifecycle" {
+        let surface = if scenario == "tonal-lifecycle" {
+            ActionSurface::Tonal
+        } else {
+            ActionSurface::Standard
+        };
+        return view! { <Lifecycle surface /> }.into_any();
+    }
+    if scenario == "surfaces" {
+        return view! {
+            <Stack gap=Space::S3 align=Align::Start>
+                <Text role=TypeRole::Caption>"Mẫu · Off / On / Unknown / Pending / Disabled / Failed / Uncertain"</Text>
+                {[
+                    (ToggleValue::Off, TogglePhase::Idle, None),
+                    (ToggleValue::On, TogglePhase::Idle, None),
+                    (ToggleValue::Unknown, TogglePhase::Idle, None),
+                    (ToggleValue::Off, TogglePhase::Pending { desired: true }, None),
+                    (ToggleValue::On, TogglePhase::Idle, Some("Mẫu · Không khả dụng.".to_string())),
+                    (ToggleValue::Off, TogglePhase::Failed, None),
+                    (ToggleValue::On, TogglePhase::Uncertain { desired: false }, None),
+                ].into_iter().enumerate().map(|(i, (value, phase, blocked))| view! {
+                    <ToggleAction id=format!("surface-toggle-{i}") surface=ActionSurface::Tonal copy=sample_copy() value phase blocked count=CountFact::Known(12) icon=vink_ui::IconName::PenFlight on_set=logged_set("surface-toggle") on_recover=logged_recover("surface-toggle") />
+                }).collect_view()}
+                <EndorsementAction id="surface-endorsement" kind=EndorsementKind::Work
+                    surface=ActionSurface::Tonal facts=EndorsementFacts::default()
+                    on_set=logged_set("surface-endorsement") on_recover=logged_recover("surface-endorsement") />
+            </Stack>
+        }.into_any();
     }
     let (value, phase, count, blocked, copy) = match scenario {
         "selected" => (
@@ -94,9 +120,13 @@ fn toggle(scenario: &str) -> AnyView {
             None,
             sample_copy(),
         ),
-        "long-label" => (
+        "long-label" | "tonal-long-label" => (
             ToggleValue::On,
-            TogglePhase::Idle,
+            if scenario == "tonal-long-label" {
+                TogglePhase::Pending { desired: false }
+            } else {
+                TogglePhase::Idle
+            },
             CountFact::Known(1_234_567),
             None,
             ToggleCopy {
@@ -115,10 +145,17 @@ fn toggle(scenario: &str) -> AnyView {
             sample_copy(),
         ),
     };
+    let surface = if scenario == "tonal-long-label" {
+        ActionSurface::Tonal
+    } else {
+        ActionSurface::Standard
+    };
     view! {
         <Stack direction=Direction::Column gap=Space::S3 align=Align::Start>
             <ToggleAction
                 id="toggle-sample"
+                surface
+                icon=vink_ui::IconName::PenFlight
                 copy
                 value
                 phase
@@ -137,7 +174,7 @@ fn toggle(scenario: &str) -> AnyView {
 
 /// A sample owner: the press only asks; one of the step buttons decides what the "owner" did.
 #[component]
-fn Lifecycle() -> impl IntoView {
+fn Lifecycle(#[prop(optional)] surface: ActionSurface) -> impl IntoView {
     let value = RwSignal::new(ToggleValue::Off);
     let phase = RwSignal::new(TogglePhase::Idle);
     let count = RwSignal::new(12_u64);
@@ -169,6 +206,7 @@ fn Lifecycle() -> impl IntoView {
         <Stack direction=Direction::Column gap=Space::S4 align=Align::Start>
             <ToggleAction
                 id="toggle-lifecycle"
+                surface
                 copy=sample_copy()
                 value
                 phase
