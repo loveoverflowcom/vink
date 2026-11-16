@@ -188,6 +188,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
   await page.key('Enter');
   await page.waitFor("new URL(location.href).searchParams.has('tag') && document.querySelector('#public-results') && !document.querySelector('#tag-picker').open", 'Apply changes the URL');
+  await page.waitFor("document.activeElement?.id==='community-stream'", '#258 Apply focuses results after the picker closes');
   check(applySubmits===1, '#225 Enter on Apply submits exactly once, including native GET navigation (observed '+applySubmits+')');
   page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==countApply);
   await page.send('Runtime.removeBinding', {name:'action225Submit'});
