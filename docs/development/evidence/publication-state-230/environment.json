@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-16",
+  "base_sha": "20ed13e160150c86f82ed5a185f73777441c3a4b",
+  "implementation_sha": "0147bda43ea3821cec17b1cbbde2a9539e7d3805",
+  "host": {
+    "cpu": "Apple M4",
+    "ram_bytes": 25769803776,
+    "os": "macOS 15.6",
+    "arch": "arm64"
+  },
+  "toolchain": {
+    "rust": "1.99.1",
+    "postgres": "17.11 Homebrew"
+  },
+  "flags": {
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "CARGO_BUILD_JOBS": "3"
+  },
+  "scratch": {
+    "data": "/tmp/vink-230-pg-data",
+    "host": "127.0.0.1",
+    "port": 55530,
+    "shared_buffers": "128MB",
+    "max_connections": 60,
+    "compression": "pglz",
+    "logging": {
+      "log_statement": "all for test role",
+      "log_parameter_max_length": 0
+    }
+  },
+  "corpus_seed": 229,
+  "corpus_source_sha256": "4d5d36971ef4041bb15b4ae928b11e19318098b456e2b9afa74e8c93a6bdf678",
+  "benchmark_source_sha256": "042cca53abf29fcf8a8b6cd84c65c5d5d352c07a6b7aa52b5663a730d42dbf23",
+  "sampling": "one first + three warm samples; same fresh SQLx setup per run; no production/cold-cache/p95 claim",
+  "noise": "During parts of baseline, other focused builds/tests ran on host. No other builds/tests during after measurement; absolute/timing ratios descriptive only.",
+  "decision_snapshot_sha256": "6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b",
+  "response_byte_difference": "Random IDs fixed width; timestamp fractional seconds have variable serialized length. Same rows/fields, no truncation; raw before/after bytes retained.",
+  "final_code_note": "Later commits only share the corpus module, add regressions/lawful twin and correct republish fixtures; production runtime implementation measured at 0147bda is unchanged."
+}

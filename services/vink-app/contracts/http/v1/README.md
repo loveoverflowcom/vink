@@ -623,7 +623,13 @@ buộc người duyệt giải quyết qua luồng phản đối; lệnh kết l
 Chuyển riêng tư đóng hồ sơ cùng ca/job. Kết luận bản cũ không đổi ý định công khai bản mới.
 
 A receipt is history of one command, never the work's state: after every command the client reads
-`…/publication/state` again. Web consumer: the desk's publication region
+`…/publication/state` again. Owner state preserves the complete oldest-first history (ties by
+revision ID), including legacy null metadata bindings. It reads stored content-hash bindings and
+validated publication/moderation metadata without loading historical bodies; it is not a body
+integrity audit or approval capability. Commands revalidate full content and current authority;
+public body reads validate the exact pointed content. No response field or fixture changes in #230.
+
+Web consumer: the desk's publication region
 ([publication-author-web](../../../../../docs/development/publication-author-web.md)); it decodes the
 fixtures above on its side (`contract/publication.rs`).
 

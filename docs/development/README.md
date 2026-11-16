@@ -209,6 +209,8 @@ dữ liệu mẫu chỉ được nạp khi gọi `db seed`. Mở đúng `VINK_PU
 Phép đo document lớn opt-in (corpus, PostgreSQL/TOAST, Reader/editor, raw evidence):
 [ngân sách document #229](long-document-budget.md). Harness dùng database SQLx scratch và CDP
 hiện có; không nằm trong `verify all` và không đặt ngưỡng hiệu năng CI.
+[Owner-state #230](publication-state-read.md) dùng cùng corpus để so loader metadata với baseline
+full history; có lệnh, trust-boundary map và evidence PostgreSQL riêng.
 
 Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workflows.md):
 `build api`, `dev api --auth identity`, `dev worker`, `dev web`, `dev preview`,

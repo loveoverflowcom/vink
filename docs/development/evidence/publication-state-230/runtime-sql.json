@@ -1,0 +1,76 @@
+{
+  "source": "PostgreSQL 17 log_statement=all, log_parameter_max_length=0; selected owner-read transaction examples",
+  "note": "BEGIN and after SET precede owner SELECT; records retain SQL only, no values",
+  "examples": {
+    "before": {
+      "select_count": 5,
+      "events": [
+        {
+          "at": "2026-11-16 18:27:59.552 +07",
+          "pid": 41322,
+          "sql": "SELECT owner_id FROM works WHERE id = $1"
+        },
+        {
+          "at": "2026-11-16 18:27:59.552 +07",
+          "pid": 41322,
+          "sql": "SELECT audience, lifecycle, deletion_provenance,\n                tombstone_revision_id, tombstone_intent_generation,\n                generation, intent_revision_id, intent_generation,\n                pointer_revision_id, pointer_intent_generation,\n                hidden_revision_id, hidden_intent_generation,\n                review_withdrawn_revision_id, review_withdrawn_intent_generation,\n                ever_public, public_epoch, policy_version\n           FROM work_publications\n          WHERE work_id = $1"
+        },
+        {
+          "at": "2026-11-16 18:27:59.553 +07",
+          "pid": 41322,
+          "sql": "SELECT id, title, document, content_hash, metadata_snapshot_id, created_at\n           FROM revisions\n          WHERE work_id = $1\n          ORDER BY created_at ASC, id ASC"
+        },
+        {
+          "at": "2026-11-16 18:27:59.553 +07",
+          "pid": 41322,
+          "sql": "SELECT revision_id, decision_version, moderation, policy_version,\n                provenance_kind, policy_reason_code, needs_admin_cause,\n                admin_actor, admin_verdict, admin_reason, moderator_grant_id\n           FROM work_revision_moderation\n          WHERE work_id = $1"
+        },
+        {
+          "at": "2026-11-16 18:27:59.554 +07",
+          "pid": 41322,
+          "sql": "SELECT id, revision_id, content_digest, policy_version, state\n           FROM work_evaluation_jobs\n          WHERE work_id = $1\n          ORDER BY created_at ASC, id ASC"
+        },
+        {
+          "at": "2026-11-16 18:27:59.560 +07",
+          "pid": 41322,
+          "sql": "COMMIT"
+        }
+      ]
+    },
+    "after": {
+      "select_count": 5,
+      "events": [
+        {
+          "at": "2026-11-16 18:32:12.372 +07",
+          "pid": 45755,
+          "sql": "SELECT owner_id FROM works WHERE id = $1"
+        },
+        {
+          "at": "2026-11-16 18:32:12.372 +07",
+          "pid": 45755,
+          "sql": "SELECT audience, lifecycle, deletion_provenance,\n                tombstone_revision_id, tombstone_intent_generation,\n                generation, intent_revision_id, intent_generation,\n                pointer_revision_id, pointer_intent_generation,\n                hidden_revision_id, hidden_intent_generation,\n                review_withdrawn_revision_id, review_withdrawn_intent_generation,\n                ever_public, public_epoch, policy_version\n           FROM work_publications\n          WHERE work_id = $1"
+        },
+        {
+          "at": "2026-11-16 18:32:12.373 +07",
+          "pid": 45755,
+          "sql": "SELECT id, title, NULL::jsonb AS document, content_hash, metadata_snapshot_id, created_at\n    FROM revisions WHERE work_id = $1 ORDER BY created_at ASC, id ASC"
+        },
+        {
+          "at": "2026-11-16 18:32:12.373 +07",
+          "pid": 45755,
+          "sql": "SELECT revision_id, decision_version, moderation, policy_version,\n                provenance_kind, policy_reason_code, needs_admin_cause,\n                admin_actor, admin_verdict, admin_reason, moderator_grant_id\n           FROM work_revision_moderation\n          WHERE work_id = $1"
+        },
+        {
+          "at": "2026-11-16 18:32:12.373 +07",
+          "pid": 45755,
+          "sql": "SELECT id, revision_id, content_digest, policy_version, state\n           FROM work_evaluation_jobs\n          WHERE work_id = $1\n          ORDER BY created_at ASC, id ASC"
+        },
+        {
+          "at": "2026-11-16 18:32:12.373 +07",
+          "pid": 45755,
+          "sql": "COMMIT"
+        }
+      ]
+    }
+  }
+}

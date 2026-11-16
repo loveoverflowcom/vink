@@ -1,0 +1,133 @@
+{
+  "user02": {
+    "result": {
+      "head": {
+        "revision": 1,
+        "sha256": "2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b"
+      },
+      "lookup": "current",
+      "record": {
+        "content": {
+          "domain": "publication",
+          "kind": "product",
+          "resolution": "Đúng hai audience: **Chỉ mình tôi** / **Công khai**. Audience tách khỏi trạng thái kiểm duyệt; công khai không bỏ kiểm duyệt; Approved không tự công khai bài chỉ lưu riêng",
+          "title": "Hai mức riêng tư",
+          "work_audiences": [
+            "private",
+            "public"
+          ]
+        },
+        "context": {
+          "canonical_references": "D-06; AUD-01, AUD-02; PUB-01",
+          "previous_rule": "“Nháp riêng + public publication”, unlisted/nhóm kín “để sau”"
+        },
+        "historical": false,
+        "id": "USER-02",
+        "related_ids": [
+          "AUD-01",
+          "AUD-02",
+          "D-06",
+          "PUB-01"
+        ],
+        "revision": 1,
+        "sha256": "2293bf58194809957b892b74bc3891d56a05998e7b97008ad1c8fbfd98fdc97b",
+        "source": {
+          "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+          "group": "PRODUCT-DECISIONS-20261110",
+          "kind": "legacy_import",
+          "line": 35,
+          "path": "docs/architecture/product-decisions-20261110.md"
+        },
+        "status": "PRODUCT_CONFIRMED"
+      }
+    },
+    "snapshot_sha256": "6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b",
+    "version": 1
+  },
+  "adm06": {
+    "result": {
+      "head": {
+        "revision": 1,
+        "sha256": "2ccf2386a8b8e1a46fefafc393f8a546b0d5d63d0b0c2625614497383515c4d8"
+      },
+      "lookup": "current",
+      "record": {
+        "content": {
+          "domain": "publication",
+          "kind": "product",
+          "resolution": "Chỉ yêu cầu công khai mở ca; chuyển riêng tư **đóng** ca và phản đối, kết quả tới trễ không tạo quyết định; công khai lại dùng quyết định còn hiệu lực đúng snapshot + policy, policy đổi → lượt mới, quyết định người → người có thẩm quyền",
+          "title": "Gửi duyệt theo phiên bản"
+        },
+        "context": {
+          "canonical_references": "PUB-06",
+          "core": "`WorkModeration::decide_author`, `JobState::Withdrawn`",
+          "model": "`publication.qnt`",
+          "previous_rule": "Approved của bản cũ luôn dùng lại được; kết quả Approved tới sau khi chuyển riêng tư vẫn ghi quyết định (`approved_unpublished`)"
+        },
+        "historical": false,
+        "id": "ADM-06",
+        "related_ids": [
+          "PUB-06"
+        ],
+        "revision": 1,
+        "sha256": "2ccf2386a8b8e1a46fefafc393f8a546b0d5d63d0b0c2625614497383515c4d8",
+        "source": {
+          "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+          "group": "ADMIN-MODERATION-20261111",
+          "kind": "legacy_import",
+          "line": 177,
+          "path": "docs/architecture/product-decisions-20261110.md"
+        },
+        "status": "PRODUCT_CONFIRMED"
+      }
+    },
+    "snapshot_sha256": "6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b",
+    "version": 1
+  },
+  "user09": {
+    "result": {
+      "head": {
+        "revision": 1,
+        "sha256": "397b023db010494442da444670c43139558541f7ef7bf6125554c678cae8435b"
+      },
+      "lookup": "current",
+      "record": {
+        "content": {
+          "domain": "collections",
+          "kind": "product",
+          "resolution": "Mạng xã hội bài ngắn/tản văn; **không** nhiều chương. Bộ sưu tập cá nhân (hai audience), hiển thị = AND ba điều kiện",
+          "title": "Bài ngắn và bộ sưu tập cá nhân"
+        },
+        "context": {
+          "canonical_references": "D-10, D-16; WR-04; COL-01..06",
+          "previous_rule": "Một phần trước, nhiều chương cơ bản ở beta"
+        },
+        "historical": false,
+        "id": "USER-09",
+        "related_ids": [
+          "COL-01",
+          "COL-02",
+          "COL-03",
+          "COL-04",
+          "COL-05",
+          "COL-06",
+          "D-10",
+          "D-16",
+          "WR-04"
+        ],
+        "revision": 1,
+        "sha256": "397b023db010494442da444670c43139558541f7ef7bf6125554c678cae8435b",
+        "source": {
+          "commit": "af3c34bd624be18d404bd5789620759cae0b0ddb",
+          "group": "PRODUCT-DECISIONS-20261110",
+          "kind": "legacy_import",
+          "line": 42,
+          "path": "docs/architecture/product-decisions-20261110.md"
+        },
+        "status": "PRODUCT_CONFIRMED"
+      }
+    },
+    "snapshot_sha256": "6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b",
+    "version": 1
+  }
+}
