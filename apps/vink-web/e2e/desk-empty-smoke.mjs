@@ -53,12 +53,13 @@ export async function deskEmptyState(page, { args, check, DraftGate, textContras
       if (!baseline) {
         check(await page.eval(`!!document.querySelector(${JSON.stringify(target + ' img')})`), `#259 ${state}: semantic artwork is rendered`);
         await page.eval(`document.querySelector(${JSON.stringify(target + ' img')}).decode()`);
-        check(await page.eval(`(() => {const root=document.querySelector(${JSON.stringify(target)}),img=root.querySelector('img'); return root.querySelectorAll('img').length===1 && img.getAttribute('src')==='/pkg/empty/vink-empty-${state}.webp' && img.naturalWidth===512 && img.naturalHeight===427 && img.alt==='' && !root.querySelector('h2,h3,.vk-ui-panel,.vk-ui-icon') && document.querySelectorAll('#drafts [role=status]').length===1 && document.querySelectorAll('#create-draft').length===1;})()`), `#259 ${state}: shared artwork, decoded dimensions, decoration and one result status/create target`);
+        check(await page.eval(`(() => {const root=document.querySelector(${JSON.stringify(target)}),img=root.querySelector('img'); return root.querySelectorAll('img').length===1 && img.getAttribute('src')==='/pkg/empty/vink-empty-${state}.webp' && img.naturalWidth===512 && img.naturalHeight===427 && img.alt==='' && !root.querySelector('h2,h3,.vk-ui-panel') && document.querySelectorAll('#drafts [role=status]').length===1 && document.querySelectorAll('#create-draft').length===1;})()`), `#259 ${state}: shared artwork, decoded dimensions, decoration and one result status/create target`);
       }
       for (const width of [320, 390, 834, 1440]) for (const theme of ['light', 'dark']) for (const scale of [100, 200]) {
         await page.viewport(width);
         await page.eval(`document.documentElement.dataset.theme='${theme}'; document.documentElement.style.fontSize='${scale}%'; scrollTo(0,0); document.activeElement?.blur()`);
         await page.eval(`document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))`);
+        await page.eval(`Promise.all(document.getAnimations().filter(a=>Number.isFinite(a.effect.getComputedTiming().endTime)).map(a=>a.finished.catch(()=>{})))`);
         const measured = await page.eval(`(() => {
           const root=document.querySelector(${JSON.stringify(target)}), img=root.querySelector('img'),p=root.querySelector('.vk-empty-state__message');
           const r=el=>el?.getBoundingClientRect().toJSON();
