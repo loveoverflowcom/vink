@@ -1,0 +1,20 @@
+  ok  tag conflict routes to tag recovery instead of blind save retry
+  ok  tag-only conflict keeps a direct text download outside closed tools (AC-03)
+  ok  light tag-rescue text contrast >= 4.5 (min 8.37; disabled controls exempt)
+  ok  tag recovery 320/100/light: Tab reaches a complete direct 48px download
+  ok  dark tag-rescue text contrast >= 4.5 (min 4.83; disabled controls exempt)
+  ok  tag recovery 320/100/dark: Tab reaches a complete direct 48px download
+  ok  tag recovery 320/200/light: Tab reaches a complete direct 48px download
+  ok  tag recovery 320/200/dark: Tab reaches a complete direct 48px download
+  ok  tag recovery 390/100/light: Tab reaches a complete direct 48px download
+  ok  tag recovery 390/100/dark: Tab reaches a complete direct 48px download
+  ok  tag recovery 390/200/light: Tab reaches a complete direct 48px download
+  ok  tag recovery 390/200/dark: Tab reaches a complete direct 48px download
+  ok  tag conflict rescue exports live text without saving text, overwriting tags or submitting the form
+  ok  uncertain tag save also keeps direct export outside tools
+browser-smoke: PASS (main)
+  PASS  selected prerequisites
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags
+  PASS  server stops gracefully on SIGTERM

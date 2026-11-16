@@ -1,0 +1,18 @@
+{
+  "light": [
+    {
+      "selector": "#export-tags",
+      "foreground": "rgb(81, 66, 24)",
+      "background": "rgb(247, 237, 203)",
+      "ratio": 8.369751153353075
+    }
+  ],
+  "dark": [
+    {
+      "selector": "#export-tags",
+      "foreground": "rgb(196, 181, 130)",
+      "background": "rgb(78, 66, 35)",
+      "ratio": 4.831521757351803
+    }
+  ]
+}
