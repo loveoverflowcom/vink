@@ -214,6 +214,8 @@ Phép đo document lớn opt-in (corpus, PostgreSQL/TOAST, Reader/editor, raw ev
 hiện có; không nằm trong `verify all` và không đặt ngưỡng hiệu năng CI.
 [Owner-state #230](publication-state-read.md) dùng cùng corpus để so loader metadata với baseline
 full history; có lệnh, trust-boundary map và evidence PostgreSQL riêng.
+[RFC độ hạt lưu #231](../architecture/content-storage-rfc.md) dùng SQLx scratch để so JSONB,
+payload nguyên văn và manifest, kèm evidence và điều kiện mở lại.
 
 Chọn theo nhu cầu trong [hướng dẫn workflow có phạm vi](scoped-workflows.md):
 `build api`, `dev api --auth identity`, `dev worker`, `dev web`, `dev preview`,

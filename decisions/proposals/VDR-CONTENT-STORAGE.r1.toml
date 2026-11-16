@@ -1,0 +1,31 @@
+version = 1
+id = "VDR-CONTENT-STORAGE"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "content"
+title = "Giữ JSONB nguyên khối cho document v1 sau thử nghiệm #231"
+resolution = """
+Đề xuất A: PostgreSQL giữ document JSONB nguyên khối/TOAST cho nháp và revision. Owner-state dùng read projection #230. Giữ danh tính revision, hash canonical v1, metadata, authority và lifecycle/visibility như hiện hành. WR-04 vẫn DEFERRED.
+Chỉ mở lại B (payload nguyên văn scoped một work) khi exact repeats thật đạt gate. Chỉ mở lại C (manifest block nội bộ) khi PostgreSQL release trên workload đại diện chứng minh mức giảm relation/WAL vượt chi phí đọc/ghi, vận hành và di trú. RFC sở hữu thiết kế binding, atomic pointer, cache revocation, retention, nghiệm thu và rollback. Runtime lưu mới ngoài phạm vi proposal này.
+"""
+rationale = """
+docs/architecture/content-storage-rfc.md và raw evidence #231 tại develop@f0ef351. B giảm dung lượng/WAL khoảng 5–8%/7–8% trên lịch sử tổng hợp; C giảm mạnh ở nhiều block nhưng p95 ghi vượt ngưỡng tạm thời trong cả hai lượt PostgreSQL scratch. #230 đã xử lý hotspot owner-state; #229 tách transport, Reader và TOAST. Evidence tổng hợp chưa đủ để đổi granularity hoặc LZ4, và markdown/RFC không cấp signoff policy retention/history/offline.
+"""
+requires = [
+    "ADM-06@r1",
+    "D-02-CONTENT@r1",
+    "O-08@r1",
+    "O-17@r2",
+    "USER-02@r1",
+    "USER-09@r1",
+]
+related_ids = [
+    "MOD-07",
+    "PUB-01",
+    "PUB-02",
+    "PUB-03",
+    "PUB-06",
+    "WR-04",
+]
