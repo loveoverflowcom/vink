@@ -1,0 +1,874 @@
+==> ui tokens: 15 generated files match
+==> ui tokens: 15 generated files match
+==> build preview bundle (vink-ui-preview, csr)
+   Compiling vink-ui-preview v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/packages/ui-system/leptos/preview)
+    Finished `dev` profile [unoptimized] target(s) in 5.11s
+==> wasm-bindgen → target/ui-preview/leptos/pkg
+==> preview ready in target/ui-preview/leptos
+==> render the preview media hydration fixture as HTML
+    Finished `dev` profile [unoptimized] target(s) in 0.19s
+     Running `target/debug/examples/media_hydration /Users/manhblue/projects/loveoverflow/vink/target/ui-preview/leptos/media-hydration.html`
+==> build the preview media hydration bundle
+   Compiling vink-ui-preview v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/packages/ui-system/leptos/preview)
+    Finished `dev` profile [unoptimized] target(s) in 6.32s
+==> wasm-bindgen → preview media hydration fixture
+==> focused specimen and overlay geometry regressions
+TAP version 13
+# Subtest: fractional specimen bounds retain every edge, pad and clamp to the real document
+ok 1 - fractional specimen bounds retain every edge, pad and clamp to the real document
+  ---
+  duration_ms: 0.529625
+  type: 'test'
+  ...
+# Subtest: a specimen beyond the old 6000px raw cap is fully tiled at original scale
+ok 2 - a specimen beyond the old 6000px raw cap is fully tiled at original scale
+  ---
+  duration_ms: 0.09725
+  type: 'test'
+  ...
+# Subtest: nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+ok 3 - nonfinite, empty and off-document geometry fails instead of yielding a misleading image
+  ---
+  duration_ms: 0.106875
+  type: 'test'
+  ...
+# Subtest: viewport-sized tiles balance the final part and cover the heading through the last pixel
+ok 4 - viewport-sized tiles balance the final part and cover the heading through the last pixel
+  ---
+  duration_ms: 0.102041
+  type: 'test'
+  ...
+# Subtest: opening invariants reject the measured F-01 scroll and clipped title
+ok 5 - opening invariants reject the measured F-01 scroll and clipped title
+  ---
+  duration_ms: 0.583792
+  type: 'test'
+  ...
+# Subtest: missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+ok 6 - missing/invalid bounds, cropped viewport and horizontal overflow cannot pass
+  ---
+  duration_ms: 0.073334
+  type: 'test'
+  ...
+# Subtest: F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+ok 7 - F-02: text that crosses the panel padding fails INV-5; a column that holds it passes
+  ---
+  duration_ms: 0.122875
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 36.381084
+==> preview smoke (Chrome DevTools Protocol)
+  ok  ImageFrame: hydration sees an already failed SSR image and exposes the named fallback
+  ok  ImageFrame: a new valid source after hydration preserves frame geometry, alt and keyboard focus
+  ok  ImageFrame: truncated source set after hydration falls back, then a valid source recovers
+  ok  overlay source stayed unchanged
+  ok  overlay matrix 16 cases: opening geometry, keyboard, cancel and reopen PASS
+  ok  navigation lists the shared catalog IDs in order (53)
+  ok  preview states it calls no service
+  ok  exact link renders foundation.color-roles/default
+  ok  exact link renders foundation.color-roles/nested-theme
+  ok  exact link renders foundation.typography/default
+  ok  exact link renders foundation.typography/combining-marks
+  ok  exact link renders foundation.shape-spacing/default
+  ok  exact link renders foundation.shape-spacing/compact
+  ok  exact link renders foundation.motion/default
+  ok  exact link renders foundation.motion/reduced
+  ok  exact link renders text.text/default
+  ok  exact link renders text.text/long-label
+  ok  exact link renders text.heading/default
+  ok  exact link renders layout.surface/default
+  ok  exact link renders layout.surface/nested-theme
+  ok  exact link renders layout.container/default
+  ok  exact link renders layout.stack/default
+  ok  exact link renders layout.stack/long-label
+  ok  exact link renders layout.grid/default
+  ok  exact link renders layout.divider/default
+  ok  exact link renders action.button/default
+  ok  exact link renders action.button/disabled
+  ok  exact link renders action.button/pending
+  ok  exact link renders action.button/long-label
+  ok  exact link renders action.icon-button/default
+  ok  exact link renders action.icon-button/disabled
+  ok  exact link renders action.icon-button/selected
+  ok  exact link renders action.icon-button/surfaces
+  ok  exact link renders action.link/default
+  ok  exact link renders action.link/long-label
+  ok  exact link renders action.filter-chip/default
+  ok  exact link renders action.filter-chip/selected
+  ok  exact link renders action.filter-chip/disabled
+  ok  exact link renders action.toggle-action/default
+  ok  exact link renders action.toggle-action/selected
+  ok  exact link renders action.toggle-action/pending
+  ok  exact link renders action.toggle-action/uncertain
+  ok  exact link renders action.toggle-action/failed
+  ok  exact link renders action.toggle-action/unknown
+  ok  exact link renders action.toggle-action/disabled
+  ok  exact link renders action.toggle-action/count-unavailable
+  ok  exact link renders action.toggle-action/lifecycle
+  ok  exact link renders action.toggle-action/long-label
+  ok  exact link renders action.toggle-action/surfaces
+  ok  exact link renders action.toggle-action/tonal-lifecycle
+  ok  exact link renders action.toggle-action/tonal-long-label
+  ok  exact link renders field.text-field/default
+  ok  exact link renders field.text-field/invalid
+  ok  exact link renders field.text-field/read-only
+  ok  exact link renders field.text-field/disabled
+  ok  exact link renders field.text-field/long-label
+  ok  exact link renders field.text-field/external-label
+  ok  exact link renders field.text-area/default
+  ok  exact link renders field.text-area/multiline
+  ok  exact link renders field.text-area/invalid
+  ok  exact link renders field.search-field/default
+  ok  exact link renders field.search-field/long-label
+  ok  exact link renders field.checkbox/default
+  ok  exact link renders field.checkbox/invalid
+  ok  exact link renders field.checkbox/disabled
+  ok  exact link renders field.radio/default
+  ok  exact link renders field.radio/invalid
+  ok  exact link renders field.radio/disabled
+  ok  exact link renders field.switch/default
+  ok  exact link renders field.switch/disabled
+  ok  exact link renders field.select/default
+  ok  exact link renders field.select/invalid
+  ok  exact link renders field.select/disabled
+  ok  exact link renders field.form/default
+  ok  exact link renders field.form/invalid
+  ok  exact link renders identity.icon/default
+  ok  exact link renders identity.avatar/default
+  ok  exact link renders identity.avatar/image-error
+  ok  exact link renders identity.avatar/absent-identity
+  ok  exact link renders identity.avatar/long-label
+  ok  exact link renders identity.avatar-group/default
+  ok  exact link renders identity.avatar-group/absent-identity
+  ok  exact link renders identity.author-byline/default
+  ok  exact link renders identity.author-byline/long-label
+  ok  exact link renders identity.image-frame/default
+  ok  exact link renders identity.image-frame/image-error
+  ok  exact link renders state.loading/default
+  ok  exact link renders state.loading/slow
+  ok  exact link renders state.loading/refreshing
+  ok  exact link renders state.loading/reduced
+  ok  exact link renders state.progress/default
+  ok  exact link renders state.progress/determinate
+  ok  exact link renders state.progress/reduced
+  ok  exact link renders state.progress/inactive
+  ok  exact link renders state.empty/default
+  ok  exact link renders state.empty/no-results
+  ok  exact link renders state.empty/low-content
+  ok  exact link renders state.empty/end-of-list
+  ok  exact link renders state.error/default
+  ok  exact link renders state.error/partial
+  ok  exact link renders state.error/forbidden
+  ok  exact link renders state.error/not-found
+  ok  exact link renders state.error/auth-required
+  ok  exact link renders state.error/rate-limited
+  ok  exact link renders state.error/unknown
+  ok  exact link renders state.error/long-label
+  ok  exact link renders state.notice/default
+  ok  exact link renders state.notice/banner
+  ok  exact link renders state.notice/snackbar
+  ok  exact link renders state.notice/field-summary
+  ok  exact link renders state.status/default
+  ok  exact link renders state.status/long-label
+  ok  exact link renders state.dialog/default
+  ok  exact link renders state.dialog/session-expired
+  ok  exact link renders state.dialog/sheet
+  ok  exact link renders state.playground/default
+  ok  exact link renders state.playground/loading-empty
+  ok  exact link renders state.playground/loading-error-retry
+  ok  exact link renders state.playground/refresh-partial
+  ok  exact link renders state.playground/pending-cancel
+  ok  exact link renders state.playground/submit-uncertain
+  ok  exact link renders state.playground/save-conflict
+  ok  exact link renders state.playground/session-expired
+  ok  exact link renders navigation.rail/default
+  ok  exact link renders navigation.rail/compact
+  ok  exact link renders navigation.rail/reader
+  ok  exact link renders navigation.rail/long-labels
+  ok  exact link renders navigation.rail/guest
+  ok  exact link renders navigation.bottom-bar/default
+  ok  exact link renders navigation.bottom-bar/desk
+  ok  exact link renders navigation.bottom-bar/me
+  ok  exact link renders navigation.bottom-bar/long-labels
+  ok  exact link renders navigation.top-bar/default
+  ok  exact link renders navigation.top-bar/with-action
+  ok  exact link renders navigation.scaffold/default
+  ok  exact link renders navigation.scaffold/medium
+  ok  exact link renders navigation.scaffold/compact
+  ok  exact link renders navigation.scaffold/editor
+  ok  exact link renders navigation.scaffold/toggle
+  ok  exact link renders navigation.scaffold/short
+  ok  exact link renders navigation.scaffold/adaptive
+  ok  exact link renders navigation.scaffold/adaptive-editor
+  ok  exact link renders navigation.overlay/default
+  ok  exact link renders navigation.overlay/open
+  ok  exact link renders navigation.overlay/back
+  ok  exact link renders navigation.overlay/busy
+  ok  exact link renders navigation.adapter/default
+  ok  exact link renders navigation.adapter/deep-link
+  ok  exact link renders navigation.adapter/dirty-back
+  ok  exact link renders composition.nested/default
+  ok  exact link renders composition.nested/narrow
+  ok  exact link renders screen.explore/default
+  ok  exact link renders screen.explore/loading
+  ok  exact link renders screen.explore/low
+  ok  exact link renders screen.explore/empty
+  ok  exact link renders screen.explore/no-results
+  ok  exact link renders screen.explore/error
+  ok  exact link renders screen.explore/long
+  ok  exact link renders screen.explore/refresh
+  ok  exact link renders screen.reader/default
+  ok  exact link renders screen.reader/loading
+  ok  exact link renders screen.reader/error
+  ok  exact link renders screen.reader/not-found
+  ok  exact link renders screen.reader/long
+  ok  exact link renders screen.reader/feedback
+  ok  exact link renders screen.desk/default
+  ok  exact link renders screen.desk/loading
+  ok  exact link renders screen.desk/empty
+  ok  exact link renders screen.desk/no-results
+  ok  exact link renders screen.desk/error
+  ok  exact link renders screen.desk/auth-required
+  ok  exact link renders screen.desk/forbidden
+  ok  exact link renders screen.desk/uncertain
+  ok  exact link renders screen.desk/refresh
+  ok  exact link renders screen.desk/long
+  ok  exact link renders screen.editor/default
+  ok  exact link renders screen.editor/loading
+  ok  exact link renders screen.editor/dirty
+  ok  exact link renders screen.editor/pending
+  ok  exact link renders screen.editor/error
+  ok  exact link renders screen.editor/conflict
+  ok  exact link renders screen.editor/uncertain
+  ok  exact link renders screen.editor/long
+  ok  exact link renders screen.me/default
+  ok  exact link renders screen.me/auth-required
+  ok  exact link renders screen.me/long
+  ok  exact link renders composition.feedback/default
+  ok  exact link renders composition.feedback/sharing
+  ok  exact link renders composition.feedback/technique
+  ok  exact link renders composition.feedback/pending
+  ok  exact link renders composition.feedback/error
+  ok  exact link renders composition.feedback/auth-required
+  ok  exact link renders composition.feedback/uncertain
+  ok  exact link renders composition.feedback/sharing-open
+  ok  exact link renders composition.feedback/sharing-closed
+  ok  exact link renders composition.feedback/discussion-flat
+  ok  exact link renders composition.feedback/discussion-anchor
+  ok  exact link renders composition.endorsement/default
+  ok  exact link renders composition.endorsement/selected
+  ok  exact link renders composition.endorsement/pending
+  ok  exact link renders composition.endorsement/uncertain
+  ok  exact link renders composition.endorsement/own-content
+  ok  exact link renders composition.endorsement/signed-out
+  ok  exact link renders composition.endorsement/unavailable
+  ok  exact link renders composition.tag-selector/default
+  ok  exact link renders composition.tag-selector/empty
+  ok  exact link renders composition.tag-selector/full
+  ok  exact link renders composition.tag-selector/retired
+  ok  exact link renders composition.tag-selector/refused
+  ok  exact link renders composition.tag-selector/no-results
+  ok  exact link renders composition.tag-selector/unavailable
+  ok  exact link renders composition.tag-selector/long-label
+  ok  exact link renders composition.tag-selector/interactive
+  ok  exact link renders composition.interaction/default
+  ok  exact link renders composition.interaction/sheet
+  ok  exact link renders composition.interaction/explicit
+  ok  no duplicate ids and every aria-describedby resolves, every scenario
+  ok  inspector shows the registration status, not a pass
+  ok  screen.me/default: exactly one System radio selected initially
+  ok  sample theme keeps native radio group semantics
+  ok  screen.me/default: selecting light leaves exactly one radio checked
+  ok  screen.me/default: selecting dark leaves exactly one radio checked
+  ok  screen.me/default: selecting system leaves exactly one radio checked
+  ok  screen.me/default: keyboard light selection keeps focus
+  ok  screen.me/default: keyboard dark selection keeps focus
+  ok  screen.me/default: keyboard system selection keeps focus
+  ok  sample selection does not change the host theme
+  ok  OS theme and resize preserve local selection, node and focus
+  ok  remount resets the sample to System independently of search
+  ok  screen.me/auth-required: exactly one System radio selected initially
+  ok  sample theme keeps native radio group semantics
+  ok  screen.me/auth-required: selecting light leaves exactly one radio checked
+  ok  screen.me/auth-required: selecting dark leaves exactly one radio checked
+  ok  screen.me/auth-required: selecting system leaves exactly one radio checked
+  ok  screen.me/auth-required: keyboard light selection keeps focus
+  ok  screen.me/auth-required: keyboard dark selection keeps focus
+  ok  screen.me/auth-required: keyboard system selection keeps focus
+  ok  sample selection does not change the host theme
+  ok  OS theme and resize preserve local selection, node and focus
+  ok  remount resets the sample to System independently of search
+  ok  screen.me/long: exactly one System radio selected initially
+  ok  sample theme keeps native radio group semantics
+  ok  screen.me/long: selecting light leaves exactly one radio checked
+  ok  screen.me/long: selecting dark leaves exactly one radio checked
+  ok  screen.me/long: selecting system leaves exactly one radio checked
+  ok  screen.me/long: keyboard light selection keeps focus
+  ok  screen.me/long: keyboard dark selection keeps focus
+  ok  screen.me/long: keyboard system selection keeps focus
+  ok  sample selection does not change the host theme
+  ok  OS theme and resize preserve local selection, node and focus
+  ok  remount resets the sample to System independently of search
+  ok  sample theme changes write no local/session preference
+  ok  explicit Tối themes the specimen dark
+  ok  explicit Sáng themes the specimen light
+  ok  explicit Sáng overrides a dark system
+  ok  Hệ thống follows a dark system
+  ok  Hệ thống follows the system back to light without reload
+  ok  inspector reads the effective value from the rendered scope
+  ok  event log records control changes with the fixed clock
+  ok  nested explicit scopes override the light root
+  ok  a System scope inside Tối follows the light system
+  ok  recipe aliases resolve against the nested scope, not the root
+  ok  the nested System scope follows the system to dark
+  ok  an explicit Sáng scope stays light inside a dark root
+  ok  forced-colors keeps named control and visible keyboard focus under system colors
+  ok  comfortable control padding is 0.75rem
+  ok  compact scope uses 0.5rem
+  ok  compact keeps the 44px hit target (8px,44px)
+  ok  the loading loop runs by default
+  ok  finite transitions keep 320ms
+  ok  a reduced scope stops the loop instead of spinning at 0ms
+  ok  a reduced scope makes transitions instant
+  ok  the system reduced-motion setting stops the loop
+  ok  the preview Giảm preference reduces motion on the root
+  ok  Button: a click dispatches exactly once
+  ok  Button: Enter dispatches exactly once
+  ok  Button: Space dispatches exactly once
+  ok  Button: keyboard focus shows one flush 2px perimeter (true,solid,2px)
+  ok  Button: the default kind never submits its form
+  ok  Button: every target is at least 48px tall (48)
+  ok  Button: a disabled click dispatches nothing
+  ok  Button: disabled stays focusable and its reason is linked
+  ok  Button: pending ignores a second activation
+  ok  Button: pending keeps width (143.96875→143.96875) and focus
+  ok  Tooltip: independent action name, plain text and no extra focus target
+  ok  Tooltip: Escape dismisses without moving focus
+  ok  Tooltip: pointer can enter and remain over its text
+  ok  Details: Enter opens in flow and keeps native summary focus
+  ok  Details: Escape does not impersonate an overlay close
+  ok  Details: Space closes with native behavior
+  ok  Details: native toggle remains functional with page scripts disabled
+  ok  Details: CDP touch tap toggles the same native summary without JavaScript
+  ok  Tooltip: queued placement tolerates immediate owner disposal during navigation
+  ok  Link: a new tab is announced and isolated
+  ok  Link: a script URL renders as text, never as a link
+  ok  FilterChip: Space toggles aria-pressed and Tab moves to the next chip
+  ok  FloatingTonal: empty idle is borderless, no shadow ({"shell":["3px","0px","rgb(36, 29, 45)","none"],"input":["0px","0px","none"],"label":"16px","labelBottom":387.109375,"inputTop":364.0625,"outlineStyle":"none"})
+  ok  FloatingTonal: clicking the real label focuses the native input
+  ok  FloatingTonal: one inset 2px perimeter beats app focus fallback
+  ok  FloatingTonal: focused label floats above the native text row
+  ok  FloatingTonal: emulated autofill floats the real label
+  ok  FloatingTonal: filled label stays floated
+  ok  FloatingTonal: native restored value floats without input replacement
+  ok  FloatingTonal: error 1px and error+focus 2px share one error perimeter
+  ok  FloatingTonal: forced-colors preserves one focus perimeter
+  ok  External label: input owns a single inset perimeter
+  ok  FloatingTonal: long Vietnamese label reflows above value at 320px/text200
+  ok  TextField: controlled value keeps the caret mid-text (Bànx viết,4)
+  ok  TextField: composition updates are flagged as composing
+  ok  TextField: the committed text arrives without the composing flag
+  ok  TextField: label, help and required are linked; no error means not invalid (Tiêu đề (bắt buộc),title-help,false,true)
+  ok  TextField: an error is linked and marks the field invalid
+  ok  TextField: read-only stays focusable, disabled does not
+  ok  TextField: the value 0 is kept as typed
+  ok  SearchField: Enter submits the current text
+  ok  SearchField: clear empties the value and returns focus
+  ok  Checkbox: the label and box are one target with one dispatch
+  ok  RadioGroup: arrow keys move the native selection
+  ok  every text, area and select control has a <label for>
+  ok  fields and choices are at least 48px tall (48)
+  ok  Avatar: WebP decodes at fixture dimensions and keeps the avatar label
+  ok  Avatar: truncated WebP, unsafe URL, failed and loading show initials (broken:TL,unsafe:NT,failed:ĐƯ,loading:AN)
+  ok  Avatar: a script URL never reaches an <img>
+  ok  ImageFrame: data URL and loopback HTTP serve identical lossy WebP bytes with the correct MIME and full decode
+  ok  ImageFrame: WebP keeps named and decorative alt and the frame ratios
+  ok  Avatar: reordering keeps every tone (seeded by key, not position)
+  ok  Avatar: rendered tones equal the shared golden vectors ({"acct-001":"5","acct-002":"4","author:an-nhien":"1","author:tran-linh":"6"})
+  ok  AvatarGroup: an unknown total shows no count and no focus stops (Người đã nhận xét: An Nhiên, Trần Linh, Trần Linh)
+  ok  AvatarGroup: a known total shows +9
+  ok  AuthorByline: bold name above smaller meta; the avatar is hidden and the name read once (600,16,13,true,1)
+  ok  AuthorByline: reader avatar is 44px wide on a wide screen (44)
+  ok  resolved text contrast ≥4.5 (light); lowest 5.79
+  ok  resolved text contrast ≥4.5 (dark); lowest 6.72
+Select #135: gallery native states and geometry:
+  ok  gallery light/320/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":28.796875,"y":852.34375,"width":247.40625,"height":48,"top":852.34375,"right":276.203125,"bottom":900.34375,"left":28.796875},"icon":{"x":246.203125,"y":867.34375,"width":18,"height":18,"top":867.34375,"right":264.203125,"bottom":885.34375,"left":246.203125},"inset":12,"center":0,"gap":8,"contentWidth":197.40625,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery light/320/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":28.796875,"y":406.25,"width":247.40625,"height":87.1875,"top":406.25,"right":276.203125,"bottom":493.4375,"left":28.796875},"icon":{"x":246.203125,"y":440.84375,"width":18,"height":18,"top":440.84375,"right":264.203125,"bottom":458.84375,"left":246.203125},"inset":12,"center":0,"gap":8,"contentWidth":197.40625,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery light/390/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":35.09375,"y":426.265625,"width":304.8125,"height":48,"top":426.265625,"right":339.90625,"bottom":474.265625,"left":35.09375},"icon":{"x":309.90625,"y":441.265625,"width":18,"height":18,"top":441.265625,"right":327.90625,"bottom":459.265625,"left":309.90625},"inset":12,"center":0,"gap":8,"contentWidth":254.8125,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery light/390/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":35.09375,"y":406.25,"width":304.8125,"height":87.1875,"top":406.25,"right":339.90625,"bottom":493.4375,"left":35.09375},"icon":{"x":309.90625,"y":440.84375,"width":18,"height":18,"top":440.84375,"right":327.90625,"bottom":458.84375,"left":309.90625},"inset":12,"center":0,"gap":8,"contentWidth":254.8125,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery light/1440/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":320.640625,"y":360.15625,"width":1064.359375,"height":48,"top":360.15625,"right":1385,"bottom":408.15625,"left":320.640625},"icon":{"x":1355,"y":375.15625,"width":18,"height":18,"top":375.15625,"right":1373,"bottom":393.15625,"left":1355},"inset":12,"center":0,"gap":8,"contentWidth":1014.359375,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery light/1440/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":80,"y":405.90625,"width":1265,"height":87.1875,"top":405.90625,"right":1345,"bottom":493.09375,"left":80},"icon":{"x":1315,"y":440.5,"width":18,"height":18,"top":440.5,"right":1333,"bottom":458.5,"left":1315},"inset":12,"center":0,"gap":8,"contentWidth":1215,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/320/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":28.796875,"y":426.34375,"width":247.40625,"height":48,"top":426.34375,"right":276.203125,"bottom":474.34375,"left":28.796875},"icon":{"x":246.203125,"y":441.34375,"width":18,"height":18,"top":441.34375,"right":264.203125,"bottom":459.34375,"left":246.203125},"inset":12,"center":0,"gap":8,"contentWidth":197.40625,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/320/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":28.796875,"y":406.25,"width":247.40625,"height":87.1875,"top":406.25,"right":276.203125,"bottom":493.4375,"left":28.796875},"icon":{"x":246.203125,"y":440.84375,"width":18,"height":18,"top":440.84375,"right":264.203125,"bottom":458.84375,"left":246.203125},"inset":12,"center":0,"gap":8,"contentWidth":197.40625,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/390/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":35.09375,"y":426.265625,"width":304.8125,"height":48,"top":426.265625,"right":339.90625,"bottom":474.265625,"left":35.09375},"icon":{"x":309.90625,"y":441.265625,"width":18,"height":18,"top":441.265625,"right":327.90625,"bottom":459.265625,"left":309.90625},"inset":12,"center":0,"gap":8,"contentWidth":254.8125,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/390/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":35.09375,"y":406.25,"width":304.8125,"height":87.1875,"top":406.25,"right":339.90625,"bottom":493.4375,"left":35.09375},"icon":{"x":309.90625,"y":440.84375,"width":18,"height":18,"top":440.84375,"right":327.90625,"bottom":458.84375,"left":309.90625},"inset":12,"center":0,"gap":8,"contentWidth":254.8125,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/1440/100 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":320.640625,"y":360.15625,"width":1064.359375,"height":48,"top":360.15625,"right":1385,"bottom":408.15625,"left":320.640625},"icon":{"x":1355,"y":375.15625,"width":18,"height":18,"top":375.15625,"right":1373,"bottom":393.15625,"left":1355},"inset":12,"center":0,"gap":8,"contentWidth":1014.359375,"textWidth":59.80790710449219,"selected":"Văn xuôi","optionWidths":[27.019973754882812,59.80790710449219,51.91194152832031],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  gallery dark/1440/200 Văn xuôi: native Select / 18px icon / 12px inset / 8px label gap / no clipped option {"select":{"x":80,"y":405.90625,"width":1265,"height":87.1875,"top":405.90625,"right":1345,"bottom":493.09375,"left":80},"icon":{"x":1315,"y":440.5,"width":18,"height":18,"top":440.5,"right":1333,"bottom":458.5,"left":1315},"inset":12,"center":0,"gap":8,"contentWidth":1215,"textWidth":119.61593627929688,"selected":"Văn xuôi","optionWidths":[54.03997802734375,119.61593627929688,103.82392883300781],"pointerEvents":"none","decorative":"true","native":true,"label":"Thể loại (bắt buộc)","overflow":false}
+  ok  native type-ahead skips the disabled Kịch option
+  ok  Select invalid: native state, linked error and focus {"disabled":false,"focused":true,"invalid":"true","described":"genre-select-error","outline":"2px","offset":"-2px"}
+  ok  Select invalid: forced-colors retains decorative chevron
+  ok  Select disabled: native state, linked error and focus {"disabled":true,"focused":false,"invalid":null,"described":null,"outline":"3px","offset":"0px"}
+  ok  Select disabled: forced-colors retains decorative chevron
+Action surfaces #224 (shared presentation, no app consumer migration):
+  ok  Tonal icon click: one dispatch, blocked repeat, utility type and no fake pressed
+  ok  Tonal icon click: native target/focus/width stay stable, ≥48px
+  ok  Tonal disabled/pending: zero pointer or keyboard dispatch
+  ok  Tooltip wrapper forwards surface and keeps independent name/valid descriptions
+  ok  Tonal icon Enter: one dispatch, blocked repeat, utility type and no fake pressed
+  ok  Tonal icon Enter: native target/focus/width stay stable, ≥48px
+  ok  Tonal icon: one flush focus perimeter
+  ok  Tonal disabled/pending: zero pointer or keyboard dispatch
+  ok  Tooltip wrapper forwards surface and keeps independent name/valid descriptions
+  ok  Tonal icon Space: one dispatch, blocked repeat, utility type and no fake pressed
+  ok  Tonal icon Space: native target/focus/width stay stable, ≥48px
+  ok  Tonal icon: one flush focus perimeter
+  ok  Tonal disabled/pending: zero pointer or keyboard dispatch
+  ok  Tooltip wrapper forwards surface and keeps independent name/valid descriptions
+  ok  action.button/default light/1440/100: real targets ≥48px, no nested interactive
+  ok  action.button/default light/1440/100: no horizontal overflow
+  ok  action.icon-button/surfaces light/1440/100: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces light/1440/100: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/surfaces light/1440/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces light/1440/100: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/tonal-long-label light/1440/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label light/1440/100: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  action.button/default light/390/100: real targets ≥48px, no nested interactive
+  ok  action.button/default light/390/100: no horizontal overflow
+  ok  action.icon-button/surfaces light/390/100: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces light/390/100: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/surfaces light/390/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces light/390/100: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/tonal-long-label light/390/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label light/390/100: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  action.button/default light/320/200: real targets ≥48px, no nested interactive
+  ok  action.button/default light/320/200: no horizontal overflow
+  ok  action.icon-button/surfaces light/320/200: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces light/320/200: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/surfaces light/320/200: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces light/320/200: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (5.40, light)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (light)
+  ok  action.toggle-action/tonal-long-label light/320/200: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label light/320/200: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  action.button/default dark/1440/100: real targets ≥48px, no nested interactive
+  ok  action.button/default dark/1440/100: no horizontal overflow
+  ok  action.icon-button/surfaces dark/1440/100: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces dark/1440/100: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/surfaces dark/1440/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces dark/1440/100: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/tonal-long-label dark/1440/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label dark/1440/100: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  action.button/default dark/390/100: real targets ≥48px, no nested interactive
+  ok  action.button/default dark/390/100: no horizontal overflow
+  ok  action.icon-button/surfaces dark/390/100: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces dark/390/100: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/surfaces dark/390/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces dark/390/100: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/tonal-long-label dark/390/100: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label dark/390/100: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  action.button/default dark/320/200: real targets ≥48px, no nested interactive
+  ok  action.button/default dark/320/200: no horizontal overflow
+  ok  action.icon-button/surfaces dark/320/200: real targets ≥48px, no nested interactive
+  ok  action.icon-button/surfaces dark/320/200: no horizontal overflow
+  ok  Legacy Standard icon keeps transparent idle surface
+  ok  Tonal icon Off and On use different containers
+  ok  action.icon-button: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.icon-button: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/surfaces dark/320/200: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/surfaces dark/320/200: no horizontal overflow
+  ok  Tonal toggle: Off/On/Unknown remain truthful
+  ok  Tonal toggle: idle background differs from confirmed On
+  ok  EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name
+  ok  action.toggle-action: resolved text/icon contrast ≥4.5 (7.68, dark)
+  ok  action.toggle-action: hover/press content ≥4.5 and focus against container/parent ≥3 (dark)
+  ok  action.toggle-action/tonal-long-label dark/320/200: real targets ≥48px, no nested interactive
+  ok  action.toggle-action/tonal-long-label dark/320/200: no horizontal overflow
+  ok  Long Vietnamese label, leading, count and spinner fit without overlap/clipping
+  ok  Forced colors keeps a native perimeter/system adjustment
+  ok  Reduced motion stops pending MicroArc, visible pending note remains
+  ok  ToggleAction: action-named, no aria-pressed, ≥44px target ({"name":"Ghi nhận","pressed":"false","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"12 lượt ghi nhận","height":48,"feedback":""})
+  ok  ToggleAction: a double click asks once and shows nothing optimistic ({"name":"Ghi nhận","pressed":"false","state":"pending","busy":"true","disabled":"true","ariaPressed":false,"described":"12 lượt ghi nhận | Đang gửi…","height":48,"feedback":"Đang gửi…"})
+  ok  ToggleAction: count and pending note describe the control (12 lượt ghi nhận | Đang gửi…)
+  ok  ToggleAction: a lost answer blocks presses and offers Kiểm tra lại ({"name":"Ghi nhận","pressed":"false","state":"held","busy":null,"disabled":"true","ariaPressed":false,"described":"12 lượt ghi nhận | Chưa xác nhận được.","height":48,"feedback":"Chưa xác nhận được.Kiểm tra lại"})
+  ok  ToggleAction: reconcile shows what the owner holds ({"name":"Bỏ ghi nhận","pressed":"true","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"13 lượt ghi nhận","height":48,"feedback":""})
+  ok  ToggleAction: Enter asks for the opposite of the confirmed value
+  ok  ToggleAction: a refusal keeps the confirmed value and allows a deliberate retry ({"name":"Bỏ ghi nhận","pressed":"true","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"13 lượt ghi nhận | Chưa thực hiện được. Bạn có thể thử lại.","height":48,"feedback":"Chưa thực hiện được. Bạn có thể thử lại."})
+  ok  ToggleAction: Space dispatches once
+  ok  ToggleAction: keyboard focus stays and shows one 2px perimeter (toggle-lifecycle,solid,2px)
+  ok  ToggleAction: action-named, no aria-pressed, ≥44px target ({"name":"Ghi nhận","pressed":"false","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"12 lượt ghi nhận","height":57.1875,"feedback":""})
+  ok  ToggleAction: a double click asks once and shows nothing optimistic ({"name":"Ghi nhận","pressed":"false","state":"pending","busy":"true","disabled":"true","ariaPressed":false,"described":"12 lượt ghi nhận | Đang gửi…","height":57.59375,"feedback":"Đang gửi…"})
+  ok  ToggleAction: count and pending note describe the control (12 lượt ghi nhận | Đang gửi…)
+  ok  ToggleAction: a lost answer blocks presses and offers Kiểm tra lại ({"name":"Ghi nhận","pressed":"false","state":"held","busy":null,"disabled":"true","ariaPressed":false,"described":"12 lượt ghi nhận | Chưa xác nhận được.","height":57.1875,"feedback":"Chưa xác nhận được.Kiểm tra lại"})
+  ok  ToggleAction: reconcile shows what the owner holds ({"name":"Bỏ ghi nhận","pressed":"true","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"13 lượt ghi nhận","height":57.59375,"feedback":""})
+  ok  ToggleAction: Enter asks for the opposite of the confirmed value
+  ok  ToggleAction: a refusal keeps the confirmed value and allows a deliberate retry ({"name":"Bỏ ghi nhận","pressed":"true","state":"enabled","busy":null,"disabled":null,"ariaPressed":false,"described":"13 lượt ghi nhận | Chưa thực hiện được. Bạn có thể thử lại.","height":57.59375,"feedback":"Chưa thực hiện được. Bạn có thể thử lại."})
+  ok  ToggleAction: Space dispatches once
+  ok  ToggleAction: keyboard focus stays and shows one 2px perimeter (toggle-lifecycle,solid,2px)
+  ok  ToggleAction: an unavailable count is a mark, never 0 (–lượt ghi nhận: chưa có số liệu)
+  ok  ToggleAction: a blocked action stays focusable, shows its reason and asks nothing
+  ok  EndorsementAction: one control per target ([["endorse-work","Thấm"],["endorse-root","Hữu ích"],["endorse-reply-1","Bỏ đánh dấu hữu ích"],["endorse-reply-2","Hữu ích"]])
+  ok  EndorsementAction: work and comment copy, name follows the confirmed value
+  ok  Pen Flight: decorative 20px glyph and 48px target survive default, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive selected, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive pending, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive uncertain, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive own-content, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive unavailable, labels stay independent
+  ok  Pen Flight: decorative 20px glyph and 48px target survive signed-out, labels stay independent
+  ok  EndorsementAction: a guest sees counts and a reason, no fake login or own state
+  ok  TagSelector: each selected chip has its own remove name (Bỏ chủ đề Ký ức)
+  ok  TagSelector: two labelled groups and the themes count (Dạng bài · chọn 1,Chủ đề · 1/3)
+  ok  TagSelector: the candidate count is a polite status
+  ok  TagSelector: the chosen form chip is pressed, with a check mark slot
+  ok  TagSelector: a candidate names its alias and links its description
+  ok  TagSelector: ArrowDown moves from the field to the first candidate
+  ok  TagSelector: ArrowDown moves between candidates
+  ok  TagSelector: Escape returns from the candidates to the field
+  ok  TagSelector: a refused tag is written next to its chip and linked to its remove action
+  ok  TagSelector: a retired tag is replaced in place by the hinted successor, never removed silently
+  ok  TagSelector: Enter during composition chooses nothing
+  ok  TagSelector: after composition, Enter adds the exact match
+  ok  TagSelector: the field clears and keeps focus after adding
+  ok  TagSelector: removing a chip focuses the next remove action
+  ok  TagSelector: removing the last chip returns focus to the field
+  ok  initial loading: skeleton is decorative and the region is aria-busy
+  ok  SurfacePulse runs by default
+  ok  slow loading is an info notice, not an error
+  ok  slow loading shows no error tone
+  ok  no-results is an empty panel with ClearFilter, never an error
+  ok  low content shows the one real item, nothing duplicated
+  ok  state.error/default: panel offers retry, return
+  ok  state.error/forbidden: panel offers return
+  ok  state.error/not-found: panel offers return
+  ok  state.error/auth-required: panel offers return
+  ok  state.error/rate-limited: panel offers retry
+  ok  auth-required has no fake sign-in button
+  ok  unknown error copy does not promise a certain failure
+  ok  a stable diagnostic code is shown
+  ok  partial failure keeps the loaded content with a warning notice
+  ok  inline notices are polite statuses, none is role=alert
+  ok  only the session-expired banner is assertive
+  ok  banner text contrast ≥ 4.5 (8.37)
+  ok  a snackbar without an action auto-dismisses
+  ok  it closes after duration.snackbar (6000ms) on the injected clock
+  ok  a snackbar with an action waits for the person
+  ok  snackbar contrast ≥ 4.5 (15.81)
+  ok  the summary link focuses its field
+  ok  the field keeps its raw text
+  ok  loading → ready: no indicator at +0ms
+  ok  still hidden at +200ms
+  ok  skeleton appears at +300ms (duration.loading-delay)
+  ok  step → content
+  ok  a load finishing before the delay never showed a skeleton
+  ok  after duration.slow-notice the region adds a slow notice, still loading
+  ok  loading → error panel
+  ok  Retry dispatches the caller intent exactly once
+  ok  retry reloads (caller policy)
+  ok  error → retry → content, input kept
+  ok  refresh keeps content with EdgeProgress
+  ok  refresh keeps focus and scroll position
+  ok  partial failure keeps content and focus
+  ok  pending: aria-busy and a MicroArc in the status slot
+  ok  the pending button keeps its width
+  ok  a second activation while pending sends nothing
+  ok  cancel is neutral, not a red error
+  ok  cancel confirms with a snackbar
+  ok  a late acknowledgment of the cancelled ticket shows no "saved"
+  ok  the snackbar closed on the clock
+  ok  unknown outcome → uncertain
+  ok  resend is blocked until reconciled
+  ok  no Retry is offered for an uncertain write
+  ok  after reconcile the resend is a deliberate action
+  ok  no automatic replay; input kept
+  ok  typing marks the action dirty
+  ok  conflict keeps the text and explains
+  ok  conflict never shows a saved status
+  ok  session expired while writing opens an alert dialog
+  ok  Escape cannot dismiss a required decision
+  ok  no fake sign-in button
+  ok  staying closes the dialog with the text kept
+  ok  destructive confirmation focuses the safe choice first
+  ok  Tab stays inside the modal dialog
+  ok  Escape closes an EscapeOnly dialog
+  ok  closing returns focus to the trigger
+  ok  an outside click does not close an EscapeOnly dialog
+  ok  an EscapeAndOutside sheet closes on an outside click
+  ok  MicroArc and EdgeProgress run by default
+  ok  pending keeps the button width (144.0 = 144.0)
+  ok  the MicroArc does not cover the label
+  ok  MicroArc advances over time (17 → 250 → 483 ms)
+  ok  reduced: no loop runs
+  ok  reduced: EdgeProgress shows its label as text
+  ok  inactive host: no loop runs
+  ok  the system reduced-motion setting stops every loop
+  ok  determinate progress reports the real value and does not loop
+  ok  hidden tab (real visibilitychange): no loop runs
+  ok  foreground again: loops resume
+  ok  the region status changes once per state (["Đang tải…",""])
+  ok  brandless rail begins directly with the toggle
+  ok  rail: Khám phá → Bàn viết, Tôi at the foot
+  ok  expanded rail is 220px with Khám phá current
+  ok  destinations are real links, not tabs
+  ok  a plain click dispatches the destination key once; the host moves aria-current
+  ok  a reader page belongs to Khám phá
+  ok  the rail renders only the destinations the host grants
+  ok  bottom bar: Khám phá → Bàn viết → Tôi
+  ok  editor context: compact rail, bar hidden
+  ok  the skip link stays clipped until it has focus
+  ok  compact rail keeps a named ≥44px expand control
+  ok  pointer toggle expands to 220px and renames the action
+  ok  Enter on the toggle collapses back to 96px
+  ok  Space toggles too
+  ok  toggling keeps the page, the text and its selection
+  ok  four activations dispatch four intents and retain the focused toggle
+  ok  focus shows the tooltip outside the rail with the same name
+  ok  Escape hides the tooltip
+  ok  a second modal is refused while Tôi is open
+  ok  Back closes the overlay first and stays on the page
+  ok  the next Back goes to the host
+  ok  the utility reports its open overlay
+  ok  Escape closes Tôi and returns focus to its trigger
+  ok  rail/default is a standalone 220px rail, with no squeezed page
+  ok  rail/compact stays 96px
+  ok  fixed scaffold has a named keyboard-scrollable canvas, rather than a squeezed page
+  ok  frame resize leaves the outer viewport unchanged
+  ok  frame resize leaves the outer viewport unchanged
+  ok  frame resize leaves the outer viewport unchanged
+  ok  compact adaptive frame has bottom navigation and no reachable rail toggle
+  ok  frame resize leaves the outer viewport unchanged
+  ok  resize and toggle preserve the same input node, text and selection
+  ok  frame resize leaves the outer viewport unchanged
+  ok  route and open overlay survive frame resize
+  ok  frame resize leaves the outer viewport unchanged
+  ok  hidden/zero-width frame recovers without remounting input
+  ok  frame resize leaves the outer viewport unchanged
+  ok  frame resize leaves the outer viewport unchanged
+  ok  frame resize leaves the outer viewport unchanged
+  ok  editor context hides the bar on compact frames, ignoring the rail preference
+  ok  frame resize leaves the outer viewport unchanged
+  ok  all frame and bar observers disconnect when the specimen owner is disposed
+  ok  navigation.rail/default fits frame 247 at 320/light/text100
+  ok  rail default: Vietnamese words stay intact at 320/text100:
+  ok  navigation.rail/default fits frame 305 at 390/light/text100
+  ok  rail default: Vietnamese words stay intact at 390/text100:
+  ok  navigation.rail/default fits frame 459 at 834/light/text100
+  ok  rail default: Vietnamese words stay intact at 834/text100:
+  ok  navigation.rail/default fits frame 1064 at 1440/light/text100
+  ok  rail default: Vietnamese words stay intact at 1440/text100:
+  ok  navigation.rail/compact fits frame 247 at 320/light/text100
+  ok  rail compact: Vietnamese words stay intact at 320/text100:
+  ok  navigation.rail/compact fits frame 305 at 390/light/text100
+  ok  rail compact: Vietnamese words stay intact at 390/text100:
+  ok  navigation.rail/compact fits frame 459 at 834/light/text100
+  ok  rail compact: Vietnamese words stay intact at 834/text100:
+  ok  navigation.rail/compact fits frame 1064 at 1440/light/text100
+  ok  rail compact: Vietnamese words stay intact at 1440/text100:
+  ok  navigation.rail/long-labels fits frame 247 at 320/light/text100
+  ok  navigation.rail/long-labels fits frame 305 at 390/light/text100
+  ok  navigation.rail/long-labels fits frame 459 at 834/light/text100
+  ok  navigation.rail/long-labels fits frame 1064 at 1440/light/text100
+  ok  navigation.scaffold/adaptive fits frame 247 at 320/light/text100
+  ok  adaptive mode bar follows frame width 247, not outer 320
+  ok  navigation.scaffold/adaptive fits frame 305 at 390/light/text100
+  ok  adaptive mode bar follows frame width 305, not outer 390
+  ok  navigation.scaffold/adaptive fits frame 459 at 834/light/text100
+  ok  adaptive mode bar follows frame width 459, not outer 834
+  ok  navigation.scaffold/adaptive fits frame 1064 at 1440/light/text100
+  ok  adaptive mode rail:compact follows frame width 1064, not outer 1440
+  ok  navigation.rail/default fits frame 247 at 320/light/text200
+  ok  rail default: Vietnamese words stay intact at 320/text200:
+  ok  navigation.rail/default fits frame 305 at 390/light/text200
+  ok  rail default: Vietnamese words stay intact at 390/text200:
+  ok  navigation.rail/default fits frame 672 at 834/light/text200
+  ok  rail default: Vietnamese words stay intact at 834/text200:
+  ok  navigation.rail/default fits frame 1265 at 1440/light/text200
+  ok  rail default: Vietnamese words stay intact at 1440/text200:
+  ok  navigation.rail/compact fits frame 247 at 320/light/text200
+  ok  rail compact: Vietnamese words stay intact at 320/text200:
+  ok  navigation.rail/compact fits frame 305 at 390/light/text200
+  ok  rail compact: Vietnamese words stay intact at 390/text200:
+  ok  navigation.rail/compact fits frame 672 at 834/light/text200
+  ok  rail compact: Vietnamese words stay intact at 834/text200:
+  ok  navigation.rail/compact fits frame 1265 at 1440/light/text200
+  ok  rail compact: Vietnamese words stay intact at 1440/text200:
+  ok  navigation.rail/long-labels fits frame 247 at 320/light/text200
+  ok  navigation.rail/long-labels fits frame 305 at 390/light/text200
+  ok  navigation.rail/long-labels fits frame 672 at 834/light/text200
+  ok  navigation.rail/long-labels fits frame 1265 at 1440/light/text200
+  ok  navigation.scaffold/adaptive fits frame 247 at 320/light/text200
+  ok  adaptive mode bar follows frame width 247, not outer 320
+  ok  navigation.scaffold/adaptive fits frame 305 at 390/light/text200
+  ok  adaptive mode bar follows frame width 305, not outer 390
+  ok  navigation.scaffold/adaptive fits frame 672 at 834/light/text200
+  ok  adaptive mode bar follows frame width 672, not outer 834
+  ok  navigation.scaffold/adaptive fits frame 1265 at 1440/light/text200
+  ok  adaptive mode rail:expanded follows frame width 1265, not outer 1440
+  ok  navigation.rail/default fits frame 247 at 320/dark/text100
+  ok  rail default: Vietnamese words stay intact at 320/text100:
+  ok  navigation.rail/default fits frame 305 at 390/dark/text100
+  ok  rail default: Vietnamese words stay intact at 390/text100:
+  ok  navigation.rail/default fits frame 459 at 834/dark/text100
+  ok  rail default: Vietnamese words stay intact at 834/text100:
+  ok  navigation.rail/default fits frame 1064 at 1440/dark/text100
+  ok  rail default: Vietnamese words stay intact at 1440/text100:
+  ok  navigation.rail/compact fits frame 247 at 320/dark/text100
+  ok  rail compact: Vietnamese words stay intact at 320/text100:
+  ok  navigation.rail/compact fits frame 305 at 390/dark/text100
+  ok  rail compact: Vietnamese words stay intact at 390/text100:
+  ok  navigation.rail/compact fits frame 459 at 834/dark/text100
+  ok  rail compact: Vietnamese words stay intact at 834/text100:
+  ok  navigation.rail/compact fits frame 1064 at 1440/dark/text100
+  ok  rail compact: Vietnamese words stay intact at 1440/text100:
+  ok  navigation.rail/long-labels fits frame 247 at 320/dark/text100
+  ok  navigation.rail/long-labels fits frame 305 at 390/dark/text100
+  ok  navigation.rail/long-labels fits frame 459 at 834/dark/text100
+  ok  navigation.rail/long-labels fits frame 1064 at 1440/dark/text100
+  ok  navigation.scaffold/adaptive fits frame 247 at 320/dark/text100
+  ok  adaptive mode bar follows frame width 247, not outer 320
+  ok  navigation.scaffold/adaptive fits frame 305 at 390/dark/text100
+  ok  adaptive mode bar follows frame width 305, not outer 390
+  ok  navigation.scaffold/adaptive fits frame 459 at 834/dark/text100
+  ok  adaptive mode bar follows frame width 459, not outer 834
+  ok  navigation.scaffold/adaptive fits frame 1064 at 1440/dark/text100
+  ok  adaptive mode rail:compact follows frame width 1064, not outer 1440
+  ok  navigation.rail/default fits frame 247 at 320/dark/text200
+  ok  rail default: Vietnamese words stay intact at 320/text200:
+  ok  navigation.rail/default fits frame 305 at 390/dark/text200
+  ok  rail default: Vietnamese words stay intact at 390/text200:
+  ok  navigation.rail/default fits frame 672 at 834/dark/text200
+  ok  rail default: Vietnamese words stay intact at 834/text200:
+  ok  navigation.rail/default fits frame 1265 at 1440/dark/text200
+  ok  rail default: Vietnamese words stay intact at 1440/text200:
+  ok  navigation.rail/compact fits frame 247 at 320/dark/text200
+  ok  rail compact: Vietnamese words stay intact at 320/text200:
+  ok  navigation.rail/compact fits frame 305 at 390/dark/text200
+  ok  rail compact: Vietnamese words stay intact at 390/text200:
+  ok  navigation.rail/compact fits frame 672 at 834/dark/text200
+  ok  rail compact: Vietnamese words stay intact at 834/text200:
+  ok  navigation.rail/compact fits frame 1265 at 1440/dark/text200
+  ok  rail compact: Vietnamese words stay intact at 1440/text200:
+  ok  navigation.rail/long-labels fits frame 247 at 320/dark/text200
+  ok  navigation.rail/long-labels fits frame 305 at 390/dark/text200
+  ok  navigation.rail/long-labels fits frame 672 at 834/dark/text200
+  ok  navigation.rail/long-labels fits frame 1265 at 1440/dark/text200
+  ok  navigation.scaffold/adaptive fits frame 247 at 320/dark/text200
+  ok  adaptive mode bar follows frame width 247, not outer 320
+  ok  navigation.scaffold/adaptive fits frame 305 at 390/dark/text200
+  ok  adaptive mode bar follows frame width 305, not outer 390
+  ok  navigation.scaffold/adaptive fits frame 672 at 834/dark/text200
+  ok  adaptive mode bar follows frame width 672, not outer 834
+  ok  navigation.scaffold/adaptive fits frame 1265 at 1440/dark/text200
+  ok  adaptive mode rail:expanded follows frame width 1265, not outer 1440
+  compact geometry [{"label":"Khám phá","width":81,"font":"600 26px / 41.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif","rail":96,"item":73},{"label":"Bàn viết","width":81,"font":"600 26px / 41.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif","rail":96,"item":73},{"label":"Tôi","width":81,"font":"600 26px / 41.6px \"Be Vietnam Pro\", \"Noto Sans\", \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif","rail":96,"item":73}]
+  ok  compact rail keeps Vietnamese words intact at 200% text: []
+  ok  search ignores Vietnamese marks (chuyen dong → Chuyển động)
+  ok  search covers scenario labels
+  ok  an unmatched search says so
+  ok  screen.reader/feedback: one local intent per submit
+  ok  screen.reader/feedback: local status preserves the input node, text, focus and selection
+  ok  screen.reader/feedback: sample submit issues no network request
+  ok  screen.reader/feedback: Enter emits once and keeps button focus and draft selection
+  ok  screen.reader/feedback: Space emits once and keeps button focus and draft selection
+  ok  screen.reader/feedback: keyboard and retry issue no network request
+  ok  screen.reader/feedback: theme and resize preserve input focus/selection
+  ok  composition.feedback/default: one local intent per submit
+  ok  composition.feedback/default: local status preserves the input node, text, focus and selection
+  ok  composition.feedback/default: sample submit issues no network request
+  ok  composition.feedback/default: Enter emits once and keeps button focus and draft selection
+  ok  composition.feedback/default: Space emits once and keeps button focus and draft selection
+  ok  composition.feedback/default: keyboard and retry issue no network request
+  ok  composition.feedback/default: theme and resize preserve input focus/selection
+  ok  composition.feedback/error: one local intent per submit
+  ok  composition.feedback/error: local status preserves the input node, text, focus and selection
+  ok  composition.feedback/error: sample submit issues no network request
+  ok  error notice remains after a sample intent
+  ok  sample retry keeps text, focus and selection without claiming a save
+  ok  composition.feedback/error: Enter emits once and keeps button focus and draft selection
+  ok  composition.feedback/error: Space emits once and keeps button focus and draft selection
+  ok  composition.feedback/error: keyboard and retry issue no network request
+  ok  composition.feedback/error: theme and resize preserve input focus/selection
+  ok  feedback pending cannot submit
+  ok  feedback pending emits no local intent
+  ok  feedback auth-required cannot submit
+  ok  feedback auth-required emits no local intent
+  ok  feedback uncertain cannot submit
+  ok  feedback uncertain emits no local intent
+  ok  no horizontal page overflow at 320/390/834/1024/1440px, text 100%, every scenario
+  ok  no horizontal page overflow at 320/390/834/1024/1440px, text 200%, every scenario
+  ok  self-hosted Be Vietnam Pro 400/600 and Literata load
+  ok  no console errors or exceptions
+preview-smoke: PASS (862 captures in /Users/manhblue/projects/loveoverflow/vink/target/ui-preview/leptos/captures)
+
+verification summary
+  PASS  ui tokens: generated files match
+  PASS  Leptos preview: build
+  PASS  Leptos preview: prerequisites (Node 22+, Chrome)
+  PASS  Leptos preview: build media hydration fixture
+  PASS  Leptos preview: headless Chrome scenarios and captures

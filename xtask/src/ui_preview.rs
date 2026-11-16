@@ -251,6 +251,9 @@ fn serve(listener: TcpListener, site: PathBuf) {
 }
 
 fn respond(mut stream: TcpStream, site: &Path) -> std::io::Result<()> {
+    // macOS inherits O_NONBLOCK from the accept-loop listener. Each request has its own
+    // thread, so stream in blocking mode instead of truncating a large WASM on WouldBlock.
+    stream.set_nonblocking(false)?;
     let mut line = String::new();
     BufReader::new(&stream).read_line(&mut line)?;
     let mut parts = line.split_whitespace();
@@ -482,5 +485,49 @@ mod tests {
     fn wasm_is_served_with_its_streaming_type() {
         assert_eq!(content_type(Path::new("a/b.wasm")), "application/wasm");
         assert_eq!(content_type(Path::new("x.woff2")), "font/woff2");
+    }
+
+    #[test]
+    fn nonblocking_listener_streams_a_complete_large_asset() {
+        use std::io::Read;
+        use std::time::{Duration, SystemTime, UNIX_EPOCH};
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let site =
+            std::env::temp_dir().join(format!("vink-preview-{}-{stamp}", std::process::id()));
+        std::fs::create_dir(&site).unwrap();
+        let body = vec![42_u8; 4 * 1024 * 1024];
+        std::fs::write(site.join("large.wasm"), &body).unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
+        client
+            .write_all(b"GET /large.wasm HTTP/1.1\r\nHost: localhost\r\n\r\n")
+            .unwrap();
+        let (stream, _) = listener.accept().unwrap();
+        stream
+            .set_write_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
+        let worker_site = site.clone();
+        let worker = std::thread::spawn(move || respond(stream, &worker_site));
+        // Leave enough data queued to exercise socket backpressure before the client drains it.
+        std::thread::sleep(Duration::from_millis(100));
+        let mut response = Vec::new();
+        let read = client.read_to_end(&mut response);
+        let served = worker.join().unwrap();
+        std::fs::remove_dir_all(site).unwrap();
+        read.expect("client receives the entire asset without a reset");
+        served.expect("server streams despite listener nonblocking mode");
+        let header_end = response.windows(4).position(|p| p == b"\r\n\r\n").unwrap() + 4;
+        assert_eq!(&response[header_end..], &body);
+        assert!(
+            String::from_utf8_lossy(&response[..header_end])
+                .contains("Content-Type: application/wasm")
+        );
     }
 }

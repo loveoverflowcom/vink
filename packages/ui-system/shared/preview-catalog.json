@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "statuses": {
     "implemented-unverified": "Source registered in this renderer's preview; no runtime, accessibility or design acceptance is claimed.",
     "verified": "Runtime evidence for the named scenarios is recorded in the evidence document.",
@@ -298,6 +298,10 @@
         {
           "id": "selected",
           "label": "Đang bật (pressed)"
+        },
+        {
+          "id": "surfaces",
+          "label": "Nền trung tính độc lập trạng thái chọn"
         }
       ],
       "status": {
@@ -394,6 +398,18 @@
         {
           "id": "long-label",
           "label": "Nhãn dài, số lớn"
+        },
+        {
+          "id": "surfaces",
+          "label": "Nền trung tính độc lập trạng thái chọn"
+        },
+        {
+          "id": "tonal-lifecycle",
+          "label": "Nền Tonal: gửi, xác nhận, mất phản hồi, kiểm tra lại"
+        },
+        {
+          "id": "tonal-long-label",
+          "label": "Nền Tonal, nhãn dài, leading và pending"
         }
       ],
       "status": {

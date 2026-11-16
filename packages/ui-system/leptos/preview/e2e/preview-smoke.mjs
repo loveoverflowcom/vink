@@ -835,42 +835,145 @@ async function mediaHydration(page) {
 
 // UIS-03: states, feedback and motion. Programmatic input over CDP; the playground's manual clock
 // makes every timing deterministic. Animation checks read the Web Animations API, not pixels.
+
+async function actionSurfaces(page) {
+  console.log('Action surfaces #224 (shared presentation, no app consumer migration):');
+  await page.choose('theme', 'Sáng');
+  await page.choose('scale', '100%');
+  await page.viewport(390);
+  for (const key of ['click', 'Enter', 'Space']) {
+    // Reset the specimen's in-memory owner between modalities.
+    await page.open('action.button');
+    await page.open('action.icon-button', 'surfaces');
+    const before = await page.eval(`(() => {
+      const b=document.getElementById('surface-tonal'); b.focus(); window.surfaceIdentity=b;
+      const r=b.getBoundingClientRect(); return {width:r.width,height:r.height};
+    })()`);
+    if (key === 'click') await page.click('#surface-tonal'); else await page.key(key);
+    if (key === 'click') await page.click('#surface-tonal'); else await page.key(key);
+    const after = await page.eval(`(() => {
+      const b=document.getElementById('surface-tonal'),s=getComputedStyle(b),r=b.getBoundingClientRect();
+      return {text:document.getElementById('specimen-scope').textContent, same:b===window.surfaceIdentity,
+        focus:document.activeElement===b,busy:b.getAttribute('aria-busy'),pressed:b.hasAttribute('aria-pressed'),
+        width:r.width,height:r.height,type:b.type,ring:s.outlineWidth,offset:s.outlineOffset};
+    })()`);
+    check(after.text.includes('Số lệnh: 1') && after.busy==='true' && !after.pressed && after.type==='button', `Tonal icon ${key}: one dispatch, blocked repeat, utility type and no fake pressed`);
+    check(after.same && after.focus && Math.abs(after.width-before.width)<0.5 && after.height>=48, `Tonal icon ${key}: native target/focus/width stay stable, ≥48px`);
+    if (key!=='click') check(after.ring==='2px' && after.offset==='0px', 'Tonal icon: one flush focus perimeter');
+    for (const id of ['surface-disabled','surface-pending']) {
+      await page.click(`#${id}`);
+      await page.eval(`document.getElementById('${id}').focus()`);
+      await page.key('Enter'); await page.key('Space');
+    }
+    check(await page.eval(`document.getElementById('specimen-scope').textContent.includes('Số lệnh: 1')`), 'Tonal disabled/pending: zero pointer or keyboard dispatch');
+    check(await page.eval(`(() => {
+      const b=document.getElementById('surface-tonal');return b.getAttribute('aria-label')==='Sửa tiêu đề (Tonal)' && b.getAttribute('aria-describedby').split(' ').every(id=>document.getElementById(id));
+    })()`), 'Tooltip wrapper forwards surface and keeps independent name/valid descriptions');
+  }
+  for (const [theme,label] of [['light','Sáng'],['dark','Tối']]) {
+    await page.choose('theme',label);
+    for (const [width,scale] of [[1440,100],[390,100],[320,200]]) {
+      await page.viewport(width); await page.choose('scale',`${scale}%`);
+      for (const [entry,scenario] of [['action.button','default'],['action.icon-button','surfaces'],['action.toggle-action','surfaces'],['action.toggle-action','tonal-long-label']]) {
+        await page.open(entry,scenario);
+        const targets=await page.eval(`(() => {
+          const root=document.getElementById('specimen-scope');return [...root.querySelectorAll('button')].map(b=>{
+            const r=b.getBoundingClientRect();return {id:b.id,width:r.width,height:r.height,nested:!!b.querySelector('button,a,input'),surface:b.dataset.surface,pressed:b.dataset.pressed};});
+        })()`);
+        check(targets.every(b=>b.width>=48 && b.height>=48 && !b.nested), `${entry}/${scenario} ${theme}/${width}/${scale}: real targets ≥48px, no nested interactive`);
+        check(await page.eval(`document.documentElement.scrollWidth<=innerWidth+1`), `${entry}/${scenario} ${theme}/${width}/${scale}: no horizontal overflow`);
+        if (scenario==='surfaces') {
+          if (entry==='action.icon-button') {
+            check(await page.css('#surface-standard','background-color')==='rgba(0, 0, 0, 0)', 'Legacy Standard icon keeps transparent idle surface');
+            check(await page.css('#surface-off','background-color')!==await page.css('#surface-on','background-color'), 'Tonal icon Off and On use different containers');
+          } else {
+            check(await page.eval(`['false','true','unknown'].every((v,i)=>document.getElementById('surface-toggle-'+i).dataset.pressed===v)`), 'Tonal toggle: Off/On/Unknown remain truthful');
+            check(await page.css('#surface-toggle-0','background-color')!==await page.css('#surface-toggle-1','background-color'), 'Tonal toggle: idle background differs from confirmed On');
+            check(await page.eval(`(() => { const b=document.getElementById('surface-endorsement');return b.dataset.surface==='tonal' && b.dataset.pressed==='unknown' && b.getAttribute('aria-label')==='Thấm' && b.querySelector('[data-icon="pen-flight"]'); })()`), 'EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name');
+          }
+          const selector=entry==='action.icon-button'?'.vk-ui-icon-button[data-surface="tonal"]:not([data-state="disabled"])':'.vk-ui-toggle__control[data-surface="tonal"]:not([data-state="disabled"])';
+          const contrast=await lowestContrast(page,selector);
+          check(contrast>=4.5, `${entry}: resolved text/icon contrast ≥4.5 (${contrast.toFixed(2)}, ${theme})`);
+          const layers=await page.eval(`(() => { ${CONTRAST_JS}
+            return [...document.querySelectorAll(${JSON.stringify(selector)})].map(el=>{
+              const fg=rgb(getComputedStyle(el).color),bg=bgOf(el);
+              const blendRatio=opacity=>{const painted=over({...fg,a:opacity},bg);const [a,b]=[lum(fg),lum(painted)].sort((x,y)=>y-x);return (a+.05)/(b+.05)};
+              const ring=document.createElement('span');ring.style.color='var(--vk-focus-ring)';el.append(ring);const ink=rgb(getComputedStyle(ring).color);ring.remove();
+              const contrastTo=color=>{const [a,b]=[lum(ink),lum(color)].sort((x,y)=>y-x);return (a+.05)/(b+.05)};
+              return {id:el.id,hover:blendRatio(.08),press:blendRatio(.12),focus:contrastTo(bg),adjacent:contrastTo(bgOf(el.parentElement))};
+            });
+          })()`);
+          check(layers.every(s=>s.hover>=4.5 && s.press>=4.5 && s.focus>=3 && s.adjacent>=3), `${entry}: hover/press content ≥4.5 and focus against container/parent ≥3 (${theme})`);
+
+        }
+        if (scenario==='tonal-long-label') {
+          check(await page.eval(`(() => {
+            const b=document.getElementById('toggle-sample'), l=b.querySelector('.vk-ui-toggle__label').getBoundingClientRect(), g=b.querySelector('.vk-ui-toggle__glyph').getBoundingClientRect(), m=b.querySelector('.vk-ui-toggle__mark').getBoundingClientRect(), c=b.querySelector('.vk-ui-toggle__count').getBoundingClientRect();
+            return g.right<=l.left+1 && l.bottom<=c.top+1 && l.right<=m.left+1 && c.right<=b.getBoundingClientRect().right+1 && !!b.querySelector('.vk-ui-arc') && b.clientHeight>=b.scrollHeight-1;
+          })()`), 'Long Vietnamese label, leading, count and spinner fit without overlap/clipping');
+        }
+        const name=`action-surfaces--${entry}--${scenario}--${theme}--${width}--text${scale}`;
+        await page.capture(name);
+        page.contexts[name].targets=targets;
+        page.contexts[name].specimen=await captureSpecimen(page,{catalog_id:entry,scenario_id:scenario,theme,raw_name:name},args.out);
+      }
+    }
+  }
+  await page.choose('scale','100%');await page.viewport(390);
+  await page.open('action.icon-button','surfaces');
+  await page.emulate('forced-colors','active');
+  await page.eval(`document.getElementById('surface-off').focus()`);
+  await page.key('Tab'); await page.key('Tab');
+  const forced=await page.eval(`(() => {const b=document.getElementById('surface-on'),s=getComputedStyle(b);return {border:s.borderTopStyle,width:s.borderTopWidth,adjust:s.forcedColorAdjust};})()`);
+  check(forced.border==='solid' && forced.width==='1px' && forced.adjust==='auto', 'Forced colors keeps a native perimeter/system adjustment');
+  await page.emulate('forced-colors','none');
+  await page.emulate('prefers-reduced-motion','reduce');
+  await page.open('action.toggle-action','tonal-long-label');
+  check(await page.css('#toggle-sample .vk-ui-arc','animation-name')==='none', 'Reduced motion stops pending MicroArc, visible pending note remains');
+  await page.emulate('prefers-reduced-motion','no-preference');
+  await page.choose('theme','Sáng');await page.viewport(1440);
+}
+
 async function toggles(page) {
   const control = (id) => page.eval(`(() => { const b = document.getElementById('${id}'); const d = (b.getAttribute('aria-describedby') || '').split(' ').map((i) => document.getElementById(i)?.textContent.trim()).join(' | ');
     return { name: b.getAttribute('aria-label'), pressed: b.dataset.pressed, state: b.dataset.state, busy: b.getAttribute('aria-busy'), disabled: b.getAttribute('aria-disabled'), ariaPressed: b.hasAttribute('aria-pressed'), described: d, height: b.getBoundingClientRect().height, feedback: b.parentElement.querySelector('.vk-ui-toggle__feedback').textContent.trim() }; })()`);
   const step = (label) => page.eval(`[...document.querySelectorAll('#specimen-scope button')].find((b) => b.textContent.trim() === ${JSON.stringify(label)}).click()`);
   const presses = async () => ((await page.log()).match(/toggle-action → muốn/g) || []).length;
 
-  await page.open('action.toggle-action', 'lifecycle');
-  let t = await control('toggle-lifecycle');
-  check(t.name === 'Ghi nhận' && t.pressed === 'false' && !t.ariaPressed && t.height >= 44, `ToggleAction: action-named, no aria-pressed, ≥44px target (${JSON.stringify(t)})`);
-  const before = await presses();
-  await page.click('#toggle-lifecycle');
-  await page.click('#toggle-lifecycle');
-  t = await control('toggle-lifecycle');
-  check((await presses()) - before === 1 && t.busy === 'true' && t.pressed === 'false', `ToggleAction: a double click asks once and shows nothing optimistic (${JSON.stringify(t)})`);
-  check(t.described.includes('12 lượt ghi nhận') && t.described.includes('Đang gửi'), `ToggleAction: count and pending note describe the control (${t.described})`);
-  await step('Mất phản hồi');
-  await page.settle();
-  await page.click('#toggle-lifecycle');
-  t = await control('toggle-lifecycle');
-  check((await presses()) - before === 1 && t.feedback.includes('Chưa xác nhận được.') && t.feedback.includes('Kiểm tra lại') && t.pressed === 'false', `ToggleAction: a lost answer blocks presses and offers Kiểm tra lại (${JSON.stringify(t)})`);
-  await step('Kiểm tra lại');
-  await page.settle();
-  t = await control('toggle-lifecycle');
-  check(t.pressed === 'true' && t.name === 'Bỏ ghi nhận' && t.described.includes('13 lượt ghi nhận') && !t.feedback.includes('Kiểm tra lại'), `ToggleAction: reconcile shows what the owner holds (${JSON.stringify(t)})`);
-  await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
-  await page.key('Enter');
-  check((await presses()) - before === 2 && (await page.log()).includes('muốn tắt'), 'ToggleAction: Enter asks for the opposite of the confirmed value');
-  await step('Từ chối');
-  await page.settle();
-  t = await control('toggle-lifecycle');
-  check(t.pressed === 'true' && t.feedback.includes('Chưa thực hiện được') && t.state === 'enabled', `ToggleAction: a refusal keeps the confirmed value and allows a deliberate retry (${JSON.stringify(t)})`);
-  await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
-  await page.key('Space');
-  check((await presses()) - before === 3, 'ToggleAction: Space dispatches once');
-  const ring = await page.eval(`(() => { const s = getComputedStyle(document.activeElement); return [document.activeElement.id, s.outlineStyle, s.outlineWidth]; })()`);
-  check(ring[0] === 'toggle-lifecycle' && ring[1] === 'solid' && ring[2] === '2px', `ToggleAction: keyboard focus stays and shows one 2px perimeter (${ring})`);
+  let t;
+  for (const scenario of ['lifecycle', 'tonal-lifecycle']) {
+    await page.open('action.toggle-action', scenario);
+    t = await control('toggle-lifecycle');
+    check(t.name === 'Ghi nhận' && t.pressed === 'false' && !t.ariaPressed && t.height >= 44, `ToggleAction: action-named, no aria-pressed, ≥44px target (${JSON.stringify(t)})`);
+    const before = await presses();
+    await page.click('#toggle-lifecycle');
+    await page.click('#toggle-lifecycle');
+    t = await control('toggle-lifecycle');
+    check((await presses()) - before === 1 && t.busy === 'true' && t.pressed === 'false', `ToggleAction: a double click asks once and shows nothing optimistic (${JSON.stringify(t)})`);
+    check(t.described.includes('12 lượt ghi nhận') && t.described.includes('Đang gửi'), `ToggleAction: count and pending note describe the control (${t.described})`);
+    await step('Mất phản hồi');
+    await page.settle();
+    await page.click('#toggle-lifecycle');
+    t = await control('toggle-lifecycle');
+    check((await presses()) - before === 1 && t.feedback.includes('Chưa xác nhận được.') && t.feedback.includes('Kiểm tra lại') && t.pressed === 'false', `ToggleAction: a lost answer blocks presses and offers Kiểm tra lại (${JSON.stringify(t)})`);
+    await step('Kiểm tra lại');
+    await page.settle();
+    t = await control('toggle-lifecycle');
+    check(t.pressed === 'true' && t.name === 'Bỏ ghi nhận' && t.described.includes('13 lượt ghi nhận') && !t.feedback.includes('Kiểm tra lại'), `ToggleAction: reconcile shows what the owner holds (${JSON.stringify(t)})`);
+    await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
+    await page.key('Enter');
+    check((await presses()) - before === 2 && (await page.log()).includes('muốn tắt'), 'ToggleAction: Enter asks for the opposite of the confirmed value');
+    await step('Từ chối');
+    await page.settle();
+    t = await control('toggle-lifecycle');
+    check(t.pressed === 'true' && t.feedback.includes('Chưa thực hiện được') && t.state === 'enabled', `ToggleAction: a refusal keeps the confirmed value and allows a deliberate retry (${JSON.stringify(t)})`);
+    await page.eval(`document.getElementById('toggle-lifecycle').focus()`);
+    await page.key('Space');
+    check((await presses()) - before === 3, 'ToggleAction: Space dispatches once');
+    const ring = await page.eval(`(() => { const s = getComputedStyle(document.activeElement); return [document.activeElement.id, s.outlineStyle, s.outlineWidth]; })()`);
+    check(ring[0] === 'toggle-lifecycle' && ring[1] === 'solid' && ring[2] === '2px', `ToggleAction: keyboard focus stays and shows one 2px perimeter (${ring})`);
+
+  }
 
   await page.open('action.toggle-action', 'count-unavailable');
   t = await control('toggle-sample');
@@ -1654,13 +1757,14 @@ try {
   await cdp.open();
   page = await openPage(cdp);
   const version = await cdp.send('Browser.getVersion');
-  if (args['overlays-only'] !== '1') await mediaHydration(page);
+  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1') await mediaHydration(page);
   await page.send('Page.navigate', { url: args.base });
   // The debug WASM can be large after the separate hydration fixture. Give bootstrap its own
   // bounded wait; interaction assertions retain the shorter default timeout.
   await page.waitFor(`document.documentElement.dataset.ready === 'true' && document.getElementById('specimen-scope')`, 'preview mounted', 60000);
-  await overlayCaptures(page, {out:args.out, version, check});
-  if (args['overlays-only'] !== '1') {
+  if (args['actions-only'] === '1') { await actionSurfaces(page); await toggles(page); }
+  else await overlayCaptures(page, {out:args.out, version, check});
+  if (args['overlays-only'] !== '1' && args['actions-only'] !== '1') {
     await structure(page);
     await meSelection(page);
     await themes(page);
@@ -1668,6 +1772,7 @@ try {
     await densityAndMotion(page);
     await components(page);
     await selectChevron(page);
+    await actionSurfaces(page);
     await toggles(page);
     await states(page, cdp);
     await navigation(page);
@@ -1681,7 +1786,7 @@ try {
   }
   check(page.errors.length === 0, `no console errors or exceptions${page.errors.length ? `: ${page.errors.join(' | ')}` : ''}`);
   writeFileSync(join(args.out, 'contexts.json'), JSON.stringify({ browser: version.product, userAgent: version.userAgent, captures: page.contexts }, null, 2));
-  console.log(`preview-smoke: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
+  console.log(`preview-smoke${args['actions-only'] === '1' ? ' actions-only' : ''}: PASS (${Object.keys(page.contexts).length} captures in ${args.out})`);
 } catch (error) {
   console.error(`preview-smoke: FAIL ${error.message}`);
   if (page?.errors.length) console.error(`  page errors: ${page.errors.join(' | ')}`);

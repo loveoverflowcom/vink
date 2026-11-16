@@ -66,3 +66,10 @@ Dialog closeReason/mainFocus; giữ default Next/Default/Search, DismissPolicy v
 Callsite dùng named options/trailing actions giữ nguyên; không publish binary ABI. VinkMotion
 thêm effects/spatial dùng token cũ, không đổi token version. Catalog native recipe và giới hạn
 Web/native ở [contract/evidence](../../../docs/design/ui-interaction-foundation.md).
+
+Action surfaces (#224, 16/11/2026): token 0.6.0 thêm hai neutral aliases; catalog 0.9.0
+thêm paired specimens, API map 0.5.0. `ActionSurface` là prop/parameter opt-in cuối của
+CMP và optional của Leptos, Standard mặc định. Tooltip wrapper chuyển tiếp prop. Caller cũ
+không cần migration; Button variants và toggle-contract-v1 không đổi. Chưa publish binary ABI.
+Không sửa app pages, Dialog/Appearance/editor; consumer #225/#226 chọn opt-in sau.
+Bằng chứng và giới hạn tại [báo cáo #224](../../../docs/development/evidence/action-surfaces-224/README.md).

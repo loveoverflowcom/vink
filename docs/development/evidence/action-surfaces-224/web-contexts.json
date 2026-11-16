@@ -1,0 +1,4756 @@
+{
+  "browser": "Chrome/157.0.8103.78",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "captures": {
+    "action-surfaces--action.button--default--light--1440--text100": {
+      "hash": "#action.button/default",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 143.96875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 150.546875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 99.4375,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 64.8125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 167.015625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 146.53125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 120.40625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 139.3125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 451.765625
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 0
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--light--1440--text100.png",
+          "sha256": "aeb33afc8cb02608a87007e54d61b746a654d1ef15cedeaa9af8ca9a9e5aeb9a",
+          "byte_size": 406743,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--light--1440--text100--focus.png",
+            "sha256": "262791f6e7368d8748d3dedd53d7c44efb822ba874f033031d03001240b2c95e",
+            "byte_size": 65102,
+            "image_pixels": {
+              "width": 1137,
+              "height": 477
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 477,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 477,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:13.253Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--light--1440--text100": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 323.953125
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 0
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--light--1440--text100.png",
+          "sha256": "d1bac59341f4878f94857d7e2e9be4c188c8e44e3e8933f79329af9d4259f2cc",
+          "byte_size": 392007,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--light--1440--text100--focus.png",
+            "sha256": "5775997d5d7a8da159740ad471d5e3e3a00269198654860e968073c9910acded",
+            "byte_size": 47281,
+            "image_pixels": {
+              "width": 1137,
+              "height": 349
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 349,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 349,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:13.656Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--light--1440--text100": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 121.578125,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 1206.265625
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 0
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--light--1440--text100.png",
+          "sha256": "a8574e00bd05c3e3de065a5ed24393eeeab5343b3252f7da413b15975196e51f",
+          "byte_size": 478407,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--1440--text100--focus--part1.png",
+            "sha256": "e6d171d8e48677666ad3df99268e57a17437dadc264cd51b2ee98073a24f8f4b",
+            "byte_size": 95097,
+            "image_pixels": {
+              "width": 1137,
+              "height": 616
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 616,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 616,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--1440--text100--focus--part2.png",
+            "sha256": "e7c4d66c276fc14fafc702381f3610b0653247c773a0bc25934fb1e93f029823",
+            "byte_size": 42195,
+            "image_pixels": {
+              "width": 1137,
+              "height": 615
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 778,
+              "width": 1137,
+              "height": 615,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 615,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 778
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:14.150Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--light--1440--text100": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 512.046875,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 529.546875
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 0
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--light--1440--text100.png",
+          "sha256": "17ac6e04a532f7c2b5a3ff6220eaabbd065ab06a55e2ab265b178b749b238c96",
+          "byte_size": 444925,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--1440--text100--focus.png",
+            "sha256": "b1de9ade2bef571e42678917280c858cce3d84867e6821c10854b5388955ba04",
+            "byte_size": 99037,
+            "image_pixels": {
+              "width": 1137,
+              "height": 555
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 555,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 555,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:14.555Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.button--default--light--390--text100": {
+      "hash": "#action.button/default",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 143.96875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 150.546875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 99.4375,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 64.8125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 167.015625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 146.53125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 120.40625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 139.3125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 908.140625
+        },
+        "document_css": {
+          "width": 375,
+          "height": 6180
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--light--390--text100.png",
+          "sha256": "89953372aafd88722fde6ee57c799eaba240565e98182096ae7ab8910648810c",
+          "byte_size": 382674,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--light--390--text100--focus--part1.png",
+            "sha256": "368951974f9848dd5fa5e0403106fb10c52b6ae8f387ea4ef451eec395fd0006",
+            "byte_size": 35419,
+            "image_pixels": {
+              "width": 369,
+              "height": 467
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 467,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 467,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.button--default--light--390--text100--focus--part2.png",
+            "sha256": "70bba5e84f2dfdeae603b34534e74ef48b3d3556bf2b7b837a8718de631d846c",
+            "byte_size": 27801,
+            "image_pixels": {
+              "width": 369,
+              "height": 466
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4801,
+              "width": 369,
+              "height": 466,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 466,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4801
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:14.989Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--light--390--text100": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 522.734375
+        },
+        "document_css": {
+          "width": 375,
+          "height": 5795
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--light--390--text100.png",
+          "sha256": "193b6ac60e2c8c6bf87f6d0c748667c7f5fd5a0f935f0d007078087f2088d896",
+          "byte_size": 371111,
+          "image_pixels": {
+            "width": 390,
+            "height": 5795
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--light--390--text100--focus.png",
+            "sha256": "7fde5d6de79bdabef13d1d3dac62a62c6c01ede2dd9f4e754254fb04af103dfd",
+            "byte_size": 45042,
+            "image_pixels": {
+              "width": 369,
+              "height": 548
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 548,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 548,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:15.327Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--light--390--text100": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 121.578125,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 1758.609375
+        },
+        "document_css": {
+          "width": 375,
+          "height": 7031
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--light--390--text100.png",
+          "sha256": "5920d09d9a0650cb2f34e5e7499a2f69f0892e263ec6934508188b88ba505f55",
+          "byte_size": 402010,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--390--text100--focus--part1.png",
+            "sha256": "1f9cd79d62bb374ac6a381045d8ea07d52fe6b7ade789a59eaa034baee9bf39f",
+            "byte_size": 89317,
+            "image_pixels": {
+              "width": 369,
+              "height": 892
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--390--text100--focus--part2.png",
+            "sha256": "d0bc01f2977e0ae5cc86a2da922d38d766e865ebaa115a687148ed76e0cded1b",
+            "byte_size": 55605,
+            "image_pixels": {
+              "width": 369,
+              "height": 892
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 5226,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 5226
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:15.776Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--light--390--text100": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 304.8125,
+          "height": 76.78125,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 1126.265625
+        },
+        "document_css": {
+          "width": 375,
+          "height": 6421
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--light--390--text100.png",
+          "sha256": "6be0df3dd56e30ca12f0b198cd053ee7a1fee8209d6fb77945c86c1dc2b6fbc7",
+          "byte_size": 416474,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--390--text100--focus--part1.png",
+            "sha256": "fe42f1e1ff116720932061261360596d281bcf3922a47655de0115c5d793f4c8",
+            "byte_size": 58467,
+            "image_pixels": {
+              "width": 369,
+              "height": 576
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 576,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 576,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--390--text100--focus--part2.png",
+            "sha256": "f7c46b82c16577f325d7424d46c368c57d6e32610649ca1faf45f8eb65a298b9",
+            "byte_size": 55186,
+            "image_pixels": {
+              "width": 369,
+              "height": 575
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4910,
+              "width": 369,
+              "height": 575,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 575,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4910
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:16.259Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.button--default--light--320--text200": {
+      "hash": "#action.button/default",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 196.875,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 127.625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 238.8125,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 245.9375,
+          "height": 128.375,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 2825.75
+        },
+        "document_css": {
+          "width": 305,
+          "height": 18060
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--light--320--text200.png",
+          "sha256": "05313ba482af1558215bc824420b27bdf138cd12067f9a578c35af449194b117",
+          "byte_size": 283708,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--light--320--text200--focus--part1.png",
+            "sha256": "e402f092544f4ff20ae5cd00931b69b02b3024ff115fa0206c29208803bf3d8d",
+            "byte_size": 48076,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--light--320--text200--focus--part2.png",
+            "sha256": "d02c9dc7a14fa6eee8543af6aab9ec5633e2ac2aa9700ce628641c1eeb7ab37e",
+            "byte_size": 37096,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12595,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12595
+            },
+            "tile": 2,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--light--320--text200--focus--part3.png",
+            "sha256": "0fa806d4f6052bdbcf92375378dd010f9ed17af4203f97d2dc473be9196945cd",
+            "byte_size": 27525,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13308,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13308
+            },
+            "tile": 3,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--light--320--text200--focus--part4.png",
+            "sha256": "0b9af24cb020fa1434204147be749b7c53c75c4bd5da858289aa7dd08dae1d18",
+            "byte_size": 34888,
+            "image_pixels": {
+              "width": 305,
+              "height": 712
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14021,
+              "width": 305,
+              "height": 712,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 712,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14021
+            },
+            "tile": 4,
+            "tiles": 4
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:16.858Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--light--320--text200": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 1688.5625
+        },
+        "document_css": {
+          "width": 305,
+          "height": 16968
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--light--320--text200.png",
+          "sha256": "0de688f4431e2a45bd9975bdb6b4be4c36393a3447a4419e2e54e0ad42d11258",
+          "byte_size": 284213,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--light--320--text200--focus--part1.png",
+            "sha256": "c015a6b35ec7d119aa263b4853a6cd5e584133317888f0c78c7a02f66993189b",
+            "byte_size": 51954,
+            "image_pixels": {
+              "width": 305,
+              "height": 857
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--light--320--text200--focus--part2.png",
+            "sha256": "8910927c5f66af5ba56f0ee974f25064608f1eb516e4331069a149ef17d6f3bb",
+            "byte_size": 48379,
+            "image_pixels": {
+              "width": 305,
+              "height": 857
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12739,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12739
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:17.273Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--light--320--text200": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 201.15625,
+          "height": 73.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 5706.515625
+        },
+        "document_css": {
+          "width": 305,
+          "height": 20986
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200.png",
+          "sha256": "5bcdfbc4de7f368c374b9462bda262227455beefc62bb47cb4f6ab174cf2f67a",
+          "byte_size": 283528,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part1.png",
+            "sha256": "cf3faa2e8756f4c66b47977a16fb73624469522ef5f48cd0889653d6094a7eb4",
+            "byte_size": 62077,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part2.png",
+            "sha256": "aa5495e6d490d952dcd73c380cb616d3114fe74606343a654baa23e3ffb95b34",
+            "byte_size": 53320,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12701,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12701
+            },
+            "tile": 2,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part3.png",
+            "sha256": "2956d7bb140d2a0596ca9ffe9ff3061e91fdf02dfa84c178af1e083f01c291cb",
+            "byte_size": 52807,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13520,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13520
+            },
+            "tile": 3,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part4.png",
+            "sha256": "672f903e3be2b99947ca7917df53a357fdc7e79d2d432718c932947bfaa0a459",
+            "byte_size": 49340,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14339,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14339
+            },
+            "tile": 4,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part5.png",
+            "sha256": "f93e833dca3c57d858aedb011085cf0c2687fe73db538b436b292e210a17a9b7",
+            "byte_size": 51858,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15158,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15158
+            },
+            "tile": 5,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part6.png",
+            "sha256": "f2fb55d2b19056d231478538c8f8ce2f5be543844458368193600270f98aedd0",
+            "byte_size": 36265,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15977,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15977
+            },
+            "tile": 6,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--light--320--text200--focus--part7.png",
+            "sha256": "f8a385a11fcc0e5f068acb0a3269c83393d68a51cb7292a7e9791fc483dc2a2f",
+            "byte_size": 42521,
+            "image_pixels": {
+              "width": 305,
+              "height": 818
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 16796,
+              "width": 305,
+              "height": 818,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 818,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 16796
+            },
+            "tile": 7,
+            "tiles": 7
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:18.252Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "light",
+      "surface": "#fffaff",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 247.40625,
+          "height": 465.0625,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Sáng",
+        "effective_theme": "light",
+        "surface": "#fffaff",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 4508.6875
+        },
+        "document_css": {
+          "width": 305,
+          "height": 19788
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200.png",
+          "sha256": "758a5c90ac3087ccd90783945a3c67c70619bb1a9c14573270edfc943dbf08a9",
+          "byte_size": 283358,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part1.png",
+            "sha256": "4c7a08c37f30e6b638090c78d5302398d0a8dd7e7a1bb5605466fda9ebad9ace",
+            "byte_size": 56310,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part2.png",
+            "sha256": "14d3fb11a1e51ffa42d401a0649b06ae4c72528643e11ac039d7f3161f9381b6",
+            "byte_size": 52113,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12638,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12638
+            },
+            "tile": 2,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part3.png",
+            "sha256": "fe3a0253ddea77741727448bfac6d4de976c6d11a03affcc96e72d18412d1322",
+            "byte_size": 45733,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13394,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13394
+            },
+            "tile": 3,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part4.png",
+            "sha256": "7a86eb564f62a072a415a8f2fe223d46fb6cca0b66efcec32f298346a5353870",
+            "byte_size": 48109,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14150,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14150
+            },
+            "tile": 4,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part5.png",
+            "sha256": "095109e3455d1bf40aa44eb78a46d4651b048ed2352022b314682f1a9efaf151",
+            "byte_size": 48963,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14906,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14906
+            },
+            "tile": 5,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--light--320--text200--focus--part6.png",
+            "sha256": "fb26db8ae223ac4334254f5bb40765b1bbebd5d5d7abdfd181b15ef7837f03cd",
+            "byte_size": 45463,
+            "image_pixels": {
+              "width": 305,
+              "height": 754
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15662,
+              "width": 305,
+              "height": 754,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 754,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15662
+            },
+            "tile": 6,
+            "tiles": 6
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:19.130Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.button--default--dark--1440--text100": {
+      "hash": "#action.button/default",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 143.96875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 150.546875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 99.4375,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 64.8125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 167.015625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 146.53125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 120.40625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 139.3125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 451.765625
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 2940
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--dark--1440--text100.png",
+          "sha256": "42115244c7aec677c7f8ed118b08fd0c7f1903ddca3dc30b749e58174b84705b",
+          "byte_size": 424200,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--dark--1440--text100--focus.png",
+            "sha256": "24fbd28c28fdc361cbe0bdb708104063dc5d0aeb5ead0ee32bce9358905d3e16",
+            "byte_size": 67110,
+            "image_pixels": {
+              "width": 1137,
+              "height": 477
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 477,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 477,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:19.567Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--dark--1440--text100": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 323.953125
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 2940
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--dark--1440--text100.png",
+          "sha256": "b34766573345c0dfed5fe16516f1b535e3534f536250e732229962a185190d9a",
+          "byte_size": 406796,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--dark--1440--text100--focus.png",
+            "sha256": "de3887e053b827e5fb649eadee45b6034235120ccd230bf5420883dd4c9a2cca",
+            "byte_size": 49033,
+            "image_pixels": {
+              "width": 1137,
+              "height": 349
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 349,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 349,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:19.929Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--dark--1440--text100": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 121.578125,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 1206.265625
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 2940
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--dark--1440--text100.png",
+          "sha256": "7622b6cd10b9e58271b7c9010c91a537cf0a2b0e03d8d7f136282ce572080d13",
+          "byte_size": 495632,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--1440--text100--focus--part1.png",
+            "sha256": "3ea38617720dbf73796100a6197bad8134ad73c40d076eeb8f819559a602f7c4",
+            "byte_size": 97451,
+            "image_pixels": {
+              "width": 1137,
+              "height": 616
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 616,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 616,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--1440--text100--focus--part2.png",
+            "sha256": "c47648c66746f8f61bc794cde5710d63bd5647c010c8070c6b266e59dfbdb825",
+            "byte_size": 43933,
+            "image_pixels": {
+              "width": 1137,
+              "height": 615
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 778,
+              "width": 1137,
+              "height": 615,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 615,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 778
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:20.397Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--dark--1440--text100": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 1440,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 512.046875,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 296.640625,
+          "y": 174.578125,
+          "width": 1112.359375,
+          "height": 529.546875
+        },
+        "document_css": {
+          "width": 1425,
+          "height": 3840
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 1440,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 2940
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--1440--text100.png",
+          "sha256": "d9cd0c450528f2a177e759859b83f7d73cc847b9279e2e9bf480180bd4bb17fe",
+          "byte_size": 461171,
+          "image_pixels": {
+            "width": 1440,
+            "height": 3840
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--1440--text100--focus.png",
+            "sha256": "b4f432041cb5c9b6f7922bcf88212b02d7a9b468c4b25ed283c1a14d004abdc8",
+            "byte_size": 101346,
+            "image_pixels": {
+              "width": 1137,
+              "height": 555
+            },
+            "clip_css": {
+              "x": 284,
+              "y": 162,
+              "width": 1137,
+              "height": 555,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 284,
+              "y": 0,
+              "width": 1137,
+              "height": 555,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 162
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:20.790Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.button--default--dark--390--text100": {
+      "hash": "#action.button/default",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 143.96875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 150.546875,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 99.4375,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 64.8125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 167.015625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 146.53125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 120.40625,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 139.3125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 908.140625
+        },
+        "document_css": {
+          "width": 375,
+          "height": 6314
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--dark--390--text100.png",
+          "sha256": "b44ec72339b6634cf7fccbc10696f341e7a5bc8a0b1d0cd0aa35b4eccc843375",
+          "byte_size": 380005,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--dark--390--text100--focus--part1.png",
+            "sha256": "c99e8fe41e1df3fd692ba317e176de12ca0b175baa6dd998575754dd4799fdee",
+            "byte_size": 36195,
+            "image_pixels": {
+              "width": 369,
+              "height": 467
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 467,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 467,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.button--default--dark--390--text100--focus--part2.png",
+            "sha256": "cfba96a384afb6aea8717e4cdba0f7bf406b510de8ede32b52c2ba18853b868d",
+            "byte_size": 29485,
+            "image_pixels": {
+              "width": 369,
+              "height": 466
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4801,
+              "width": 369,
+              "height": 466,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 466,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4801
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:21.239Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--dark--390--text100": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 522.734375
+        },
+        "document_css": {
+          "width": 375,
+          "height": 5929
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--dark--390--text100.png",
+          "sha256": "8015b6d260016f606944eddd9bdd62399395a331a14423b458b9abc65ec348a4",
+          "byte_size": 383650,
+          "image_pixels": {
+            "width": 390,
+            "height": 5929
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--dark--390--text100--focus.png",
+            "sha256": "e5bf6fa88fbd266fccf3d04271e22cf5096cf411adfb2255c80d2a9e419be0cb",
+            "byte_size": 45986,
+            "image_pixels": {
+              "width": 369,
+              "height": 548
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 548,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 548,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 1
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:21.602Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--dark--390--text100": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 142.78125,
+          "height": 57.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 142.78125,
+          "height": 57.59375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 121.578125,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 117.078125,
+          "height": 48,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 1758.609375
+        },
+        "document_css": {
+          "width": 375,
+          "height": 7165
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--dark--390--text100.png",
+          "sha256": "50b3ae0a68a3b77f5948e54385f6d945e4207e3d8ef02400065cc138c08b3a9e",
+          "byte_size": 400615,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--390--text100--focus--part1.png",
+            "sha256": "a608be266e27c0e222a73b297232f06405363b68e2ddc66df52fc4b876c0f7cf",
+            "byte_size": 90071,
+            "image_pixels": {
+              "width": 369,
+              "height": 892
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--390--text100--focus--part2.png",
+            "sha256": "659bee252d3c69923f0acec08345c46b8d5f05bb5d34abc1ff5ba66780199cae",
+            "byte_size": 58227,
+            "image_pixels": {
+              "width": 369,
+              "height": 892
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 5226,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 892,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 5226
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:22.031Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--dark--390--text100": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 390,
+      "dpr": 1,
+      "rootFontSize": "16px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 304.8125,
+          "height": 76.78125,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "16px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 15.59375,
+          "y": 4346.59375,
+          "width": 343.8125,
+          "height": 1126.265625
+        },
+        "document_css": {
+          "width": 375,
+          "height": 6555
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 390,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3738
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--390--text100.png",
+          "sha256": "b5667fd0d599467e386107b2e79f1dac451c69bbd6de99d07d6270317ad6e8ef",
+          "byte_size": 413443,
+          "image_pixels": {
+            "width": 390,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--390--text100--focus--part1.png",
+            "sha256": "d26074e0b1117a7a6106a596aa38a4bf56b9a391edcd439c4ee3ce53614e4f0c",
+            "byte_size": 58975,
+            "image_pixels": {
+              "width": 369,
+              "height": 576
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4334,
+              "width": 369,
+              "height": 576,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 576,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4334
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--390--text100--focus--part2.png",
+            "sha256": "1836f6928d3614a1e3081a59ad0d01ba9e9ddf593fa40ddd2f8c5f11c2f9c281",
+            "byte_size": 56320,
+            "image_pixels": {
+              "width": 369,
+              "height": 575
+            },
+            "clip_css": {
+              "x": 3,
+              "y": 4910,
+              "width": 369,
+              "height": 575,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 3,
+              "y": 0,
+              "width": 369,
+              "height": 575,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 4910
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:22.462Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.button--default--dark--320--text200": {
+      "hash": "#action.button/default",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 196.875,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 127.625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 247.40625,
+          "height": 128.375,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 238.8125,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "",
+          "width": 245.9375,
+          "height": 128.375,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.button",
+        "scenario_id": "default",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 2825.75
+        },
+        "document_css": {
+          "width": 305,
+          "height": 18643
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.button--default--dark--320--text200.png",
+          "sha256": "1a1ed73ef96848fa77d2d484b5db33ea609e0b9d0a105f93212162df9be652a8",
+          "byte_size": 283049,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.button--default--dark--320--text200--focus--part1.png",
+            "sha256": "8baba61aa41c3667728de1569f65dd8ce4d16aa3a59b8e6ba1214b0c8c7dc3fc",
+            "byte_size": 49399,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--dark--320--text200--focus--part2.png",
+            "sha256": "a77a84991711db03e5bd51b5cbe61604ab40030cb2c7e27b1c74e391dc10feb0",
+            "byte_size": 38115,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12595,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12595
+            },
+            "tile": 2,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--dark--320--text200--focus--part3.png",
+            "sha256": "3325bf9935b37f1fcc19157b1860bac6a3b797349007552712e8c57ba575b47f",
+            "byte_size": 29309,
+            "image_pixels": {
+              "width": 305,
+              "height": 713
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13308,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 713,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13308
+            },
+            "tile": 3,
+            "tiles": 4
+          },
+          {
+            "path": "action-surfaces--action.button--default--dark--320--text200--focus--part4.png",
+            "sha256": "efba6280f240ef0f853547061f099db7aae9f14d990441c55e6f01909028aaa5",
+            "byte_size": 36851,
+            "image_pixels": {
+              "width": 305,
+              "height": 712
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14021,
+              "width": 305,
+              "height": 712,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 712,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14021
+            },
+            "tile": 4,
+            "tiles": 4
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:23.029Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.icon-button--surfaces--dark--320--text200": {
+      "hash": "#action.icon-button/surfaces",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-standard",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "standard"
+        },
+        {
+          "id": "surface-tonal",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-off",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-on",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-disabled",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        },
+        {
+          "id": "surface-pending",
+          "width": 48,
+          "height": 48,
+          "nested": false,
+          "surface": "tonal"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.icon-button",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 1688.5625
+        },
+        "document_css": {
+          "width": 305,
+          "height": 17550
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.icon-button--surfaces--dark--320--text200.png",
+          "sha256": "2db5e3a4b8ffc3feecfdf6d30d106a5e4936d4de1ffb6317fd68f3538d110c75",
+          "byte_size": 283362,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--dark--320--text200--focus--part1.png",
+            "sha256": "838697ef911bff317d8b96c9724803d9da2740368577d130b83136895d24692b",
+            "byte_size": 52944,
+            "image_pixels": {
+              "width": 305,
+              "height": 857
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 2
+          },
+          {
+            "path": "action-surfaces--action.icon-button--surfaces--dark--320--text200--focus--part2.png",
+            "sha256": "ea797845b350b00b9a9358b991486fec9badecef66dde4ad6eaf007576a4676e",
+            "byte_size": 49820,
+            "image_pixels": {
+              "width": 305,
+              "height": 857
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12739,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 857,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12739
+            },
+            "tile": 2,
+            "tiles": 2
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:23.409Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--surfaces--dark--320--text200": {
+      "hash": "#action.toggle-action/surfaces",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "surface-toggle-0",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-1",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-2",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "surface-toggle-3",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-4",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "surface-toggle-5",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "false"
+        },
+        {
+          "id": "surface-toggle-6",
+          "width": 243.5625,
+          "height": 112.375,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        },
+        {
+          "id": "surface-endorsement",
+          "width": 201.15625,
+          "height": 73.1875,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "unknown"
+        },
+        {
+          "id": "",
+          "width": 232.15625,
+          "height": 89.1875,
+          "nested": false
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "surfaces",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 5706.515625
+        },
+        "document_css": {
+          "width": 305,
+          "height": 21568
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200.png",
+          "sha256": "19223e5da8928825180e6bbc2ec84a39141b6dcac48363e0959d8c08d2a02054",
+          "byte_size": 282759,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part1.png",
+            "sha256": "03beeff1ffd492e895d78b36e94e6329b62fe3bedacaa6f99785a1913ab5f08d",
+            "byte_size": 63520,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part2.png",
+            "sha256": "ec8ed3051eb4ddb92c88485f33f7b406db0bf118e039def9f33b8220f6fb493a",
+            "byte_size": 54388,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12701,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12701
+            },
+            "tile": 2,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part3.png",
+            "sha256": "bf10a344554aa60258ec0eb93c6e1801d885f39d9e0f3d6a44325227f6cf2bea",
+            "byte_size": 53751,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13520,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13520
+            },
+            "tile": 3,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part4.png",
+            "sha256": "87d3580b6cf1235847fa9db1307fddf92ff0f291d6c2e5bc43803e7e948bfcbf",
+            "byte_size": 50062,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14339,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14339
+            },
+            "tile": 4,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part5.png",
+            "sha256": "b2fb4e3ed13137529a3ed8a2aca11bb3eed05a1df0c70ceee3fa8db46f6d8623",
+            "byte_size": 52303,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15158,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15158
+            },
+            "tile": 5,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part6.png",
+            "sha256": "c02dc918d7f61c16cb7dbc72714668cd3c624aa701165a58086b85c8ca33e8dd",
+            "byte_size": 37720,
+            "image_pixels": {
+              "width": 305,
+              "height": 819
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15977,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 819,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15977
+            },
+            "tile": 6,
+            "tiles": 7
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--surfaces--dark--320--text200--focus--part7.png",
+            "sha256": "8906f0cf933570622cef218ae96b5d7d171be0fdfeb646426a1b42b8792d1947",
+            "byte_size": 44003,
+            "image_pixels": {
+              "width": 305,
+              "height": 818
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 16796,
+              "width": 305,
+              "height": 818,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 818,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 16796
+            },
+            "tile": 7,
+            "tiles": 7
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:24.242Z",
+        "inspected": false
+      }
+    },
+    "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200": {
+      "hash": "#action.toggle-action/tonal-long-label",
+      "width": 320,
+      "dpr": 1,
+      "rootFontSize": "32px",
+      "theme": "dark",
+      "surface": "#17121d",
+      "fonts": [
+        [
+          "16px \"Be Vietnam Pro\"",
+          true
+        ],
+        [
+          "16px \"Literata\"",
+          true
+        ]
+      ],
+      "media": {
+        "prefers-color-scheme": "light",
+        "prefers-reduced-motion": "no-preference"
+      },
+      "targets": [
+        {
+          "id": "toggle-sample",
+          "width": 247.40625,
+          "height": 465.0625,
+          "nested": false,
+          "surface": "tonal",
+          "pressed": "true"
+        }
+      ],
+      "specimen": {
+        "catalog_id": "action.toggle-action",
+        "scenario_id": "tonal-long-label",
+        "requested_theme": "Tối",
+        "effective_theme": "dark",
+        "surface": "#17121d",
+        "root_font_size": "32px",
+        "dpr": 1,
+        "bounds_css": {
+          "x": 12.796875,
+          "y": 11894.578125,
+          "width": 279.40625,
+          "height": 4508.6875
+        },
+        "document_css": {
+          "width": 305,
+          "height": 20370
+        },
+        "readiness": "fonts.ready + two animation frames",
+        "fonts": [
+          [
+            "16px \"Be Vietnam Pro\"",
+            true
+          ],
+          [
+            "16px \"Literata\"",
+            true
+          ]
+        ],
+        "viewport_css": {
+          "width": 320,
+          "height": 900
+        },
+        "scroll_css": {
+          "x": 0,
+          "y": 3792
+        },
+        "padding_css": 12,
+        "capture_mode": "specimen",
+        "raw_artifact": {
+          "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200.png",
+          "sha256": "c09c84af0923b29cdcff5f39dcb0edea402bfb25349f1e5fb534836e93d09caf",
+          "byte_size": 282557,
+          "image_pixels": {
+            "width": 320,
+            "height": 6000
+          },
+          "capture_mode": "document-capped"
+        },
+        "artifacts": [
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part1.png",
+            "sha256": "cf48a08e44d28ec36c0ffa7f184815fb9e1e1d88bbe69b57203cf34b31de9e6f",
+            "byte_size": 57603,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 11882,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 11882
+            },
+            "tile": 1,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part2.png",
+            "sha256": "d53025591dadc764bcc9481d02191c6d755a1d70c8bac3d8791bfbafe489af21",
+            "byte_size": 53160,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 12638,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 12638
+            },
+            "tile": 2,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part3.png",
+            "sha256": "3da9eda238ccbf538029c77ec0cf556ca060901cee05e9df58e7f2d53a1d5381",
+            "byte_size": 46504,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 13394,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 13394
+            },
+            "tile": 3,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part4.png",
+            "sha256": "501c996808a3140199c9bc6f53ec9dde3d1ba536aec499be0a1e8ed35a401cec",
+            "byte_size": 48568,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14150,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14150
+            },
+            "tile": 4,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part5.png",
+            "sha256": "ee4a01e34f50002e7d3122fd62932fc1052182d4bfafcfd317e6a623c22a24d5",
+            "byte_size": 49355,
+            "image_pixels": {
+              "width": 305,
+              "height": 756
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 14906,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 756,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 14906
+            },
+            "tile": 5,
+            "tiles": 6
+          },
+          {
+            "path": "action-surfaces--action.toggle-action--tonal-long-label--dark--320--text200--focus--part6.png",
+            "sha256": "ec22bc1a5c0957a2a0bb8b2e57bcea15e6d60aeff1f237979cac143e0bc55cce",
+            "byte_size": 46325,
+            "image_pixels": {
+              "width": 305,
+              "height": 754
+            },
+            "clip_css": {
+              "x": 0,
+              "y": 15662,
+              "width": 305,
+              "height": 754,
+              "scale": 1
+            },
+            "viewport_clip_css": {
+              "x": 0,
+              "y": 0,
+              "width": 305,
+              "height": 754,
+              "scale": 1
+            },
+            "scroll_css": {
+              "x": 0,
+              "y": 15662
+            },
+            "tile": 6,
+            "tiles": 6
+          }
+        ],
+        "captured_at": "2026-11-16T03:38:24.961Z",
+        "inspected": false
+      }
+    }
+  }
+}

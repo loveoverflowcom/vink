@@ -311,9 +311,21 @@
   color: var(--vk-on-surface-variant);
 }
 
+/* Opt-in idle container is neutral: it does not claim selection. */
+.vk-ui-icon-button[data-surface="tonal"] {
+  background-color: var(--vk-action-neutral-container);
+  color: var(--vk-action-neutral-content);
+}
+
 .vk-ui-icon-button[aria-pressed="true"] {
   background-color: var(--vk-secondary-container);
   color: var(--vk-on-secondary-container);
+}
+
+/* Keep disabled precedence over selected without changing legacy Standard callers. */
+.vk-ui-icon-button[data-surface="tonal"][data-state="disabled"] {
+  background-color: var(--vk-disabled-container);
+  color: var(--vk-disabled-content);
 }
 
 .vk-ui-link {
@@ -421,6 +433,23 @@
     color var(--vk-duration-short) var(--vk-ease-emphasized);
 }
 
+.vk-ui-toggle__control[data-surface="tonal"] {
+  display: inline-grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: var(--vk-space-2);
+  row-gap: 0;
+  padding-block: var(--vk-space-2);
+  border-radius: var(--vk-radius-xl);
+  background-color: var(--vk-action-neutral-container);
+  color: var(--vk-action-neutral-content);
+}
+
+/* Count has its own row so it never consumes the Vietnamese label's entire measure at 200%. */
+.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__glyph { grid-column: 1; grid-row: 1 / span 2; }
+.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__label { grid-column: 2; grid-row: 1; }
+.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__count { grid-column: 2 / -1; grid-row: 2; overflow-wrap: anywhere; }
+.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__mark { grid-column: 3; grid-row: 1; }
+
 .vk-ui-toggle__control[data-pressed="true"] {
   background-color: var(--vk-action-toggle-selected-container);
   color: var(--vk-action-toggle-selected-content);
@@ -431,6 +460,7 @@
   cursor: not-allowed;
 }
 
+.vk-ui-toggle__control[data-surface="tonal"][data-state="disabled"],
 .vk-ui-toggle__control[data-state="disabled"][data-pressed="true"] {
   background-color: var(--vk-disabled-container);
 }

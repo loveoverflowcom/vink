@@ -23,6 +23,9 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
@@ -62,6 +65,9 @@ sealed interface ActionState {
 
 enum class ButtonVariant(val id: String) { Filled("filled"), Tonal("tonal"), Outlined("outlined"), Text("text"), Danger("danger"), DangerText("danger-text") }
 
+/** Container only; never selects an action. Standard preserves existing callers. */
+enum class ActionSurface { Standard, Tonal }
+
 /** Minimum native target: Material's 48dp, never the Web compact 44. */
 private val NativeControl = maxOf(48.dp, VinkDimens.DensityControlHeight)
 
@@ -83,6 +89,7 @@ fun VinkButton(
     state: ActionState = ActionState.Enabled,
     leading: IconName? = null,
 ) {
+    var multiline by remember { mutableStateOf(false) }
     val c = LocalVink.current.colors
     val (container, content) = when (variant) {
         ButtonVariant.Filled -> c[ColorRole.ActionPrimaryContainer] to c[ColorRole.ActionPrimaryContent]
@@ -98,7 +105,7 @@ fun VinkButton(
             onClick = { if (state == ActionState.Enabled) onPress() },
             modifier = modifier.heightIn(min = NativeControl).semantics { if (pending != null) stateDescription = pending.status },
             enabled = !disabled,
-            shape = RoundedCornerShape(VinkDimens.RadiusFull),
+            shape = RoundedCornerShape(if (multiline) VinkDimens.RadiusXl else VinkDimens.RadiusFull),
             colors = ButtonDefaults.buttonColors(
                 containerColor = container,
                 contentColor = content,
@@ -120,7 +127,9 @@ fun VinkButton(
                         VinkIcon(leading, size = IconSize.Small)
                         androidx.compose.foundation.layout.Spacer(Modifier.size(VinkDimens.Space2))
                     }
-                    Text(label, style = LocalVink.current.text(VinkTextRoles.Label))
+                    Text(label, modifier = Modifier.weight(1f, fill = false),
+                        style = LocalVink.current.text(VinkTextRoles.Label),
+                        onTextLayout = { multiline = it.lineCount > 1 })
                 }
                 // UIS-03 status slot: the MicroArc sits in the end padding, so the label and the
                 // button width do not move when the state turns pending.
@@ -142,8 +151,13 @@ fun VinkIconButton(
     modifier: Modifier = Modifier,
     state: ActionState = ActionState.Enabled,
     pressed: Boolean? = null,
+    surface: ActionSurface = ActionSurface.Standard,
 ) {
     val c = LocalVink.current.colors
+    val tonal = surface == ActionSurface.Tonal
+    val container = if (tonal) c[ColorRole.ActionNeutralContainer] else androidx.compose.ui.graphics.Color.Transparent
+    val content = c[if (tonal) ColorRole.ActionNeutralContent else ColorRole.OnSurfaceVariant]
+    val disabledContainer = if (tonal) c[ColorRole.DisabledContainer] else androidx.compose.ui.graphics.Color.Transparent
     val pending = state as? ActionState.Pending
     val target = modifier.semantics { if (pending != null) stateDescription = pending.status }
     val enabled = state !is ActionState.Disabled
@@ -153,7 +167,7 @@ fun VinkIconButton(
                 onClick = { if (state == ActionState.Enabled) onPress() },
                 modifier = target,
                 enabled = enabled,
-                colors = IconButtonDefaults.iconButtonColors(contentColor = c[ColorRole.OnSurfaceVariant], disabledContentColor = c[ColorRole.DisabledContent]),
+                colors = IconButtonDefaults.iconButtonColors(containerColor = container, contentColor = content, disabledContainerColor = disabledContainer, disabledContentColor = c[ColorRole.DisabledContent]),
             ) { VinkIcon(icon, label = label) }
         } else {
             IconToggleButton(
@@ -162,7 +176,9 @@ fun VinkIconButton(
                 modifier = target,
                 enabled = enabled,
                 colors = IconButtonDefaults.iconToggleButtonColors(
-                    contentColor = c[ColorRole.OnSurfaceVariant],
+                    containerColor = container,
+                    contentColor = content,
+                    disabledContainerColor = disabledContainer,
                     checkedContainerColor = c[ColorRole.SecondaryContainer],
                     checkedContentColor = c[ColorRole.OnSecondaryContainer],
                     disabledContentColor = c[ColorRole.DisabledContent],

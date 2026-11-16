@@ -1,0 +1,22 @@
+   Compiling xtask v0.1.0 (/Users/manhblue/projects/loveoverflow/vink/xtask)
+    Finished `test` profile [unoptimized] target(s) in 2.25s
+     Running unittests src/main.rs (target/debug/deps/xtask-49220ed31c8cee40)
+
+running 1 test
+test ui_preview::tests::nonblocking_listener_streams_a_complete_large_asset ... FAILED
+
+failures:
+
+---- ui_preview::tests::nonblocking_listener_streams_a_complete_large_asset stdout ----
+
+thread 'ui_preview::tests::nonblocking_listener_streams_a_complete_large_asset' (87445263) panicked at xtask/src/ui_preview.rs:508:16:
+server streams despite listener nonblocking mode: Os { code: 35, kind: WouldBlock, message: "Resource temporarily unavailable" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    ui_preview::tests::nonblocking_listener_streams_a_complete_large_asset
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 81 filtered out; finished in 0.11s
+
+error: test failed, to rerun pass `-p xtask --bin xtask`

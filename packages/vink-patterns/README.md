@@ -58,3 +58,7 @@ Delta #213: Desk Web và recipe `screen.desk` không mount `DraftResume`; patter
 `DraftMetadata` mặc định còn được giữ tương thích, không còn là bố cục Desk hiện hành.
 Recipe CMP chứa khối viết tiếp được ghi rõ là mẫu cũ, không đại diện Bàn viết native (chưa có).
 Row Web dùng thời gian local sau hydrate, fallback UTC ở SSR và không version nhìn thấy.
+
+#224 thêm optional `surface: ActionSurface` vào `EndorsementAction` của hai renderer;
+Standard mặc định, chuyển thẳng tới ToggleAction. Không đổi facts, copy, Pen Flight hoặc guard.
+Contract trình bày ở [components](../ui-system/shared/components.md#phân-cấp-hành-động-và-surface-opt-in-224).

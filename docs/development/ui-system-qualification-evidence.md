@@ -335,3 +335,12 @@ ban đầu trên radio màu đang chọn. Các ảnh ca màn thấp đã đượ
 `cargo xtask verify web --scenario main` hoàn tất với exit 0 trên worktree #209
 sạch tại SHA trên. Run `1794756892184575000-68533` chạy lại ma trận Giao diện,
 các ca màn thấp và hồi quy editor trên cùng môi trường Chrome/PostgreSQL.
+
+## Action surfaces #224 — 16/11/2026
+
+Shared presentation thêm opt-in neutral surface cho icon/toggle và chuyển tiếp qua
+TooltipIconButton/EndorsementAction; default Standard không cần migration. Token 0.6.0,
+catalog 0.9.0; phạm vi chỉ Web/CMP primitives/pattern wrapper và diagnostics, chưa app pages.
+Lựa chọn, local checks, self-review năm chiều và ranh giới native nằm trong
+[báo cáo #224](evidence/action-surfaces-224/README.md). Không coi preview là native product app,
+owner design signoff, ADR Accepted hoặc production acceptance.

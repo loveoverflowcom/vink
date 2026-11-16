@@ -198,21 +198,25 @@ fun VinkToggleAction(
     count: CountFact = CountFact.Hidden,
     blocked: String? = null,
     icon: IconName? = null,
+    surface: ActionSurface = ActionSurface.Standard,
 ) {
     val vink = LocalVink.current
     val c = vink.colors
     val view = ToggleView.resolve(value, phase, blocked == null)
     val note = view.note?.let { copy.note(it, blocked) }
     val isBlocked = view.note == ToggleNote.Blocked
+    val tonal = surface == ActionSurface.Tonal
     val on = view.pressed == true
     val container = when {
-        on && isBlocked -> c[ColorRole.DisabledContainer]
+        isBlocked && (on || surface == ActionSurface.Tonal) -> c[ColorRole.DisabledContainer]
         on -> c[ColorRole.ActionToggleSelectedContainer]
+        surface == ActionSurface.Tonal -> c[ColorRole.ActionNeutralContainer]
         else -> Color.Transparent
     }
     val content = when {
         isBlocked -> c[ColorRole.DisabledContent]
         on -> c[ColorRole.ActionToggleSelectedContent]
+        surface == ActionSurface.Tonal -> c[ColorRole.ActionNeutralContent]
         else -> c[ColorRole.ActionToggleContent]
     }
     val spoken = listOfNotNull(copy.name(view.pressed), copy.countDescription(count)).joinToString(", ")
@@ -221,22 +225,31 @@ fun VinkToggleAction(
             modifier
                 .heightIn(min = ToggleTarget)
                 .widthIn(min = ToggleTarget)
-                .clip(RoundedCornerShape(VinkDimens.RadiusFull))
+                .clip(RoundedCornerShape(if (tonal) VinkDimens.RadiusXl else VinkDimens.RadiusFull))
                 .background(container)
                 .clickable(enabled = !isBlocked, role = Role.Button) { view.dispatch?.let(onSet) }
                 .semantics(mergeDescendants = true) {
                     contentDescription = spoken
                     if (note != null && !isBlocked) stateDescription = note
                 }
-                .padding(PaddingValues(horizontal = VinkDimens.Space3)),
+                .padding(PaddingValues(horizontal = VinkDimens.Space3, vertical = if (tonal) VinkDimens.Space2 else 0.dp)),
             contentAlignment = Alignment.CenterStart,
         ) {
             CompositionLocalProvider(LocalContentColor provides content) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(VinkDimens.Space2)) {
                     if (icon != null) VinkIcon(icon, Modifier.clearAndSetSemantics {}, size = IconSize.Small)
-                    Text(copy.label, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label))
-                    count.text?.let { shown ->
-                        Text(shown, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight(VinkTextRoles.Body.weight)))
+                    if (tonal) {
+                        Column(Modifier.weight(1f, fill = false)) {
+                            Text(copy.label, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label))
+                            count.text?.let { shown ->
+                                Text(shown, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight(VinkTextRoles.Body.weight)))
+                            }
+                        }
+                    } else {
+                        Text(copy.label, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label))
+                        count.text?.let { shown ->
+                            Text(shown, Modifier.clearAndSetSemantics {}, color = content, style = vink.text(VinkTextRoles.Label).copy(fontWeight = FontWeight(VinkTextRoles.Body.weight)))
+                        }
                     }
                     // One reserved trailing slot, like VinkButton's status slot: MicroArc while
                     // pending, the check once On is confirmed; the label never moves.

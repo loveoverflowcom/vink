@@ -90,6 +90,24 @@ impl ButtonVariant {
     }
 }
 
+/// Opt-in container for icon and confirmed-toggle actions. Presentation never implies selected.
+/// Standard preserves the existing transparent idle surface; Tonal uses a neutral container.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ActionSurface {
+    #[default]
+    Standard,
+    Tonal,
+}
+
+impl ActionSurface {
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Standard => "standard",
+            Self::Tonal => "tonal",
+        }
+    }
+}
+
 /// Submitting is explicit: the default never submits an enclosing form.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum ButtonKind {
@@ -185,6 +203,7 @@ pub fn Button(
 pub fn IconButton(
     icon: IconName,
     #[prop(into)] label: String,
+    #[prop(optional, into)] surface: Signal<ActionSurface>,
     #[prop(optional, into)] state: Signal<ActionState>,
     #[prop(optional, into)] pressed: Option<Signal<bool>>,
     #[prop(optional, into)] id: Option<String>,
@@ -201,6 +220,7 @@ pub fn IconButton(
                 type="button"
                 id=id
                 class="vk-ui-icon-button"
+                data-surface=move || surface.get().id()
                 aria-label=label
                 aria-pressed=move || pressed.map(|p| if p.get() { "true" } else { "false" })
                 data-state=move || state.with(ActionState::id)
@@ -474,5 +494,53 @@ mod tests {
             html.contains("aria-pressed=\"true\"") && html.contains("<svg"),
             "{html}"
         );
+    }
+    #[test]
+    fn surfaces_are_independent_of_selection_and_state() {
+        assert_eq!(ActionSurface::default(), ActionSurface::Standard);
+        for surface in [ActionSurface::Standard, ActionSurface::Tonal] {
+            for pressed in [None, Some(false), Some(true)] {
+                let html = render(move || {
+                    let mut props = IconButtonProps::builder()
+                        .icon(IconName::Edit)
+                        .label("Sửa tiêu đề".to_string())
+                        .surface(surface)
+                        .state(ActionState::pending("Đang lưu…"))
+                        .id("surface".to_string())
+                        .build();
+                    props.pressed = pressed.map(Signal::stored);
+                    IconButton(props).into_any()
+                });
+                let target = html
+                    .split("<button")
+                    .nth(1)
+                    .unwrap()
+                    .split('>')
+                    .next()
+                    .unwrap();
+                assert!(
+                    target.contains(&format!("data-surface=\"{}\"", surface.id())),
+                    "{html}"
+                );
+                assert!(
+                    target.contains("type=\"button\"")
+                        && target.contains("aria-disabled=\"true\"")
+                        && target.contains("aria-busy=\"true\""),
+                    "{html}"
+                );
+                assert_eq!(
+                    target.contains("aria-pressed="),
+                    pressed.is_some(),
+                    "{html}"
+                );
+                if let Some(pressed) = pressed {
+                    assert!(
+                        target.contains(&format!("aria-pressed=\"{pressed}\"")),
+                        "{html}"
+                    );
+                }
+                assert_eq!(html.matches("<button").count(), 1, "{html}");
+            }
+        }
     }
 }
