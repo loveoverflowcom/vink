@@ -123,7 +123,6 @@
    Keep a single status/action owner; native tools expand in document flow. */
 .vk-editor-toolbar--paper-first { padding: 0; border-radius: 0; background: transparent; }
 .vk-editor-toolbar--paper-first .vk-editor-toolbar__actions { display: contents; }
-.vk-editor-toolbar--paper-first .vk-editor-toolbar__status { flex-basis: 10rem; }
 .vk-editor-tools { min-inline-size: 0; }
 .vk-editor-tools[open] { flex-basis: 100%; }
 .vk-editor-tools > summary {

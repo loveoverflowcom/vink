@@ -40,6 +40,7 @@ semantic roles hiện hữu. Không viền/shadow/gradient mới, không đổi 
 Dark không có giả định paper luôn sáng hơn canvas.
 
 Responsive: flex wrap theo nội dung (CHOICE-02 A), preview giữ trực tiếp ở mọi width;
+status giữ flex-basis `7rem` hiện hữu (không dự trữ thêm một cột trống ở text200).
 200% có thể nhiều hàng. Thêm mở trong flow, lấy cả hàng để nội dung không chen save.
 Document scroll duy nhất; không dock/sticky ở desktop, narrow, short hoặc IME.
 Back/H1 vẫn có khi loading, lỗi và no-JS; không dựng action/H1 dự phòng trùng.
