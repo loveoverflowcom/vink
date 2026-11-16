@@ -970,3 +970,44 @@ a {
 
 /* Queue status has no reserved blank row after a settled read (#205). */
 .vk-moderation__queue > p:empty { display: none; }
+
+/* Empty artwork R1: app-owned presentation shared with Desk (#259), no state authority. */
+.vk-discovery #community-stream:focus-visible {
+  outline: var(--vk-size-focus-ring) solid var(--vk-focus-ring);
+  outline-offset: var(--vk-size-focus-offset);
+}
+.vk-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--vk-space-4);
+  min-inline-size: 0;
+  padding-block: var(--vk-space-6);
+  text-align: center;
+}
+.vk-empty-state__art {
+  display: block;
+  inline-size: min(240px, 100%);
+  block-size: auto;
+  aspect-ratio: 512 / 427;
+}
+.vk-empty-state__message {
+  margin: 0;
+  max-inline-size: 36ch;
+  color: var(--vk-on-surface-variant);
+  font: var(--vk-type-body-weight) var(--vk-type-body-size)/var(--vk-type-body-line-height) var(--vk-type-body-font);
+  overflow-wrap: anywhere;
+}
+.vk-empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: var(--vk-space-3) var(--vk-space-4);
+  max-inline-size: 100%;
+}
+@media (max-width: 759px) {
+  .vk-empty-state__art { inline-size: min(192px, 100%); }
+}
+@media (forced-colors: active) {
+  .vk-empty-state__art { visibility: hidden; }
+}

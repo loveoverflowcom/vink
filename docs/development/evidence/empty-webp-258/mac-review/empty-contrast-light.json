@@ -1,0 +1,14 @@
+[
+  {
+    "selector": ".vk-empty-state__message",
+    "foreground": "rgb(95, 86, 107)",
+    "background": "rgb(255, 250, 255)",
+    "ratio": 6.722848015608086
+  },
+  {
+    "selector": ".vk-empty-state__actions .vk-ui-link",
+    "foreground": "rgb(104, 70, 165)",
+    "background": "rgb(255, 250, 255)",
+    "ratio": 6.772028317988944
+  }
+]

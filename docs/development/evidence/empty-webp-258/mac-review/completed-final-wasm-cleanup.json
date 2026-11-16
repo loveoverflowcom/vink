@@ -1,0 +1,11 @@
+{
+  "removed_utc": "2026-11-16T20:23:59.925197+00:00",
+  "path": "/Users/manhblue/Documents/Codex/2026-11-17/task/vink/target/wasm32-unknown-unknown/debug",
+  "reason": "Completed final build; remove only task-owned wasm compilation intermediates while browser runs from retained target/site bundle. No source or other checkout touched.",
+  "logical_bytes": 1021246493,
+  "retained": [
+    "target/site",
+    "target/debug/vink-app",
+    "target/debug/xtask"
+  ]
+}

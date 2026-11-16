@@ -1,0 +1,563 @@
+local-budget: SOFT_MANAGED local-24g: heavy_slots=1 cargo_jobs=2 libtest_threads=2 managed_target=10–12 GiB (advisory); Cargo bootstrap included; preflight requires normal pressure; retries manual
+local-budget: pressure=normal; swap: total = 5120.00M  used = 4174.75M  free = 945.25M  (encrypted)
+local-budget: supervisor=62902 session=62927 slot=/tmp/vink-local-budget-501
+==> ui tokens: 15 generated files match
+==> empty artwork: WebP container, dimensions, SHA-256 and byte budget
+PASS no-results: 20070 bytes, 512x427, VP8 + alpha, SHA-256 74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2
+PASS no-public-works: 16444 bytes, 512x427, VP8 + alpha, SHA-256 56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb
+PASS first-draft: 19190 bytes, 512x427, VP8 + alpha, SHA-256 c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79
+==> expression manifest, Unicode, safety and generated drift
+TAP version 13
+# PASS Noto manifest: 16 assets, source hashes, safety, Unicode, Rust/CMP drift
+# Subtest: pinned inventory and generated outputs match
+ok 1 - pinned inventory and generated outputs match
+  ---
+  duration_ms: 29.902209
+  type: 'test'
+  ...
+# Subtest: unknown/corrupt/mislicensed/duplicate resources fail closed
+ok 2 - unknown/corrupt/mislicensed/duplicate resources fail closed
+  ---
+  duration_ms: 2.422625
+  type: 'test'
+  ...
+# Subtest: active SVG and external Lottie resources cannot be blessed by a new checksum
+ok 3 - active SVG and external Lottie resources cannot be blessed by a new checksum
+  ---
+  duration_ms: 0.908667
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 65.772708
+==> visual evidence oracle unit tests
+TAP version 13
+# Subtest: AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts
+ok 1 - AC-01: PNG verification parses hash and dimensions and rejects corrupt/empty artifacts
+  ---
+  duration_ms: 3.545541
+  type: 'test'
+  ...
+# Subtest: AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames
+ok 2 - AC-01: rejects silent 900-height substitution for 800-height scenes and mismatched viewport filenames
+  ---
+  duration_ms: 2.389292
+  type: 'test'
+  ...
+# Subtest: AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE
+ok 3 - AC-01: manifest schema supports legacy v1 compatibility and marks missing-target captures INCOMPLETE
+  ---
+  duration_ms: 2.294958
+  type: 'test'
+  ...
+# Subtest: AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets
+ok 4 - AC-01: collectSourceIdentity tracks dirty UI inputs deterministically without secrets
+  ---
+  duration_ms: 0.189334
+  type: 'test'
+  ...
+# Subtest: AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll
+ok 5 - AC-03: overflow oracle catches hidden overflow with scrollX=0 while allowing text input internal scroll
+  ---
+  duration_ms: 0.167833
+  type: 'test'
+  ...
+# Subtest: AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name
+ok 6 - AC-03: AX oracle separates raw textContent from computed AX name and catches altered accessible name
+  ---
+  duration_ms: 0.124417
+  type: 'test'
+  ...
+# Subtest: AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line
+ok 7 - AC-03: nav alignment accepts 1-line vs 2-line height delta when first lines align and catches misaligned first line
+  ---
+  duration_ms: 0.226333
+  type: 'test'
+  ...
+# Subtest: AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action
+ok 8 - AC-02: modal oracle enforces all can_discard/confirm branches and catches missing last modal action
+  ---
+  duration_ms: 0.186042
+  type: 'test'
+  ...
+# Subtest: AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation
+ok 9 - AC-04 & AC-05: separates DOM override from app controls and validates Me illustration reservation
+  ---
+  duration_ms: 0.298792
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 43.479791
+==> web perf analyzer unit tests
+TAP version 13
+# Subtest: lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+ok 1 - lab summary reports the raw sample size, true median, nearest-rank p95 and spread
+  ---
+  duration_ms: 0.497
+  type: 'test'
+  ...
+# Subtest: request reason ledger keeps conditional reads, 304 and transport separate
+ok 2 - request reason ledger keeps conditional reads, 304 and transport separate
+  ---
+  duration_ms: 0.2595
+  type: 'test'
+  ...
+# Subtest: negative duplicate transport control breaks the structural <=1 predicate
+ok 3 - negative duplicate transport control breaks the structural <=1 predicate
+  ---
+  duration_ms: 0.058625
+  type: 'test'
+  ...
+1..3
+# tests 3
+# suites 0
+# pass 3
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 32.553208
+==> fmt
+==> clippy server (workspace, ssr)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+    Checking cfg-if v1.0.5
+    Checking libc v0.2.191
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.9
+    Checking pin-project-lite v0.2.17
+    Checking memchr v2.8.3
+    Checking futures-core v0.3.34
+   Compiling syn v2.0.119
+   Compiling serde_derive v1.0.229
+   Compiling synstructure v0.14.0
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.4
+    Checking serde v1.0.229
+   Compiling zerovec-derive v0.11.7
+   Compiling displaydoc v0.2.7
+    Checking once_cell v1.21.4
+   Compiling thiserror-impl v2.0.21
+    Checking futures-sink v0.3.34
+    Checking bytes v1.12.1
+    Checking futures-channel v0.3.34
+   Compiling futures-macro v0.3.34
+    Checking futures-task v0.3.34
+    Checking futures-io v0.3.34
+    Checking slab v0.4.12
+    Checking futures-util v0.3.34
+    Checking typenum v1.20.1
+    Checking itoa v1.0.18
+    Checking errno v0.3.14
+    Checking signal-hook-registry v1.4.8
+   Compiling tokio-macros v2.7.2
+    Checking socket2 v0.6.5
+    Checking mio v1.2.4
+   Compiling smallvec v1.16.4
+    Checking tokio v1.54.1
+    Checking thiserror v2.0.21
+    Checking zerofrom v0.1.8
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.4
+   Compiling rustversion v1.0.23
+    Checking log v0.4.34
+    Checking zerovec v0.11.9
+   Compiling tracing-attributes v0.1.31
+    Checking tinystr v0.8.5
+    Checking generic-array v0.14.7
+    Checking tracing-core v0.1.36
+    Checking litemap v0.8.3
+    Checking writeable v0.6.4
+    Checking utf_types v1.0.0
+   Compiling semver v1.0.28
+    Checking utf8_iter v1.1.0
+    Checking icu_locale_core v2.4.0
+   Compiling rustc_version v0.4.1
+    Checking potential_utf v0.1.6
+    Checking zerotrie v0.2.5
+    Checking zmij v1.0.23
+    Checking percent-encoding v2.3.2
+    Checking equivalent v1.0.3
+    Checking icu_provider v2.4.0
+    Checking serde_json v1.0.154
+    Checking icu_collections v2.4.0
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking parking v2.2.1
+    Checking unicode-ident v1.0.27
+    Checking scopeguard v1.2.0
+    Checking event-listener v5.4.2
+    Checking digest v0.10.7
+    Checking tracing v0.1.44
+    Checking icu_normalizer_data v2.4.0
+    Checking icu_properties_data v2.4.0
+    Checking cpufeatures v0.2.17
+    Checking rand_core v0.10.1
+   Compiling wasm-bindgen-shared v0.2.129
+    Checking hashbrown v0.17.1
+    Checking indexmap v2.14.2
+    Checking icu_properties v2.4.0
+    Checking icu_normalizer v2.4.0
+    Checking form_urlencoded v1.2.2
+   Compiling getrandom v0.4.3
+    Checking idna_adapter v1.2.2
+    Checking either v1.19.0
+   Compiling sha2 v0.10.9
+    Checking idna v1.1.0
+    Checking http v1.5.0
+    Checking url v2.5.8
+   Compiling uuid v1.29.0
+    Checking base64 v0.22.1
+   Compiling bumpalo v3.20.3
+   Compiling wasm-bindgen v0.2.129
+   Compiling wasm-bindgen-macro-support v0.2.129
+   Compiling zerocopy v0.8.63
+   Compiling httparse v1.10.1
+   Compiling getrandom v0.3.4
+   Compiling wasm-bindgen-macro v0.2.129
+   Compiling num-conv v0.2.2
+   Compiling time-core v0.1.9
+   Compiling time-macros v0.2.32
+    Checking js-sys v0.3.106
+    Checking http-body v1.1.0
+    Checking mime v0.3.17
+    Checking rand_core v0.9.5
+    Checking ppv-lite86 v0.2.21
+   Compiling ring v0.17.14
+    Checking tower-service v0.3.3
+    Checking httpdate v1.0.3
+    Checking rand_chacha v0.9.0
+   Compiling encoding_rs v0.8.43
+    Checking tower-layer v0.3.3
+    Checking try-lock v0.2.5
+   Compiling unicode-segmentation v1.13.3
+   Compiling convert_case v0.11.0
+    Checking want v0.3.2
+    Checking rand v0.9.5
+    Checking http-body-util v0.1.5
+    Checking sha1 v0.10.7
+    Checking aho-corasick v1.1.5
+   Compiling multer v3.1.0
+    Checking tinyvec v1.13.3
+    Checking data-encoding v2.11.1
+    Checking simdutf8 v0.1.5
+    Checking regex-syntax v0.8.11
+    Checking atomic-waker v1.1.2
+   Compiling multiversion_no_op v1.0.0
+    Checking sync_wrapper v1.0.2
+    Checking regex-automata v0.4.18
+    Checking hyper v1.12.0
+    Checking tungstenite v0.29.0
+    Checking unicode-normalization v0.1.26
+    Checking wasm-bindgen-futures v0.4.79
+    Checking futures-executor v0.3.34
+   Compiling async-trait v0.1.92
+    Checking ryu v1.0.23
+    Checking spin v0.9.9
+    Checking serde_urlencoded v0.7.1
+    Checking futures v0.3.34
+    Checking tokio-tungstenite v0.29.0
+    Checking hyper-util v0.1.21
+    Checking tower v0.5.3
+    Checking axum-core v0.5.6
+    Checking serde_path_to_error v0.1.20
+    Checking deranged v0.5.9
+   Compiling proc-macro2-diagnostics v0.11.0
+    Checking matchit v0.8.4
+   Compiling paste v1.0.15
+    Checking powerfmt v0.2.1
+    Checking or_poisoned v0.1.0
+   Compiling unicode-xid v0.2.6
+    Checking time v0.3.55
+   Compiling const_format_proc_macros v0.2.37
+    Checking axum v0.8.9
+    Checking web-sys v0.3.106
+   Compiling proc-macro-utils v0.10.0
+    Checking throw_error v0.3.1
+   Compiling slotmap v1.1.1
+    Checking winnow v1.0.4
+    Checking cmov v0.5.4
+   Compiling konst_macro_rules v0.2.19
+   Compiling konst v0.2.20
+    Checking ctutils v0.4.7
+    Checking toml_parser v1.1.5+spec-1.1.0
+    Checking event-listener-strategy v0.5.4
+   Compiling reactive_graph v0.2.16
+   Compiling server_fn_macro v0.8.12
+   Compiling hybrid-array v0.4.15
+    Checking send_wrapper v0.6.0
+    Checking toml_datetime v1.1.2+spec-1.1.0
+    Checking serde_spanned v1.1.2
+    Checking toml_writer v1.1.3+spec-1.1.0
+   Compiling camino v1.2.6
+   Compiling anyhow v1.0.104
+   Compiling rstml v0.13.1
+    Checking toml v1.1.8+spec-1.1.0
+    Checking async-lock v3.4.2
+   Compiling const_format v0.2.37
+    Checking hydration_context v0.3.2
+    Checking any_spawner v0.3.0
+   Compiling derive-where v1.7.0
+   Compiling xxhash-rust v0.8.19
+    Checking rustc-hash v2.1.3
+    Checking guardian v1.3.0
+   Compiling thiserror v1.0.69
+    Checking crypto-common v0.2.2
+    Checking block-buffer v0.12.1
+   Compiling manyhow-macros v0.14.1
+   Compiling quote-use-macros v0.9.0
+   Compiling reactive_stores_macro v0.4.4
+    Checking itertools v0.14.0
+   Compiling tachys v0.2.19
+   Compiling thiserror-impl v1.0.69
+   Compiling pin-project-internal v1.1.13
+    Checking const-oid v0.10.2
+   Compiling prettyplease v0.3.0
+    Checking zeroize v1.9.1
+   Compiling rustls-pki-types v1.15.1
+    Checking digest v0.11.3
+    Checking pin-project v1.1.13
+    Checking reactive_stores v0.4.4
+   Compiling quote-use v0.9.0
+   Compiling manyhow v0.14.1
+    Checking gloo-utils v0.2.0
+    Checking either_of v0.1.9
+   Compiling server_fn v0.8.13
+    Checking oco_ref v0.2.1
+   Compiling getrandom v0.2.17
+   Compiling untrusted v0.9.0
+   Compiling interpolator v0.5.0
+    Checking erased v0.1.2
+   Compiling same-file v1.0.6
+    Checking const_str_slice_concat v0.1.0
+    Checking drain_filter_polyfill v0.1.3
+   Compiling collection_literals v1.0.3
+    Checking html-escape v0.2.15
+    Checking next_tuple v0.1.0
+   Compiling lock_api v0.4.14
+   Compiling attribute-derive-macro v0.11.0
+    Checking convert_case v0.6.0
+   Compiling walkdir v2.5.0
+    Checking gloo-net v0.6.0
+   Compiling server_fn_macro_default v0.8.6
+    Checking wasm-streams v0.5.0
+   Compiling parking_lot_core v0.9.12
+    Checking serde_qs v0.15.0
+   Compiling leptos_macro v0.8.19
+   Compiling typed-builder-macro v0.23.2
+   Compiling foldhash v0.2.0
+   Compiling rustls v0.23.46
+   Compiling allocator-api2 v0.2.21
+    Checking const-str v1.1.0
+   Compiling base16 v0.2.1
+    Checking inventory v0.3.25
+    Checking pathdiff v0.2.3
+    Checking config v0.15.27
+   Compiling wasm_split_macros v0.2.2
+   Compiling hashbrown v0.16.1
+   Compiling leptos_hot_reload v0.8.7
+    Checking typed-builder v0.23.2
+   Compiling parking_lot v0.12.5
+   Compiling rustls-webpki v0.103.16
+   Compiling attribute-derive v0.11.0
+   Compiling crossbeam-utils v0.8.23
+    Checking regex v1.13.1
+   Compiling convert_case_extras v0.2.0
+    Checking codee v0.3.5
+   Compiling leptos v0.8.22
+   Compiling crc-catalog v2.5.0
+    Checking subtle v2.6.1
+    Checking async-once-cell v0.5.4
+    Checking bitflags v2.13.2
+    Checking wasm_split_helpers v0.2.3
+   Compiling crc v3.4.0
+    Checking leptos_server v0.8.8
+    Checking leptos_config v0.8.10
+   Compiling crossbeam-queue v0.3.14
+   Compiling tokio-stream v0.1.19
+   Compiling futures-intrusive v0.5.0
+   Compiling hashlink v0.11.1
+    Checking leptos_dom v0.8.8
+   Compiling hmac v0.13.0
+   Compiling webpki-roots v1.0.11
+   Compiling num-traits v0.2.19
+   Compiling chacha20 v0.10.2
+   Compiling cpufeatures v0.3.1
+   Compiling unicode-properties v0.1.4
+   Compiling unicode-bidi v0.3.18
+   Compiling stringprep v0.1.5
+   Compiling sqlx-core v0.9.0
+   Compiling sha2 v0.11.1
+   Compiling atoi v2.0.0
+   Compiling rand v0.10.3
+   Compiling hkdf v0.13.0
+   Compiling md-5 v0.11.0
+   Compiling hex v0.4.3
+   Compiling byteorder v1.5.0
+   Compiling whoami v2.1.3
+   Compiling dotenvy v0.15.7
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+    Checking vink-ui v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/packages/ui-system/leptos)
+    Checking sqlx v0.9.0
+    Checking vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/packages/store-postgres)
+    Checking lazy_static v1.5.1
+   Compiling unicase v2.10.0
+   Compiling mime_guess v2.0.5
+    Checking sharded-slab v0.1.7
+    Checking matchers v0.2.0
+   Compiling leptos_router v0.8.17
+    Checking tracing-log v0.2.0
+    Checking tracing-serde v0.2.0
+    Checking thread_local v1.1.10
+    Checking nu-ansi-term v0.50.3
+    Checking tracing-subscriber v0.3.23
+    Checking vink-patterns v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/packages/vink-patterns/leptos)
+   Compiling leptos_router_macro v0.8.7
+    Checking leptos_meta v0.8.7
+    Checking tokio-util v0.7.20
+    Checking http-range-header v0.4.2
+    Checking tower-http v0.6.11
+    Checking vink-expressions v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/packages/expressions)
+    Checking base64ct v1.8.3
+    Checking phc v0.6.1
+    Checking base64 v0.23.1
+    Checking email-encoding v0.4.2
+    Checking password-hash v0.6.1
+    Checking tokio-rustls v0.26.6
+    Checking leptos_integration_utils v0.8.9
+    Checking blake2 v0.11.0
+    Checking nom v8.0.0
+    Checking leptos_axum v0.8.10
+    Checking vink-web v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/apps/vink-web)
+    Checking email_address v0.2.9
+    Checking quoted_printable v0.5.2
+    Checking fastrand v2.5.0
+    Checking lettre v0.11.23
+    Checking argon2 v0.6.0
+    Checking vink-identity v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/services/vink-identity)
+    Checking vink-ui-preview v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/packages/ui-system/leptos/preview)
+    Checking vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/services/vink-app)
+    Checking xtask v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-17/task/vink/xtask)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 12s
+==> clippy browser (vink-web, hydrate, wasm32)
+   Compiling proc-macro2 v1.0.107
+   Compiling quote v1.0.47
+   Compiling unicode-ident v1.0.27
+   Compiling syn v3.0.9
+   Compiling version_check v0.9.5
+   Compiling wasm-bindgen-shared v0.2.129
+    Checking memchr v2.8.3
+   Compiling semver v1.0.28
+    Checking pin-project-lite v0.2.17
+   Compiling rustc_version v0.4.1
+   Compiling rustversion v1.0.23
+   Compiling thiserror v2.0.21
+    Checking futures-core v0.3.34
+   Compiling serde_core v1.0.229
+   Compiling serde_derive v1.0.229
+    Checking futures-sink v0.3.34
+   Compiling bumpalo v3.20.3
+   Compiling wasm-bindgen-macro-support v0.2.129
+    Checking futures-channel v0.3.34
+   Compiling wasm-bindgen v0.2.129
+   Compiling futures-macro v0.3.34
+   Compiling thiserror-impl v2.0.21
+    Checking futures-task v0.3.34
+    Checking slab v0.4.12
+    Checking futures-io v0.3.34
+    Checking futures-util v0.3.34
+   Compiling wasm-bindgen-macro v0.2.129
+   Compiling synstructure v0.14.0
+    Checking cfg-if v1.0.5
+   Compiling serde v1.0.229
+    Checking once_cell v1.21.4
+   Compiling syn v2.0.119
+   Compiling zerofrom-derive v0.1.8
+    Checking zerofrom v0.1.8
+    Checking js-sys v0.3.106
+   Compiling yoke-derive v0.8.4
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.4
+   Compiling zerovec-derive v0.11.7
+    Checking zerovec v0.11.9
+   Compiling displaydoc v0.2.7
+   Compiling unicode-segmentation v1.13.3
+   Compiling convert_case v0.11.0
+   Compiling zmij v1.0.23
+    Checking tinystr v0.8.5
+    Checking futures-executor v0.3.34
+    Checking web-sys v0.3.106
+    Checking wasm-bindgen-futures v0.4.79
+   Compiling proc-macro2-diagnostics v0.11.0
+   Compiling libc v0.2.191
+   Compiling serde_json v1.0.154
+    Checking utf_types v1.0.0
+    Checking itoa v1.0.18
+    Checking writeable v0.6.4
+    Checking litemap v0.8.3
+    Checking icu_locale_core v2.4.0
+    Checking utf8_iter v1.1.0
+    Checking futures v0.3.34
+    Checking zerotrie v0.2.5
+    Checking potential_utf v0.1.6
+   Compiling generic-array v0.14.7
+    Checking or_poisoned v0.1.0
+   Compiling icu_normalizer_data v2.4.0
+   Compiling smallvec v1.16.4
+   Compiling unicode-xid v0.2.6
+   Compiling icu_properties_data v2.4.0
+   Compiling paste v1.0.15
+   Compiling const_format_proc_macros v0.2.37
+   Compiling proc-macro-utils v0.10.0
+    Checking icu_collections v2.4.0
+    Checking icu_provider v2.4.0
+    Checking throw_error v0.3.1
+    Checking event-listener v5.4.2
+   Compiling slotmap v1.1.1
+   Compiling anyhow v1.0.104
+   Compiling konst_macro_rules v0.2.19
+   Compiling camino v1.2.6
+    Checking equivalent v1.0.3
+    Checking hashbrown v0.17.1
+   Compiling rstml v0.13.1
+   Compiling typenum v1.20.1
+    Checking indexmap v2.14.2
+   Compiling konst v0.2.20
+    Checking event-listener-strategy v0.5.4
+    Checking send_wrapper v0.6.0
+   Compiling server_fn_macro v0.8.12
+   Compiling reactive_graph v0.2.16
+    Checking icu_normalizer v2.4.0
+    Checking icu_properties v2.4.0
+    Checking async-lock v3.4.2
+   Compiling const_format v0.2.37
+local-budget: interrupted; stopping owned process group
+xtask: clippy browser (vink-web, hydrate, wasm32): clippy browser (vink-web, hydrate, wasm32): exited with signal: 15 (SIGTERM)
+
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  empty artwork: verified runtime derivatives
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  visual evidence oracles: manifest, PNG, overflow, AX, modal unit tests
+  PASS  web perf analyzer: lab distribution, transport ledger and negative duplicate control
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  FAIL  clippy browser (vink-web, hydrate, wasm32): clippy browser (vink-web, hydrate, wasm32): exited with signal: 15 (SIGTERM)
+  (later steps NOT_RUN)
+local-budget: wall=128.79s sampled_peak_rss_sum=1501600 KiB samples=126 interval=1s
+local-budget: pressure=normal; swap: total = 5120.00M  used = 4166.75M  free = 953.25M  (encrypted)

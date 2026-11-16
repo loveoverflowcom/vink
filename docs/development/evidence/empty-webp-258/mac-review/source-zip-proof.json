@@ -1,0 +1,29 @@
+{
+  "drive_file_id": "1lvsay1waxJ380GkMykzPRDLB4PEwS5yE",
+  "zip_bytes": 1054999,
+  "zip_sha256": "b98ea4991ed63fb85742a13703c3b1879f416f6eaf995ea2e856b19cd7a24b75",
+  "expected_zip_sha256": "b98ea4991ed63fb85742a13703c3b1879f416f6eaf995ea2e856b19cd7a24b75",
+  "assets": [
+    {
+      "archive_path": "vink-empty-states-r1/assets/vink-empty-first-draft.webp",
+      "repo_path": "apps/vink-web/assets/empty/vink-empty-first-draft.webp",
+      "bytes": 19190,
+      "sha256": "c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79",
+      "byte_equal": true
+    },
+    {
+      "archive_path": "vink-empty-states-r1/assets/vink-empty-no-public-works.webp",
+      "repo_path": "apps/vink-web/assets/empty/vink-empty-no-public-works.webp",
+      "bytes": 16444,
+      "sha256": "56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb",
+      "byte_equal": true
+    },
+    {
+      "archive_path": "vink-empty-states-r1/assets/vink-empty-no-results.webp",
+      "repo_path": "apps/vink-web/assets/empty/vink-empty-no-results.webp",
+      "bytes": 20070,
+      "sha256": "74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2",
+      "byte_equal": true
+    }
+  ]
+}

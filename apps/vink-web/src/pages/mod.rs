@@ -451,11 +451,14 @@ fn restore_public_position(visible: Memo<Vec<WorkCard>>) {
             if let Some(row) = document().get_element_by_id(if found {
                 hash.trim_start_matches('#')
             } else {
-                "works-title"
+                "community-stream"
             }) {
                 row.scroll_into_view();
-                if let Some(link) = row.query_selector("a").ok().flatten().or(Some(row))
-                    && let Ok(link) = link.dyn_into::<web_sys::HtmlElement>()
+                if let Some(link) = if found {
+                    row.query_selector("a").ok().flatten().or(Some(row))
+                } else {
+                    Some(row)
+                } && let Ok(link) = link.dyn_into::<web_sys::HtmlElement>()
                 {
                     let options = web_sys::FocusOptions::new();
                     options.set_prevent_scroll(true);

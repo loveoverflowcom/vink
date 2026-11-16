@@ -10,6 +10,14 @@ và [registry triển khai](action-surfaces-225.md): launcher Tonal + FilterList
 draft-vs-applied selection và Filled-khi-đổi/Tonal-khi-chưa-đổi của Apply đã có từ trước.
 [Evidence chuẩn bị #240](evidence/action-surfaces-225/README.md) là baseline lịch sử riêng.
 
+**Empty artwork #258:** [LayoutSpec R1](../design/empty-artwork-258.md),
+[asset/pipeline owner](../../apps/vink-web/assets/empty/README.md) và
+[evidence của lượt này](evidence/empty-webp-258/README.md). Composition app-owned
+`ui::empty_state::EmptyState` dùng WebP đã pin; bỏ heading “Kết quả” và count 0 hiển thị,
+đổi thành đúng một câu result status ở empty. Count của nonempty vẫn là số trang.
+`community-stream` giữ tên vùng và focus-visible; unknown/retired tag và empty cursor page
+không bị gọi là corpus rỗng. Desk #259 dùng cùng API/CSS/asset; chưa adopt trong #258.
+
 ## HOW / WHY / TEACH
 
 Native GET ghi q, các tag lặp và cursor opaque vào URL. App giữ riêng buffer đang gõ và URL
@@ -27,7 +35,7 @@ và fence các ticket cũ để chúng không hồi sinh card đó.
 Ví dụ: tìm mưa → thử chọn Thơ (URL chưa đổi) → Áp dụng → Trang tiếp → mở tác phẩm →
 Về Khám phá. Link về mang đủ q, tag, cursor và neo hàng. Nếu từ trang thẻ, from_tag chỉ mang
 slug để app xây /the/:slug; không có URL return tùy ý. Back/Forward/reload dùng cùng URL.
-Khi hàng không còn, heading kết quả là focus fallback. Đổi q hoặc thẻ bỏ cursor.
+Khi hàng không còn, landmark kết quả có tên là focus fallback (#258). Đổi q hoặc thẻ bỏ cursor.
 
 Thẻ hiển thị trên card/reader là thẻ active của public snapshot từ provider. /the/:slug lấy
 nhãn/mô tả/trạng thái từ resolution cùng response discovery, không tự đoán từ slug.

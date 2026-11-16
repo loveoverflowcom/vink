@@ -110,6 +110,11 @@ fn quick(report: &mut Report) -> bool {
     ) {
         return false;
     }
+    if !report.step("empty artwork: verified runtime derivatives", || {
+        crate::build::check_empty_artwork(&root)
+    }) {
+        return false;
+    }
     if !report.step("expressions: manifest/hash/Unicode/drift", || {
         expressions::check(&root)
     }) {

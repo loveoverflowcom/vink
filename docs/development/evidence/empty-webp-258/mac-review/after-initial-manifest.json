@@ -1,0 +1,2681 @@
+{
+  "revision": "9e9ad1a",
+  "capturedAt": "2026-11-16T19:20:23.449Z",
+  "cwd": "/Users/manhblue/Documents/Codex/2026-11-17/task/vink",
+  "browser": {
+    "protocolVersion": "1.3",
+    "product": "Chrome/157.0.8103.78",
+    "revision": "@4b3d0dabb8250b6f152d2d85d79e7706e309d087",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+    "jsVersion": "15.7.112.43"
+  },
+  "records": [
+    {
+      "file": "explore-light-320-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 320,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 316.765625,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 476.890625
+        },
+        "message": {
+          "x": 44.8125,
+          "y": 492.890625,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 518.484375
+        },
+        "actions": {
+          "x": 101.71875,
+          "y": 534.484375,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 560.078125
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 305,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "68d57909bf65dd8f2e4614593ba20b287fb8475c9c30d56422926223496afb03"
+    },
+    {
+      "file": "explore-light-320-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 320,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 72.3125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.4375
+        },
+        "message": {
+          "x": 16,
+          "y": 264.4375,
+          "width": 273,
+          "height": 102.375,
+          "bottom": 366.8125
+        },
+        "actions": {
+          "x": 50.9375,
+          "y": 398.8125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 450
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 305,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "52fb8b499c57314dfcc5fabf836c775a30200d14f0ee319b83508056df8eb225"
+    },
+    {
+      "file": "explore-light-320-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 320,
+      "scale": 200,
+      "end": {
+        "actionBottom": 246,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "7a9046ee7933e2e67e2929f64df13eda0a8ad7f1247ba81ea1e8b6e9bc6c14d5"
+    },
+    {
+      "file": "explore-light-390-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 390,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 317.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 477.296875
+        },
+        "message": {
+          "x": 79.8125,
+          "y": 493.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 518.890625
+        },
+        "actions": {
+          "x": 136.71875,
+          "y": 534.890625,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 560.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 375,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "8b868360e50514ce2015ea0d08bb3ebad806b14f07e8718e138d368e0cf023dc"
+    },
+    {
+      "file": "explore-light-390-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 390,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 72.328125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.453125
+        },
+        "message": {
+          "x": 16,
+          "y": 264.453125,
+          "width": 343,
+          "height": 102.375,
+          "bottom": 366.828125
+        },
+        "actions": {
+          "x": 85.9375,
+          "y": 398.828125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 450.015625
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 375,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "bc496c03bbf16eeebfe2e3443ab9ee9d83f4734862f5a0cfbbeee358910f953b"
+    },
+    {
+      "file": "explore-light-390-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 390,
+      "scale": 200,
+      "end": {
+        "actionBottom": 290.015625,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "910d32408ea0c3a685f14734c01821838ed6a9e266e429b31e59ce1bcc3fa4e2"
+    },
+    {
+      "file": "explore-light-834-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 834,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 345,
+          "y": 310.59375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 510.75
+        },
+        "message": {
+          "x": 357.3125,
+          "y": 526.75,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 552.34375
+        },
+        "actions": {
+          "x": 414.21875,
+          "y": 568.34375,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 593.9375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "57b512293b55a67c04cf830f3645d0d2165c08c1d28492638581e33d4dabe0f3"
+    },
+    {
+      "file": "explore-light-834-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 834,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 337.5,
+          "y": 88.578125,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 288.734375
+        },
+        "message": {
+          "x": 242.125,
+          "y": 320.734375,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 371.921875
+        },
+        "actions": {
+          "x": 355.9375,
+          "y": 403.921875,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 455.109375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "566a181535c59f6949d3fa44c8c2d9913e410125f801b08c44aa7e425d876390"
+    },
+    {
+      "file": "explore-light-1440-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 1440,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 538,
+          "y": 271.375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 471.53125
+        },
+        "message": {
+          "x": 550.3125,
+          "y": 487.53125,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 513.125
+        },
+        "actions": {
+          "x": 607.21875,
+          "y": 529.125,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 554.71875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "f1a41ed5a04a5eea7d94b413ab530595bc4e69b64270cdc8a0d2f7d10fb1ea19"
+    },
+    {
+      "file": "explore-light-1440-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "light",
+      "width": 1440,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 702.5,
+          "y": 89.109375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 289.265625
+        },
+        "message": {
+          "x": 607.125,
+          "y": 321.265625,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 372.453125
+        },
+        "actions": {
+          "x": 720.9375,
+          "y": 404.453125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 455.640625
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "28fbcc9f16c9446fd8bbaa305dfdbe53c057e66714f343a43d83cd33f70c0b4c"
+    },
+    {
+      "file": "explore-dark-320-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 320,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 316.765625,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 476.890625
+        },
+        "message": {
+          "x": 44.8125,
+          "y": 492.890625,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 518.484375
+        },
+        "actions": {
+          "x": 101.71875,
+          "y": 534.484375,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 560.078125
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 305,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "3b249d3b458fec97f2b76cb1f49bb703f75b45a1c3349ceda4484817841e0a4d"
+    },
+    {
+      "file": "explore-dark-320-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 320,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 72.3125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.4375
+        },
+        "message": {
+          "x": 16,
+          "y": 264.4375,
+          "width": 273,
+          "height": 102.375,
+          "bottom": 366.8125
+        },
+        "actions": {
+          "x": 50.9375,
+          "y": 398.8125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 450
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 305,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "f0968348e6adcfee719c2db9809eb2773b9c2562d9e5b3bf0dc969d9e3cec725"
+    },
+    {
+      "file": "explore-dark-320-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 320,
+      "scale": 200,
+      "end": {
+        "actionBottom": 246,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "7c874e8d0cee2c7bff2b8edac6f036f3e3cb4302291fb7b626834a709181defe"
+    },
+    {
+      "file": "explore-dark-390-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 390,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 317.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 477.296875
+        },
+        "message": {
+          "x": 79.8125,
+          "y": 493.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 518.890625
+        },
+        "actions": {
+          "x": 136.71875,
+          "y": 534.890625,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 560.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 375,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "07e26c8597ff60f0daacced84aa37aa29d39c611797663184165ddd620687805"
+    },
+    {
+      "file": "explore-dark-390-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 390,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 72.328125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.453125
+        },
+        "message": {
+          "x": 16,
+          "y": 264.453125,
+          "width": 343,
+          "height": 102.375,
+          "bottom": 366.828125
+        },
+        "actions": {
+          "x": 85.9375,
+          "y": 398.828125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 450.015625
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 375,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "e3ba882dc9742fb5d435188c0d91aff35794f52365cb8f942398d11249ee1fed"
+    },
+    {
+      "file": "explore-dark-390-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 390,
+      "scale": 200,
+      "end": {
+        "actionBottom": 290.015625,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "4dbd6f7fe1e3f0c77106e456880740f271746cc6c39ef3ade65028ebeaa7c0db"
+    },
+    {
+      "file": "explore-dark-834-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 834,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 345,
+          "y": 310.59375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 510.75
+        },
+        "message": {
+          "x": 357.3125,
+          "y": 526.75,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 552.34375
+        },
+        "actions": {
+          "x": 414.21875,
+          "y": 568.34375,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 593.9375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "2f71dfb35255347e49f41fc6801a6fb6e4280ad7e344c826506086f0c230a96c"
+    },
+    {
+      "file": "explore-dark-834-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 834,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 337.5,
+          "y": 88.578125,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 288.734375
+        },
+        "message": {
+          "x": 242.125,
+          "y": 320.734375,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 371.921875
+        },
+        "actions": {
+          "x": 355.9375,
+          "y": 403.921875,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 455.109375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "d385d48d9de43be94f1d9c31ac46ab343971bd4bf40761489ecdf7375b169624"
+    },
+    {
+      "file": "explore-dark-1440-100.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 1440,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 538,
+          "y": 271.375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 471.53125
+        },
+        "message": {
+          "x": 550.3125,
+          "y": 487.53125,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 513.125
+        },
+        "actions": {
+          "x": 607.21875,
+          "y": 529.125,
+          "width": 101.5625,
+          "height": 25.59375,
+          "bottom": 554.71875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "f2c5ec0b36b21d54eb97399cfd101cdcc34d2fa4e686653c442dd8300e42ef54"
+    },
+    {
+      "file": "explore-dark-1440-200.png",
+      "revision": "9e9ad1a",
+      "route": "/",
+      "theme": "dark",
+      "width": 1440,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 702.5,
+          "y": 89.109375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 289.265625
+        },
+        "message": {
+          "x": 607.125,
+          "y": 321.265625,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 372.453125
+        },
+        "actions": {
+          "x": 720.9375,
+          "y": 404.453125,
+          "width": 203.109375,
+          "height": 51.1875,
+          "bottom": 455.640625
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 20370
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "381f9f7e838cc184ff09ffb133d29546cefdcbdce1bd283091737d0f345af68a"
+    },
+    {
+      "file": "tag-light-320-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 320,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 64,
+          "y": 248.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 408.296875
+        },
+        "message": {
+          "x": 52.3125,
+          "y": 424.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 449.890625
+        },
+        "actions": {
+          "x": 61.84375,
+          "y": 465.890625,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 491.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 320,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "660c558897aac752807b0ece4c7a2fdb498f8a7d43dc3ea99550b3db039cb07b"
+    },
+    {
+      "file": "tag-light-320-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 320,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 72.34375,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.46875
+        },
+        "message": {
+          "x": 32,
+          "y": 264.46875,
+          "width": 241,
+          "height": 102.375,
+          "bottom": 366.84375
+        },
+        "actions": {
+          "x": 32,
+          "y": 398.84375,
+          "width": 241,
+          "height": 126.375,
+          "bottom": 525.21875
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 305,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "3f861ff4ceaa254fec62ff5bf7671852042e37527acc1edca5b94c9b2d33e809"
+    },
+    {
+      "file": "tag-light-320-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 320,
+      "scale": 200,
+      "end": {
+        "actionBottom": 245.21875,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "45ad30280f6f461d9fc064d72fa4765f9e1bde0bef86484f2de90786b2161783"
+    },
+    {
+      "file": "tag-light-390-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 390,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 99,
+          "y": 248.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 408.296875
+        },
+        "message": {
+          "x": 87.3125,
+          "y": 424.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 449.890625
+        },
+        "actions": {
+          "x": 96.84375,
+          "y": 465.890625,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 491.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 390,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "b3cf2111f34074c752dc1a740c979566da4a073a142c45d2f3176ea821a97c12"
+    },
+    {
+      "file": "tag-light-390-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 390,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 71.953125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.078125
+        },
+        "message": {
+          "x": 32,
+          "y": 264.078125,
+          "width": 311,
+          "height": 102.375,
+          "bottom": 366.453125
+        },
+        "actions": {
+          "x": 32,
+          "y": 398.453125,
+          "width": 311,
+          "height": 126.375,
+          "bottom": 524.828125
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 375,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "72f15ff88a9b3be991a19f2662c5eea19a16add0782e38454c5d21740eb34a63"
+    },
+    {
+      "file": "tag-light-390-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 390,
+      "scale": 200,
+      "end": {
+        "actionBottom": 290.828125,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "3c8dba5fa95b0347ebbbe6c8f71c9e7413a26ff8baaa133b5624091acd9637f1"
+    },
+    {
+      "file": "tag-light-834-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 834,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 345,
+          "y": 260.59375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 460.75
+        },
+        "message": {
+          "x": 357.3125,
+          "y": 476.75,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 502.34375
+        },
+        "actions": {
+          "x": 366.84375,
+          "y": 518.34375,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 543.9375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "82f677d711ba538dcddcdbe3e58d0e5cda40b2143b7f29b7b8b3433c0f5b3232"
+    },
+    {
+      "file": "tag-light-834-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 834,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 337.5,
+          "y": 88.390625,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 288.546875
+        },
+        "message": {
+          "x": 242.125,
+          "y": 320.546875,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 371.734375
+        },
+        "actions": {
+          "x": 261.203125,
+          "y": 403.734375,
+          "width": 392.59375,
+          "height": 51.1875,
+          "bottom": 454.921875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "5ecf660b2dd79905476fb32a03d2ef62c99abe6db235a6d9b2563a01fa10f0be"
+    },
+    {
+      "file": "tag-light-1440-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 1440,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 710,
+          "y": 269.375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 469.53125
+        },
+        "message": {
+          "x": 722.3125,
+          "y": 485.53125,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 511.125
+        },
+        "actions": {
+          "x": 731.84375,
+          "y": 527.125,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 552.71875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "a7cf3e2054df31967e3cd8efa53b0656bc07dbf67b2ed402e251941b726d93d2"
+    },
+    {
+      "file": "tag-light-1440-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "light",
+      "width": 1440,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "light",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 702.5,
+          "y": 88.921875,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 289.078125
+        },
+        "message": {
+          "x": 607.125,
+          "y": 321.078125,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 372.265625
+        },
+        "actions": {
+          "x": 626.203125,
+          "y": 404.265625,
+          "width": 392.59375,
+          "height": 51.1875,
+          "bottom": 455.453125
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "2d29e76d7c2637995c84c8258e7bb707301787f4058189473de48a55848093d2"
+    },
+    {
+      "file": "tag-dark-320-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 320,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 64,
+          "y": 248.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 408.296875
+        },
+        "message": {
+          "x": 52.3125,
+          "y": 424.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 449.890625
+        },
+        "actions": {
+          "x": 61.84375,
+          "y": 465.890625,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 491.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 320,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "105654cf079ca6ddc9294b0667a802e9db58d243fc59960f819fbf46e91da323"
+    },
+    {
+      "file": "tag-dark-320-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 320,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 320,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 56.5,
+          "y": 72.34375,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.46875
+        },
+        "message": {
+          "x": 32,
+          "y": 264.46875,
+          "width": 241,
+          "height": 102.375,
+          "bottom": 366.84375
+        },
+        "actions": {
+          "x": 32,
+          "y": 398.84375,
+          "width": 241,
+          "height": 126.375,
+          "bottom": 525.21875
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 305,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "99d2104be9658d8a71d4f7b0d38c0df73b47003e32fb3bee3fb15a48b488bd84"
+    },
+    {
+      "file": "tag-dark-320-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 320,
+      "scale": 200,
+      "end": {
+        "actionBottom": 245.21875,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "62743a05f251debecadf53e1e89d6a8e677f4f98ed1cadeb5c9798ebea9400f2"
+    },
+    {
+      "file": "tag-dark-390-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 390,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 99,
+          "y": 248.171875,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 408.296875
+        },
+        "message": {
+          "x": 87.3125,
+          "y": 424.296875,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 449.890625
+        },
+        "actions": {
+          "x": 96.84375,
+          "y": 465.890625,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 491.484375
+        },
+        "nav": {
+          "x": 0,
+          "y": 820,
+          "width": 390,
+          "height": 80,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "009b18a2736edf5c4dabce72d33dc6c2d90f53ae3cb77dae472b91a22173a958"
+    },
+    {
+      "file": "tag-dark-390-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 390,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 390,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 91.5,
+          "y": 71.953125,
+          "width": 192,
+          "height": 160.125,
+          "bottom": 232.078125
+        },
+        "message": {
+          "x": 32,
+          "y": 264.078125,
+          "width": 311,
+          "height": 102.375,
+          "bottom": 366.453125
+        },
+        "actions": {
+          "x": 32,
+          "y": 398.453125,
+          "width": 311,
+          "height": 126.375,
+          "bottom": 524.828125
+        },
+        "nav": {
+          "x": 0,
+          "y": 763.21875,
+          "width": 375,
+          "height": 136.78125,
+          "bottom": 900
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "50c82fd09b0537087e9ed5d63e3c57ab7b70e89b482ab090fa80f5eeb09cd054"
+    },
+    {
+      "file": "tag-dark-390-200-end.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 390,
+      "scale": 200,
+      "end": {
+        "actionBottom": 290.828125,
+        "navTop": 763.21875,
+        "reachable": true
+      },
+      "sha256": "e56f370cd0be486bb33609077b818b9bbb83922978b349465862823319f9cab4"
+    },
+    {
+      "file": "tag-dark-834-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 834,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 345,
+          "y": 260.59375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 460.75
+        },
+        "message": {
+          "x": 357.3125,
+          "y": 476.75,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 502.34375
+        },
+        "actions": {
+          "x": 366.84375,
+          "y": 518.34375,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 543.9375
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "510c8425c0e3742fe43bed066effefe8949b0594df6c1c143d20c8645e686dd4"
+    },
+    {
+      "file": "tag-dark-834-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 834,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 834,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 337.5,
+          "y": 88.390625,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 288.546875
+        },
+        "message": {
+          "x": 242.125,
+          "y": 320.546875,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 371.734375
+        },
+        "actions": {
+          "x": 261.203125,
+          "y": 403.734375,
+          "width": 392.59375,
+          "height": 51.1875,
+          "bottom": 454.921875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "881b45f876fcbe1447e25904f2e7be6e615b1bbc4da37cdfc112c2314836f681"
+    },
+    {
+      "file": "tag-dark-1440-100.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 1440,
+      "scale": 100,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "16px",
+        "overflow": 0,
+        "art": {
+          "x": 710,
+          "y": 269.375,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 469.53125
+        },
+        "message": {
+          "x": 722.3125,
+          "y": 485.53125,
+          "width": 215.375,
+          "height": 25.59375,
+          "bottom": 511.125
+        },
+        "actions": {
+          "x": 731.84375,
+          "y": 527.125,
+          "width": 196.3125,
+          "height": 25.59375,
+          "bottom": 552.71875
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "fec4f1df7ee459980d8e83f9f038edd559792a9e7223386036f301ebe1bb56ab"
+    },
+    {
+      "file": "tag-dark-1440-200.png",
+      "revision": "9e9ad1a",
+      "route": "/the/th%C6%A1",
+      "theme": "dark",
+      "width": 1440,
+      "scale": 200,
+      "geometry": {
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        },
+        "theme": "dark",
+        "font": "32px",
+        "overflow": -15,
+        "art": {
+          "x": 702.5,
+          "y": 88.921875,
+          "width": 240,
+          "height": 200.15625,
+          "bottom": 289.078125
+        },
+        "message": {
+          "x": 607.125,
+          "y": 321.078125,
+          "width": 430.734375,
+          "height": 51.1875,
+          "bottom": 372.265625
+        },
+        "actions": {
+          "x": 626.203125,
+          "y": 404.265625,
+          "width": 392.59375,
+          "height": 51.1875,
+          "bottom": 455.453125
+        },
+        "nav": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0,
+          "bottom": 0
+        },
+        "status": [
+          "Chưa có tác phẩm phù hợp."
+        ],
+        "visibleHeadings": [],
+        "fonts": [
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "400"
+          },
+          {
+            "family": "Be Vietnam Pro",
+            "weight": "600"
+          },
+          {
+            "family": "Literata",
+            "weight": "200 900"
+          }
+        ],
+        "imageRequests": [
+          {
+            "file": "vink-empty-no-results.webp",
+            "bytes": 0
+          }
+        ],
+        "artwork": [
+          {
+            "complete": true,
+            "naturalWidth": 512,
+            "naturalHeight": 427,
+            "alt": ""
+          }
+        ]
+      },
+      "sha256": "b5dbd0f9e4bc772ed153fcee6d97432cf5ed0b25898251016c856928f133db61"
+    }
+  ],
+  "probes": {
+    "http": [
+      {
+        "id": "no-results",
+        "status": 200,
+        "mime": "image/webp",
+        "bytes": 20070,
+        "sha256": "74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2"
+      },
+      {
+        "id": "no-public-works",
+        "status": 200,
+        "mime": "image/webp",
+        "bytes": 16444,
+        "sha256": "56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb"
+      },
+      {
+        "id": "first-draft",
+        "status": 200,
+        "mime": "image/webp",
+        "bytes": 19190,
+        "sha256": "c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79"
+      }
+    ],
+    "decoder": [
+      {
+        "id": "no-results",
+        "width": 512,
+        "height": 427
+      },
+      {
+        "id": "no-public-works",
+        "width": 512,
+        "height": 427
+      },
+      {
+        "id": "first-draft",
+        "width": 512,
+        "height": 427
+      }
+    ],
+    "branches": [
+      {
+        "path": "/?cursor=broken",
+        "art": false,
+        "requests": 0
+      },
+      {
+        "path": "/the/missing-tag-258",
+        "art": false,
+        "requests": 0
+      },
+      {
+        "path": "/",
+        "art": false,
+        "requests": 0
+      }
+    ]
+  }
+}
