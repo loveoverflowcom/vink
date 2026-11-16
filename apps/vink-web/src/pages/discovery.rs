@@ -171,9 +171,12 @@ fn DiscoveryChrome(
             </Suspense>
             <div class="vk-discovery-layout">
                 <div class="vk-discovery-main">
-                    <Form method="get" action=action.clone() noscroll=true on_form_data=Arc::new(drop_unnamed_submitter)
-                        attr:role="search" attr:id="public-search" attr:class="vk-public-search"
-                        on:submit=move |_| focus.set(Some("community-stream"))>
+                    // Form stops submit propagation internally. Record the intent in its
+                    // callback before navigation replaces the submitted scope.
+                    <Form method="get" action=action.clone() noscroll=true on_form_data=Arc::new(move |data| {
+                        drop_unnamed_submitter(data);
+                        focus.set(Some("community-stream"));
+                    }) attr:role="search" attr:id="public-search" attr:class="vk-public-search">
                         {hidden_tags.into_iter().map(|tag| view! { <HiddenField name="tag" value=Signal::stored(tag) /> }).collect_view()}
                         <SearchField id="public-query" label=if is_tag { "Tìm trong thẻ" } else { "Tìm tác phẩm" } name="q"
                             variant=SearchVariant::Bar help="Trong toàn thư viện công khai"
@@ -369,9 +372,11 @@ fn FilterForm(
     let mut initial = expect_context::<DiscoveryDraft>().applied_tags.get_value();
     initial.sort();
     view! {
-        <Form method="get" action noscroll=true on_form_data=Arc::new(drop_unnamed_submitter)
-            attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")
-            on:submit=move |_| { focus.set(Some("community-stream")); open.set(false); }>
+        <Form method="get" action noscroll=true on_form_data=Arc::new(move |data| {
+            drop_unnamed_submitter(data);
+            focus.set(Some("community-stream"));
+            open.set(false);
+        }) attr:class="vk-discovery-filter-form" attr:id=format!("{id}-tag-form") attr:aria-describedby=format!("{id}-tag-help")>
             <HiddenField name="q" value=Signal::stored(q) />
             <h2>"Bộ lọc thẻ"</h2>
             <p id=format!("{id}-tag-help")>"Khớp tất cả thẻ · Tối đa 4"</p>
