@@ -1195,7 +1195,7 @@ async function serverHtml() {
   console.log('server HTML before any JavaScript:');
   const home = await fetch(args.base);
   const homeHtml = await home.text();
-  check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('1 tác phẩm trên trang này.') && homeHtml.includes('vk-public-row__link'), 'Explore HTML contains its finite public collection and actual inventory before JavaScript');
+  check(home.status === 200 && homeHtml.includes('<title>Khám phá — Vink</title>') && homeHtml.includes('Trang này: 1 tác phẩm') && homeHtml.includes('vk-public-row__link'), 'Explore HTML contains its finite public collection and actual inventory before JavaScript');
   check(homeHtml.match(/class="vk-brand"/g)?.length === 1 && !homeHtml.includes('vk-ui-top-bar') && !homeHtml.includes('vk-ui-rail__brand'), 'SSR places exactly one brand on Explore and omits empty shell chrome');
   check(homeHtml.includes(`href="/tac-pham/${SAMPLE_WORK}"`) && !homeHtml.includes(DRAFT_ONLY_LINE), 'Explore uses real reader links and excludes private draft text');
   for (const query of ['mua tren pho cu', 'TÁC GIẢ MẪU'.normalize('NFD')]) {
@@ -1416,6 +1416,7 @@ async function textContrast(page, theme, surface = 'shell') {
   })() : {
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
     explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '#works-title', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
+    filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],
@@ -2586,10 +2587,13 @@ async function draftDashboard(page) {
       const r=create.getBoundingClientRect(), label=create.querySelector('.vk-ui-button__label');
       const range=document.createRange(); range.selectNodeContents(label);
       return document.querySelectorAll('#create-draft').length===1 && create.type==='button' &&
-        create.textContent==='Tạo bản thảo' && create.querySelectorAll('svg').length===1 &&
+        create.textContent==='Tạo bản thảo' && create.classList.contains('vk-ui-button--filled') &&
+        getComputedStyle(create).backgroundColor!=='rgba(0, 0, 0, 0)' &&
+        create.querySelectorAll('svg[data-icon=add][aria-hidden=true]').length===1 &&
         r.width>=48 && r.height>=48 && r.left>=0 && r.right<=innerWidth &&
         [...range.getClientRects()].every(t=>t.left>=r.left-1 && t.right<=r.right+1 && t.top>=r.top-1 && t.bottom<=r.bottom+1) &&
-        refresh.type==='button' && refresh.getAttribute('aria-label')==='Tải lại' &&
+        refresh.type==='button' && refresh.getAttribute('aria-label')==='Tải lại' && refresh.dataset.surface==='tonal' &&
+        getComputedStyle(refresh).backgroundColor!=='rgba(0, 0, 0, 0)' &&
         !refresh.hasAttribute('aria-pressed') && !create.querySelector('button,a,input') &&
         document.querySelector('#draft-sort').tagName==='SELECT';
     })()`), `#225 ${width}/${scale}/${theme}: full create label + one Add target, native Select/refresh and no fake pressed`);

@@ -1,6 +1,6 @@
 # Đối soát docs, quyết định và Quint sau các PR 15–16/11/2026
 
-**Phạm vi:** 20 PR merge trên first-parent của `origin/develop`, từ sau `09ebede` đến
+**Phạm vi audit ban đầu:** 20 PR merge trên first-parent của `origin/develop`, từ sau `09ebede` đến
 `6e07806` (PR #196–#240 trong bảng dưới; không phải mọi số PR trong khoảng).
 Base đầy đủ: `6e07806aa87145d0e053f4061f47ccaf3830c14a`. Không nhập thay đổi dở dang
 của checkout chính. Đây là đối soát source/contract/test và bổ sung evidence thuần, không phải
@@ -40,7 +40,7 @@ hoặc active marker. Merge của PR cũ không là lời duyệt đúng revisio
 | [VDR-MODERATION-QUEUE-PAGINATION](../../decisions/proposals/VDR-MODERATION-QUEUE-PAGINATION.r1.toml) | [Moderation §10](moderation-runtime.md#10-hai-queue-hữu-hạn-205), authority snapshot và rollout |
 | [VDR-AUTHOR-WORK-FEEDBACK](../../decisions/proposals/VDR-AUTHOR-WORK-FEEDBACK.r1.toml) | [Author feedback](desk-author-feedback.md), zero/null/unknown và hai loại số liệu khác anchor |
 | [VDR-EDITOR-SAVE-PROJECTION](../../decisions/proposals/VDR-EDITOR-SAVE-PROJECTION.r1.toml) | [Editor #217](../design/ui-editor-unified-save-217.md), partial save, uncertainty và focus |
-| [VDR-ACTION-SURFACES](../../decisions/proposals/VDR-ACTION-SURFACES.r1.toml) | [Shared contract](../../packages/ui-system/shared/components.md), opt-in neutral surface; #225 còn pending adoption |
+| [VDR-ACTION-SURFACES](../../decisions/proposals/VDR-ACTION-SURFACES.r1.toml) | [Shared contract](../../packages/ui-system/shared/components.md), opt-in neutral surface; mô tả #225 chưa adoption là hiện trạng tại base `6e07806`, xem cập nhật review bên dưới |
 
 `cargo xtask decision query ID` cho biết current/head và digest. `pending_only` không có nghĩa
 runtime chưa tồn tại; ngược lại source có implementation không khiến proposal thành Accepted.
@@ -56,9 +56,30 @@ Xem [hợp đồng signoff](../../decisions/README.md#ghi-signoff-của-chủ-s�
 | `open_technical` | Domain nhận document mà HTTP body cap từ chối; chi phí owner-state/DOM lớn | Dùng corpus #229 tái hiện ở HTTP/loader/render boundary; #230/#231 và thiết bị release trước ngân sách mới |
 | `rollout_constraint` | Bundle moderation legacy bỏ qua `Link`, chỉ thấy 50 hàng đầu | Server/migration trước bundle; reload tab duyệt cũ. Nếu phải giữ tab cũ xuyên rollout, cần thiết kế tương thích bổ sung |
 | `verification_gap` | Chưa model `freshness::Store/Coordinator`, IndexedDB transaction hay save reducer; model mới không phủ authority fingerprint | Giữ unit/browser/PG riêng; chỉ mở rộng model nếu có rủi ro state/race cụ thể, không sao chép governance |
-| `implementation_gap` | #225 chưa UI adoption; autosave/device recovery, native product runtime chưa có tại base | Giữ feature/spec/evidence tách biệt, không đóng issue từ việc tests pass |
+| `implementation_gap` | Autosave/device recovery, native product runtime chưa có tại base; gap UI #225 của audit ban đầu đã được #244 xử lý | Giữ feature/spec/evidence tách biệt; #226 còn chờ triển khai theo registry riêng |
 
-## Evidence của lượt này
+## Review tích hợp #241/#243 sau #244/#245
+
+Đối chiếu `develop@313175370d29a03dd0096ece3e6a5933a74ddbea` với head ban đầu
+`a766651364caf25a7ad78b900468ef08d9bd30c2` của #243 và commit review
+`d31fa4090f69e696083e685fcf1f72dbfb81f93b` của #241:
+
+- #244 đã triển khai Web #225: create Filled/Add, Refresh Tonal, launcher Thẻ Tonal/FilterList,
+  helper AND/max4 và count của trang. [Registry #225](action-surfaces-225.md) sở hữu source,
+  trạng thái thiết kế và evidence; không đọc câu “chưa adoption” tại base cũ thành hiện trạng mới.
+- #245 thêm LayoutSpec/tests cho [Reader/Nhận xét #226](../design/action-surfaces-reader-discussion-226.md),
+  chưa đổi presentation. Primitive `ActionSurface` và adoption Button #225 là hai phạm vi riêng.
+- #241 bổ sung audit owner READ-02. Khi hợp nhất, giữ snapshot 118 revisions/79 refs và kết quả
+  docs-only của audit đó; chỉ model `ReadOwner/PageChain` của #243 có pure replay. Chưa có model
+  cho freshness coordinator, IndexedDB hoặc save reducer; không suy browser/PG từ model PASS.
+- Giữ nguyên bảy proposal r1 và digest, đều **PENDING**. Căn cứ #225 trong
+  `VDR-ACTION-SURFACES@r1` được ghim ở `6e07806`; tiến độ mới cập nhật tại registry triển khai.
+  Không có thay đổi contract hoặc lời signoff đúng revision để đổi trạng thái quyết định.
+
+Lượt review không sửa runtime, model, fixture, replay hoặc runner của #243; các fingerprint
+trong manifest ban đầu vẫn khớp. Evidence chạy lại trên bản tích hợp được ghi riêng bên dưới.
+
+## Evidence ban đầu của #243
 
 Model mới: [owner Web](../../apps/vink-web/behavior/README.md), 52 bước lawful replay qua
 production, 9 bước counterexample với bước vi phạm bị production từ chối. Dùng runner hiện hữu

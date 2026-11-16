@@ -1,6 +1,6 @@
 # Contract component nền (UIS-02)
 
-Action surfaces #224 có proposal kỹ thuật [VDR-ACTION-SURFACES@r1](../../../decisions/proposals/VDR-ACTION-SURFACES.r1.toml) **PENDING**. Primitive đã có ở hai renderer; adoption của page #225 và visual acceptance là trạng thái riêng.
+Action surfaces #224 có proposal kỹ thuật [VDR-ACTION-SURFACES@r1](../../../decisions/proposals/VDR-ACTION-SURFACES.r1.toml) **PENDING**, với căn cứ tại `6e07806`. Primitive đã có ở hai renderer; [adoption Web #225](../../../docs/development/action-surfaces-225.md) được triển khai sau đó trong #244, giữ trạng thái thiết kế và visual evidence riêng.
 
 **Trạng thái:** UIS-02/06 ([#20](https://github.com/loveoverflowcom/vink/issues/20)) — đã triển khai ở
 cả hai renderer, đăng ký trong cả hai preview với trạng thái `implemented-unverified`. UIS-05 (#23)
@@ -360,4 +360,6 @@ Light/dark ở 100% và text200; text200 là multiplier preview, không phải O
 
 Specimens mới: `action.icon-button/surfaces`, `action.toggle-action/surfaces`,
 `action.toggle-action/tonal-lifecycle`, `action.toggle-action/tonal-long-label` ở cả renderer.
-Các app consumer vẫn Standard; #225/#226 sẽ opt-in trong PR riêng.
+Icon/toggle app consumer vẫn dùng `ActionSurface::Standard`; [#226](../../../docs/design/action-surfaces-reader-discussion-226.md)
+chưa opt-in. [#225](../../../docs/development/action-surfaces-225.md) đã dùng `ButtonVariant::Filled/Tonal`
+và `RefreshAction.tonal` trong #244; không đồng nhất adoption Button với toggle surface mới.
