@@ -125,3 +125,28 @@ metadata raw giữ toàn bộ phép chia và geometry, không gọi tile là ả
 
 Không merge/deploy/đóng issue hoặc tick checklist GitHub. #225/#226 có thể dùng prop typed
 khi shared contract được tích hợp; giữ guard, copy và Pen Flight của wrapper hiện hữu.
+
+## Rebase và sửa từ bước review PR #228 (16/11/2026)
+
+Nhánh được rebase lên `origin/develop@a81333c71faf6033014a00ec26c9f7b90109d1d9` (sau #227/#217 và #232/#229).
+Các điều chỉnh trong phạm vi PR:
+- **Precedence disabled trên action có chọn (`aria-pressed="true"` / `pressed = true`):** bổ sung
+  `.vk-ui-icon-button[aria-pressed="true"][data-state="disabled"]` và
+  `.vk-ui-chip[aria-pressed="true"][data-state="disabled"]` trong `vink-ui.css`, đồng thời cập nhật
+  `disabledContainer` của `VinkIconButton` (`tonal || pressed == true`) trong `VinkActions.kt` để
+  control đang bật nhưng bị khóa luôn hiển thị đúng `disabled-container`/`disabled-content` trên cả
+  Web và CMP (caller `Standard` không bật vẫn giữ nền trong suốt).
+- **Lưới CSS của `ToggleAction` Tonal khi không có glyph hoặc không có count:** chỉ kéo dài
+  `.vk-ui-toggle__glyph` qua 2 hàng khi có `.vk-ui-toggle__count`, và thu gọn cột đầu khi không có
+  glyph (`:not(:has(.vk-ui-toggle__glyph))`) để nhãn bắt đầu ngay tại `padding-inline-start` (12px),
+  không tạo khoảng trống cột rỗng.
+- **Đồng bộ bảng contract và dọn trùng sau rebase:** cập nhật chữ ký `TooltipIconButton` cùng hàng
+  `IconButton`/`ToggleAction` trong bảng Props của `packages/ui-system/shared/components.md`, chuẩn
+  hóa định dạng `Patterns.kt` và giữ một nơi đặt `set_nonblocking(false)` trong `respond()` của
+  `xtask/src/ui_preview.rs`.
+- **Kiểm chứng lại sau sửa:** `cargo xtask ui-tokens --check` PASS (15 generated files),
+  `cargo xtask verify quick` PASS (toàn bộ 9 bước), `cargo xtask ui-preview cmp verify` PASS
+  (104/104 tests, 0 failures), `cargo xtask ui-preview leptos build` + Chrome
+  `preview-smoke.mjs --actions-only 1` PASS (bao gồm các assertion mới cho disabled `aria-pressed`,
+  căn dòng glyph/label một hàng và khoảng lề khi không có glyph). Full app `verify web`,
+  Android/iOS runtime, OS IME và screen reader thực tế giữ nguyên `NOT_RUN`.

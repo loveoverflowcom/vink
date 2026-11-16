@@ -215,8 +215,7 @@ fun EndorsementAction(
     surface: ActionSurface = ActionSurface.Standard,
 ) {
     VinkToggleAction(
-        surface = surface,        copy = kind.copy,
-        icon = IconName.PenFlight,
+        copy = kind.copy,
         value = facts.value,
         onSet = onSet,
         onRecover = onRecover,
@@ -224,5 +223,7 @@ fun EndorsementAction(
         phase = facts.phase,
         count = facts.count,
         blocked = facts.block?.let(kind::reason),
+        icon = IconName.PenFlight,
+        surface = surface,
     )
 }

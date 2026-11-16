@@ -157,7 +157,7 @@ fun VinkIconButton(
     val tonal = surface == ActionSurface.Tonal
     val container = if (tonal) c[ColorRole.ActionNeutralContainer] else androidx.compose.ui.graphics.Color.Transparent
     val content = c[if (tonal) ColorRole.ActionNeutralContent else ColorRole.OnSurfaceVariant]
-    val disabledContainer = if (tonal) c[ColorRole.DisabledContainer] else androidx.compose.ui.graphics.Color.Transparent
+    val disabledContainer = if (tonal || pressed == true) c[ColorRole.DisabledContainer] else androidx.compose.ui.graphics.Color.Transparent
     val pending = state as? ActionState.Pending
     val target = modifier.semantics { if (pending != null) stateDescription = pending.status }
     val enabled = state !is ActionState.Disabled

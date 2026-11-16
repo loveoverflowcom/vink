@@ -323,7 +323,9 @@
 }
 
 /* Keep disabled precedence over selected without changing legacy Standard callers. */
-.vk-ui-icon-button[data-surface="tonal"][data-state="disabled"] {
+.vk-ui-icon-button[data-surface="tonal"][data-state="disabled"],
+.vk-ui-icon-button[aria-pressed="true"][data-state="disabled"],
+.vk-ui-chip[aria-pressed="true"][data-state="disabled"] {
   background-color: var(--vk-disabled-container);
   color: var(--vk-disabled-content);
 }
@@ -445,10 +447,15 @@
 }
 
 /* Count has its own row so it never consumes the Vietnamese label's entire measure at 200%. */
-.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__glyph { grid-column: 1; grid-row: 1 / span 2; }
+.vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__glyph { grid-column: 1; grid-row: 1; }
+.vk-ui-toggle__control[data-surface="tonal"]:has(.vk-ui-toggle__count) .vk-ui-toggle__glyph { grid-row: 1 / span 2; }
 .vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__label { grid-column: 2; grid-row: 1; }
 .vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__count { grid-column: 2 / -1; grid-row: 2; overflow-wrap: anywhere; }
 .vk-ui-toggle__control[data-surface="tonal"] .vk-ui-toggle__mark { grid-column: 3; grid-row: 1; }
+.vk-ui-toggle__control[data-surface="tonal"]:not(:has(.vk-ui-toggle__glyph)) { grid-template-columns: minmax(0, 1fr) auto; }
+.vk-ui-toggle__control[data-surface="tonal"]:not(:has(.vk-ui-toggle__glyph)) .vk-ui-toggle__label { grid-column: 1; }
+.vk-ui-toggle__control[data-surface="tonal"]:not(:has(.vk-ui-toggle__glyph)) .vk-ui-toggle__count { grid-column: 1 / -1; }
+.vk-ui-toggle__control[data-surface="tonal"]:not(:has(.vk-ui-toggle__glyph)) .vk-ui-toggle__mark { grid-column: 2; }
 
 .vk-ui-toggle__control[data-pressed="true"] {
   background-color: var(--vk-action-toggle-selected-container);

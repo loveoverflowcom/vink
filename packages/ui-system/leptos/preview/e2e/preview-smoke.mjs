@@ -886,10 +886,21 @@ async function actionSurfaces(page) {
           if (entry==='action.icon-button') {
             check(await page.css('#surface-standard','background-color')==='rgba(0, 0, 0, 0)', 'Legacy Standard icon keeps transparent idle surface');
             check(await page.css('#surface-off','background-color')!==await page.css('#surface-on','background-color'), 'Tonal icon Off and On use different containers');
+            check(await page.eval(`(() => {
+              const d=document.getElementById('surface-disabled'), on=document.getElementById('surface-on');
+              const dBg=getComputedStyle(d).backgroundColor, dFg=getComputedStyle(d).color, onBg=getComputedStyle(on).backgroundColor;
+              const prev=d.getAttribute('data-surface');
+              d.setAttribute('aria-pressed','true');
+              const tonalOk=getComputedStyle(d).backgroundColor===dBg && getComputedStyle(d).color===dFg && dBg!==onBg;
+              d.setAttribute('data-surface','standard');
+              const stdOk=getComputedStyle(d).backgroundColor===dBg && getComputedStyle(d).color===dFg;
+              d.removeAttribute('aria-pressed'); d.setAttribute('data-surface',prev);
+              return tonalOk && stdOk;
+            })()`), 'Disabled icon button keeps disabled container/content even when aria-pressed=true');
           } else {
             check(await page.eval(`['false','true','unknown'].every((v,i)=>document.getElementById('surface-toggle-'+i).dataset.pressed===v)`), 'Tonal toggle: Off/On/Unknown remain truthful');
             check(await page.css('#surface-toggle-0','background-color')!==await page.css('#surface-toggle-1','background-color'), 'Tonal toggle: idle background differs from confirmed On');
-            check(await page.eval(`(() => { const b=document.getElementById('surface-endorsement');return b.dataset.surface==='tonal' && b.dataset.pressed==='unknown' && b.getAttribute('aria-label')==='Thấm' && b.querySelector('[data-icon="pen-flight"]'); })()`), 'EndorsementAction wrapper forwards surface and preserves Pen Flight/unknown/name');
+            check(await page.eval(`(() => { const b=document.getElementById('surface-endorsement'), g=b.querySelector('.vk-ui-toggle__glyph').getBoundingClientRect(), l=b.querySelector('.vk-ui-toggle__label').getBoundingClientRect(); return b.dataset.surface==='tonal' && b.dataset.pressed==='unknown' && b.getAttribute('aria-label')==='Thấm' && b.querySelector('[data-icon="pen-flight"]') && Math.abs((g.top+g.height/2)-(l.top+l.height/2))<=1.5; })()`), 'EndorsementAction wrapper forwards surface, preserves Pen Flight/unknown/name and aligns single-row glyph/label');
           }
           const selector=entry==='action.icon-button'?'.vk-ui-icon-button[data-surface="tonal"]:not([data-state="disabled"])':'.vk-ui-toggle__control[data-surface="tonal"]:not([data-state="disabled"])';
           const contrast=await lowestContrast(page,selector);
@@ -945,6 +956,9 @@ async function toggles(page) {
     await page.open('action.toggle-action', scenario);
     t = await control('toggle-lifecycle');
     check(t.name === 'Ghi nhận' && t.pressed === 'false' && !t.ariaPressed && t.height >= 44, `ToggleAction: action-named, no aria-pressed, ≥44px target (${JSON.stringify(t)})`);
+    if (scenario === 'tonal-lifecycle') {
+      check(await page.eval(`(() => { const b=document.getElementById('toggle-lifecycle'), l=b.querySelector('.vk-ui-toggle__label').getBoundingClientRect(), br=b.getBoundingClientRect(), s=getComputedStyle(b); return Math.abs((l.left-br.left)-(parseFloat(s.paddingLeft)+parseFloat(s.borderLeftWidth)))<=1; })()`), 'Tonal ToggleAction without glyph starts label at padding-inline-start without phantom column gap');
+    }
     const before = await presses();
     await page.click('#toggle-lifecycle');
     await page.click('#toggle-lifecycle');

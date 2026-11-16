@@ -25,6 +25,7 @@ class ActionSurfacesTest {
     @Test
     fun tonalIconAndToggleKeepFocusAndDispatchOnlyWhenAllowed() = runComposeUiTest {
         val state = mutableStateOf<ActionState>(ActionState.Enabled)
+        val iconPressed = mutableStateOf<Boolean?>(null)
         val value = mutableStateOf(ToggleValue.Off)
         val phase = mutableStateOf<TogglePhase>(TogglePhase.Idle)
         val blocked = mutableStateOf<String?>(null)
@@ -36,7 +37,7 @@ class ActionSurfacesTest {
             VinkTheme(VinkPreferences(), systemDark = false) {
                 Column {
                     VinkIconButton(IconName.Edit, "Sửa tiêu đề", { icons++; state.value = ActionState.Pending("Đang lưu…") },
-                        Modifier.testTag("icon"), state = state.value, surface = surface.value)
+                        Modifier.testTag("icon"), state = state.value, pressed = iconPressed.value, surface = surface.value)
                     vink.patterns.EndorsementAction(vink.patterns.EndorsementKind.Work, vink.patterns.EndorsementFacts(value = ToggleValue.Off), {}, {},
                         Modifier.testTag("endorsement"), surface = ActionSurface.Tonal)
                     VinkToggleAction(ToggleCopy("Ghi nhận", "Bỏ ghi nhận"), value.value,
@@ -71,6 +72,14 @@ class ActionSurfacesTest {
         runOnIdle { state.value = ActionState.Disabled("Mẫu · Không khả dụng.") }
         icon.assertIsNotEnabled(); icon.performTouchInput { click(center) }
         assertEquals(3, icons)
+        for (s in listOf(ActionSurface.Standard, ActionSurface.Tonal)) {
+            runOnIdle { surface.value = s; iconPressed.value = true; state.value = ActionState.Disabled("Mẫu · Không khả dụng.") }
+            icon.assertIsNotEnabled().assertIsOn()
+            icon.performTouchInput { click(center) }
+            icon.performKeyInput { pressKey(Key.Enter); pressKey(Key.Spacebar) }
+            assertEquals(3, icons)
+        }
+        runOnIdle { iconPressed.value = null; surface.value = ActionSurface.Tonal }
 
         toggle.performSemanticsAction(SemanticsActions.RequestFocus)
         val before = toggle.fetchSemanticsNode().boundsInRoot
