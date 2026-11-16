@@ -423,7 +423,12 @@ fn FilterForm(
             <HiddenField name="q" value=Signal::stored(q) />
             <h2>"Bộ lọc thẻ"</h2>
             <p id=format!("{id}-tag-help")>"Khớp tất cả thẻ · Tối đa 4"</p>
-            <Suspense fallback=|| view! { <p role="status">"Đang tải danh mục thẻ…"</p> }>
+            <Suspense fallback=move || view! {
+                <p role="status">"Đang tải danh mục thẻ…"</p>
+                {draft.get().into_iter().map(|slug| view! {
+                    <HiddenField name="tag" value=Signal::stored(slug) />
+                }).collect_view()}
+            }>
             {move || catalog.get().map(|catalog| match catalog {
                 Err(_) => view! { <p role="alert">"Chưa tải được danh mục thẻ. Tải lại trang để thử lại; bộ lọc đang áp dụng vẫn được giữ."</p>
                     {draft.get_untracked().into_iter().map(|slug| view! { <HiddenField name="tag" value=Signal::stored(slug) /> }).collect_view()}
