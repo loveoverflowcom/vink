@@ -33,6 +33,11 @@ CodeMirror tiếp tục đo chiều cao sticky để giữ caret rõ.
 [#193 — mặt viết và title dài](editor-writing-reflow-193.md) bổ sung disclosure
 “Xem trọn tiêu đề” dùng cùng title state, giữ native input và giới hạn hiện hành;
 giảm riêng gutter/paper mobile mà không đổi typography/measure desktop.
+
+[#217 — hợp nhất trạng thái–hành động lưu (PR 1/2)](ui-editor-unified-save-217.md) hợp nhất
+trạng thái và nút lưu trong `#save-slot` của `EditorToolbar` (clean chỉ hiện nhãn tĩnh
+`✓ Đã lưu` với contrast ≥ 4.5:1, không còn CTA nổi bật; dirty/retry hiện `#save`; conflict/refused
+dẫn tới recovery thật) và giữ truth matrix cho cả chữ và thẻ.
 [#208 — dialog leave/preview R1](dialog-anatomy-r1-208.md) chuyển gutter, scroll,
 `context` và nhóm hành động phụ của `#leave-editor` / `#draft-preview` về `vink-ui::Dialog`
 dùng chung (bỏ override padding/divider ở `vink.css`) và chuẩn hóa phân cấp CTA.

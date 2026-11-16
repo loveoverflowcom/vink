@@ -107,7 +107,11 @@
 }
 
 .vk-editor-toolbar__status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vk-space-2); flex: 1 1 7rem; min-width: 0; }
-.vk-editor-toolbar__status > .vk-save-status { flex: 1; }
+.vk-save-slot__readout { display: inline-flex; align-items: center; gap: var(--vk-space-2); flex: 0 1 auto; min-width: 0; }
+.vk-save-slot__icon { display: inline-flex; flex: none; align-items: center; }
+.vk-save-slot__action { display: inline-flex; flex: 0 1 auto; align-items: center; min-width: 0; }
+.vk-save-slot__action:not(:has(*)) { display: none; }
+.vk-save-slot__action > :is(.vk-ui-action, .vk-ui-plain-tooltip) { flex: 0 1 auto; min-width: 0; }
 .vk-editor-toolbar__status > details[open] { flex-basis: 100%; }
 .vk-editor-toolbar__status .vk-ui-supporting-details__content > p { margin: 0; }
 .vk-editor-toolbar__actions > :is(.vk-ui-action, .vk-ui-plain-tooltip) { flex: 0 1 auto; min-width: 0; align-self: center; }

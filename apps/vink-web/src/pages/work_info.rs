@@ -22,7 +22,7 @@ pub const QUERY_ID: &str = "work-tags-query";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(not(feature = "hydrate"), allow(dead_code))]
-enum TagLoad {
+pub enum TagLoad {
     Loading,
     Ready,
     Failed(Failure),
@@ -34,15 +34,15 @@ pub fn WorkInfo(
     session: RwSignal<DraftSession>,
     labels: RwSignal<TagLabels>,
     #[prop(into)] on_save: Callback<()>,
+    tag_load: RwSignal<TagLoad>,
 ) -> impl IntoView {
     let work_id = StoredValue::new(work_id);
-    let load = RwSignal::new(TagLoad::Loading);
     let catalog = RwSignal::new(CatalogFacts::Loading);
     let query = RwSignal::new(QueryState::<TagSuggestion>::default());
 
     // Never replaces a loaded session: retrying is offered only while no tags are loaded.
     let load_tags = move || {
-        load.set(TagLoad::Loading);
+        tag_load.set(TagLoad::Loading);
         #[cfg(feature = "hydrate")]
         leptos::task::spawn_local(async move {
             match crate::api::load_draft_tags(&work_id.get_value()).await {
@@ -56,10 +56,10 @@ pub fn WorkInfo(
                             ));
                         }
                     });
-                    load.try_set(TagLoad::Ready);
+                    tag_load.try_set(TagLoad::Ready);
                 }
                 Err(error) => {
-                    load.try_set(TagLoad::Failed(super::desk::failure(&error)));
+                    tag_load.try_set(TagLoad::Failed(super::desk::failure(&error)));
                 }
             }
         });
@@ -150,7 +150,8 @@ pub fn WorkInfo(
                 let stored_names = labels.with(|l| l.names(&stored));
                 let mine = labels.with(|l| selection.get().map(|s| l.names(&s)).unwrap_or_default());
                 view! {
-                    <section class="vk-editor-recovery" data-tone="warning" data-testid="tag-conflict" aria-label="Xung đột thẻ">
+                    <section id="editor-tag-conflict" tabindex="-1" class="vk-editor-recovery"
+                        data-tone="warning" data-testid="tag-conflict" aria-label="Xung đột thẻ">
                         <InlineNotice tone=Tone::Warning announce=Announce::Off
                             title="Thẻ đã được lưu khác ở nơi khác."
                             message=format!("Đang lưu: {stored_names}. Trên trang này: {mine}. Chưa ghi đè lựa chọn nào.") />
@@ -203,10 +204,10 @@ pub fn WorkInfo(
             <Text role=TypeRole::Caption tone=TextTone::Muted>
                 "Chỉ bạn thấy. Lưu thẻ chỉ lưu vào bản nháp, không công khai tác phẩm."
             </Text>
-            <Show when=loaded fallback=move || match load.get() {
+            <Show when=loaded fallback=move || match tag_load.get() {
                 TagLoad::Failed(failure) => view! {
                     <section class="vk-editor-recovery" data-tone="error" data-testid="tags-unavailable" aria-label="Không tải được thẻ">
-                        <InlineNotice tone=Tone::Error announce=Announce::Polite title="Chưa tải được thẻ của bản nháp."
+                        <InlineNotice tone=Tone::Error announce=Announce::Off title="Chưa tải được thẻ của bản nháp."
                             message=format!("{} Chữ vẫn sửa và lưu được.", super::desk::failure_reason(failure)) />
                         <div class="vk-notice__actions">
                             <Button variant=ButtonVariant::Text id="tags-reload" leading=IconName::Refresh

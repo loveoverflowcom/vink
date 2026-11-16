@@ -401,7 +401,7 @@ async function exactVersion({ author, mod, work, base, check, openPage, reopen }
   check(ignored && wire.count('POST', '/snapshots') === 1 && frozen.endsWith('hồi') && !frozen.endsWith('hồhồi'), 'a press during composition starts nothing; after the commit the same press saves and freezes the committed text (CDP-simulated IME)');
   await wire.close();
 
-  await author.click('#save');
+  check(await author.eval(`document.querySelector('#save') === null`), 'clean draft after commit has no prominent Save CTA');
   await author.waitStatus('saved', 'saved text');
   await press(author);
   await waitPhase(author, 'reconciled', 'r3 submitted', 30000);
