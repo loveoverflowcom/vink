@@ -20,17 +20,25 @@ pub fn run(command: &mut Command, label: &str) -> Result<(), String> {
     }
 }
 
+// The pre-Cargo launcher owns a single process group, including raw spawns from
+// other adapters. Retain standalone xtask's per-command cancellation otherwise.
+pub fn locally_managed() -> bool {
+    std::env::var("VINK_LOCAL_BUDGET").as_deref() == Ok("local-24g")
+}
+
 fn spawn_group(command: &mut Command, label: &str) -> Result<std::process::Child, String> {
     use std::os::unix::process::CommandExt;
     crate::lifecycle::check_cancelled()?;
-    command.process_group(0);
+    if !locally_managed() {
+        command.process_group(0);
+    }
     command
         .spawn()
         .map_err(|e| format!("{label}: cannot start {:?}: {e}", command.get_program()))
 }
 fn wait_owned(child: &mut std::process::Child) -> Result<std::process::ExitStatus, String> {
     loop {
-        if crate::lifecycle::cancelled() {
+        if crate::lifecycle::cancelled() && !locally_managed() {
             let group = format!("-{}", child.id());
             let _ = Command::new("kill").args(["-TERM", "--", &group]).status();
             // Keep the unreaped group leader until descendants have received their stop signal.
