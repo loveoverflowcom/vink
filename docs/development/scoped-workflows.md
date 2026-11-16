@@ -88,6 +88,9 @@ file khóa để vượt một lượt đang chạy.
 | `auth` | App scratch migrate/seed + Identity scratch/local outbox | `auth` với session thật |
 | `password` | App password scratch migrate + Identity native scratch/local outbox | `auth-password`, không cần phase auth/main |
 | `publication` | App publication scratch migrate/seed/catalog + Identity scratch/local outbox | `publication-author` |
+| `perf-baseline` | App scratch + catalog + 200 public works/1.000 comments tổng hợp | 10 cold SSR/hydration + 10 warm Reader/Back, CDP transport ledger/raw JSON; **opt-in**, NOT_RUN trước khi có evidence thực |
+
+`perf-baseline` chỉ chạy khi chọn rõ và không thuộc tập full regression mặc định. Phương pháp, artifact và giới hạn nghiệm thu nằm tại [baseline #234](web-perf-baseline.md). Chưa có raw run thực thì không báo PASS cho #234.
 
 Lặp `--scenario` để hợp thành nhiều kiểm; thứ tự canonical giữ như full lane. Typo, chuỗi rỗng,
 selector trùng và option trái operation bị chặn trước side effects. Selected PASS chỉ có nghĩa
