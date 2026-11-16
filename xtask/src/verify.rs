@@ -110,6 +110,12 @@ fn quick(report: &mut Report) -> bool {
     ) {
         return false;
     }
+    if !report.step(
+        "web perf analyzer: lab distribution, transport ledger and negative duplicate control",
+        || web::web_perf_analyzer_unit_tests(&root),
+    ) {
+        return false;
+    }
     for (name, args) in steps {
         let mut command = cargo(&root);
         command.args(args);

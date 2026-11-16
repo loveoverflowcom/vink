@@ -527,6 +527,16 @@ pub fn visual_evidence_unit_tests(root: &Path) -> Result<(), String> {
     crate::process::run(&mut node, "visual evidence oracle unit tests")
 }
 
+/// #234 analyzer invariants (lab statistics, transport classification and the negative
+/// duplicate control). Pure Node: no server, database or browser, so it belongs to `quick`.
+pub fn web_perf_analyzer_unit_tests(root: &Path) -> Result<(), String> {
+    crate::doctor::node_version()?;
+    let mut node = Command::new("node");
+    node.current_dir(root)
+        .args(["--test", "apps/vink-web/e2e/web-perf-baseline.test.mjs"]);
+    crate::process::run(&mut node, "web perf analyzer unit tests")
+}
+
 pub fn verify(report: &mut Report, env: &Env) -> bool {
     let plan = crate::cli::parse(&["verify", "web"])
         .expect("valid command")
@@ -838,7 +848,7 @@ fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
 /// Real App/PostgreSQL synthetic journey fixture. #100 contributes works 1..14;
 /// this opt-in delta contributes 15..200 and one hot thread of 1,000 comments.
 fn seed_perf_journey(server: &Server) -> Result<(), String> {
-    use sqlx::{Connection, Executor};
+    use sqlx::Connection;
     let url = server
         .env
         .iter()
@@ -896,7 +906,11 @@ fn run_web_checks(
     if selected.iter().any(|s| {
         matches!(
             s,
-            Scenario::Main | Scenario::Storage | Scenario::Discovery | Scenario::Restart | Scenario::PerfBaseline
+            Scenario::Main
+                | Scenario::Storage
+                | Scenario::Discovery
+                | Scenario::Restart
+                | Scenario::PerfBaseline
         )
     }) {
         let mut guard = match server.start(root) {

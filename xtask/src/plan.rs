@@ -98,9 +98,16 @@ impl Scenario {
     ];
     /// Default full regression intentionally excludes the expensive measurement lane.
     pub const SELECTABLE: [Self; 10] = [
-        Self::Main, Self::Storage, Self::Discovery, Self::Restart,
-        Self::Endorsement, Self::Review, Self::Auth, Self::Password,
-        Self::Publication, Self::PerfBaseline,
+        Self::Main,
+        Self::Storage,
+        Self::Discovery,
+        Self::Restart,
+        Self::Endorsement,
+        Self::Review,
+        Self::Auth,
+        Self::Password,
+        Self::Publication,
+        Self::PerfBaseline,
     ];
     pub fn name(self) -> &'static str {
         match self {
@@ -238,7 +245,10 @@ impl Plan {
         let coverage =
             if self.request.operation == Operation::Verify && self.request.target == Target::Web {
                 if self.request.scenarios.len() == Scenario::ALL.len()
-                    && Scenario::ALL.iter().all(|s| self.request.scenarios.contains(s)) {
+                    && Scenario::ALL
+                        .iter()
+                        .all(|s| self.request.scenarios.contains(s))
+                {
                     "FULL Web regression"
                 } else {
                     "SELECTED Web checks (excluded checks NOT_SELECTED)"
