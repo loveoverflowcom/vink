@@ -1,0 +1,23 @@
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-16/task-5/vink/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 10.08s
+     Running tests/postgres.rs (target/debug/deps/postgres-17b64a22f9443168)
+
+running 3 tests
+test document_budget::long_document_sample_rejects_change_labeled_as_noop - should panic ... ok
+test document_budget::long_document_sample_rejects_repeated_edit_labeled_as_change - should panic ... ok
+test document_budget::long_document_samples_are_independent_durable_transitions ... FAILED
+
+failures:
+
+---- document_budget::long_document_samples_are_independent_durable_transitions stdout ----
+
+thread 'document_budget::long_document_samples_are_independent_durable_transitions' (89079546) panicked at /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/sqlx-postgres-0.9.0/src/testing/mod.rs:93:44:
+DATABASE_URL must be set: EnvVar(NotPresent)
+
+
+failures:
+    document_budget::long_document_samples_are_independent_durable_transitions
+
+test result: FAILED. 2 passed; 1 failed; 0 ignored; 0 measured; 198 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p vink-app --test postgres`

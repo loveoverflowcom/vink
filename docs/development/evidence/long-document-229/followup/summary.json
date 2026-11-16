@@ -1,0 +1,899 @@
+{
+  "source_sha": "4f2883630ff27f36c7549e036e6b554166a86692",
+  "baseline_sha": "5833624d8f77259a22f65abedfb47b691dffd791",
+  "seed": 229,
+  "corpus_equality": {
+    "ascii_repeat-30000": true,
+    "vi_nfc-30000": true,
+    "vi_nfd-30000": true,
+    "emoji-30000": true,
+    "poem_tabs-30000": true,
+    "tiny_blocks-30000": true,
+    "escaping-30000": true,
+    "ascii_repeat-100000": true,
+    "vi_nfc-100000": true,
+    "vi_nfd-100000": true,
+    "emoji-100000": true,
+    "poem_tabs-100000": true,
+    "tiny_blocks-100000": true,
+    "escaping-100000": true,
+    "ascii_repeat-200000": true,
+    "vi_nfc-200000": true,
+    "vi_nfd-200000": true,
+    "emoji-200000": true,
+    "poem_tabs-200000": true,
+    "tiny_blocks-200000": true,
+    "escaping-200000": true
+  },
+  "write_samples": 420,
+  "changed_samples": 315,
+  "noop_samples": 105,
+  "cases": [
+    {
+      "case": "ascii_repeat-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 3.285333,
+          "max_ms": 3.5465,
+          "median_wal_bytes": 712
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 3.269208,
+          "max_ms": 3.402291,
+          "median_wal_bytes": 712
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 3.26475,
+          "max_ms": 3.2805,
+          "median_wal_bytes": 720
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 3.308875,
+          "max_ms": 3.559375,
+          "median_wal_bytes": 712
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 2.721667,
+          "owner_state_max_ms": 3.3045
+        }
+      ],
+      "ssr_ms": 11.571,
+      "ssr_html_bytes": 109419
+    },
+    {
+      "case": "vi_nfc-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 8.856417,
+          "max_ms": 9.068125,
+          "median_wal_bytes": 49888
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 8.899208,
+          "max_ms": 9.573458,
+          "median_wal_bytes": 49896
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 8.840292,
+          "max_ms": 8.91725,
+          "median_wal_bytes": 49896
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 8.869208,
+          "max_ms": 9.110375000000001,
+          "median_wal_bytes": 49888
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 7.345541,
+          "owner_state_max_ms": 7.899041
+        }
+      ],
+      "ssr_ms": 14.608167,
+      "ssr_html_bytes": 222924
+    },
+    {
+      "case": "vi_nfd-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 8.874875000000001,
+          "max_ms": 9.023167,
+          "median_wal_bytes": 49888
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 8.89,
+          "max_ms": 9.025875,
+          "median_wal_bytes": 49888
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 9.036000000000001,
+          "max_ms": 10.156917,
+          "median_wal_bytes": 49896
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 8.929083,
+          "max_ms": 12.840499999999999,
+          "median_wal_bytes": 49880
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 7.458875,
+          "owner_state_max_ms": 7.940708
+        }
+      ],
+      "ssr_ms": 13.147916,
+      "ssr_html_bytes": 222924
+    },
+    {
+      "case": "emoji-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 8.77375,
+          "max_ms": 10.411208,
+          "median_wal_bytes": 25048
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 8.319708,
+          "max_ms": 14.392834,
+          "median_wal_bytes": 25048
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 8.122209,
+          "max_ms": 9.038667,
+          "median_wal_bytes": 25048
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 11.548957999999999,
+          "max_ms": 14.03625,
+          "median_wal_bytes": 25048
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 4.603417,
+          "owner_state_max_ms": 4.803041
+        }
+      ],
+      "ssr_ms": 11.050583,
+      "ssr_html_bytes": 379391
+    },
+    {
+      "case": "poem_tabs-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 9.965542000000001,
+          "max_ms": 15.605457999999999,
+          "median_wal_bytes": 52608
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 13.242583,
+          "max_ms": 16.314458000000002,
+          "median_wal_bytes": 52600
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 11.455042,
+          "max_ms": 17.282542000000003,
+          "median_wal_bytes": 52600
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 10.689499999999999,
+          "max_ms": 15.533417,
+          "median_wal_bytes": 52608
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 7.9953330000000005,
+          "owner_state_max_ms": 8.108458
+        }
+      ],
+      "ssr_ms": 14.269541,
+      "ssr_html_bytes": 164008
+    },
+    {
+      "case": "tiny_blocks-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 40.493666999999995,
+          "max_ms": 42.528792,
+          "median_wal_bytes": 77808
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 41.8385,
+          "max_ms": 160.41091699999998,
+          "median_wal_bytes": 77808
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 39.410000000000004,
+          "max_ms": 40.373833,
+          "median_wal_bytes": 77832
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 40.765750000000004,
+          "max_ms": 43.431458,
+          "median_wal_bytes": 77832
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 38.368709,
+          "owner_state_max_ms": 39.125750000000004
+        }
+      ],
+      "ssr_ms": 167.783666,
+      "ssr_html_bytes": 1369373
+    },
+    {
+      "case": "escaping-30000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 4.702917,
+          "max_ms": 5.448084,
+          "median_wal_bytes": 18432
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 5.453833,
+          "max_ms": 10.018,
+          "median_wal_bytes": 18424
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 5.305,
+          "max_ms": 9.613125,
+          "median_wal_bytes": 18440
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 5.848166999999999,
+          "max_ms": 8.108084,
+          "median_wal_bytes": 18424
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 3.908333,
+          "owner_state_max_ms": 3.934208
+        }
+      ],
+      "ssr_ms": 10.841834,
+      "ssr_html_bytes": 276045
+    },
+    {
+      "case": "ascii_repeat-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 9.738292000000001,
+          "max_ms": 12.645625,
+          "median_wal_bytes": 1528
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 9.679834,
+          "max_ms": 10.009958,
+          "median_wal_bytes": 1528
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 9.575292,
+          "max_ms": 13.744167,
+          "median_wal_bytes": 1528
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 9.76925,
+          "max_ms": 12.537542,
+          "median_wal_bytes": 1528
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 8.216208,
+          "owner_state_max_ms": 8.665249999999999
+        }
+      ],
+      "ssr_ms": 14.374125,
+      "ssr_html_bytes": 319471
+    },
+    {
+      "case": "vi_nfc-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 29.577167000000003,
+          "max_ms": 30.537208,
+          "median_wal_bytes": 164280
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 28.284,
+          "max_ms": 30.365541999999998,
+          "median_wal_bytes": 164280
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 28.291084,
+          "max_ms": 30.28875,
+          "median_wal_bytes": 164280
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 28.805999999999997,
+          "max_ms": 65.08316599999999,
+          "median_wal_bytes": 164288
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 23.5485,
+          "owner_state_max_ms": 23.729834
+        }
+      ],
+      "ssr_ms": 35.310834,
+      "ssr_html_bytes": 697465
+    },
+    {
+      "case": "vi_nfd-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 28.827416000000003,
+          "max_ms": 31.429625,
+          "median_wal_bytes": 164280
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 28.084125,
+          "max_ms": 31.273374999999998,
+          "median_wal_bytes": 164280
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 29.022167000000003,
+          "max_ms": 35.941334,
+          "median_wal_bytes": 164280
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 29.007084,
+          "max_ms": 42.277207999999995,
+          "median_wal_bytes": 164288
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 22.857709,
+          "owner_state_max_ms": 23.034709
+        }
+      ],
+      "ssr_ms": 34.436583,
+      "ssr_html_bytes": 697465
+    },
+    {
+      "case": "emoji-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 25.426959,
+          "max_ms": 25.547083,
+          "median_wal_bytes": 82024
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 25.4835,
+          "max_ms": 29.769707999999998,
+          "median_wal_bytes": 82032
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 25.961499999999997,
+          "max_ms": 36.631,
+          "median_wal_bytes": 82024
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 25.421708000000002,
+          "max_ms": 26.11675,
+          "median_wal_bytes": 82032
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 15.14525,
+          "owner_state_max_ms": 15.503584
+        }
+      ],
+      "ssr_ms": 27.101416,
+      "ssr_html_bytes": 1219395
+    },
+    {
+      "case": "poem_tabs-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 29.887375000000002,
+          "max_ms": 30.118084,
+          "median_wal_bytes": 173280
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 30.536834,
+          "max_ms": 32.039584000000005,
+          "median_wal_bytes": 173304
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 30.809041,
+          "max_ms": 164.58979200000002,
+          "median_wal_bytes": 173280
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 30.845292,
+          "max_ms": 41.087417,
+          "median_wal_bytes": 173304
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 26.595625000000002,
+          "owner_state_max_ms": 27.313083
+        }
+      ],
+      "ssr_ms": 40.448,
+      "ssr_html_bytes": 500810
+    },
+    {
+      "case": "tiny_blocks-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 137.78520799999998,
+          "max_ms": 148.260375,
+          "median_wal_bytes": 258496
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 140.49375,
+          "max_ms": 141.949125,
+          "median_wal_bytes": 258504
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 142.430542,
+          "max_ms": 146.716333,
+          "median_wal_bytes": 258504
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 136.22775000000001,
+          "max_ms": 139.02824999999999,
+          "median_wal_bytes": 258504
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 128.156875,
+          "owner_state_max_ms": 129.427042
+        }
+      ],
+      "ssr_ms": 552.809041,
+      "ssr_html_bytes": 4519377
+    },
+    {
+      "case": "escaping-100000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 13.729458,
+          "max_ms": 16.22575,
+          "median_wal_bytes": 58776
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 13.50525,
+          "max_ms": 14.377457999999999,
+          "median_wal_bytes": 58768
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 13.869625,
+          "max_ms": 13.911208,
+          "median_wal_bytes": 58776
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 13.475959,
+          "max_ms": 52.943125,
+          "median_wal_bytes": 58768
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 12.942042,
+          "owner_state_max_ms": 13.661332999999999
+        }
+      ],
+      "ssr_ms": 29.430708,
+      "ssr_html_bytes": 877024
+    },
+    {
+      "case": "ascii_repeat-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 18.280541,
+          "max_ms": 19.162083,
+          "median_wal_bytes": 3056
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 18.019459,
+          "max_ms": 18.145792,
+          "median_wal_bytes": 3056
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 18.220125,
+          "max_ms": 18.468124999999997,
+          "median_wal_bytes": 3072
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 18.306958,
+          "max_ms": 18.56025,
+          "median_wal_bytes": 3064
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 16.299125,
+          "owner_state_max_ms": 16.752665999999998
+        }
+      ],
+      "ssr_ms": 22.696458999999997,
+      "ssr_html_bytes": 619423
+    },
+    {
+      "case": "vi_nfc-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 55.68775,
+          "max_ms": 56.140084,
+          "median_wal_bytes": 328352
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 55.613417,
+          "max_ms": 55.999709,
+          "median_wal_bytes": 328336
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 55.28475,
+          "max_ms": 55.939750000000004,
+          "median_wal_bytes": 328352
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 55.159084,
+          "max_ms": 56.387333999999996,
+          "median_wal_bytes": 328336
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 45.461833999999996,
+          "owner_state_max_ms": 45.847291999999996
+        },
+        {
+          "revisions": 10,
+          "owner_state_median_ms": 442.33179099999995,
+          "owner_state_max_ms": 447.334208
+        },
+        {
+          "revisions": 100,
+          "owner_state_median_ms": 4398.7795,
+          "owner_state_max_ms": 4404.7842089999995
+        }
+      ],
+      "ssr_ms": 68.180791,
+      "ssr_html_bytes": 1375483
+    },
+    {
+      "case": "vi_nfd-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 56.334916,
+          "max_ms": 110.026583,
+          "median_wal_bytes": 328336
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 55.738749999999996,
+          "max_ms": 56.457542,
+          "median_wal_bytes": 328336
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 55.25125,
+          "max_ms": 55.523542,
+          "median_wal_bytes": 328328
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 55.330334,
+          "max_ms": 55.652917,
+          "median_wal_bytes": 328328
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 47.198249999999994,
+          "owner_state_max_ms": 47.907292
+        }
+      ],
+      "ssr_ms": 67.891125,
+      "ssr_html_bytes": 1375483
+    },
+    {
+      "case": "emoji-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 50.429792,
+          "max_ms": 51.114083,
+          "median_wal_bytes": 163336
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 49.790833,
+          "max_ms": 50.265208,
+          "median_wal_bytes": 163336
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 49.540209000000004,
+          "max_ms": 50.098291,
+          "median_wal_bytes": 163328
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 50.564541,
+          "max_ms": 140.814875,
+          "median_wal_bytes": 163336
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 30.142083,
+          "owner_state_max_ms": 30.973625000000002
+        }
+      ],
+      "ssr_ms": 52.342332999999996,
+      "ssr_html_bytes": 2419395
+    },
+    {
+      "case": "poem_tabs-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 60.491166,
+          "max_ms": 63.06070900000001,
+          "median_wal_bytes": 346048
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 59.386624999999995,
+          "max_ms": 60.386500000000005,
+          "median_wal_bytes": 346072
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 60.376125,
+          "max_ms": 60.783084,
+          "median_wal_bytes": 346672
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 60.257,
+          "max_ms": 60.5355,
+          "median_wal_bytes": 346072
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 51.907833000000004,
+          "owner_state_max_ms": 52.516208
+        }
+      ],
+      "ssr_ms": 74.962291,
+      "ssr_html_bytes": 982174
+    },
+    {
+      "case": "tiny_blocks-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 288.172833,
+          "max_ms": 304.433792,
+          "median_wal_bytes": 517768
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 284.409167,
+          "max_ms": 307.647542,
+          "median_wal_bytes": 517768
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 283.875292,
+          "max_ms": 1429.5385,
+          "median_wal_bytes": 517768
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 279.043042,
+          "max_ms": 286.79758300000003,
+          "median_wal_bytes": 517776
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 260.23512500000004,
+          "owner_state_max_ms": 261.302542
+        },
+        {
+          "revisions": 10,
+          "owner_state_median_ms": 2512.379708,
+          "owner_state_max_ms": 2533.027667
+        },
+        {
+          "revisions": 100,
+          "owner_state_median_ms": 25792.306291999997,
+          "owner_state_max_ms": 25850.116209
+        }
+      ],
+      "ssr_ms": 1099.286917,
+      "ssr_html_bytes": 9019377
+    },
+    {
+      "case": "escaping-200000",
+      "saves": {
+        "noop": {
+          "samples": 5,
+          "median_ms": 27.166708,
+          "max_ms": 28.117209,
+          "median_wal_bytes": 116416
+        },
+        "begin": {
+          "samples": 5,
+          "median_ms": 26.352,
+          "max_ms": 27.458625,
+          "median_wal_bytes": 116392
+        },
+        "middle": {
+          "samples": 5,
+          "median_ms": 26.00225,
+          "max_ms": 27.323708,
+          "median_wal_bytes": 116392
+        },
+        "end": {
+          "samples": 5,
+          "median_ms": 26.039375,
+          "max_ms": 27.540834,
+          "median_wal_bytes": 116400
+        }
+      },
+      "history": [
+        {
+          "revisions": 1,
+          "owner_state_median_ms": 25.341167000000002,
+          "owner_state_max_ms": 26.390083
+        }
+      ],
+      "ssr_ms": 54.538167,
+      "ssr_html_bytes": 1735722
+    }
+  ],
+  "browser": {
+    "status": "PASS",
+    "reader_scenes": 42,
+    "editor_scenes": 84,
+    "browser": {
+      "protocolVersion": "1.3",
+      "product": "Chrome/157.0.8103.78",
+      "revision": "@4b3d0dabb8250b6f152d2d85d79e7706e309d087",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "jsVersion": "15.7.112.43"
+    },
+    "not_run": [
+      "physical mobile hardware",
+      "OS Telex/VNI IME",
+      "Safari/Firefox",
+      "browser process RSS/total WASM memory",
+      "OS/PostgreSQL page-cache cold restart"
+    ]
+  },
+  "compression": [
+    {
+      "method": "default",
+      "status": "PASS",
+      "total_bytes": 30965760
+    },
+    {
+      "method": "pglz",
+      "status": "PASS",
+      "total_bytes": 30965760
+    },
+    {
+      "method": "lz4",
+      "status": "PASS",
+      "total_bytes": 43933696
+    },
+    {
+      "existing_vs_new_after_alter": [
+        [
+          1,
+          "pglz"
+        ],
+        [
+          2,
+          "lz4"
+        ]
+      ]
+    }
+  ]
+}
