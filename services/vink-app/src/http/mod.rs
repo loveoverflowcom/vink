@@ -9,6 +9,7 @@ pub mod contract;
 mod drafts;
 mod error;
 mod health;
+mod moderation_queue;
 mod ssr;
 
 use std::net::SocketAddr;
