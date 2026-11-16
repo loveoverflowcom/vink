@@ -1,5 +1,7 @@
 # Các quyết định và lộ trình kiến trúc Vink
 
+Lựa chọn kỹ thuật từ các PR 15–16/11/2026 được đối soát tại [registry bàn giao](../development/verification-reconciliation-20261116.md#quyết-định-toml-mới): 7 proposal TOML **PENDING**, không đổi trạng thái D-ID hoặc phê duyệt sản phẩm.
+
 **Phiên bản:** 0.5 · **Ngày:** 30/10/2026, cập nhật 03/11/2026, 10/11/2026 và 11/11/2026 · **Trạng thái:** Decision log đề xuất. Không mục nào tự chuyển thành Accepted chỉ vì được viết trong tài liệu này; mục được chủ sản phẩm chốt ghi rõ ngày và phạm vi.
 
 **Cập nhật 10/11/2026:** chủ sản phẩm chốt 15 quyết định nghiệp vụ (`PRODUCT-DECISIONS-20261110`).

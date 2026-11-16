@@ -27,8 +27,8 @@ those registries rather than duplicating long status narratives across skills.
   `packages/store-postgres` (shared pool/migrator) and `services/postgres` (App `vink` and
   Identity `vink_identity` databases with split migrator/runtime roles). Public reads support
   strong body-hash `ETag`/`304` (`READ-01`) and a browser-tab memory-only cache-first pilot on Web
-  (`READ-02`; CMP/native not implemented). `vink-worker` runs the discussion outbox and hourly
-  retention.
+  (`READ-02`; IndexedDB adapter exists behind a disabled rollout gate; CMP/native not implemented).
+  `vink-worker` runs the discussion outbox and hourly retention.
 - **UI System (`packages/ui-system`, `packages/vink-patterns`):** one token source in
   `shared/tokens.json` generating CSS/Rust/Kotlin (`cargo xtask ui-tokens`), Leptos `vink-ui`,
   Compose Multiplatform `:ui`, shared primitives/state/navigation vectors (UIS-02..05) and DTO-free
@@ -194,7 +194,9 @@ pure decisions (the lane fails if a named replay test is not selected); locking,
 I/O stay in `postgres`; `expressions` verifies its isolated playback model and Rust replay; `kani`
 runs the owner-local manifests and requires every declared harness to verify. The `discussion` lane
 also runs the target specifications of `behavior/target` (typecheck, simulation, scenarios, vector
-drift, negative controls) and canonical M1/M3/M4 governance in `behavior/publication`. The remaining target actions have no Rust replay. Every crate inherits
+drift, negative controls) and canonical M1/M3/M4 governance in `behavior/publication`. The remaining target actions have no Rust replay. The same lane checks the owner-local Web
+`ReadOwner/PageChain` [model and production replay](apps/vink-web/behavior/README.md);
+this does not verify browser, storage or authority adapters. Every crate inherits
 `unsafe_code = "forbid"`, and a `compile_fail` doctest needs a compiling lawful twin because stable
 rustdoc ignores its error code. `specs/behavior` and a generic behavior lane do not exist. Do not
 add a runner merely to validate documentation or skills. Keep `AGENTS.md` under 24,000 bytes so all

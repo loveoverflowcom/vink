@@ -1,5 +1,7 @@
 # Rà soát và chuyển Decision Registry sang TOML
 
+**Lượt 16/11/2026:** [đối soát 20 PR](verification-reconciliation-20261116.md#quyết-định-toml-mới) thêm 7 proposal kiến trúc `VDR-*`, đều **PENDING**, không signoff/import lại legacy. Các bảng cutover bên dưới giữ phạm vi lịch sử của lượt nhập.
+
 Lát cắt của [#164](https://github.com/loveoverflowcom/vink/issues/164) khảo sát
 `develop@0c5bb275c15342607e6701f14019c07e269c2a68`. Lát cắt nhập lại tại
 `develop@af3c34bd624be18d404bd5789620759cae0b0ddb` sau khi #165 thêm §7 quản trị kiểm duyệt. Ở commit

@@ -16,6 +16,10 @@ lý do và các quyết định ngoài phạm vi nhập. Các registry phát tri
 
 ## Tra cứu theo phạm vi công việc
 
+[Đối soát PR 15–16/11/2026](../docs/development/verification-reconciliation-20261116.md#quyết-định-toml-mới)
+ghi 7 proposal kiến trúc mới cho read lifecycle, storage, paging, author feedback, save projection
+và action surfaces. Tất cả **PENDING**; implementation đã merge không tự cấp signoff.
+
 ```bash
 cargo xtask decision --help
 cargo xtask decision query --domain publication

@@ -1,0 +1,16 @@
+{
+  "format": "vink-target-spec-counterexample-v1",
+  "status": "PURE_CORE_CONFORMANCE",
+  "quint_version": "0.33.1",
+  "model": "../../../../apps/vink-web/behavior/read-lifecycle.qnt",
+  "invariant": "ticketFence",
+  "command": ["quint","run","../../../../apps/vink-web/behavior/read-lifecycle.qnt","--backend=typescript","--seed=41","--step=unfencedStep","--max-steps=4","--max-samples=1","--invariant=ticketFence","--verbosity=1"],
+  "violation": [
+    {"name": "unfencedStep", "steps": [
+      {"command":{"input":0,"intent":"initial","next":0,"op":"begin","rows":[],"scope":1,"ticket":0},"outcome":"started","state":{"current":{"chain":{"cursors":[],"generation":0,"ids":[],"next":0,"pages":0},"owner":{"disposed":false,"flight":1,"generation":0,"scope":1},"serial":1,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":0,"op":"remount","rows":[],"scope":1,"ticket":0},"outcome":"remounted","state":{"current":{"chain":{"cursors":[],"generation":0,"ids":[],"next":0,"pages":0},"owner":{"disposed":false,"flight":0,"generation":0,"scope":1},"serial":1,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":0,"op":"begin","rows":[],"scope":1,"ticket":0},"outcome":"started","state":{"current":{"chain":{"cursors":[],"generation":0,"ids":[],"next":0,"pages":0},"owner":{"disposed":false,"flight":2,"generation":0,"scope":1},"serial":2,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1},"2":{"generation":0,"input":0,"intent":"initial","scope":1}}}}},
+      {"command":{"input":0,"intent":"initial","next":0,"op":"page","rows":[1],"scope":1,"ticket":1},"outcome":"accepted","state":{"current":{"chain":{"cursors":[],"generation":1,"ids":[1],"next":0,"pages":1},"owner":{"disposed":false,"flight":2,"generation":0,"scope":1},"serial":2,"tickets":{"1":{"generation":0,"input":0,"intent":"initial","scope":1},"2":{"generation":0,"input":0,"intent":"initial","scope":1}}}}}
+    ]}
+  ]
+}

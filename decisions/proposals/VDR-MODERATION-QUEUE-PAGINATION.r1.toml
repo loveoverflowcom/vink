@@ -1,0 +1,19 @@
+version = 1
+id = "VDR-MODERATION-QUEUE-PAGINATION"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "moderation"
+title = "Trang hữu hạn theo quyền hiện tại cho ca và phản đối"
+resolution = "Hai route /moderation/works/queue/page và /moderation/appeals/page trả items/next_cursor/authority_key, mặc định 50 tối đa 100, oldest-first (created_at,id). Directory và rows cùng transaction REPEATABLE READ READ ONLY; lọc capability/recusal/public-active trước LIMIT+1. Cursor gắn actor/queue/limit, không giữ quyền; authority fingerprint đổi làm Web bỏ chuỗi cũ kể cả HTTP 200. SET LOCAL plan_cache_mode=force_custom_plan chỉ trong transaction đọc. Route legacy giữ array hữu hạn + Link; bundle cũ bỏ qua Link nên chỉ thấy trang đầu. Rollout server/migration trước bundle và tải lại tab duyệt cũ; không nhận tương thích chức năng đầy đủ."
+rationale = "PR #223 tại develop@6e07806; docs/development/moderation-runtime.md §10, http/moderation_queue.rs, persistence/moderation.rs, persistence/appeals.rs và pages/moderation.rs. Không đổi governance/expiry (O-18 OPEN), không offline moderation. Request replay thuần không thay SQL authority snapshot hoặc browser session tests."
+requires = [
+    "ADM-01@r1",
+    "ADM-05@r1",
+]
+related_ids = [
+    "MOD-09",
+    "MOD-11",
+    "O-18",
+]

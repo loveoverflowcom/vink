@@ -3,9 +3,8 @@
 //! seams share one local/CI command.
 //! npm installs locked tool dependencies, never Rust toolchains or a model-checker backend.
 //! The canonical publication model and remaining target specifications share the Quint pin.
-//! Publication author actions, evaluator/moderation decisions and scripted mock vectors have
-//! scoped Rust replay; delete/remove lifecycle actions and the remaining target models have
-//! model evidence only.
+//! Publication, moderation and Web read-lifecycle models replay their production pure seams.
+//! The remaining target models have model evidence only. No SQL/browser claim follows.
 
 use std::process::Command;
 
@@ -89,7 +88,7 @@ pub fn verify(report: &mut Report) -> bool {
     let mut target = Command::new("node");
     target.current_dir(root.join(TARGET_DIR)).arg("verify.mjs");
     if !report.step(
-        "discussion: publication canonical model + remaining target specifications and vector drift",
+        "discussion: publication/Web read lifecycle + remaining target specifications and vector drift",
         || {
             process::run(
                 &mut target,
@@ -105,7 +104,7 @@ pub fn verify(report: &mut Report) -> bool {
         command.args(FILTERS);
         command
     };
-    report.step(
+    if !report.step(
         "discussion: production Rust structural tests and trace replays",
         || {
             process::require_tests(&mut replay(), "discussion replays", &REPLAYS)?;
@@ -114,5 +113,29 @@ pub fn verify(report: &mut Report) -> bool {
                 "replay model inputs through the real Rust decisions",
             )
         },
-    )
+    ) {
+        return false;
+    }
+    let web_replay = || {
+        let mut command = cargo(&root);
+        command.args([
+            "test",
+            "--locked",
+            "-p",
+            "vink-web",
+            "--lib",
+            "--features",
+            "ssr",
+            "--",
+            "read_lifecycle::",
+        ]);
+        command
+    };
+    report.step("discussion: Web read-lifecycle production replay", || {
+        process::require_tests(&mut web_replay(), "Web read lifecycle replays", &[
+            "read_lifecycle::replay::quint_read_lifecycle_inputs_replay_through_production",
+            "read_lifecycle::replay::quint_read_lifecycle_counterexamples_are_refused_by_production",
+        ])?;
+        process::run(&mut web_replay(), "replay read-lifecycle inputs through ReadOwner/PageChain")
+    })
 }

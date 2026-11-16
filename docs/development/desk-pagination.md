@@ -1,5 +1,7 @@
 # Bàn viết: tìm toàn bộ nháp và phân trang (#201)
 
+**Consumer hiện hành sau #221/#222:** Web đọc `/api/v1/author/works`, giữ paging 24/240 nhưng đã bỏ resume/Recent/1. `/drafts` giữ compatibility; mô tả Viết tiếp ở evidence #201 bên dưới là lịch sử. [Owner hiện tại](desk-author-feedback.md). Lựa chọn kỹ thuật được ghi để review tại [VDR-DESK-PAGINATION@r1](../../decisions/proposals/VDR-DESK-PAGINATION.r1.toml), **PENDING**, không signoff mới.
+
 Từ #214, consumer Bàn viết dùng [author-work read-model](desk-author-feedback.md) để gồm cả
 tác phẩm không có draft và trạng thái/counters công khai. API `/drafts` và bằng chứng lịch sử
 #201 dưới đây giữ nguyên phạm vi; không dùng chúng thay bằng chứng #214.

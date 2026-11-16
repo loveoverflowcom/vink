@@ -1,0 +1,15 @@
+version = 1
+id = "VDR-ACTION-SURFACES"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "ui-system"
+title = "ActionSurface opt-in độc lập với trạng thái selected"
+resolution = "CHOICE-01 B dùng enum ActionSurface Standard/Tonal chung cho icon/toggle Web và CMP; Standard là mặc định, ButtonVariant giữ nguyên. CHOICE-02 B dùng neutral container/content token alias từ palette hiện hành; selected/pending/disabled là trục riêng. TooltipIconButton và EndorsementAction chuyển tiếp surface, giữ ACK-only guards. Không suy app page đã migrate từ primitive/preview. PR #240 chỉ thêm LayoutSpec/tests cho #225; glyph lọc/thẻ và UI adoption còn thiếu, CHOICE-01/02 của #225 còn dự kiến."
+rationale = "PR #228/#240 tại develop@6e07806; packages/ui-system/shared/components.md, packages/ui-system/leptos/src/action.rs, CMP VinkActions.kt, docs/design/action-surfaces-desk-discovery-225.md. Đây là hợp đồng renderer đã có source, không visual acceptance/native product app. Không đổi quyền hay mutation semantics; không cần model Quint riêng cho màu/nền."
+related_ids = [
+    "UIS-02",
+    "UIS-05",
+    "UX-01",
+]

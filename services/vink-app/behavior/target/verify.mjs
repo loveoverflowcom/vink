@@ -97,7 +97,9 @@ function fixture(name, header, lists) {
     `  ${JSON.stringify(key)}: ${JSON.stringify(item)}`).concat(body).join(',\n')}\n}\n`;
   JSON.parse(content);
   const canonical = ['publication-', 'tombstone-', 'governance-'].some(prefix => name.startsWith(prefix));
-  const path = join(directory, canonical ? '../publication' : '.', name);
+  const owner = name.startsWith('read-lifecycle-') ? '../../../../apps/vink-web/behavior'
+    : canonical ? '../publication' : '.';
+  const path = join(directory, owner, name);
   if (write) {
     writeFileSync(path, content);
     console.log(`WRITE ${name}`);
@@ -120,6 +122,36 @@ const at = (steps, outcome, nth = 0) => {
 const pair = (list, ...key) => list.find(entry => JSON.stringify(entry.key) === JSON.stringify(key)).value;
 
 const models = [
+  {
+    file: '../../../../apps/vink-web/behavior/read-lifecycle.qnt', safe: 'readSafe',
+    bounds: 'one owner, scopes=1..2, requests<=12, row/cursor IDs=1..3',
+    fields: ['current'],
+    scenarios: [
+      ['aba_dispose_remount_invalidate', 'fencesStep', 21],
+      ['paging_supersede_restart', 'pagingStep', 31],
+    ],
+    check(all) {
+      reached(all.flat(), ['started', 'blocked', 'accepted', 'rejected', 'finished', 'ignored',
+        'changed', 'disposed', 'remounted'], 'read lifecycle');
+      const [fences, pages] = all;
+      assert.equal(fences[14].outcome, 'rejected', 'old request must not survive remount');
+      assert.deepEqual(pages[23].state.current.chain.ids, [3], 'head must discard old tail');
+      assert.deepEqual(pages[26].state.current.chain.ids, [1, 3], 'discarded ID can reappear');
+      assert.equal(pages.at(-1).state.current.chain.next, 0, 'empty terminal head is valid');
+    },
+    mutants: [
+      ['read-lifecycle-unfenced-counterexample.json', 'unfencedStep', 4, 'ticketFence', steps => {
+        assert.equal(steps.at(-1).outcome, 'accepted');
+        assert.equal(steps.at(-1).command.ticket, 1);
+        assert.equal(steps.at(-1).state.current.owner.flight, 2);
+      }],
+      ['read-lifecycle-overlap-counterexample.json', 'uncheckedPageStep', 5, 'pageIntegrity', steps => {
+        assert.equal(steps.at(-1).outcome, 'accepted');
+        assert.equal(steps.at(-1).state.current.chain.next, 2);
+        assert.deepEqual(steps.at(-1).state.current.chain.ids, [1]);
+      }],
+    ],
+  },
   {
     file: '../publication/publication.qnt', safe: 'publicationSafe', bounds: 'revisions<=4, jobs<=8, policies<=2',
     fields: ['revs', 'jobs', 'audience', 'desired', 'intended', 'pointer', 'lifecycle', 'generation', 'policy'],
@@ -456,7 +488,8 @@ try {
     simulation(model.file, 'step', maxSteps, samples, model.safe);
     console.log(`PASS ${model.file}: typecheck; simulation ${model.safe} seed=${seed}, samples=${samples}, max_steps=${maxSteps}, ${model.bounds}`);
     const name = basename(model.file, '.qnt');
-    const modelStatus = ['publication', 'tombstone', 'governance'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
+    const modelStatus = name === 'read-lifecycle' ? 'PURE_CORE_CONFORMANCE'
+      : ['publication', 'tombstone', 'governance'].includes(name) ? 'PARTIAL_PURE_CORE_CONFORMANCE' : status;
     const scenarios = model.scenarios.map(([scenario, step, length]) => {
       const out = join(temporary, `${name}-${scenario}.itf.json`);
       simulation(model.file, step, length, 1, model.safe, out);

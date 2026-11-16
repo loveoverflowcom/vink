@@ -162,6 +162,10 @@ impl PageChain {
 }
 
 #[cfg(test)]
+#[path = "read_lifecycle_replay.rs"]
+mod replay;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]

@@ -1,0 +1,15 @@
+version = 1
+id = "VDR-DESK-PAGINATION"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "discovery"
+title = "Phân trang và tìm toàn corpus tác phẩm của tác giả"
+resolution = "Giữ /api/v1/drafts và caller không tham số Recent/100; thêm query/sort/keyset trước limit+1, cursor gắn owner/query/sort/limit. desk_title_key generated/stored duy trì semantics Unicode/NFD/Đ/case/whitespace/untitled. Web hiện đọc /api/v1/author/works qua namespace cursor riêng, 24 mục/trang, tối đa 10 trang/phần; continuation rõ ràng. Mỗi response là snapshot riêng, không hứa snapshot xuyên trang; refresh thay head/tail. Không còn Recent/1 và resume block sau #221. Không đưa danh sách riêng vào public storage."
+rationale = "PR #211/#221/#222, develop@6e07806; docs/development/desk-pagination.md và desk-author-feedback.md; domain/draft_query.rs, persistence/drafts.rs, persistence/author_works.rs, pages/desk.rs. Stored key cần backfill/rewrite; corpus lớn vẫn có thể seq scan, không SLO. Chọn theo hiện trạng kỹ thuật, không đổi phạm vi công khai/quyền sở hữu."
+requires = ["D-03@r1"]
+related_ids = [
+    "INV-08",
+    "WR-01",
+]

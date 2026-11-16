@@ -1,0 +1,18 @@
+version = 1
+id = "VDR-PUBLIC-SNAPSHOT-STORAGE"
+revision = 1
+
+[content]
+kind = "architecture"
+domain = "platform"
+title = "Adapter IndexedDB công khai dưới gate tắt"
+resolution = "Chỉ lưu envelope đầy đủ của WorkList/publication công khai, không lưu nháp, phiên, own discussion hay moderation. Commit data/cursor/metadata cùng transaction; durable epoch, database incarnation và sequence fence writer/restore cũ sau clear/purge. Broadcast là gợi ý. ACK durable chỉ sau transaction.oncomplete; lỗi storage fallback, không thành authoritative removal. Giữ giới hạn kỹ thuật 32 row/4 MiB logical UTF-8, record 512 KiB, queue 8 pending + 1 executing. ENABLED=false và display policy=None cho tới khi chốt policy và kiểm rollout. Không Service Worker/cold offline launch."
+rationale = "PR #215, đối chiếu apps/vink-web/src/public_persistence.rs, apps/vink-web/public-cache/indexeddb.js và docs/development/public-read-freshness.md tại develop@6e07806. VDR-PUBLIC-OFFLINE-AGE@r1 vẫn PENDING; 24 giờ không thay policy RAM 15 phút. Account clearing/thiết bị dùng chung và UX expired còn OPEN. Các giới hạn byte là kỹ thuật, không là giới hạn tác phẩm hoặc SLA; model read-lifecycle không chứng minh IndexedDB transaction."
+requires = [
+    "READ-02-CHOICE-01@r1",
+    "READ-02-CHOICE-03@r1",
+]
+related_ids = [
+    "D-03",
+    "VDR-PUBLIC-OFFLINE-AGE",
+]

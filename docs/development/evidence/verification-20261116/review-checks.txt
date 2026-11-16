@@ -1,0 +1,79 @@
+Review #241/#243 — 16/11/2026
+
+Environment: macOS arm64, Rust 1.99.1, Node 26.12.0, PostgreSQL 17.11 (Homebrew).
+CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 CARGO_INCREMENTAL=0.
+PostgreSQL: isolated loopback cluster, sqlx creates per-test databases.
+
+Command: cargo xtask verify quick
+Input commit: a78d4ca43074085152a5c0f0de859095d02f4801
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.78s
+test result: ok. 332 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.08s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.32s
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+test result: ok. 231 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+test result: ok. 81 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.71s
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (decisions, skills, links, boundaries, fonts, editor packages)
+
+Command: cargo xtask verify discussion
+Input commit: a78d4ca43074085152a5c0f0de859095d02f4801
+test result: ok. 107 passed; 0 failed; 0 ignored; 0 measured; 225 filtered out; finished in 0.05s
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 227 filtered out; finished in 0.00s
+verification summary
+  PASS  discussion: Node.js 22+ and npm
+  PASS  discussion: locked Quint dependencies
+  PASS  discussion: Quint structure/lifecycle/reaction/endorsement/admission/outbox/post-review models and trace drift
+  PASS  discussion: publication/Web read lifecycle + remaining target specifications and vector drift
+  PASS  discussion: production Rust structural tests and trace replays
+  PASS  discussion: Web read-lifecycle production replay
+
+Command: cargo test --locked -p vink-app --test postgres server_html_has_public_content_and_never_private_drafts -- --exact
+Before: d31fa4090f69e696083e685fcf1f72dbfb81f93b, stale count assertion FAIL.
+After: 914d30337ecfb6cd2a42a4bd43556e8315a41bd1, updated count assertion PASS.
+Integrated input: 1300d8774bf67becabbe53b39bac036347b30126, PASS.
+before: test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 197 filtered out; finished in 0.49s
+after: test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 197 filtered out; finished in 0.36s
+integrated: test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 197 filtered out; finished in 0.26s
+
+Decision validate/refs/query (target/debug/xtask built from this checkout): PASS.
+125 revisions; 79 refs; 0 problems. All 7 new VDR proposals pending_only/PENDING.
+Snapshot: 6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b
+8 fingerprints from source-manifest.json: unchanged.
+Full local postgres/browser/CMP/Kani/Apalache/deployment: NOT_RUN in this review.
+GitHub CI evidence is separate; the initial d31fa40 run failed on the count assertion.
+
+Follow-up CMP cancellation test
+Input commit: 3095385ddda6ac2f99908932edadac4967a3d85e
+Command: ./gradlew :diagnostics:desktopTest --tests vink.ui.preview.ContentImagesTest --console=plain
+Environment: macOS arm64, Microsoft OpenJDK 17.0.19
+XML: vink.ui.preview.ContentImagesTest, tests=4, failures=0, errors=0, skipped=0
+BUILD SUCCESSFUL in 1m 5s
+
+Command: cargo xtask verify quick
+Integrated input commit: 6ee36ccf03e4d7e6699d9d327760eddd3b389ad7
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (decisions, skills, links, boundaries, fonts, editor packages)
