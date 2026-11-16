@@ -160,6 +160,12 @@ impl EditorSession {
     pub fn in_flight(&self) -> Option<SaveTicket> {
         self.in_flight
     }
+
+    /// Whether edits occurred after the currently in-flight save ticket was captured.
+    pub fn has_pending_newer_edits(&self) -> bool {
+        self.in_flight
+            .is_some_and(|ticket| self.edits != ticket.edit)
+    }
 }
 
 /// What a leave guard protects: one resource (the text) or several (text and tags).
@@ -261,6 +267,52 @@ impl DraftSession {
             None
         };
         DraftTicket { text, tags }
+    }
+
+    fn manual_save_parts(&self) -> (bool, bool) {
+        // The unified action is pending until both replies settle. Shortcuts and form submits
+        // follow the same rule as the toolbar; explicit recovery/leave use their own entrypoints.
+        if !self.in_flight().is_empty() {
+            return (false, false);
+        }
+        let text_needs = (self.text.has_unsaved_text()
+            || matches!(self.text.status(), SaveStatus::Failed(_)))
+            && self.text.can_save();
+        let tags_needs = self
+            .tags
+            .as_ref()
+            .is_some_and(|tags| matches!(tags.status(), TagStatus::Unsaved | TagStatus::Failed(_)));
+        (text_needs, tags_needs)
+    }
+
+    /// Whether an author-triggered manual save (`Lưu`, `Ctrl/Cmd+S`, title `Enter`) should issue
+    /// any write. Clean and pending activations are ignored, and a conflict or refusal only
+    /// blocks the affected part.
+    pub fn needs_manual_save(&self) -> bool {
+        let (text_needs, tags_needs) = self.manual_save_parts();
+        text_needs || tags_needs
+    }
+
+    /// Starts writes only for parts that actually need manual saving or retrying, returning `None`
+    /// when neither part can be saved or when any part is in flight. Leaves
+    /// [`Self::begin_save`] intact for publication, recovery and leave callers.
+    pub fn begin_manual_save(&mut self) -> Option<DraftTicket> {
+        let (text_needs, tags_needs) = self.manual_save_parts();
+        let text = if text_needs {
+            self.text.begin_save()
+        } else {
+            None
+        };
+        let tags = if tags_needs {
+            self.tags.as_mut().and_then(TagSession::begin_save)
+        } else {
+            None
+        };
+        if text.is_none() && tags.is_none() {
+            None
+        } else {
+            Some(DraftTicket { text, tags })
+        }
     }
 
     /// Whether "Lưu" can start anything now.
@@ -925,5 +977,89 @@ mod tests {
         assert!(guard.request(&d, "/"));
         let sent = guard.save_and_leave(&mut d).unwrap();
         assert!(sent.tags.is_none());
+    }
+
+    #[test]
+    fn manual_save_skips_clean_pending_conflict_and_unchanged_refusal() {
+        use crate::contract::{TagRefusal, TagRefusalCode};
+        use crate::tag_state::TagRejection;
+
+        // Clean draft (with and without tags loaded): never starts a redundant write.
+        let mut clean = draft(false, false);
+        assert!(!clean.needs_manual_save());
+        assert_eq!(clean.begin_manual_save(), None);
+        assert!(
+            clean.can_save(),
+            "legacy can_save remains intact for publication/leave callers"
+        );
+
+        // Dirty tags only: starts only tags, never text.
+        let mut dirty_tags = draft(false, true);
+        assert!(dirty_tags.needs_manual_save());
+        let tag_only = dirty_tags.begin_manual_save().unwrap();
+        assert!(tag_only.text.is_none());
+        assert!(tag_only.tags.is_some());
+        // Duplicate manual trigger while pending issues nothing.
+        assert!(!dirty_tags.needs_manual_save());
+        assert_eq!(dirty_tags.begin_manual_save(), None);
+
+        // Text in flight + edits while pending -> stays unsaved after ACK and tracks newer edits.
+        let mut newer = draft(true, false);
+        let t1 = newer.begin_manual_save().unwrap();
+        assert!(!newer.text.has_pending_newer_edits());
+        newer.text.edited();
+        assert!(newer.text.has_pending_newer_edits());
+        // Already pending text does not start twice.
+        assert!(!newer.needs_manual_save());
+        assert_eq!(newer.begin_manual_save(), None);
+        // Settling old ticket with newer local edit leaves text Unsaved and allows saving the newer edit.
+        newer.text.save_succeeded(t1.text.unwrap(), 2);
+        assert_eq!(newer.text.status(), SaveStatus::Unsaved);
+        assert!(newer.needs_manual_save());
+
+        // The pending toolbar and the shortcut agree even when the other part
+        // becomes dirty during a tag-only request.
+        let mut mixed = draft(false, true);
+        let tags_ticket = mixed.begin_manual_save().unwrap().tags.unwrap();
+        mixed.text.edited();
+        assert!(!mixed.needs_manual_save());
+        assert_eq!(mixed.begin_manual_save(), None);
+        let tags = mixed.tags.as_mut().unwrap();
+        let confirmed = tags.submitted(tags_ticket).unwrap().clone();
+        tags.save_succeeded(tags_ticket, 2, confirmed);
+        let text_only = mixed.begin_manual_save().unwrap();
+        assert!(text_only.text.is_some());
+        assert!(text_only.tags.is_none());
+
+        // Refused tags with clean text: never re-sends unchanged refused tags;
+        // once text is also edited, saves only text without re-submitting refused tags.
+        let mut refused = draft(false, true);
+        let t_ref = refused.begin_manual_save().unwrap();
+        refused.tags.as_mut().unwrap().save_rejected(
+            t_ref.tags.unwrap(),
+            TagRejection::Refused(TagRefusal {
+                code: TagRefusalCode::Retired,
+                field: Some("themes".into()),
+                tag_id: Some("ky-uc".into()),
+                successor_id: None,
+            }),
+        );
+        assert!(!refused.needs_manual_save());
+        assert_eq!(refused.begin_manual_save(), None);
+        refused.text.edited();
+        assert!(refused.needs_manual_save());
+        let text_only = refused.begin_manual_save().unwrap();
+        assert!(text_only.text.is_some());
+        assert!(text_only.tags.is_none());
+
+        // Text conflict: never blind-retries text via manual save.
+        let mut conflict = draft(true, false);
+        let t_conf = conflict.begin_manual_save().unwrap();
+        conflict.text.save_rejected(
+            t_conf.text.unwrap(),
+            SaveRejection::Conflict { current_version: 9 },
+        );
+        assert!(!conflict.needs_manual_save());
+        assert_eq!(conflict.begin_manual_save(), None);
     }
 }

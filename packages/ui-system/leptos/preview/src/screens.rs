@@ -199,16 +199,86 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                     } />
                 </Surface>
             }.into_any(),
-            "screen.editor" => view! {
-                <Heading level=HeadingLevel::H1 role=TypeRole::Title>"Bản nháp — mẫu chrome"</Heading>
-                <EditorToolbar status=format!("Mẫu · {scenario} · Không kết nối lưu") status_token=scenario.clone()>
-                    <Button variant=ButtonVariant::Text on_press=move |_| record("editor → preview (sample)")>"Xem trước"</Button>
-                    <Button state=blocked.clone() on_press=move |_| { record("editor → save intent (sample)"); message.set("Mẫu · Chỉ ghi intent, chưa lưu lên máy chủ.".into()); }>"Lưu nháp"</Button>
-                </EditorToolbar>
-                <TextField id="sample-title" label="Tiêu đề" value=title max_length=200 on_input=move |e: TextInput| title.set(e.value) />
-                <TextArea id="sample-body" label="Nội dung — controlled specimen" value=input on_input=move |e: TextInput| input.set(e.value) />
-                <Text role=TypeRole::Caption>"Mẫu không có CodeMirror, backend hay native editor parity. Editor app được kiểm riêng."</Text>
-            }.into_any(),
+            "screen.editor" => {
+                let sample_token = match scenario.as_str() {
+                    "dirty" => "unsaved",
+                    "pending" => "saving",
+                    "error" | "uncertain" => "failed",
+                    "conflict" => "conflict",
+                    _ => "saved",
+                }
+                .to_string();
+                let sample_problem = match scenario.as_str() {
+                    "uncertain" => Some("uncertain".to_string()),
+                    "error" => Some("rejected".to_string()),
+                    "conflict" => Some("conflict".to_string()),
+                    _ => None,
+                };
+                let sample_label = match scenario.as_str() {
+                    "dirty" => "Mẫu · Chưa lưu (chưa nối máy chủ)".to_string(),
+                    "pending" => "Mẫu · Đang lưu… (chưa nối máy chủ)".to_string(),
+                    "uncertain" => "Mẫu · Chưa xác nhận lưu.".to_string(),
+                    "error" => "Mẫu · Chưa lưu được.".to_string(),
+                    "conflict" => "Mẫu · Có bản mới hơn trên máy chủ.".to_string(),
+                    _ => format!("Mẫu · {scenario} · Không kết nối lưu"),
+                };
+                let action_label = match scenario.as_str() {
+                    "dirty" => Some("Lưu nháp"),
+                    "pending" => Some("Đang lưu…"),
+                    "error" | "uncertain" => Some("Thử lưu lại"),
+                    "conflict" => Some("Xử lý xung đột"),
+                    _ => None,
+                };
+                let action_variant = if matches!(scenario.as_str(), "error" | "uncertain" | "conflict") {
+                    ButtonVariant::Tonal
+                } else {
+                    ButtonVariant::Filled
+                };
+                let action_state = blocked.clone();
+                let save_action = action_label.map(|label| -> ChildrenFn {
+                    let action_state = action_state.clone();
+                    std::sync::Arc::new(move || {
+                        view! {
+                            <Button variant=action_variant state=action_state.clone() on_press=move |_| {
+                                record("editor → save intent (sample)");
+                                message.set("Mẫu · Chỉ ghi intent, chưa lưu lên máy chủ.".into());
+                            }>{label}</Button>
+                        }
+                        .into_any()
+                    })
+                });
+                let toolbar = match save_action {
+                    Some(save_action) => view! {
+                        <EditorToolbar
+                            status=sample_label
+                            status_token=sample_token
+                            status_problem=Signal::stored(sample_problem)
+                            save_action=save_action
+                        >
+                            <Button variant=ButtonVariant::Text on_press=move |_| record("editor → preview (sample)")>"Xem trước"</Button>
+                        </EditorToolbar>
+                    }
+                    .into_any(),
+                    None => view! {
+                        <EditorToolbar
+                            status=sample_label
+                            status_token=sample_token
+                            status_problem=Signal::stored(sample_problem)
+                        >
+                            <Button variant=ButtonVariant::Text on_press=move |_| record("editor → preview (sample)")>"Xem trước"</Button>
+                        </EditorToolbar>
+                    }
+                    .into_any(),
+                };
+                view! {
+                    <Heading level=HeadingLevel::H1 role=TypeRole::Title>"Bản nháp — mẫu chrome"</Heading>
+                    {toolbar}
+                    <TextField id="sample-title" label="Tiêu đề" value=title max_length=200 on_input=move |e: TextInput| title.set(e.value) />
+                    <TextArea id="sample-body" label="Nội dung — controlled specimen" value=input on_input=move |e: TextInput| input.set(e.value) />
+                    <Text role=TypeRole::Caption>"Mẫu không có CodeMirror, backend hay native editor parity. Editor app được kiểm riêng."</Text>
+                }
+                .into_any()
+            },
             "screen.me" => view! {
                 <Heading level=HeadingLevel::H1>"Tôi"</Heading>
                 <Avatar kind=AvatarKind::Account />

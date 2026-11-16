@@ -548,7 +548,7 @@ a {
 }
 
 /* Focus moved by keyboard is not hidden under the sticky toolbar. */
-.vk-editor :is(input, button) {
+.vk-editor :is(input, button, summary) {
   scroll-margin-top: 6rem;
 }
 
@@ -727,47 +727,84 @@ a {
   background: var(--vk-surface-container-low);
 }
 
+.vk-save-slot {
+  min-width: 0;
+}
+
+.vk-save-slot__icon {
+  color: var(--vk-on-surface-variant);
+}
+
+.vk-save-slot[data-status="saved"] .vk-save-slot__icon {
+  color: var(--vk-success);
+}
+
+.vk-save-slot[data-status="failed"] .vk-save-slot__icon {
+  color: var(--vk-error);
+}
+
+.vk-save-slot[data-status="failed"][data-problem="uncertain"] .vk-save-slot__icon,
+.vk-save-slot[data-status="conflict"] .vk-save-slot__icon {
+  color: var(--vk-warning);
+}
+
+.vk-save-slot__readout {
+  min-width: 0;
+}
+
+.vk-save-slot__readout:has(.vk-save-status[data-status="failed"][data-problem="uncertain"]),
+.vk-save-slot__readout:has(.vk-save-status[data-status="conflict"]) {
+  padding: var(--vk-space-1) var(--vk-space-2);
+  border-radius: var(--vk-radius-sm);
+  background: var(--vk-warning-container);
+}
+
+.vk-save-slot__readout:has(.vk-save-status[data-status="failed"][data-problem="uncertain"]) .vk-save-slot__icon,
+.vk-save-slot__readout:has(.vk-save-status[data-status="conflict"]) .vk-save-slot__icon {
+  color: var(--vk-on-warning-container);
+}
+
 .vk-save-status {
   margin: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--vk-space-2);
   color: var(--vk-on-surface-variant);
-  font-size: 0.9375rem;
+  font-size: var(--vk-type-label-size);
+  line-height: var(--vk-type-label-line-height);
 }
 
-.vk-save-status::before {
+.vk-save-status[data-status="unsaved"]::before,
+.vk-save-status[data-status="dirty"]::before,
+.vk-save-status[data-status="saving"]::before,
+.vk-save-status[data-status="pending"]::before {
   content: "";
   flex: none;
   width: 0.625rem;
   height: 0.625rem;
   border-radius: 50%;
-  background: var(--vk-outline);
-}
-
-.vk-save-status { line-height: var(--vk-type-label-line-height); }
-
-.vk-save-status[data-status="saved"]::before {
-  background: var(--vk-success);
-}
-
-.vk-save-status[data-status="unsaved"]::before {
   background: var(--vk-tertiary);
 }
 
-.vk-save-status[data-status="saving"]::before {
+.vk-save-status[data-status="saving"]::before,
+.vk-save-status[data-status="pending"]::before {
   background: var(--vk-primary);
 }
 
-.vk-save-status[data-status="failed"],
-.vk-save-status[data-status="conflict"] {
+.vk-save-status[data-status="unsaved"] {
+  color: var(--vk-on-surface);
+  font-weight: var(--vk-type-label-weight);
+}
+
+.vk-save-status[data-status="failed"] {
   color: var(--vk-error);
   font-weight: var(--vk-type-label-weight);
 }
 
-.vk-save-status[data-status="failed"]::before,
-.vk-save-status[data-status="conflict"]::before {
-  background: var(--vk-error);
+.vk-save-status[data-status="failed"][data-problem="uncertain"],
+.vk-save-status[data-status="conflict"] {
+  color: var(--vk-on-warning-container);
+  font-weight: var(--vk-type-label-weight);
 }
 
 /* Dialogs: shared surface, gutter, scroll and action layout live in vink-ui.css.

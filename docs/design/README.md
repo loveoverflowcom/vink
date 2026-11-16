@@ -38,6 +38,10 @@ Bổ sung [Surface R5.1 — Khám phá/Bàn viết](search-r5.md) thay anatomy s
 input một dòng, hidden native label, nhóm tonal không divider và shared tooltip/details.
 Placement, GET/IME/private scope và phần chưa được thay thế giữ contract cũ.
 
+Bổ sung [#217 — hợp nhất trạng thái–hành động lưu Bàn viết (PR 1/2)](ui-editor-unified-save-217.md):
+unified `#save-slot` trong `EditorToolbar`, giữ sự thật hai phần chữ/thẻ, `CHOICE-01 B` (focus
+handoff trong `#save-slot`) và seam bàn giao cho PR 2/2 (#218).
+
 ## Nguồn và thứ tự ưu tiên
 
 | Nguồn | Dùng cho |
