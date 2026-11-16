@@ -76,7 +76,7 @@ Xem [hợp đồng signoff](../../decisions/README.md#ghi-signoff-của-chủ-s�
   `VDR-ACTION-SURFACES@r1` được ghim ở `6e07806`; tiến độ mới cập nhật tại registry triển khai.
   Không có thay đổi contract hoặc lời signoff đúng revision để đổi trạng thái quyết định.
 
-Lượt review không sửa runtime, model, fixture, replay hoặc runner của #243; các fingerprint
+Lượt đối soát tới `a78d4ca` không sửa runtime, model, fixture, replay hoặc runner của #243; các fingerprint
 trong manifest ban đầu vẫn khớp. Evidence chạy lại trên bản tích hợp được ghi riêng bên dưới.
 
 ## Evidence ban đầu của #243
@@ -119,3 +119,23 @@ Model/replay mới không làm mới bằng chứng runtime hoặc chốt quyế
 Từ `a78d4ca` tới `1300d877`, chỉ thêm assertion/comment PostgreSQL và ghi chú READ-02 của #241;
 runtime/model/replay/runner không đổi. Commit evidence sau đó chỉ sửa tài liệu. Không gọi lần chạy
 `quick`/`discussion` trên `a78d4ca` là lần chạy trên SHA khác hoặc là bằng chứng browser/SQL toàn lane.
+
+### Follow-up kiểm chứng cancellation CMP
+
+[CI trên `914d303`](https://github.com/loveoverflowcom/vink/actions/runs/43837626089) phát hiện
+`ContentImagesTest.cancelledConsumerCannotPublishACompletedDecode` không ổn định trên macOS:
+`UNDISPATCHED` gọi decoder thật trên Default có thể hoàn tất trước lệnh cancel. Đây là race
+của test, không phải bằng chứng consumer đã nhận kết quả sau khi bị hủy.
+
+Commit `3095385ddda6ac2f99908932edadac4967a3d85e` của #241 thêm overload dispatcher nội bộ
+cho decoder; public call vẫn dùng worker một slot, cùng `withContext` và rethrow cancellation.
+Test điều khiển hai hàng đợi để codec hoàn tất trước, rồi chọn nhận hoặc hủy trước delivery.
+Nhánh nhận phải có bitmap và publish; nhánh hủy phải kết thúc cancelled và không publish.
+Không thêm dependency hoặc đổi admission/viewport policy; không ảnh hưởng model Web.
+
+- **PASS** `./gradlew :diagnostics:desktopTest --tests 'vink.ui.preview.ContentImagesTest'
+  --console=plain`: 4/4, không fail/error/skipped, codec thật trên macOS arm64/JDK 17.0.19.
+- **PASS** `cargo xtask verify quick` toàn lane sau tích hợp tại
+  `6ee36ccf03e4d7e6699d9d327760eddd3b389ad7`; [output review](evidence/verification-20261116/review-checks.txt).
+- Full CMP preview, Android/iOS và visual/IME qualification **NOT_RUN** local; focused decoder
+  test không chứng minh các boundary đó. Evidence trước sửa được giữ nguyên, không xóa FAIL.

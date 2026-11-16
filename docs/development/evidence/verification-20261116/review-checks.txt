@@ -57,3 +57,23 @@ Snapshot: 6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b
 8 fingerprints from source-manifest.json: unchanged.
 Full local postgres/browser/CMP/Kani/Apalache/deployment: NOT_RUN in this review.
 GitHub CI evidence is separate; the initial d31fa40 run failed on the count assertion.
+
+Follow-up CMP cancellation test
+Input commit: 3095385ddda6ac2f99908932edadac4967a3d85e
+Command: ./gradlew :diagnostics:desktopTest --tests vink.ui.preview.ContentImagesTest --console=plain
+Environment: macOS arm64, Microsoft OpenJDK 17.0.19
+XML: vink.ui.preview.ContentImagesTest, tests=4, failures=0, errors=0, skipped=0
+BUILD SUCCESSFUL in 1m 5s
+
+Command: cargo xtask verify quick
+Integrated input commit: 6ee36ccf03e4d7e6699d9d327760eddd3b389ad7
+verification summary
+  PASS  ui tokens: source valid, generated CSS/Rust/Kotlin match
+  PASS  expressions: manifest/hash/Unicode/drift
+  PASS  fmt
+  PASS  clippy server (workspace, ssr)
+  PASS  clippy browser (vink-web, hydrate, wasm32)
+  PASS  clippy UI preview (vink-ui-preview, csr, wasm32)
+  PASS  literary core type-boundary doctests
+  PASS  unit + contract tests (no database)
+  PASS  repository checks (decisions, skills, links, boundaries, fonts, editor packages)
