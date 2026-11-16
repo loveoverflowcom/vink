@@ -89,7 +89,7 @@ export async function documentBudget(page, { args, check }) {
       const loadedHeap = await page.send('Runtime.getHeapUsage');
       const loadedDom = await page.send('Memory.getDOMCounters');
       const source = fixture.document.blocks.map(b => b.lines.join('\n')).join('\n\n');
-      await page.eval(`window.__budgetExpected=${JSON.stringify(source)};window.__budgetView=${view}`);
+      await page.eval(`window.__budgetExpected=${JSON.stringify(source)};window.__budgetView=${view};void 0`);
       check(await page.eval(`__budgetView.state.doc.toString()===__budgetExpected`), `${fixture.case}: actual loaded buffer retains every line`);
       const snapshots = await page.eval(`(async()=>{const m=await import('/pkg/vink-editor.js');return Array.from({length:5},()=>{
         const t=performance.now(),text=m.getText({view:__budgetView,destroyed:false});

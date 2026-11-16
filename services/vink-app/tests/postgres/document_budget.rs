@@ -539,7 +539,15 @@ async fn long_document_budget(pool: PgPool) {
             &origin,
             &root.join("target/site"),
         ));
-        let task = tokio::spawn(async move {
+        // SQLx tests use a current-thread runtime. Serve on the same two-worker style as the
+        // App, so a large owner-state decode cannot block all unrelated HTTP requests in the
+        // test harness merely because they share its one executor thread.
+        let server_runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let task = server_runtime.spawn(async move {
             axum::serve(
                 listener,
                 server_app.into_make_service_with_connect_info::<SocketAddr>(),
@@ -568,6 +576,7 @@ async fn long_document_budget(pool: PgPool) {
         .await
         .unwrap();
         task.abort();
+        server_runtime.shutdown_background();
         assert!(
             result.success(),
             "browser benchmark failed; raw PG evidence retained"
