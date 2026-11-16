@@ -1,0 +1,4 @@
+{
+  "historical_204_path_exists": false,
+  "note": "Historical #204 checkout was already absent at first inspection. Its existing PG/Chrome processes and artifacts were left untouched. All review work is in task-6; no reset/stash or source deletion."
+}

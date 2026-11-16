@@ -94,4 +94,7 @@ cargo xtask verify quick
 ```
 
 Kết quả thực chạy, source identity, raw artifacts và các giới hạn ở
-[evidence #235](evidence/reader-ssr-235/README.md). Không đọc/chờ/poll GitHub CI.
+[evidence #235](evidence/reader-ssr-235/README.md).
+[Review Mac](evidence/reader-ssr-235/mac-review/README.md) đã PASS Quick, Web main/discovery/review
+và ba PostgreSQL/API tests; giữ raw FAIL trước sửa, so sánh trace và source pins. #234/#235
+vẫn còn acceptance chưa đủ; không coi merge là release qualification. Không đọc/chờ/poll GitHub CI.

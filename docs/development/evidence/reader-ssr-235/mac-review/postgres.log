@@ -1,0 +1,19 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.46
+   Compiling rustls-webpki v0.103.16
+   Compiling sqlx-core v0.9.0
+   Compiling sqlx-postgres v0.9.0
+   Compiling sqlx-macros-core v0.9.0
+   Compiling sqlx-macros v0.9.0
+   Compiling sqlx v0.9.0
+   Compiling vink-store-postgres v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-16/task-6/vink/packages/store-postgres)
+   Compiling vink-app v0.1.0 (/Users/manhblue/Documents/Codex/2026-11-16/task-6/vink/services/vink-app)
+    Finished `test` profile [unoptimized] target(s) in 48.96s
+     Running tests/postgres.rs (target/debug/deps/postgres-17b64a22f9443168)
+
+running 3 tests
+test work_moderation::hidden_reader_retains_only_discussion_and_republication_restores_body ... ok
+test work_moderation::review_withdrawn_page_survives_a_pending_resubmission ... ok
+test work_moderation::test_work_moderation_full_flow_and_review_withdrawn_page ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 208 filtered out; finished in 0.93s

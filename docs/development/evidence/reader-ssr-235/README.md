@@ -1,5 +1,9 @@
 # Bằng chứng #235 — SSR Reader
 
+> Phần bên dưới giữ nguyên lịch sử lượt dot computer. [Review độc lập trên Mac](mac-review/README.md)
+> chạy lại Quick/Web thành công, ghi hai finding đã sửa và giới hạn acceptance còn lại.
+> Các FAIL/NOT_RUN và trạng thái Draft bên dưới là của lượt dot trước review.
+
 Ngày 16/11/2026 UTC, dot computer Debian 13 x86_64. Base đã fetch lại:
 `f1b46703ae3329ee7cd11fb06db3f8157a31e5b9` (PR #251 merged). Không có PR #235 trùng ở lượt
 search trước publish; worktree #229 đang dirty được giữ nguyên. Nhánh `codex/reader-ssr-boundary`.
