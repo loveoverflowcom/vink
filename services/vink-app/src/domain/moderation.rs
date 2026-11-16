@@ -801,6 +801,125 @@ pub enum ModerationError {
     Publication(#[from] PublicationError),
 }
 
+/// Read-only validated moderation metadata; never accepted by command/worker planners.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModerationState(WorkModerationFacts);
+
+impl ModerationState {
+    pub fn restore(
+        publication: &super::publication::PublicationState,
+        facts: WorkModerationFacts,
+    ) -> Result<Self, ModerationError> {
+        validate_moderation_facts(publication.facts(), &facts)?;
+        Ok(Self(facts))
+    }
+
+    pub fn facts(&self) -> &WorkModerationFacts {
+        &self.0
+    }
+}
+
+fn validate_moderation_facts(
+    pub_facts: &super::publication::PublicationFacts<ContentHash>,
+    facts: &WorkModerationFacts,
+) -> Result<(), ModerationError> {
+    if facts.work != pub_facts.work {
+        return Err(ModerationError::InvalidFacts);
+    }
+    for (i, rev) in facts.revisions.iter().enumerate() {
+        if facts.revisions[..i]
+            .iter()
+            .any(|prior| prior.revision == rev.revision)
+        {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let Some(pub_rev) = pub_facts
+            .revisions
+            .iter()
+            .find(|r| r.snapshot.revision == rev.revision)
+        else {
+            return Err(ModerationError::InvalidFacts);
+        };
+        if rev.digest != pub_rev.snapshot.content {
+            return Err(ModerationError::InvalidFacts);
+        }
+        if rev.policy > facts.policy {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let human = rev
+            .provenance
+            .as_ref()
+            .and_then(DecisionProvenance::human_verdict);
+        match (pub_rev.moderation, &rev.provenance) {
+            (Moderation::Unsubmitted, _) => return Err(ModerationError::InvalidFacts),
+            // A first submission, or an AI re-review after a policy change (PUB-06).
+            (Moderation::Pending, None) => {}
+            (
+                Moderation::Approved,
+                Some(DecisionProvenance::AiApproved | DecisionProvenance::LegacyBootstrap),
+            ) if rev.version > DecisionVersion::FIRST => {}
+            (Moderation::Approved, Some(_))
+                if human == Some(AdminVerdict::Approve) && rev.version > DecisionVersion::FIRST => {
+            }
+            (Moderation::Rejected, Some(DecisionProvenance::AiRejected(_)))
+                if rev.version > DecisionVersion::FIRST => {}
+            (Moderation::Rejected, Some(_))
+                if human == Some(AdminVerdict::Reject) && rev.version > DecisionVersion::FIRST => {}
+            (
+                Moderation::NeedsAdmin,
+                Some(DecisionProvenance::AiNeedsAdmin(_) | DecisionProvenance::PolicyRereview),
+            ) if rev.version > DecisionVersion::FIRST => {}
+            _ => return Err(ModerationError::InvalidFacts),
+        }
+    }
+    for pub_rev in &pub_facts.revisions {
+        if pub_rev.moderation != Moderation::Unsubmitted
+            && !facts
+                .revisions
+                .iter()
+                .any(|r| r.revision == pub_rev.snapshot.revision)
+        {
+            return Err(ModerationError::InvalidFacts);
+        }
+    }
+    for (i, job) in facts.jobs.iter().enumerate() {
+        if facts.jobs[..i].iter().any(|prior| prior.id == job.id) || job.policy > facts.policy {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let EvaluationTarget::WorkRevision {
+            work,
+            revision,
+            digest,
+        } = &job.target
+        else {
+            return Err(ModerationError::InvalidFacts);
+        };
+        if *work != facts.work {
+            return Err(ModerationError::InvalidFacts);
+        }
+        let Some(pub_rev) = pub_facts
+            .revisions
+            .iter()
+            .find(|r| r.snapshot.revision == *revision)
+        else {
+            return Err(ModerationError::InvalidFacts);
+        };
+        if pub_rev.moderation == Moderation::Unsubmitted || digest != &pub_rev.snapshot.content {
+            return Err(ModerationError::InvalidFacts);
+        }
+        if job.state == JobState::Open
+            && facts.jobs[..i].iter().any(|prior| {
+                prior.state == JobState::Open
+                    && prior.policy == job.policy
+                    && prior.target.revision() == *revision
+            })
+        {
+            return Err(ModerationError::InvalidFacts);
+        }
+    }
+    Ok(())
+}
+
 impl WorkModeration {
     pub fn new(work: WorkId) -> Self {
         Self(WorkModerationFacts {
@@ -815,104 +934,7 @@ impl WorkModeration {
         publication: &Publication,
         facts: WorkModerationFacts,
     ) -> Result<Self, ModerationError> {
-        let pub_facts = publication.facts();
-        if facts.work != pub_facts.work {
-            return Err(ModerationError::InvalidFacts);
-        }
-        for (i, rev) in facts.revisions.iter().enumerate() {
-            if facts.revisions[..i]
-                .iter()
-                .any(|prior| prior.revision == rev.revision)
-            {
-                return Err(ModerationError::InvalidFacts);
-            }
-            let Some(pub_rev) = pub_facts
-                .revisions
-                .iter()
-                .find(|r| r.snapshot.revision == rev.revision)
-            else {
-                return Err(ModerationError::InvalidFacts);
-            };
-            if &rev.digest != pub_rev.snapshot.content.hash() {
-                return Err(ModerationError::InvalidFacts);
-            }
-            if rev.policy > facts.policy {
-                return Err(ModerationError::InvalidFacts);
-            }
-            let human = rev
-                .provenance
-                .as_ref()
-                .and_then(DecisionProvenance::human_verdict);
-            match (pub_rev.moderation, &rev.provenance) {
-                (Moderation::Unsubmitted, _) => return Err(ModerationError::InvalidFacts),
-                // A first submission, or an AI re-review after a policy change (PUB-06).
-                (Moderation::Pending, None) => {}
-                (
-                    Moderation::Approved,
-                    Some(DecisionProvenance::AiApproved | DecisionProvenance::LegacyBootstrap),
-                ) if rev.version > DecisionVersion::FIRST => {}
-                (Moderation::Approved, Some(_))
-                    if human == Some(AdminVerdict::Approve)
-                        && rev.version > DecisionVersion::FIRST => {}
-                (Moderation::Rejected, Some(DecisionProvenance::AiRejected(_)))
-                    if rev.version > DecisionVersion::FIRST => {}
-                (Moderation::Rejected, Some(_))
-                    if human == Some(AdminVerdict::Reject)
-                        && rev.version > DecisionVersion::FIRST => {}
-                (
-                    Moderation::NeedsAdmin,
-                    Some(DecisionProvenance::AiNeedsAdmin(_) | DecisionProvenance::PolicyRereview),
-                ) if rev.version > DecisionVersion::FIRST => {}
-                _ => return Err(ModerationError::InvalidFacts),
-            }
-        }
-        for pub_rev in &pub_facts.revisions {
-            if pub_rev.moderation != Moderation::Unsubmitted
-                && !facts
-                    .revisions
-                    .iter()
-                    .any(|r| r.revision == pub_rev.snapshot.revision)
-            {
-                return Err(ModerationError::InvalidFacts);
-            }
-        }
-        for (i, job) in facts.jobs.iter().enumerate() {
-            if facts.jobs[..i].iter().any(|prior| prior.id == job.id) || job.policy > facts.policy {
-                return Err(ModerationError::InvalidFacts);
-            }
-            let EvaluationTarget::WorkRevision {
-                work,
-                revision,
-                digest,
-            } = &job.target
-            else {
-                return Err(ModerationError::InvalidFacts);
-            };
-            if *work != facts.work {
-                return Err(ModerationError::InvalidFacts);
-            }
-            let Some(pub_rev) = pub_facts
-                .revisions
-                .iter()
-                .find(|r| r.snapshot.revision == *revision)
-            else {
-                return Err(ModerationError::InvalidFacts);
-            };
-            if pub_rev.moderation == Moderation::Unsubmitted
-                || digest != pub_rev.snapshot.content.hash()
-            {
-                return Err(ModerationError::InvalidFacts);
-            }
-            if job.state == JobState::Open
-                && facts.jobs[..i].iter().any(|prior| {
-                    prior.state == JobState::Open
-                        && prior.policy == job.policy
-                        && prior.target.revision() == *revision
-                })
-            {
-                return Err(ModerationError::InvalidFacts);
-            }
-        }
+        validate_moderation_facts(&publication.binding_facts(), &facts)?;
         Ok(Self(facts))
     }
 

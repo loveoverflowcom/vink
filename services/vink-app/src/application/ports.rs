@@ -40,9 +40,9 @@ use crate::domain::endorsement::{
     EndorsementTargetFacts,
 };
 use crate::domain::ids::{CommentId, PrincipalId, RevisionId, TagId, WorkId};
-use crate::domain::moderation::{EvaluationTicket, WorkModeration};
+use crate::domain::moderation::EvaluationTicket;
 use crate::domain::principal::{PenName, Standing, SubjectKey};
-use crate::domain::publication::{AuthorOutcome, IntentGeneration, Publication};
+use crate::domain::publication::{AuthorOutcome, IntentGeneration};
 use crate::domain::revision::ContentHash;
 use crate::domain::taxonomy::{
     CatalogCommand, CatalogOutcome, CatalogTag, CatalogVersion, MetadataSnapshot, MetadataVersion,
@@ -262,8 +262,8 @@ pub enum SetPrivateOutcome {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AuthorPublicationStateFacts {
-    pub publication: Publication,
-    pub moderation: WorkModeration,
+    pub publication: crate::domain::publication::PublicationState,
+    pub moderation: crate::domain::moderation::ModerationState,
     pub revision_metadata: Vec<(RevisionId, String, Option<uuid::Uuid>, OffsetDateTime)>,
 }
 

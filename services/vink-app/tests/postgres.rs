@@ -56,6 +56,10 @@ mod post_review;
 mod principal;
 #[path = "postgres/publication.rs"]
 mod publication;
+#[path = "postgres/publication_state.rs"]
+mod publication_state;
+#[path = "postgres/publication_state_budget.rs"]
+mod publication_state_budget;
 #[path = "postgres/taxonomy.rs"]
 mod taxonomy;
 #[path = "postgres/taxonomy_api.rs"]

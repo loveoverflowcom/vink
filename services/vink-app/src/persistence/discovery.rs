@@ -319,9 +319,10 @@ impl PublicationStore for PgStore {
             Json<DocumentData>,
             Option<Uuid>,
             Option<String>,
+            String,
         )> = sqlx::query_as(
             "SELECT p.work_id, r.id, r.title, a.display_name, p.published_at, r.document,
-                    p.metadata_snapshot_id, s.digest
+                    p.metadata_snapshot_id, s.digest, r.content_hash
                FROM publications p
                JOIN revisions r ON r.work_id = p.work_id AND r.id = p.revision_id
                JOIN works w ON w.id = p.work_id
@@ -334,7 +335,17 @@ impl PublicationStore for PgStore {
         .fetch_optional(&mut *tx)
         .await
         .map_err(classify)?;
-        let Some((work, revision, raw_title, author, published_at, raw_document, id, digest)) = row
+        let Some((
+            work,
+            revision,
+            raw_title,
+            author,
+            published_at,
+            raw_document,
+            id,
+            digest,
+            content_hash,
+        )) = row
         else {
             tx.commit().await.map_err(classify)?;
             return Ok(None);
@@ -343,13 +354,18 @@ impl PublicationStore for PgStore {
         let mut snapshots = snapshots(&mut tx, bound_snapshot.as_slice()).await?;
         let catalog = snapshot_catalog(&mut tx, snapshots.values()).await?;
         tx.commit().await.map_err(classify)?;
+        let title = title(&raw_title)?;
+        let document = document(raw_document)?;
+        if crate::domain::revision::ContentHash::of(&title, &document).as_str() != content_hash {
+            return Err(integrity("public revision content hash mismatch", revision));
+        }
         Ok(Some(PublicationFacts {
             work_id: WorkId::from_uuid(work),
             revision_id: RevisionId::from_uuid(revision),
-            title: title(&raw_title)?,
+            title,
             author_display_name: author,
             published_at,
-            document: document(raw_document)?,
+            document,
             snapshot: id.and_then(|id| snapshots.remove(&id)),
             catalog,
         }))

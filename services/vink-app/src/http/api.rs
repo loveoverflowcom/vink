@@ -561,14 +561,12 @@ async fn get_author_publication_state(
             .revision_metadata
             .iter()
             .find(|(id, ..)| *id == rev.snapshot.revision);
-        let (title, meta_snapshot_id, created_at) = match meta {
-            Some((_, t, m, c)) => (t.clone(), m.map(|id| id.to_string()), *c),
-            None => (
-                rev.snapshot.content.title().as_str().to_string(),
-                None,
-                time::OffsetDateTime::now_utc(),
-            ),
-        };
+        let (_, title, meta_snapshot_id, created_at) = meta.ok_or(ApiError::Internal)?;
+        let (title, meta_snapshot_id, created_at) = (
+            title.clone(),
+            meta_snapshot_id.map(|id| id.to_string()),
+            *created_at,
+        );
 
         let mod_decision = mod_facts
             .revisions
@@ -613,7 +611,7 @@ async fn get_author_publication_state(
             decision_reason,
             revision_id: rev.snapshot.revision.to_string(),
             title,
-            content_hash: rev.snapshot.content.hash().to_string(),
+            content_hash: rev.snapshot.content.to_string(),
             moderation,
             decision_version: mod_decision.map(|d| d.version.get()),
             metadata_snapshot_id: meta_snapshot_id,

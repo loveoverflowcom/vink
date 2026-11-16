@@ -706,3 +706,39 @@ fn restore_rejects_inconsistent_moderation_facts_and_version_exhaustion_refuses_
         Some(crate::domain::moderation::DecisionBy::Legacy)
     );
 }
+
+#[test]
+fn metadata_moderation_restore_matches_full_domain_for_jobs_policy_and_digest() {
+    let (publication, moderation, _) = save_and_submit(
+        &Publication::new(work(1), owner()),
+        &WorkModeration::new(work(1)),
+        1,
+        77,
+    );
+    let read =
+        crate::domain::publication::PublicationState::restore(publication.binding_facts()).unwrap();
+    assert_eq!(
+        ModerationState::restore(&read, moderation.facts().clone())
+            .unwrap()
+            .facts(),
+        moderation.facts()
+    );
+    for mutation in 0..5 {
+        let mut facts = moderation.facts().clone();
+        match mutation {
+            0 => {
+                facts.jobs[0].target = EvaluationTarget::WorkRevision {
+                    work: work(2),
+                    revision: revision(1),
+                    digest: snapshot(1).content.hash().clone(),
+                }
+            }
+            1 => facts.revisions[0].digest = snapshot(2).content.hash().clone(),
+            2 => facts.revisions[0].policy = PolicyVersion::new(2).unwrap(),
+            3 => facts.jobs.push(facts.jobs[0].clone()),
+            _ => facts.revisions.clear(),
+        }
+        assert!(WorkModeration::restore(&publication, facts.clone()).is_err());
+        assert!(ModerationState::restore(&read, facts).is_err());
+    }
+}
