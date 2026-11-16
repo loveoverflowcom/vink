@@ -250,6 +250,11 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                 let toolbar = match save_action {
                     Some(save_action) => view! {
                         <EditorToolbar
+                            paper_first=true
+                            status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
+                            utilities=std::sync::Arc::new(move || view! {
+                                <Button variant=ButtonVariant::Text on_press=move |_| record("editor → export (sample)")>"Tải bản thảo (.txt)"</Button>
+                            }.into_any())
                             status=sample_label
                             status_token=sample_token
                             status_problem=Signal::stored(sample_problem)
@@ -261,6 +266,11 @@ fn ScreenRecipe(id: String, scenario: String) -> impl IntoView {
                     .into_any(),
                     None => view! {
                         <EditorToolbar
+                            paper_first=true
+                            status_detail="Mẫu · Chưa nối dữ liệu máy chủ."
+                            utilities=std::sync::Arc::new(move || view! {
+                                <Button variant=ButtonVariant::Text on_press=move |_| record("editor → export (sample)")>"Tải bản thảo (.txt)"</Button>
+                            }.into_any())
                             status=sample_label
                             status_token=sample_token
                             status_problem=Signal::stored(sample_problem)

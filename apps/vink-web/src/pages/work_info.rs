@@ -34,6 +34,7 @@ pub fn WorkInfo(
     session: RwSignal<DraftSession>,
     labels: RwSignal<TagLabels>,
     #[prop(into)] on_save: Callback<()>,
+    #[prop(into)] on_export: Callback<()>,
     tag_load: RwSignal<TagLoad>,
 ) -> impl IntoView {
     let work_id = StoredValue::new(work_id);
@@ -142,6 +143,14 @@ pub fn WorkInfo(
     let raw = Signal::derive(move || query.with(|q| q.raw().to_string()));
     let status = Memo::new(move |_| session.with(DraftSession::tag_status));
     let loaded = move || session.with(|s| s.tags.is_some());
+    // Paper First keeps the normal download in Tools. Every tag recovery state must
+    // still offer a direct way to rescue the current text outside either disclosure.
+    let export_text = move || {
+        view! {
+            <Button variant=ButtonVariant::Text id="export-tags" leading=IconName::Download
+                on_press=move |_| on_export.run(())>"Tải chữ (.txt)"</Button>
+        }
+    };
 
     let notice = move || {
         let status = status.get()?;
@@ -162,6 +171,7 @@ pub fn WorkInfo(
                                 on_press=move |_| { edit(&TagSession::keep_mine); on_save.run(()); }>
                                 "Lưu đè bằng lựa chọn trên trang"
                             </Button>
+                            {export_text}
                         </div>
                     </section>
                 }
@@ -171,6 +181,7 @@ pub fn WorkInfo(
                 <section class="vk-editor-recovery" data-tone="error" data-testid="tag-refused" aria-label="Thẻ bị từ chối">
                     <InlineNotice tone=Tone::Error announce=Announce::Off title="Thẻ chưa lưu được."
                         message=adapters::tag_refusal_text(&refusal) />
+                    <div class="vk-notice__actions">{export_text}</div>
                 </section>
             }
             .into_any(),
@@ -182,6 +193,7 @@ pub fn WorkInfo(
                     <div class="vk-notice__actions">
                         <Button variant=ButtonVariant::Text id="tags-retry" leading=IconName::Refresh
                             on_press=move |_| on_save.run(())>"Thử lại"</Button>
+                        {export_text}
                     </div>
                 </section>
             }
@@ -212,6 +224,7 @@ pub fn WorkInfo(
                         <div class="vk-notice__actions">
                             <Button variant=ButtonVariant::Text id="tags-reload" leading=IconName::Refresh
                                 on_press=move |_| load_tags()>"Tải lại thẻ"</Button>
+                            {export_text}
                         </div>
                     </section>
                 }

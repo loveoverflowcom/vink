@@ -1,5 +1,8 @@
 # Editor — Quiet UI R4 và Surface R5 (#101)
 
+Delta hiện hành [Paper First #218](ui-editor-paper-first-218.md) bỏ container/sticky của
+toolbar và đổi surface scoped Editor. R4/R5 bên dưới giữ làm lịch sử.
+
 ## Phạm vi và nguồn
 
 - Issue [#101](https://github.com/loveoverflowcom/vink/issues/101), develop sau PR #103,

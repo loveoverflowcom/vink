@@ -1,0 +1,24 @@
+Extracted from /tmp/vink-218-main-final.log
+Source: c5e54db
+Raw SHA-256: dc1ac1b4a62cf0b14164ff6fd8934b93230bc5179c89de8fd6af622d87a54150
+
+  ok  loading retains a real back link and one document heading
+  ok  failed load retains back/context independently of the editor form
+  ok  no-JS SSR retains back/H1 and explains how private drafts open
+  ok  focus oracle rejects a summary inside closed overflow
+  ok  tools download reads the latest live NFD buffer after edits while open
+  ok  AX tree exposes native disclosure and direct preview names
+  ok  tools, appearance and preview perform no mutation or accidental form submit
+  ok  clean save slot, clean Ctrl/Cmd+S and clean title Enter issue zero PUT writes
+  ok  320x420/text200 ACK hands off to a fully visible closed tools trigger
+  ok  save ACK retains open tools and focuses its live summary
+  ok  disposed draft late ACK cannot steal title focus or open tools in a new draft
+  ok  disabled save-and-leave preserves tag conflict and stored version
+  ok  tag conflict and deliberate recovery stay visible outside the closed disclosure
+browser-smoke: PASS (main)
+verification summary
+  PASS  selected prerequisites
+  PASS  selected artifacts
+  PASS  browser bundle contains no credentials
+  PASS  SSR HTML, hydration, CodeMirror editor, save/reload/conflict, leave guard, preview, draft tags
+  PASS  server stops gracefully on SIGTERM

@@ -1,0 +1,66 @@
+{
+  "base": "a78c9ff5138a0df26e9febe4fdf6146f5915d28a",
+  "tested_source_commit": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+  "source_files_match": true,
+  "runs": [
+    {
+      "log": "/tmp/vink-218-main-final.log",
+      "result": "PASS",
+      "sha256": "dc1ac1b4a62cf0b14164ff6fd8934b93230bc5179c89de8fd6af622d87a54150",
+      "command": "cargo xtask verify web --scenario main",
+      "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-2/vink"
+    },
+    {
+      "log": "/tmp/vink-218-preview-final.log",
+      "result": "PASS",
+      "sha256": "0eac04ecdc310a9e593b128e922c53b5d3f25ca292fea217987c89a715064a27",
+      "command": "cargo xtask ui-preview leptos verify",
+      "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-2/vink"
+    },
+    {
+      "log": "/tmp/vink-218-quick-final.log",
+      "result": "PASS",
+      "sha256": "8f301f1bf59ff1dbc18378aee668d0631c78a5bb149a02f7f0107ccccf3d951e",
+      "command": "cargo xtask verify quick",
+      "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-2/vink"
+    },
+    {
+      "log": "/tmp/vink-218-tools-unit-final.log",
+      "result": "PASS",
+      "sha256": "2cd30087ad3a6403f704055eb8661fa6061099d2afbf5ff8437bdd89a3cfc3ab",
+      "command": "cargo test --locked -p vink-patterns --test editor_tools",
+      "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-2/vink",
+      "head_at_run": "22ec3d556c2cd66aa3b1894f2caa1f0fed93ecc0"
+    },
+    {
+      "log": "/tmp/vink-218-baseline-main.log",
+      "result": "PASS",
+      "sha256": "9aa9d2ad9afa64853f4333c8b3ed6bebf08e7c21a875797bf14aca1077134021",
+      "command": "cargo xtask verify web --scenario main (baseline a78c9ff)",
+      "cwd": "/Users/manhblue/Documents/Codex/2026-11-16/task-2/vink"
+    }
+  ],
+  "github_ci": "NOT_REQUIRED",
+  "review": "self-review",
+  "reference": "NO_APPROVED_REFERENCE",
+  "os_ime": "NOT_RUN",
+  "screen_reader": "NOT_RUN",
+  "mobile_device": "NOT_RUN",
+  "browser_zoom": "NOT_RUN",
+  "full_web_beyond_main": "NOT_RUN",
+  "preservation": {
+    "worktree_204_status_match": true,
+    "worktree_204_hashes_match": true,
+    "edited_or_untracked_files": 30,
+    "scratch_218_stopped": true,
+    "old_clusters_untouched": true
+  },
+  "build_env": {
+    "CARGO_BUILD_JOBS": "2",
+    "CARGO_PROFILE_DEV_DEBUG": "0",
+    "CARGO_PROFILE_TEST_DEBUG": "0",
+    "CARGO_INCREMENTAL": "0",
+    "npm_config_cache": "/tmp/vink-218-npm"
+  },
+  "renderer": "macOS arm64; Chrome headless 157/CDP; actual app text settings and separate DOM scaling"
+}

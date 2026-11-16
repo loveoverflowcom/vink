@@ -1,0 +1,2176 @@
+{
+  "before-editor-clean-1440-100-light.png": {
+    "png_sha256": "71ed3522b8fa3d8331e6bdeb1affb473d27d1936ea7876dd11800cfc9c0c3cab",
+    "context": {
+      "route": "/ban-viet/01a1e3c5-d7f2-7462-bfaa-b6a186a654d1",
+      "width": 1440,
+      "layoutWidth": 1425,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": {
+          "x": 0,
+          "y": 0,
+          "width": 96,
+          "height": 900,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "railScrollWidth": 96,
+        "railClientWidth": 96,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 400.5,
+          "y": 73.59375,
+          "width": 720,
+          "height": 64,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "save": null,
+        "title": {
+          "x": 424.5,
+          "y": 213.09375,
+          "width": 672,
+          "height": 52.390625,
+          "fontSize": "28px",
+          "lineHeight": "36.4px"
+        },
+        "body": {
+          "x": 424.5,
+          "y": 373.265625,
+          "width": 672,
+          "height": 1155.265625,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T09:52:37.117Z",
+      "evidence": {
+        "build": "a78c9ff5138a0df26e9febe4fdf6146f5915d28a"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "before-editor-clean-390-200-dark.png": {
+    "png_sha256": "432ec39037b77bd48990a7e83c4b778732069c497c06ff2cbc773143b93fd2d8",
+    "context": {
+      "route": "/ban-viet/01a1e3c5-d7f2-7462-bfaa-b6a186a654d1",
+      "width": 390,
+      "layoutWidth": 375,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "dark",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 8,
+          "y": 196.78125,
+          "width": 359,
+          "height": 152,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "save": null,
+        "title": {
+          "x": 16,
+          "y": 475.78125,
+          "width": 343,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 796.15625,
+          "width": 343,
+          "height": 3522.984375,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T09:52:43.754Z",
+      "evidence": {
+        "build": "a78c9ff5138a0df26e9febe4fdf6146f5915d28a"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "before-editor-dirty-320-200-light.png": {
+    "png_sha256": "36d83fa8c2e754805d0de9df6732e94f56fc74e1ead390637be4664dbad690e2",
+    "context": {
+      "route": "/ban-viet/01a1e3c5-d7f2-7462-bfaa-b6a186a654d1",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "unsaved",
+        "toolbar": {
+          "x": 8,
+          "y": 196.78125,
+          "width": 289,
+          "height": 240.375,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "save": {
+          "x": 24,
+          "y": 267.96875,
+          "width": 149.328125,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 564.15625,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 935.71875,
+          "width": 273,
+          "height": 3019.671875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T09:52:54.253Z",
+      "evidence": {
+        "build": "a78c9ff5138a0df26e9febe4fdf6146f5915d28a"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "before-editor-failed-320-200-light-recovery.png": {
+    "png_sha256": "48775823938afc8747d191ec77337e332b76226c74dd2d0b23aaf1c8b2bc3089",
+    "context": {
+      "route": "/ban-viet/01a1e3c5-d7f2-7462-bfaa-b6a186a654d1",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 612,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "failed",
+        "toolbar": {
+          "x": 8,
+          "y": -415.21875,
+          "width": 289,
+          "height": 367.5625,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "save": {
+          "x": 24,
+          "y": -288.84375,
+          "width": 239.21875,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 684.84375,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 1056.40625,
+          "width": 273,
+          "height": 4780.796875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T09:53:11.507Z",
+      "evidence": {
+        "build": "a78c9ff5138a0df26e9febe4fdf6146f5915d28a"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-editor-clean-1440-100-light.png": {
+    "png_sha256": "6d6cf37e364c2ee839b6adaf6b15bfd1009e258efb0ad6a6ae81c2f4b80ed647",
+    "context": {
+      "route": "/ban-viet/01a1e3df-0d44-73af-ad6e-4112a0db39d5",
+      "width": 1440,
+      "layoutWidth": 1425,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": {
+          "x": 0,
+          "y": 0,
+          "width": 96,
+          "height": 900,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "railScrollWidth": 96,
+        "railClientWidth": 96,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 400.5,
+          "y": 64,
+          "width": 720,
+          "height": 48,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "statusReadout": {
+          "x": 428.5,
+          "y": 78.203125,
+          "width": 43.375,
+          "height": 19.59375,
+          "fontSize": "14px",
+          "lineHeight": "19.6px"
+        },
+        "save": null,
+        "tools": {
+          "x": 1024.078125,
+          "y": 64,
+          "width": 96.421875,
+          "height": 48,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "paper": {
+          "x": 400.5,
+          "y": 136,
+          "width": 720,
+          "height": 1445.328125,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "title": {
+          "x": 424.5,
+          "y": 187.5,
+          "width": 672,
+          "height": 52.390625,
+          "fontSize": "28px",
+          "lineHeight": "36.4px"
+        },
+        "body": {
+          "x": 424.5,
+          "y": 347.671875,
+          "width": 672,
+          "height": 1155.265625,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "firstLine": {
+          "x": 424.5,
+          "y": 355.671875,
+          "width": 672,
+          "height": 36.234375,
+          "fontSize": "19.6px",
+          "lineHeight": "36.26px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(255, 250, 255)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(95, 86, 107)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(104, 70, 165)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:20:08.852Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": ""
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-editor-clean-390-200-dark.png": {
+    "png_sha256": "9173b89592d11df4b4d00fdc415ab746bfdd95a2298b00e24a77a77e595ddeec",
+    "context": {
+      "route": "/ban-viet/01a1e3df-0d44-73af-ad6e-4112a0db39d5",
+      "width": 390,
+      "layoutWidth": 375,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "dark",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "dark",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 8,
+          "y": 164.78125,
+          "width": 359,
+          "height": 147.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "statusReadout": {
+          "x": 44,
+          "y": 169.1875,
+          "width": 86.75,
+          "height": 39.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "save": null,
+        "tools": {
+          "x": 8,
+          "y": 228.78125,
+          "width": 172.84375,
+          "height": 83.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "paper": {
+          "x": 8,
+          "y": 359.96875,
+          "width": 359,
+          "height": 4099.953125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 438.96875,
+          "width": 343,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 759.34375,
+          "width": 343,
+          "height": 3522.984375,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "firstLine": {
+          "x": 16,
+          "y": 775.34375,
+          "width": 343,
+          "height": 125.78125,
+          "fontSize": "34px",
+          "lineHeight": "62.9px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgb(33, 27, 41)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgb(23, 18, 29)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(209, 195, 219)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(212, 187, 255)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:20:15.291Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": ""
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-editor-dirty-320-200-light.png": {
+    "png_sha256": "ee75be19da6fa2446b7544012bea4a35445a990286d69ae10c6a0622002fa607",
+    "context": {
+      "route": "/ban-viet/01a1e3df-0d44-73af-ad6e-4112a0db39d5",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "unsaved",
+        "toolbar": {
+          "x": 8,
+          "y": 164.78125,
+          "width": 289,
+          "height": 243.5625,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "statusReadout": {
+          "x": 8,
+          "y": 164.78125,
+          "width": 215.453125,
+          "height": 39.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "save": {
+          "x": 8,
+          "y": 219.96875,
+          "width": 149.328125,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "tools": {
+          "x": 124.15625,
+          "y": 325.15625,
+          "width": 172.84375,
+          "height": 83.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "paper": {
+          "x": 8,
+          "y": 456.34375,
+          "width": 289,
+          "height": 5220.21875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 535.34375,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 906.90625,
+          "width": 273,
+          "height": 4592.0625,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "firstLine": {
+          "x": 16,
+          "y": 922.90625,
+          "width": 273,
+          "height": 188.671875,
+          "fontSize": "34px",
+          "lineHeight": "62.9px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(255, 250, 255)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(104, 70, 165)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:20:25.055Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": ""
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-editor-failed-320-200-light-recovery.png": {
+    "png_sha256": "197ec09f6a6a5249f2d8850282b19db8d918d5d4a9948751605b0f4f200ce933",
+    "context": {
+      "route": "/ban-viet/01a1e3df-0d44-73af-ad6e-4112a0db39d5",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 512,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "failed",
+        "toolbar": {
+          "x": 8,
+          "y": -347.21875,
+          "width": 289,
+          "height": 298.75,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "statusReadout": {
+          "x": 60,
+          "y": -339.21875,
+          "width": 221,
+          "height": 78.375,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "save": {
+          "x": 8,
+          "y": -236.84375,
+          "width": 239.21875,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "tools": {
+          "x": 124.15625,
+          "y": -131.65625,
+          "width": 172.84375,
+          "height": 83.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "paper": {
+          "x": 8,
+          "y": 605.03125,
+          "width": 289,
+          "height": 5220.28125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 684.03125,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 1055.59375,
+          "width": 273,
+          "height": 4592.125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "firstLine": {
+          "x": 16,
+          "y": 1071.59375,
+          "width": 273,
+          "height": 188.671875,
+          "fontSize": "34px",
+          "lineHeight": "62.9px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(255, 250, 255)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(81, 66, 24)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(104, 70, 165)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:20:41.473Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": ""
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-paper-dirty-320-200-light-tools.png": {
+    "png_sha256": "e9f1237d0cada0b513039efdcf37edd4faf97c90661922c37af54aa035bf1a15",
+    "context": {
+      "route": "/ban-viet/01a1e3de-ac58-7486-bb41-0ab754f6d74a",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "light",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "unsaved",
+        "textSetting": "200",
+        "toolbar": {
+          "x": 8,
+          "y": 164.78125,
+          "width": 289,
+          "height": 739.875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "statusReadout": {
+          "x": 8,
+          "y": 164.78125,
+          "width": 215.453125,
+          "height": 39.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "save": {
+          "x": 8,
+          "y": 219.96875,
+          "width": 149.328125,
+          "height": 89.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "tools": {
+          "x": 8,
+          "y": 389.15625,
+          "width": 172.84375,
+          "height": 83.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "paper": {
+          "x": 8,
+          "y": 952.65625,
+          "width": 289,
+          "height": 1195.28125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 1031.65625,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 1403.21875,
+          "width": 273,
+          "height": 567.125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "firstLine": {
+          "x": 16,
+          "y": 1419.21875,
+          "width": 273,
+          "height": 62.890625,
+          "fontSize": "34px",
+          "lineHeight": "62.9px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(255, 250, 255)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(104, 70, 165)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:19:56.754Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": "",
+        "scenario": "Editor native tools",
+        "scaleMechanism": "app-setting",
+        "action": {
+          "selector": "#export",
+          "present": true,
+          "full": true,
+          "hit": true,
+          "rect": {
+            "x": 8,
+            "y": 488.34375,
+            "width": 289,
+            "height": 128.375,
+            "top": 488.34375,
+            "right": 297,
+            "bottom": 616.71875,
+            "left": 8
+          },
+          "clip": {
+            "left": 0,
+            "right": 305,
+            "top": 0,
+            "bottom": 900
+          },
+          "page": {
+            "scrollX": 0,
+            "scrollY": 0,
+            "scrollWidth": 305,
+            "clientWidth": 305
+          },
+          "focused": true,
+          "focusRing": true,
+          "labelFits": true,
+          "disabled": false,
+          "description": null,
+          "owner": {
+            "id": "HTML",
+            "scrollTop": 0,
+            "scrollHeight": 4376,
+            "clientHeight": 900,
+            "scrollWidth": 305,
+            "clientWidth": 305
+          },
+          "scrollWidth": 287,
+          "clientWidth": 287
+        }
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-paper-no-js.png": {
+    "png_sha256": "88e5b34bcb3b97c8f65c661e517cfb67436a0c4eb92f35f7b97e84e2d1abcd24",
+    "context": {
+      "route": "/ban-viet/01a1e3de-ac58-7486-bb41-0ab754f6d74a",
+      "width": 1440,
+      "layoutWidth": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "system",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": false,
+        "rail": {
+          "x": 0,
+          "y": 0,
+          "width": 96,
+          "height": 900,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "railScrollWidth": 96,
+        "railClientWidth": 96,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "toolbar": null,
+        "statusReadout": null,
+        "save": null,
+        "tools": null,
+        "paper": null,
+        "title": null,
+        "body": null,
+        "firstLine": null,
+        "fonts": {
+          "ui": true,
+          "reading": false
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "—Tôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:19:44.619Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": "",
+        "scenario": "page scripts disabled"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-paper-load-error.png": {
+    "png_sha256": "a5069ce4d027baeef4baaf16c8340c06815392a17d3a3e77423d683f633d593f",
+    "context": {
+      "route": "/ban-viet/01a1e3de-ac58-7486-bb41-0ab754f6d74a",
+      "width": 1440,
+      "layoutWidth": 1440,
+      "height": 900,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 0,
+      "theme": "system",
+      "fontSize": "16px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "light",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": {
+          "x": 0,
+          "y": 0,
+          "width": 96,
+          "height": 900,
+          "fontSize": "16px",
+          "lineHeight": "25.6px"
+        },
+        "railScrollWidth": 96,
+        "railClientWidth": 96,
+        "overlayChoice": "system",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "toolbar": null,
+        "statusReadout": null,
+        "save": null,
+        "tools": null,
+        "paper": null,
+        "title": null,
+        "body": null,
+        "firstLine": null,
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(36, 29, 45)",
+            "background": "rgb(247, 242, 250)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "captured_at": "2026-11-16T10:19:44.432Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": "",
+        "scenario": "draft GET 503"
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  },
+  "after-paper-ack-focus-320x420-200-dark.png": {
+    "png_sha256": "4a3e59b96f0d63ddfb1913ef128457c9bdeaf7ac4c0980f735d891c19eb6e977",
+    "context": {
+      "route": "/ban-viet/01a1e3df-0d44-73af-ad6e-4112a0db39d5",
+      "width": 320,
+      "layoutWidth": 305,
+      "height": 420,
+      "dpr": 1,
+      "scrollX": 0,
+      "scrollY": 43,
+      "theme": "dark",
+      "fontSize": "32px",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+      "appearance": {
+        "effectiveTheme": "dark",
+        "osTheme": "light",
+        "hydrated": true,
+        "rail": null,
+        "railScrollWidth": 0,
+        "railClientWidth": 0,
+        "overlayChoice": "light",
+        "overlayOpen": false,
+        "overlayScroll": 0,
+        "overlay": null,
+        "account": null,
+        "themeGroup": null
+      },
+      "mePanel": null,
+      "desk": {
+        "heading": null,
+        "resume": null,
+        "title": null,
+        "disclosure": null,
+        "metadata": null,
+        "cta": null,
+        "list": null,
+        "tools": null,
+        "search": null,
+        "sort": null,
+        "refresh": null,
+        "scope": null,
+        "firstRow": null,
+        "rowLink": null,
+        "rowTitle": null,
+        "rowTitleLines": null,
+        "rowMetadata": null,
+        "rowOpen": null,
+        "results": null,
+        "listHeading": null,
+        "searchField": null,
+        "sortField": null
+      },
+      "reader": {
+        "title": null,
+        "header": null,
+        "body": null
+      },
+      "editor": {
+        "status": "saved",
+        "toolbar": {
+          "x": 8,
+          "y": 121.78125,
+          "width": 289,
+          "height": 138.375,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "statusReadout": {
+          "x": 44,
+          "y": 121.78125,
+          "width": 86.75,
+          "height": 39.1875,
+          "fontSize": "28px",
+          "lineHeight": "39.2px"
+        },
+        "save": null,
+        "tools": {
+          "x": 124.15625,
+          "y": 176.96875,
+          "width": 172.84375,
+          "height": 83.1875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "paper": {
+          "x": 8,
+          "y": 308.15625,
+          "width": 289,
+          "height": 6415.203125,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "title": {
+          "x": 16,
+          "y": 387.15625,
+          "width": 273,
+          "height": 104.796875,
+          "fontSize": "56px",
+          "lineHeight": "72.8px"
+        },
+        "body": {
+          "x": 16,
+          "y": 758.71875,
+          "width": 273,
+          "height": 5787.046875,
+          "fontSize": "32px",
+          "lineHeight": "51.2px"
+        },
+        "firstLine": {
+          "x": 16,
+          "y": 5554.40625,
+          "width": 273,
+          "height": 188.671875,
+          "fontSize": "34px",
+          "lineHeight": "62.9px"
+        },
+        "fonts": {
+          "ui": true,
+          "reading": true
+        },
+        "colors": {
+          ".vk-ui-scaffold": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgb(33, 27, 41)"
+          },
+          ".vk-editor-paper": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgb(23, 18, 29)"
+          },
+          "#editor-toolbar": {
+            "color": "rgb(240, 231, 248)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "[data-testid=save-status]": {
+            "color": "rgb(209, 195, 219)",
+            "background": "rgba(0, 0, 0, 0)"
+          },
+          "#editor-save-details > summary": {
+            "color": "rgb(212, 187, 255)",
+            "background": "rgba(0, 0, 0, 0)"
+          }
+        },
+        "preview": null,
+        "leave": null
+      },
+      "explore": {
+        "heading": null,
+        "tools": null,
+        "brand": null,
+        "search": null,
+        "input": null,
+        "label": null,
+        "shell": null,
+        "clear": null,
+        "submit": null,
+        "stream": null,
+        "firstRow": null,
+        "byline": null,
+        "author": null,
+        "date": null,
+        "title": null,
+        "context": null
+      },
+      "navigation": {
+        "bar": null,
+        "labels": [
+          {
+            "label": "Khám phá",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "Bàn viết",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          },
+          {
+            "label": "TTTôi",
+            "target": null,
+            "icon": null,
+            "text": null,
+            "firstLine": null
+          }
+        ]
+      },
+      "png": {
+        "width": 320,
+        "height": 420,
+        "sha256": "4a3e59b96f0d63ddfb1913ef128457c9bdeaf7ac4c0980f735d891c19eb6e977"
+      },
+      "captured_at": "2026-11-16T10:21:32.802Z",
+      "evidence": {
+        "build": "c5e54dbc1b39a2a007ba50618bda926a71b8e24b",
+        "dirty": "",
+        "editorScene": {
+          "width": 320,
+          "height": 420,
+          "scale": 200,
+          "theme": "dark"
+        },
+        "boundary": "CDP root font override; synthetic LocalFixture",
+        "action": {
+          "selector": "#editor-save-details > summary",
+          "present": true,
+          "full": true,
+          "hit": true,
+          "rect": {
+            "x": 124.15625,
+            "y": 176.96875,
+            "width": 172.84375,
+            "height": 83.1875,
+            "top": 176.96875,
+            "right": 297,
+            "bottom": 260.15625,
+            "left": 124.15625
+          },
+          "clip": {
+            "left": 0,
+            "right": 305,
+            "top": 0,
+            "bottom": 420
+          },
+          "page": {
+            "scrollX": 0,
+            "scrollY": 43,
+            "scrollWidth": 305,
+            "clientWidth": 305
+          },
+          "focused": true,
+          "focusRing": false,
+          "labelFits": true,
+          "disabled": false,
+          "description": null,
+          "owner": {
+            "id": "HTML",
+            "scrollTop": 43,
+            "scrollHeight": 8799,
+            "clientHeight": 420,
+            "scrollWidth": 305,
+            "clientWidth": 305
+          },
+          "scrollWidth": 173,
+          "clientWidth": 173
+        }
+      }
+    },
+    "inspection": "INSPECTED",
+    "review": "self-review; NO_APPROVED_REFERENCE"
+  }
+}

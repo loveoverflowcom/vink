@@ -58,6 +58,16 @@ PR 2/2 (#218) kế thừa trực tiếp seam sau mà không đổi logic save ha
 - **Primary slot `#save-slot` trong `EditorToolbar`:** giữ `id="save-slot"`, `data-status`, `data-problem`, live readout `[data-testid="save-status"]` (`role="status"` duy nhất), `#editor-save-details` và slot `save_action` (`#save` / `#save-recovery-jump`).
 - **Secondary actions `{children()}` trong `.vk-editor-toolbar__actions`:** hiện giữ `#preview` và `#export`. PR 2/2 có thể gom hoặc chuyển các secondary tools / details sang overflow menu ở header mà không cần sửa `DraftSession::needs_manual_save` / `begin_manual_save`, `project_save_slot`, `sync_save_slot_focus` hay live announcement owner.
 
+### Delta trình bày #218 (thay seam anatomy, giữ protocol)
+
+[Paper First](ui-editor-paper-first-218.md) dùng `paper_first=true`:
+`#editor-save-details > summary` là chính trigger **Thêm** luôn hiển thị, ngoài
+bất kỳ disclosure đóng nào. Chi tiết máy chủ và export thường nằm bên trong;
+`#preview` trực tiếp, recovery/export lỗi vẫn trực tiếp. Selector handoff của
+`sync_save_slot_focus` không đổi, nhưng đích giờ là Thêm thay vì icon Chi tiết.
+Không tự mở tools khi ACK, không cướp focus đang gõ. Default pattern giữ anatomy cũ.
+Nội dung và kết quả #217 bên dưới là lịch sử của PR1, không evidence cho delta #218.
+
 ## Kiểm chứng ban đầu tại `18885ee` (độ tương phản, đơn vị, preview và trình duyệt)
 
 - **`cargo xtask verify quick`:** `ui tokens` (15 files khớp), `expressions` (3/3), `fmt`, `clippy` (SSR/hydrate WASM/preview CSR WASM), 22 + 31 doctests, `unit + contract tests` (`desk_state::tests::manual_save_skips_clean_pending_conflict_and_unchanged_refusal` và `editor_presentation_tests` trong `desk.rs` mở rộng), `repository checks` (xóa style exception `0.9375rem`).
