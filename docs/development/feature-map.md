@@ -63,6 +63,12 @@ list chung nền, full title/equal inset/exact IDs tại 320–1440/chữ100–2
 uncertain-create. [LayoutSpec R6](../design/desk-r6.md) thay phân cấp/list grouping
 của R5.1 cho Desk; Khám phá không đổi. [Bằng chứng local](desk-r6-evidence.md).
 
+Chuẩn bị [action surfaces #225](../design/action-surfaces-desk-discovery-225.md) trên
+`develop@69f71f0`: `draftDashboard` thêm native create/Select/Refresh và pending keys;
+`discoveryReading` thêm Apply/checkbox/max4/no-JS, `discoveryCorpus` thêm history/set equality/
+cursor reset. Đây là coverage của tests hiện hữu được mở rộng, chưa triển khai delta UI vì
+shared contract/glyph còn thiếu. [Kết quả local và gap](evidence/action-surfaces-225/README.md).
+
 Phân trang nháp [#201](desk-pagination.md) mở rộng `/api/v1/drafts` bằng query/sort/cursor
 trên toàn corpus owner, giữ caller không tham số Recent/100. Provider/consumer fixtures và
 `tests/postgres/drafts.rs` sở hữu kiểm paging/isolation/Unicode/backfill/query plan. Consumer
