@@ -88,6 +88,15 @@ class Profile(unittest.TestCase):
                 budget.settings(dict(env, MAKEFLAGS="--jobserver-auth=3,4"), root)
             with self.assertRaisesRegex(budget.Refusal, "rustc wrapper"):
                 budget.settings(dict(env, RUSTC_WRAPPER="sccache"), root)
+            # A configured wrapper is refused, but Cargo treats an empty variable as disabling it.
+            local.write_text('[build]\nrustc-wrapper = "sccache"\n')
+            with self.assertRaises(budget.Refusal) as error:
+                budget.settings(env, root)
+            self.assertEqual(error.exception.code, 69)
+            self.assertEqual(budget.settings(dict(env, RUSTC_WRAPPER=""), root), (1, 1))
+            local.unlink()
+            with self.assertRaisesRegex(budget.Refusal, "CARGO_ALIAS_XTASK"):
+                budget.settings(dict(env, CARGO_ALIAS_XTASK="run"), root)
 
     def test_argv_preserves_narrower_libtest_flag_and_refuses_overrides(self):
         argv = ["cargo", "test", "-p", "xtask", "--", "--test-threads=1"]
@@ -107,6 +116,28 @@ class Profile(unittest.TestCase):
         ]:
             with self.subTest(args=args), self.assertRaises(budget.Refusal):
                 budget.validate_command(["--", "cargo", "test", *args], 2)
+
+    def test_argv_plan_follows_xtask_last_argument_rule(self):
+        # xtask's cli::parse inspects only when `--plan` is last; the launcher mirrors that.
+        for command in (["verify", "web", "--scenario", "main", "--plan"],
+                        ["verify", "preview", "--plan"], ["verify", "unit", "store"],
+                        ["build", "api", "--plan"]):
+            argv = ["cargo", "xtask", *command]
+            with self.subTest(command=command):
+                self.assertEqual(budget.validate_command(["--", *argv], 2), argv)
+        for command in (["verify", "web", "--plan", "--scenario", "main"],
+                        ["ui-preview", "leptos", "verify"], ["ui-preview", "cmp", "build"],
+                        ["ui-preview", "android", "run"]):
+            with self.subTest(command=command), self.assertRaises(budget.Refusal) as error:
+                budget.validate_command(["--", "cargo", "xtask", *command], 2)
+            self.assertEqual(error.exception.code, 69)
+        for argv in (["cargo", "test"], ["--", "cargo", "run", "-p", "xtask"],
+                     ["--", "cargo", "+nightly", "test"], ["--", "cargo"], ["--", "rustc", "test"]):
+            with self.subTest(argv=argv), self.assertRaises(budget.Refusal) as error:
+                budget.validate_command(argv, 2)
+            self.assertEqual(error.exception.code, 2)
+        argv = ["cargo", "test", "-p", "xtask", "--", "--test-threads", "2"]
+        self.assertEqual(budget.validate_command(["--", *argv], 2), argv)
 
     def test_light_plan_and_strict_do_not_bootstrap(self):
         with TemporaryDirectory() as temp:

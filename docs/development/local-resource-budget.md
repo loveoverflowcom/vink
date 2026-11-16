@@ -71,9 +71,24 @@ launcher nằm ngoài admission. Các việc nặng dành cho những đường 
   máy đã reboot. Đợi session cũ kết thúc, hoặc dùng terminal/Activity Monitor để xác minh và dừng
   tiến trình thuộc chính lượt đó. Không dùng PID trong record cũ làm lệnh kill. Không xóa
   `admission.lock` hoặc `session` để vượt chặn.
+- Nếu một lượt đọc `ps` trong lúc giám sát lỗi hoặc quá 3 giây, launcher không coi workload là
+  đã kết thúc: nó gửi SIGKILL tới process group, trả mã 1 và giữ record. Lượt sau chỉ nhận việc
+  sau khi xác minh session cũ không còn tiến trình sống. Máy đang chịu áp lực bộ nhớ cao có thể
+  gặp trường hợp này; chạy lại khi pressure về normal.
 - Bật profile khi gọi launcher. Chờ lượt hiện tại kết thúc trước khi trở lại lệnh
   [xtask nguyên bản](scoped-workflows.md) hoặc revert PR. Không cần đổi shell startup,
   Cargo/Gradle home, cache hay dữ liệu DB.
+
+## Kiểm launcher
+
+```sh
+python3 -B -m unittest discover -s tools -p test_local_budget.py
+```
+
+Nhóm `Profile` (precedence, validator argv, wrapper, `--plan`) chạy trên mọi nền tảng có
+Python 3.11+. Nhóm `Lifecycle` (hai checkout, hủy, timeout, crash fence, pressure) cần macOS
+và tự `skip` ở nơi khác. Suite này chưa thuộc lane `cargo xtask verify` nào và CI không chạy nó;
+sửa launcher cần chạy lại trên Mac và ghi rõ nhóm đã chạy.
 
 ## Quyết định triển khai
 
