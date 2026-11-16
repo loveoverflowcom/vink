@@ -3,13 +3,18 @@
 Baseline đo tài liệu tổng hợp trước khi quyết định chia nhỏ storage. Đây là evidence phát triển,
 không phải SLA production hay quyết định đổi giới hạn bài viết.
 
+**Hiệu chỉnh sau review #232:** các mẫu app save `begin/middle/end` của baseline cũ gửi cùng
+payload năm lần; chỉ lần đầu đổi nội dung, bốn lần sau là content no-op (version vẫn tăng).
+Không dùng median của nhóm đó làm chi phí của năm edit độc lập. Các số cũ được giữ để bảo toàn
+provenance; xem [đối soát follow-up](#đối-soát-follow-up-229) và measurement v2 bên dưới.
+
 <!-- vdr: active USER-09@r1 -->
 
 - **Sản phẩm:** `USER-09@r1 PRODUCT_CONFIRMED`, bài ngắn; `WR-04 DEFERRED` trong PRD.
 - **Kiến trúc:** giữ các trạng thái ADR hiện hành. JSONB/chunking và adoption LZ4 chưa được chốt.
 - **Triển khai:** chỉ corpus, regression và phép đo opt-in; runtime `persistence-api`/`web` giữ nguyên.
 - **Evidence:** source base `a3e65360e316d27e5d029a43aef8b3083f622fb7`; kết quả thực thi và giới hạn
-  nằm bên dưới. Không dùng bằng chứng từ PR #227 đang mở làm kết quả của lần chạy này.
+  nằm bên dưới. Baseline không dùng báo cáo của PR #227 (khi đó còn mở) làm kết quả tự chạy.
 
 ## Tái lập
 
@@ -33,6 +38,8 @@ cargo xtask decision query USER-09@r1
 cargo xtask decision query WR-04
 cargo test --locked -p vink-app --test document_budget
 cargo test --locked -p vink-app --test postgres long_document_http_boundaries -- --test-threads=1
+# Bao gồm kiểm độc lập của từng sample và hai negative controls; benchmark opt-in vẫn ignored.
+cargo test --locked -p vink-app --test postgres long_document_ -- --test-threads=1
 cargo xtask build
 cargo test --locked -p vink-app --test postgres document_budget::long_document_budget -- --ignored --exact --nocapture --test-threads=1
 ```
@@ -321,3 +328,134 @@ không sửa runtime để làm test xanh. Quick từng bị artifact lock khi b
 nhả lock rồi chạy tuần tự đã PASS. Các log lỗi vẫn giữ trong `/tmp/vink-229-evidence`.
 Server và PostgreSQL scratch sau merge đã dừng, data còn giữ. Baseline đầy đủ 21 case vẫn thuộc
 `5833624`/base `a3e6536`; không khẳng định đã đo lại toàn bộ hiệu năng UI sau #227.
+
+## Đối soát follow-up #229
+
+Audit ngày 16/11/2026 trên `develop@ca9369653a516715fea95ca71fbd818d54c15b0a`, sau merge #247.
+Đã đọc issue #229/#230/#231 và PR #232; issue #229 không có comment, PR #232 không có review
+submission/comment. Merge #232 là `a81333c71faf6033014a00ec26c9f7b90109d1d9`, head PR là
+`13ff80e1d0dff554037c75c5cfd763baa63068f9`. 11 checksum trong manifest lịch sử khớp.
+Raw lịch sử chứa đúng 21 case, 42 Reader/84 editor scenes; đây là evidence **đã chạy ở SHA cũ**,
+không tự trở thành lần chạy latest develop. PR #248 của #230 còn draft/open khi audit;
+loader tối ưu chưa có trong base này.
+
+### Delta thực chất và provenance phép đo
+
+`services/vink-app/tests/postgres/document_budget.rs` của #232 tạo `edited` một lần trước vòng
+năm mẫu và không restore bản gốc giữa các save. Vì vậy 12/15 mẫu được gắn `begin/middle/end`
+thực tế lặp nội dung đã lưu. Chuyển từ nhóm begin sang middle/end còn đồng thời bỏ edit nhóm
+trước. Đây là **lỗi phân loại workload của harness**, không phải lỗi production save.
+WAL/latency cũ là output thật của workload đó; không xóa hoặc gọi là benchmark giả.
+
+Measurement v2 (`4f2883630ff27f36c7549e036e6b554166a86692`) reuse corpus, application, PgStore,
+SQLx scratch DB và runner cũ. `app_save_samples` restore bản gốc trước **mỗi** sample; kiểm full
+content/version trước save, full content/title/version sau commit. Hash v1 trước/sau và
+`durable_exact_match` được ghi theo sample. Hai negative controls từ chối cùng payload bị gắn
+nhãn changed và payload thay đổi bị gắn nhãn noop. Regression PG không ignored chạy cùng helper
+trên thơ/tab và tiny blocks 30k (40 samples tổng). Source review cho thấy nếu bỏ restore,
+assertion full baseline sẽ từ chối mẫu thứ hai của nhóm changed; mutation test bỏ restore chưa chạy.
+
+Ranh giới đo v2: raw-input clone, baseline reset, hash phục vụ evidence và readback assertions
+nằm **ngoài** app save timer/WAL delta. Timer gồm application validation, PgStore transaction
+và commit. Timed load đọc bản gốc vừa restore. Reset làm warm cache và thêm churn ngoài cửa sổ;
+relation totals chứa cả reset, không so trực tiếp với totals v1 như lợi ích performance.
+Không tuyên bố speedup production từ việc đổi harness. CPU/history/compression/browser giữ
+ranh giới cũ; năm mẫu báo median/max, không gọi là p95. Không đổi production code, limits,
+schema, content hash, public cache policy hoặc persistence gate.
+
+### Ma trận acceptance → nguồn → gap
+
+Các file:line sau ghim ở source measurement v2. App là `services/vink-app`, Web là
+`apps/vink-web`, PG là `services/vink-app/tests/postgres/document_budget.rs`; đường dẫn con
+đọc theo owner đó. Acceptance giữ đúng issue, không mở rộng hồi tố sang SLA/thiết bị thật.
+
+| AC nguyên issue (rút gọn) | PR #232 thực sự đã làm | Owner production / test | Audit trước delta | Kết luận follow-up |
+| --- | --- | --- | --- | --- |
+| AC-01: corpus thật; scalar/byte/block/line/envelope | 21 case, validator/serializer/hash, NFC/NFD và repeated corpus equality | `src/domain/document.rs:68`, `src/domain/revision.rs:10` trong App; `tests/document_budget.rs:9`; `tests/support/document_budget.rs:16`; PG `pure_measurements:26` | PASS lịch sử | PASS: 3 pure tests + 21/21 corpus equality; `followup/summary.json` |
+| AC-02: PostgreSQL read/update/WAL/heap/TOAST/index/history | App/PgStore, EXPLAIN, 1/10/100 revisions; output thật | `src/persistence/postgres.rs:165`; PG `plan:212`, `app_save_samples:90`, `long_document_budget:443` | PARTIAL: nhóm changed-write trộn no-op | PASS local PG v2: 420 samples và exact durable readback; `followup/postgres.json`, `pg-focused-final.log`; chờ merge delta |
+| AC-03: Reader/editor tách network/SSR/hydration/DOM/memory/snapshot | 42 Reader/84 editor scenes, loopback timings, V8/DOM proxy; ghi NOT_RUN mobile/OS IME | Web `src/document.rs:90`, `src/editor.rs:45`; `e2e/document-budget.mjs:7`; PG router SSR | PASS theo scope lịch sử; UI latest cần tái lập | PASS local Chrome/SSR: 42 Reader + 84 editor scenes; `followup/browser.json`; RSS/WASM peak NOT_RUN |
+| AC-04: pglz/default/LZ4, old/new data, không production setting | Fresh identical datasets, insert/read/update/WAL/sizes; old pglz/new lz4 | PG `compression_probe:244`; scratch table `budget_toast_probe` | PASS lịch sử | PASS SQL scratch: `followup/compression.json`, old/new rows; không sửa production setting |
+| AC-05: boundaries/guard, text/no truncation/conflict | limit−1/limit/limit+1; lỗi HTTP/409 không đổi durable text; UI giữ full buffer | App `http/api.rs:650`; PG `long_document_http_boundaries:386`; Web `e2e/document-budget.mjs:138` | PASS baseline/regression; F1 còn là product gap | PASS PG/browser regression: `followup/pg-focused-final.log`, `browser.json`; F1 giữ follow-up transport |
+| AC-06: oversized cache fallback/gate | Rust + Memory/NoOp/IndexedDB miss, không durable ACK; online snapshot giữ nguyên | Web `public_persistence.rs:7,103,110,134,165`; pure test `document_budget.rs:62`; browser oversized case | PASS adapter/gate | PASS adapter/gate: oversized case trong `followup/browser.json`; không suy offline rollout PASS, #203 owner |
+| AC-07: thresholds/raw evidence/operations/go-no-go | Report có thresholds đề xuất, raw output, rewrite/rollback costs, conditional JSONB/default | Report này + raw historical manifest | PARTIAL: diễn giải changed-save cần hiệu chỉnh | PASS report + v1/v2 provenance/raw/thresholds; `followup/verification.json`, `manifest.json`; chờ merge report/harness |
+
+### Ba finding và ranh giới tiếp tục
+
+| Finding | Phân loại, evidence đã có từ #232 | Thuộc #229 tới đâu | Hành động/owner tiếp theo |
+| --- | --- | --- | --- |
+| F1: 200k tiny blocks tạo request >2 MiB, HTTP 422 | Product/transport compatibility gap thật; non-ignored PG test và browser buffer/version regression đã có. Domain chấp nhận, Axum Json rejection được API ánh xạ thành Validation/body. Không phải thiếu test hay lỗi môi trường. | AC-05 yêu cầu đo/regression/đề xuất guard, không bắt tự đổi product/transport limit. | Đề xuất issue riêng “HTTP save chấp nhận document v1 hợp lệ trong ngân sách transport có giới hạn”; cần phân tích upper bound cả escaping/NFD/title/envelope, rejection semantics và chi phí tài nguyên. Không hạ limit vì cache quota. |
+| F2: owner-state xử lý toàn history | Hotspot production read thật; history 1/10/100 đã đo. Base vẫn SELECT title/document của mọi revision tại `persistence/publication.rs:147`, parse/hash tại :211. | AC-02 cung cấp baseline và corpus. | #230/#248 sở hữu optimization/integrity boundaries. Có thể tiếp tục review/triển khai; chưa coi draft #248 đã tích hợp. |
+| F3: Reader dựng 200k paragraph | Hotspot render thật; `DocumentView` map mọi block; raw DOM/HTML/hydration đã đo, không chỉ giả thuyết. | AC-03/07 yêu cầu đo/đánh giá, không cấp quyết định virtualization. | Đề xuất issue riêng “Ngân sách Reader nhiều block và kiểm selection/find/copy/a11y”; cần release + thiết bị đích và quyết định guard/render. Không cắt paragraph, đổi thơ hoặc tự triển khai virtualization. |
+
+#231 có thể chuẩn bị RFC với baseline này, nhưng quyết định storage cần đối chiếu sau #230,
+corpus/workload đại diện, release/thiết bị đích, đủ samples và chi phí manifest/dedup/assembly,
+WAL/backup/rewrite/rollback. F1/F3 không tự được giải quyết bằng chunk storage. Giữ phương án
+JSONB/default có điều kiện; chapter/CAS/offline/autosave chưa được phép mở trong task này.
+[TOAST](https://www.postgresql.org/docs/17/storage-toast.html) và
+[SET COMPRESSION](https://www.postgresql.org/docs/17/sql-altertable.html) đã đối chiếu lại:
+đổi compression policy không tự rewrite giá trị cũ.
+
+Quint SSOT không cần đổi: delta chỉ sửa workload và assertions của benchmark, không thay
+semantics, authority, state transition, lifecycle hoặc production model. Decision query giữ
+`USER-09@r1 PRODUCT_CONFIRMED`, snapshot
+`6e77cb0a7f4eb67033c6e0df6d8a670a84eb61b3095a307ad0615b771c91dd9b`; `WR-04` là related-only
+trong registry, trạng thái `DEFERRED` lấy từ PRD dòng 45. Không tạo signoff mới.
+
+### Kết quả thực thi follow-up
+
+[Raw evidence và commands](evidence/long-document-229/followup/README.md), source `4f288363`,
+Mac M4/24 GiB/macOS 15.6, PostgreSQL 17.11, Chrome 157.0.8103.78, Rust 1.99.1/Node 22.15.0,
+profile dev/test debug=0, incremental=0, jobs=3. Seed 229, năm mẫu mỗi kind; cold/warm và
+measurement boundary trong `environment.json`/`postgres.json`. Không chạy build khác đồng thời
+với phép đo. Host thiếu đĩa; có ba query chỉ đọc tiến độ scratch khi history chậm, giữ noise này
+trong metadata. Những lượt compile/initdb lỗi môi trường được giữ riêng, không gán thành test PASS.
+
+- PASS: 3 pure regressions; 4 focused checks gồm HTTP/PG, independent-sample regression và
+  2 negative controls. Benchmark opt-in bị ignored trong focused run, rồi chạy riêng thật.
+- PASS: full opt-in benchmark 570,45 giây, 21 case, history 1/10/100, plans/WAL/relation sizes,
+  default/pglz/LZ4 + old/new rows, 42 Reader + 84 editor scenes. Không console error/exception.
+- PASS: 21/21 corpus tái tạo khớp mọi scalar/byte/block/line/envelope/hash với raw #232.
+  420 measured saves = 105 no-op + **315 thay đổi nội dung thật**; trước sửa chỉ 63/315 mẫu
+  gắn nhãn changed thực sự đổi nội dung. Mọi sample mới kiểm exact durable content/version.
+- PASS: `cargo xtask verify quick` đầy đủ, retry cuối dùng jobs=1 sau lỗi hết đĩa;
+  [raw final](evidence/long-document-229/followup/quick.log) và lỗi ban đầu đều được giữ.
+  Browser này là phase `document-budget`, không phải toàn lane Web; PostgreSQL là focused + probe, không phải toàn lane PostgreSQL.
+
+| Case 200k / kind | Median ms (5 mẫu) | Max quan sát ms | Median WAL B |
+| --- | ---: | ---: | ---: |
+| Việt NFC / noop | 55,69 | 56,14 | 328.352 |
+| Việt NFC / begin | 55,61 | 56,00 | 328.336 |
+| Việt NFC / middle | 55,28 | 55,94 | 328.352 |
+| Việt NFC / end | 55,16 | 56,39 | 328.336 |
+| Tiny blocks / noop | 288,17 | 304,43 | 517.768 |
+| Tiny blocks / begin | 284,41 | 307,65 | 517.768 |
+| Tiny blocks / middle | 283,88 | 1.429,54 | 517.768 |
+| Tiny blocks / end | 279,04 | 286,80 | 517.776 |
+
+Max 1.429,54 ms được giữ, không bỏ outlier; năm samples không ước lượng p95 đáng tin cậy.
+Owner-state 1/10/100 revision: Việt NFC **45,46 / 442,33 / 4.398,78 ms**; tiny blocks
+**260,24 / 2.512,38 / 25.792,31 ms**. Đây là loader cũ, không phải kết quả sau #230.
+Compression totals vẫn default=pglz=30.965.760 B, LZ4=43.933.696 B; giữ kết luận conditional
+JSONB/default. Các bảng raw v1/v2 không là before/after optimization production.
+
+**Kết luận AC trên nhánh follow-up:** AC-01..AC-07 PASS theo phạm vi baseline local đã nêu.
+AC-02/AC-07 cần delta follow-up này để thay phần diễn giải workload cũ trên develop.
+Checklist có thể tick theo evidence của nhánh đã kiểm, nhưng #229 giữ OPEN chờ merge delta;
+không tuyên bố develop đã chứa bản sửa. AC-01/03/04/05/06 đã có evidence #232 và được kiểm lại.
+F1/F3 vẫn là product gaps đã được báo trong acceptance baseline, không biến thành AC mới.
+
+**NOT_RUN:** full PostgreSQL/Web lanes, thiết bị mobile thật, OS Telex/VNI, Safari/Firefox,
+screen reader, release/production load, cold OS/PG page cache, total process RSS/WASM peak và
+Quint/Kani/CMP. Browser dùng CSS viewport 390/1440 và root font 100/200, input CDP;
+V8/DOM counters chỉ là proxy, không suy SLA mobile. Không dùng GitHub CI làm evidence.
+
+### Review trước merge #249
+
+Review HEAD `233804451f2abb4a2b041c4406a549ed080b8153` trên base/merge-base
+`ca9369653a516715fea95ca71fbd818d54c15b0a` không tìm thấy regression mới do delta này.
+[Bundle review](evidence/long-document-229/review-249/README.md) ghi kiểm checksum/source,
+tính lại raw summary và regression PostgreSQL mới: 4 PASS, probe opt-in ignored.
+Mutation chỉ giữ lần restore đầu đã làm regression FAIL tại assertion baseline; hoàn nguyên
+source byte-identical, build lại và 4 checks PASS. Gap mutation được nêu trong audit trước
+đã được kiểm, không sửa lại evidence lịch sử hoặc coi đây là lần đo hiệu năng mới.
+Commit review chỉ bổ sung docs/evidence; Quick và full probe dùng lại kết quả source không đổi.

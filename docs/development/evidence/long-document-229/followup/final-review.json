@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "measurement_source_sha": "4f2883630ff27f36c7549e036e6b554166a86692",
+  "develop_sha": "ca9369653a516715fea95ca71fbd818d54c15b0a",
+  "relative_file_links": 284,
+  "json_files": 13,
+  "historical_hashes": 11,
+  "cases": 21,
+  "save_samples": 420,
+  "reader_scenes": 42,
+  "editor_scenes": 84,
+  "all_test_code_unchanged_since_measurement": true,
+  "worktree_204_preserved": true,
+  "validation_scope": "final docs/JSON/raw-result/byte-hash/safe-log checks only; full runtime evidence reused because final delta is docs/evidence",
+  "raw_log_whitespace": "Preserve exact tool output including blank EOF and whitespace in linker diagnostics; diff --check uses standard rules outside *.log, allows only blank-at-EOF/EOL in raw *.log"
+}

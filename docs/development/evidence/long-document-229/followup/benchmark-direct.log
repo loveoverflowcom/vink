@@ -1,0 +1,285 @@
+
+running 1 test
+test document_budget::long_document_budget ... budget ascii_repeat-30000
+budget vi_nfc-30000
+budget vi_nfd-30000
+budget emoji-30000
+budget poem_tabs-30000
+budget tiny_blocks-30000
+budget escaping-30000
+budget ascii_repeat-100000
+budget vi_nfc-100000
+budget vi_nfd-100000
+budget emoji-100000
+budget poem_tabs-100000
+budget tiny_blocks-100000
+budget escaping-100000
+budget ascii_repeat-200000
+budget vi_nfc-200000
+budget vi_nfd-200000
+budget emoji-200000
+budget poem_tabs-200000
+budget tiny_blocks-200000
+budget escaping-200000
+  ok  ascii_repeat-30000/1440/100: Reader renders every block/scalar
+  ok  ascii_repeat-30000: actual loaded buffer retains every line
+  ok  ascii_repeat-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-30000/390/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-30000/390/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-30000: manual save ACK advances server version
+  ok  ascii_repeat-30000: exact live buffer survives save outcome
+  ok  ascii_repeat-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  ascii_repeat-30000: UI conflict preserves exact unsaved text
+  ok  vi_nfc-30000/1440/100: Reader renders every block/scalar
+  ok  vi_nfc-30000: actual loaded buffer retains every line
+  ok  vi_nfc-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-30000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-30000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-30000: manual save ACK advances server version
+  ok  vi_nfc-30000: exact live buffer survives save outcome
+  ok  vi_nfc-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfc-30000: UI conflict preserves exact unsaved text
+  ok  vi_nfd-30000/1440/100: Reader renders every block/scalar
+  ok  vi_nfd-30000: actual loaded buffer retains every line
+  ok  vi_nfd-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-30000: manual save ACK advances server version
+  ok  vi_nfd-30000: exact live buffer survives save outcome
+  ok  vi_nfd-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfd-30000: UI conflict preserves exact unsaved text
+  ok  emoji-30000/1440/100: Reader renders every block/scalar
+  ok  emoji-30000: actual loaded buffer retains every line
+  ok  emoji-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  emoji-30000/390/100: preview retains buffer, view and selection anchor
+  ok  emoji-30000/390/200: preview retains buffer, view and selection anchor
+  ok  emoji-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  emoji-30000: manual save ACK advances server version
+  ok  emoji-30000: exact live buffer survives save outcome
+  ok  emoji-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  emoji-30000: UI conflict preserves exact unsaved text
+  ok  poem_tabs-30000/1440/100: Reader renders every block/scalar
+  ok  poem_tabs-30000: actual loaded buffer retains every line
+  ok  poem_tabs-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-30000/390/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-30000/390/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-30000: manual save ACK advances server version
+  ok  poem_tabs-30000: exact live buffer survives save outcome
+  ok  poem_tabs-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  poem_tabs-30000: UI conflict preserves exact unsaved text
+  ok  tiny_blocks-30000/1440/100: Reader renders every block/scalar
+  ok  tiny_blocks-30000: actual loaded buffer retains every line
+  ok  tiny_blocks-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-30000/390/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-30000/390/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-30000: manual save ACK advances server version
+  ok  tiny_blocks-30000: exact live buffer survives save outcome
+  ok  tiny_blocks-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  tiny_blocks-30000: UI conflict preserves exact unsaved text
+  ok  escaping-30000/1440/100: Reader renders every block/scalar
+  ok  escaping-30000: actual loaded buffer retains every line
+  ok  escaping-30000/1440/100: preview retains buffer, view and selection anchor
+  ok  escaping-30000/390/100: preview retains buffer, view and selection anchor
+  ok  escaping-30000/390/200: preview retains buffer, view and selection anchor
+  ok  escaping-30000/1440/200: preview retains buffer, view and selection anchor
+  ok  escaping-30000: manual save ACK advances server version
+  ok  escaping-30000: exact live buffer survives save outcome
+  ok  escaping-30000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  escaping-30000: UI conflict preserves exact unsaved text
+  ok  ascii_repeat-100000/1440/100: Reader renders every block/scalar
+  ok  ascii_repeat-100000: actual loaded buffer retains every line
+  ok  ascii_repeat-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-100000/390/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-100000/390/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-100000: manual save ACK advances server version
+  ok  ascii_repeat-100000: exact live buffer survives save outcome
+  ok  ascii_repeat-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  ascii_repeat-100000: UI conflict preserves exact unsaved text
+  ok  vi_nfc-100000/1440/100: Reader renders every block/scalar
+  ok  vi_nfc-100000: actual loaded buffer retains every line
+  ok  vi_nfc-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-100000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-100000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-100000: manual save ACK advances server version
+  ok  vi_nfc-100000: exact live buffer survives save outcome
+  ok  vi_nfc-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfc-100000: UI conflict preserves exact unsaved text
+  ok  vi_nfd-100000/1440/100: Reader renders every block/scalar
+
+thread 'tokio-rt-worker' (89114781) panicked at /Users/manhblue/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/leptos_server-0.8.8/src/local_resource.rs:388:13:
+Reading from a LocalResource outside Suspense in `ssr` mode will cause the response to hang, because LocalResources are always pending on the server.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+  ok  vi_nfd-100000: actual loaded buffer retains every line
+  ok  vi_nfd-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-100000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-100000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-100000: manual save ACK advances server version
+  ok  vi_nfd-100000: exact live buffer survives save outcome
+  ok  vi_nfd-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfd-100000: UI conflict preserves exact unsaved text
+  ok  emoji-100000/1440/100: Reader renders every block/scalar
+  ok  emoji-100000: actual loaded buffer retains every line
+  ok  emoji-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  emoji-100000/390/100: preview retains buffer, view and selection anchor
+  ok  emoji-100000/390/200: preview retains buffer, view and selection anchor
+  ok  emoji-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  emoji-100000: manual save ACK advances server version
+  ok  emoji-100000: exact live buffer survives save outcome
+  ok  emoji-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  emoji-100000: UI conflict preserves exact unsaved text
+  ok  poem_tabs-100000/1440/100: Reader renders every block/scalar
+  ok  poem_tabs-100000: actual loaded buffer retains every line
+  ok  poem_tabs-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-100000/390/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-100000/390/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-100000: manual save ACK advances server version
+  ok  poem_tabs-100000: exact live buffer survives save outcome
+  ok  poem_tabs-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  poem_tabs-100000: UI conflict preserves exact unsaved text
+  ok  tiny_blocks-100000/1440/100: Reader renders every block/scalar
+  ok  tiny_blocks-100000: actual loaded buffer retains every line
+  ok  tiny_blocks-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-100000/390/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-100000/390/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-100000: manual save ACK advances server version
+  ok  tiny_blocks-100000: exact live buffer survives save outcome
+  ok  tiny_blocks-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  tiny_blocks-100000: UI conflict preserves exact unsaved text
+  ok  escaping-100000/1440/100: Reader renders every block/scalar
+  ok  escaping-100000: actual loaded buffer retains every line
+  ok  escaping-100000/1440/100: preview retains buffer, view and selection anchor
+  ok  escaping-100000/390/100: preview retains buffer, view and selection anchor
+  ok  escaping-100000/390/200: preview retains buffer, view and selection anchor
+  ok  escaping-100000/1440/200: preview retains buffer, view and selection anchor
+  ok  escaping-100000: manual save ACK advances server version
+  ok  escaping-100000: exact live buffer survives save outcome
+  ok  escaping-100000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  escaping-100000: UI conflict preserves exact unsaved text
+  ok  ascii_repeat-200000/1440/100: Reader renders every block/scalar
+  ok  ascii_repeat-200000/390/100: Reader renders every block/scalar
+  ok  ascii_repeat-200000/390/200: Reader renders every block/scalar
+  ok  ascii_repeat-200000/1440/200: Reader renders every block/scalar
+  ok  ascii_repeat-200000: actual loaded buffer retains every line
+  ok  ascii_repeat-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-200000/390/100: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-200000/390/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  ascii_repeat-200000: manual save ACK advances server version
+  ok  ascii_repeat-200000: exact live buffer survives save outcome
+  ok  ascii_repeat-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  ascii_repeat-200000: UI conflict preserves exact unsaved text
+  ok  vi_nfc-200000/1440/100: Reader renders every block/scalar
+  ok  vi_nfc-200000/390/100: Reader renders every block/scalar
+  ok  vi_nfc-200000/390/200: Reader renders every block/scalar
+  ok  vi_nfc-200000/1440/200: Reader renders every block/scalar
+  ok  vi_nfc-200000: actual loaded buffer retains every line
+  ok  vi_nfc-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-200000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfc-200000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfc-200000: manual save ACK advances server version
+  ok  vi_nfc-200000: exact live buffer survives save outcome
+  ok  vi_nfc-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfc-200000: UI conflict preserves exact unsaved text
+  ok  vi_nfd-200000/1440/100: Reader renders every block/scalar
+  ok  vi_nfd-200000/390/100: Reader renders every block/scalar
+  ok  vi_nfd-200000/390/200: Reader renders every block/scalar
+  ok  vi_nfd-200000/1440/200: Reader renders every block/scalar
+  ok  vi_nfd-200000: actual loaded buffer retains every line
+  ok  vi_nfd-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-200000/390/100: preview retains buffer, view and selection anchor
+  ok  vi_nfd-200000/390/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  vi_nfd-200000: manual save ACK advances server version
+  ok  vi_nfd-200000: exact live buffer survives save outcome
+  ok  vi_nfd-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  vi_nfd-200000: UI conflict preserves exact unsaved text
+  ok  emoji-200000/1440/100: Reader renders every block/scalar
+  ok  emoji-200000/390/100: Reader renders every block/scalar
+  ok  emoji-200000/390/200: Reader renders every block/scalar
+  ok  emoji-200000/1440/200: Reader renders every block/scalar
+  ok  emoji-200000: actual loaded buffer retains every line
+  ok  oversized valid public record: closed rollout gate, cache miss, no fake durable ACK
+  ok  emoji-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  emoji-200000/390/100: preview retains buffer, view and selection anchor
+  ok  emoji-200000/390/200: preview retains buffer, view and selection anchor
+  ok  emoji-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  emoji-200000: manual save ACK advances server version
+  ok  emoji-200000: exact live buffer survives save outcome
+  ok  emoji-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  emoji-200000: UI conflict preserves exact unsaved text
+  ok  poem_tabs-200000/1440/100: Reader renders every block/scalar
+  ok  poem_tabs-200000/390/100: Reader renders every block/scalar
+  ok  poem_tabs-200000/390/200: Reader renders every block/scalar
+  ok  poem_tabs-200000/1440/200: Reader renders every block/scalar
+  ok  poem_tabs-200000: actual loaded buffer retains every line
+  ok  poem_tabs-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/390/100: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/390/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  poem_tabs-200000: manual save ACK advances server version
+  ok  poem_tabs-200000: exact live buffer survives save outcome
+  ok  poem_tabs-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  poem_tabs-200000: UI conflict preserves exact unsaved text
+  ok  tiny_blocks-200000/1440/100: Reader renders every block/scalar
+  ok  tiny_blocks-200000/390/100: Reader renders every block/scalar
+  ok  tiny_blocks-200000/390/200: Reader renders every block/scalar
+  ok  tiny_blocks-200000/1440/200: Reader renders every block/scalar
+  ok  tiny_blocks-200000: actual loaded buffer retains every line
+  ok  tiny_blocks-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/390/100: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/390/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  tiny_blocks-200000: manual save transport rejection preserves server version
+  ok  tiny_blocks-200000: exact live buffer survives save outcome
+  ok  tiny_blocks-200000: stale saved-version remains 409
+  ok  escaping-200000/1440/100: Reader renders every block/scalar
+  ok  escaping-200000/390/100: Reader renders every block/scalar
+  ok  escaping-200000/390/200: Reader renders every block/scalar
+  ok  escaping-200000/1440/200: Reader renders every block/scalar
+  ok  escaping-200000: actual loaded buffer retains every line
+  ok  escaping-200000/1440/100: preview retains buffer, view and selection anchor
+  ok  escaping-200000/390/100: preview retains buffer, view and selection anchor
+  ok  escaping-200000/390/200: preview retains buffer, view and selection anchor
+  ok  escaping-200000/1440/200: preview retains buffer, view and selection anchor
+  ok  escaping-200000: manual save ACK advances server version
+  ok  escaping-200000: exact live buffer survives save outcome
+  ok  escaping-200000: stale saved-version remains 409
+  ok  a second writer advances the durable version
+  ok  escaping-200000: UI conflict preserves exact unsaved text
+  ok  no console errors or exceptions
+browser-smoke: PASS (document-budget)
+failed to delete database "_sqlx_test_WjtPpB1NWXyniUSekWV26U7xRPQEE7Rfbw05p5lDpG9c5mom58A7": error returned from database: database "_sqlx_test_WjtPpB1NWXyniUSekWV26U7xRPQEE7Rfbw05p5lDpG9c5mom58A7" is being accessed by other users at line 1756
+ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 200 filtered out; finished in 570.45s
+
