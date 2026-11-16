@@ -1,7 +1,7 @@
 //! HTTP contract for work appeals. All responses are private/no-store, including refusals.
 use axum::{
     Json, Router,
-    extract::{Path, State, rejection::JsonRejection},
+    extract::{Path, RawQuery, State, rejection::JsonRejection},
     http::{HeaderValue, header},
     routing::{get, post},
 };
@@ -84,6 +84,7 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/works/{work}/revisions/{revision}/appeals", post(file))
         .route("/works/{work}/appeals", get(own))
         .route("/moderation/appeals", get(queue))
+        .route("/moderation/appeals/page", get(queue_page))
         .route("/moderation/appeals/{id}", get(detail))
         .route("/moderation/appeals/{id}/conclude", post(conclude))
         .layer(SetResponseHeaderLayer::overriding(
@@ -128,14 +129,52 @@ async fn own(
 async fn queue(
     State(state): State<AppState>,
     Actor(actor): Actor,
-) -> Result<Json<Vec<AppealDto>>, ApiError> {
-    let records = appeals::list_open(
-        state.vink.store().pool(),
-        actor.ok_or(ApiError::Unauthenticated)?,
-    )
-    .await?;
-    Ok(Json(records.into_iter().map(Into::into).collect()))
+    raw: RawQuery,
+) -> Result<impl axum::response::IntoResponse, ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let q = super::moderation_queue::query(
+        actor,
+        crate::domain::moderation_queue::QueueKind::Appeals,
+        raw,
+    )?;
+    let size = q.size();
+    Ok(super::moderation_queue::legacy(
+        load_page(&state, actor, &q).await?,
+        "/api/v1/moderation/appeals",
+        size,
+    ))
 }
+async fn queue_page(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    raw: RawQuery,
+) -> Result<Json<super::moderation_queue::QueuePage<AppealDto>>, ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let q = super::moderation_queue::query(
+        actor,
+        crate::domain::moderation_queue::QueueKind::Appeals,
+        raw,
+    )?;
+    Ok(Json(load_page(&state, actor, &q).await?))
+}
+async fn load_page(
+    state: &AppState,
+    actor: crate::domain::ids::PrincipalId,
+    q: &crate::domain::moderation_queue::QueueQuery,
+) -> Result<super::moderation_queue::QueuePage<AppealDto>, ApiError> {
+    let mut rows = appeals::list_open(state.vink.store().pool(), actor, q).await?;
+    let more = rows.len() > q.size();
+    rows.truncate(q.size());
+    let next_cursor = more
+        .then(|| rows.last().map(|a| q.cursor_after(a.created_at, a.id)))
+        .flatten();
+    Ok(super::moderation_queue::QueuePage {
+        authority_key: q.authority_key(true, &[]),
+        items: rows.into_iter().map(Into::into).collect(),
+        next_cursor,
+    })
+}
+
 async fn detail(
     State(state): State<AppState>,
     Actor(actor): Actor,

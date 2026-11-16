@@ -1,0 +1,19 @@
+{
+  "items": [
+    {
+      "title": "[Mẫu] Hàng chờ ỹ ỷ",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "subject_kind": "work_revision",
+      "work_id": "33333333-3333-4333-8333-333333333333",
+      "revision_id": "44444444-4444-4444-8444-444444444444",
+      "decision_version": 1,
+      "origin": "automation_paused",
+      "version": 1,
+      "state": "queued",
+      "claimed_by": null,
+      "created_at": "2026-11-16T00:00:00Z"
+    }
+  ],
+  "next_cursor": "015169954d9374e69ad2529bcdf44fdf9408bcb80d06e2260700ae75655247e1c5000660597580e00000000000000040008000000000000001",
+  "authority_key": "a6c44c5cdbf908e42a9fb66ac4ccd51bdda9044d84ff33d8d9df1c679b8fb3fd"
+}

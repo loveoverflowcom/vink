@@ -303,14 +303,30 @@ pub async fn list_own(
     Ok(records(&mut tx, work).await?)
 }
 
-pub async fn list_open(pool: &PgPool, actor: PrincipalId) -> Result<Vec<AppealRecord>, Error> {
-    let mut tx = super::discussion::read_snapshot(pool).await?;
-    load_moderation_directory(&mut tx, OffsetDateTime::now_utc())
+pub const APPEAL_QUEUE_SQL: &str = "SELECT a.* FROM work_appeals a JOIN work_publications p ON p.work_id = a.work_id WHERE a.state = 'open' AND a.appellant_id <> $1 AND p.audience = 'public' AND p.lifecycle = 'active' AND ($2::timestamptz IS NULL OR (a.created_at,a.id) > ($2,$3)) ORDER BY a.created_at, a.id LIMIT $4";
+pub async fn list_open(
+    pool: &PgPool,
+    actor: PrincipalId,
+    page: &crate::domain::moderation_queue::QueueQuery,
+) -> Result<Vec<AppealRecord>, Error> {
+    let mut tx = super::moderation::queue_snapshot(pool).await?;
+    let now = query_scalar("SELECT transaction_timestamp()")
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(classify)?;
+    super::moderation::load_queue_directory(&mut tx, actor)
         .await?
-        .require_admin(actor, OffsetDateTime::now_utc())
+        .require_admin(actor, now)
         .map_err(|e| Error::Forbidden(e.as_str()))?;
-    Ok(query_as("SELECT a.* FROM work_appeals a JOIN work_publications p ON p.work_id = a.work_id WHERE a.state = 'open' AND a.appellant_id <> $1 AND p.audience = 'public' AND p.lifecycle = 'active' ORDER BY a.created_at, a.id")
-        .bind(actor.as_uuid()).fetch_all(&mut *tx).await.map_err(classify)?)
+    let (at, id) = page.bounds();
+    Ok(query_as(APPEAL_QUEUE_SQL)
+        .bind(actor.as_uuid())
+        .bind(at)
+        .bind(id)
+        .bind(page.fetch())
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?)
 }
 
 pub async fn detail(

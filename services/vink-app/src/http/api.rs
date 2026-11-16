@@ -163,6 +163,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
     let moderation_works = Router::new()
         .route("/moderation/works/queue", get(list_work_moderation_queue))
         .route(
+            "/moderation/works/queue/page",
+            get(list_work_moderation_page),
+        )
+        .route(
             "/moderation/works/{work_id}/revisions/{revision_id}/cases",
             post(open_work_moderation_case),
         )
@@ -1080,19 +1084,56 @@ async fn read_conn(
 async fn list_work_moderation_queue(
     State(state): State<AppState>,
     Actor(actor): Actor,
-) -> Result<Json<Vec<CaseSummaryDto>>, ApiError> {
+    raw: RawQuery,
+) -> Result<impl IntoResponse, ApiError> {
     let actor = actor.ok_or(ApiError::Unauthenticated)?;
-    let now = OffsetDateTime::now_utc();
-    let mut conn = read_conn(&state).await?;
-    let directory = moderation_store::load_moderation_directory(&mut conn, now).await?;
-    if !directory.has_any_capability(actor, ReviewCapability::Works, now) {
-        return Err(ApiError::Forbidden);
-    }
-    let cases = moderation_store::list_open_work_cases(&mut conn).await?;
-    Ok(Json(
-        cases
+    let query = super::moderation_queue::query(
+        actor,
+        crate::domain::moderation_queue::QueueKind::Works,
+        raw,
+    )?;
+    let size = query.size();
+    let page = work_queue_page(&state, actor, &query).await?;
+    Ok(super::moderation_queue::legacy(
+        page,
+        "/api/v1/moderation/works/queue",
+        size,
+    ))
+}
+async fn list_work_moderation_page(
+    State(state): State<AppState>,
+    Actor(actor): Actor,
+    raw: RawQuery,
+) -> Result<Json<super::moderation_queue::QueuePage<CaseSummaryDto>>, ApiError> {
+    let actor = actor.ok_or(ApiError::Unauthenticated)?;
+    let query = super::moderation_queue::query(
+        actor,
+        crate::domain::moderation_queue::QueueKind::Works,
+        raw,
+    )?;
+    Ok(Json(work_queue_page(&state, actor, &query).await?))
+}
+async fn work_queue_page(
+    state: &AppState,
+    actor: PrincipalId,
+    query: &crate::domain::moderation_queue::QueueQuery,
+) -> Result<super::moderation_queue::QueuePage<CaseSummaryDto>, ApiError> {
+    let (mut cases, authority_key) =
+        moderation_store::list_open_work_cases(state.vink.store().pool(), actor, query).await?;
+    let more = cases.len() > query.size();
+    cases.truncate(query.size());
+    let next_cursor = more
+        .then(|| {
+            cases
+                .last()
+                .map(|c| query.cursor_after(c.created_at, c.id.as_uuid()))
+        })
+        .flatten();
+    Ok(super::moderation_queue::QueuePage {
+        authority_key,
+        next_cursor,
+        items: cases
             .into_iter()
-            .filter(|c| directory.resolve(actor, &c.target(), now).is_ok())
             .map(|c| CaseSummaryDto {
                 title: c.title,
                 id: c.id.to_string(),
@@ -1107,7 +1148,7 @@ async fn list_work_moderation_queue(
                 created_at: c.created_at,
             })
             .collect(),
-    ))
+    })
 }
 
 async fn get_work_moderation_case(

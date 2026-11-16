@@ -1445,6 +1445,13 @@ async fn the_schema_rollback_refuses_while_work_is_owed_and_keeps_comments(pool:
     // this shadow-only test.
     rollback(
         pool.clone(),
+        include_str!("../../migrations-rollback/20261121000000_moderation_queue_order.down.sql")
+            .to_owned(),
+    )
+    .await
+    .unwrap();
+    rollback(
+        pool.clone(),
         include_str!("../../migrations-rollback/20261120000000_draft_search.down.sql").to_owned(),
     )
     .await
