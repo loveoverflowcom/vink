@@ -38,9 +38,16 @@ Các owner `read_lifecycle.rs`, `public_reads.rs`, `freshness.rs`, `read_cache.r
 `xtask/src/cli.rs` không đổi từ `6e07806`; không mở rộng kết luận đó ra toàn bộ Web source
 hoặc test App. Hiện trạng và evidence UI #225 nằm ở [registry riêng](action-surfaces-225.md);
 #226 vẫn [chưa triển khai presentation mới](../design/action-surfaces-reader-discussion-226.md).
-Kiểm tra của lượt review này: `decision validate` và `decision refs` PASS với cùng snapshot
+Kiểm tra của lượt review docs-only này: `decision validate` và `decision refs` PASS với cùng snapshot
 118 revisions/79 refs ở dưới; `git diff --check` và relative file links của hai tài liệu
 thay đổi PASS. Không chạy lại model, PostgreSQL, browser hoặc CMP cho delta docs-only này.
+
+Follow-up tích hợp #244: [CI của `d31fa40`](https://github.com/loveoverflowcom/vink/actions/runs/43836039923)
+phát hiện test SSR vẫn chờ nhãn số tác phẩm trước #225. Đã tái hiện FAIL bằng PostgreSQL 17
+cục bộ rồi cập nhật assertion theo LayoutSpec “Trang này: N tác phẩm”, giữ nguyên các assertion
+không lộ nháp/snapshot riêng. `cargo test --locked -p vink-app --test postgres
+server_html_has_public_content_and_never_private_drafts -- --exact` PASS 1/1 sau sửa
+(197 filtered out); đây là kiểm PostgreSQL/SSR có phạm vi, không full lane hoặc browser.
 
 ### Luồng và lifetime hiện hành
 
@@ -98,7 +105,7 @@ câu hỏi kỹ thuật có điều kiện. Thay policy/contract phải qua owne
 | UX-01/02: main HTML, GET, context | `publicReading`, `cacheFirstPublicReads`, discovery corpus; Async routes trong `lib.rs` | Web `main`/`discovery`/`review`; no-JS/status/privacy khác performance trace hoặc screen-reader |
 
 Các command/scenario trên được đối chiếu với [scoped workflows](scoped-workflows.md) và
-`xtask/src/cli.rs`; dùng `--plan` để xem đúng phụ thuộc. **NOT_RUN trong #233:** unit/browser/
+`xtask/src/cli.rs`; dùng `--plan` để xem đúng phụ thuộc. **NOT_RUN trong audit docs-only #233:** unit/browser/
 PostgreSQL/benchmark/model lanes, vì chỉ sửa tài liệu. Historical PASS bên dưới giữ nguyên phạm vi.
 **No semantic/model impact trong #233:** không sửa state/guard/permission/race/recovery.
 Canonical M1/M3/M4 ở `services/vink-app/behavior/publication` và D2T ở `behavior/discussion`
