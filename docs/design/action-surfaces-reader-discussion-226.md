@@ -1,7 +1,8 @@
 # Reader và Nhận xét — action surfaces #226
 
 Ngày 16/11/2026 · [Issue #226](https://github.com/loveoverflowcom/vink/issues/226).
-Base đã fetch: `a81333c71faf6033014a00ec26c9f7b90109d1d9`.
+Base review đã fetch: `11c6a9c` (gồm #228 và #244).
+Baseline thực thi cũ: `a81333c71faf6033014a00ec26c9f7b90109d1d9`.
 Đây là LayoutSpec và bản đồ tích hợp, **chưa triển khai presentation mới**.
 Kết quả chạy, AC và điều kiện tiếp tục nằm ở [evidence](../development/evidence/action-surfaces-226/README.md).
 
@@ -28,7 +29,7 @@ Nhãn hiện hành là **Thấm / Hữu ích**, không đổi lại theo ảnh c
 `BUILD_SHA_UNVERIFIED`, không làm baseline eligible reader. Ảnh baseline của lượt thực thi
 chỉ chứng minh UI cũ tại source được ghim; cần before/after cùng fixture khi tích hợp #224.
 
-## LayoutSpec r1
+## LayoutSpec r2 — đồng bộ issue, chưa triển khai
 
 ```text
 R0 Reader (nền đọc yên, không bọc bài trong pill)
@@ -51,7 +52,18 @@ target và được liên kết qua description; shared guest/unavailable reason
 | CHOICE-01 | **A dự kiến**: work Tonal opt-in, comment Standard; selected dùng check + trạng thái xác nhận hiện hữu. Giảm nền trong thread dài; hai context cần recipe rõ tại composition, không CSS ngoại lệ rải rác | Paired capture thread ngắn/dài, đủ quyền/blocked/Unknown/pending/selected ở hai theme, chữ 100/200%. Nếu comment khó nhận diện, so với B neutral contained cùng fixture |
 | CHOICE-02 | **A dự kiến**: Trả lời Text + leading reply icon đúng registry, Gỡ giữ tertiary hiện hữu, Gửi giữ Filled. Tiết chế background; touch cần đủ target không dựa hover | Capture cùng capability matrix và kiểm keyboard/touch. Nếu affordance chưa rõ, so B Tonal với cùng input; không lấy số nút có nền làm thước đo |
 
-Hai lựa chọn **chưa phải lựa chọn có visual evidence**. Registry trên base và snapshot #228
+CHOICE-03 vẫn OPEN theo issue R2: A là count read-only chỉ tại Work+OwnContent+Idle
+với ownership đã resolve và handoff focus an toàn; B giữ toggle bị khóa và một visible
+reason qua `blocked_description`. Ưu tiên B nếu không chứng minh được lifetime/identity.
+Không tháo target vì late own-read, self-refusal, phase/ACK hay breakpoint; không giấu
+pending/uncertain/reconcile, không giả count 0. Cần regression cho Known/Unavailable/Hidden,
+session/revision switch, target đang focus và user đã chuyển focus sang field khác.
+
+AC-11: đầu Nhận xét dùng nhãn tĩnh “Cũ nhất trước”, không chevron/menu giả. Chỉ giảm copy
+open khi capability/composer rõ; giữ closed/unavailable/error/pending, author toggle và
+announcements. Không sửa văn bản, khổ thơ, indentation/font hoặc timestamp/timezone.
+
+Các lựa chọn **chưa phải lựa chọn có visual evidence**. Registry trên base và snapshot #228
 đang đọc không có reply glyph (`IconName::Reply` không tồn tại). Không dùng `ArrowBack` hoặc
 `Edit` thay nghĩa reply, không tự thêm icon vào file generated. Cần owner shared registry thêm
 SVG/provenance rồi generate qua `cargo xtask ui-tokens`, trước adoption Trả lời.
@@ -89,13 +101,15 @@ text/IME khi chờ/đóng bình luận; không dùng việc tác giả sở hữ
 
 ## Dependency và cách tiếp tục
 
-Ngày kiểm 16/11: #228 open draft, head `64d732aef1b0be6a5f72271eebdfe80a2bc636c0`;
-đây là thông tin phụ. Bằng chứng quyết định là `git grep` trên **actual base**:
-không có `ActionSurface` trong `packages/ui-system`/`packages/vink-patterns`,
-`ToggleAction` và `EndorsementAction` chưa nhận surface. Không cherry-pick/fork #224 vào PR này.
+Review 16/11 trên `11c6a9c`: #228 đã merge tại `2c55c267`.
+Rust `ActionSurface::{Standard,Tonal}`, prop `ToggleAction.surface` và
+`EndorsementAction.surface` đã có; CMP cũng chuyển tiếp surface. Standard là mặc định.
+`blocked_description` là DOM id của reason hiển thị, không phải text override.
+#244 thêm `FilterList`; registry vẫn không có `Reply`. Đây là dependency riêng của leading
+reply glyph, không chặn việc dùng surface cho work. Không fork primitive/CSS.
 
-1. Fetch base mới, kiểm contract #224 thật ở Rust/CMP/CSS; không suy từ trạng thái merge PR.
-2. Resolve glyph reply qua shared registry. Xác minh API/defaults thực tế, rebase rồi áp recipe.
+1. Tiếp tục từ develop sau PR review thay thế #242; không apply/merge #242 lần nữa.
+2. Áp recipe tại caller theo contract hiện hữu; resolve reply glyph qua shared registry/provenance.
 3. Giữ baseline trước sửa; chạy regression mới cùng `verify quick`, `verify web`,
    `ui-preview leptos verify`; chạy `ui-preview cmp verify` nếu đổi CMP.
 4. Capture eligible + own-content + guest và các phase thực, paired before/after 16 tổ hợp

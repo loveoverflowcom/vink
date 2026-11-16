@@ -36,6 +36,7 @@ function ssrCount(html, id) {
 
 const button = (id) => `document.querySelector(${JSON.stringify(`#${id}`)})`;
 const note = (id) => `(${button(id)}?.getAttribute('aria-describedby') ?? '').split(' ').map(id=>document.getElementById(id)?.textContent ?? '').join(' ')`;
+const exactCount = (id, expected) => `(document.querySelector(${JSON.stringify(`#${id}-count`)})?.firstElementChild?.textContent === ${JSON.stringify(String(expected))})`;
 const count = (id) => `(document.querySelector(${JSON.stringify(`#${id}-count`)})?.textContent ?? '')`;
 
 /** Main phase, fixture = the author of the sample work. */
@@ -162,7 +163,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await sleep(200);
     check(gate.held.length === 1, 'a double tap sends one command');
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='false' && ${note('endorse-work')}.includes('Đang gửi')`), 'CHOICE-10 A: no optimistic selection while the command is pending');
-    check(await page.eval(`${count('endorse-work')}.startsWith('0')`), '#226 pending On keeps the last confirmed count at 0');
+    check(await page.eval(`${exactCount('endorse-work', 0)}`), '#226 pending On keeps the last confirmed count at 0');
     await sameTarget('endorse-work', 'pending On');
     await glyphs('pending');
     const firstBody = JSON.parse(first.request.postData);
@@ -177,13 +178,13 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     console.log('  lost ACK after the commit, exact keyed replay:');
     await page.click('#endorse-work');
     const lost = await gate.next(2);
-    check(await page.eval(`${button('endorse-work')}.dataset.pressed==='true' && ${count('endorse-work')}.startsWith('1')`), '#226 pending Off keeps confirmed On and count 1');
+    check(await page.eval(`${button('endorse-work')}.dataset.pressed==='true' && ${exactCount('endorse-work', 1)}`), '#226 pending Off keeps confirmed On and count 1');
     await sameTarget('endorse-work', 'pending Off');
     check(lost.responseStatusCode === 200, 'the server committed the removal before its answer is lost');
     await gate.drop(lost);
     await page.waitFor(`${note('endorse-work')}.includes('Chưa xác nhận') && [...document.querySelectorAll('#work-endorsement button')].some(b => b.textContent==='Kiểm tra lại')`, 'uncertain state');
     check(await page.eval(`${button('endorse-work')}.dataset.pressed==='true' && ${button('endorse-work')}.getAttribute('aria-disabled')==='true'`), 'a lost answer proves nothing: the confirmed On stays and new presses wait');
-    check(await page.eval(`${count('endorse-work')}.startsWith('1')`), '#226 uncertain Off keeps the confirmed count at 1');
+    check(await page.eval(`${exactCount('endorse-work', 1)}`), '#226 uncertain Off keeps the confirmed count at 1');
     await sameTarget('endorse-work', 'uncertain Off');
     await page.click('#endorse-work');
     await sleep(200);
@@ -226,7 +227,7 @@ export async function endorsementAsReader(page, { args, check, captureMatrix }) 
     await page.key('Enter');
     const useful = await gate.next(6);
     check(new URL(useful.request.url).pathname.endsWith(`/discussion/comments/${reply}/endorsement/me`) && JSON.parse(useful.request.postData).endorsed === true, 'Enter on the focused reply action sends its own command');
-    check(await page.eval(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false' && ${count(`endorse-comment-${reply}`)}.startsWith('0')`), '#226 pending Hữu ích keeps its own confirmed Off and count 0');
+    check(await page.eval(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='false' && ${exactCount(`endorse-comment-${reply}`, 0)}`), '#226 pending Hữu ích keeps its own confirmed Off and count 0');
     await sameTarget(`endorse-comment-${reply}`, 'pending Hữu ích');
     await gate.release(useful);
     await page.waitFor(`${button(`endorse-comment-${reply}`)}.dataset.pressed==='true' && ${count(`endorse-comment-${reply}`)}.startsWith('1')`, 'reply endorsement confirmed');

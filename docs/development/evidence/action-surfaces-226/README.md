@@ -1,5 +1,9 @@
 # #226 — baseline độc lập trước action surfaces
 
+> Lịch sử bên dưới thuộc source `a330bb5`, không phải kết quả trên develop mới.
+> Review trên `11c6a9c`: #228 đã tích hợp contract; xem [review](review-242.md).
+> UI #226 vẫn NOT_IMPLEMENTED; AC-01..AC-11 giữ unchecked.
+
 Base `a81333c71faf6033014a00ec26c9f7b90109d1d9`, Mac arm64, Rust 1.99.1.
 Source/test commit `a330bb5604a4b8474e535f1a492bc856e53df698`; commit sau chỉ thêm evidence.
 Kết quả, hash source/log và metadata năm ảnh đã mở: [verification.json](verification.json).
@@ -96,6 +100,8 @@ Tất cả AC của issue vẫn unchecked; không sửa issue trong lượt này
 | AC-06 | PASS baseline Web cho closed/typing/recovery/flat order; không đổi composer. OS IME NOT_RUN |
 | AC-07 | NOT_RUN cho presentation mới: responsive/theme/focus/contrast/forced-colors phải kiểm lại sau tích hợp |
 | AC-08 | NOT_RUN: chưa có before/after của surface mới; lịch sử own-content không thay eligible baseline |
+| AC-10 | NOT_RUN: self-view và CHOICE-03 bổ sung trong issue R2, chưa triển khai |
+| AC-11 | NOT_RUN: header/order tĩnh bổ sung trong issue R2, chưa triển khai |
 | AC-09 | PASS source boundary của phần chuẩn bị: không fork/đổi primitive/backend/SQL/policy; CMP mới NOT_RUN |
 
 | Chiều | Kết quả/boundary |
