@@ -1,5 +1,8 @@
 # Evidence #258 — Dot Linux, 16/11/2026 UTC
 
+Lượt dưới đây là lịch sử implementation Dot. Xem [review độc lập và kiểm lại trên Mac](mac-review/README.md)
+cho source mới, findings/bản sửa, actual local results, cặp ảnh before/after và per-AC evidence.
+
 **Implementation ready for draft review; browser acceptance incomplete.**
 Base `develop@f1b46703ae3329ee7cd11fb06db3f8157a31e5b9`, branch `codex/empty-webp-discovery`,
 worktree `/workspace/scratch/429f9ca90843/vink-258-empty-webp`.

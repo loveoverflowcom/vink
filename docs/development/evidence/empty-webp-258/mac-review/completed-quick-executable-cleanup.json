@@ -1,0 +1,21 @@
+{
+  "reason": "Reclaim only task-created completed Quick test executables; preserve running App/xtask and current build outputs",
+  "build_started": 1794858229.7172048,
+  "removed": [
+    {
+      "file": "target/debug/deps/ssr_boundary-bd6bf69b24ad2577",
+      "bytes": 238738752,
+      "mtime": 1794858112.0333862
+    },
+    {
+      "file": "target/debug/deps/vink_ui_preview-cbfa57de50f4bb5e",
+      "bytes": 111626688,
+      "mtime": 1794858156.1145325
+    },
+    {
+      "file": "target/debug/deps/vink_app-684c32bde03314e9",
+      "bytes": 274426640,
+      "mtime": 1794858172.7445486
+    }
+  ]
+}

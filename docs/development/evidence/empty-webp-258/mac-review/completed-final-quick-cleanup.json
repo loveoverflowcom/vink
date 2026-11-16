@@ -1,0 +1,18 @@
+[
+  {
+    "file": "target/debug/deps/ssr_boundary-bd6bf69b24ad2577",
+    "bytes": 238751520
+  },
+  {
+    "file": "target/debug/deps/vink_ui_preview-cbfa57de50f4bb5e",
+    "bytes": 111626688
+  },
+  {
+    "file": "target/debug/deps/vink_app-190465178e599a42",
+    "bytes": 273812768
+  },
+  {
+    "file": "target/debug/deps/vink_app-684c32bde03314e9",
+    "bytes": 274441504
+  }
+]

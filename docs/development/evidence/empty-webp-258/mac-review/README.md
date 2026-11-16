@@ -4,11 +4,11 @@ Implementation Dot được review ở `59779916235f46fbb9710a5eb9ffab1f5b9050e4
 Đã đọc issue #258, body/comments/reviews/threads của PR (không có comment/review/thread lúc đọc),
 AGENTS, owner skills, diff, caller và assertions. Base mới là
 `develop@ffed5b5c6c004b9f55ecc8e0d9be8d863d6e6a60`; rebase sạch thành `91152b7`.
-Source cuối được kiểm là `9e9ad1aa9f17fc86b3e428bc2a7b80ffef65eacb`.
+Source cuối là `0edf21c867092e9ad29a218c19608ddb295651ba`.
 [Source hashes](source-final.json) pin 149 inputs; các thay đổi evidence sau đó chỉ là docs.
 Review implementation ban đầu độc lập với agent Dot; các bản sửa bên dưới được self-review.
 
-**Final selected Web result: PENDING.** Không dùng kết quả CI trong review này.
+**Final selected Web result: PASS (`main + discovery`, exit 0 tại source `0edf21c`).** Không dùng kết quả CI trong review này.
 
 ## Findings và bản sửa
 
@@ -27,15 +27,36 @@ Review implementation ban đầu độc lập với agent Dot; các bản sửa 
    không có runtime before-base để khẳng định thời điểm gap xuất hiện.
    `c0d28a1` chuyển intent/đóng picker sang `on_form_data` của chính Form, trước navigation,
    cùng callback bỏ unnamed submitter. GET, Apply, URL và input owner vẫn dùng luồng cũ.
-   Browser nay kiểm focus region → Tab tới recovery với ring rõ, và fallback khi hàng trả về mất.
+   Browser kiểm focus region → Tab tới recovery với ring rõ, và fallback khi hàng trả về mất.
 
-3. **Harness — Corrupt image fixture từng bị cache bỏ qua.**
+3. **P2 — Focus deferred có thể cướp caret khi người dùng đang gõ tiếp.**
+   `main + discovery` đã PASS trên `9e9ad1a` ([log](web-9e9ad1a.log)), nhưng review scheduling
+   phát hiện cửa sổ chưa được kiểm: submit A → giữ response → người dùng gõ query B chưa áp dụng
+   → A hoàn tất. [Regression mới](pending-submit-negative.log) FAIL trên cùng runtime;
+   [ảnh](pending-focus-failure.png) và trace ghi active element bị kéo từ input tới section.
+   `0b39b58` bỏ `DiscoveryFocus` và effect lúc resource hoàn tất. Lượt chỉ dời focus sang rAF
+   vẫn FAIL khi query B được nhập trước frame ([log](public-search-intent.log)). Guard cuối
+   hủy intent nếu query/focus/caret đã đổi; chỉ cho phép picker tự trả focus về trigger như
+   một phần của chính submit đó. Landmark hiện hữu cả khi loading, I/O hoàn tất không sở hữu
+   focus. [Focused cuối](public-search-complete.log) PASS query B/caret, submit lặp và Apply
+   changed/unchanged. Một build giữa chừng FAIL do `web_sys::FormData` không có ở SSR; đã dùng
+   re-export Leptos như owner hiện hành ([history](guard-build.log), [build sau](guard-build-final.log)).
+
+4. **P2 — Catalog pending làm Apply không đổi bỏ mất tag.**
+   Loading fallback có sẵn của `FilterForm` chỉ hiện status, trong khi nút Apply vẫn dùng được.
+   [Ca giữ request](catalog-loading-negative.log) xác nhận catalog thực sự pending và native
+   `FormData` trả `[]` dù đang áp dụng một tag. Không sửa bằng cách đợi catalog nhanh hơn.
+   `0edf21c` giữ selected tags qua shared `HiddenField` trong fallback, cùng cách nhánh lỗi
+   catalog đang dùng. Focused cuối PASS đúng tag fields và URL tag sau unchanged Apply.
+
+5. **Harness — Corrupt image fixture từng bị cache bỏ qua.**
    [Lượt focused thất bại](public-search-cache-fixture-fail.log) và
    [ảnh](corrupt-fixture-cache-hit.png) cho thấy WebP hợp lệ vẫn được dùng từ cache.
    `9e9ad1a` tắt/xóa cache trong browser profile tạm của đoạn failure, đếm đúng một response
    corrupt thực sự được inject, và tăng assertion blocked image thành `naturalWidth=0`.
    Giữ nguyên yêu cầu decode failure, ratio, một HTML status và href thật.
-   [Focused cuối](public-search-fixed.log) PASS cả blocked và corrupt trước hydration.
+   [Focused sau sửa fixture](public-search-fixed.log) PASS cả blocked và corrupt trước hydration;
+   [focused trên source cuối](public-search-complete.log) kiểm lại cùng các assertion này.
 
 Giả thuyết freshness remount làm mất focus **không tái hiện**: regression giữ request rồi trả
 503 đã xác nhận cùng node ảnh/link, focus vẫn ở recovery, và đúng một status có qualifier
@@ -45,16 +66,17 @@ Giả thuyết freshness remount làm mất focus **không tái hiện**: regres
 
 | Lệnh / boundary | Kết quả / source | Evidence |
 | --- | --- | --- |
+| Raw fetch ZIP nguồn qua Drive connector, so SHA-256 và bytes trong archive | PASS ZIP 1.054.999 bytes khớp hash issue; cả 3 WebP byte-identical với repo, tự kiểm lại trên Mac | [proof](source-zip-proof.json) |
 | `node --test apps/vink-web/assets/empty/verify.test.mjs` | PASS 3 regressions; bytes/manifest không đổi qua rebase/fixes | [assets](assets.log) |
 | `dwebp <mỗi WebP> -o <task PNG>` | PASS cả 3: full decode lossy/alpha 512×427; đã mở cả ba WebP | [decode](full-decode.log) |
-| `./tools/local-budget run -- cargo xtask verify quick` | PASS toàn lane tại `c0d28a1`: clippy server/hydrate/preview, 32 doctest, SSR boundary, 334 App / 235 Web tests, các unit/contracts khác và repository checks | [final Quick](quick-fixed.log) |
-| `cargo xtask build web` qua launcher | PASS binary/bundle của `c0d28a1`; commit `9e9ad1a` sau đó chỉ đổi browser harness | [build](fixed-build.log), [runtime hashes](after-runtime.sha256) |
-| `node apps/vink-web/e2e/browser-smoke.mjs --base http://127.0.0.1:55570 --chrome <Chrome Mac> --state review-266/focused-state.json --phase public-search` | PASS `9e9ad1a`; real PostgreSQL/public routes, transport held/503 fixture được ghi riêng | [focused](public-search-fixed.log) |
-| `cargo xtask verify web --scenario main --scenario discovery` | PENDING trên `9e9ad1a`; chỉ gọi PASS cho hai scenario được chọn khi command exit 0 | final log sẽ được bổ sung |
+| `./tools/local-budget run -- cargo xtask verify quick` | PASS toàn lane tại `0edf21c`: clippy server/hydrate/preview, 32 doctest, SSR boundary, 334 App / 235 Web tests, các unit/contracts khác và repository checks | [final Quick](quick-final.log); các lượt c0d28a1/0b39b58 giữ làm lịch sử |
+| `cargo xtask build web` qua launcher | PASS source `0edf21c`, actual SSR binary/bundle/static assets | [build](catalog-build.log), [runtime Web cuối](final-web-runtime.sha256) |
+| `node apps/vink-web/e2e/browser-smoke.mjs --base http://127.0.0.1:55570 --chrome <Chrome Mac> --state review-266/guard-state.json --phase public-search` | PASS `0edf21c`; real PostgreSQL/public routes, transport holds/503 được ghi riêng; app/browser cùng lifecycle owner qua [one-off script](run-search.py) | [focused](public-search-complete.log) |
+| `cargo xtask verify web --scenario main --scenario discovery` | PASS trên source cuối `0edf21c`, exit 0; 5.669 browser assertions; SSR/hydration/editor/save/reload/conflict/leave guard/preview/draft tags, discovery corpus/pagination/reader return/transport race và graceful stop | [final Web](web-final.log); [lượt 9e9ad1a lịch sử](web-9e9ad1a.log) |
 | Matched Explore/tag capture; fresh empty database | PASS 40 before + 40 after + 20 corpus captures; 32 filtered + 16 corpus geometry cases và 12 end-of-page checks | [before](before-manifest.json), [after](after-manifest.json), [corpus](corpus-manifest.json) |
 
-Quick PASS vẫn áp dụng cho Rust/CSS/assets của `9e9ad1a`: delta sau `c0d28a1` chỉ là browser
-failure harness. Node syntax và diff checks đã chạy lại; browser focused chạy đúng harness mới.
+Quick và focused browser đều chạy trên source cuối `0edf21c`. Node syntax và diff checks
+đã chạy lại; combined Web cuối PASS sau khi toàn command hoàn tất.
 Các verdict trên là self-run trên Mac, không lấy lời báo PASS từ Dot làm execution của Mac.
 
 Môi trường: macOS 15.6 arm64, Rust 1.99.1, Node 22.15.0, wasm-bindgen 0.2.129,
@@ -75,6 +97,9 @@ retry mù. [Server chưa sẵn sàng](before-capture-setup-fail.log) và
 [catalog thiếu](before-capture-catalog-fail.log) được giữ. Capture DB được seed một tác phẩm mẫu
 và tag Thơ qua CLI thật, giữ nguyên dữ liệu giữa before/after. DB corpus chỉ migrate, không seed.
 DB focused dùng cùng catalog sáu thẻ/alias/description như owner Web, qua [script](seed-focused.py).
+Một lần diagnostic không còn listener, nên page-load FAIL và focus scenario NOT_RUN
+([log](pending-server-gone.log)); lần sau ghép app/browser chung owner và probe readiness
+trước khi chạy. Negative pending-submit thật ghi server còn live, không dùng lỗi setup làm finding.
 
 ## Render, mạng và semantics
 
@@ -82,7 +107,13 @@ Ma trận 320/390/834/1440 × light/dark × text100/200: art 192px mobile / 240p
 ratio 512:427, body 16/32px, ảnh không nhân đôi theo chữ. Không overflow ngang; recovery sau
 cuộn nằm trên bottom navigation. Text200 ở đây là root font-size, không phải browser zoom.
 Font thực tải gồm Be Vietnam Pro 400/600 và Literata; fonts/tokens chung giữ nguyên.
-Focused browser đo contrast status/actions cả hai theme, minimum đều ≥4.5.
+Focused browser đo contrast status/actions cả hai theme; lượt Web cuối ghi
+[light](empty-contrast-light.json) minimum 6,72 và [dark](empty-contrast-dark.json) minimum 10,83 (yêu cầu ≥4,5).
+[Hashes runtime cũ](after-runtime.sha256) thuộc lượt `9e9ad1a`; [hashes cuối](final-web-runtime.sha256)
+được lấy sau build của lượt selected Web cuối. Capture pin checkout/source và hashes PNG/WebP;
+không ghi riêng binary hash ngay trước lượt capture cuối.
+After/corpus và các PNG after/corpus được dẫn bên dưới đều được chụp lại trên source cuối
+`0edf21c`; 48 geometry cases và 12 end-clearance cases được đối chiếu hash/geometry lần cuối.
 
 Mỗi document settled-empty có đúng một resource entry của current-state artwork qua mọi lần
 đổi theme/text/viewport. Ready, invalid cursor và missing tag có 0 artwork request trong
@@ -121,17 +152,17 @@ PNG đại diện được commit; matrix manifest giữ hashes/geometry của t
 | AC | Evidence trên source cuối | Verdict |
 | --- | --- | --- |
 | AC-01 | Original recorded bytes/container/hash/budget; native/browser decode; real build/HTTP; one current artwork / zero unrelated branches | PASS |
-| AC-02 | Opened matched Explore/tag renders; one concise sentence/actions; nonempty/pagination retained in browser | PASS focused; final combined run pending |
-| AC-03 | Real corpus/miss/tag/invalid; retained refresh failure/browser race; four SSR tests for cursor/continuation/retired/removed | PASS focused + SSR; final combined run pending |
-| AC-04 | Native GET, q/tag/cursor reset, Apply, keyboard/focus, missing-row fallback, real reader return and simulated composition | PASS focused; final combined run pending |
+| AC-02 | Opened matched Explore/tag renders; one concise sentence/actions; nonempty/pagination retained in browser | PASS |
+| AC-03 | Real corpus/miss/tag/invalid; retained refresh failure/browser race; four SSR tests for cursor/continuation/retired/removed | PASS |
+| AC-04 | Native GET, q/tag/cursor reset, Apply, keyboard/focus, missing-row fallback, real reader return and simulated composition | PASS |
 | AC-05 | One status, named AX region, decorative image, focus ring, blocked/corrupt before hydration with actual request failure | PASS focused |
 | AC-06 | 48 after geometry cases, twelve clearance checks, loaded fonts/contrast, representative 100%/200% pixels opened | PASS |
-| AC-07 | Asset/Quick/focused browser and opened matched captures | Combined `main + discovery` pending |
+| AC-07 | Asset/Quick/focused browser and opened matched captures | PASS selected `main + discovery` |
 | AC-08 | Current source map/decisions/evidence; unchanged shared composition/pipeline for #259 | PASS |
 
 | UX dimension | Result / boundary |
 | --- | --- |
-| Functional | PASS focused public discovery on real PostgreSQL; combined run pending |
+| Functional | PASS selected `main + discovery` trên PostgreSQL thật |
 | Geometry | PASS 48 final after cases + 12 bottom-clearance checks; no horizontal overflow |
 | Visual | PASS within opened representative captures / LayoutSpec R1; no approved golden claim |
 | Accessibility / Responsive | PASS named AX/status, keyboard focus/ring, measured contrast and narrow/text200 cases; named screen reader NOT_RUN |
@@ -144,7 +175,7 @@ public reads for browser scenarios; this does not qualify a new persistence feat
 
 Implementation and before checkouts are task-owned isolated trees. Existing worktree #204,
 other user trees, `.env`, caches and databases were not reset/stashed/cleaned. Only generated
-artifacts of this task's own before/debug attempts were reclaimed. No VPS deployment.
+artifacts of this task's own completed build/test attempts were reclaimed. No VPS deployment.
 Issue #258 is the live checklist; other issue checkboxes are outside this update.
 For #259, use `ui::empty_state::{EmptyArtwork, EmptyState}`, existing `.vk-empty-state*` CSS
 and `/pkg/empty/`; Desk caller continues to own state, actions, focus and announcements.

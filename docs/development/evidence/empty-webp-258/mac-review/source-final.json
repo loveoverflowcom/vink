@@ -1,8 +1,8 @@
 {
-  "revision": "9e9ad1aa9f17fc86b3e428bc2a7b80ffef65eacb",
+  "revision": "0edf21c867092e9ad29a218c19608ddb295651ba",
   "base": "ffed5b5c6c004b9f55ecc8e0d9be8d863d6e6a60",
   "cwd": "/Users/manhblue/Documents/Codex/2026-11-17/task/vink",
-  "recorded_utc": "2026-11-16T19:24:42.769707+00:00",
+  "recorded_utc": "2026-11-16T20:31:00.771827+00:00",
   "system": "macOS-15.6-arm64-arm-64bit-Mach-O",
   "tracked_source_sha256": {
     "Cargo.lock": "7455776c732ddcca2059ee9faa0e948f2d3b32605acbb17a336b60cab5645643",
@@ -18,7 +18,7 @@
     "apps/vink-web/e2e/auth-smoke.mjs": "aa0ca45a3be8c24a4f408bd81be705655ff5e72102498d3c632a8f51338a93aa",
     "apps/vink-web/e2e/author-works-smoke.mjs": "116bcbf7fc8e24967700ac1a5555568e36c8e80d16b72aeec6f88afdd3cd6af8",
     "apps/vink-web/e2e/browser-smoke.mjs": "66aee3c1c7e333b4c9e6b56fff8158a8453681a03df2f00eeb8ad7a55e5bb92f",
-    "apps/vink-web/e2e/discovery-smoke.mjs": "35c6c7e3d50910937c86701496f25d3397d3afea555557679989b42ea282ec98",
+    "apps/vink-web/e2e/discovery-smoke.mjs": "35fd0cbf53224310bc827f6c47844cf836f3e249469af115c64b3fd69ec022cc",
     "apps/vink-web/e2e/document-budget.mjs": "80c6ee883647577a5e8e6ad322ef322c0c62805fbf2699e5e2c87025e1a058d7",
     "apps/vink-web/e2e/draft-pagination-smoke.mjs": "a1306bba13e58b45db7b966700b978af1ff3645a7d3868e8d945a81e2f0ee0f8",
     "apps/vink-web/e2e/editor-paper-first-smoke.mjs": "4a51eb86a0df964af81ba49cc3652784f296bb98f3ac75dc8fb79861ff3f0608",
@@ -60,7 +60,7 @@
     "apps/vink-web/src/lib.rs": "c2142395fac49406d18689f368e0c24cc3873e066f215922e1b1a62d76bce3c8",
     "apps/vink-web/src/navigation.rs": "de9cb626c8cd61856e04a1f9089cd81bbd71d3ed80da20d31789404105c5011f",
     "apps/vink-web/src/pages/desk.rs": "b9259f450191c34170580ba545028bf30a67a1d0ec0c3934d5e6235ebe9af370",
-    "apps/vink-web/src/pages/discovery.rs": "829dfb98ba7f7f35a7c81befb07217b695180ee078568db0a85708d263766c46",
+    "apps/vink-web/src/pages/discovery.rs": "68eaf7312c4e1589b660a978ae1a22511a6455860ad2fa5a29a60996c10576b8",
     "apps/vink-web/src/pages/discussion.rs": "37a63a1ae73bf10c28706369c98b837100d2511c8e873ebee32dedf93cd056c0",
     "apps/vink-web/src/pages/endorsement.rs": "6e498f1ceac4cadc6d5005008a55f255112e332f2e2c514800e179eda63b73e2",
     "apps/vink-web/src/pages/me.rs": "e24c938e7c202f72b2b5458fa7e2bfce1b602a7ec5ab53430ff696ba50590c53",

@@ -1,0 +1,242 @@
+  ok  search explicitly names the whole public library
+  ok  #225/#258 empty page has one truthful result announcement without redundant 0-count
+  ok  no-results offers query recovery
+  ok  #258 actual WebP decode, one image request, HTML status and named focus landmark
+  ok  #258 keyboard reaches recovery after the landmark with a visible focus ring
+  ok  #258 empty composition reflow/ratio/type/order light/320/100 {"width":192,"height":160.125,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/320/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/390/100 {"width":192,"height":160.125,"font":"16px","overflow":-15,"order":true}
+  ok  light empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #258 empty composition reflow/ratio/type/order light/390/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/834/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/834/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/1440/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/1440/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/320/100 {"width":192,"height":160.125,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/320/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/390/100 {"width":192,"height":160.125,"font":"16px","overflow":-15,"order":true}
+  ok  dark empty text contrast >= 4.5 (min 10.83; disabled controls exempt)
+  ok  #258 empty composition reflow/ratio/type/order dark/390/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/834/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/834/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/1440/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/1440/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty revalidation is actually held
+  ok  #258 retained empty refresh preserves recovery focus, artwork node and one qualified status
+  ok  #258 failed empty refresh preserves recovery focus and truthful absence qualifier
+  ok  #258 ready branch mounts no artwork and never fetches unrelated illustrations
+  ok  light explore text contrast >= 4.5 (min 6.28; disabled controls exempt)
+  ok  dark explore text contrast >= 4.5 (min 10.00; disabled controls exempt)
+  ok  Explore reflows light/320/100
+  ok  #225 filter launcher keeps one named native target >=48px light/320/100
+  ok  Vietnamese heading words remain intact light/320/100
+  ok  dock/dialog breakpoint light/320/100
+  ok  title first and avatar retained light/320/100
+  ok  Explore reflows light/320/200
+  ok  #225 filter launcher keeps one named native target >=48px light/320/200
+  ok  Vietnamese heading words remain intact light/320/200
+  ok  dock/dialog breakpoint light/320/200
+  ok  title first and avatar retained light/320/200
+  ok  320px / 200% light: the full-size byline uses the card measure below the avatar ({"nameWidth":249,"dateWidth":249,"bylineWidth":249,"ordered":true,"font":"32px","overflow":0})
+  ok  Explore reflows light/390/100
+  ok  #225 filter launcher keeps one named native target >=48px light/390/100
+  ok  Vietnamese heading words remain intact light/390/100
+  ok  dock/dialog breakpoint light/390/100
+  ok  title first and avatar retained light/390/100
+  ok  Explore reflows light/390/200
+  ok  #225 filter launcher keeps one named native target >=48px light/390/200
+  ok  Vietnamese heading words remain intact light/390/200
+  ok  dock/dialog breakpoint light/390/200
+  ok  title first and avatar retained light/390/200
+  ok  Explore reflows light/834/100
+  ok  #225 filter launcher keeps one named native target >=48px light/834/100
+  ok  Vietnamese heading words remain intact light/834/100
+  ok  dock/dialog breakpoint light/834/100
+  ok  title first and avatar retained light/834/100
+  ok  Explore reflows light/834/200
+  ok  #225 filter launcher keeps one named native target >=48px light/834/200
+  ok  Vietnamese heading words remain intact light/834/200
+  ok  dock/dialog breakpoint light/834/200
+  ok  title first and avatar retained light/834/200
+  ok  Explore reflows light/1024/100
+  ok  Vietnamese heading words remain intact light/1024/100
+  ok  dock/dialog breakpoint light/1024/100
+  ok  title first and avatar retained light/1024/100
+  ok  Explore reflows light/1024/200
+  ok  Vietnamese heading words remain intact light/1024/200
+  ok  dock/dialog breakpoint light/1024/200
+  ok  title first and avatar retained light/1024/200
+  ok  Explore reflows light/1200/100
+  ok  Vietnamese heading words remain intact light/1200/100
+  ok  dock/dialog breakpoint light/1200/100
+  ok  title first and avatar retained light/1200/100
+  ok  Explore reflows light/1200/200
+  ok  Vietnamese heading words remain intact light/1200/200
+  ok  dock/dialog breakpoint light/1200/200
+  ok  title first and avatar retained light/1200/200
+  ok  Explore reflows light/1440/100
+  ok  Vietnamese heading words remain intact light/1440/100
+  ok  dock/dialog breakpoint light/1440/100
+  ok  title first and avatar retained light/1440/100
+  ok  Explore reflows light/1440/200
+  ok  #225 filter launcher keeps one named native target >=48px light/1440/200
+  ok  Vietnamese heading words remain intact light/1440/200
+  ok  dock/dialog breakpoint light/1440/200
+  ok  title first and avatar retained light/1440/200
+  ok  Explore reflows dark/320/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/320/100
+  ok  Vietnamese heading words remain intact dark/320/100
+  ok  dock/dialog breakpoint dark/320/100
+  ok  title first and avatar retained dark/320/100
+  ok  Explore reflows dark/320/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/320/200
+  ok  Vietnamese heading words remain intact dark/320/200
+  ok  dock/dialog breakpoint dark/320/200
+  ok  title first and avatar retained dark/320/200
+  ok  320px / 200% dark: the full-size byline uses the card measure below the avatar ({"nameWidth":249,"dateWidth":249,"bylineWidth":249,"ordered":true,"font":"32px","overflow":0})
+  ok  Explore reflows dark/390/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/390/100
+  ok  Vietnamese heading words remain intact dark/390/100
+  ok  dock/dialog breakpoint dark/390/100
+  ok  title first and avatar retained dark/390/100
+  ok  Explore reflows dark/390/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/390/200
+  ok  Vietnamese heading words remain intact dark/390/200
+  ok  dock/dialog breakpoint dark/390/200
+  ok  title first and avatar retained dark/390/200
+  ok  Explore reflows dark/834/100
+  ok  #225 filter launcher keeps one named native target >=48px dark/834/100
+  ok  Vietnamese heading words remain intact dark/834/100
+  ok  dock/dialog breakpoint dark/834/100
+  ok  title first and avatar retained dark/834/100
+  ok  Explore reflows dark/834/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/834/200
+  ok  Vietnamese heading words remain intact dark/834/200
+  ok  dock/dialog breakpoint dark/834/200
+  ok  title first and avatar retained dark/834/200
+  ok  Explore reflows dark/1024/100
+  ok  Vietnamese heading words remain intact dark/1024/100
+  ok  dock/dialog breakpoint dark/1024/100
+  ok  title first and avatar retained dark/1024/100
+  ok  Explore reflows dark/1024/200
+  ok  Vietnamese heading words remain intact dark/1024/200
+  ok  dock/dialog breakpoint dark/1024/200
+  ok  title first and avatar retained dark/1024/200
+  ok  Explore reflows dark/1200/100
+  ok  Vietnamese heading words remain intact dark/1200/100
+  ok  dock/dialog breakpoint dark/1200/100
+  ok  title first and avatar retained dark/1200/100
+  ok  Explore reflows dark/1200/200
+  ok  Vietnamese heading words remain intact dark/1200/200
+  ok  dock/dialog breakpoint dark/1200/200
+  ok  title first and avatar retained dark/1200/200
+  ok  Explore reflows dark/1440/100
+  ok  Vietnamese heading words remain intact dark/1440/100
+  ok  dock/dialog breakpoint dark/1440/100
+  ok  title first and avatar retained dark/1440/100
+  ok  Explore reflows dark/1440/200
+  ok  #225 filter launcher keeps one named native target >=48px dark/1440/200
+  ok  Vietnamese heading words remain intact dark/1440/200
+  ok  dock/dialog breakpoint dark/1440/200
+  ok  title first and avatar retained dark/1440/200
+  ok  light filter text contrast >= 4.5 (min 5.40; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 0/390/100/light
+  ok  dark filter text contrast >= 4.5 (min 7.68; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 0/320/200/dark
+  ok  #225 unchanged Apply stays Tonal; one native GET submit, labelled checkbox choices and no cursor
+  ok  #225 one Space changes one stable checkbox, never submits; changed Apply is Filled
+  ok  light filter text contrast >= 4.5 (min 5.40; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 1/390/100/light
+  ok  dark filter text contrast >= 4.5 (min 7.68; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 1/320/200/dark
+  ok  draft selection does not change applied URL
+  ok  #225 catalog has at least four real choices for the max4 browser check
+  ok  #225 max4 blocks extra choices while selected choices remain removable
+  ok  #225 attempting a fifth tag cannot select or submit
+  ok  light filter text contrast >= 4.5 (min 5.40; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 4/390/100/light
+  ok  dark filter text contrast >= 4.5 (min 7.68; disabled controls exempt)
+  ok  #225 helper retains AND/max4 and selection at 4/320/200/dark
+  ok  #225 reverting to the applied set restores Tonal without a submit
+  ok  #225 Enter on Apply submits exactly once, including native GET navigation (observed 1)
+  ok  applied filter is visible and removable
+  ok  a trusted Enter while composing does not commit a partial search
+  ok  after the commit the same Enter applies the search (the guard only holds composition)
+  ok  reader return preserves applied query
+  ok  reader avatar is exactly 44px
+  ok  320px / 200%: untagged Reader reaches the full-size text within the header spacing budget ({"gap":24,"font":"34px","context":true})
+  ok  390px / 200%: untagged Reader reaches the full-size text within the header spacing budget ({"gap":24,"font":"34px","context":true})
+  ok  tag detail SSR uses canonical catalog name and description
+  ok  tag detail belongs to Explore
+  ok  #258 tag empty keeps one concise status without heading stack
+  ok  #258 empty composition reflow/ratio/type/order light/320/100 {"width":192,"height":160.125,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/320/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/390/100 {"width":192,"height":160.125,"font":"16px","overflow":-15,"order":true}
+  ok  light empty text contrast >= 4.5 (min 6.72; disabled controls exempt)
+  ok  #258 empty composition reflow/ratio/type/order light/390/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/834/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/834/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/1440/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order light/1440/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/320/100 {"width":192,"height":160.125,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/320/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/390/100 {"width":192,"height":160.125,"font":"16px","overflow":0,"order":true}
+  ok  dark empty text contrast >= 4.5 (min 10.83; disabled controls exempt)
+  ok  #258 empty composition reflow/ratio/type/order dark/390/200 {"width":192,"height":160.125,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/834/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/834/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/1440/100 {"width":240,"height":200.15625,"font":"16px","overflow":0,"order":true}
+  ok  #258 empty composition reflow/ratio/type/order dark/1440/200 {"width":240,"height":200.15625,"font":"32px","overflow":-15,"order":true}
+  ok  alias tag route redirects using server canonical identity
+  ok  uppercase/NFD uses the provider canonical tag URL
+  ok  uppercase/NFD uses the provider canonical tag URL
+  ok  unknown tag has its own SSR 404 without absence artwork
+  ok  invalid cursor is recoverable SSR 422
+  ok  #258 invalid cursor is an error, without artwork
+  ok  invalid cursor recovery links have distinct rows at 320px / 200%
+  ok  #225 no-JS filter explains AND/max4 before choosing
+  ok  no-JS SSR supplies contextual reader links
+  ok  #258 blocked artwork before hydration leaves useful HTML and GET recovery
+  ok  #225 no-JS pointer hits the native filter target #dock-tag-form label:has(input[type=checkbox])
+  ok  #225 no-JS pointer hits the native filter target #dock-tag-form button[type=submit]
+  ok  #258 exactly one corrupt artwork response was actually injected
+  ok  #258 corrupt image before hydration keeps reserved space, one HTML status and real recovery
+  ok  #225 catalog failure keeps both the rule and an honest error
+  ok  #258 reader-return fallback is a visible, named target
+  ok  #258 submitted search response is actually held
+browser context: {
+  path: '/',
+  readyState: 'complete',
+  preferences: { hydrated: 'true' },
+  active: { tag: 'SECTION', id: 'community-stream' },
+  selectionLength: 0,
+  wasmPerf: [
+    { name: 'vpen-r1-lockup-dark.svg', dur: 1, status: 200, size: 0 },
+    { name: 'vpen-r1-lockup-light.svg', dur: 0, status: 200, size: 0 },
+    { name: 'be-vietnam-pro-400.woff2', dur: 0, status: 200, size: 0 },
+    { name: 'literata-variable.woff2', dur: 0, status: 200, size: 0 },
+    { name: 'vink.css?brand=vpen-r1', dur: 0, status: 200, size: 0 },
+    { name: 'vink.js', dur: 0, status: 200, size: 0 },
+    { name: 'vink_bg.wasm', dur: 262, status: 200, size: 345579636 },
+    { name: 'be-vietnam-pro-600.woff2', dur: 0, status: 200, size: 0 },
+    { name: 'inline0.js', dur: 0, status: 200, size: 0 },
+    { name: 'bridge.js', dur: 0, status: 200, size: 0 },
+    { name: 'bridge.js', dur: 0, status: 200, size: 0 },
+    { name: 'indexeddb.js', dur: 0, status: 200, size: 0 },
+    {
+      name: 'vpen-r1-manifest-light.webmanifest',
+      dur: 1,
+      status: 200,
+      size: 0
+    },
+    { name: 'vpen-r1-mark-light.svg', dur: 1, status: 200, size: 0 },
+    {
+      name: 'vink-empty-no-results.webp',
+      dur: 0,
+      status: 200,
+      size: 0
+    }
+  ],
+  errors: []
+}
+browser-smoke: FAIL #258 a submitted read finishing cannot steal focus/caret from a newer unapplied query
