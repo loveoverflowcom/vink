@@ -47,6 +47,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   }
   };
   await emptyMatrix('explore');
+  await emptyRefreshFocus(page, {args, check});
   await page.viewport(1440);
   await page.eval("document.documentElement.style.fontSize='100%'");
 
@@ -342,6 +343,44 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==catalogFailure);
   }
   await goto('/');
+}
+
+// Revalidation changes freshness text, not the identity of focused recovery controls.
+async function emptyRefreshFocus(page, {args, check}) {
+  const held = [];
+  const gate = ({sessionId, method, params}) => {
+    if (sessionId === page.sessionId && method === 'Fetch.requestPaused') held.push(params.requestId);
+  };
+  page.cdp.listeners.push(gate);
+  await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/api/v1/works*', requestStage:'Request'}]});
+  try {
+    await page.eval(`(() => {
+      const recovery = document.querySelector('#clear-public-results');
+      window.__empty258 = { recovery, art: document.querySelector('.vk-empty-state__art'), now: performance.now.bind(performance) };
+      recovery.focus();
+      performance.now = () => window.__empty258.now() + 121000;
+      window.dispatchEvent(new Event('focus'));
+    })()`);
+    const deadline = Date.now()+10000;
+    while (!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve, 25));
+    check(held.length===1, '#258 empty revalidation is actually held');
+    await page.waitFor("document.querySelector('#public-collection').dataset.refreshing==='true'", '#258 retained empty refreshing');
+    const stable = () => page.eval(`document.querySelector('#clear-public-results')===window.__empty258.recovery &&
+      document.activeElement===window.__empty258.recovery && document.querySelector('.vk-empty-state__art')===window.__empty258.art &&
+      document.querySelector('.vk-empty-state__message').textContent==='Bản đã tải: Chưa có tác phẩm phù hợp.' &&
+      document.querySelectorAll('#public-results [role=status]').length===1`);
+    check(await stable(), '#258 retained empty refresh preserves recovery focus, artwork node and one qualified status');
+    await page.send('Fetch.fulfillRequest', {requestId:held.shift(), responseCode:503,
+      responseHeaders:[{name:'Content-Type',value:'application/json'},{name:'Retry-After',value:'30'}],
+      body:Buffer.from(JSON.stringify({error:{code:'dependency_unavailable'}})).toString('base64')});
+    await page.waitFor("document.querySelector('[data-testid=public-refresh-failed]') && document.querySelector('#public-collection').dataset.refreshing==='false'", '#258 retained empty refresh failure');
+    check(await stable(), '#258 failed empty refresh preserves recovery focus and truthful absence qualifier');
+  } finally {
+    for (const requestId of held) await page.send('Fetch.failRequest', {requestId,errorReason:'Aborted'}).catch(()=>{});
+    await page.send('Fetch.disable');
+    page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==gate);
+    await page.eval("if(window.__empty258){performance.now=window.__empty258.now; delete window.__empty258}");
+  }
 }
 
 export async function discoveryCorpus(page, { args, check }) {
