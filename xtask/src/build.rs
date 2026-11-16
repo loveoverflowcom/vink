@@ -72,6 +72,7 @@ pub fn bundle(release: bool) -> Result<(), String> {
     stylesheet(&root, &pkg.join("vink.css"))?;
     copy_fonts(&root.join(checks::FONTS_DIR), &pkg.join("fonts"))?;
     copy_brand(&root.join(checks::BRAND_DIR), &pkg.join("brand"))?;
+    copy_empty_artwork(&root, &pkg.join("empty"))?;
     Ok(())
 }
 
@@ -176,6 +177,31 @@ fn copy_brand(from: &Path, to: &Path) -> Result<(), String> {
             std::fs::copy(&path, to.join(path.file_name().expect("brand file name")))
                 .map_err(|e| format!("copy brand {}: {e}", path.display()))?;
         }
+    }
+    Ok(())
+}
+
+/// Only verified runtime derivatives enter /pkg; sources, boards and scripts stay out.
+pub(crate) fn check_empty_artwork(root: &Path) -> Result<(), String> {
+    process::run(
+        std::process::Command::new("node").arg(root.join("apps/vink-web/assets/empty/verify.mjs")),
+        "empty artwork: WebP container, dimensions, SHA-256 and byte budget",
+    )
+}
+
+fn copy_empty_artwork(root: &Path, to: &Path) -> Result<(), String> {
+    check_empty_artwork(root)?;
+    if to.exists() {
+        std::fs::remove_dir_all(to).map_err(|e| format!("clear {}: {e}", to.display()))?;
+    }
+    std::fs::create_dir_all(to).map_err(|e| format!("create {}: {e}", to.display()))?;
+    for name in ["no-results", "no-public-works", "first-draft"] {
+        let file = format!("vink-empty-{name}.webp");
+        std::fs::copy(
+            root.join("apps/vink-web/assets/empty").join(&file),
+            to.join(&file),
+        )
+        .map_err(|e| format!("copy empty artwork {file}: {e}"))?;
     }
     Ok(())
 }

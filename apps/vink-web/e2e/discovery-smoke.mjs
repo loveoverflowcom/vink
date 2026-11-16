@@ -14,10 +14,45 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(await page.eval("document.querySelector('#public-query-help').textContent === 'Trong toàn thư viện công khai'"), 'search explicitly names the whole public library');
   await submit('không có tác phẩm này #100');
   await page.waitFor("document.querySelector('[data-testid=public-no-results]')", 'real no-results');
-  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-public-scope').textContent==='Trang này: 0 tác phẩm'"), '#225 empty page has one truthful page-count announcement');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#225/#258 empty page has one truthful result announcement without redundant 0-count');
   check(await page.eval("!!document.querySelector('#clear-public-results')"), 'no-results offers query recovery');
+  await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 empty artwork completes');
+  check(await page.eval(`(async () => {
+    const art = document.querySelector('.vk-empty-state__art'); await art.decode();
+    const region = document.querySelector('#community-stream');
+    return art.naturalWidth === 512 && art.naturalHeight === 427 && art.alt === '' &&
+      art.getAttribute('width') === '512' && art.getAttribute('height') === '427' &&
+      art.decoding === 'async' && art.getAttribute('loading') !== 'lazy' &&
+      !region.querySelector('h2,h3') && !region.textContent.includes('Trang này: 0') &&
+      region.getAttribute('aria-label') === 'Tác phẩm khám phá' && region.tabIndex === -1 &&
+      performance.getEntriesByType('resource').filter(r => r.name.includes('/pkg/empty/')).length === 1;
+  })()`), '#258 actual WebP decode, one image request, HTML status and named focus landmark');
+  await page.waitFor("document.activeElement?.id==='community-stream'", '#258 submitted search focuses the named landmark');
+  const emptyMatrix = async surface => {
+  for (const theme of ['light','dark']) for (const width of [320,390,834,1440]) for (const scale of [100,200]) {
+    await page.viewport(width);
+    await page.eval(`document.documentElement.dataset.theme=${JSON.stringify(theme)}; document.documentElement.style.fontSize='${scale}%'; document.fonts.ready`);
+    const layout = await page.eval(`(() => {
+      const art=document.querySelector('.vk-empty-state__art'), message=document.querySelector('.vk-empty-state__message');
+      const r=art.getBoundingClientRect(), m=message.getBoundingClientRect();
+      return {width:r.width, height:r.height, font:getComputedStyle(message).fontSize,
+        overflow:document.documentElement.scrollWidth-innerWidth,
+        order:r.bottom<=m.top && m.bottom<=document.querySelector('.vk-empty-state__actions').getBoundingClientRect().top};
+    })()`);
+    check(layout.width <= (width<760?192:240) + 1 && Math.abs(layout.height/layout.width-427/512)<0.01 &&
+      layout.font===(scale===100?'16px':'32px') && layout.overflow<=1 && layout.order,
+      '#258 empty composition reflow/ratio/type/order '+[theme,width,scale].join('/')+' '+JSON.stringify(layout));
+    if (width===390 && scale===100) await textContrast(page, theme, 'empty');
+    await page.capture('empty258-'+surface+'-'+[theme,width,scale].join('-'), {boundary:'real-public-api',scenario:'filtered-empty-WebP'});
+  }
+  };
+  await emptyMatrix('explore');
+  await page.viewport(1440);
+  await page.eval("document.documentElement.style.fontSize='100%'");
+
   await page.click('#clear-public-results');
   await page.waitFor("location.search === '' && document.querySelector('.vk-public-row')", 'query recovery');
+  check(await page.eval("!document.querySelector('.vk-empty-state__art') && performance.getEntriesByType('resource').filter(r=>r.name.includes('/pkg/empty/')).every(r=>r.name.endsWith('vink-empty-no-results.webp'))"), '#258 ready branch mounts no artwork and never fetches unrelated illustrations');
   await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'public tag catalog ready');
 
   await page.send('Input.dispatchMouseEvent',{type:'mouseMoved',x:5,y:5});
@@ -204,12 +239,12 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   check(response.status === 200 && html.includes(tag.label) && html.includes(tag.description), 'tag detail SSR uses canonical catalog name and description');
   await goto(route);
   check(await page.eval("document.querySelector('#navigation-primary a[href=\"/\"]')?.getAttribute('aria-current')==='page'"), 'tag detail belongs to Explore');
-  for (const theme of ['light','dark']) for (const width of [390,1440]) {
-    await page.viewport(width);
-    await page.eval("document.documentElement.dataset.theme="+JSON.stringify(theme));
-    check(await page.eval("document.documentElement.scrollWidth<=innerWidth"), 'tag detail reflow '+theme+'/'+width);
-    await page.capture('discovery-tag-detail-'+theme+'-'+width, {boundary:'real-public-api',scenario:'tag-detail-empty'});
-  }
+  await goto(route+'?q=no-match-empty-258');
+  await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete && document.querySelector('.vk-empty-state__art')?.naturalWidth===512", '#258 tag empty artwork');
+  check(await page.eval("document.querySelectorAll('#public-results [role=status]').length===1 && !document.querySelector('#community-stream h2,#community-stream h3') && document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.'"), '#258 tag empty keeps one concise status without heading stack');
+  await emptyMatrix('tag');
+  await page.viewport(1440);
+  await page.eval("document.documentElement.style.fontSize='100%'");
 
   const alias = await fetch(args.base + '/the/' + encodeURIComponent('hồi-ức'), { redirect:'manual' });
   check(alias.status === 308 && alias.headers.get('location')?.startsWith('/the/'), 'alias tag route redirects using server canonical identity');
@@ -218,11 +253,13 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     check(normalized.status===308 && normalized.headers.get('location')==='/the/'+encodeURIComponent(tag.slug), 'uppercase/NFD uses the provider canonical tag URL');
   }
   const unknown = await fetch(args.base + '/the/khong-ton-tai-100');
-  check(unknown.status === 404 && (await unknown.text()).includes('Không tìm thấy thẻ này'), 'unknown tag has its own SSR 404');
+  const unknownHtml = await unknown.text();
+  check(unknown.status === 404 && unknownHtml.includes('Không tìm thấy thẻ này') && !unknownHtml.includes('/pkg/empty/'), 'unknown tag has its own SSR 404 without absence artwork');
   const invalid = await fetch(args.base + '/?cursor=broken');
   check(invalid.status === 422 && (await invalid.text()).includes('Thử từ trang đầu'), 'invalid cursor is recoverable SSR 422');
   await page.viewport(320, 480);
   await goto('/?cursor=broken');
+  check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 invalid cursor is an error, without artwork');
   check(await page.eval(`(async () => {
     document.documentElement.style.fontSize = '200%';
     await document.fonts.ready;
@@ -233,7 +270,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await page.viewport(1440);
 
   // Native browser GET, with page JS disabled and WASM preloads blocked.
-  await page.send('Network.setBlockedURLs', { urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*'] });
+  await page.send('Network.setBlockedURLs', { urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*',args.base+'/pkg/empty/*'] });
   await page.send('Emulation.setScriptExecutionDisabled', { value:true });
   try {
     await page.goto(args.base + '/?q=mua');
@@ -243,6 +280,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
     const point = await page.eval("(() => { const b=document.querySelector('#public-search button[type=submit]'); b.scrollIntoView(); const r=b.getBoundingClientRect(); return {x:r.x+r.width/2,y:r.y+r.height/2}; })()");
     for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent', {type,...point,button:'left',clickCount:1});
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && document.querySelector('[data-testid=public-no-results]')", 'native GET result');
+    check(await page.eval("document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' && document.querySelector('#clear-public-results').getAttribute('href')==='/' && document.querySelectorAll('#public-results [role=status]').length===1"), '#258 blocked artwork before hydration leaves useful HTML and GET recovery');
     // page.click waits for animation frames; those callbacks do not run with page JS disabled.
     // Use the same native pointer path as the no-JS search above, without a JS click fallback.
     for (const selector of ['#dock-tag-form label:has(input[type=checkbox])', '#dock-tag-form button[type=submit]']) {
@@ -251,6 +289,32 @@ export async function discoveryReading(page, { args, check, textContrast }) {
       for (const type of ['mousePressed','mouseReleased']) await page.send('Input.dispatchMouseEvent',{type,x:target.x,y:target.y,button:'left',clickCount:1});
     }
     await page.waitFor("new URL(location.href).searchParams.get('q')==='khong-co-ket-qua-100' && new URL(location.href).searchParams.getAll('tag').length===1 && !new URL(location.href).searchParams.has('cursor')", '#225 no-JS checkbox + Apply preserves q/tag through native GET and resets cursor');
+    // A corrupt response before hydration must not own any state meaning or recovery.
+    const corruptArt = ({sessionId,method,params}) => {
+      if (sessionId===page.sessionId && method==='Fetch.requestPaused') {
+        page.send('Fetch.fulfillRequest', {requestId:params.requestId,responseCode:200,
+          responseHeaders:[{name:'Content-Type',value:'image/webp'},{name:'Cache-Control',value:'no-store'}],
+          body:Buffer.from('invalid WebP fixture #258').toString('base64')}).catch(()=>{});
+      }
+    };
+    page.cdp.listeners.push(corruptArt);
+    await page.send('Network.setBlockedURLs', {urls:[args.base+'/pkg/vink.js*',args.base+'/pkg/vink_bg.wasm*']});
+    await page.send('Fetch.enable', {patterns:[{urlPattern:args.base+'/pkg/empty/*',requestStage:'Request'}]});
+    try {
+      await page.goto(args.base+'/?q=corrupt-art-258');
+      await page.waitFor("document.querySelector('.vk-empty-state__art')?.complete", '#258 corrupt image completes with failure');
+      check(await page.eval(`(() => {
+        const art=document.querySelector('.vk-empty-state__art'), box=art.getBoundingClientRect();
+        return art.naturalWidth===0 && box.width>0 && Math.abs(box.height/box.width-427/512)<0.01 &&
+          document.querySelector('.vk-empty-state__message').textContent==='Chưa có tác phẩm phù hợp.' &&
+          document.querySelector('#clear-public-results').getAttribute('href')==='/' &&
+          document.querySelectorAll('#public-results [role=status]').length===1;
+      })()`), '#258 corrupt image before hydration keeps reserved space, one HTML status and real recovery');
+    } finally {
+      await page.send('Fetch.disable');
+      page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==corruptArt);
+    }
+
   } finally {
     await page.send('Emulation.setScriptExecutionDisabled',{value:false});
     await page.send('Network.setBlockedURLs',{urls:[]});
@@ -348,6 +412,7 @@ export async function discoveryCorpus(page, { args, check }) {
     const deadline=Date.now()+10000;
     while(!held.length && Date.now()<deadline) await new Promise(r=>setTimeout(r,50));
     check(held.length===1,'older query request is held deterministically');
+    check(await page.eval("!document.querySelector('.vk-empty-state__art')"), '#258 unresolved read never mounts absence artwork');
     await page.waitFor("document.querySelector('#dock-tag-form input[type=checkbox]')", 'filter controls available while A is pending');
     await page.click('#dock-tag-form .vk-discovery-option');
     await page.click('#dock-tag-form button[type=submit]');

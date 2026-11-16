@@ -1750,8 +1750,9 @@ async function textContrast(page, theme, surface = 'shell') {
   })() : {
     'tag-rescue': ['#export-tags'],
     desk: ['.vk-desk-heading .vk-ui-button', '.vk-draft-row__title', '.vk-draft-row .vk-draft-meta', '.vk-draft-row__open', '.vk-draft-search input', '#draft-sort', '#draft-sort-label', '#draft-scope'],
-    explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '#works-title', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
+    explore: ['#public-query', '#explore-heading h1', '.vk-explore__heading p', '#public-query-help', '.vk-public-row h3', '.vk-public-row .vk-ui-byline__name', '.vk-public-row time', '.vk-public-scope', '.vk-discovery-filter-form legend', '.vk-discovery-options .vk-ui-choice__label'],
     filter: ['#modal-tag-help', '#modal-tag-form button[type=submit]'],
+    empty: ['.vk-empty-state__message', '.vk-empty-state__actions .vk-ui-link'],
     reader: ['#reader-return', '#reader-header h1', '#reader-header .vk-work-byline', '#reader-header .vk-ui-type-caption', '.vk-reader .vk-block'],
     me: ['#me-title', '#page-account h2', '#page-account .vk-ui-tone-muted', '#page-appearance-title', '#page-theme-title', '#page-text-title', '#page-rail-title', ...['light', 'dark', 'system'].map(value => `#page-theme label:has([value="${value}"])`)],
     account: ['#profile-title', '#overlay-theme-title', '#overlay-text-title', '#overlay-rail-title', ...['light', 'dark', 'system'].map(value => `#overlay-theme label:has([value="${value}"])`)],

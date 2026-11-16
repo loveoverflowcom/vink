@@ -1,0 +1,126 @@
+{
+  "format": "VINK_EMPTY_ARTWORK_R1",
+  "date": "2026-11-16",
+  "status": "DESIGN_CANDIDATE_NOT_RUNTIME_ACCEPTANCE",
+  "generator": "ImageGen",
+  "generation_id": "e6146c67-7f5d-4993-91d3-ec17c067769b",
+  "source": {
+    "file": "sources/vink-empty-states-master.png",
+    "sha256": "4ec467ab2a055992d6abb394e6378e8708cbfd5eac632f79bf8677233d305840",
+    "size": [
+      2172,
+      724
+    ],
+    "raster": true,
+    "text_baked_in": false
+  },
+  "encoding": {
+    "pillow": "12.3.0",
+    "libwebp": "1.6.0",
+    "width": 512,
+    "height": 427,
+    "quality": 82,
+    "method": 6,
+    "alpha_quality": 100,
+    "lossless": false,
+    "metadata": "none",
+    "transparent": true
+  },
+  "runtime_assets": [
+    {
+      "id": "no-results",
+      "file": "assets/vink-empty-no-results.webp",
+      "width": 512,
+      "height": 427,
+      "bytes": 20070,
+      "kib": 19.6,
+      "sha256": "74874272c94c2f43e293a45249dd843ffaa0ba5cc2b37a755a4eb91e2629bbb2",
+      "md5": "3ec144c7b4055be4324c87de435b0e28",
+      "codec": "lossy VP8 + alpha",
+      "chunks": [
+        "VP8X",
+        "ALPH",
+        "VP8 "
+      ],
+      "frames": 1,
+      "alpha": true,
+      "decode": "PASS",
+      "byte_budget_30KiB": "PASS",
+      "source_crop": [
+        0,
+        0,
+        724,
+        724
+      ]
+    },
+    {
+      "id": "no-public-works",
+      "file": "assets/vink-empty-no-public-works.webp",
+      "width": 512,
+      "height": 427,
+      "bytes": 16444,
+      "kib": 16.06,
+      "sha256": "56ce08c3ec4689b0222af8ca9b64397342236bc59bdeda83156718b8eb16dbbb",
+      "md5": "343c24d90ca5655d2ac59acdffe8d42a",
+      "codec": "lossy VP8 + alpha",
+      "chunks": [
+        "VP8X",
+        "ALPH",
+        "VP8 "
+      ],
+      "frames": 1,
+      "alpha": true,
+      "decode": "PASS",
+      "byte_budget_30KiB": "PASS",
+      "source_crop": [
+        724,
+        0,
+        1448,
+        724
+      ]
+    },
+    {
+      "id": "first-draft",
+      "file": "assets/vink-empty-first-draft.webp",
+      "width": 512,
+      "height": 427,
+      "bytes": 19190,
+      "kib": 18.74,
+      "sha256": "c4bfabfe1c70e35ac4e896f2be56f6cb3e33ea2e97057bbaf3cbc71491665a79",
+      "md5": "14e33e3382a4ac71227cf4e4224c0342",
+      "codec": "lossy VP8 + alpha",
+      "chunks": [
+        "VP8X",
+        "ALPH",
+        "VP8 "
+      ],
+      "frames": 1,
+      "alpha": true,
+      "decode": "PASS",
+      "byte_budget_30KiB": "PASS",
+      "source_crop": [
+        1448,
+        0,
+        2172,
+        724
+      ]
+    }
+  ],
+  "runtime_asset_total_bytes": 55704,
+  "theme_policy": "One transparent WebP per state; never fetch both light/dark files. No filter/invert. Check on actual slot surface.",
+  "inspected_composite_backgrounds": {
+    "light": "#fffaff",
+    "dark": "#17121d"
+  },
+  "evidence": {
+    "vink_capture_sha": "8424a39be933e15ea376d868ad10088ee59f0083",
+    "vink_source_sha": "eaa0348f8631af5add17609bf4c8c1406923042b",
+    "cantos_source_sha": "a1fca178f9a284c8177d60601d856fc64dae1953",
+    "product_browser": "NOT_RUN",
+    "full_capture_lane": "INTERRUPTED",
+    "default_capture_coverage": "2/66",
+    "native": "OUT_OF_SCOPE",
+    "timing_or_network_benchmark": "NOT_RUN"
+  },
+  "copyright_provenance": "Original ImageGen raster illustrations requested by the user. Cantos screenshot used as stylistic reference; no Cantos artwork bytes packaged."
+}
