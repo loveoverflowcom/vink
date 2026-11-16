@@ -193,11 +193,7 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   page.cdp.listeners = page.cdp.listeners.filter(listener=>listener!==countApply);
   await page.send('Runtime.removeBinding', {name:'action225Submit'});
   check(await page.eval("document.querySelectorAll('#applied-filters .vk-applied-tag').length === 1"), 'applied filter is visible and removable');
-  await page.click('#open-tag-filters');
-  await page.waitFor("document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form button[type=submit]')?.classList.contains('vk-ui-button--tonal')", '#225 applied set is unchanged after navigation');
-  await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
-  await page.key('Enter');
-  await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement?.id==='community-stream'", '#258 unchanged Apply focuses results after its own trigger restoration');
+  await unchangedApplyDuringCatalogRefresh(page, {args, check});
   await page.click('#open-tag-filters');
   await page.waitFor("document.querySelector('#tag-picker').open", '#258 reopen unchanged picker for cancellation');
   await page.key('Escape');
@@ -368,6 +364,35 @@ export async function discoveryReading(page, { args, check, textContrast }) {
   await goto('/');
   await submittedReadKeepsTyping(page, {args, check});
   await goto('/');
+}
+
+async function unchangedApplyDuringCatalogRefresh(page, {args, check}) {
+  const tags=await page.eval("new URL(location.href).searchParams.getAll('tag')");
+  const held=[];
+  const gate=({sessionId,method,params})=>{
+    if(sessionId===page.sessionId && method==='Fetch.requestPaused') held.push(params.requestId);
+  };
+  await page.send('Network.setCacheDisabled',{cacheDisabled:true});
+  page.cdp.listeners.push(gate);
+  await page.send('Fetch.enable',{patterns:[{urlPattern:args.base+'/api/v1/tags*',requestStage:'Request'}]});
+  try {
+    await page.click('#open-tag-filters');
+    await page.waitFor("document.querySelector('#tag-picker').open && document.querySelector('#modal-tag-form [role=status]')",'#258 catalog refresh is visibly pending');
+    const deadline=Date.now()+10000;
+    while(!held.length && Date.now()<deadline) await new Promise(resolve=>setTimeout(resolve,25));
+    check(held.length===1,'#258 catalog refresh is actually held for unchanged Apply');
+    const submitted=await page.eval("new FormData(document.querySelector('#modal-tag-form')).getAll('tag')");
+    check(JSON.stringify(submitted)===JSON.stringify(tags),'#258 a pending catalog retains the exact applied tag fields ('+JSON.stringify(submitted)+')');
+    await page.eval("document.querySelector('#modal-tag-form button[type=submit]').focus()");
+    await page.key('Enter');
+    await page.waitFor("!document.querySelector('#tag-picker').open && document.activeElement?.id==='community-stream'",'#258 unchanged Apply focuses results after its own trigger restoration');
+    check(await page.eval(`JSON.stringify(new URL(location.href).searchParams.getAll('tag'))===${JSON.stringify(JSON.stringify(tags))}`),'#258 unchanged Apply during catalog refresh preserves the applied filter');
+  } finally {
+    for(const requestId of held) await page.send('Fetch.continueRequest',{requestId}).catch(()=>{});
+    await page.send('Fetch.disable');
+    await page.send('Network.setCacheDisabled',{cacheDisabled:false});
+    page.cdp.listeners=page.cdp.listeners.filter(listener=>listener!==gate);
+  }
 }
 
 async function submittedReadKeepsTyping(page, {args, check}) {
