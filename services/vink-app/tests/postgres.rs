@@ -735,8 +735,8 @@ async fn server_html_has_public_content_and_never_private_drafts(pool: PgPool) {
     let (status, _, html) = call(&app, "GET", "/", None, None, None).await;
     assert_eq!(status, StatusCode::OK);
     assert!(html.contains(dev_seed::SAMPLE_TITLE));
-    // Count copy since #100 (bfd055f): "N tác phẩm trên trang này."
-    assert!(html.contains("Khám phá") && html.contains("1 tác phẩm trên trang này."));
+    // #225 keeps the count scoped to this page, including a partial final page.
+    assert!(html.contains("Khám phá") && html.contains("Trang này: 1 tác phẩm"));
     assert!(!html.contains(private_title) && !html.contains("Snapshot chưa công khai"));
 
     let (status, _, body) = call(&app, "GET", "/api/v1/works", None, None, None).await;
