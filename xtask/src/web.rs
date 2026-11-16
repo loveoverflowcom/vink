@@ -773,6 +773,27 @@ fn seed_tag_catalog(root: &Path, server: &Server) -> Result<TagSeed, String> {
     })
 }
 
+/// Review principal belongs to Review setup, including a standalone scenario run.
+fn seed_review_fixture(server: &Server) -> Result<(), String> {
+    use sqlx::Connection;
+    let url = server
+        .env
+        .iter()
+        .find(|(key, _)| key == "DATABASE_URL")
+        .map(|(_, value)| value)
+        .ok_or("scratch URL missing")?;
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|e| e.to_string())?;
+    runtime.block_on(async {
+        let mut connection=sqlx::PgConnection::connect(url).await.map_err(|e|e.to_string())?;
+        sqlx::query("INSERT INTO principals (id, display_name) VALUES ('77777777-7777-4777-8777-777777777777', '[Mẫu] Người duyệt tác phẩm') ON CONFLICT (id) DO NOTHING")
+            .execute(&mut connection).await.map_err(|e| e.to_string())?;
+        Ok(())
+    })
+}
+
 /// Labelled publication fixtures, solely in this lane's disposable database.
 fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
     use sqlx::Connection;
@@ -796,8 +817,6 @@ fn seed_discovery_fixture(server: &Server) -> Result<(), String> {
         .execute(&mut connection)
         .await
         .map_err(|e| e.to_string())?;
-        sqlx::query("INSERT INTO principals (id, display_name) VALUES ('77777777-7777-4777-8777-777777777777', '[Mẫu] Người duyệt tác phẩm') ON CONFLICT (id) DO NOTHING")
-            .execute(&mut connection).await.map_err(|e| e.to_string())?;
         Ok(())
     })
 }
@@ -928,6 +947,10 @@ fn run_web_checks(
     }
     // O-17@r2 (#159): the same second principal holds an admin seat for the review phase.
     if selected.contains(&Scenario::Review) {
+        if let Err(e) = seed_review_fixture(server) {
+            report.fail("scratch review principal", &e);
+            return false;
+        }
         let mut seat = reader.command(root, &["admin", "add", OTHER_PRINCIPAL, "verify web O-17"]);
         if let Err(e) = crate::process::run(&mut seat, "vink-app admin add (scratch)") {
             report.fail("scratch database: admin seat", &e);

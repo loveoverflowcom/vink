@@ -293,6 +293,32 @@ response is `no-store`. A reviewer never reads or takes a case on their own work
 | `POST /api/v1/moderation/groups` `{name}` · `POST …/groups/{group_id}/members` `{principal_id}` · `DELETE …/members/{principal_id}` | admin | `201` `{group_id}` · `204` · `204` (removed member's claims revalidated) | `401`, `403`, `404`, `409`, `422` |
 | `GET /api/v1/moderation/automation` · `POST …/automation/mode` `{expected_version, mode: enabled\|paused, reason}` | admin | `200` `{mode, version}`; a pause reroutes open jobs to people in the same commit | `401`, `403`, `409` `automation_version_stale`, `422` |
 
+### Work/appeal queue continuation (#205)
+
+- `GET /api/v1/moderation/works/queue/page` và `GET /api/v1/moderation/appeals/page`
+  trả `{items, next_cursor, authority_key}`. Query duy nhất: `limit` (mặc định 50, 1–100) và `cursor`.
+  `next_cursor: null` chỉ có nghĩa hết trang sau response 200. Không có total.
+- Cursor v1 hex chính tắc, ràng buộc actor + loại queue + limit + thứ tự cố định
+  `created_at ASC, id ASC`; chỉ chứa vị trí của mục cuối được phép trả về. Không chứa lookahead
+  bị từ chối. Không phải chữ ký hay quyền; sửa vị trí không bỏ được bất kỳ kiểm tra quyền nào.
+- Query lạ/trùng/malformed UTF-8/percent: `422 validation_failed`, field `query`;
+  limit sai: field `limit`; cursor sai version/actor/endpoint/limit: field `cursor`.
+  Lỗi không echo cursor. Success/error đều `no-store`.
+- Quyền/admin/standing/nhóm/expiry và rows cùng một repeatable-read snapshot mỗi request;
+  recusal và public-active lọc trước LIMIT + 1. Queue sống, không snapshot quyền xuyên trang.
+  Anchor đã đóng không chặn đi tiếp. Refresh bắt đầu chuỗi mới; detail/command kiểm quyền riêng.
+- `authority_key` là fingerprint opaque của phạm vi quyền hiệu lực, không phải grant. Khi đổi
+  (kể cả 200 sau mất một phần grant), Web bỏ chuỗi cũ và bắt đầu lại. Không suy diễn total hay ID từ key.
+- Migration tương thích: route array cũ `/moderation/works/queue`, `/moderation/appeals` vẫn
+  nhận cùng query, nay hữu hạn 50/100 và gửi `Link: <...>; rel="next"` nếu còn trang.
+  Web mới chỉ dùng `/page`; client cũ vẫn parse được array, cần theo Link để duyệt hết.
+  Server mới hỗ trợ bundle cũ trong rollout; bundle mới cần server có `/page` trước khi phục vụ.
+  Không silently fallback từ lỗi `/page` sang empty hay route cũ.
+- Fixtures: [trang tác phẩm](fixtures/moderation.works.page.json),
+  [trang cuối](fixtures/moderation.works.end.json), [rỗng](fixtures/moderation.queue.empty.json),
+  [phản đối](fixtures/moderation.appeals.page.json). Author appeal history `/works/{id}/appeals`
+  và revision history giữ contract riêng, chưa được phân trang trong #205.
+
 ## Comment moderation (D2T-02c)
 
 Authority comes from active comment moderation governance in Vink's database: an active admin seat

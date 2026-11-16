@@ -51,8 +51,23 @@ pub async fn load_moderation_directory(
 pub(super) async fn load_directory_facts(
     conn: &mut PgConnection,
 ) -> Result<DirectoryFacts, StoreError> {
+    load_directory_facts_scoped(conn, None).await
+}
+
+pub(super) async fn load_queue_directory(
+    conn: &mut PgConnection,
+    actor: PrincipalId,
+) -> Result<ModerationDirectory, StoreError> {
+    ModerationDirectory::restore(load_directory_facts_scoped(conn, Some(actor.as_uuid())).await?)
+        .map_err(|e| integrity("queue directory restore", e))
+}
+
+async fn load_directory_facts_scoped(
+    conn: &mut PgConnection,
+    actor: Option<Uuid>,
+) -> Result<DirectoryFacts, StoreError> {
     // 1. Admins
-    let admin_rows: Vec<Uuid> = query_scalar("SELECT principal_id FROM moderation_admin_seats")
+    let admin_rows: Vec<Uuid> = query_scalar("SELECT principal_id FROM moderation_admin_seats WHERE ($1::uuid IS NULL OR principal_id = $1)").bind(actor)
         .fetch_all(&mut *conn)
         .await
         .map_err(classify)?;
@@ -60,7 +75,7 @@ pub(super) async fn load_directory_facts(
 
     // 2. Suspended principals
     let suspended_rows: Vec<Uuid> =
-        query_scalar("SELECT principal_id FROM principal_suspensions WHERE lifted_at IS NULL")
+        query_scalar("SELECT principal_id FROM principal_suspensions WHERE lifted_at IS NULL AND ($1::uuid IS NULL OR principal_id = $1)").bind(actor)
             .fetch_all(&mut *conn)
             .await
             .map_err(classify)?;
@@ -86,8 +101,9 @@ pub(super) async fn load_directory_facts(
     let grant_rows: Vec<GrantRow> = query_as(
         "SELECT id, grantee_kind, grantee_id, capability, scope_kind,
                 scope_work_id, expires_at, revoked, origin
-           FROM moderation_grants ORDER BY id",
+           FROM moderation_grants WHERE ($1::uuid IS NULL OR (grantee_kind = 'principal' AND grantee_id = $1) OR (grantee_kind = 'group' AND EXISTS (SELECT 1 FROM moderation_group_members m WHERE m.group_id = grantee_id AND m.principal_id = $1))) ORDER BY id",
     )
+    .bind(actor)
     .fetch_all(&mut *conn)
     .await
     .map_err(classify)?;
@@ -139,7 +155,7 @@ pub(super) async fn load_directory_facts(
     }
 
     let inherited_rows: Vec<InheritedGrantRow> =
-        query_as("SELECT id, principal_id, revoked_at FROM discussion_moderator_grants")
+        query_as("SELECT id, principal_id, revoked_at FROM discussion_moderator_grants WHERE ($1::uuid IS NULL OR principal_id = $1)").bind(actor)
             .fetch_all(&mut *conn)
             .await
             .map_err(classify)?;
@@ -167,8 +183,9 @@ pub(super) async fn load_directory_facts(
         "SELECT g.id, coalesce(array_agg(m.principal_id) FILTER (WHERE m.principal_id IS NOT NULL), '{}') AS members
            FROM moderation_groups g
            LEFT JOIN moderation_group_members m ON m.group_id = g.id
-          GROUP BY g.id",
+          WHERE ($1::uuid IS NULL OR m.principal_id = $1) GROUP BY g.id",
     )
+    .bind(actor)
     .fetch_all(&mut *conn)
     .await
     .map_err(classify)?;
@@ -493,7 +510,22 @@ impl CaseSummary {
     }
 }
 
-pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSummary>, StoreError> {
+pub async fn list_open_work_cases(
+    pool: &PgPool,
+    actor: PrincipalId,
+    page: &crate::domain::moderation_queue::QueueQuery,
+) -> Result<(Vec<CaseSummary>, String), ModerationActionError> {
+    let mut tx = super::discussion::read_snapshot(pool).await?;
+    let now: OffsetDateTime = query_scalar("SELECT transaction_timestamp()")
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(classify)?;
+    let directory = load_queue_directory(&mut tx, actor).await?;
+    let (global, works) = directory
+        .capability_scope(actor, ReviewCapability::Works, now)
+        .ok_or(ModerationActionError::Forbidden("not_authorized"))?;
+    let works: Vec<Uuid> = works.into_iter().map(|w| w.as_uuid()).collect();
+    let (after_at, after_id) = page.bounds();
     #[derive(sqlx::FromRow)]
     struct Row {
         title: Option<String>,
@@ -511,38 +543,49 @@ pub async fn list_open_work_cases(conn: &mut PgConnection) -> Result<Vec<CaseSum
         created_at: OffsetDateTime,
     }
 
-    let rows: Vec<Row> = query_as(
-        "SELECT c.id, c.subject_kind, c.work_id, c.revision_id, c.decision_version, c.origin, c.version, c.state,
+    let rows: Vec<Row> = query_as(WORK_QUEUE_SQL)
+        .bind(actor.as_uuid())
+        .bind(global)
+        .bind(&works)
+        .bind(after_at)
+        .bind(after_id)
+        .bind(page.fetch())
+        .fetch_all(&mut *tx)
+        .await
+        .map_err(classify)?;
+
+    Ok((
+        rows.into_iter()
+            .map(|r| CaseSummary {
+                title: r.title,
+                id: CaseId::from_uuid(r.id),
+                subject_kind: r.subject_kind,
+                work_id: WorkId::from_uuid(r.work_id),
+                revision_id: r.revision_id.map(RevisionId::from_uuid),
+                decision_version: r.decision_version,
+                origin: r.origin,
+                version: r.version,
+                state: r.state,
+                claimed_by: r.claimed_by.map(PrincipalId::from_uuid),
+                content_owner: PrincipalId::from_uuid(r.target_content_owner),
+                work_owner: PrincipalId::from_uuid(r.target_work_owner),
+                created_at: r.created_at,
+            })
+            .collect(),
+        page.authority_key(global, &works),
+    ))
+}
+
+pub const WORK_QUEUE_SQL: &str = "SELECT c.id, c.subject_kind, c.work_id, c.revision_id, c.decision_version, c.origin, c.version, c.state,
                 c.claimed_by, c.target_content_owner, c.target_work_owner, c.created_at, r.title
            FROM moderation_cases c
            JOIN work_publications wp ON wp.work_id = c.work_id AND wp.audience = 'public' AND wp.lifecycle = 'active'
            LEFT JOIN revisions r ON r.work_id = c.work_id AND r.id = c.revision_id
           WHERE c.state IN ('queued', 'claimed', 'escalated') AND c.subject_kind = 'work_revision'
-          ORDER BY c.created_at ASC, c.id ASC",
-    )
-    .fetch_all(&mut *conn)
-    .await
-    .map_err(classify)?;
-
-    Ok(rows
-        .into_iter()
-        .map(|r| CaseSummary {
-            title: r.title,
-            id: CaseId::from_uuid(r.id),
-            subject_kind: r.subject_kind,
-            work_id: WorkId::from_uuid(r.work_id),
-            revision_id: r.revision_id.map(RevisionId::from_uuid),
-            decision_version: r.decision_version,
-            origin: r.origin,
-            version: r.version,
-            state: r.state,
-            claimed_by: r.claimed_by.map(PrincipalId::from_uuid),
-            content_owner: PrincipalId::from_uuid(r.target_content_owner),
-            work_owner: PrincipalId::from_uuid(r.target_work_owner),
-            created_at: r.created_at,
-        })
-        .collect())
-}
+            AND c.target_content_owner <> $1 AND c.target_work_owner <> $1
+            AND ($2::boolean OR c.work_id = ANY($3::uuid[]))
+            AND ($4::timestamptz IS NULL OR (c.created_at,c.id) > ($4,$5))
+          ORDER BY c.created_at ASC, c.id ASC LIMIT $6";
 
 #[derive(Debug, Clone)]
 pub struct NoteRecord {

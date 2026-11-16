@@ -44,6 +44,8 @@ mod discussion;
 mod drafts;
 #[path = "postgres/endorsement.rs"]
 mod endorsement;
+#[path = "postgres/moderation_queue.rs"]
+mod moderation_queue;
 #[path = "postgres/outbox.rs"]
 mod outbox;
 #[path = "postgres/post_review.rs"]

@@ -119,22 +119,29 @@ fn Feedback(actions: Actions) -> impl IntoView {
 }
 #[component]
 pub fn ModerationHome() -> impl IntoView {
+    let admin_allowed = RwSignal::new(true);
     let reason = RwSignal::new(String::new());
     let actions = Actions::new();
     let session = crate::account::Session::current();
     Effect::new(move |_| {
         session.scope.track();
+        admin_allowed.set(true);
         reason.set(String::new());
     });
+    Effect::new(move |_| {
+        if !admin_allowed.get() {
+            reason.set(String::new());
+        }
+    });
+    // Paging never re-reads automation or remounts its unsent reason field.
     let data = LocalResource::new(move || {
         let scope = session.scope.get();
         actions.reload.track();
         async move {
-            let cases = api::moderation_get::<Vec<Case>>("/api/v1/moderation/works/queue").await;
-            let appeals = api::moderation_get::<Vec<Appeal>>("/api/v1/moderation/appeals").await;
-            let automation =
-                api::moderation_get::<Automation>("/api/v1/moderation/automation").await;
-            (scope, cases, appeals, automation)
+            (
+                scope,
+                api::moderation_get::<Automation>("/api/v1/moderation/automation").await,
+            )
         }
     });
     view! {
@@ -142,27 +149,308 @@ pub fn ModerationHome() -> impl IntoView {
         <section class="vk-moderation" id="moderation-home">
             <Heading level=HeadingLevel::H1>"Kiểm duyệt"</Heading>
             <p>"Xem đúng bản đã gửi và ghi rõ căn cứ cho từng quyết định."</p>
+            <QueuePanel appeals=false reload=actions.reload admin_allowed/>
+            <QueuePanel appeals=true reload=actions.reload admin_allowed/>
             <Feedback actions/>
             {move || match data.get() {
-                Some((scope,cases,appeals,automation)) if scope.is_some() && scope == session.scope.get() => view! {
-                    <section aria-labelledby="case-list-title"><Heading id="case-list-title" level=HeadingLevel::H2>"Ca tác phẩm"</Heading>
-                    {match cases {
-                        Ok(cases) if cases.is_empty() => view! { <p>"Không có ca đang chờ trong phạm vi của bạn."</p> }.into_any(),
-                        Ok(cases) => view! { <ul class="vk-moderation__list">{cases.into_iter().map(|c| view! { <li><Link href=format!("/kiem-duyet/ca/{}",c.id)>{format!("{} · {}",c.title.unwrap_or_else(|| "Bản đã gửi".into()),state_label(&c.state))}</Link></li> }).collect_view()}</ul> }.into_any(),
-                        Err(e) => view! { <p>{error_text(&e)}</p> }.into_any(),
-                    }}</section>
-                    {appeals.as_ref().err().filter(|e| !matches!(e, ApiError::Forbidden)).map(|e| view! { <p>{format!("Phản đối: {}", error_text(e))}</p> })}
-                    {appeals.ok().map(|appeals| view! { <section aria-labelledby="appeal-list-title"><Heading id="appeal-list-title" level=HeadingLevel::H2>"Phản đối cần xem xét"</Heading><p>"Hồ sơ được ghi nhận tại Vink. Chưa có thông báo nào được gửi."</p>
-                        {if appeals.is_empty() { view! { <p>"Không có phản đối đang mở."</p> }.into_any() } else { view! { <ul class="vk-moderation__list">{appeals.into_iter().map(|a| view! { <li><Link href=format!("/kiem-duyet/phan-doi/{}",a.id)>"Xem hồ sơ phản đối"</Link></li> }).collect_view()}</ul> }.into_any() }}
-                    </section> })}
-                    {automation.as_ref().err().filter(|e| !matches!(e, ApiError::Forbidden)).map(|e| view! { <p>{format!("Duyệt tự động: {}", error_text(e))}</p> })}
-                    {automation.ok().map(|automation| view! { <AutomationControls automation actions reason/> })}
-                }.into_any(),
-                _ => view! { <p role="status">{loading_text(session, "Đang kiểm tra quyền và tải hàng chờ…")}</p> }.into_any(),
+                Some((scope,result)) if scope.is_some() && scope == session.scope.get() => match result {
+                    Ok(automation) if admin_allowed.get() => view! { <AutomationControls automation actions reason/> }.into_any(),
+                    Ok(_) => ().into_any(),
+                    Err(ApiError::Forbidden) => ().into_any(),
+                    Err(error) => view! { <p>{format!("Duyệt tự động: {}",error_text(&error))}</p> }.into_any(),
+                },
+                _ => ().into_any(),
             }}
         </section>
     }
 }
+
+#[derive(Clone, Debug)]
+struct QueueRow {
+    id: String,
+    label: String,
+    href: String,
+}
+#[component]
+fn QueuePanel(
+    appeals: bool,
+    reload: RwSignal<u64>,
+    admin_allowed: RwSignal<bool>,
+) -> impl IntoView {
+    use crate::read_lifecycle::{Intent, PageChain, ReadOwner};
+    let session = crate::account::Session::current();
+    let prefix = if appeals {
+        "appeal-queue"
+    } else {
+        "case-queue"
+    };
+    let endpoint = if appeals {
+        "/api/v1/moderation/appeals/page"
+    } else {
+        "/api/v1/moderation/works/queue/page"
+    };
+    let rows = RwSignal::new(Vec::<QueueRow>::new());
+    let chain = StoredValue::new(PageChain::default());
+    let authority = StoredValue::new(None::<String>);
+    let reads = StoredValue::new(ReadOwner::new(None::<String>));
+    let listed_scope = StoredValue::new(None::<Option<String>>);
+    let busy = RwSignal::new(false);
+    let appending = RwSignal::new(false);
+    let ready = RwSignal::new(false);
+    let more = RwSignal::new(false);
+    let error = RwSignal::new(None::<ApiError>);
+    let restarted = RwSignal::new(false);
+    let wake = StoredValue::new(crate::read_events::WakePolicy::default());
+    #[cfg(feature = "hydrate")]
+    let transport = StoredValue::new(Owner::current().map(|o| o.downgrade()));
+    let load = Callback::new(move |intent: Intent| {
+        #[cfg(feature = "hydrate")]
+        {
+            if session.scope.get_untracked().is_none() {
+                return;
+            }
+            let cursor = if intent == Intent::Append {
+                chain.with_value(|c| c.next_cursor.clone())
+            } else {
+                None
+            };
+            if intent == Intent::Append && cursor.is_none() {
+                return;
+            }
+            let Some(Some(ticket)) = reads.try_update_value(|r| r.begin(intent, cursor)) else {
+                return;
+            };
+            let Some(owner) = transport.get_value().and_then(|o| o.upgrade()) else {
+                return;
+            };
+            busy.set(true);
+            appending.set(intent == Intent::Append);
+            error.set(None);
+            wake.update_value(|w| w.started());
+            owner.with(|| {
+                leptos::task::spawn_local_scoped_with_cancellation(async move {
+                    let path = format!(
+                        "{endpoint}?limit=50{}",
+                        ticket
+                            .cursor
+                            .as_ref()
+                            .map(|c| format!(
+                                "&cursor={}",
+                                percent_encoding::utf8_percent_encode(
+                                    c,
+                                    percent_encoding::NON_ALPHANUMERIC
+                                )
+                            ))
+                            .unwrap_or_default()
+                    );
+                    let result: Result<QueuePage<QueueRow>, ApiError> = if appeals {
+                        api::moderation_get::<QueuePage<Appeal>>(&path)
+                            .await
+                            .map(|p| QueuePage {
+                                authority_key: p.authority_key,
+                                next_cursor: p.next_cursor,
+                                items: p
+                                    .items
+                                    .into_iter()
+                                    .map(|a| QueueRow {
+                                        href: format!("/kiem-duyet/phan-doi/{}", a.id),
+                                        id: a.id,
+                                        label: "Xem hồ sơ phản đối".into(),
+                                    })
+                                    .collect(),
+                            })
+                    } else {
+                        api::moderation_get::<QueuePage<Case>>(&path)
+                            .await
+                            .map(|p| QueuePage {
+                                authority_key: p.authority_key,
+                                next_cursor: p.next_cursor,
+                                items: p
+                                    .items
+                                    .into_iter()
+                                    .map(|c| QueueRow {
+                                        href: format!("/kiem-duyet/ca/{}", c.id),
+                                        id: c.id,
+                                        label: format!(
+                                            "{} · {}",
+                                            c.title.unwrap_or_else(|| "Bản đã gửi".into()),
+                                            state_label(&c.state)
+                                        ),
+                                    })
+                                    .collect(),
+                            })
+                    };
+                    if reads.try_with_value(|r| r.accepts(&ticket)) != Some(true)
+                        || session.scope.try_get_untracked() != Some(ticket.scope.clone())
+                    {
+                        return;
+                    }
+                    let old_tail = chain.with_value(|c| c.pages > 1);
+                    let had_more_focus = document()
+                        .active_element()
+                        .is_some_and(|e| e.id() == format!("{prefix}-more"));
+                    let result = result.and_then(|page| {
+                        if authority.with_value(|a| {
+                            a.as_ref().is_some_and(|key| key != &page.authority_key)
+                        }) {
+                            rows.set(Vec::new());
+                            chain.set_value(PageChain::default());
+                            ready.set(false);
+                            more.set(false);
+                            if intent == Intent::Append {
+                                return Err(ApiError::Invalid {
+                                    field: Some("cursor".into()),
+                                });
+                            }
+                        }
+                        authority.set_value(Some(page.authority_key.clone()));
+
+                        if page.items.len() > 50
+                            || chain.try_update_value(|c| {
+                                reads.with_value(|r| {
+                                    r.accept_page(
+                                        &ticket,
+                                        c,
+                                        page.items.iter().map(|r| r.id.clone()),
+                                        page.next_cursor,
+                                    )
+                                })
+                            }) != Some(true)
+                        {
+                            return Err(ApiError::Invalid {
+                                field: Some("cursor".into()),
+                            });
+                        }
+                        if intent == Intent::Append {
+                            rows.update(|r| r.extend(page.items));
+                        } else {
+                            rows.set(page.items);
+                        }
+                        Ok(())
+                    });
+                    if reads.try_update_value(|r| r.finish(&ticket)) != Some(true) {
+                        return;
+                    }
+                    let success = result.is_ok();
+                    match result {
+                        Ok(()) => {
+                            if appeals && !admin_allowed.get_untracked() {
+                                admin_allowed.set(true);
+                            }
+                            ready.set(true);
+                            more.set(chain.with_value(|c| c.next_cursor.is_some()));
+                            restarted.set(intent != Intent::Append && old_tail);
+                        }
+                        Err(e) => {
+                            if matches!(
+                                e,
+                                ApiError::Unauthenticated
+                                    | ApiError::Forbidden
+                                    | ApiError::NotFound
+                            ) {
+                                rows.set(Vec::new());
+                                chain.set_value(PageChain::default());
+                                ready.set(false);
+                                more.set(false);
+                                if appeals && admin_allowed.get_untracked() {
+                                    admin_allowed.set(false);
+                                }
+                            }
+                            error.set(Some(e));
+                        }
+                    }
+                    busy.set(false);
+                    appending.set(false);
+                    if had_more_focus && !more.get_untracked() {
+                        super::focus_recovery(if appeals {
+                            "appeal-queue-refresh"
+                        } else {
+                            "case-queue-refresh"
+                        });
+                    }
+                    wake.update_value(|w| w.settled(crate::read_events::now(), success));
+                })
+            });
+        }
+        #[cfg(not(feature = "hydrate"))]
+        let _ = intent;
+    });
+    #[cfg(feature = "hydrate")]
+    {
+        Effect::new(move |_| {
+            let scope = session.scope.get();
+            if listed_scope.get_value() != Some(scope.clone()) {
+                listed_scope.set_value(Some(scope.clone()));
+                reads.update_value(|r| r.change_scope(scope.clone()));
+                rows.set(Vec::new());
+                chain.set_value(PageChain::default());
+                busy.set(false);
+                appending.set(false);
+                ready.set(false);
+                more.set(false);
+                error.set(None);
+                if scope.is_some() {
+                    load.run(Intent::Initial);
+                }
+            }
+        });
+        Effect::new(move |_| {
+            let n = reload.get();
+            if n > 0 {
+                load.run(Intent::Refresh);
+            }
+        });
+        crate::read_events::observe(move || {
+            if crate::read_events::visible()
+                && wake.with_value(|w| w.due(crate::read_events::now()))
+            {
+                load.run(Intent::Refresh);
+            }
+        });
+        on_cleanup(move || {
+            reads.try_update_value(|r| r.dispose());
+        });
+    }
+    #[cfg(not(feature = "hydrate"))]
+    let _ = admin_allowed;
+    #[cfg(not(feature = "hydrate"))]
+    let _ = (
+        chain,
+        authority,
+        reads,
+        listed_scope,
+        wake,
+        reload,
+        endpoint,
+    );
+    let state = Signal::derive(move || {
+        if busy.get() {
+            ActionState::pending("Đang tải…")
+        } else {
+            ActionState::Enabled
+        }
+    });
+    let refresh_state = Signal::derive(move || {
+        if busy.get() && !appending.get() {
+            ActionState::pending("Đang tải…")
+        } else {
+            ActionState::Enabled
+        }
+    });
+    view! {
+        <section class="vk-moderation__queue" id=prefix aria-busy=move ||busy.get().to_string()>
+            <Heading id=format!("{prefix}-title") level=HeadingLevel::H2>{if appeals {"Phản đối cần xem xét"} else {"Ca tác phẩm"}}</Heading>
+            <Button id=format!("{prefix}-refresh") state=refresh_state on_press=move |_|load.run(Intent::Refresh)>{if appeals {"Tải lại phản đối"} else {"Tải lại ca tác phẩm"}}</Button>
+            <p role="status">{move || if busy.get() {"Đang tải hàng chờ…"} else if !ready.get() && error.get().is_none() {loading_text(session,"Đang kiểm tra quyền…")} else if restarted.get() {"Đã tải lại từ đầu. Các trang sau được bỏ để đối chiếu trạng thái mới."} else {""}}</p>
+            {move || error.get().map(|e|view! {<p role="alert">{if matches!(e,ApiError::Invalid{..}) {"Vị trí hoặc phạm vi hàng chờ đã thay đổi. Bắt đầu lại để đối chiếu."} else {error_text(&e)}}</p>})}
+            <ul class="vk-moderation__list"><For each=move ||rows.get() key=|r|r.id.clone() children=|r|view! {<li><Link href=r.href>{r.label}</Link></li>}/></ul>
+            {move || (ready.get() && rows.with(|r|r.is_empty())).then(||view!{<p>"Không có hồ sơ đang chờ trong phạm vi của bạn."</p>})}
+            <Show when=move ||more.get()><Button id=format!("{prefix}-more") state on_press=move |_|load.run(Intent::Append)>{if appeals {"Tải thêm phản đối"} else {"Tải thêm ca tác phẩm"}}</Button></Show>
+            <Show when=move ||error.with(|e|matches!(e,Some(ApiError::Invalid{..})))><Button id=format!("{prefix}-restart") state on_press=move |_|load.run(Intent::Restart)>"Bắt đầu lại hàng chờ"</Button></Show>
+        </section>
+    }
+}
+
 #[component]
 fn AutomationControls(
     automation: Automation,

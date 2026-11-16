@@ -9,7 +9,7 @@ fn invalid() -> ApiError {
     }
 }
 
-fn decode(raw: &str) -> Result<String, ApiError> {
+pub(super) fn decode(raw: &str) -> Result<String, ApiError> {
     let mut decoded = Vec::with_capacity(raw.len());
     let mut bytes = raw.bytes();
     while let Some(c) = bytes.next() {

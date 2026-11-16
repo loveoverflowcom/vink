@@ -949,3 +949,6 @@ a {
 .vk-moderation__list > li { min-inline-size: 0; overflow-wrap: anywhere; }
 .vk-moderation__actions, .vk-moderation__feedback { display: flex; flex-wrap: wrap; gap: var(--vk-space-3); align-items: center; }
 .vk-moderation__snapshot { padding-block: var(--vk-space-4); overflow-wrap: anywhere; }
+
+/* Queue status has no reserved blank row after a settled read (#205). */
+.vk-moderation__queue > p:empty { display: none; }

@@ -10,6 +10,7 @@ pub mod draft_query;
 pub mod endorsement;
 pub mod ids;
 pub mod moderation;
+pub mod moderation_queue;
 pub mod principal;
 pub mod publication;
 pub mod revision;
