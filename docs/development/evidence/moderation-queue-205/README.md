@@ -1,5 +1,8 @@
 # Bằng chứng phân trang queue #205
 
+Phần dưới lưu kết quả của tác giả ở head ban đầu. [Review độc lập PR #223](independent-review.md)
+ghi hai bản sửa sau đó, kiểm chứng mới và điều kiện rollout của legacy Web; không gộp hai mốc.
+
 Implementation: `3a6874ede9b2cc3953e137411000cb2030788e16`.
 Base: `origin/develop@6de515d799d60361224f4a29e63909b98bb33979`; fetch lại trước bàn giao không đổi.
 Dependency #200 (PR #210) và #202 (PR #212) đều nằm trong base. Không dùng feature branch làm base.
@@ -51,8 +54,9 @@ sau main trong full run NOT_RUN; selected review đã chạy độc lập và PA
 ## Lựa chọn và số đo
 
 CHOICE-01 A: envelope `{items,next_cursor,authority_key}` trên `/page`; route cũ giữ array hữu hạn
-và Link. Client cũ parse được body, phải theo Link để đọc hết; Web mới cần server `/page` trước
-khi phục vụ bundle. Không fallback 404/lỗi sang empty. CHOICE-02 B: actor-specific directory trong
+và Link. Client cũ parse được body, phải theo Link để đọc hết; bundle Web cũ thực tế bỏ qua Link.
+Web mới cần server `/page` trước khi phục vụ bundle và tải lại tab kiểm duyệt cũ trước khi tiếp
+tục duyệt (xem review độc lập). Không fallback 404/lỗi sang empty. CHOICE-02 B: actor-specific directory trong
 cùng read-only repeatable-read snapshot, pure oracle tạo phạm vi SQL trước limit. Fingerprint là
 hash phạm vi hiệu lực, không chứa danh sách work/total và không phải quyền có thể tái sử dụng.
 

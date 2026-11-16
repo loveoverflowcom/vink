@@ -222,8 +222,9 @@ Mức triển khai `persistence-api` + `web`; không thay quyết định sản 
   `/api/v1/moderation/appeals/page` trả `items`, `next_cursor`, `authority_key`.
   Mặc định 50, tối đa 100; oldest-first `(created_at,id)`; lookahead chỉ từ tập được phép.
 - CHOICE-01 A: envelope trên route `/page`; route cũ giữ array hữu hạn và `Link rel=next`.
-  Server mới phục vụ được bundle cũ; phục vụ bundle mới sau server mới. Không fallback lỗi thành
-  empty. [Contract/fixtures](../../services/vink-app/contracts/http/v1/README.md#workappeal-queue-continuation-205).
+  Chỉ tương thích dạng array với bundle cũ: bundle đó bỏ qua Link và chỉ thấy trang đầu. Rollout
+  cần server mới trước bundle mới và tải lại tab kiểm duyệt cũ trước khi tiếp tục duyệt. Không
+  fallback lỗi thành empty. [Contract/fixtures](../../services/vink-app/contracts/http/v1/README.md#workappeal-queue-continuation-205).
 - CHOICE-02 B: transaction repeatable-read read-only; directory chỉ tải facts liên quan actor,
   `ModerationDirectory::capability_scope` tạo projection global/work IDs và SQL lọc trước limit.
   Admin/standing/expiry và rows cùng snapshot; tự né chủ nội dung/chủ tác phẩm, public-active.
@@ -233,10 +234,16 @@ Mức triển khai `persistence-api` + `web`; không thay quyết định sản 
   Refresh supersede append, reset chain minh bạch; lỗi tạm giữ trang/cursor, invalid cursor cho
   restart, 401/403/404 xóa dữ liệu. Lifecycle hints chỉ đọc có backoff, không chạy lại lệnh.
   Automation/reason không remount theo paging. Detail/command vẫn có authority/version fence riêng.
+  Link giữ key theo ID nhưng nhãn đọc reactive từ rows hiện tại, nên refresh cập nhật trạng thái
+  ca đã được người khác nhận mà không thay phần tử link.
 - Sau đo global 6.000 ca thấy sort toàn hàng (~3,966 ms ở corpus local), migration mới
   `20261121000000_moderation_queue_order.sql` thêm partial index `(created_at,id)` cho open work cases.
   Sparse grants dùng index work/revision hiện có; appeal dùng `work_appeals_open`. Backout chỉ bỏ
   derived index, không xóa queue/audit. Plan/timing là dữ liệu local, không SLA production.
+  Review #223 đo thêm generic prepared plan: nullable cursor/global predicate có thể làm quét
+  toàn corpus. Hai queue dùng `SET LOCAL plan_cache_mode = force_custom_plan` trong transaction
+  đọc (cùng mẫu với discovery); không thay cấu hình session/pool. Regression gọi mỗi queue tám
+  lần trên một connection, kiểm `pg_prepared_statements` và khôi phục setting cả khi mất quyền.
 
 Inventory: hàng bình luận đã có PageCursor/PageLimit và không bị thay ở lát này. Author appeal
 history `/works/{work}/appeals`, revision/decision history và ghi chú chi tiết vẫn theo contract
